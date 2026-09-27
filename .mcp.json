@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "lmbrain-lite": {
+      "args": [
+        "--root",
+        "E:\\Git\\GitStack"
+      ],
+      "command": "C:\\Users\\moren\\AppData\\Local\\LMBrain Lite\\lmbrain-lite-mcp.exe"
+    }
+  }
+}

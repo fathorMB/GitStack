@@ -1,0 +1,24 @@
+{
+  "version": "0.2.1",
+  "files": {
+    "AGENT.md": "64c790d9484afdb7c6d7efc9deff8701f45420855773d6437db69e64ad5af5d3",
+    "CHANGELOG.md": "56fe2f58223fc86384668f49b9d1e8b62b79512682a78df6b6c80beb977cf7f1",
+    "OPERATOR.md": "21abf1695d46df6d442a967ba1119e451c910ee811698f77a4a95cd18a744b91",
+    "README.md": "f65e2504f590973a9311e88063a874c505cb1bb940e9c857355d8538c6973ed2",
+    "UPGRADING.md": "a5f30bca609a84ac58388a91bc0d47ca1c7474aaad6c65d996e1ad3d6a5a86cb",
+    "design/README.md": "46b20702cffc391c1d816b32fe450c1413cdf10e92becad8116f2dec2c4f974f",
+    "knowledge/README.md": "2c6ab640124ae8b6817dff0e4385d099a6fe4e5698deb859d74c527195db6aeb",
+    "mcp/README.md": "c81f2ca902e1c81341959000c758f05de1a08caa5e81ad8bfba6044809bacd09",
+    "milestones/README.md": "81e302cdd3fa4d5978a2e7d92012946b923be287e7bb44134aab18218de140f1",
+    "reports/README.md": "33a83e6994da6357f9b218964694bbf902ea377b636790809c2f94ca6372a10d",
+    "skills/README.md": "98b25b7d7c57b34f173d24250782545ed3fe6c0dd7033f35d8ec60e651cc596e",
+    "templates/carve-out-prompt.md": "b222999189442c45c3522b54ceab91e7917c4153f87d20295ece40068249ce78",
+    "templates/dreaming-session-prompt.md": "a287994249b38ee4b651739515e486f19965a0076b0ed9e9096673cef7abf406",
+    "templates/lead-bootstrap-prompt.md": "a091ea5ee57b2a742386ccf82b69d0bf050a7204570aa6fff7e7cdac904de07b",
+    "templates/milestone.md": "f70ae48534090511ada647998b84ef56b8fd8afeee95eee2e0e14c1d70bd493d",
+    "templates/resume-milestone-prompt.md": "73b6388e0baa3472c9cb15b386e8daf1aef16123c1ef8ff7d06d6f76ab196cc5",
+    "templates/skill.md": "74b675146624a47e50226348bc14184f19bc344f865b3740affd63db8544ba51",
+    "templates/subagent-brief.md": "b56fe8fe45fc9af60690cb0b99be8f9bcec5f070506bd91600ffdc2ff7c997db",
+    "templates/takeover-prompt.md": "fb7b621128e28431954fc02ae284d3a297933dc0067626c486477777330f3cb7"
+  }
+}

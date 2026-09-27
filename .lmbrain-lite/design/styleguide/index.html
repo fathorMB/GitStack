@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitStack Styleguide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN TOKENS · palette "Aurora" ============ */
+:root{
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --fs-xs:11px;--fs-sm:12px;--fs-base:14px;--fs-md:16px;--fs-lg:20px;--fs-xl:24px;--fs-2xl:32px;
+  --r-sm:4px;--r:6px;--r-lg:10px;
+  /* Sfumatura di marchio: solo logo, voce attiva, agenti, momenti di marchio */
+  --aurora:linear-gradient(135deg,#7c5cff 0%,#e0469b 55%,#ff8a3d 100%);
+  --aurora-glow:radial-gradient(60% 80% at 100% 100%,rgba(255,138,61,.28),transparent 60%),radial-gradient(70% 90% at 70% 110%,rgba(224,70,155,.32),transparent 60%),radial-gradient(80% 90% at 20% 120%,rgba(124,92,255,.45),transparent 65%);
+  /* Sidebar: quasi nera in entrambi i temi */
+  --sidebar-bg:#0e0b16;--sidebar-border:#1f1930;--sidebar-fg:#a39db8;--sidebar-fg-strong:#f3f0fa;
+  --sidebar-hover:#18132a;--sidebar-active:#221a3b;--sidebar-accent:#a28bff;
+  --bg:#f5f4fa;--surface:#ffffff;--surface-2:#f1eff8;--surface-3:#e7e4f1;
+  --border:#e0dcec;--border-strong:#cbc5dc;
+  --text:#16121f;--text-muted:#5f5873;--text-subtle:#8e87a3;
+  --accent:#6a47f5;--accent-hover:#5835e0;--accent-fg:#ffffff;--accent-soft:#efebff;--accent-text:#5b3be0;
+  --success:#1f8f52;--success-soft:#e4f5eb;--danger:#d93645;--danger-soft:#fdeaec;
+  --warning:#b7741a;--warning-soft:#fcf1de;--info:#2f6fe0;--info-soft:#e8effd;
+  --closed:#c2338a;--closed-soft:#fbe7f2;--agent:#cf5510;--agent-soft:#fff0e5;
+  --focus:0 0 0 3px rgba(106,71,245,.3);
+  --shadow-1:0 1px 2px rgba(22,18,31,.06);--shadow-2:0 10px 28px rgba(22,18,31,.14);
+  --code-bg:#f8f7fc;--diff-add:#e6f6ec;--diff-add-strong:#c7ebd3;--diff-del:#fcebec;--diff-del-strong:#f6cfd2;
+  --tk-k:#c2338a;--tk-s:#1f8a4c;--tk-c:#8e87a3;--tk-f:#6a47f5;--tk-n:#0b5cc2;--tk-t:#b25a0a;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0912;--surface:#13101d;--surface-2:#1a1626;--surface-3:#231e33;
+  --border:#2a2440;--border-strong:#3a3354;
+  --text:#ece9f5;--text-muted:#9d96b3;--text-subtle:#6c6584;
+  --accent:#7c5cff;--accent-hover:#9479ff;--accent-fg:#ffffff;--accent-soft:rgba(124,92,255,.16);--accent-text:#b3a3ff;
+  --success:#3fcf7f;--success-soft:rgba(63,207,127,.13);--danger:#ff6b76;--danger-soft:rgba(255,107,118,.14);
+  --warning:#f0b04a;--warning-soft:rgba(240,176,74,.14);--info:#7aa7ff;--info-soft:rgba(122,167,255,.14);
+  --closed:#ee6bb4;--closed-soft:rgba(238,107,180,.15);--agent:#ffa066;--agent-soft:rgba(255,138,61,.15);
+  --focus:0 0 0 3px rgba(124,92,255,.4);
+  --shadow-1:0 1px 2px rgba(0,0,0,.45);--shadow-2:0 12px 32px rgba(0,0,0,.55);
+  --code-bg:#0f0c18;--diff-add:rgba(63,207,127,.1);--diff-add-strong:rgba(63,207,127,.24);--diff-del:rgba(255,107,118,.1);--diff-del-strong:rgba(255,107,118,.24);
+  --tk-k:#ff79c6;--tk-s:#7ee2a0;--tk-c:#6c6584;--tk-f:#b8a6ff;--tk-n:#82b4ff;--tk-t:#ffb070;
+}}
+:root[data-theme="dark"]{
+  --bg:#0b0912;--surface:#13101d;--surface-2:#1a1626;--surface-3:#231e33;
+  --border:#2a2440;--border-strong:#3a3354;
+  --text:#ece9f5;--text-muted:#9d96b3;--text-subtle:#6c6584;
+  --accent:#7c5cff;--accent-hover:#9479ff;--accent-fg:#ffffff;--accent-soft:rgba(124,92,255,.16);--accent-text:#b3a3ff;
+  --success:#3fcf7f;--success-soft:rgba(63,207,127,.13);--danger:#ff6b76;--danger-soft:rgba(255,107,118,.14);
+  --warning:#f0b04a;--warning-soft:rgba(240,176,74,.14);--info:#7aa7ff;--info-soft:rgba(122,167,255,.14);
+  --closed:#ee6bb4;--closed-soft:rgba(238,107,180,.15);--agent:#ffa066;--agent-soft:rgba(255,138,61,.15);
+  --focus:0 0 0 3px rgba(124,92,255,.4);
+  --shadow-1:0 1px 2px rgba(0,0,0,.45);--shadow-2:0 12px 32px rgba(0,0,0,.55);
+  --code-bg:#0f0c18;--diff-add:rgba(63,207,127,.1);--diff-add-strong:rgba(63,207,127,.24);--diff-del:rgba(255,107,118,.1);--diff-del-strong:rgba(255,107,118,.24);
+  --tk-k:#ff79c6;--tk-s:#7ee2a0;--tk-c:#6c6584;--tk-f:#b8a6ff;--tk-n:#82b4ff;--tk-t:#ffb070;
+}
+/* ============ BASE ============ */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:var(--fs-base)/1.5 var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underline}
+code,.mono{font-family:var(--font-mono);font-size:.92em}
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}
+.icon{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-lg{width:20px;height:20px}
+
+/* ============ COMPONENTS ============ */
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:500 13px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn:focus-visible{outline:none;box-shadow:var(--focus)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-danger{color:var(--danger);border-color:var(--border-strong)}
+.btn-danger:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--text-muted)}
+.btn-ghost:hover{background:var(--surface-2);color:var(--text)}
+.btn-sm{height:26px;padding:0 8px;font-size:12px}
+.btn-lg{height:40px;padding:0 16px;font-size:14px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-group{display:inline-flex}.btn-group .btn{border-radius:0}.btn-group .btn:first-child{border-radius:var(--r) 0 0 var(--r)}.btn-group .btn:last-child{border-radius:0 var(--r) var(--r) 0}.btn-group .btn+.btn{margin-left:-1px}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600;font-size:13px}
+.field .hint{font-size:12px;color:var(--text-muted)}
+.field .error{font-size:12px;color:var(--danger)}
+.input,.select,.textarea{height:32px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:14px var(--font-sans);width:100%}
+.textarea{height:auto;min-height:96px;padding:8px 10px;resize:vertical;line-height:1.5}
+.input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
+.input.is-invalid{border-color:var(--danger)}
+.input-icon{position:relative}.input-icon .icon{position:absolute;left:9px;top:8px;color:var(--text-subtle)}.input-icon .input{padding-left:32px}
+.check{display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.check input{accent-color:var(--accent);margin:3px 0 0}
+.switch{position:relative;width:32px;height:18px;border-radius:9px;background:var(--surface-3);border:1px solid var(--border-strong);display:inline-block}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text-subtle);transition:.15s}
+.switch.on{background:var(--accent);border-color:var(--accent)}.switch.on::after{left:16px;background:var(--accent-fg)}
+
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--text-muted);background:var(--surface)}
+.badge-open{background:var(--success);border-color:var(--success);color:#fff}
+.badge-closed{background:var(--closed);border-color:var(--closed);color:#fff}
+.badge-accent{background:var(--accent-soft);border-color:transparent;color:var(--accent-text)}
+.badge-agent{background:var(--agent-soft);border-color:transparent;color:var(--agent);font-family:var(--font-mono);font-size:11px;height:18px;padding:0 6px}
+.counter{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--surface-3);color:var(--text-muted);font-size:11px;font-weight:600}
+.label{--lc:#888;display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;background:color-mix(in srgb,var(--lc) 16%,transparent);color:color-mix(in srgb,var(--lc) 70%,var(--text));border:1px solid color-mix(in srgb,var(--lc) 38%,transparent)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.tab{display:flex;align-items:center;gap:6px;padding:8px 12px;color:var(--text-muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.seg{display:inline-flex;padding:2px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border)}
+.seg span{padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer}
+.seg span.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-1)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600}
+.card-b{padding:16px}
+.list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.list-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--border)}
+.list-row:first-child{border-top:0}
+.list-row:hover{background:var(--surface-2)}
+.list-head{background:var(--surface-2);font-size:13px;color:var(--text-muted)}
+.list-head:hover{background:var(--surface-2)}
+
+.alert{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r);border:1px solid;font-size:13px}
+.alert .icon{margin-top:2px}
+.alert-info{background:var(--info-soft);border-color:color-mix(in srgb,var(--info) 30%,transparent)}.alert-info .icon{color:var(--info)}
+.alert-success{background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 30%,transparent)}.alert-success .icon{color:var(--success)}
+.alert-warning{background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}.alert-warning .icon{color:var(--warning)}
+.alert-danger{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}.alert-danger .icon{color:var(--danger)}
+
+.avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex:none}
+.avatar-lg{width:36px;height:36px;font-size:14px}
+.avatar-sq{border-radius:6px}
+.kbd{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border-strong);border-bottom-width:2px;font:11px var(--font-mono);color:var(--text-muted);background:var(--surface)}
+.code{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font:13px/1.6 var(--font-mono);overflow:auto;margin:0}
+.tk-k{color:var(--tk-k)}.tk-s{color:var(--tk-s)}.tk-c{color:var(--tk-c);font-style:italic}.tk-f{color:var(--tk-f)}.tk-n{color:var(--tk-n)}.tk-t{color:var(--tk-t)}
+.menu{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2);padding:4px;min-width:200px}
+.menu-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-sm);cursor:pointer}
+.menu-item:hover{background:var(--surface-2)}
+.menu-sep{height:1px;background:var(--border);margin:4px 0}
+.empty{text-align:center;padding:40px 24px;color:var(--text-muted)}
+.empty .icon{width:32px;height:32px;color:var(--text-subtle);margin-bottom:8px}
+.empty h4{color:var(--text);font-size:16px;margin-bottom:4px}
+.toast{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-lg);background:var(--sidebar-bg);color:var(--sidebar-fg-strong);box-shadow:var(--shadow-2);font-size:13px}
+.toast .icon{color:var(--sidebar-accent)}
+.muted{color:var(--text-muted)}.subtle{color:var(--text-subtle)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ============ PAGE (styleguide) ============ */
+.sg-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;height:56px;padding:0 24px;background:var(--sidebar-bg);color:var(--sidebar-fg-strong);border-bottom:1px solid var(--sidebar-border)}
+.sg-top .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.sg-top .brand small{font-weight:500;color:var(--sidebar-fg);font-size:13px;padding-left:10px;border-left:1px solid var(--sidebar-border)}
+.sg-top .sp{flex:1}
+.sg-top .btn{background:transparent;color:var(--sidebar-fg-strong);border-color:var(--sidebar-border)}
+.sg-top .btn:hover{background:var(--sidebar-hover)}
+.sg{display:grid;grid-template-columns:220px 1fr;max-width:1280px;margin:0 auto}
+.sg-nav{position:sticky;top:56px;align-self:start;height:calc(100vh - 56px);overflow:auto;padding:24px 12px;border-right:1px solid var(--border)}
+.sg-nav a{display:block;padding:5px 10px;border-radius:var(--r);color:var(--text-muted);font-size:13px}
+.sg-nav a:hover{background:var(--surface-2);color:var(--text);text-decoration:none}
+.sg-nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-subtle);font-weight:600;padding:14px 10px 4px}
+.sg-main{padding:32px 40px 80px;min-width:0}
+.sg-sec{padding:32px 0;border-top:1px solid var(--border)}
+.sg-sec:first-child{border-top:0;padding-top:0}
+.sg-sec>h2{font-size:22px;margin-bottom:6px}
+.sg-sec>p.lead{color:var(--text-muted);margin:0 0 20px;max-width:720px}
+.sg-sec h3{font-size:14px;margin:24px 0 10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-size:12px}
+.demo{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.demo.col{flex-direction:column;align-items:stretch}
+.grid-swatch{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.sw i{display:block;height:56px;border-bottom:1px solid var(--border)}
+.sw div{padding:8px 10px;font-size:12px}
+.sw b{display:block;font-weight:600}
+.sw span{font-family:var(--font-mono);color:var(--text-muted);font-size:11px}
+.type-row{display:flex;align-items:baseline;gap:24px;padding:10px 0;border-bottom:1px dashed var(--border)}
+.type-row .meta{width:170px;flex:none;font:12px var(--font-mono);color:var(--text-muted)}
+.do-dont{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.do-dont .card-b p{margin:4px 0}
+.do{border-top:3px solid var(--success)}.dont{border-top:3px solid var(--danger)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{color:var(--text-muted);font-weight:600;font-size:12px}
+.hero{display:flex;gap:32px;align-items:center;padding:28px;border-radius:var(--r-lg);background:var(--aurora-glow),var(--sidebar-bg);color:var(--sidebar-fg-strong);margin-bottom:8px}
+.hero p{color:var(--sidebar-fg);margin:6px 0 0;max-width:560px}
+.logo-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.logo-tile{border-radius:var(--r-lg);border:1px solid var(--border);height:120px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:20px}
+.shell-mini{display:grid;grid-template-columns:150px 1fr;height:220px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.shell-mini .sb{background:var(--sidebar-bg);padding:10px;display:flex;flex-direction:column;gap:4px}
+.shell-mini .sb i{display:block;height:10px;border-radius:3px;background:var(--sidebar-hover)}
+.shell-mini .sb i.a{background:var(--sidebar-active);box-shadow:inset 2px 0 0 var(--sidebar-accent)}
+.shell-mini .mn{display:grid;grid-template-rows:34px 1fr;background:var(--bg)}
+.shell-mini .tb{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--text-muted)}
+.shell-mini .ct{padding:12px;display:flex;flex-direction:column;gap:8px}
+.shell-mini .ct i{display:block;height:12px;border-radius:3px;background:var(--surface-3)}
+@media (max-width:860px){.sg{grid-template-columns:1fr}.sg-nav{display:none}.sg-main{padding:24px 16px}.do-dont,.logo-tiles{grid-template-columns:1fr}.hero{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="aur" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="29" y2="29"><stop offset="0" stop-color="#7c5cff"/><stop offset=".55" stop-color="#e0469b"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
+  <symbol id="logo" viewBox="0 0 32 32"><path d="M16 3.5 28.5 10 16 16.5 3.5 10Z" fill="url(#aur)"/><path d="M3.5 16 16 22.5 28.5 16" fill="none" stroke="url(#aur)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/><path d="M3.5 22 16 28.5 28.5 22" fill="none" stroke="url(#aur)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/></symbol>
+  <symbol id="logo-mono" viewBox="0 0 32 32"><path d="M16 3.5 28.5 10 16 16.5 3.5 10Z" fill="currentColor"/><path d="M3.5 16 16 22.5 28.5 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/><path d="M3.5 22 16 28.5 28.5 22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></symbol>
+  <symbol id="i-repo" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/></symbol>
+  <symbol id="i-issue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-issue-closed" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5v13c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8v-13"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 7.5 12 3 3 7.5v9L12 21l9-4.5z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-6 4-11 8.5"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+  <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M3 12h5.5M15.5 12H21"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="1.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l2.5 2.5M18.5 4.5 21 7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="m7 9 3 3-3 3M12.5 15H17"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9 17h6"/></symbol>
+</svg>
+
+<header class="sg-top">
+  <div class="brand"><svg width="26" height="26"><use href="#logo"/></svg>GitStack <small>Styleguide v0.1</small></div>
+  <div class="sp"></div>
+  <button class="btn btn-sm" id="themeBtn"><svg class="icon"><use href="#i-moon"/></svg><span>Tema</span></button>
+</header>
+
+<div class="sg">
+<nav class="sg-nav">
+  <div class="grp">Fondamenta</div>
+  <a href="#principi">Principi</a><a href="#marchio">Marchio</a><a href="#colori">Colori</a><a href="#tipografia">Tipografia</a><a href="#spazi">Spazi, raggi, ombre</a><a href="#icone">Icone</a>
+  <div class="grp">Componenti</div>
+  <a href="#bottoni">Bottoni</a><a href="#form">Form</a><a href="#badge">Badge ed etichette</a><a href="#navigazione">Navigazione</a><a href="#liste">Liste e card</a><a href="#feedback">Feedback</a><a href="#codice">Codice</a>
+  <div class="grp">Pattern</div>
+  <a href="#layout">Layout console</a><a href="#agenti">Agenti</a><a href="#tono">Tono di voce</a><a href="#implementazione">Implementazione</a>
+</nav>
+
+<main class="sg-main">
+
+<section class="sg-sec" id="principi">
+  <div class="hero">
+    <svg width="72" height="72" style="flex:none"><use href="#logo"/></svg>
+    <div><h1 style="font-size:28px">GitStack</h1><p>Il tuo codice, le tue issues e domani le tue app, sui tuoi server. Un'interfaccia da console: densa, prevedibile, pronta a crescere da "mini GitHub" a "piccolo cloud privato".</p></div>
+  </div>
+  <h2 style="margin-top:28px">Principi</h2>
+  <p class="lead">Quattro regole per ogni schermata. Se una scelta di design le viola, si cambia la scelta.</p>
+  <div class="grid-swatch" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
+    <div class="card card-b"><b>1. Familiare prima che originale</b><p class="muted" style="margin:6px 0 0">Chi usa GitHub deve trovare le cose dove se le aspetta: tab Code/Issues, stati verde/magenta, #numeri.</p></div>
+    <div class="card card-b"><b>2. Densità da strumento</b><p class="muted" style="margin:6px 0 0">Righe da 36–40 px, testo base 14 px. Più informazioni utili per schermo, senza affollare.</p></div>
+    <div class="card card-b"><b>3. La console cresce</b><p class="muted" style="margin:6px 0 0">La barra laterale ospita già le sezioni future (App, Database, Registry): si aggiungono voci, non si ridisegna.</p></div>
+    <div class="card card-b"><b>4. Agenti visibili</b><p class="muted" style="margin:6px 0 0">Ciò che fa un agente è sempre riconoscibile (badge <span class="badge badge-agent">agent</span>) e tracciabile.</p></div>
+  </div>
+</section>
+
+<section class="sg-sec" id="marchio">
+  <h2>Marchio</h2>
+  <p class="lead">Il simbolo è una pila di tre strati: il livello pieno è il codice, i due sotto sono ciò che GitStack costruirà sopra (build, app). Il nome si scrive sempre <b>GitStack</b>, con S maiuscola e senza spazio.</p>
+  <div class="logo-tiles">
+    <div class="logo-tile" style="background:var(--sidebar-bg);color:#eef3f5"><svg width="36" height="36"><use href="#logo"/></svg>GitStack</div>
+    <div class="logo-tile" style="background:#ffffff;color:#101a21"><svg width="36" height="36"><use href="#logo"/></svg>GitStack</div>
+    <div class="logo-tile" style="background:var(--aurora);color:#fff;border:0"><svg width="36" height="36" style="color:#fff"><use href="#logo-mono"/></svg>GitStack</div>
+  </div>
+  <table class="tbl" style="margin-top:16px">
+    <tr><th>Regola</th><th>Dettaglio</th></tr>
+    <tr><td>Area di rispetto</td><td>Almeno metà dell'altezza del simbolo su ogni lato.</td></tr>
+    <tr><td>Dimensione minima</td><td>16 px (favicon); nella barra laterale 24 px.</td></tr>
+    <tr><td>Colori ammessi</td><td>Sfumatura Aurora su scuro o su chiaro, oppure bianco pieno sulla sfumatura. Mai ombre, rotazioni o altre sfumature.</td></tr>
+    <tr><td>Wordmark</td><td>Inter 700, spaziatura −1%.</td></tr>
+  </table>
+</section>
+
+<section class="sg-sec" id="colori">
+  <h2>Colori</h2>
+  <p class="lead">Neutri lavanda e un solo accento viola. La sfumatura <b>Aurora</b> (viola → magenta → arancio) è riservata al marchio: logo, voce attiva della sidebar, agenti, pagina di login. I colori di stato si usano solo per significati di stato, mai come decorazione. Ogni colore è un token: nel codice si usa sempre <code>var(--token)</code>, mai un valore esadecimale. Cambia tema in alto a destra per vedere i valori scuri.</p>
+  <h3>Accento</h3>
+  <div class="grid-swatch">
+    <div class="sw"><i style="background:var(--aurora)"></i><div><b>Aurora (marchio)</b><span>--aurora</span></div></div>
+    <div class="sw"><i style="background:var(--accent)"></i><div><b>Accent</b><span>--accent</span></div></div>
+    <div class="sw"><i style="background:var(--accent-hover)"></i><div><b>Accent hover</b><span>--accent-hover</span></div></div>
+    <div class="sw"><i style="background:var(--accent-soft)"></i><div><b>Accent soft</b><span>--accent-soft</span></div></div>
+    <div class="sw"><i style="background:var(--accent-text)"></i><div><b>Accent text / link</b><span>--accent-text</span></div></div>
+  </div>
+  <h3>Superfici e testo</h3>
+  <div class="grid-swatch">
+    <div class="sw"><i style="background:var(--bg)"></i><div><b>Sfondo pagina</b><span>--bg</span></div></div>
+    <div class="sw"><i style="background:var(--surface)"></i><div><b>Superficie</b><span>--surface</span></div></div>
+    <div class="sw"><i style="background:var(--surface-2)"></i><div><b>Superficie 2</b><span>--surface-2</span></div></div>
+    <div class="sw"><i style="background:var(--surface-3)"></i><div><b>Superficie 3</b><span>--surface-3</span></div></div>
+    <div class="sw"><i style="background:var(--border)"></i><div><b>Bordo</b><span>--border</span></div></div>
+    <div class="sw"><i style="background:var(--text)"></i><div><b>Testo</b><span>--text</span></div></div>
+    <div class="sw"><i style="background:var(--text-muted)"></i><div><b>Testo secondario</b><span>--text-muted</span></div></div>
+    <div class="sw"><i style="background:var(--text-subtle)"></i><div><b>Testo tenue</b><span>--text-subtle</span></div></div>
+  </div>
+  <h3>Barra laterale (uguale nei due temi)</h3>
+  <div class="grid-swatch">
+    <div class="sw"><i style="background:var(--sidebar-bg)"></i><div><b>Sidebar</b><span>--sidebar-bg</span></div></div>
+    <div class="sw"><i style="background:var(--sidebar-active)"></i><div><b>Voce attiva</b><span>--sidebar-active</span></div></div>
+    <div class="sw"><i style="background:var(--sidebar-fg)"></i><div><b>Testo sidebar</b><span>--sidebar-fg</span></div></div>
+    <div class="sw"><i style="background:var(--sidebar-accent)"></i><div><b>Accento sidebar</b><span>--sidebar-accent</span></div></div>
+  </div>
+  <h3>Stato</h3>
+  <div class="grid-swatch">
+    <div class="sw"><i style="background:var(--success)"></i><div><b>Success · aperta</b><span>--success</span></div></div>
+    <div class="sw"><i style="background:var(--closed)"></i><div><b>Chiusa (magenta)</b><span>--closed</span></div></div>
+    <div class="sw"><i style="background:var(--danger)"></i><div><b>Danger</b><span>--danger</span></div></div>
+    <div class="sw"><i style="background:var(--warning)"></i><div><b>Warning</b><span>--warning</span></div></div>
+    <div class="sw"><i style="background:var(--info)"></i><div><b>Info</b><span>--info</span></div></div>
+    <div class="sw"><i style="background:var(--agent)"></i><div><b>Agente</b><span>--agent</span></div></div>
+  </div>
+  <h3>Etichette predefinite di un nuovo repo</h3>
+  <div class="demo">
+    <span class="label" style="--lc:#d73a4a">bug</span><span class="label" style="--lc:#6a47f5">enhancement</span><span class="label" style="--lc:#2d6fd6">documentation</span><span class="label" style="--lc:#b8720b">needs triage</span><span class="label" style="--lc:#c2338a">question</span><span class="label" style="--lc:#1a8f4c">good first issue</span><span class="label" style="--lc:#6b7c87">wontfix</span><span class="label" style="--lc:#ff8a3d">agent-ready</span>
+  </div>
+  <p class="muted" style="font-size:13px">Le etichette hanno un colore scelto dall'utente: il componente ne calcola sfondo e bordo tenui, leggibili in entrambi i temi.</p>
+</section>
+
+<section class="sg-sec" id="tipografia">
+  <h2>Tipografia</h2>
+  <p class="lead"><b>Inter</b> per l'interfaccia, <b>JetBrains Mono</b> per codice, hash, branch, comandi e token. Se i font non sono disponibili (installazioni offline) si usano i font di sistema: l'installer li include comunque nell'immagine della UI.</p>
+  <div class="card card-b">
+    <div class="type-row"><div class="meta">2xl · 32/40 · 700</div><div style="font-size:32px;font-weight:700;letter-spacing:-.02em">Il tuo cloud privato</div></div>
+    <div class="type-row"><div class="meta">xl · 24/32 · 600</div><div style="font-size:24px;font-weight:600">Titolo di pagina</div></div>
+    <div class="type-row"><div class="meta">lg · 20/28 · 600</div><div style="font-size:20px;font-weight:600">Titolo issue · Add OIDC login</div></div>
+    <div class="type-row"><div class="meta">md · 16/24 · 600</div><div style="font-size:16px;font-weight:600">Titolo di sezione o card</div></div>
+    <div class="type-row"><div class="meta">base · 14/21 · 400</div><div>Testo standard dell'interfaccia, liste, descrizioni e commenti.</div></div>
+    <div class="type-row"><div class="meta">sm · 12/18 · 400</div><div style="font-size:12px" class="muted">Metadati: aperta 2 ore fa da mrossi · 3 commenti</div></div>
+    <div class="type-row"><div class="meta">xs · 11 · 600 · MAIUSC</div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em" class="subtle">Gruppo di navigazione</div></div>
+    <div class="type-row" style="border:0"><div class="meta">mono · 13/20</div><div class="mono" style="font-size:13px">git clone https://git.acme.local/acme/api-gateway.git · a3f9c21 · main</div></div>
+  </div>
+</section>
+
+<section class="sg-sec" id="spazi">
+  <h2>Spazi, raggi, ombre</h2>
+  <p class="lead">Griglia da 4 px. Raggi piccoli e costanti. Ombre solo per ciò che galleggia (menu, dialog, toast): le card stanno piatte con un bordo.</p>
+  <div class="demo" style="align-items:flex-end">
+    <div style="text-align:center"><div style="width:4px;height:4px;background:var(--accent)"></div><small class="mono muted">4</small></div>
+    <div style="text-align:center"><div style="width:8px;height:8px;background:var(--accent)"></div><small class="mono muted">8</small></div>
+    <div style="text-align:center"><div style="width:12px;height:12px;background:var(--accent)"></div><small class="mono muted">12</small></div>
+    <div style="text-align:center"><div style="width:16px;height:16px;background:var(--accent)"></div><small class="mono muted">16</small></div>
+    <div style="text-align:center"><div style="width:24px;height:24px;background:var(--accent)"></div><small class="mono muted">24</small></div>
+    <div style="text-align:center"><div style="width:32px;height:32px;background:var(--accent)"></div><small class="mono muted">32</small></div>
+    <div style="text-align:center"><div style="width:48px;height:48px;background:var(--accent)"></div><small class="mono muted">48</small></div>
+    <div style="width:1px;height:48px;background:var(--border);margin:0 12px"></div>
+    <div style="text-align:center"><div style="width:56px;height:40px;border:1px solid var(--border-strong);border-radius:var(--r-sm);background:var(--surface-2)"></div><small class="mono muted">r-sm 4</small></div>
+    <div style="text-align:center"><div style="width:56px;height:40px;border:1px solid var(--border-strong);border-radius:var(--r);background:var(--surface-2)"></div><small class="mono muted">r 6</small></div>
+    <div style="text-align:center"><div style="width:56px;height:40px;border:1px solid var(--border-strong);border-radius:var(--r-lg);background:var(--surface-2)"></div><small class="mono muted">r-lg 10</small></div>
+    <div style="width:1px;height:48px;background:var(--border);margin:0 12px"></div>
+    <div style="text-align:center"><div style="width:72px;height:40px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-1);border:1px solid var(--border)"></div><small class="mono muted">shadow-1</small></div>
+    <div style="text-align:center"><div style="width:72px;height:40px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-2)"></div><small class="mono muted">shadow-2</small></div>
+  </div>
+</section>
+
+<section class="sg-sec" id="icone">
+  <h2>Icone</h2>
+  <p class="lead">Icone lineari, tratto 1.8, 16 px nell'interfaccia e 20 px nella barra laterale. Nel codice useremo <b>Lucide</b> (licenza ISC, compatibile AGPL), che ha lo stesso stile di queste.</p>
+  <div class="demo" style="gap:18px;color:var(--text-muted)">
+    <svg class="icon icon-lg"><use href="#i-home"/></svg><svg class="icon icon-lg"><use href="#i-repo"/></svg><svg class="icon icon-lg"><use href="#i-issue"/></svg><svg class="icon icon-lg"><use href="#i-issue-closed"/></svg><svg class="icon icon-lg"><use href="#i-bell"/></svg><svg class="icon icon-lg"><use href="#i-apps"/></svg><svg class="icon icon-lg"><use href="#i-db"/></svg><svg class="icon icon-lg"><use href="#i-box"/></svg><svg class="icon icon-lg"><use href="#i-server"/></svg><svg class="icon icon-lg"><use href="#i-users"/></svg><svg class="icon icon-lg"><use href="#i-settings"/></svg><svg class="icon icon-lg"><use href="#i-search"/></svg><svg class="icon icon-lg"><use href="#i-branch"/></svg><svg class="icon icon-lg"><use href="#i-tag"/></svg><svg class="icon icon-lg"><use href="#i-commit"/></svg><svg class="icon icon-lg"><use href="#i-folder"/></svg><svg class="icon icon-lg"><use href="#i-file"/></svg><svg class="icon icon-lg"><use href="#i-lock"/></svg><svg class="icon icon-lg"><use href="#i-key"/></svg><svg class="icon icon-lg"><use href="#i-link"/></svg><svg class="icon icon-lg"><use href="#i-terminal"/></svg><svg class="icon icon-lg"><use href="#i-flag"/></svg><svg class="icon icon-lg"><use href="#i-shield"/></svg><svg class="icon icon-lg"><use href="#i-bot"/></svg>
+  </div>
+</section>
+
+<section class="sg-sec" id="bottoni">
+  <h2>Bottoni</h2>
+  <p class="lead">Un solo bottone primario per vista (l'azione principale). Il testo è un verbo: "Create repository", non "OK". Le azioni distruttive sono rosse solo al passaggio del mouse e chiedono sempre conferma.</p>
+  <div class="demo">
+    <button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New repository</button>
+    <button class="btn">Secondary</button>
+    <button class="btn btn-ghost">Ghost</button>
+    <button class="btn btn-danger">Delete repository</button>
+    <button class="btn" disabled>Disabled</button>
+  </div>
+  <div class="demo" style="margin-top:12px">
+    <button class="btn btn-primary btn-lg">Large · 40</button>
+    <button class="btn btn-primary">Default · 32</button>
+    <button class="btn btn-primary btn-sm">Small · 26</button>
+    <span class="btn-group"><button class="btn"><svg class="icon"><use href="#i-eye"/></svg>Watch</button><button class="btn"><span class="counter">4</span></button></span>
+    <button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button>
+  </div>
+</section>
+
+<section class="sg-sec" id="form">
+  <h2>Form</h2>
+  <p class="lead">Etichetta sopra il campo, aiuto sotto in grigio, errore sotto in rosso che dice come rimediare. Campi alti 32 px.</p>
+  <div class="demo col" style="max-width:520px">
+    <div class="field"><label>Repository name</label><input class="input" value="api-gateway"><span class="hint">Lettere minuscole, numeri e trattini.</span></div>
+    <div class="field"><label>Description <span class="subtle" style="font-weight:400">(opzionale)</span></label><textarea class="textarea" placeholder="What is this repository for?"></textarea></div>
+    <div class="field"><label>Token name</label><input class="input is-invalid" value="ci"><span class="error">A token named "ci" already exists. Choose another name.</span></div>
+    <div class="input-icon"><svg class="icon"><use href="#i-search"/></svg><input class="input" placeholder="Search or jump to…"></div>
+    <select class="select"><option>Expires in 30 days</option><option>90 days</option><option>No expiration</option></select>
+    <label class="check"><input type="checkbox" checked><span><b>issues:write</b><br><span class="muted" style="font-size:12px">Create, edit and close issues and comments</span></span></label>
+    <label class="check"><input type="radio" name="v" checked><span><b>Private</b> <span class="muted">— only members you choose</span></span></label>
+    <div class="row"><span class="switch on"></span><span>Automatic daily backup</span><span class="switch" style="margin-left:24px"></span><span>Email notifications</span></div>
+  </div>
+</section>
+
+<section class="sg-sec" id="badge">
+  <h2>Badge, stati ed etichette</h2>
+  <p class="lead">Lo stato di una issue usa sempre colore <i>e</i> icona <i>e</i> testo: nessuna informazione affidata solo al colore.</p>
+  <div class="demo">
+    <span class="badge badge-open"><svg class="icon"><use href="#i-issue"/></svg>Open</span>
+    <span class="badge badge-closed"><svg class="icon"><use href="#i-issue-closed"/></svg>Closed</span>
+    <span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span>
+    <span class="badge"><svg class="icon"><use href="#i-shield"/></svg>Internal</span>
+    <span class="badge"><svg class="icon"><use href="#i-globe"/></svg>Public</span>
+    <span class="badge badge-accent">Owner</span>
+    <span class="badge badge-agent">agent</span>
+    <span class="counter">12</span>
+    <span class="row" style="gap:6px"><span class="dot" style="background:var(--success)"></span>Healthy</span>
+    <span class="row" style="gap:6px"><span class="dot" style="background:var(--warning)"></span>Degraded</span>
+    <span class="row" style="gap:6px"><span class="dot" style="background:var(--danger)"></span>Down</span>
+  </div>
+</section>
+
+<section class="sg-sec" id="navigazione">
+  <h2>Navigazione</h2>
+  <p class="lead">Tab sottolineate per le sezioni di un repo; controlli segmentati per filtri a due o tre valori; breadcrumb <span class="mono">owner / repo</span> nella barra in alto.</p>
+  <div class="demo col">
+    <div class="tabs">
+      <span class="tab active"><svg class="icon"><use href="#i-file"/></svg>Code</span>
+      <span class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></span>
+      <span class="tab"><svg class="icon"><use href="#i-commit"/></svg>Commits</span>
+      <span class="tab"><svg class="icon"><use href="#i-settings"/></svg>Settings</span>
+    </div>
+    <div class="row"><span class="seg"><span class="active">Open 12</span><span>Closed 48</span></span><span class="muted">·</span><span class="mono" style="font-size:15px"><a href="#">acme</a> <span class="subtle">/</span> <b>api-gateway</b></span></div>
+    <div class="menu" style="width:240px">
+      <div class="menu-item"><svg class="icon"><use href="#i-repo"/></svg>New repository</div>
+      <div class="menu-item"><svg class="icon"><use href="#i-issue"/></svg>New issue</div>
+      <div class="menu-sep"></div>
+      <div class="menu-item"><svg class="icon"><use href="#i-users"/></svg>New organization</div>
+    </div>
+  </div>
+</section>
+
+<section class="sg-sec" id="liste">
+  <h2>Liste e card</h2>
+  <p class="lead">Le liste sono il componente principale di GitStack: righe da 40 px, titolo in grassetto medio, metadati in piccolo sotto o a destra.</p>
+  <div class="list">
+    <div class="list-row list-head"><span class="seg"><span class="active">Open 12</span><span>Closed 48</span></span><span style="flex:1"></span><span>Label ▾</span><span>Assignee ▾</span></div>
+    <div class="list-row"><svg class="icon" style="color:var(--success)"><use href="#i-issue"/></svg><div style="flex:1"><b style="font-weight:600">Support OIDC login with Entra ID</b> <span class="label" style="--lc:#6a47f5">enhancement</span><div class="muted" style="font-size:12px">#42 opened 2 hours ago by mrossi</div></div><span class="avatar" style="background:#2563eb">LB</span></div>
+    <div class="list-row"><svg class="icon" style="color:var(--success)"><use href="#i-issue"/></svg><div style="flex:1"><b style="font-weight:600">Push over SSH fails with ed25519 keys</b> <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span><div class="muted" style="font-size:12px">#41 opened yesterday by lbianchi</div></div><span class="avatar" style="background:linear-gradient(135deg,#ff8a3d,#e0469b)"><svg class="icon" style="width:14px;height:14px"><use href="#i-bot"/></svg></span></div>
+  </div>
+  <div class="card" style="margin-top:16px;max-width:420px">
+    <div class="card-h"><svg class="icon"><use href="#i-server"/></svg>System health<span style="flex:1"></span><span class="badge badge-accent">All good</span></div>
+    <div class="card-b muted">Card: intestazione con icona e titolo, corpo con padding 16.</div>
+  </div>
+</section>
+
+<section class="sg-sec" id="feedback">
+  <h2>Feedback</h2>
+  <p class="lead">Avvisi in pagina per stati persistenti; toast (in basso a destra, 5 s) per conferme di azioni; stati vuoti che spiegano cosa fare dopo.</p>
+  <div class="demo col">
+    <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>This repository is empty. Push an existing repository or create a README.</div></div>
+    <div class="alert alert-success"><svg class="icon"><use href="#i-check"/></svg><div>Backup completed · 1.2 GB · stored in <span class="mono">s3://acme-backups</span></div></div>
+    <div class="alert alert-warning"><svg class="icon"><use href="#i-alert"/></svg><div>Your token expires in 3 days. <a href="#">Regenerate token</a></div></div>
+    <div class="alert alert-danger"><svg class="icon"><use href="#i-alert"/></svg><div><b>Push rejected.</b> You need write access to <span class="mono">acme/api-gateway</span>. Ask an owner to add you to a team.</div></div>
+    <div class="row"><div class="toast"><svg class="icon"><use href="#i-check"/></svg>Issue #42 closed<a href="#" style="color:var(--sidebar-accent);margin-left:8px">Undo</a></div></div>
+    <div class="card empty"><svg class="icon"><use href="#i-issue"/></svg><h4>No open issues</h4><p style="margin:0 0 12px">Issues track bugs, ideas and work for people and agents.</p><button class="btn btn-primary">New issue</button></div>
+  </div>
+</section>
+
+<section class="sg-sec" id="codice">
+  <h2>Codice</h2>
+  <p class="lead">Blocchi di codice con sfondo dedicato e colori di sintassi a contrasto AA in entrambi i temi. Hash, branch e comandi sempre in monospazio, con bottone copia.</p>
+<pre class="code"><span class="tk-c">// Handler returns the repository metadata.</span>
+<span class="tk-k">func</span> (h *<span class="tk-t">Handler</span>) <span class="tk-f">GetRepo</span>(w http.<span class="tk-t">ResponseWriter</span>, r *http.<span class="tk-t">Request</span>) {
+    repo, err := h.store.<span class="tk-f">FindRepo</span>(r.<span class="tk-f">Context</span>(), <span class="tk-f">chi.URLParam</span>(r, <span class="tk-s">"owner"</span>), <span class="tk-f">chi.URLParam</span>(r, <span class="tk-s">"name"</span>))
+    <span class="tk-k">if</span> err != <span class="tk-n">nil</span> {
+        <span class="tk-f">writeError</span>(w, err, <span class="tk-n">404</span>)
+        <span class="tk-k">return</span>
+    }
+    <span class="tk-f">writeJSON</span>(w, repo)
+}</pre>
+  <div class="row" style="margin-top:12px"><div class="input-icon" style="flex:1;max-width:520px"><svg class="icon"><use href="#i-terminal"/></svg><input class="input mono" style="font-family:var(--font-mono);font-size:13px" value="git clone ssh://git@git.acme.local:2222/acme/api-gateway.git" readonly></div><button class="btn"><svg class="icon"><use href="#i-copy"/></svg>Copy</button><span class="kbd">⌘</span><span class="kbd">K</span></div>
+</section>
+
+<section class="sg-sec" id="layout">
+  <h2>Layout console</h2>
+  <p class="lead">Barra laterale scura fissa (232 px) + barra superiore (48 px) + contenuto su sfondo neutro, largo al massimo 1280 px. Sotto i 900 px la barra laterale diventa un menu a scomparsa.</p>
+  <div class="shell-mini">
+    <div class="sb"><i style="width:70%;background:var(--sidebar-accent);opacity:.8"></i><i style="margin-top:8px"></i><i class="a"></i><i></i><i></i><i style="margin-top:8px;opacity:.5"></i><i style="opacity:.5"></i></div>
+    <div class="mn"><div class="tb">acme / api-gateway</div><div class="ct"><i style="width:40%;height:16px"></i><i></i><i></i><i style="width:80%"></i><i style="width:60%"></i></div></div>
+  </div>
+  <table class="tbl" style="margin-top:16px">
+    <tr><th>Gruppo della barra laterale</th><th>Voci</th><th>Quando</th></tr>
+    <tr><td>Workspace</td><td>Home, Repositories, Issues, Notifications</td><td>v1</td></tr>
+    <tr><td>Platform</td><td>Apps, Databases, Registry — visibili ma disattivate con etichetta "Soon"</td><td>v2–v3</td></tr>
+    <tr><td>Administration</td><td>System, Users, Settings (solo per amministratori)</td><td>v1</td></tr>
+  </table>
+</section>
+
+<section class="sg-sec" id="agenti">
+  <h2>Agenti</h2>
+  <p class="lead">Gli agenti di coding sono utenti di prima classe. Quando un'azione arriva da un token di tipo agente, l'interfaccia lo dice.</p>
+  <div class="card card-b" style="max-width:640px">
+    <div class="row"><span class="avatar" style="background:linear-gradient(135deg,#ff8a3d,#e0469b)"><svg class="icon" style="width:14px;height:14px;color:#fff"><use href="#i-bot"/></svg></span><b>build-agent</b><span class="badge badge-agent">agent</span><span class="muted" style="font-size:12px">via token "claude-code" of mrossi · 5 min ago</span></div>
+    <p style="margin:10px 0 0">Opened branch <span class="mono">fix/ssh-ed25519</span> and pushed 2 commits. Tests pass locally.</p>
+  </div>
+  <ul class="muted" style="margin-top:12px">
+    <li>Avatar con sfumatura arancio → magenta e icona robot, badge <span class="badge badge-agent">agent</span> accanto al nome.</li>
+    <li>Sempre indicato <b>per conto di chi</b> agisce l'agente (il proprietario del token).</li>
+    <li>L'etichetta <span class="label" style="--lc:#ff8a3d">agent-ready</span> segnala issues pronte per essere prese da un agente.</li>
+  </ul>
+</section>
+
+<section class="sg-sec" id="tono">
+  <h2>Tono di voce</h2>
+  <p class="lead">L'interfaccia è in <b>inglese</b> di default, con traduzioni (italiano incluso) dalla prima versione. Frasi brevi, "sentence case", niente punti esclamativi.</p>
+  <div class="do-dont">
+    <div class="card do"><div class="card-b"><b>Sì</b><p>Create repository</p><p>Push rejected: you need write access. Ask an owner to add you to a team.</p><p>No open issues</p></div></div>
+    <div class="card dont"><div class="card-b"><b>No</b><p>Submit / OK</p><p>Error 403: Forbidden</p><p>Oops! Nothing to see here!!</p></div></div>
+  </div>
+</section>
+
+<section class="sg-sec" id="implementazione">
+  <h2>Implementazione</h2>
+  <p class="lead">Come si traduce questa guida nel codice di <span class="mono">web/</span>.</p>
+  <table class="tbl">
+    <tr><th>Tema</th><th>Scelta</th></tr>
+    <tr><td>Token</td><td>Variabili CSS in <span class="mono">web/src/styles/tokens.css</span>, identiche a quelle di questa pagina. Tema scuro con <span class="mono">[data-theme="dark"]</span> e <span class="mono">prefers-color-scheme</span>.</td></tr>
+    <tr><td>Componenti</td><td>Libreria interna in <span class="mono">web/src/ui/</span> (Button, Input, Badge, Label, Tabs, List, Card, Alert, Menu, Toast, EmptyState). Base accessibile: Radix UI Primitives (MIT).</td></tr>
+    <tr><td>Icone</td><td>lucide-react (ISC).</td></tr>
+    <tr><td>Codice</td><td>Evidenziazione con Shiki (MIT), temi mappati sui token <span class="mono">--tk-*</span>.</td></tr>
+    <tr><td>Accessibilità</td><td>Contrasto WCAG AA, focus visibile (<span class="mono">--focus</span>), tutto usabile da tastiera, stato mai solo a colori.</td></tr>
+    <tr><td>Riferimento</td><td>Schermate in <span class="mono">design/mockups-v1/</span>.</td></tr>
+  </table>
+</section>
+
+</main>
+</div>
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('themeBtn');
+  function cur(){return root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
+  function paint(){var d=cur()==='dark';btn.querySelector('use').setAttribute('href',d?'#i-sun':'#i-moon');btn.querySelector('span').textContent=d?'Light':'Dark'}
+  try{var s=localStorage.getItem('gs-theme');if(s)root.setAttribute('data-theme',s)}catch(e){}
+  btn.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem('gs-theme',n)}catch(e){}paint()});
+  paint();
+})();
+</script>
+</body>
+</html>
