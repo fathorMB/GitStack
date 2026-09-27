@@ -45,3 +45,4 @@ One line per action. Format: `timestamp | by:<who> | <target or -> | <kind> | <m
 2026-09-27T23:52 | by:lead | M-01/T-12 | task | done: Styleguide e 16 mockup in design/, verificati nel browser in tema chiaro e scuro; riferiti nelle Notes di M-01…M-08. — Styleguide di prodotto e mockup delle schermate v1 in design/
 2026-09-27T23:52 | by:lead | M-01/T-12 | decision | Creati design/styleguide e design/mockups-v1 (16 schermate), knowledge/design-system.md e decisione D20 stile "console"; UI in inglese con i18n come default.
 2026-09-27T23:57 | by:lead | M-01/T-12 | decision | Palette cambiata da teal ad "Aurora" (viola + sfumatura viola→magenta→arancio) su richiesta dell'operatore, per distinguersi da LMBrain; styleguide, mockup, D20 e design-system aggiornati e verificati nel browser.
+2026-09-27T23:59 | by:lead | M-01 | commit | Commit c268868 pushato su origin/main: analisi, decisioni D1–D20, roadmap M-01…M-09, styleguide e mockup Aurora. Prossimo passo: M-01/T-01.
