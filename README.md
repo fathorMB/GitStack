@@ -103,3 +103,5 @@ stesso repo):
 Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra, sezione "Contratto API e client generati"), che gira sia su push a `main` sia su pull request, su qualunque file cambi (nessun filtro `paths:`), così anche un cambio ai soli `go.work`/`go.mod`/`go.sum` fa girare `workspace-sync`.
 
 Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
+
+Oltre alla CI su GitHub Actions, il motore GalaxyLab legge `.galaxylab/checks.toml` (solo dal ramo `main`) ed esegue i controlli lì dichiarati a ogni `integrate`. Per ora c'è un solo controllo, `go-build`, con i pattern espliciti dei moduli del workspace (niente bash/pnpm/golangci-lint: prerequisiti e motivazioni sono commentati in testa al file).

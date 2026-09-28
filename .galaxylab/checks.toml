@@ -1,0 +1,34 @@
+# Controlli automatici letti dal motore GalaxyLab.
+#
+# Schema confermato dal board (mail di Atlas del 2026-09-28 15:57, punti g-h-i,
+# vedi nota del CTO su GIT-13):
+# - il motore legge questo file sempre dal ramo principale (main), mai dal
+#   ramo dell'item;
+# - `[integration] layer = N` e' facoltativo (default 99 se assente); qui c'e'
+#   un solo repo quindi e' omesso;
+# - una tabella `[[check]]` per ogni comando, con:
+#     name       obbligatorio
+#     run        obbligatorio, lanciato dalla shell dell'host
+#     cwd        facoltativo, relativo alla radice del repo (niente percorsi
+#                assoluti ne' "..")
+#     timeout_s  facoltativo, default 600, massimo 3600
+#
+# Prerequisiti dell'host (unico, per ora): Go nel PATH.
+# Nessun altro strumento (bash, pnpm, golangci-lint) e' richiesto da questo
+# file: la shell e il PATH del motore non sono noti, quindi nessun comando usa
+# $(...), pipe o `&&`. Verificato che il comando gira invariato in PowerShell,
+# cmd.exe e Git Bash sull'host di sviluppo (vedi riepilogo di consegna GIT-13).
+
+[[check]]
+name = "go-build"
+# Il repo e' un Go workspace (go.work in radice, nessun go.mod in radice):
+# "go build ./..." lanciato dalla radice fallisce con
+# "pattern ./...: directory prefix . does not contain modules listed in
+# go.work or their selected dependencies". Servono quindi i pattern espliciti
+# di ogni modulo elencato in go.work (verificati con `go work edit -json`).
+# Quando si aggiunge un modulo a go.work, aggiungere qui il suo pattern
+# "<path>/...". Un controllo successivo, in un item separato, sostituira'
+# questo elenco con uno script (es. scripts/go-each.sh) quando sapremo come
+# il motore lancia la shell.
+run = "go build ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
+timeout_s = 600
