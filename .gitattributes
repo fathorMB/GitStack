@@ -6,3 +6,8 @@
 # script eseguiti direttamente da una shell POSIX.
 Makefile text eol=lf
 *.sh text eol=lf
+
+# tokens.css e' generato da web/scripts/sync-tokens.mjs, che scrive sempre LF: con
+# core.autocrlf=true il worktree Windows lo avrebbe CRLF e dopo
+# "pnpm run check-tokens" git lo vedrebbe modificato (GIT-46).
+web/src/styles/tokens.css text eol=lf
