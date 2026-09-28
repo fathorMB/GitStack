@@ -1,0 +1,35 @@
+#cloud-config
+# Template usato da new-vm.ps1 per generare il seed cloud-init (datasource
+# NoCloud) della VM di test. I segnaposto {{...}} vengono sostituiti dallo
+# script con i parametri passati dal chiamante; questo file nel repository non
+# contiene mai una chiave reale.
+#
+# Nessun segreto qui: la chiave pubblica arriva come parametro dello script
+# (-SshPublicKey / -SshPublicKeyPath), non e' committata da nessuna parte.
+
+hostname: {{VM_HOSTNAME}}
+manage_etc_hosts: true
+
+users:
+  - name: {{VM_USER}}
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    lock_passwd: true
+    ssh_authorized_keys:
+      - {{SSH_PUBLIC_KEY}}
+
+# Solo accesso a chiave: nessuna password impostata sull'utente, root
+# disabilitato, niente autenticazione via password su SSH.
+ssh_pwauth: false
+disable_root: true
+
+# La VM deve restare "sistema base" al primo avvio: nessun pacchetto viene
+# installato o aggiornato da cloud-init. growpart e resizefs restano attivi
+# (sono nei moduli di default di /etc/cloud/cloud.cfg dell'immagine cloud
+# Ubuntu) cosi' il filesystem usa tutto il disco espanso da new-vm.ps1.
+package_update: false
+package_upgrade: false
+packages: []
+
+final_message: "cloud-init ha finito (up $UPTIME secondi): sistema base pronto"

@@ -1,0 +1,9 @@
+# Difesa in profondita': gli script generano questi file fuori dal repository
+# per default (cache immagine in %LOCALAPPDATA%, VM in C:\HyperV-VMs\...), ma
+# li ignoriamo comunque nel caso qualcuno punti -VmPath/-ImageCacheDir dentro
+# questa cartella. Nessuno di questi contiene la chiave pubblica in chiaro nel
+# nome file, ma VHDX/ISO/log non vanno comunque versionati.
+*.vhd
+*.vhdx
+*.iso
+image-cache/
