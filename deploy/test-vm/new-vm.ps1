@@ -5,10 +5,11 @@
 
 .DESCRIPTION
     Crea una VM Hyper-V Generazione 2 con Ubuntu Server 24.04 LTS (cloud
-    image), inizializzata via cloud-init (utente, chiave SSH, sudo senza
-    password, nessun pacchetto extra), e al termine cattura uno checkpoint
-    'clean' a cui reset-vm.ps1 puo' tornare prima di ogni prova di GIT-9
-    (installer) e GIT-11 (end-to-end).
+    image generica .img/qcow2, convertita in VHDX dinamico con un container
+    Docker: vedi GIT-25), inizializzata via cloud-init (utente, chiave SSH,
+    sudo senza password, nessun pacchetto extra), e al termine cattura uno
+    checkpoint 'clean' a cui reset-vm.ps1 puo' tornare prima di ogni prova
+    di GIT-9 (installer) e GIT-11 (end-to-end).
 
     Idempotente: se una VM con lo stesso nome esiste gia', lo script si ferma
     con un messaggio chiaro e non tocca nulla.
@@ -17,11 +18,20 @@
     si passa come parametro (-SshPublicKey o -SshPublicKeyPath); lo script non
     accetta ne' usa mai una chiave privata.
 
+    L'IP della VM viene letto prima via KVP (servizi di integrazione
+    Hyper-V); l'immagine cloud generica usata qui non ha hv_kvp_daemon,
+    quindi lo script passa automaticamente al fallback MAC -> cache ARP
+    dell'host (Wait-VmIPv4Address/Resolve-VmIPv4ViaArp in lib/common.ps1).
+
 .EXAMPLE
     .\new-vm.ps1 -SshPublicKeyPath "$env:USERPROFILE\.ssh\id_ed25519.pub"
 
 .EXAMPLE
     .\new-vm.ps1 -SshPublicKeyPath C:\keys\board.pub -SwitchName "GitStack-Lab" -VmName gitstack-e2e
+
+.EXAMPLE
+    # Comando del board: VM e cache immagine sul volume con piu' spazio libero.
+    .\new-vm.ps1 -SshPublicKeyPath "$env:USERPROFILE\.ssh\id_ed25519.pub" -VmPath F:\HyperV-VMs\gitstack-test-vm -ImageCacheDir F:\HyperV-VMs\image-cache
 #>
 [CmdletBinding()]
 param(
@@ -53,14 +63,30 @@ param(
     [int]$DiskGB = 60,
 
     # Cartella dove vivono VHDX/ISO della VM. Default: C:\HyperV-VMs\<VmName>.
+    # Lo script verifica lo spazio libero su questo volume prima di
+    # scaricare/convertire: su un host con poco spazio su C: passa un
+    # percorso su un volume piu' capiente, es. F:\HyperV-VMs\<VmName>.
     [string]$VmPath,
 
-    # URL dell'immagine cloud Ubuntu 24.04 LTS in formato .vhd.tar.gz (Hyper-V Generazione 2, GPT/UEFI).
-    # Verifica su https://cloud-images.ubuntu.com/releases/24.04/release/ se il nome file e' cambiato.
-    [string]$UbuntuImageUrl = 'https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.vhd.tar.gz',
+    # URL dell'immagine cloud Ubuntu 24.04 LTS generica (.img, qcow2): la
+    # cartella 'releases/noble/release/' e' il puntatore mobile mantenuto da
+    # Canonical (24.04 = "noble"), aggiornato in-place a ogni point release.
+    # Il vecchio formato .vhd.tar.gz Gen2 non e' piu' pubblicato per amd64
+    # generico (solo la variante -azure, che ignora il seed NoCloud: vedi
+    # GIT-25); l'immagine .img viene convertita in VHDX da questo script.
+    # Verifica su https://cloud-images.ubuntu.com/releases/noble/release/ se
+    # il nome file e' cambiato.
+    [string]$UbuntuImageUrl = 'https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img',
 
-    # Cache locale dell'immagine scaricata, fuori dal repository: le esecuzioni successive la riusano.
+    # Cache locale dell'immagine scaricata, fuori dal repository: le esecuzioni successive la riusano
+    # se lo SHA256 (verificato a ogni corsa contro SHA256SUMS) combacia ancora.
     [string]$ImageCacheDir = (Join-Path $env:LOCALAPPDATA 'GitStack\test-vm\image-cache'),
+
+    # Immagine Docker (pinnata per digest, non per tag mobile) usata per
+    # convertire l'immagine .img (qcow2) in VHDX dinamico: alpine ufficiale,
+    # con qemu-img installato al volo dal suo repository apk (vedi
+    # Convert-QcowToVhdxDynamic in lib/common.ps1 e il README per i limiti).
+    [string]$QemuImgDockerImage = 'alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc',
 
     # Nome del checkpoint "pulito" creato a fine esecuzione.
     [string]$CheckpointName = 'clean',
@@ -101,37 +127,31 @@ try {
         exit 1
     }
 
+    Write-Host "==> Verifico che Docker sia pronto (conversione qcow2 -> VHDX, GIT-25: qemu-img non e' installato sull'host)"
+    Assert-DockerAvailable
+
     New-Item -ItemType Directory -Path $ImageCacheDir -Force | Out-Null
-    $imageFileName = Split-Path -Leaf $UbuntuImageUrl
-    $archivePath = Join-Path $ImageCacheDir $imageFileName
-    if (-not (Test-Path -LiteralPath $archivePath)) {
-        Write-Host "==> Scarico l'immagine cloud Ubuntu 24.04 LTS da $UbuntuImageUrl"
-        Write-Host "    (cache: $archivePath; le esecuzioni successive riusano il file scaricato)"
-        $partialPath = "$archivePath.partial"
-        Invoke-WebRequest -Uri $UbuntuImageUrl -OutFile $partialPath -UseBasicParsing
-        Move-Item -LiteralPath $partialPath -Destination $archivePath -Force
-    } else {
-        Write-Host "==> Uso l'immagine gia' in cache: $archivePath"
-    }
-
-    $extractDir = Join-Path $ImageCacheDir ([IO.Path]::GetFileNameWithoutExtension([IO.Path]::GetFileNameWithoutExtension($imageFileName)))
-    if (-not (Test-Path -LiteralPath $extractDir)) {
-        New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
-    }
-    Write-Host "==> Estraggo $imageFileName"
-    tar.exe -xzf $archivePath -C $extractDir
-    if ($LASTEXITCODE -ne 0) {
-        throw "Estrazione di '$archivePath' fallita (tar.exe, codice $LASTEXITCODE). Verifica che il download non sia corrotto: cancella la cache ('$ImageCacheDir') e riprova."
-    }
-    $vhdSource = Get-ChildItem -Path $extractDir -Filter '*.vhd' -Recurse | Select-Object -First 1
-    if (-not $vhdSource) {
-        throw "Nessun file .vhd trovato dopo l'estrazione di '$archivePath'. -UbuntuImageUrl deve puntare a un archivio .vhd.tar.gz; controlla https://cloud-images.ubuntu.com/releases/24.04/release/ per il nome file corrente."
-    }
-
     New-Item -ItemType Directory -Path $VmPath -Force | Out-Null
+
+    Write-Host "==> Controllo lo spazio libero prima di scaricare/convertire"
+    $imageFileName = Split-Path -Leaf $UbuntuImageUrl
+    $remoteBytes = Get-RemoteContentLength -Url $UbuntuImageUrl
+    # Margine sul solo download (la cache elimina il file vecchio prima di
+    # riscaricare: non serve spazio per due copie contemporaneamente).
+    $estimatedImageBytes = if ($remoteBytes) { [int64]($remoteBytes * 1.2) } else { 1.5GB }
+    Assert-FreeSpace -Path $ImageCacheDir -RequiredBytes $estimatedImageBytes -Purpose 'la cache dell''immagine (-ImageCacheDir)'
+    # Il VHDX e' dinamico (parte piccolo) ma il checkpoint 'clean' e le prove
+    # dell'installer possono farlo crescere fino a -DiskGB: richiediamo
+    # quello spazio con un margine per il seed ISO e i metadati Hyper-V.
+    $requiredVmPathBytes = ([int64]$DiskGB + 5) * 1GB
+    Assert-FreeSpace -Path $VmPath -RequiredBytes $requiredVmPathBytes -Purpose 'il VHDX e il checkpoint (-VmPath, fino a -DiskGB)'
+
+    $qcow2Path = Join-Path $ImageCacheDir $imageFileName
+    Get-CloudImageWithHashVerification -ImageUrl $UbuntuImageUrl -DestinationPath $qcow2Path
+
     $vhdxPath = Join-Path $VmPath "$VmName.vhdx"
-    Write-Host "==> Converto il disco della cloud image in VHDX (Generazione 2, GPT/UEFI): $vhdxPath"
-    Convert-VHD -Path $vhdSource.FullName -DestinationPath $vhdxPath -VHDType Dynamic
+    Write-Host "==> Converto il disco della cloud image in VHDX dinamico (Generazione 2, GPT/UEFI): $vhdxPath"
+    Convert-QcowToVhdxDynamic -SourcePath $qcow2Path -DestinationPath $vhdxPath -DockerImage $QemuImgDockerImage
 
     $targetBytes = [int64]$DiskGB * 1GB
     $currentVhd = Get-VHD -Path $vhdxPath
@@ -165,7 +185,7 @@ try {
     Write-Host "==> Avvio la VM per il primo boot e l'inizializzazione di cloud-init"
     Start-VM -Name $VmName
 
-    $ip = Wait-VmIPv4Address -VmName $VmName -TimeoutSeconds $BootTimeoutSeconds
+    $ip = Wait-VmIPv4Address -VmName $VmName -SwitchName $SwitchName -TimeoutSeconds $BootTimeoutSeconds
     Wait-TcpPort -IpAddress $ip -Port 22 -TimeoutSeconds $SshTimeoutSeconds
     Wait-CloudInitDone -IpAddress $ip -VmUser $VmUser -TimeoutSeconds $CloudInitTimeoutSeconds
 
@@ -182,7 +202,7 @@ try {
 
     Write-Host "==> Riavvio la VM per lasciarla pronta all'uso"
     Start-VM -Name $VmName
-    $ip = Wait-VmIPv4Address -VmName $VmName -TimeoutSeconds $BootTimeoutSeconds
+    $ip = Wait-VmIPv4Address -VmName $VmName -SwitchName $SwitchName -TimeoutSeconds $BootTimeoutSeconds
     Wait-TcpPort -IpAddress $ip -Port 22 -TimeoutSeconds $SshTimeoutSeconds
 
     Write-Host ""

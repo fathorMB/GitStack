@@ -243,6 +243,22 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IMAGE_TAG: sha-${{ github.sha }}
+      # k3d pinnato (GIT-23): senza una versione fissa l'installer prende
+      # l'ultima disponibile, non riproducibile da un run all'altro. Stessa
+      # versione usata in locale da `make dev-up` (Makefile, K3D_VERSION,
+      # GIT-10): aggiornare insieme se cambia una delle due. L'installer di
+      # k3d non pubblica un checksum separato da verificare (a differenza di
+      # golangci-lint sopra, che non lo fa nemmeno lui): scaricato via HTTPS
+      # da github.com, come già per k3d-io/k3d/main/install.sh prima di
+      # questo item.
+      K3D_VERSION: v5.9.0
+      # Immagine k3s del cluster k3d: STESSA versione pinnata in
+      # deploy/install.sh (INSTALL_K3S_VERSION, GIT-9) tramite --image,
+      # invece di lasciarla risolvere a runtime dal canale "latest" di k3d
+      # (che in passato ha creato nodi con una k3s diversa da quella
+      # installata in produzione). Tenerle allineate: se INSTALL_K3S_VERSION
+      # cambia in deploy/install.sh, aggiorna anche questa.
+      K3S_IMAGE: rancher/k3s:v1.36.4-k3s1
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -272,8 +288,8 @@ jobs:
       - name: Crea il cluster k3d
         run: |
           set -euo pipefail
-          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
-          k3d cluster create gitstack-ci --port "8080:80@loadbalancer" --wait --timeout 120s
+          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VERSION}" bash
+          k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --wait --timeout 120s
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo
       # k3s riporti Ready, non che l'API server accetti già in modo stabile
