@@ -21,13 +21,15 @@ SQL versionate e incorporate nel binario (`internal/migrate/sql/*.sql`, `embed.F
 
 ### Schema dedicato e utente DB a permessi limitati (D6)
 
-Lo schema `core` è creato (`CREATE SCHEMA IF NOT EXISTS core`) dalla migrazione 0001 se non esiste già: comodo per sviluppo/CI a database vuoto. In un'installazione reale, un operatore (o un job Helm di GIT-8) può invece pre-creare lo schema e un ruolo Postgres dedicato con permessi solo su di esso, prima del primo avvio: vedi `migrations/bootstrap-role.sql` (da eseguire manualmente con un ruolo superuser/CREATEROLE, non da `core`, che non deve avere quel privilegio). Con lo schema già presente, la migrazione 0001 diventa un no-op sulla parte `CREATE SCHEMA`.
+`internal/migrate.EnsureSchema` controlla prima `pg_namespace` ed esegue `CREATE SCHEMA` solo se manca davvero: con un ruolo a permessi limitati che possiede già lo schema (vedi sotto) ma senza `CREATE` sul database, un `CREATE SCHEMA IF NOT EXISTS` fallirebbe comunque con "permission denied for database" (Postgres controlla il privilegio `CREATE` prima di valutare `IF NOT EXISTS`). La migrazione 0001 non crea più lo schema: ci pensa `EnsureSchema`, prima di aprire la connessione di migrazione (la tabella di stato di golang-migrate, `core.schema_migrations`, ha già bisogno dello schema prima della 0001).
+
+In un'installazione reale, un operatore (o un job Helm di GIT-8) pre-crea lo schema e un ruolo Postgres dedicato con permessi solo su di esso, prima del primo avvio: vedi `migrations/bootstrap-role.sql` (da eseguire manualmente con un ruolo superuser/CREATEROLE, non da `core`, che non deve avere quel privilegio). Il ruolo è owner del solo schema `core`, e lo script revoca `CREATE` su `public` dal ruolo implicito `PUBLIC` (non basterebbe revocarlo dal singolo ruolo `core_app`: i privilegi su `public` arrivano da `PUBLIC`, non da un grant diretto). Verificato da un test d'integrazione che esegue davvero questo script (`internal/migrate/bootstrap_integration_test.go`): applica le migrazioni e fa CRUD con `core_app`, e verifica che `core_app` non possa creare tabelle in `public`.
 
 ### Evento di prova
 
-Alla creazione della risorsa di prova, core pubblica un evento (`core.resource.test.created`, versione 1: vedi `internal/events`). Nota vincolante del CTO (GIT-5/GIT-6): l'evento si pubblica con la libreria condivisa di GIT-6 (NATS JetStream, envelope nome/versione/id/timestamp/payload), non con codice NATS scritto a mano qui.
+Alla creazione della risorsa di prova, core pubblica un evento (`core.resource.test.created`, versione 1) con la libreria condivisa di GIT-6 (`pkg/events` del workspace, NATS JetStream, envelope nome/versione/id/timestamp/payload), non con codice NATS scritto a mano qui: `internal/events.NATSPublisher` (`nats.go`) adatta `pkg/events.Publisher` all'interfaccia `Publisher` che `CreateResource` usa per pubblicare. Nome, versione e payload dell'evento sono alias di `pkg/events/testevent` (fonte di verità unica: non ridefiniti in core). `NoopPublisher` resta disponibile per i test o un ambiente senza NATS, ma non è più quello agganciato in produzione (`main.go`).
 
-Stato a questo commit: GIT-6 è ancora in corso (libreria non ancora disponibile in questo modulo). `internal/events` espone già l'interfaccia `Publisher` che `CreateResource` usa per pubblicare; in produzione (`main.go`) è agganciato un `NoopPublisher` che logga soltanto. Il test d'integrazione di `internal/httpserver` (`router_integration_test.go`, tag `integration`) verifica comunque che `CreateResource` chiami `Publisher.Publish` con il nome, la versione e il payload attesi, tramite un publisher fittizio: la verifica che l'evento arrivi davvero su NATS JetStream reale è nel perimetro di GIT-6. Quando GIT-6 è approvato, agganciare la libreria è un cambiamento locale a `internal/events` (un adapter che implementa `Publisher`); nessun'altra parte di core cambia.
+All'avvio del server (non per `core migrate up|down`, che non tocca NATS), `main.go` si connette a NATS, apre il contesto JetStream e assicura lo stream del dominio `core` (`EnsureStream`) prima di accettare richieste. Verificato da `internal/events/nats_integration_test.go` (tag `integration`) contro un `nats-server` reale avviato in-process (stessa tecnica di `pkg/events`, non serve Docker): publish con conferma JetStream, un consumer durevole indipendente (solo `pkg/events`, non passa da core) che riceve e valida lo schema, e una versione di schema sconosciuta scartata dal consumer senza crash.
 
 ### Configurazione (variabili d'ambiente)
 
@@ -37,6 +39,7 @@ Stato a questo commit: GIT-6 è ancora in corso (libreria non ancora disponibile
 | `GITSTACK_CORE_DB_URL` | sì | — | Stringa di connessione Postgres (es. `postgres://core_app:***@postgres:5432/gitstack?sslmode=disable`) |
 | `GITSTACK_CORE_DB_MAX_CONNS` | no | `10` | Numero massimo di connessioni nel pool |
 | `GITSTACK_CORE_MIGRATIONS_TIMEOUT` | no | `30s` | Timeout per l'applicazione delle migrazioni (formato `time.Duration` di Go) |
+| `GITSTACK_CORE_NATS_URL` | sì, per `serve` | — | Indirizzo del bus NATS JetStream (es. `nats://nats:4222`); non serve a `migrate up\|down` |
 | `GITSTACK_CORE_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
 
 ### Sviluppo locale
@@ -49,15 +52,19 @@ go build ./...
 go test ./...
 ```
 
-### Test d'integrazione (Postgres reale)
+### Test d'integrazione (Postgres e NATS reali)
 
-I test in `internal/migrate`, `internal/store` e `internal/httpserver` con il build tag `integration` avviano un Postgres reale con [testcontainers-go](https://golang.testcontainers.org/) (`internal/dbtest`), applicano le migrazioni e verificano CRUD, idempotenza/rollback delle migrazioni e il ciclo di vita HTTP completo (incluso l'aggancio dell'evento di prova):
+Con il build tag `integration`:
+
+- `internal/migrate`, `internal/store`, `internal/httpserver`: avviano un Postgres reale con [testcontainers-go](https://golang.testcontainers.org/) (`internal/dbtest`), applicano le migrazioni e verificano CRUD, idempotenza/rollback delle migrazioni e il ciclo di vita HTTP completo (incluso l'aggancio dell'evento di prova a un publisher fittizio). Richiedono un demone Docker raggiungibile (o un servizio Postgres di CI equivalente).
+- `internal/migrate/bootstrap_integration_test.go`: come sopra, ma esegue anche `migrations/bootstrap-role.sql` con il superuser del container ed esercita `core_app` (il ruolo a permessi limitati), incluso il divieto di creare tabelle in `public`.
+- `internal/events`: avvia un `nats-server` reale in-process (JetStream abilitato, nessun Docker necessario) e verifica `NATSPublisher` end-to-end (publish con conferma, consumer durevole indipendente, versione di schema sconosciuta gestita senza crash).
 
 ```
 go test -tags=integration ./...
 ```
 
-Richiedono un demone Docker raggiungibile (o un servizio Postgres di CI equivalente). In questo ambiente di sviluppo il demone Docker non è raggiungibile (`docker info` fallisce): la compilazione con il tag `integration` è verificata (`go build -tags=integration ./...`, `go vet -tags=integration ./...`), l'esecuzione no; vanno verificati in CI o in un ambiente con Docker attivo.
+In CI (`.github/workflows/ci.yml`, job `go`) gira dopo `go test ./... -race`: `ubuntu-latest` ha già un demone Docker raggiungibile, che testcontainers-go usa per Postgres; NATS non serve Docker (server in-process). Verificato anche in locale in questa sessione con un demone Docker reale disponibile: tutti i pacchetti verdi (vedi riassunto della revisione).
 
 ### Immagine Docker
 

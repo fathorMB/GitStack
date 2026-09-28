@@ -28,6 +28,11 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.MigrationsTimeout != defaultMigrationsTimeout {
 		t.Errorf("MigrationsTimeout = %s, voluto %s", cfg.MigrationsTimeout, defaultMigrationsTimeout)
 	}
+	// NatsURL non è validata come obbligatoria da load(): serve solo al
+	// comando "serve" (verificato lì, non qui), non a "migrate up|down".
+	if cfg.NatsURL != "" {
+		t.Errorf("NatsURL = %q, voluto vuoto senza GITSTACK_CORE_NATS_URL", cfg.NatsURL)
+	}
 	if cfg.LogLevel != defaultLogLevel {
 		t.Errorf("LogLevel = %q, voluto %q", cfg.LogLevel, defaultLogLevel)
 	}
@@ -46,6 +51,7 @@ func TestLoad_Overrides(t *testing.T) {
 		envDatabaseURL:       "postgres://core:secret@localhost:5432/gitstack?sslmode=disable",
 		envDBMaxConns:        "25",
 		envMigrationsTimeout: "45s",
+		envNatsURL:           "nats://nats:4222",
 		envLogLevel:          "DEBUG",
 	}))
 	if err != nil {
@@ -60,6 +66,9 @@ func TestLoad_Overrides(t *testing.T) {
 	if cfg.MigrationsTimeout != 45*time.Second {
 		t.Errorf("MigrationsTimeout = %s, voluto 45s", cfg.MigrationsTimeout)
 	}
+	if cfg.NatsURL != "nats://nats:4222" {
+		t.Errorf("NatsURL = %q, voluto nats://nats:4222", cfg.NatsURL)
+	}
 	if cfg.LogLevel != "debug" {
 		t.Errorf("LogLevel = %q, voluto debug", cfg.LogLevel)
 	}
@@ -69,14 +78,17 @@ func TestLoad_InvalidValues(t *testing.T) {
 	cases := map[string]map[string]string{
 		"db max conns non numerico": {
 			envDatabaseURL: "postgres://core:secret@localhost:5432/gitstack",
+			envNatsURL:     "nats://localhost:4222",
 			envDBMaxConns:  "abc",
 		},
 		"migrations timeout non valido": {
 			envDatabaseURL:       "postgres://core:secret@localhost:5432/gitstack",
+			envNatsURL:           "nats://localhost:4222",
 			envMigrationsTimeout: "abc",
 		},
 		"log level non valido": {
 			envDatabaseURL: "postgres://core:secret@localhost:5432/gitstack",
+			envNatsURL:     "nats://localhost:4222",
 			envLogLevel:    "verbose",
 		},
 	}

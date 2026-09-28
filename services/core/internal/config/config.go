@@ -31,6 +31,15 @@ type Config struct {
 	// migrazioni all'avvio, prima di rinunciare.
 	MigrationsTimeout time.Duration
 
+	// NatsURL è l'indirizzo del bus NATS JetStream (es. "nats://nats:4222")
+	// su cui core pubblica l'evento di prova tramite la libreria condivisa
+	// di GIT-6 (pkg/events, internal/events.NATSPublisher). A differenza di
+	// GITSTACK_CORE_DB_URL non è validata qui come obbligatoria: serve solo
+	// al comando "serve" (che la richiede, vedi main.go), non a
+	// "migrate up|down", che non tocca NATS. Nessun default: il chart Helm
+	// di GIT-8 la imposta esplicitamente.
+	NatsURL string
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -41,6 +50,7 @@ const (
 	envDatabaseURL       = "GITSTACK_CORE_DB_URL"
 	envDBMaxConns        = "GITSTACK_CORE_DB_MAX_CONNS"
 	envMigrationsTimeout = "GITSTACK_CORE_MIGRATIONS_TIMEOUT"
+	envNatsURL           = "GITSTACK_CORE_NATS_URL"
 	envLogLevel          = "GITSTACK_CORE_LOG_LEVEL"
 
 	defaultAddr              = ":8080"
@@ -99,6 +109,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		} else {
 			cfg.MigrationsTimeout = d
 		}
+	}
+
+	if v, ok := lookup(envNatsURL); ok && strings.TrimSpace(v) != "" {
+		cfg.NatsURL = v
 	}
 
 	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {

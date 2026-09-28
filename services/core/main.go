@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -103,9 +104,22 @@ func applyMigrations(ctx context.Context, cfg config.Config, pool *pgxpool.Pool,
 }
 
 func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) int {
-	// events.NoopPublisher finché la libreria condivisa di GIT-6 non è
-	// disponibile in questo modulo (vedi internal/events).
-	publisher := events.NoopPublisher{Logger: logger}
+	if strings.TrimSpace(cfg.NatsURL) == "" {
+		logger.Error("configurazione non valida", "err", "GITSTACK_CORE_NATS_URL è obbligatoria per avviare il server (non per 'migrate up|down')")
+		return 1
+	}
+
+	// NATSPublisher (internal/events, libreria condivisa di GIT-6): si
+	// connette a NATS, apre il contesto JetStream e assicura lo stream del
+	// dominio "core" prima che il server accetti richieste. La connessione
+	// NATS resta aperta per tutta la vita del processo e si chiude allo
+	// shutdown, insieme al pool Postgres.
+	publisher, nc, err := events.NewNATSPublisher(ctx, cfg.NatsURL)
+	if err != nil {
+		logger.Error("connessione a NATS non riuscita", "err", err)
+		return 1
+	}
+	defer nc.Close()
 
 	router := httpserver.NewRouter(pool, publisher)
 
