@@ -30,11 +30,20 @@ const PrefixV1 = "/v1"
 // applicato per ciascuna richiesta instradata.
 func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger) http.Handler {
 	rp := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.URL.Scheme = coreURL.Scheme
-			req.URL.Host = coreURL.Host
-			req.Host = coreURL.Host
-			req.URL.Path = stripV1(req.URL.Path)
+		// Rewrite sostituisce Director (deprecato dal Go 1.26). A differenza
+		// di Director, ReverseProxy non propaga più da solo la catena
+		// X-Forwarded-For: bisogna conservarla esplicitamente prima di
+		// chiamare SetXForwarded, che poi vi accoda l'IP del client
+		// (pr.In.RemoteAddr) e imposta anche X-Forwarded-Host/Proto. Senza
+		// questo, core perderebbe l'IP del client, necessario per audit e
+		// rate limit in M-02 (vedi [c_026a583e9e6d9ab8]).
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
+			pr.SetXForwarded()
+			pr.Out.URL.Scheme = coreURL.Scheme
+			pr.Out.URL.Host = coreURL.Host
+			pr.Out.Host = coreURL.Host
+			pr.Out.URL.Path = stripV1(pr.In.URL.Path)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			logger.Error("richiesta verso core non riuscita",

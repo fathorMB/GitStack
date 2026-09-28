@@ -84,6 +84,34 @@ func TestToCore_PreservaQueryEMetodo(t *testing.T) {
 	}
 }
 
+func TestToCore_PropagaXForwardedForAccodandoIlClient(t *testing.T) {
+	var gotXFF string
+	core := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotXFF = r.Header.Get("X-Forwarded-For")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer core.Close()
+
+	coreURL, _ := url.Parse(core.URL)
+	handler := ToCore(coreURL, time.Second, discardLogger())
+
+	// httptest.NewRequest imposta di default RemoteAddr a "192.0.2.1:1234":
+	// il client diretto è quindi 192.0.2.1. La richiesta arriva già con una
+	// catena X-Forwarded-For (da Traefik/altri proxy a monte): il gateway
+	// deve conservarla e accodarvi il proprio client, non sostituirla.
+	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	req.Header.Set("X-Forwarded-For", "203.0.113.7")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, voluto 200", rec.Code)
+	}
+	if want := "203.0.113.7, 192.0.2.1"; gotXFF != want {
+		t.Errorf("X-Forwarded-For visto da core = %q, voluto %q", gotXFF, want)
+	}
+}
+
 func TestToCore_CoreIrraggiungibileRitornaErroreDelContratto(t *testing.T) {
 	// Una URL che punta a una porta chiusa: nessun core in ascolto.
 	coreURL, _ := url.Parse("http://127.0.0.1:1")
