@@ -37,17 +37,19 @@ GitStack è interamente open source; eventuali ricavi vengono da supporto e serv
 
 ## Avviare lo sviluppo
 
-Prerequisiti: Go (workspace in `go.work`, un modulo per servizio sotto `services/` più `cli/`) e Node.js con `pnpm` (vedi `web/package.json` → `packageManager`, e `web/pnpm-lock.yaml`).
+Prerequisiti: Go (workspace in `go.work`, un modulo per servizio sotto `services/` più `cli/` e `client/go/`) e Node.js con `pnpm` (vedi `web/package.json` → `packageManager`, e `web/pnpm-lock.yaml`).
 
 ```sh
 # Go: tutti i moduli dei servizi, la CLI e il client Go sono nel workspace di radice
-go build ./...          # dalla radice, una volta che i servizi hanno codice
 go work sync
+bash scripts/go-each.sh go build ./...   # dalla radice, un modulo alla volta
 
 # Web UI
 cd web
 pnpm install
 ```
+
+`go build ./...` non funziona dalla radice: con `go.work` la radice stessa non è un modulo, quindi il tool `go` va invocato dentro ciascun modulo. `scripts/go-each.sh` risolve il problema ricavando la lista dei moduli da `go list -m` (cioè da `go.work` stesso, non da una lista scritta a mano) e la usa per iterare: lo usano sia questo README sia la pipeline CI (`.github/workflows/ci.yml`), così restano sempre allineati a `go.work` anche quando si aggiunge o toglie un modulo.
 
 ## Contratto API e client generati
 
@@ -66,4 +68,17 @@ In CI il check `api-contract` (`.github/workflows/api-contract.yml`) lancia
 lo stesso script e fallisce se il codice generato committato non è allineato
 al contratto. Dettagli: `api/README.md`, `client/README.md`.
 
-Stato (M-01): la struttura del monorepo, le licenze e il contratto API sono a posto (T-01, T-03); il codice dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01.
+## CI
+
+`.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-latest`) gira su
+ogni pull request sempre, e sui push solo verso `main` e sui tag (non su
+ogni push di ramo, per non far girare la pipeline due volte sulle PR dello
+stesso repo):
+
+- **go**: `go work sync`, build, `golangci-lint` e `go test ./... -race` per ciascun modulo Go, incluso `client/go` (`scripts/go-each.sh`).
+- **ts**: `pnpm install`, lint, typecheck e test di `web/`.
+- **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Gira solo dopo che `go` e `ts` sono verdi, solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
+
+Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra), che gira sia su push a `main` sia su pull request.
+
+Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
