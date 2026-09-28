@@ -1,0 +1,7 @@
+package: gitstack
+generate:
+  models: true
+  client: true
+output: gitstack.gen.go
+output-options:
+  skip-prune: false

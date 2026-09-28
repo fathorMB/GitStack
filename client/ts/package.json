@@ -1,0 +1,18 @@
+{
+  "name": "@gitstack/api-client",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Client TypeScript generato dal contratto OpenAPI di GitStack (api/openapi.yaml). Non modificare a mano i file in src/generated/: rigenerarli con `pnpm run generate` (o dalla radice del monorepo con scripts/generate-api.sh).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/generated/index.ts",
+  "types": "./src/generated/index.ts",
+  "scripts": {
+    "generate": "openapi-ts"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "typescript": "5.9.2"
+  },
+  "packageManager": "pnpm@11.28.1"
+}

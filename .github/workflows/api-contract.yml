@@ -1,0 +1,39 @@
+name: api-contract
+
+# Contratto OpenAPI (M-01/T-03): fallisce se il client generato (client/go,
+# client/ts) non è allineato ad api/openapi.yaml. La CI generale di build/
+# lint/test di Go e TypeScript arriva con M-01/T-02; questo workflow copre
+# solo il criterio di accettazione specifico del contratto API.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check-generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.28.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: client/ts/pnpm-lock.yaml
+
+      - name: go work sync
+        run: go work sync
+
+      - name: Verifica che client/go e client/ts siano allineati ad api/openapi.yaml
+        run: ./scripts/check-api-generated.sh
