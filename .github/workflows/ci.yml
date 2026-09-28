@@ -248,7 +248,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: v3.16.3
 
@@ -274,6 +274,64 @@ jobs:
           set -euo pipefail
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
           k3d cluster create gitstack-ci --port "8080:80@loadbalancer" --wait --timeout 120s
+
+      # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo
+      # k3s riporti Ready, non che l'API server accetti già in modo stabile
+      # tutte le richieste: su un runner GitHub Actions il cluster appena
+      # creato può restare intermittentemente "Kubernetes cluster
+      # unreachable" (osservato dopo MR-14, run 36442771214) per qualche
+      # secondo in più. Attesa esplicita con timeout, separata da quella
+      # della CRD Traefik sotto, per capire subito quale delle due è la causa
+      # se il job fallisce di nuovo.
+      - name: Attendi che l'API server del cluster sia pronto
+        run: |
+          set -euo pipefail
+          timeout=90
+          elapsed=0
+          echo "Attendo che l'API server risponda (GET /readyz)..."
+          until kubectl get --raw=/readyz >/dev/null 2>&1; do
+            if [ "${elapsed}" -ge "${timeout}" ]; then
+              echo "FALLITO: l'API server del cluster k3d non ha risposto a /readyz entro ${timeout}s" >&2
+              exit 1
+            fi
+            sleep 3
+            elapsed=$((elapsed + 3))
+          done
+          echo "OK: API server pronto dopo ${elapsed}s"
+          if ! kubectl wait --for=condition=Ready node --all --timeout=60s; then
+            echo "FALLITO: i nodi del cluster k3d non sono diventati Ready in tempo" >&2
+            exit 1
+          fi
+
+      # GIT-21: su un cluster k3d appena creato, Traefik e le sue CRD
+      # (incluso il Middleware usato dall'Ingress del chart, vedi
+      # deploy/gitstack/templates/ingress.yaml) vengono installate in modo
+      # asincrono dall'helm-controller di k3s (job helm-install-traefik-crd).
+      # "helm install" del chart più sotto può partire prima che la CRD
+      # esista ("no matches for kind Middleware in version
+      # traefik.io/v1alpha1", run 36437112985): attendiamo esplicitamente,
+      # con timeout, che la CRD sia presente e poi Established.
+      - name: Attendi che la CRD middlewares.traefik.io (Traefik) sia Established
+        run: |
+          set -euo pipefail
+          timeout=120
+          elapsed=0
+          echo "Attendo che la CRD middlewares.traefik.io esista..."
+          until kubectl get crd middlewares.traefik.io >/dev/null 2>&1; do
+            if [ "${elapsed}" -ge "${timeout}" ]; then
+              echo "FALLITO: la CRD middlewares.traefik.io non è comparsa entro ${timeout}s (Traefik/helm-install-traefik-crd non ancora completato?)" >&2
+              kubectl get pods -A || true
+              exit 1
+            fi
+            sleep 3
+            elapsed=$((elapsed + 3))
+          done
+          echo "OK: CRD middlewares.traefik.io presente dopo ${elapsed}s, attendo Established..."
+          if ! kubectl wait --for=condition=established crd/middlewares.traefik.io --timeout=60s; then
+            echo "FALLITO: la CRD middlewares.traefik.io non è diventata Established in tempo" >&2
+            exit 1
+          fi
+          echo "OK: CRD middlewares.traefik.io Established"
 
       - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
         run: |
@@ -320,10 +378,26 @@ jobs:
           fi
           echo "OK: GET /api/healthz -> 200 (via Ingress Traefik)"
 
+      # GIT-21: ogni comando ha "|| true" perché questo step deve restare
+      # utile anche quando l'API server del cluster è irraggiungibile (il
+      # guasto intermittente osservato dopo MR-14, run 36442771214): in quel
+      # caso i comandi kubectl falliscono, ma docker/k3d restano la sola
+      # fonte di diagnostica disponibile.
       - name: Diagnostica in caso di fallimento
         if: failure()
         run: |
-          kubectl get all
+          echo "--- docker ps -a ---"
+          docker ps -a || true
+          echo "--- k3d cluster list ---"
+          k3d cluster list || true
+          echo "--- log del container server k3d ---"
+          docker logs k3d-gitstack-ci-server-0 --tail=200 || true
+          echo "--- kubectl get all ---"
+          kubectl get all || true
+          echo "--- kubectl get crd middlewares.traefik.io ---"
+          kubectl get crd middlewares.traefik.io || true
+          echo "--- kubectl describe ingress ---"
           kubectl describe ingress gitstack || true
+          echo "--- log gateway/core ---"
           kubectl logs deployment/gitstack-gateway --tail=200 || true
           kubectl logs deployment/gitstack-core --tail=200 || true
