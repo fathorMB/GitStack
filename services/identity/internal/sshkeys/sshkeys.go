@@ -8,7 +8,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -47,13 +46,26 @@ func Parse(line string) (Key, error) {
 		return Key{}, ErrInvalidFormat
 	}
 
+	// Salta i commenti.
 	fields := strings.Fields(line)
 	if len(fields) > 0 && strings.Contains(fields[0], "#") {
 		return Key{}, ErrInvalidFormat
 	}
 
-	if strings.HasPrefix(line, "-----BEGIN") || strings.Contains(line, "PRIVATE KEY") {
+	// Chiavi private: cerca "PRIVATE KEY" nel testo.
+	if strings.Contains(line, "PRIVATE KEY") {
 		return Key{}, ErrPrivateKey
+	}
+
+	// Accetta solo una singola riga: nessun newline interno.
+	if strings.Contains(line, "\n") {
+		return Key{}, ErrInvalidFormat
+	}
+
+	// Blocchi PEM pubblici (es. BEGIN PUBLIC KEY, BEGIN PGP PUBLIC KEY BLOCK)
+	// non sono formato authorized_keys.
+	if strings.HasPrefix(line, "-----BEGIN") {
+		return Key{}, ErrInvalidFormat
 	}
 
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
@@ -99,21 +111,15 @@ func Parse(line string) (Key, error) {
 
 // rsaBits estrae il numero di bit della chiave RSA.
 func rsaBits(pub ssh.PublicKey) int {
-	v := reflect.ValueOf(pub)
-	// Il metodo CryptoPublicKey è sul tipo pointer, quindi non fare Elem().
-	method := v.MethodByName("CryptoPublicKey")
-	if !method.IsValid() {
+	cp, ok := pub.(ssh.CryptoPublicKey)
+	if !ok {
 		return 0
 	}
-	results := method.Call(nil)
-	if len(results) < 1 {
+	r, ok := cp.CryptoPublicKey().(*rsa.PublicKey)
+	if !ok {
 		return 0
 	}
-	cp := results[0].Interface()
-	if r, ok := cp.(*rsa.PublicKey); ok {
-		return r.N.BitLen()
-	}
-	return 0
+	return r.N.BitLen()
 }
 
 // validateType controlla il tipo e la lunghezza della chiave.
@@ -135,15 +141,4 @@ func validateType(tp string, bits int) error {
 func normalizeComment(c string) string {
 	c = strings.TrimRight(c, "\r\n\t ")
 	return strings.Join(strings.Fields(c), " ")
-}
-
-// IsErrorSentinel restituisce true se l'errore è un errore sentinella.
-func IsErrorSentinel(err error) bool {
-	if err == nil {
-		return false
-	}
-	return errors.Is(err, ErrInvalidFormat) ||
-		errors.Is(err, ErrPrivateKey) ||
-		errors.Is(err, ErrWeakKeyType) ||
-		errors.Is(err, ErrKeyTooShort)
 }
