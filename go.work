@@ -3,6 +3,7 @@ go 1.26.2
 use (
 	./cli
 	./client/go
+	./pkg/events
 	./services/core
 	./services/gateway
 	./services/git
