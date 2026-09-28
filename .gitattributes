@@ -1,0 +1,8 @@
+# Testo Unix (LF) per gli script eseguiti in bash e per il Makefile: su un
+# checkout Windows con core.autocrlf=true, un CRLF in una continuazione di
+# riga ("\") o in uno shebang può rompere l'esecuzione (es.
+# "$'\r': command not found" — riprodotto durante GIT-10 sul Makefile di
+# dev-up/dev-down/dev-redeploy). Non normalizza il resto del repo: solo gli
+# script eseguiti direttamente da una shell POSIX.
+Makefile text eol=lf
+*.sh text eol=lf

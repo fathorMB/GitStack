@@ -99,3 +99,19 @@ URL core usato dal gateway (GITSTACK_CORE_URL).
 {{- define "gitstack.core.url" -}}
 {{- printf "http://%s-core:%d" (include "gitstack.fullname" .) (.Values.core.service.port | int) -}}
 {{- end -}}
+
+{{/*
+URL gateway usato da web (env GATEWAY_UPSTREAM dell'immagine nginx di GIT-7,
+vedi web/deploy/nginx.conf.template): senza questo, il container usa il
+default dell'immagine ("http://gateway:8080"), che non risolve nel cluster
+(il Service si chiama "<release>-gateway", non "gateway").
+FQDN completo (<service>.<namespace>.svc.cluster.local), non il nome breve
+del Service: il `resolver` di nginx (usato da questo `proxy_pass` dinamico
+per poter seguire un cambio di IP, vedi il commento nel template) fa query
+DNS dirette e non applica la lista `search` di /etc/resolv.conf come fa
+invece il resolver di Go (usato da GITSTACK_CORE_URL sopra) — il nome breve
+darebbe NXDOMAIN. Riprodotto e verificato su k3d durante GIT-10.
+*/}}
+{{- define "gitstack.gateway.url" -}}
+{{- printf "http://%s-gateway.%s.svc.cluster.local:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.gateway.service.port | int) -}}
+{{- end -}}

@@ -26,6 +26,14 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.web.containerPort }}
+          env:
+            # Il container nginx dell'immagine (GIT-7) usa questa variabile
+            # per sapere dove proxare /api/*: senza, resterebbe sul default
+            # dell'immagine ("http://gateway:8080"), che non esiste nel
+            # cluster (il Service del gateway si chiama
+            # "<release>-gateway"). Vedi web/deploy/nginx.conf.template.
+            - name: GATEWAY_UPSTREAM
+              value: {{ include "gitstack.gateway.url" . | quote }}
           {{- if .Values.web.probes.enabled }}
           livenessProbe:
             httpGet:
