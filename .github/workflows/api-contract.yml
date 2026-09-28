@@ -1,11 +1,11 @@
 name: api-contract
 
-# Contratto OpenAPI (M-01/T-03, M-01/T-04): fallisce se il client generato
-# (client/go, client/ts) o l'interfaccia server del gateway
-# (services/gateway) non sono allineati ad api/openapi.yaml. La CI generale
-# di build/lint/test di Go e TypeScript arriva con M-01/T-02; questo
-# workflow copre solo il criterio di accettazione specifico del contratto
-# API.
+# Contratto OpenAPI (M-01/T-03, M-01/T-04, M-01/T-05): fallisce se il client
+# generato (client/go, client/ts) o l'interfaccia server di gateway e core
+# (services/gateway, services/core) non sono allineati ad api/openapi.yaml.
+# La CI generale di build/lint/test di Go e TypeScript arriva con M-01/T-02;
+# questo workflow copre solo il criterio di accettazione specifico del
+# contratto API.
 on:
   push:
     branches: [main]
