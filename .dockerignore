@@ -1,0 +1,16 @@
+# Contesto di build della radice del monorepo, usato da web/Dockerfile
+# (l'unico che ne ha bisogno: dipende in locale da client/ts — vedi
+# web/Dockerfile). Senza questo file l'intero albero, incluso ogni
+# node_modules/ locale, finirebbe nel contesto di build.
+.git/
+**/node_modules/
+**/dist/
+**/.pnpm-store-local/
+**/.pnpm-store/
+**/*.test.ts
+**/*.test.tsx
+bin/
+**/*.exe
+**/*.test
+.lmbrain-lite/
+deploy/test-vm/

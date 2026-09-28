@@ -6,18 +6,38 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
-    "dev": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1",
-    "build": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync-tokens": "node scripts/sync-tokens.mjs",
+    "check-tokens": "node scripts/sync-tokens.mjs && git diff --exit-code -- src/styles/tokens.css"
   },
   "packageManager": "pnpm@11.28.1",
+  "dependencies": {
+    "@gitstack/api-client": "link:../client/ts",
+    "lucide-react": "^1.48.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.38.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "jsdom": "^30.1.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2",
+    "vite": "^7.3.6",
     "vitest": "^3.2.4"
   }
 }

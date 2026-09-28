@@ -86,6 +86,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
+      # I token CSS (src/styles/tokens.css) sono generati dalla styleguide
+      # (.lmbrain-lite/design/styleguide/index.html) con
+      # web/scripts/sync-tokens.mjs, non ricopiati a mano: stesso principio
+      # del check "api-contract" per il client generato. Nessuna dipendenza
+      # npm, gira prima di "pnpm install".
+      - name: Verifica che i token CSS siano generati dalla styleguide
+        run: pnpm run check-tokens
+
       - name: pnpm install
         run: pnpm install --frozen-lockfile
 
@@ -120,8 +128,27 @@ jobs:
       packages: write
     strategy:
       fail-fast: false
+      # `include` invece di un elenco semplice perché web/ non è un modulo
+      # Go sotto services/: dipende in locale da client/ts (link:, non
+      # pubblicato su un registry npm — vedi web/Dockerfile), quindi il suo
+      # contesto di build è la radice del monorepo, non web/ da sola.
       matrix:
-        service: [gateway, identity, git, core]
+        include:
+          - service: gateway
+            context: services/gateway
+            dockerfile: services/gateway/Dockerfile
+          - service: identity
+            context: services/identity
+            dockerfile: services/identity/Dockerfile
+          - service: git
+            context: services/git
+            dockerfile: services/git/Dockerfile
+          - service: core
+            context: services/core
+            dockerfile: services/core/Dockerfile
+          - service: web
+            context: .
+            dockerfile: web/Dockerfile
     env:
       # Parametro, non hard-coded nei Dockerfile: così il chart di GIT-8
       # potrà puntare a un mirror (vedi M-08, air-gapped).
@@ -133,7 +160,7 @@ jobs:
       - name: Verifica Dockerfile
         id: dockerfile
         run: |
-          path="services/${{ matrix.service }}/Dockerfile"
+          path="${{ matrix.dockerfile }}"
           if [ -f "${path}" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -178,7 +205,8 @@ jobs:
         if: steps.dockerfile.outputs.exists == 'true'
         uses: docker/build-push-action@v6
         with:
-          context: services/${{ matrix.service }}
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

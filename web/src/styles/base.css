@@ -1,0 +1,85 @@
+/*
+ * Componenti di base, adattati da design/mockups-v1/index.html e
+ * design/styleguide/index.html (vedi .lmbrain-lite/design/…) per l'app
+ * reale: solo il sottoinsieme usato dallo scheletro (shell + pagina
+ * risorse). Sempre var(--token) da tokens.css, mai un colore o una misura
+ * fissa: i valori restano identici alla styleguide.
+ */
+*{box-sizing:border-box}
+html,body,#root{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:var(--fs-base)/1.5 var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text);text-decoration:none;cursor:pointer}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-0.01em}
+p{margin:0}
+button{font-family:inherit}
+.mono{font-family:var(--font-mono);font-size:0.92em}
+.muted{color:var(--text-muted)}
+.subtle{color:var(--text-subtle)}
+.small{font-size:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp{flex:1}
+.stack{display:flex;flex-direction:column}
+
+/* ============ App shell (sidebar + topbar), vedi mockups-v1 §layout ===== */
+.app{min-height:100vh;display:grid;grid-template-columns:232px 1fr}
+.sidebar{background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;border-right:1px solid var(--sidebar-border)}
+.sb-brand{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;color:var(--sidebar-fg-strong);font-weight:700;font-size:15px;letter-spacing:-0.01em}
+.sb-brand svg{color:var(--sidebar-accent)}
+/* Nessun token dedicato alle etichette di gruppo della sidebar nella
+   styleguide (il mockup stesso usa lì un grigio fisso, #5f717c, fuori dal
+   sistema di token): si riusa --sidebar-fg, lo stesso testo secondario
+   della sidebar altrove in questo file, invece di un valore fisso. */
+.sb-grp{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;color:var(--sidebar-fg);padding:14px 18px 6px}
+.sb-item{position:relative;display:flex;align-items:center;gap:10px;margin:1px 10px;padding:7px 8px;border-radius:var(--r);color:var(--sidebar-fg);font-weight:500;cursor:pointer;background:none;border:none;width:calc(100% - 20px);text-align:left}
+.sb-item:hover{background:var(--sidebar-hover);color:var(--sidebar-fg-strong);text-decoration:none}
+.sb-item.active{background:var(--sidebar-active);color:var(--sidebar-fg-strong)}
+.sb-item.active::before{content:"";position:absolute;left:-10px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--aurora)}
+.sb-item.active svg{color:var(--sidebar-accent)}
+.sb-item.disabled{opacity:0.5;cursor:default}
+.sb-item.disabled:hover{background:transparent;color:var(--sidebar-fg)}
+.badge-soon{display:inline-flex;align-items:center;height:16px;padding:0 5px;margin-left:auto;border-radius:999px;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;border:1px solid var(--sidebar-border);color:var(--sidebar-fg);background:transparent}
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{height:52px;flex:none;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.crumb{font-size:15px;display:flex;align-items:center;gap:6px;min-width:0}
+.crumb b{font-weight:600}
+.content{flex:1}
+.page{max-width:1280px;margin:0 auto;padding:24px 28px 64px}
+.page-h{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.page-h h1{font-size:22px;font-weight:600}
+@media (max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.page{padding:16px}}
+
+/* ============ Componenti condivisi ====================================== */
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:500 13px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn:focus-visible{outline:none;box-shadow:var(--focus)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-sm{height:26px;padding:0 8px;font-size:12px}
+.btn[disabled]{opacity:0.5;cursor:not-allowed}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600;font-size:13px}
+.field .hint{font-size:12px;color:var(--text-muted)}
+.input{height:32px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:14px var(--font-sans);width:100%}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
+
+.counter{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--surface-3);color:var(--text-muted);font-size:11px;font-weight:600}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.card-b{padding:16px}
+
+.list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.list-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--border)}
+.list-row:first-child{border-top:0}
+.list-head{background:var(--surface-2);font-size:13px;color:var(--text-muted)}
+
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--text-muted);background:var(--surface)}
+
+.alert{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r);border:1px solid;font-size:13px}
+.alert-danger{background:var(--danger-soft);border-color:color-mix(in srgb, var(--danger) 30%, transparent);color:var(--text)}
+.alert-danger svg{color:var(--danger);flex:none;margin-top:2px}
+
+.empty{text-align:center;padding:40px 24px;color:var(--text-muted)}
+.empty svg{color:var(--text-subtle);margin-bottom:8px}
+.empty h4{color:var(--text);font-size:16px;margin-bottom:4px}
