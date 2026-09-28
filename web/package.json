@@ -1,0 +1,14 @@
+{
+  "name": "@gitstack/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitStack web UI (React + TypeScript SPA), parla solo con il gateway via API pubblica.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1",
+    "build": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1",
+    "test": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1"
+  },
+  "packageManager": "pnpm@11.28.1"
+}
