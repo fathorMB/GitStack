@@ -1,0 +1,15 @@
+{{- if .Values.web.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitstack.fullname" . }}-web
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "web") | nindent 4 }}
+spec:
+  selector:
+    {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "web") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.web.service.port }}
+      targetPort: http
+{{- end }}

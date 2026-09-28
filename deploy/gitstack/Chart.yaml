@@ -1,0 +1,27 @@
+apiVersion: v2
+name: gitstack
+description: >-
+  Chart Helm interno di GitStack (M-01/T-08): installa su k3s gateway, core,
+  web, PostgreSQL e NATS JetStream, con Traefik come ingresso, in un solo
+  `helm install`.
+type: application
+
+# Versione del chart (SemVer del pacchetto Helm, non del software).
+version: 0.1.0
+
+# Versione applicativa di riferimento: usata come tag immagine di default
+# quando un componente non specifica `image.tag` (vedi values.yaml e
+# templates/_helpers.tpl). Senza il prefisso "v": è la convenzione Helm per
+# `appVersion` ed è anche il tag pubblicato dal job "registry" del workflow
+# CI per i tag `type=semver,pattern={{version}}` (vedi ci.yml, corretto in
+# questo item, criterio 6). Finché non viene tagliato il primo tag `vX.Y.Z`
+# nessuna immagine con questo tag esiste ancora: vedi README.md del chart.
+appVersion: "0.1.0"
+
+keywords:
+  - gitstack
+  - k3s
+  - helm
+home: https://github.com/fathorMB/GitStack
+sources:
+  - https://github.com/fathorMB/GitStack

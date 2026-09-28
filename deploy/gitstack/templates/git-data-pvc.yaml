@@ -1,0 +1,21 @@
+{{- if .Values.gitData.enabled -}}
+# Volume persistente per i futuri repository Git (D6 [c_4df04d65b3ac4910]):
+# nessun servizio "git" ancora in M-01 (arriva con una milestone
+# successiva), ma il volume esiste già, così non serve una migrazione dati
+# quando quel servizio verrà aggiunto al chart.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gitstack.fullname" . }}-git-data
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "git") | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.gitData.persistence.accessMode }}
+  {{- if .Values.gitData.persistence.storageClassName }}
+  storageClassName: {{ .Values.gitData.persistence.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.gitData.persistence.size | quote }}
+{{- end }}

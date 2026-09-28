@@ -1,0 +1,52 @@
+{{- if .Values.gateway.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitstack.fullname" . }}-gateway
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "gateway") | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "gateway") | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.gateway) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.containerPort }}
+          env:
+            - name: GITSTACK_GATEWAY_ADDR
+              value: {{ printf ":%d" (.Values.gateway.containerPort | int) | quote }}
+            - name: GITSTACK_CORE_URL
+              value: {{ include "gitstack.core.url" . | quote }}
+            - name: GITSTACK_CORE_TIMEOUT
+              value: {{ .Values.gateway.env.coreTimeout | quote }}
+            - name: GITSTACK_LOG_LEVEL
+              value: {{ .Values.gateway.env.logLevel | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+{{- end }}

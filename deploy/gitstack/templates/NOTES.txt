@@ -1,0 +1,21 @@
+GitStack è installato (rilascio "{{ .Release.Name }}", namespace "{{ .Release.Namespace }}").
+
+Componenti attivi:
+  - gateway:  {{ .Values.gateway.enabled }}
+  - core:     {{ .Values.core.enabled }}
+  - web:      {{ .Values.web.enabled }}
+  - postgres: {{ if .Values.postgres.enabled }}bundle{{ else }}esterno (D6){{ end }}
+  - nats:     {{ .Values.nats.enabled }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress Traefik:
+  - http://{{ .Values.ingress.host | default "<ip-o-hostname-del-nodo>" }}/api  -> gateway (/healthz, /readyz, /v1/*)
+  {{- if .Values.web.enabled }}
+  - http://{{ .Values.ingress.host | default "<ip-o-hostname-del-nodo>" }}/     -> web
+  {{- end }}
+{{- end }}
+
+Verifica rapida:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+  curl http://<ip-o-hostname-del-nodo>/api/healthz
