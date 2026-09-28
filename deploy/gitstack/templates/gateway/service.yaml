@@ -1,0 +1,15 @@
+{{- if .Values.gateway.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitstack.fullname" . }}-gateway
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "gateway") | nindent 4 }}
+spec:
+  selector:
+    {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "gateway") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.gateway.service.port }}
+      targetPort: http
+{{- end }}

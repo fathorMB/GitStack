@@ -158,6 +158,21 @@ jobs:
           tags: |
             type=sha,format=long
             type=ref,event=tag
+            type=semver,pattern={{version}}
+
+      # GIT-8 (chart Helm, criterio 6): il tag `type=ref,event=tag` sopra
+      # ripubblica il nome esatto del tag Git (es. "v0.1.0", con il
+      # prefisso "v"). Il chart in deploy/gitstack usa per default
+      # Chart.AppVersion come tag immagine quando non specificato
+      # altrimenti, e AppVersion segue la convenzione Helm (SemVer senza
+      # "v", es. "0.1.0"): senza questa riga, dopo un rilascio "v0.1.0" un
+      # `helm install` con i valori di default cercherebbe
+      # "gitstack-gateway:0.1.0", che non esisterebbe (solo ":v0.1.0").
+      # `type=semver,pattern={{version}}` pubblica in più il tag senza "v",
+      # allineato ad AppVersion. Richiede che il tag Git sia un SemVer
+      # valido preceduto da "v" (coerente con `on.push.tags: ['v*']` in
+      # cima a questo file); per un push su main (nessun tag) non produce
+      # nulla, come gli altri tag basati su "ref"/"semver".
 
       - name: Build & push
         if: steps.dockerfile.outputs.exists == 'true'
@@ -167,3 +182,103 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
+  # un'installazione di prova su un cluster effimero k3d (un k3s vero in
+  # Docker: Traefik e le sue CRD, incluso il Middleware usato dall'Ingress
+  # del chart, sono già presenti di default, a differenza di kind).
+  # Indipendente dal job "registry": costruisce le immagini di gateway e
+  # core localmente e le importa nel cluster (stesso tag "sha-<sha commit
+  # completo>" che pubblicherebbe "registry"), così questo job gira anche
+  # sulle pull request (dove "registry" non pubblica nulla, vedi il suo
+  # `if:`) e non dipende da credenziali verso ghcr.io.
+  chart:
+    name: Chart — helm lint & installazione di prova (k3d)
+    needs: [go, ts]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
+      - name: helm lint
+        run: helm lint deploy/gitstack
+
+      - name: Owner dell'immagine in minuscolo (richiesto da Docker/OCI)
+        id: owner
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Costruisci le immagini di gateway e core (stesso tag che pubblica il job "registry")
+        run: |
+          set -euo pipefail
+          docker build -f services/gateway/Dockerfile \
+            -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
+            services/gateway
+          docker build -f services/core/Dockerfile \
+            -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
+            services/core
+
+      - name: Crea il cluster k3d
+        run: |
+          set -euo pipefail
+          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+          k3d cluster create gitstack-ci --port "8080:80@loadbalancer" --wait --timeout 120s
+
+      - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
+        run: |
+          k3d image import \
+            "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
+            "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
+            -c gitstack-ci
+
+      # web disattivato: la sua immagine arriva con GIT-7, in parallelo
+      # (vedi deploy/gitstack/README.md). imagePullPolicy: IfNotPresent nel
+      # chart evita che i pod ritentino un pull remoto per un tag mai
+      # pubblicato su un registry.
+      - name: helm install
+        run: |
+          helm install gitstack deploy/gitstack \
+            --set web.enabled=false \
+            --set global.image.tag="${IMAGE_TAG}" \
+            --wait --timeout 3m
+
+      - name: Attendi che gateway e core siano Ready
+        run: |
+          kubectl get pods -o wide
+          kubectl rollout status deployment/gitstack-gateway --timeout=120s
+          kubectl rollout status deployment/gitstack-core --timeout=120s
+
+      - name: Verifica /healthz tramite l'Ingress Traefik (/api)
+        run: |
+          set -euo pipefail
+          ok=""
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/healthz || true)
+            if [ "$code" = "200" ]; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$ok" ]; then
+            echo "FALLITO: GET /api/healthz (tramite Ingress) non ha risposto 200 in tempo" >&2
+            kubectl get pods -o wide
+            kubectl get ingress -o yaml
+            kubectl logs deployment/gitstack-gateway --tail=100 || true
+            exit 1
+          fi
+          echo "OK: GET /api/healthz -> 200 (via Ingress Traefik)"
+
+      - name: Diagnostica in caso di fallimento
+        if: failure()
+        run: |
+          kubectl get all
+          kubectl describe ingress gitstack || true
+          kubectl logs deployment/gitstack-gateway --tail=200 || true
+          kubectl logs deployment/gitstack-core --tail=200 || true

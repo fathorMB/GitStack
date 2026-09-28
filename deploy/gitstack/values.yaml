@@ -1,0 +1,241 @@
+# Valori di default del chart gitstack. Configurazione minima (D1): quasi
+# tutto ha un default sensato, pensato per un k3s a nodo singolo installato
+# da GIT-9. Sovrascrivi solo quello che ti serve davvero.
+
+global:
+  image:
+    # Registry di default per le immagini di GitStack (gateway, core, web:
+    # pubblicate su ghcr.io dal job "registry" del workflow CI). postgres e
+    # nats sono immagini di terze parti e hanno il proprio registry di
+    # default (Docker Hub, vedi postgres.image.registry/nats.image.registry
+    # più sotto): global.image.registry non li tocca.
+    # Configurabile qui una volta sola per i componenti GitStack (M-08,
+    # mirror air-gapped [c_8458909a21d9035f]): ogni componente può comunque
+    # sovrascriverlo singolarmente (vedi gateway.image.registry ecc.), per
+    # un mirror parziale.
+    registry: ghcr.io
+    # Tag comune di default quando gateway/core/web non impostano il
+    # proprio image.tag (postgres/nats hanno già il loro tag di default,
+    # legato alla versione dell'immagine upstream, non a questo). Vuoto =
+    # usa Chart.AppVersion (vedi templates/_helpers.tpl). Oggi
+    # Chart.AppVersion non ha ancora un'immagine pubblicata con quel tag:
+    # nessun tag di versione è mai stato pubblicato (vedi README.md,
+    # sezione "Tag delle immagini"). Per un'installazione di prova, imposta
+    # esplicitamente il tag sha pubblicato dalla CI, es.
+    # `--set global.image.tag=sha-<commit-sha-completo>`.
+    tag: ""
+    # IfNotPresent (non "Always"): con un tag specifico (sha o versione,
+    # mai "latest"), non serve ricontattare il registry se l'immagine è
+    # già sul nodo. Usato anche dall'installazione di prova in CI, che
+    # importa le immagini appena costruite in k3d senza pubblicarle prima
+    # su un registry: con "Always" il pod ripercorrerebbe un pull remoto e
+    # fallirebbe (l'immagine con quel tag sha non è mai stata pubblicata).
+    pullPolicy: IfNotPresent
+  # Secret(s) di tipo kubernetes.io/dockerconfigjson per un registry privato
+  # o un mirror che richiede autenticazione (M-08).
+  imagePullSecrets: []
+
+# --- gateway --------------------------------------------------------------
+gateway:
+  enabled: true
+  replicaCount: 1
+  image:
+    # Vuoto = usa global.image.registry. Sovrascrivibile per componente, per
+    # un mirror parziale (M-08 [c_8458909a21d9035f]).
+    registry: ""
+    # Percorso completo (owner/nome) sotto il registry: così un mirror può
+    # anche cambiare organizzazione, non solo host.
+    repository: fathormb/gitstack-gateway
+    # Vuoto = usa global.image.tag (e, in assenza, Chart.AppVersion).
+    tag: ""
+  # Porta su cui il processo ascolta nel container (GITSTACK_GATEWAY_ADDR,
+  # vedi services/gateway/README.md): fissa, combacia con l'EXPOSE del
+  # Dockerfile. `service.port` è la porta del Service k8s, disaccoppiata.
+  containerPort: 8080
+  service:
+    port: 8080
+  # GITSTACK_CORE_URL è calcolato automaticamente dal nome del Service di
+  # core (vedi templates/gateway/deployment.yaml): non serve impostarlo qui.
+  env:
+    logLevel: info
+    coreTimeout: 5s
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+# --- core -------------------------------------------------------------------
+core:
+  enabled: true
+  replicaCount: 1
+  image:
+    registry: ""
+    repository: fathormb/gitstack-core
+    tag: ""
+  # Porta su cui il processo ascolta nel container (GITSTACK_CORE_ADDR):
+  # fissa, combacia con l'EXPOSE del Dockerfile.
+  containerPort: 8080
+  service:
+    port: 8080
+  # core non ritenta la connessione a Postgres/NATS: esce subito se non li
+  # trova raggiungibili all'avvio (vedi services/core/internal/db, Open fa
+  # un Ping subito). Due initContainer attendono che entrambi accettino
+  # connessioni TCP prima di avviare il container principale, invece di
+  # affidarsi al riavvio automatico del pod (più lento: backoff
+  # esponenziale di k8s tra un CrashLoopBackOff e l'altro).
+  waitFor:
+    image:
+      registry: docker.io
+      repository: busybox
+      tag: "1.36"
+  # GITSTACK_CORE_DB_URL e GITSTACK_CORE_NATS_URL sono calcolati dai
+  # Service di postgres/nats (o da postgres.external, vedi sotto): non
+  # servono qui.
+  env:
+    logLevel: info
+    dbMaxConns: 10
+    migrationsTimeout: 30s
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+# --- web --------------------------------------------------------------------
+# L'immagine di web arriva con GIT-7, in parallelo a questo item: il
+# Deployment e il Service sono già pronti, con `web.enabled` per poterli
+# disattivare finché l'immagine non esiste (vedi README.md).
+web:
+  enabled: true
+  replicaCount: 1
+  image:
+    registry: ""
+    repository: fathormb/gitstack-web
+    tag: ""
+  # Porta su cui l'immagine di web ascolta (GIT-7, in parallelo). Default
+  # allineato agli altri servizi Go; se GIT-7 sceglie una porta diversa,
+  # basta sovrascrivere questo valore, senza toccare il chart.
+  containerPort: 8080
+  service:
+    port: 8080
+  # `/healthz` di web: previsto per coerenza con gli altri componenti (vedi
+  # README.md del chart). Se GIT-7 non lo implementa subito, imposta
+  # `web.probes.enabled: false` per disattivare le probe finché non esiste.
+  probes:
+    enabled: true
+    path: /healthz
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+# --- postgres -----------------------------------------------------------
+# PostgreSQL incluso di default (D6 [c_4df04d65b3ac4910]). Per un Postgres
+# esterno del cliente, metti `postgres.enabled: false` e compila
+# `postgres.external.*`: gateway/core lo useranno al posto dello
+# StatefulSet interno, senza altre modifiche al chart.
+postgres:
+  enabled: true
+  image:
+    # Immagine ufficiale su Docker Hub, non su global.image.registry
+    # (quello è per le immagini di GitStack, pubblicate su ghcr.io): un
+    # componente di terze parti ha il proprio registry di default,
+    # comunque sovrascrivibile per un mirror (M-08).
+    registry: docker.io
+    repository: postgres
+    tag: "16-alpine"
+  auth:
+    database: gitstack
+    # Utente applicativo di core (schema dedicato "core", D6). In
+    # un'installazione reale, valuta migrations/bootstrap-role.sql
+    # (services/core) per un ruolo a permessi limitati: qui, per la
+    # configurazione minima di default, questo è anche l'utente
+    # superuser del container Postgres bundle.
+    username: gitstack
+    # Se vuoto, il chart genera una password casuale in un Secret alla
+    # prima installazione (non rigenerata da `helm upgrade`, vedi
+    # templates/postgres/secret.yaml).
+    password: ""
+    # Nome di un Secret esistente con la chiave `password`, alternativo a
+    # `auth.password` (es. gestito fuori da Helm).
+    existingSecret: ""
+  persistence:
+    size: 5Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  # Postgres esterno del cliente (D6): usato solo quando postgres.enabled
+  # è false.
+  external:
+    host: ""
+    port: 5432
+    database: ""
+    username: ""
+    # Nome di un Secret esistente con la chiave `password`.
+    existingSecret: ""
+    sslMode: require
+
+# --- nats (JetStream, D11) -----------------------------------------------
+nats:
+  # A differenza di postgres, non c'è (ancora) un'opzione NATS esterno del
+  # cliente: D11 non la prevede. `enabled` resta comunque qui per
+  # coerenza con gli altri componenti; core richiede sempre
+  # GITSTACK_CORE_NATS_URL per avviarsi (vedi services/core/main.go), quindi
+  # disattivarlo senza un NATS raggiungibile altrove rompe core.
+  enabled: true
+  image:
+    # Immagine ufficiale su Docker Hub, stesso motivo di postgres.image.registry.
+    registry: docker.io
+    repository: nats
+    tag: "2.10-alpine"
+  service:
+    clientPort: 4222
+  persistence:
+    size: 5Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+# --- git (repo Git su volume persistente, D6) -----------------------------
+# Non è un criterio di accettazione di GIT-8 (quello richiede solo PVC per
+# postgres e nats): questo PVC è predisposto nei values per quando arriverà
+# il servizio "git" (milestone successiva a M-01), ma disattivato di
+# default. Motivo: senza un pod che lo monti, la storage class di default
+# di k3s ("local-path", volumeBindingMode WaitForFirstConsumer) lo lascia
+# per sempre "Pending" — nessun errore, ma `helm install/upgrade --wait`
+# (usato anche dall'installazione di prova in CI) resterebbe in attesa
+# indefinitamente. Attivalo solo insieme a un Deployment/StatefulSet che lo
+# monta subito (il servizio "git" stesso, quando arriva al chart).
+gitData:
+  enabled: false
+  persistence:
+    size: 10Gi
+    storageClassName: ""
+    accessMode: ReadWriteOnce
+
+# --- ingress (Traefik, già incluso in k3s) --------------------------------
+ingress:
+  enabled: true
+  # IngressClass di k3s: Traefik è il controller di ingresso di default.
+  className: traefik
+  # Vuoto = nessuna regola "host" (Traefik risponde su qualunque host,
+  # comodo per un'installazione a IP fisso senza DNS). Impostalo per
+  # restringere l'Ingress a un nome host preciso.
+  host: ""
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""

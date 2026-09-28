@@ -1,0 +1,45 @@
+{{- if .Values.web.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitstack.fullname" . }}-web
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "web") | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "web") | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: web
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.web) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.containerPort }}
+          {{- if .Values.web.probes.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.web.probes.path }}
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.web.probes.path }}
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          {{- end }}
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+{{- end }}

@@ -1,0 +1,95 @@
+{{- if .Values.core.enabled -}}
+{{- if not .Values.postgres.enabled -}}
+{{- if or (not .Values.postgres.external.host) (not .Values.postgres.external.database) (not .Values.postgres.external.username) (not .Values.postgres.external.existingSecret) -}}
+{{- fail "postgres.enabled=false (Postgres esterno del cliente, D6): compila postgres.external.host, .database, .username e .existingSecret (Secret con chiave 'password')." -}}
+{{- end -}}
+{{- end -}}
+{{- $pgHost := printf "%s-postgres" (include "gitstack.fullname" .) -}}
+{{- $pgPort := 5432 -}}
+{{- if not .Values.postgres.enabled -}}
+{{- $pgHost = .Values.postgres.external.host -}}
+{{- $pgPort = .Values.postgres.external.port | int -}}
+{{- end -}}
+{{- $natsHost := printf "%s-nats" (include "gitstack.fullname" .) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitstack.fullname" . }}-core
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+spec:
+  replicas: {{ .Values.core.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "core") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # core non ritenta la connessione a Postgres/NATS: esce subito se non
+      # li trova raggiungibili (vedi values.yaml, core.waitFor). Questi
+      # initContainer attendono la porta TCP prima di avviare "core",
+      # invece di affidarsi al CrashLoopBackOff (più lento).
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - until nc -z -w2 {{ $pgHost }} {{ $pgPort }}; do echo "in attesa di postgres ({{ $pgHost }}:{{ $pgPort }})..."; sleep 2; done
+        - name: wait-for-nats
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - until nc -z -w2 {{ $natsHost }} {{ .Values.nats.service.clientPort }}; do echo "in attesa di nats ({{ $natsHost }}:{{ .Values.nats.service.clientPort }})..."; sleep 2; done
+      containers:
+        - name: core
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.core.containerPort }}
+          env:
+            - name: GITSTACK_CORE_ADDR
+              value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
+            # POSTGRES_PASSWORD deve precedere GITSTACK_CORE_DB_URL: la
+            # sintassi "$(VAR)" nei valori di env di un container k8s si
+            # espande solo con variabili già definite prima nella lista.
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.postgres.secretName" . }}
+                  key: password
+            - name: GITSTACK_CORE_DB_URL
+              value: {{ include "gitstack.postgres.dsnTemplate" . | quote }}
+            - name: GITSTACK_CORE_DB_MAX_CONNS
+              value: {{ .Values.core.env.dbMaxConns | quote }}
+            - name: GITSTACK_CORE_MIGRATIONS_TIMEOUT
+              value: {{ .Values.core.env.migrationsTimeout | quote }}
+            - name: GITSTACK_CORE_NATS_URL
+              value: {{ include "gitstack.nats.url" . | quote }}
+            - name: GITSTACK_CORE_LOG_LEVEL
+              value: {{ .Values.core.env.logLevel | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.core.resources | nindent 12 }}
+{{- end }}

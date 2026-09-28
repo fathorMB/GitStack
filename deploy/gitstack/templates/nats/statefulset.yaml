@@ -1,0 +1,63 @@
+{{- if .Values.nats.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "gitstack.fullname" . }}-nats
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "nats") | nindent 4 }}
+spec:
+  serviceName: {{ include "gitstack.fullname" . }}-nats
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "nats") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "nats") | nindent 8 }}
+    spec:
+      containers:
+        - name: nats
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.nats) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          # JetStream (D11 [c_74dcf9721e6f7b3e]) con storage su file, sulla
+          # PVC montata su /data; porta di monitoraggio 8222 per le probe
+          # (endpoint /healthz, disponibile dalla 2.9 in poi).
+          args:
+            - "-js"
+            - "-sd=/data"
+            - "-m=8222"
+          ports:
+            - name: client
+              containerPort: {{ .Values.nats.service.clientPort }}
+            - name: monitor
+              containerPort: 8222
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.nats.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.nats.persistence.storageClassName }}
+        storageClassName: {{ .Values.nats.persistence.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.nats.persistence.size | quote }}
+{{- end }}
