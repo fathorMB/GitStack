@@ -42,7 +42,7 @@ type CreateResourceInput struct {
 	Type string `json:"type"`
 }
 
-// Error Formato unico degli errori per tutta l'API pubblica.
+// Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Error struct {
 	Error struct {
 		// Code Codice stabile leggibile da macchina (es. `not_found`).
@@ -68,6 +68,11 @@ type Health struct {
 
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
+
+// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type Name = string
 
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
 type Resource struct {
@@ -98,6 +103,19 @@ type UpdateResourceInput struct {
 	Name       *string                 `json:"name,omitempty"`
 }
 
+// GrantIdParam defines model for GrantIdParam.
+type GrantIdParam = openapi_types.UUID
+
+// OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type OidcProviderParam = Name
+
+// OrgParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type OrgParam = Name
+
 // PageParam defines model for PageParam.
 type PageParam = int
 
@@ -110,19 +128,35 @@ type ResourceIdParam = openapi_types.UUID
 // ResourceTypeFilter defines model for ResourceTypeFilter.
 type ResourceTypeFilter = string
 
-// BadRequest Formato unico degli errori per tutta l'API pubblica.
+// SshKeyIdParam defines model for SshKeyIdParam.
+type SshKeyIdParam = openapi_types.UUID
+
+// TeamParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type TeamParam = Name
+
+// TokenIdParam defines model for TokenIdParam.
+type TokenIdParam = openapi_types.UUID
+
+// UsernameParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type UsernameParam = Name
+
+// BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
 
-// Conflict Formato unico degli errori per tutta l'API pubblica.
+// Conflict Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Conflict = Error
 
-// NotFound Formato unico degli errori per tutta l'API pubblica.
+// NotFound Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type NotFound = Error
 
-// Unauthorized Formato unico degli errori per tutta l'API pubblica.
+// Unauthorized Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Unauthorized = Error
 
-// UnexpectedError Formato unico degli errori per tutta l'API pubblica.
+// UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
 
 // ListResourcesParams defines parameters for ListResources.

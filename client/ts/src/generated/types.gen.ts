@@ -56,7 +56,8 @@ export type ResourceList = {
 };
 
 /**
- * Formato unico degli errori per tutta l'API pubblica.
+ * Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+ *
  */
 export type Error = {
     error: {
@@ -75,6 +76,354 @@ export type Error = {
             [key: string]: unknown;
         };
     };
+};
+
+/**
+ * Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+ *
+ */
+export type Name = string;
+
+/**
+ * Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
+ *
+ */
+export type TokenScope = 'read:user' | 'write:user' | 'read:org' | 'write:org' | 'admin:org' | 'read:resource' | 'write:resource';
+
+/**
+ * Ruolo su una risorsa, in ordine crescente di potere.
+ */
+export type ResourceRole = 'read' | 'write' | 'admin';
+
+export type LoginInput = {
+    /**
+     * Username oppure email.
+     */
+    username: string;
+};
+
+/**
+ * Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+ *
+ */
+export type User = {
+    readonly id: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    displayName: string;
+    bio?: string;
+    avatarUrl?: string | null;
+    email?: string | null;
+    isAdmin?: boolean;
+    isActive?: boolean;
+    readonly createdAt?: string;
+};
+
+export type CreateUserInput = {
+    username: Name;
+    kind?: 'human' | 'agent';
+    email?: string;
+    displayName?: string;
+    isAdmin?: boolean;
+};
+
+export type UpdateUserInput = {
+    displayName?: string;
+    bio?: string;
+    avatarUrl?: string | null;
+    email?: string;
+    /**
+     * Solo amministratori.
+     */
+    isAdmin?: boolean;
+    /**
+     * Solo amministratori. Disattivare revoca le sessioni e i token.
+     */
+    isActive?: boolean;
+};
+
+export type UserList = {
+    items: Array<User>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type ChangePasswordInput = {
+    currentPassword?: string;
+    newPassword: string;
+};
+
+export type CurrentSession = {
+    user: User;
+    /**
+     * Come e' stato autenticato il chiamante.
+     */
+    authMethod: 'password' | 'oidc' | 'token';
+    /**
+     * Solo per `authMethod` = `token`.
+     */
+    scopes?: Array<TokenScope>;
+    expiresAt?: string | null;
+};
+
+export type OidcProvider = {
+    slug: Name;
+    displayName: string;
+};
+
+export type OidcProviderList = {
+    items: Array<OidcProvider>;
+};
+
+/**
+ * Token personale, senza il valore (che non e' recuperabile).
+ */
+export type Token = {
+    readonly id: string;
+    name: string;
+    scopes: Array<TokenScope>;
+    /**
+     * Ultimi 4 caratteri del token, per riconoscerlo.
+     */
+    hint: string;
+    createdAt: string;
+    expiresAt?: string | null;
+    lastUsedAt?: string | null;
+};
+
+export type CreateTokenInput = {
+    name: string;
+    scopes: Array<TokenScope>;
+    /**
+     * Assente = non scade.
+     */
+    expiresAt?: string;
+};
+
+/**
+ * Il token appena creato; `token` compare solo in questa risposta.
+ */
+export type CreatedToken = Token & {
+    /**
+     * Valore in chiaro, formato `gst_<casuale>`. Non viene salvato.
+     */
+    token: string;
+};
+
+export type TokenList = {
+    items: Array<Token>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type SshKey = {
+    readonly id: string;
+    title: string;
+    keyType: string;
+    fingerprint: string;
+    createdAt: string;
+    lastUsedAt?: string | null;
+};
+
+export type AddSshKeyInput = {
+    title: string;
+    /**
+     * Riga in formato `authorized_keys` (tipo, base64, commento facoltativo).
+     */
+    publicKey: string;
+};
+
+export type SshKeyList = {
+    items: Array<SshKey>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type SshKeyLookup = {
+    key: SshKey;
+    user: User;
+};
+
+export type Organization = {
+    readonly id: string;
+    name: Name;
+    displayName?: string;
+    description?: string;
+    readonly createdAt: string;
+};
+
+export type CreateOrganizationInput = {
+    name: Name;
+    displayName?: string;
+    description?: string;
+};
+
+export type UpdateOrganizationInput = {
+    displayName?: string;
+    description?: string;
+};
+
+export type OrganizationList = {
+    items: Array<Organization>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+/**
+ * `owner` gestisce organizzazione, team e membri; `member` no.
+ */
+export type OrgRole = 'owner' | 'member';
+
+export type OrgMember = {
+    user: User;
+    role: OrgRole;
+    createdAt: string;
+};
+
+export type SetOrgMemberInput = {
+    role: OrgRole;
+};
+
+export type OrgMemberList = {
+    items: Array<OrgMember>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type Team = {
+    readonly id: string;
+    orgId: string;
+    name: Name;
+    description?: string;
+    readonly createdAt: string;
+};
+
+export type CreateTeamInput = {
+    name: Name;
+    description?: string;
+};
+
+export type UpdateTeamInput = {
+    name?: Name;
+    description?: string;
+};
+
+export type TeamList = {
+    items: Array<Team>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+/**
+ * `maintainer` gestisce i membri del team.
+ */
+export type TeamRole = 'member' | 'maintainer';
+
+export type TeamMember = {
+    user: User;
+    role: TeamRole;
+    createdAt: string;
+};
+
+export type SetTeamMemberInput = {
+    role?: TeamRole;
+};
+
+export type TeamMemberList = {
+    items: Array<TeamMember>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+/**
+ * Ruolo su una risorsa generica (D15) per un utente o un team.
+ */
+export type Grant = {
+    readonly id: string;
+    resourceId: string;
+    subjectType: 'user' | 'team';
+    subjectId: string;
+    role: ResourceRole;
+    readonly createdAt: string;
+};
+
+export type CreateGrantInput = {
+    subjectType: 'user' | 'team';
+    subjectId: string;
+    role: ResourceRole;
+};
+
+export type UpdateGrantInput = {
+    role: ResourceRole;
+};
+
+export type GrantList = {
+    items: Array<Grant>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type EffectivePermission = {
+    resourceId: string;
+    /**
+     * Ruolo effettivo; `null` = nessun accesso.
+     */
+    role: ResourceRole | null;
+};
+
+export type VerifyCredentialInput = {
+    /**
+     * Facoltativo, evita l'ambiguita' se il gateway la conosce.
+     */
+    kind?: 'session' | 'token';
+};
+
+/**
+ * Chi ha presentato la credenziale.
+ */
+export type Principal = {
+    userId: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    isAdmin: boolean;
+    authMethod: 'password' | 'oidc' | 'token';
+    /**
+     * Solo per i token; assenti per le sessioni.
+     */
+    scopes?: Array<TokenScope>;
+    /**
+     * Id della sessione o del token (per audit).
+     */
+    credentialId?: string;
+    expiresAt?: string | null;
+};
+
+export type VerifyCredentialResult = {
+    active: boolean;
+    principal?: Principal;
+    /**
+     * Per quanto tempo il gateway puo' tenere in cache l'esito.
+     */
+    cacheTtlSeconds?: number;
+};
+
+export type CheckPermissionInput = {
+    userId: string;
+    resourceId: string;
+    role: ResourceRole;
+};
+
+export type CheckPermissionResult = {
+    allowed: boolean;
+    effectiveRole?: ResourceRole | null;
 };
 
 /**
@@ -102,6 +451,193 @@ export type ResourceListWritable = {
     total: number;
 };
 
+export type LoginInputWritable = {
+    /**
+     * Username oppure email.
+     */
+    username: string;
+    password: string;
+};
+
+/**
+ * Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+ *
+ */
+export type UserWritable = {
+    username: Name;
+    kind: 'human' | 'agent';
+    displayName: string;
+    bio?: string;
+    avatarUrl?: string | null;
+    email?: string | null;
+    isAdmin?: boolean;
+    isActive?: boolean;
+};
+
+export type CreateUserInputWritable = {
+    username: Name;
+    kind?: 'human' | 'agent';
+    email?: string;
+    displayName?: string;
+    /**
+     * Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     */
+    password?: string;
+    isAdmin?: boolean;
+};
+
+export type UserListWritable = {
+    items: Array<UserWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CurrentSessionWritable = {
+    user: UserWritable;
+    /**
+     * Come e' stato autenticato il chiamante.
+     */
+    authMethod: 'password' | 'oidc' | 'token';
+    /**
+     * Solo per `authMethod` = `token`.
+     */
+    scopes?: Array<TokenScope>;
+    expiresAt?: string | null;
+};
+
+/**
+ * Token personale, senza il valore (che non e' recuperabile).
+ */
+export type TokenWritable = {
+    name: string;
+    scopes: Array<TokenScope>;
+    /**
+     * Ultimi 4 caratteri del token, per riconoscerlo.
+     */
+    hint: string;
+    createdAt: string;
+    expiresAt?: string | null;
+    lastUsedAt?: string | null;
+};
+
+/**
+ * Il token appena creato; `token` compare solo in questa risposta.
+ */
+export type CreatedTokenWritable = TokenWritable & {
+    /**
+     * Valore in chiaro, formato `gst_<casuale>`. Non viene salvato.
+     */
+    token: string;
+};
+
+export type TokenListWritable = {
+    items: Array<TokenWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type SshKeyWritable = {
+    title: string;
+    keyType: string;
+    fingerprint: string;
+    createdAt: string;
+    lastUsedAt?: string | null;
+};
+
+export type SshKeyListWritable = {
+    items: Array<SshKeyWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type SshKeyLookupWritable = {
+    key: SshKeyWritable;
+    user: UserWritable;
+};
+
+export type OrganizationWritable = {
+    name: Name;
+    displayName?: string;
+    description?: string;
+};
+
+export type OrganizationListWritable = {
+    items: Array<OrganizationWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type OrgMemberWritable = {
+    user: UserWritable;
+    role: OrgRole;
+    createdAt: string;
+};
+
+export type OrgMemberListWritable = {
+    items: Array<OrgMemberWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type TeamWritable = {
+    orgId: string;
+    name: Name;
+    description?: string;
+};
+
+export type TeamListWritable = {
+    items: Array<TeamWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type TeamMemberWritable = {
+    user: UserWritable;
+    role: TeamRole;
+    createdAt: string;
+};
+
+export type TeamMemberListWritable = {
+    items: Array<TeamMemberWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+/**
+ * Ruolo su una risorsa generica (D15) per un utente o un team.
+ */
+export type GrantWritable = {
+    resourceId: string;
+    subjectType: 'user' | 'team';
+    subjectId: string;
+    role: ResourceRole;
+};
+
+export type GrantListWritable = {
+    items: Array<GrantWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type VerifyCredentialInputWritable = {
+    /**
+     * Valore grezzo della credenziale (cookie `gst_session` o token `gst_...`).
+     */
+    credential: string;
+    /**
+     * Facoltativo, evita l'ambiguita' se il gateway la conosce.
+     */
+    kind?: 'session' | 'token';
+};
+
 /**
  * Identificatore della risorsa.
  */
@@ -115,6 +651,29 @@ export type ResourceTypeFilter = string;
 export type PageParam = number;
 
 export type PerPageParam = number;
+
+export type UsernameParam = Name;
+
+/**
+ * Nome (slug) dell'organizzazione.
+ */
+export type OrgParam = Name;
+
+/**
+ * Nome (slug) del team, unico dentro l'organizzazione.
+ */
+export type TeamParam = Name;
+
+export type TokenIdParam = string;
+
+export type SshKeyIdParam = string;
+
+export type GrantIdParam = string;
+
+/**
+ * Slug del provider OIDC.
+ */
+export type OidcProviderParam = Name;
 
 export type GetHealthData = {
     body?: never;
@@ -326,3 +885,1901 @@ export type UpdateResourceResponses = {
 };
 
 export type UpdateResourceResponse = UpdateResourceResponses[keyof UpdateResourceResponses];
+
+export type LoginData = {
+    body: LoginInputWritable;
+    path?: never;
+    query?: never;
+    url: '/auth/login';
+};
+
+export type LoginErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LoginError = LoginErrors[keyof LoginErrors];
+
+export type LoginResponses = {
+    /**
+     * Sessione creata.
+     */
+    200: CurrentSession;
+};
+
+export type LoginResponse = LoginResponses[keyof LoginResponses];
+
+export type LogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/logout';
+};
+
+export type LogoutErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LogoutError = LogoutErrors[keyof LogoutErrors];
+
+export type LogoutResponses = {
+    /**
+     * Sessione terminata.
+     */
+    204: void;
+};
+
+export type LogoutResponse = LogoutResponses[keyof LogoutResponses];
+
+export type GetCurrentSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/session';
+};
+
+export type GetCurrentSessionErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetCurrentSessionError = GetCurrentSessionErrors[keyof GetCurrentSessionErrors];
+
+export type GetCurrentSessionResponses = {
+    /**
+     * Chiamante autenticato.
+     */
+    200: CurrentSession;
+};
+
+export type GetCurrentSessionResponse = GetCurrentSessionResponses[keyof GetCurrentSessionResponses];
+
+export type ListOidcProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/oidc/providers';
+};
+
+export type ListOidcProvidersErrors = {
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOidcProvidersError = ListOidcProvidersErrors[keyof ListOidcProvidersErrors];
+
+export type ListOidcProvidersResponses = {
+    /**
+     * Provider abilitati.
+     */
+    200: OidcProviderList;
+};
+
+export type ListOidcProvidersResponse = ListOidcProvidersResponses[keyof ListOidcProvidersResponses];
+
+export type StartOidcLoginData = {
+    body?: never;
+    path: {
+        /**
+         * Slug del provider OIDC.
+         */
+        provider: Name;
+    };
+    query?: {
+        redirectTo?: string;
+    };
+    url: '/auth/oidc/{provider}/start';
+};
+
+export type StartOidcLoginErrors = {
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type StartOidcLoginError = StartOidcLoginErrors[keyof StartOidcLoginErrors];
+
+export type StartOidcLoginResponses = {
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type StartOidcLoginResponse = StartOidcLoginResponses[keyof StartOidcLoginResponses];
+
+export type FinishOidcLoginData = {
+    body?: never;
+    path: {
+        /**
+         * Slug del provider OIDC.
+         */
+        provider: Name;
+    };
+    query: {
+        code: string;
+        state: string;
+    };
+    url: '/auth/oidc/{provider}/callback';
+};
+
+export type FinishOidcLoginErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type FinishOidcLoginError = FinishOidcLoginErrors[keyof FinishOidcLoginErrors];
+
+export type FinishOidcLoginResponses = {
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type FinishOidcLoginResponse = FinishOidcLoginResponses[keyof FinishOidcLoginResponses];
+
+export type ListUsersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Prefisso di username o nome visualizzato.
+         */
+        q?: string;
+        page?: number;
+        perPage?: number;
+    };
+    url: '/users';
+};
+
+export type ListUsersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListUsersError = ListUsersErrors[keyof ListUsersErrors];
+
+export type ListUsersResponses = {
+    /**
+     * Pagina di utenti.
+     */
+    200: UserList;
+};
+
+export type ListUsersResponse = ListUsersResponses[keyof ListUsersResponses];
+
+export type CreateUserData = {
+    body: CreateUserInputWritable;
+    path?: never;
+    query?: never;
+    url: '/users';
+};
+
+export type CreateUserErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateUserError = CreateUserErrors[keyof CreateUserErrors];
+
+export type CreateUserResponses = {
+    /**
+     * Utente creato.
+     */
+    201: User;
+};
+
+export type CreateUserResponse = CreateUserResponses[keyof CreateUserResponses];
+
+export type DeleteUserData = {
+    body?: never;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}';
+};
+
+export type DeleteUserErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteUserError = DeleteUserErrors[keyof DeleteUserErrors];
+
+export type DeleteUserResponses = {
+    /**
+     * Utente eliminato.
+     */
+    204: void;
+};
+
+export type DeleteUserResponse = DeleteUserResponses[keyof DeleteUserResponses];
+
+export type GetUserData = {
+    body?: never;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}';
+};
+
+export type GetUserErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetUserError = GetUserErrors[keyof GetUserErrors];
+
+export type GetUserResponses = {
+    /**
+     * Utente trovato.
+     */
+    200: User;
+};
+
+export type GetUserResponse = GetUserResponses[keyof GetUserResponses];
+
+export type UpdateUserData = {
+    body: UpdateUserInput;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}';
+};
+
+export type UpdateUserErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateUserError = UpdateUserErrors[keyof UpdateUserErrors];
+
+export type UpdateUserResponses = {
+    /**
+     * Utente aggiornato.
+     */
+    200: User;
+};
+
+export type UpdateUserResponse = UpdateUserResponses[keyof UpdateUserResponses];
+
+export type ChangePasswordData = {
+    body: ChangePasswordInput;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}/password';
+};
+
+export type ChangePasswordErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ChangePasswordError = ChangePasswordErrors[keyof ChangePasswordErrors];
+
+export type ChangePasswordResponses = {
+    /**
+     * Password cambiata.
+     */
+    204: void;
+};
+
+export type ChangePasswordResponse = ChangePasswordResponses[keyof ChangePasswordResponses];
+
+export type ListTokensData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/user/tokens';
+};
+
+export type ListTokensErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListTokensError = ListTokensErrors[keyof ListTokensErrors];
+
+export type ListTokensResponses = {
+    /**
+     * Pagina di token.
+     */
+    200: TokenList;
+};
+
+export type ListTokensResponse = ListTokensResponses[keyof ListTokensResponses];
+
+export type CreateTokenData = {
+    body: CreateTokenInput;
+    path?: never;
+    query?: never;
+    url: '/user/tokens';
+};
+
+export type CreateTokenErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateTokenError = CreateTokenErrors[keyof CreateTokenErrors];
+
+export type CreateTokenResponses = {
+    /**
+     * Token creato.
+     */
+    201: CreatedToken;
+};
+
+export type CreateTokenResponse = CreateTokenResponses[keyof CreateTokenResponses];
+
+export type RevokeTokenData = {
+    body?: never;
+    path: {
+        tokenId: string;
+    };
+    query?: never;
+    url: '/user/tokens/{tokenId}';
+};
+
+export type RevokeTokenErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RevokeTokenError = RevokeTokenErrors[keyof RevokeTokenErrors];
+
+export type RevokeTokenResponses = {
+    /**
+     * Token revocato.
+     */
+    204: void;
+};
+
+export type RevokeTokenResponse = RevokeTokenResponses[keyof RevokeTokenResponses];
+
+export type ListSshKeysData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/user/ssh-keys';
+};
+
+export type ListSshKeysErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListSshKeysError = ListSshKeysErrors[keyof ListSshKeysErrors];
+
+export type ListSshKeysResponses = {
+    /**
+     * Pagina di chiavi.
+     */
+    200: SshKeyList;
+};
+
+export type ListSshKeysResponse = ListSshKeysResponses[keyof ListSshKeysResponses];
+
+export type AddSshKeyData = {
+    body: AddSshKeyInput;
+    path?: never;
+    query?: never;
+    url: '/user/ssh-keys';
+};
+
+export type AddSshKeyErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type AddSshKeyError = AddSshKeyErrors[keyof AddSshKeyErrors];
+
+export type AddSshKeyResponses = {
+    /**
+     * Chiave aggiunta.
+     */
+    201: SshKey;
+};
+
+export type AddSshKeyResponse = AddSshKeyResponses[keyof AddSshKeyResponses];
+
+export type DeleteSshKeyData = {
+    body?: never;
+    path: {
+        keyId: string;
+    };
+    query?: never;
+    url: '/user/ssh-keys/{keyId}';
+};
+
+export type DeleteSshKeyErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteSshKeyError = DeleteSshKeyErrors[keyof DeleteSshKeyErrors];
+
+export type DeleteSshKeyResponses = {
+    /**
+     * Chiave eliminata.
+     */
+    204: void;
+};
+
+export type DeleteSshKeyResponse = DeleteSshKeyResponses[keyof DeleteSshKeyResponses];
+
+export type GetSshKeyData = {
+    body?: never;
+    path: {
+        keyId: string;
+    };
+    query?: never;
+    url: '/user/ssh-keys/{keyId}';
+};
+
+export type GetSshKeyErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetSshKeyError = GetSshKeyErrors[keyof GetSshKeyErrors];
+
+export type GetSshKeyResponses = {
+    /**
+     * Chiave trovata.
+     */
+    200: SshKey;
+};
+
+export type GetSshKeyResponse = GetSshKeyResponses[keyof GetSshKeyResponses];
+
+export type ListOrganizationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/orgs';
+};
+
+export type ListOrganizationsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOrganizationsError = ListOrganizationsErrors[keyof ListOrganizationsErrors];
+
+export type ListOrganizationsResponses = {
+    /**
+     * Pagina di organizzazioni.
+     */
+    200: OrganizationList;
+};
+
+export type ListOrganizationsResponse = ListOrganizationsResponses[keyof ListOrganizationsResponses];
+
+export type CreateOrganizationData = {
+    body: CreateOrganizationInput;
+    path?: never;
+    query?: never;
+    url: '/orgs';
+};
+
+export type CreateOrganizationErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateOrganizationError = CreateOrganizationErrors[keyof CreateOrganizationErrors];
+
+export type CreateOrganizationResponses = {
+    /**
+     * Organizzazione creata.
+     */
+    201: Organization;
+};
+
+export type CreateOrganizationResponse = CreateOrganizationResponses[keyof CreateOrganizationResponses];
+
+export type DeleteOrganizationData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}';
+};
+
+export type DeleteOrganizationErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteOrganizationError = DeleteOrganizationErrors[keyof DeleteOrganizationErrors];
+
+export type DeleteOrganizationResponses = {
+    /**
+     * Organizzazione eliminata.
+     */
+    204: void;
+};
+
+export type DeleteOrganizationResponse = DeleteOrganizationResponses[keyof DeleteOrganizationResponses];
+
+export type GetOrganizationData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}';
+};
+
+export type GetOrganizationErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetOrganizationError = GetOrganizationErrors[keyof GetOrganizationErrors];
+
+export type GetOrganizationResponses = {
+    /**
+     * Organizzazione trovata.
+     */
+    200: Organization;
+};
+
+export type GetOrganizationResponse = GetOrganizationResponses[keyof GetOrganizationResponses];
+
+export type UpdateOrganizationData = {
+    body: UpdateOrganizationInput;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}';
+};
+
+export type UpdateOrganizationErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateOrganizationError = UpdateOrganizationErrors[keyof UpdateOrganizationErrors];
+
+export type UpdateOrganizationResponses = {
+    /**
+     * Organizzazione aggiornata.
+     */
+    200: Organization;
+};
+
+export type UpdateOrganizationResponse = UpdateOrganizationResponses[keyof UpdateOrganizationResponses];
+
+export type ListOrgMembersData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/orgs/{org}/members';
+};
+
+export type ListOrgMembersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOrgMembersError = ListOrgMembersErrors[keyof ListOrgMembersErrors];
+
+export type ListOrgMembersResponses = {
+    /**
+     * Pagina di membri.
+     */
+    200: OrgMemberList;
+};
+
+export type ListOrgMembersResponse = ListOrgMembersResponses[keyof ListOrgMembersResponses];
+
+export type RemoveOrgMemberData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        username: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/members/{username}';
+};
+
+export type RemoveOrgMemberErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RemoveOrgMemberError = RemoveOrgMemberErrors[keyof RemoveOrgMemberErrors];
+
+export type RemoveOrgMemberResponses = {
+    /**
+     * Membro rimosso.
+     */
+    204: void;
+};
+
+export type RemoveOrgMemberResponse = RemoveOrgMemberResponses[keyof RemoveOrgMemberResponses];
+
+export type SetOrgMemberData = {
+    body: SetOrgMemberInput;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        username: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/members/{username}';
+};
+
+export type SetOrgMemberErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetOrgMemberError = SetOrgMemberErrors[keyof SetOrgMemberErrors];
+
+export type SetOrgMemberResponses = {
+    /**
+     * Membro impostato.
+     */
+    200: OrgMember;
+};
+
+export type SetOrgMemberResponse = SetOrgMemberResponses[keyof SetOrgMemberResponses];
+
+export type ListTeamsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/orgs/{org}/teams';
+};
+
+export type ListTeamsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListTeamsError = ListTeamsErrors[keyof ListTeamsErrors];
+
+export type ListTeamsResponses = {
+    /**
+     * Pagina di team.
+     */
+    200: TeamList;
+};
+
+export type ListTeamsResponse = ListTeamsResponses[keyof ListTeamsResponses];
+
+export type CreateTeamData = {
+    body: CreateTeamInput;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/teams';
+};
+
+export type CreateTeamErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateTeamError = CreateTeamErrors[keyof CreateTeamErrors];
+
+export type CreateTeamResponses = {
+    /**
+     * Team creato.
+     */
+    201: Team;
+};
+
+export type CreateTeamResponse = CreateTeamResponses[keyof CreateTeamResponses];
+
+export type DeleteTeamData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        /**
+         * Nome (slug) del team, unico dentro l'organizzazione.
+         */
+        team: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/teams/{team}';
+};
+
+export type DeleteTeamErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteTeamError = DeleteTeamErrors[keyof DeleteTeamErrors];
+
+export type DeleteTeamResponses = {
+    /**
+     * Team eliminato.
+     */
+    204: void;
+};
+
+export type DeleteTeamResponse = DeleteTeamResponses[keyof DeleteTeamResponses];
+
+export type GetTeamData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        /**
+         * Nome (slug) del team, unico dentro l'organizzazione.
+         */
+        team: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/teams/{team}';
+};
+
+export type GetTeamErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetTeamError = GetTeamErrors[keyof GetTeamErrors];
+
+export type GetTeamResponses = {
+    /**
+     * Team trovato.
+     */
+    200: Team;
+};
+
+export type GetTeamResponse = GetTeamResponses[keyof GetTeamResponses];
+
+export type UpdateTeamData = {
+    body: UpdateTeamInput;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        /**
+         * Nome (slug) del team, unico dentro l'organizzazione.
+         */
+        team: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/teams/{team}';
+};
+
+export type UpdateTeamErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateTeamError = UpdateTeamErrors[keyof UpdateTeamErrors];
+
+export type UpdateTeamResponses = {
+    /**
+     * Team aggiornato.
+     */
+    200: Team;
+};
+
+export type UpdateTeamResponse = UpdateTeamResponses[keyof UpdateTeamResponses];
+
+export type ListTeamMembersData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        /**
+         * Nome (slug) del team, unico dentro l'organizzazione.
+         */
+        team: Name;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/orgs/{org}/teams/{team}/members';
+};
+
+export type ListTeamMembersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListTeamMembersError = ListTeamMembersErrors[keyof ListTeamMembersErrors];
+
+export type ListTeamMembersResponses = {
+    /**
+     * Pagina di membri.
+     */
+    200: TeamMemberList;
+};
+
+export type ListTeamMembersResponse = ListTeamMembersResponses[keyof ListTeamMembersResponses];
+
+export type RemoveTeamMemberData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        /**
+         * Nome (slug) del team, unico dentro l'organizzazione.
+         */
+        team: Name;
+        username: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/teams/{team}/members/{username}';
+};
+
+export type RemoveTeamMemberErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RemoveTeamMemberError = RemoveTeamMemberErrors[keyof RemoveTeamMemberErrors];
+
+export type RemoveTeamMemberResponses = {
+    /**
+     * Membro rimosso dal team.
+     */
+    204: void;
+};
+
+export type RemoveTeamMemberResponse = RemoveTeamMemberResponses[keyof RemoveTeamMemberResponses];
+
+export type SetTeamMemberData = {
+    body: SetTeamMemberInput;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        /**
+         * Nome (slug) del team, unico dentro l'organizzazione.
+         */
+        team: Name;
+        username: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/teams/{team}/members/{username}';
+};
+
+export type SetTeamMemberErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetTeamMemberError = SetTeamMemberErrors[keyof SetTeamMemberErrors];
+
+export type SetTeamMemberResponses = {
+    /**
+     * Membro del team impostato.
+     */
+    200: TeamMember;
+};
+
+export type SetTeamMemberResponse = SetTeamMemberResponses[keyof SetTeamMemberResponses];
+
+export type ListResourceGrantsData = {
+    body?: never;
+    path: {
+        /**
+         * Identificatore della risorsa.
+         */
+        resourceId: string;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/resources/{resourceId}/grants';
+};
+
+export type ListResourceGrantsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListResourceGrantsError = ListResourceGrantsErrors[keyof ListResourceGrantsErrors];
+
+export type ListResourceGrantsResponses = {
+    /**
+     * Pagina di grant.
+     */
+    200: GrantList;
+};
+
+export type ListResourceGrantsResponse = ListResourceGrantsResponses[keyof ListResourceGrantsResponses];
+
+export type CreateResourceGrantData = {
+    body: CreateGrantInput;
+    path: {
+        /**
+         * Identificatore della risorsa.
+         */
+        resourceId: string;
+    };
+    query?: never;
+    url: '/resources/{resourceId}/grants';
+};
+
+export type CreateResourceGrantErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateResourceGrantError = CreateResourceGrantErrors[keyof CreateResourceGrantErrors];
+
+export type CreateResourceGrantResponses = {
+    /**
+     * Grant creato.
+     */
+    201: Grant;
+};
+
+export type CreateResourceGrantResponse = CreateResourceGrantResponses[keyof CreateResourceGrantResponses];
+
+export type DeleteResourceGrantData = {
+    body?: never;
+    path: {
+        /**
+         * Identificatore della risorsa.
+         */
+        resourceId: string;
+        grantId: string;
+    };
+    query?: never;
+    url: '/resources/{resourceId}/grants/{grantId}';
+};
+
+export type DeleteResourceGrantErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteResourceGrantError = DeleteResourceGrantErrors[keyof DeleteResourceGrantErrors];
+
+export type DeleteResourceGrantResponses = {
+    /**
+     * Grant revocato.
+     */
+    204: void;
+};
+
+export type DeleteResourceGrantResponse = DeleteResourceGrantResponses[keyof DeleteResourceGrantResponses];
+
+export type UpdateResourceGrantData = {
+    body: UpdateGrantInput;
+    path: {
+        /**
+         * Identificatore della risorsa.
+         */
+        resourceId: string;
+        grantId: string;
+    };
+    query?: never;
+    url: '/resources/{resourceId}/grants/{grantId}';
+};
+
+export type UpdateResourceGrantErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateResourceGrantError = UpdateResourceGrantErrors[keyof UpdateResourceGrantErrors];
+
+export type UpdateResourceGrantResponses = {
+    /**
+     * Grant aggiornato.
+     */
+    200: Grant;
+};
+
+export type UpdateResourceGrantResponse = UpdateResourceGrantResponses[keyof UpdateResourceGrantResponses];
+
+export type GetMyResourcePermissionData = {
+    body?: never;
+    path: {
+        /**
+         * Identificatore della risorsa.
+         */
+        resourceId: string;
+    };
+    query?: never;
+    url: '/resources/{resourceId}/permissions';
+};
+
+export type GetMyResourcePermissionErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetMyResourcePermissionError = GetMyResourcePermissionErrors[keyof GetMyResourcePermissionErrors];
+
+export type GetMyResourcePermissionResponses = {
+    /**
+     * Permesso effettivo.
+     */
+    200: EffectivePermission;
+};
+
+export type GetMyResourcePermissionResponse = GetMyResourcePermissionResponses[keyof GetMyResourcePermissionResponses];
+
+export type VerifyCredentialData = {
+    body: VerifyCredentialInputWritable;
+    path?: never;
+    query?: never;
+    url: '/internal/verify';
+};
+
+export type VerifyCredentialErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type VerifyCredentialError = VerifyCredentialErrors[keyof VerifyCredentialErrors];
+
+export type VerifyCredentialResponses = {
+    /**
+     * Esito della verifica.
+     */
+    200: VerifyCredentialResult;
+};
+
+export type VerifyCredentialResponse = VerifyCredentialResponses[keyof VerifyCredentialResponses];
+
+export type CheckPermissionData = {
+    body: CheckPermissionInput;
+    path?: never;
+    query?: never;
+    url: '/internal/permissions/check';
+};
+
+export type CheckPermissionErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CheckPermissionError = CheckPermissionErrors[keyof CheckPermissionErrors];
+
+export type CheckPermissionResponses = {
+    /**
+     * Esito.
+     */
+    200: CheckPermissionResult;
+};
+
+export type CheckPermissionResponse = CheckPermissionResponses[keyof CheckPermissionResponses];
+
+export type LookupSshKeyData = {
+    body?: never;
+    path: {
+        /**
+         * Fingerprint `SHA256:...` (URL-encoded).
+         */
+        fingerprint: string;
+    };
+    query?: never;
+    url: '/internal/ssh-keys/{fingerprint}';
+};
+
+export type LookupSshKeyErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LookupSshKeyError = LookupSshKeyErrors[keyof LookupSshKeyErrors];
+
+export type LookupSshKeyResponses = {
+    /**
+     * Chiave e utente.
+     */
+    200: SshKeyLookup;
+};
+
+export type LookupSshKeyResponse = LookupSshKeyResponses[keyof LookupSshKeyResponses];
