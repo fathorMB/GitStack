@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync-tokens": "node scripts/sync-tokens.mjs",
+    "check-tokens": "node scripts/sync-tokens.mjs && git diff --exit-code -- src/styles/tokens.css"
   },
   "packageManager": "pnpm@11.28.1",
   "dependencies": {

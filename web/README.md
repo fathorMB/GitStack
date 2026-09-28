@@ -2,7 +2,7 @@
 
 Interfaccia web di GitStack: React + TypeScript, SPA (Vite). Parla solo con l'API pubblica esposta dal `gateway`, la stessa usata da CLI, skills e (in futuro) server MCP — principio API-first (vedi `.lmbrain-lite/knowledge/decisions.md`, D7).
 
-Stato: scheletro (M-01 T-07). Shell dell'app (sidebar + topbar, `src/layout/`) coerente con `design/styleguide/` e `design/mockups-v1/` (token in `src/styles/tokens.css`, copiati dalla styleguide, non ricopiati a mano campo per campo altrove). Una pagina (`src/pages/ResourcesPage.tsx`) elenca e crea la risorsa generica di prova (D15) usando solo il client TypeScript generato da T-03 (`@gitstack/api-client`, vedi `client/ts/`) e passando dal gateway, con base URL relativa (`/api`, mai un host di servizio diverso). Le altre voci di navigazione (repository, issue...) sono ancora disattivate ("Soon"): non esistono ancora come funzionalità di prodotto.
+Stato: scheletro (M-01 T-07). Shell dell'app (sidebar + topbar, `src/layout/`) coerente con `design/styleguide/` e `design/mockups-v1/` (token in `src/styles/tokens.css`, **generato** dalla styleguide con `scripts/sync-tokens.mjs`, mai ricopiato a mano). Una pagina (`src/pages/ResourcesPage.tsx`) elenca e crea la risorsa generica di prova (D15) usando solo il client TypeScript generato da T-03 (`@gitstack/api-client`, vedi `client/ts/`) e passando dal gateway, con base URL relativa (`/api`, mai un host di servizio diverso). Le altre voci di navigazione (repository, issue...) sono ancora disattivate ("Soon"): non esistono ancora come funzionalità di prodotto.
 
 ## Sviluppo
 
@@ -14,6 +14,17 @@ pnpm typecheck
 pnpm test
 pnpm build      # tsc --noEmit + vite build, output statico in dist/
 ```
+
+## Token di design (generati, non a mano)
+
+`src/styles/tokens.css` non si modifica a mano: è estratto meccanicamente (script Node senza dipendenze, `scripts/sync-tokens.mjs`) dal blocco `:root{...}` (tema chiaro/scuro) di `.lmbrain-lite/design/styleguide/index.html`, la styleguide di riferimento. Dopo una modifica alla styleguide:
+
+```sh
+pnpm run sync-tokens          # rigenera src/styles/tokens.css
+pnpm run check-tokens         # rigenera e fallisce se il file committato non è allineato (usato in CI)
+```
+
+Il resto del CSS di `web/` (`src/styles/base.css`) usa sempre `var(--token)`, mai un colore o una misura fissa.
 
 ## Dipendenza da client/ts
 

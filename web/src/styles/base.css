@@ -26,7 +26,11 @@ button{font-family:inherit}
 .sidebar{background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;border-right:1px solid var(--sidebar-border)}
 .sb-brand{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;color:var(--sidebar-fg-strong);font-weight:700;font-size:15px;letter-spacing:-0.01em}
 .sb-brand svg{color:var(--sidebar-accent)}
-.sb-grp{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;color:#5f717c;padding:14px 18px 6px}
+/* Nessun token dedicato alle etichette di gruppo della sidebar nella
+   styleguide (il mockup stesso usa lì un grigio fisso, #5f717c, fuori dal
+   sistema di token): si riusa --sidebar-fg, lo stesso testo secondario
+   della sidebar altrove in questo file, invece di un valore fisso. */
+.sb-grp{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;color:var(--sidebar-fg);padding:14px 18px 6px}
 .sb-item{position:relative;display:flex;align-items:center;gap:10px;margin:1px 10px;padding:7px 8px;border-radius:var(--r);color:var(--sidebar-fg);font-weight:500;cursor:pointer;background:none;border:none;width:calc(100% - 20px);text-align:left}
 .sb-item:hover{background:var(--sidebar-hover);color:var(--sidebar-fg-strong);text-decoration:none}
 .sb-item.active{background:var(--sidebar-active);color:var(--sidebar-fg-strong)}
