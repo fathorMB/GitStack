@@ -40,3 +40,36 @@ name = "go-test"
 # a go.work. Non richiede Postgres.
 run = "go test ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
 timeout_s = 900
+
+[[check]]
+name = "web-install"
+# Primo dei check web: gli altri dipendono da node_modules. Il link
+# @gitstack/api-client (link:../client/ts) non richiede passi manuali.
+run = "corepack pnpm install --frozen-lockfile"
+cwd = "web"
+timeout_s = 900
+
+[[check]]
+name = "web-lint"
+run = "corepack pnpm run lint"
+cwd = "web"
+timeout_s = 600
+
+[[check]]
+name = "web-typecheck"
+run = "corepack pnpm run typecheck"
+cwd = "web"
+timeout_s = 600
+
+[[check]]
+name = "web-test"
+run = "corepack pnpm run test"
+cwd = "web"
+timeout_s = 900
+
+[[check]]
+name = "web-check-tokens"
+# Rigenera src/styles/tokens.css e fallisce (git diff --exit-code) se differisce.
+run = "corepack pnpm run check-tokens"
+cwd = "web"
+timeout_s = 300
