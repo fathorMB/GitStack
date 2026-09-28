@@ -25,11 +25,12 @@ ssh_pwauth: false
 disable_root: true
 
 # La VM deve restare "sistema base" al primo avvio: nessun pacchetto viene
-# installato o aggiornato da cloud-init. growpart e resizefs restano attivi
-# (sono nei moduli di default di /etc/cloud/cloud.cfg dell'immagine cloud
-# Ubuntu) cosi' il filesystem usa tutto il disco espanso da new-vm.ps1.
+# installato o aggiornato da cloud-init. Senza la chiave `packages` non viene
+# installato nulla (`packages: []` e' rifiutato dallo schema cloud-init,
+# "[] is too short"). growpart e resizefs restano attivi (sono nei moduli di
+# default di /etc/cloud/cloud.cfg dell'immagine cloud Ubuntu) cosi' il
+# filesystem usa tutto il disco espanso da new-vm.ps1.
 package_update: false
 package_upgrade: false
-packages: []
 
 final_message: "cloud-init ha finito (up $UPTIME secondi): sistema base pronto"
