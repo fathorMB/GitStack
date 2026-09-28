@@ -115,6 +115,17 @@ liberi contro i ~30+ GB dell'immagine estratta):
   -VmPath F:\HyperV-VMs\gitstack-test-vm -ImageCacheDir F:\HyperV-VMs\image-cache
 ```
 
+Se la chiave privata ha un nome diverso da quelli predefiniti (es. `gitstack_vm`),
+passa il suo **percorso** con `-SshPrivateKeyPath`: viene usato solo come
+`ssh -i <percorso> -o IdentitiesOnly=yes` per attendere cloud-init (lo script non
+legge mai il contenuto del file; senza il parametro si usano ssh-agent e chiavi
+predefinite):
+
+```powershell
+.\new-vm.ps1 -SshPublicKeyPath "$env:USERPROFILE\.ssh\gitstack_vm.pub" `
+  -SshPrivateKeyPath "$env:USERPROFILE\.ssh\gitstack_vm"
+```
+
 ## IP della VM senza KVP (MAC → cache ARP dell'host)
 
 L'immagine cloud generica (sopra) non ha `linux-cloud-tools`/`hv_kvp_daemon`
@@ -184,7 +195,7 @@ switch di default funziona senza modifiche a GIT-11).
 
 `reset-vm.ps1` accetta `-VmName`, `-VmUser` (solo per stampare il comando
 `ssh`), `-SwitchName` (deve combaciare con quello usato in `new-vm.ps1`, per
-il fallback MAC → ARP), `-CheckpointName`. `remove-vm.ps1` accetta `-VmName` e `-Force` (salta
+il fallback MAC → ARP), `-CheckpointName`, `-SshPrivateKeyPath` (facoltativo: stampa `ssh -i <percorso> utente@ip`). `remove-vm.ps1` accetta `-VmName` e `-Force` (salta
 la conferma interattiva).
 
 ## Output atteso, passo per passo

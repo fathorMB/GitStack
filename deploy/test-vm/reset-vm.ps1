@@ -19,6 +19,8 @@
     .\reset-vm.ps1
 .EXAMPLE
     .\reset-vm.ps1 -VmName gitstack-e2e -VmUser gitstack
+.EXAMPLE
+    .\reset-vm.ps1 -SshPrivateKeyPath "$env:USERPROFILE\.ssh\gitstack_vm"
 #>
 [CmdletBinding()]
 param(
@@ -27,6 +29,8 @@ param(
     # Switch virtuale Hyper-V della VM: deve combaciare con quello passato a new-vm.ps1 (serve al fallback MAC -> ARP per trovare l'interfaccia host giusta).
     [string]$SwitchName = 'Default Switch',
     [string]$CheckpointName = 'clean',
+    # Facoltativo: percorso della chiave PRIVATA, usato solo per stampare "ssh -i <percorso> ...". Il contenuto non viene mai letto.
+    [string]$SshPrivateKeyPath,
     [int]$BootTimeoutSeconds = 300,
     [int]$SshTimeoutSeconds = 180
 )
@@ -68,7 +72,11 @@ try {
     Write-Host ""
     Write-Host "VM '$VmName' ripristinata allo stato 'clean' (sistema base, nessun'altra installazione)."
     Write-Host "IP:  $ip"
-    Write-Host "SSH: ssh $VmUser@$ip"
+    if ($SshPrivateKeyPath) {
+        Write-Host "SSH: ssh -i `"$SshPrivateKeyPath`" $VmUser@$ip"
+    } else {
+        Write-Host "SSH: ssh $VmUser@$ip"
+    }
     Write-Host ""
     Write-Host "Da qui: esegui l'installer di GIT-9 via SSH, oppure lancia il test end-to-end di GIT-11 puntandolo a questo IP."
 } catch {

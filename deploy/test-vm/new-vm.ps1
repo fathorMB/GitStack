@@ -16,7 +16,7 @@
 
     Nessun segreto in questo script o nel repository: la chiave pubblica SSH
     si passa come parametro (-SshPublicKey o -SshPublicKeyPath); lo script non
-    accetta ne' usa mai una chiave privata.
+    legge mai una chiave privata: -SshPrivateKeyPath e' solo un percorso per 'ssh -i'.
 
     L'IP della VM viene letto prima via KVP (servizi di integrazione
     Hyper-V); l'immagine cloud generica usata qui non ha hv_kvp_daemon,
@@ -28,6 +28,10 @@
 
 .EXAMPLE
     .\new-vm.ps1 -SshPublicKeyPath C:\keys\board.pub -SwitchName "GitStack-Lab" -VmName gitstack-e2e
+
+.EXAMPLE
+    # Chiave dedicata con nome diverso dal predefinito: ssh -i solo per attendere cloud-init.
+    .\new-vm.ps1 -SshPublicKeyPath "$env:USERPROFILE\.ssh\gitstack_vm.pub" -SshPrivateKeyPath "$env:USERPROFILE\.ssh\gitstack_vm"
 
 .EXAMPLE
     # Comando del board: VM e cache immagine sul volume con piu' spazio libero.
@@ -49,6 +53,11 @@ param(
 
     # Percorso del file .pub della chiave pubblica SSH (alternativa a -SshPublicKey).
     [string]$SshPublicKeyPath,
+
+    # Facoltativo: percorso del file della chiave PRIVATA, usato solo come 'ssh -i <percorso>'
+    # (con IdentitiesOnly=yes) per attendere cloud-init. Il contenuto non viene mai letto ne' stampato.
+    # Senza, ssh usa ssh-agent / chiavi predefinite (~/.ssh/id_ed25519, ~/.ssh/id_rsa).
+    [string]$SshPrivateKeyPath,
 
     # Switch virtuale Hyper-V a cui collegare la VM.
     [string]$SwitchName = 'Default Switch',
@@ -105,6 +114,9 @@ try {
 
     if (-not $VmPath) { $VmPath = Join-Path 'C:\HyperV-VMs' $VmName }
     $resolvedHostname = if ($Hostname) { ConvertTo-SafeHostname $Hostname } else { ConvertTo-SafeHostname $VmName }
+    if ($SshPrivateKeyPath -and -not (Test-Path -LiteralPath $SshPrivateKeyPath -PathType Leaf)) {
+        throw "Il file della chiave privata indicato con -SshPrivateKeyPath non esiste: $SshPrivateKeyPath. Controlla il percorso (il contenuto del file non viene mai letto)."
+    }
     $sshKey = Resolve-SshPublicKey -SshPublicKey $SshPublicKey -SshPublicKeyPath $SshPublicKeyPath
 
     Write-Host "==> Controllo idempotenza: '$VmName' non deve esistere gia'"
@@ -187,7 +199,7 @@ try {
 
     $ip = Wait-VmIPv4Address -VmName $VmName -SwitchName $SwitchName -TimeoutSeconds $BootTimeoutSeconds
     Wait-TcpPort -IpAddress $ip -Port 22 -TimeoutSeconds $SshTimeoutSeconds
-    Wait-CloudInitDone -IpAddress $ip -VmUser $VmUser -TimeoutSeconds $CloudInitTimeoutSeconds
+    Wait-CloudInitDone -IpAddress $ip -VmUser $VmUser -TimeoutSeconds $CloudInitTimeoutSeconds -SshPrivateKeyPath $SshPrivateKeyPath
 
     Write-Host "==> Spengo la VM per catturare uno checkpoint pulito e ripetibile"
     try {
@@ -207,7 +219,7 @@ try {
 
     Write-Host ""
     Write-Host "VM '$VmName' creata e pronta. Requisiti minimi (provvisori, da rivedere con M-08): Ubuntu Server 24.04 LTS, $CpuCount vCPU, ${MemoryGB} GB RAM, ${DiskGB} GB disco."
-    Write-VmSummary -VmName $VmName -SwitchName $SwitchName -VmUser $VmUser -IpAddress $ip -CpuCount $CpuCount -MemoryGB $MemoryGB -DiskGB $DiskGB
+    Write-VmSummary -VmName $VmName -SwitchName $SwitchName -VmUser $VmUser -IpAddress $ip -CpuCount $CpuCount -MemoryGB $MemoryGB -DiskGB $DiskGB -SshPrivateKeyPath $SshPrivateKeyPath
     Write-Host "Checkpoint 'clean' creato: prima di ogni prova di GIT-9/GIT-11 lancia '.\reset-vm.ps1 -VmName $VmName'."
 } catch {
     Write-Error $_.Exception.Message

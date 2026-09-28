@@ -386,23 +386,29 @@ function Wait-TcpPort {
 function Wait-CloudInitDone {
     <#
       Aspetta che cloud-init finisca sulla VM via SSH ('cloud-init status --wait').
-      Richiede che la chiave privata corrispondente sia disponibile al client ssh
-      del chiamante (ssh-agent o file di identita' predefiniti): questo script
-      non riceve mai e non usa mai chiavi private.
+      Senza -SshPrivateKeyPath richiede che la chiave privata corrispondente sia
+      disponibile al client ssh del chiamante (ssh-agent o file di identita'
+      predefiniti). Con -SshPrivateKeyPath (facoltativo) il percorso viene usato
+      SOLO come 'ssh -i <percorso> -o IdentitiesOnly=yes': lo script non legge,
+      non copia, non stampa e non valida mai il contenuto della chiave privata.
     #>
     param(
         [Parameter(Mandatory)][string]$IpAddress,
         [Parameter(Mandatory)][string]$VmUser,
-        [int]$TimeoutSeconds = 600
+        [int]$TimeoutSeconds = 600,
+        [string]$SshPrivateKeyPath
     )
     Write-Host "    In attesa che cloud-init finisca su ${VmUser}@${IpAddress} (timeout ${TimeoutSeconds}s)..."
     $sshArgs = @(
         '-o', 'StrictHostKeyChecking=no',
         '-o', 'UserKnownHostsFile=NUL',
-        '-o', 'ConnectTimeout=10',
-        "$VmUser@$IpAddress",
-        'cloud-init status --wait'
+        '-o', 'ConnectTimeout=10'
     )
+    if ($SshPrivateKeyPath) {
+        # Start-Process non quota gli elementi di ArgumentList: il percorso va tra virgolette.
+        $sshArgs += @('-i', """$SshPrivateKeyPath""", '-o', 'IdentitiesOnly=yes')
+    }
+    $sshArgs += @("$VmUser@$IpAddress", 'cloud-init status --wait')
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $lastDetail = ''
     while ((Get-Date) -lt $deadline) {
@@ -422,7 +428,7 @@ function Wait-CloudInitDone {
         }
         Start-Sleep -Seconds 5
     }
-    throw "Timeout in attesa che cloud-init finisse su ${VmUser}@${IpAddress}. Ultimo tentativo: $lastDetail. Se SSH rifiuta la connessione con la tua chiave, verifica che la chiave privata corrispondente a quella passata a new-vm.ps1 sia caricata nel tuo ssh-agent o nei percorsi predefiniti (~/.ssh/id_ed25519, ~/.ssh/id_rsa)."
+    throw "Timeout in attesa che cloud-init finisse su ${VmUser}@${IpAddress}. Ultimo tentativo: $lastDetail. Se SSH rifiuta la connessione con la tua chiave, verifica che la chiave privata corrispondente a quella passata a new-vm.ps1 sia caricata nel tuo ssh-agent o nei percorsi predefiniti (~/.ssh/id_ed25519, ~/.ssh/id_rsa), oppure passa il percorso della chiave con -SshPrivateKeyPath."
 }
 
 # --- Spazio libero (GIT-25: default su disco capiente) ---------------------
@@ -718,7 +724,8 @@ function Write-VmSummary {
         [Parameter(Mandatory)][string]$IpAddress,
         [int]$CpuCount,
         [int]$MemoryGB,
-        [int]$DiskGB
+        [int]$DiskGB,
+        [string]$SshPrivateKeyPath
     )
     Write-Host ""
     Write-Host "=== Cosa comunicare al team ===" -ForegroundColor Cyan
@@ -728,7 +735,11 @@ function Write-VmSummary {
     Write-Host "IP:         $IpAddress"
     Write-Host "Specifiche: Ubuntu Server 24.04 LTS, $CpuCount vCPU, ${MemoryGB} GB RAM, ${DiskGB} GB disco"
     Write-Host "Comando SSH pronto da copiare:"
-    Write-Host "  ssh $VmUser@$IpAddress"
+    if ($SshPrivateKeyPath) {
+        Write-Host "  ssh -i `"$SshPrivateKeyPath`" $VmUser@$IpAddress"
+    } else {
+        Write-Host "  ssh $VmUser@$IpAddress"
+    }
     Write-Host "================================"
     Write-Host ""
 }
