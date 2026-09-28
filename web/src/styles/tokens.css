@@ -1,0 +1,166 @@
+/*
+ * Design tokens "Aurora" di GitStack.
+ *
+ * Copiati letteralmente dalla styleguide di riferimento
+ * (.lmbrain-lite/design/styleguide/index.html, sezione
+ * "DESIGN TOKENS · palette Aurora", vedi anche
+ * .lmbrain-lite/knowledge/design-system.md): non sono ricopiati a mano
+ * valore per valore in altri file, si usa sempre var(--token) nel resto del
+ * CSS di web/. Se la styleguide cambia, si risincronizza questo file dagli
+ * stessi valori.
+ */
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --r-sm: 4px;
+  --r: 6px;
+  --r-lg: 10px;
+  /* Sfumatura di marchio: solo logo, voce attiva, agenti, momenti di marchio */
+  --aurora: linear-gradient(135deg, #7c5cff 0%, #e0469b 55%, #ff8a3d 100%);
+  --aurora-glow: radial-gradient(60% 80% at 100% 100%, rgba(255, 138, 61, 0.28), transparent 60%),
+    radial-gradient(70% 90% at 70% 110%, rgba(224, 70, 155, 0.32), transparent 60%),
+    radial-gradient(80% 90% at 20% 120%, rgba(124, 92, 255, 0.45), transparent 65%);
+  /* Sidebar: quasi nera in entrambi i temi */
+  --sidebar-bg: #0e0b16;
+  --sidebar-border: #1f1930;
+  --sidebar-fg: #a39db8;
+  --sidebar-fg-strong: #f3f0fa;
+  --sidebar-hover: #18132a;
+  --sidebar-active: #221a3b;
+  --sidebar-accent: #a28bff;
+  --bg: #f5f4fa;
+  --surface: #ffffff;
+  --surface-2: #f1eff8;
+  --surface-3: #e7e4f1;
+  --border: #e0dcec;
+  --border-strong: #cbc5dc;
+  --text: #16121f;
+  --text-muted: #5f5873;
+  --text-subtle: #8e87a3;
+  --accent: #6a47f5;
+  --accent-hover: #5835e0;
+  --accent-fg: #ffffff;
+  --accent-soft: #efebff;
+  --accent-text: #5b3be0;
+  --success: #1f8f52;
+  --success-soft: #e4f5eb;
+  --danger: #d93645;
+  --danger-soft: #fdeaec;
+  --warning: #b7741a;
+  --warning-soft: #fcf1de;
+  --info: #2f6fe0;
+  --info-soft: #e8effd;
+  --closed: #c2338a;
+  --closed-soft: #fbe7f2;
+  --agent: #cf5510;
+  --agent-soft: #fff0e5;
+  --focus: 0 0 0 3px rgba(106, 71, 245, 0.3);
+  --shadow-1: 0 1px 2px rgba(22, 18, 31, 0.06);
+  --shadow-2: 0 10px 28px rgba(22, 18, 31, 0.14);
+  --code-bg: #f8f7fc;
+  --diff-add: #e6f6ec;
+  --diff-add-strong: #c7ebd3;
+  --diff-del: #fcebec;
+  --diff-del-strong: #f6cfd2;
+  --tk-k: #c2338a;
+  --tk-s: #1f8a4c;
+  --tk-c: #8e87a3;
+  --tk-f: #6a47f5;
+  --tk-n: #0b5cc2;
+  --tk-t: #b25a0a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0b0912;
+    --surface: #13101d;
+    --surface-2: #1a1626;
+    --surface-3: #231e33;
+    --border: #2a2440;
+    --border-strong: #3a3354;
+    --text: #ece9f5;
+    --text-muted: #9d96b3;
+    --text-subtle: #6c6584;
+    --accent: #7c5cff;
+    --accent-hover: #9479ff;
+    --accent-fg: #ffffff;
+    --accent-soft: rgba(124, 92, 255, 0.16);
+    --accent-text: #b3a3ff;
+    --success: #3fcf7f;
+    --success-soft: rgba(63, 207, 127, 0.13);
+    --danger: #ff6b76;
+    --danger-soft: rgba(255, 107, 118, 0.14);
+    --warning: #f0b04a;
+    --warning-soft: rgba(240, 176, 74, 0.14);
+    --info: #7aa7ff;
+    --info-soft: rgba(122, 167, 255, 0.14);
+    --closed: #ee6bb4;
+    --closed-soft: rgba(238, 107, 180, 0.15);
+    --agent: #ffa066;
+    --agent-soft: rgba(255, 138, 61, 0.15);
+    --focus: 0 0 0 3px rgba(124, 92, 255, 0.4);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+    --code-bg: #0f0c18;
+    --diff-add: rgba(63, 207, 127, 0.1);
+    --diff-add-strong: rgba(63, 207, 127, 0.24);
+    --diff-del: rgba(255, 107, 118, 0.1);
+    --diff-del-strong: rgba(255, 107, 118, 0.24);
+    --tk-k: #ff79c6;
+    --tk-s: #7ee2a0;
+    --tk-c: #6c6584;
+    --tk-f: #b8a6ff;
+    --tk-n: #82b4ff;
+    --tk-t: #ffb070;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0b0912;
+  --surface: #13101d;
+  --surface-2: #1a1626;
+  --surface-3: #231e33;
+  --border: #2a2440;
+  --border-strong: #3a3354;
+  --text: #ece9f5;
+  --text-muted: #9d96b3;
+  --text-subtle: #6c6584;
+  --accent: #7c5cff;
+  --accent-hover: #9479ff;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(124, 92, 255, 0.16);
+  --accent-text: #b3a3ff;
+  --success: #3fcf7f;
+  --success-soft: rgba(63, 207, 127, 0.13);
+  --danger: #ff6b76;
+  --danger-soft: rgba(255, 107, 118, 0.14);
+  --warning: #f0b04a;
+  --warning-soft: rgba(240, 176, 74, 0.14);
+  --info: #7aa7ff;
+  --info-soft: rgba(122, 167, 255, 0.14);
+  --closed: #ee6bb4;
+  --closed-soft: rgba(238, 107, 180, 0.15);
+  --agent: #ffa066;
+  --agent-soft: rgba(255, 138, 61, 0.15);
+  --focus: 0 0 0 3px rgba(124, 92, 255, 0.4);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --code-bg: #0f0c18;
+  --diff-add: rgba(63, 207, 127, 0.1);
+  --diff-add-strong: rgba(63, 207, 127, 0.24);
+  --diff-del: rgba(255, 107, 118, 0.1);
+  --diff-del-strong: rgba(255, 107, 118, 0.24);
+  --tk-k: #ff79c6;
+  --tk-s: #7ee2a0;
+  --tk-c: #6c6584;
+  --tk-f: #b8a6ff;
+  --tk-n: #82b4ff;
+  --tk-t: #ffb070;
+}
