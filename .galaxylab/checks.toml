@@ -27,8 +27,16 @@ name = "go-build"
 # go.work or their selected dependencies". Servono quindi i pattern espliciti
 # di ogni modulo elencato in go.work (verificati con `go work edit -json`).
 # Quando si aggiunge un modulo a go.work, aggiungere qui il suo pattern
-# "<path>/...". Un controllo successivo, in un item separato, sostituira'
+# "<path>/..." (e anche nel check go-test qui sotto: i due elenchi vanno
+# tenuti allineati). Un controllo successivo, in un item separato, sostituira'
 # questo elenco con uno script (es. scripts/go-each.sh) quando sapremo come
 # il motore lancia la shell.
 run = "go build ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
 timeout_s = 600
+
+[[check]]
+name = "go-test"
+# Stessi pattern di go-build: aggiornare entrambi quando si aggiunge un modulo
+# a go.work. Non richiede Postgres.
+run = "go test ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
+timeout_s = 900
