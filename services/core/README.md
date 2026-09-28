@@ -75,3 +75,5 @@ docker build -f services/core/Dockerfile services/core
 ```
 
 Il tag e il push nel registry interno sono compito del job `registry` (GIT-2), non di questo Dockerfile. Il comando di default del container (`ENTRYPOINT ["/usr/local/bin/core"]`, nessun argomento) applica le migrazioni e avvia il server; per un job dedicato che applichi solo le migrazioni, sovrascrivere il comando con `["core", "migrate", "up"]`.
+
+Build verificata end-to-end (entrambi gli stage) con un demone Docker reale disponibile in questa sessione: `docker build -f services/core/Dockerfile services/core` produce l'immagine; avviarla senza configurazione (`docker run --rm <immagine>`) fallisce in modo pulito con un log JSON strutturato che segnala `GITSTACK_CORE_DB_URL` mancante, come atteso.
