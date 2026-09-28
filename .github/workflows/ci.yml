@@ -106,6 +106,23 @@ jobs:
       - name: pnpm test
         run: pnpm run test
 
+  # shellcheck su tutti gli script di shell del repository, incluso
+  # l'installer (deploy/install.sh, M-01/T-09, criterio "Script con
+  # shellcheck in CI" di GIT-9). shellcheck è già preinstallato sui runner
+  # ubuntu-latest di GitHub Actions: nessuna action/tool aggiuntivo da
+  # pinnare o aggiornare (le versioni delle action le aggiorna GIT-18).
+  # Indipendente da go/ts: non compila né esegue codice, gira anche se
+  # quelli falliscono.
+  shellcheck:
+    name: Shellcheck — script di shell
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: shellcheck deploy/install.sh scripts/*.sh
+
   # Costruisce e pubblica le immagini dei servizi su un registry parametrico
   # (ghcr.io di default). Richiede che build/lint/test (go, ts) siano verdi
   # (needs), altrimenti un push rosso pubblicherebbe comunque un'immagine.
