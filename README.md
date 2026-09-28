@@ -79,6 +79,6 @@ stesso repo):
 - **ts**: `pnpm install`, lint, typecheck e test di `web/`.
 - **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Gira solo dopo che `go` e `ts` sono verdi, solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
 
-Gli stessi controlli Go e TS sono dichiarati in `.galaxylab/checks.toml` per l'esecuzione sui rami integrati. Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra), che gira sia su push a `main` sia su pull request.
+Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra), che gira sia su push a `main` sia su pull request.
 
 Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
