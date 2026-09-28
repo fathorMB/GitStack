@@ -1,0 +1,9 @@
+go 1.26.2
+
+use (
+	./cli
+	./services/core
+	./services/gateway
+	./services/git
+	./services/identity
+)
