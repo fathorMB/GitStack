@@ -3,23 +3,25 @@
 //
 // Un token personale è una stringa con il formato:
 //
-//	gst_<64 caratteri base62>_<6 caratteri checksum>
+//	gst_<43 caratteri base62>_<6 caratteri checksum>
 //
-// dove i 64 caratteri base62 derivano da 32 byte casuali letti da
-// crypto/rand, e i 6 caratteri di checksum sono la CRC32 di quei 32 byte
-// codificata in base62 (6 caratteri ≃ 32 bit).
+// dove i 43 caratteri base62 derivano da 32 byte casuali letti da
+// crypto/rand (62^43 > 2^256, quindi 43 caratteri bastano), e i 6
+// caratteri di checksum sono la CRC32 di quei 32 byte codificata in
+// base62. La lunghezza totale del token è 54 caratteri (gst_ + 43 + _ + 6).
 //
-// La validazione del formato (prefisso, lunghezza, checksum) avviene
-// offline, senza interpellare il database. Per la ricerca e il confronto
-// il token viene hashato con SHA-256 e l'hash (in hex) viene salvato nel
-// database: il token in chiaro non è mai restituito né loggato dalle
-// funzioni di hashing.
+// La validazione del formato (prefisso, lunghezza, separatore '_', checksum
+// CRC32) avviene offline, senza interpellare il database. Per la ricerca
+// e il confronto il token viene hashato con SHA-256 (32 byte grezzi) e
+// l'hash binario viene salvato nel database: il token in chiaro non è mai
+// restituito né loggato dalle funzioni di hashing.
 package tokens
 
 import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -30,14 +32,43 @@ import (
 
 const (
 	prefix = "gst_"
-	payloadLen = 64
+
+	// payloadLen è il numero di caratteri base62 per 32 byte:
+	// 62^43 > 2^256, quindi 43 caratteri bastano.
+	payloadLen = 43
+
+	// checksumLen è il numero di caratteri base62 per CRC32:
+	// 62^6 > 2^32, quindi 6 caratteri bastano.
 	checksumLen = 6
-	tokenLen = len(prefix) + payloadLen + 1 + checksumLen // 75
+
+	// tokenLen è la lunghezza totale: prefisso(4) + payload(43) + separator(1) + checksum(6) = 54
+	tokenLen = len(prefix) + payloadLen + 1 + checksumLen
 )
 
 var (
 	bigSixtyTwo = big.NewInt(62)
+
+	// ErrInvalidToken è l'errore restituito da Validate quando il token
+	// non ha il formato corretto (prefisso, lunghezza, separatore, o
+	// caratteri invalidi nel payload/checksum).
+	ErrInvalidToken = errors.New("token non valido: formato errato")
+
+	// ErrChecksumMismatch è l'errore restituito quando il checksum
+	// CRC32 del payload non corrisponde.
+	ErrChecksumMismatch = errors.New("token non valido: checksum errato")
 )
+
+// base62Alphabet è l'alfabeto base62 usato per codifica/decodifica.
+const base62Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+// buildScopeMap crea una mappa da scope stringa a bool per lookup rapido.
+func buildScopeMap(scopes []string) map[string]bool {
+	m := make(map[string]bool, len(scopes))
+	for _, s := range scopes {
+		m[s] = true
+	}
+	return m
+}
 
 // KnownScopes è il catalogo degli scope definiti in M-02/D (identico a
 // GIT-29). Un scope è una stringa di forma "<azione>:<risorsa>".
@@ -62,20 +93,11 @@ var scopeImplications = map[string][]string{
 	"write:resource": {"read:resource"},
 }
 
-// buildScopeMap crea una mappa da scope stringa a bool per lookup rapido.
-func buildScopeMap(scopes []string) map[string]bool {
-	m := make(map[string]bool, len(scopes))
-	for _, s := range scopes {
-		m[s] = true
-	}
-	return m
-}
-
 // Generate produce un nuovo token personale.
 //
-// Genera 32 byte da crypto/rand, li codifica in base62, calcola il checksum
-// CRC32 in base62 (6 caratteri) e restituisce la stringa completa
-// "gst_<payload>_<checksum>".
+// Genera 32 byte da crypto/rand, li codifica in base62 (43 caratteri),
+// calcola il checksum CRC32 in base62 (6 caratteri) e restituisce la
+// stringa completa "gst_<payload>_<checksum>".
 //
 // È l'unica funzione del package che restituisce il token in chiaro.
 func Generate() (string, error) {
@@ -91,27 +113,64 @@ func Generate() (string, error) {
 }
 
 // Validate controlla che il token rispetti il formato noto senza
-// interrogare il database: verifica prefisso, lunghezza e checksum.
+// interrogare il database: verifica prefisso, lunghezza, separatore '_',
+// caratteri validi nel payload e nel checksum, e checksum CRC32.
 //
-// Ritorna true se il token è formalmente valido (prefisso corretto,
-// lunghezza 74, checksum CRC32 corrispondente), false altrimenti.
+// Ritorna true se il token è formalmente valido, false altrimenti.
+// Usa il pattern go-error-wrapping per restituire un errore con
+// informazioni su qual è il problema, ma per compatibilità con il
+// codice esistente mantiene un ritorno bool e offre anche un errore.
 func Validate(token string) bool {
+	err := validate(token)
+	return err == nil
+}
+
+// validate fa il lavoro vero di Validate, restituendo l'errore.
+// Solo per uso interno; Validate lo avvolge in un bool.
+func validate(token string) error {
+	if len(token) != tokenLen {
+		return ErrInvalidToken
+	}
 	if !strings.HasPrefix(token, prefix) {
-		return false
-	}
-	expectedLen := len(prefix) + 64 + 1 + 6 // gst_ + 64 + _ + 6
-	if len(token) != expectedLen {
-		return false
+		return ErrInvalidToken
 	}
 
-	raw := base62Decode(token[len(prefix) : len(prefix)+64])
-	if len(raw) != 32 {
-		return false
+	// Verifica del separatore '_' alla posizione esatta.
+	sepPos := len(prefix) + payloadLen
+	if token[sepPos] != '_' {
+		return ErrInvalidToken
 	}
 
+	// Verifica che il checksum sia alla fine.
+	checksumPos := sepPos + 1
+	if checksumPos+checksumLen != tokenLen {
+		return ErrInvalidToken
+	}
+
+	// Estrae payload e checksum.
+	payload := token[len(prefix) : len(prefix)+payloadLen]
+	checksum := token[checksumPos:]
+
+	// Decodifica il payload, validando i caratteri base62.
+	raw, err := base62Decode(payload)
+	if err != nil {
+		return err
+	}
+
+	// Verifica checksum CRC32.
 	expected := base62Checksum(raw)
-	actual := token[len(token)-6:]
-	return expected == actual
+	if expected != checksum {
+		return ErrChecksumMismatch
+	}
+
+	return nil
+}
+
+// HashBytes restituisce l'hash SHA-256 grezzo del token come [32]byte.
+// Questo è il valore da salvare in api_tokens.token_hash (BYTEA, octet_length = 32).
+// Il token in chiaro non viene mai loggato o restituito da altre funzioni.
+func HashBytes(token string) [32]byte {
+	return sha256.Sum256([]byte(token))
 }
 
 // Hash calcola l'hash SHA-256 del token completo, restituito in
@@ -120,33 +179,45 @@ func Validate(token string) bool {
 //
 // Il token in chiaro non viene mai loggato o restituito.
 func Hash(token string) string {
-	h := sha256.Sum256([]byte(token))
+	h := HashBytes(token)
 	return fmt.Sprintf("%x", h)
 }
 
-// CompareToken confronta un token in chiaro con il suo hash
-// memorizzato nel database, usando un confronto a tempo costante
-// per prevenire side-channel attack.
-func CompareToken(token, hash string) bool {
-	return subtle.ConstantTimeCompare([]byte(Hash(token)), []byte(hash)) == 1
+// CompareToken confronta un token in chiaro con il suo hash salvato
+// nel database (32 byte grezzi, BYTEA). Usa un confronto a tempo
+// costante per prevenire side-channel attack.
+//
+// Se l'hash non ha esattamente 32 byte, ritorna false.
+func CompareToken(token, hashStr string) bool {
+	if len(hashStr) != 32 {
+		return false
+	}
+	tokenHash := HashBytes(token)
+	return subtle.ConstantTimeCompare(tokenHash[:], []byte(hashStr)) == 1
 }
 
 // ParseScopes analizza una lista di scope stringa e restituisce una
 // lista ordinata di scope validi.
 //
-// Rifiuta scope sconosciuti e duplicati, restituendo un errore.
-// La lista restituita è in ordine alfabetico (normalizzazione).
+// Restituisce ErrUnknownScope se trova uno scope non nel catalogo,
+// ErrDuplicateScope se trova duplicati. Restituisce la lista
+// normalizzata (ordine alfabetico) in caso di successo.
+var (
+	ErrUnknownScope  = errors.New("scope sconosciuto")
+	ErrDuplicateScope = errors.New("scope duplicato")
+)
+
 func ParseScopes(input []string) ([]string, error) {
 	known := buildScopeMap(KnownScopes)
 	seen := make(map[string]bool)
-	var result []string
+	result := make([]string, 0, len(input))
 
 	for _, s := range input {
 		if !known[s] {
-			return nil, fmt.Errorf("scope sconosciuto %q", s)
+			return nil, fmt.Errorf("%w %q: %s", ErrUnknownScope, s, "scope non nel catalogo")
 		}
 		if seen[s] {
-			return nil, fmt.Errorf("scope duplicato %q", s)
+			return nil, fmt.Errorf("%w %q: %s", ErrDuplicateScope, s, "scope già presente")
 		}
 		seen[s] = true
 		result = append(result, s)
@@ -198,42 +269,40 @@ func implies(s, target string, haveMap map[string]bool) bool {
 }
 
 // base62Encode codifica byte slice in stringa base62.
-// L'alfabeto base62 usato: A-Z, a-z, 0-9.
-// La stringa è sempre di 64 caratteri (padding con 'A' a sinistra se necessario).
+// La stringa risultante è sempre di 43 caratteri (padding con 'A' a sinistra se necessario).
 func base62Encode(data []byte) string {
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
 	num := new(big.Int).SetBytes(data)
 
 	var buf strings.Builder
 	rem := new(big.Int)
 	for num.Sign() > 0 {
 		num.DivMod(num, bigSixtyTwo, rem)
-		buf.WriteByte(alphabet[rem.Int64()])
+		buf.WriteByte(base62Alphabet[rem.Int64()])
 	}
 
 	s := reverse(buf.String())
-	// Padding con 'A' (valore 0 in base62) a sinistra fino a 64 caratteri.
-	for len(s) < 64 {
+	// Padding con 'A' (valore 0 in base62) a sinistra fino a 43 caratteri.
+	for len(s) < payloadLen {
 		s = "A" + s
 	}
 	return s
 }
 
 // base62Decode decodifica una stringa base62 in byte slice.
-// La stringa di input deve avere esattamente 64 caratteri.
-func base62Decode(s string) []byte {
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
-	// Mappa carattere → valore.
-	val := make(map[byte]int64, len(alphabet))
-	for i, c := range alphabet {
+// Restituisce un errore se trova caratteri non validi nell'alfabeto base62.
+func base62Decode(s string) ([]byte, error) {
+	// Costruisce la mappa valore-carattere per lookup rapido.
+	val := make(map[byte]int64, len(base62Alphabet))
+	for i, c := range base62Alphabet {
 		val[byte(c)] = int64(i)
 	}
 
 	num := new(big.Int)
 	for i := range s {
-		v := val[s[i]]
+		v, ok := val[s[i]]
+		if !ok {
+			return nil, ErrInvalidToken
+		}
 		num.Mul(num, bigSixtyTwo)
 		num.Add(num, big.NewInt(v))
 	}
@@ -243,23 +312,21 @@ func base62Decode(s string) []byte {
 	if len(raw) < 32 {
 		padded := make([]byte, 32)
 		copy(padded[32-len(raw):], raw)
-		return padded
+		return padded, nil
 	}
-	return raw
+	return raw, nil
 }
 
 // base62Checksum calcola il checksum CRC32 dei byte e lo codifica
 // in base62, restituendo esattamente 6 caratteri.
 func base62Checksum(data []byte) string {
 	checksum := crc32.ChecksumIEEE(data)
-	// CRC32 = 32 bit unsigned, codifica in base62 (6 caratteri).
 	val := uint64(checksum)
 
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	var buf [6]byte
+	var buf [checksumLen]byte
 
-	for i := 5; i >= 0; i-- {
-		buf[i] = alphabet[val%62]
+	for i := checksumLen - 1; i >= 0; i-- {
+		buf[i] = base62Alphabet[val%62]
 		val /= 62
 	}
 
