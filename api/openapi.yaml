@@ -32,6 +32,24 @@ tags:
     description: >
       Risorsa di prova generica, usata dal flusso end-to-end (UI → gateway →
       core → Postgres) e come base del modello a risorse generiche (D15).
+  - name: auth
+    description: Login, logout, sessione corrente, login OIDC esterno (M-02, D5).
+  - name: users
+    description: Utenti (persone e agenti) e profilo.
+  - name: tokens
+    description: Token personali con scope dell'utente corrente.
+  - name: ssh-keys
+    description: Chiavi SSH pubbliche dell'utente corrente.
+  - name: organizations
+    description: Organizzazioni e loro membri.
+  - name: teams
+    description: Team di un'organizzazione e loro membri.
+  - name: permissions
+    description: Grant e permessi effettivi su risorse generiche (D15).
+  - name: internal
+    description: >
+      Interfaccia interna fra servizi (verifica credenziali, permessi, chiavi
+      SSH). Non esposta dal gateway.
 
 paths:
   /health:
@@ -171,6 +189,1234 @@ paths:
           $ref: "#/components/responses/NotFound"
         default:
           $ref: "#/components/responses/UnexpectedError"
+  # ---------------------------------------------------------------------
+  # Identity (M-02): autenticazione, utenti, token, chiavi SSH,
+  # organizzazioni, team, permessi. Servite dal servizio `identity` dietro il
+  # gateway (services/identity/README.md).
+  # ---------------------------------------------------------------------
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Accede con username e password
+      description: >
+        Crea una sessione. La risposta imposta il cookie `gst_session`
+        (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le
+        credenziali sbagliate e l'utente disattivato rispondono entrambi 401
+        con `invalid_credentials`, senza distinguere i casi.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Sessione creata.
+          headers:
+            Set-Cookie:
+              description: Cookie di sessione `gst_session`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Termina la sessione corrente
+      description: Revoca la sessione del cookie `gst_session` e lo cancella.
+      security:
+        - sessionCookie: []
+      responses:
+        "204":
+          description: Sessione terminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/session:
+    get:
+      operationId: getCurrentSession
+      tags: [auth]
+      summary: Sessione corrente
+      description: >
+        Chi e' il chiamante e con quale credenziale (sessione o token
+        personale, con i suoi scope). Non richiede scope: basta essere
+        autenticati.
+      responses:
+        "200":
+          description: Chiamante autenticato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/oidc/providers:
+    get:
+      operationId: listOidcProviders
+      tags: [auth]
+      summary: Provider OIDC abilitati
+      description: Elenco pubblico per la pagina di login. Nessun segreto.
+      security: []
+      responses:
+        "200":
+          description: Provider abilitati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderList"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/oidc/{provider}/start:
+    parameters:
+      - $ref: "#/components/parameters/OidcProviderParam"
+    get:
+      operationId: startOidcLogin
+      tags: [auth]
+      summary: Avvia il login OIDC
+      description: >
+        Redirect (302) all'authorization endpoint del provider (authorization
+        code + PKCE). `redirectTo` e' un percorso relativo dove tornare dopo
+        il login.
+      security: []
+      parameters:
+        - name: redirectTo
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+            pattern: "^/[^/\\\\].*$|^/$"
+      responses:
+        "302":
+          description: Redirect al provider.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/oidc/{provider}/callback:
+    parameters:
+      - $ref: "#/components/parameters/OidcProviderParam"
+    get:
+      operationId: finishOidcLogin
+      tags: [auth]
+      summary: Completa il login OIDC
+      description: >
+        Callback del provider. Se l'identita' (provider, subject) e' gia'
+        collegata a un utente crea la sessione (cookie `gst_session`) e fa
+        redirect (302) a `redirectTo`; se non lo e' risponde 409
+        `oidc_identity_unlinked` (il collegamento non e' automatico via email).
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Sessione creata, redirect all'applicazione.
+          headers:
+            Location:
+              schema:
+                type: string
+            Set-Cookie:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: Elenca gli utenti
+      description: Richiede lo scope `read:user`. Il profilo pubblico non include l'email.
+      x-required-scopes: ["read:user"]
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Prefisso di username o nome visualizzato.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di utenti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Crea un utente
+      description: >
+        Solo amministratori, scope `write:user`. Serve a creare utenti umani
+        e agenti; non c'e' auto-registrazione.
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserInput"
+      responses:
+        "201":
+          description: Utente creato.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /users/{username}:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Legge il profilo di un utente
+      description: >
+        Scope `read:user`. L'email e i campi amministrativi compaiono solo
+        per l'utente stesso e per gli amministratori.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Utente trovato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Aggiorna il profilo
+      description: >
+        Scope `write:user`. Solo l'utente stesso (profilo) o un
+        amministratore (anche `isAdmin`, `isActive`).
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserInput"
+      responses:
+        "200":
+          description: Utente aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Elimina un utente
+      description: >
+        Solo amministratori, scope `write:user`. Elimina a cascata sessioni,
+        token, chiavi SSH e membership. Non si puo' eliminare l'ultimo
+        amministratore (409 `last_admin`).
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Utente eliminato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /users/{username}/password:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    put:
+      operationId: changePassword
+      tags: [users]
+      summary: Cambia la password
+      description: >
+        Scope `write:user`. L'utente stesso deve fornire `currentPassword`;
+        un amministratore no. Revoca le altre sessioni dell'utente.
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "204":
+          description: Password cambiata.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/tokens:
+    get:
+      operationId: listTokens
+      tags: [tokens]
+      summary: Elenca i token personali dell'utente corrente
+      description: Scope `read:user`. Mai il valore del token, solo `hint`.
+      x-required-scopes: ["read:user"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createToken
+      tags: [tokens]
+      summary: Crea un token personale
+      description: >
+        Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta
+        sola: il servizio conserva solo l'hash. Un token non puo' avere scope
+        che il suo creatore non ha.
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTokenInput"
+      responses:
+        "201":
+          description: Token creato.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedToken"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/tokens/{tokenId}:
+    parameters:
+      - $ref: "#/components/parameters/TokenIdParam"
+    delete:
+      operationId: revokeToken
+      tags: [tokens]
+      summary: Revoca un token personale
+      description: Scope `write:user`. La revoca e' immediata per identity; il gateway la vede entro il TTL della cache di verifica.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Token revocato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/ssh-keys:
+    get:
+      operationId: listSshKeys
+      tags: [ssh-keys]
+      summary: Elenca le chiavi SSH dell'utente corrente
+      x-required-scopes: ["read:user"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di chiavi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SshKeyList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: addSshKey
+      tags: [ssh-keys]
+      summary: Aggiunge una chiave SSH
+      description: >
+        Scope `write:user`. Il servizio valida la chiave, calcola il
+        fingerprint SHA256 e lo tiene unico: la stessa chiave non puo'
+        appartenere a due utenti (409 `ssh_key_in_use`).
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddSshKeyInput"
+      responses:
+        "201":
+          description: Chiave aggiunta.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SshKey"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/ssh-keys/{keyId}:
+    parameters:
+      - $ref: "#/components/parameters/SshKeyIdParam"
+    get:
+      operationId: getSshKey
+      tags: [ssh-keys]
+      summary: Legge una chiave SSH
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Chiave trovata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SshKey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteSshKey
+      tags: [ssh-keys]
+      summary: Elimina una chiave SSH
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Chiave eliminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs:
+    get:
+      operationId: listOrganizations
+      tags: [organizations]
+      summary: Elenca le organizzazioni
+      description: Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
+      x-required-scopes: ["read:org"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di organizzazioni.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createOrganization
+      tags: [organizations]
+      summary: Crea un'organizzazione
+      description: Scope `write:org`. Il creatore ne diventa `owner`.
+      x-required-scopes: ["write:org"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationInput"
+      responses:
+        "201":
+          description: Organizzazione creata.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+    get:
+      operationId: getOrganization
+      tags: [organizations]
+      summary: Legge un'organizzazione
+      x-required-scopes: ["read:org"]
+      responses:
+        "200":
+          description: Organizzazione trovata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateOrganization
+      tags: [organizations]
+      summary: Aggiorna un'organizzazione
+      description: Scope `write:org`, ruolo `owner`.
+      x-required-scopes: ["write:org"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationInput"
+      responses:
+        "200":
+          description: Organizzazione aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteOrganization
+      tags: [organizations]
+      summary: Elimina un'organizzazione
+      description: Scope `admin:org`, ruolo `owner`. Elimina a cascata team e membership.
+      x-required-scopes: ["admin:org"]
+      responses:
+        "204":
+          description: Organizzazione eliminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/members:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+    get:
+      operationId: listOrgMembers
+      tags: [organizations]
+      summary: Elenca i membri di un'organizzazione
+      x-required-scopes: ["read:org"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di membri.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgMemberList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/members/{username}:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/UsernameParam"
+    put:
+      operationId: setOrgMember
+      tags: [organizations]
+      summary: Aggiunge un membro o ne cambia il ruolo
+      description: Scope `write:org`, ruolo `owner`. Idempotente.
+      x-required-scopes: ["write:org"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetOrgMemberInput"
+      responses:
+        "200":
+          description: Membro impostato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: removeOrgMember
+      tags: [organizations]
+      summary: Rimuove un membro
+      description: >
+        Scope `write:org`, ruolo `owner` (o l'utente stesso). Lo toglie anche
+        da tutti i team. Non si rimuove l'ultimo `owner` (409 `last_owner`).
+      x-required-scopes: ["write:org"]
+      responses:
+        "204":
+          description: Membro rimosso.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/teams:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: Elenca i team di un'organizzazione
+      x-required-scopes: ["read:org"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Crea un team
+      description: Scope `write:org`, ruolo `owner`.
+      x-required-scopes: ["write:org"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamInput"
+      responses:
+        "201":
+          description: Team creato.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/teams/{team}:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/TeamParam"
+    get:
+      operationId: getTeam
+      tags: [teams]
+      summary: Legge un team
+      x-required-scopes: ["read:org"]
+      responses:
+        "200":
+          description: Team trovato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Aggiorna un team
+      x-required-scopes: ["write:org"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamInput"
+      responses:
+        "200":
+          description: Team aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteTeam
+      tags: [teams]
+      summary: Elimina un team
+      description: Elimina anche i grant assegnati al team.
+      x-required-scopes: ["write:org"]
+      responses:
+        "204":
+          description: Team eliminato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/teams/{team}/members:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/TeamParam"
+    get:
+      operationId: listTeamMembers
+      tags: [teams]
+      summary: Elenca i membri di un team
+      x-required-scopes: ["read:org"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di membri.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMemberList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/teams/{team}/members/{username}:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/TeamParam"
+      - $ref: "#/components/parameters/UsernameParam"
+    put:
+      operationId: setTeamMember
+      tags: [teams]
+      summary: Aggiunge un membro al team o ne cambia il ruolo
+      description: >
+        Scope `write:org`. L'utente deve essere gia' membro
+        dell'organizzazione (altrimenti 422 `not_org_member`). Idempotente.
+      x-required-scopes: ["write:org"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTeamMemberInput"
+      responses:
+        "200":
+          description: Membro del team impostato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: removeTeamMember
+      tags: [teams]
+      summary: Rimuove un membro dal team
+      x-required-scopes: ["write:org"]
+      responses:
+        "204":
+          description: Membro rimosso dal team.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /resources/{resourceId}/grants:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIdParam"
+    get:
+      operationId: listResourceGrants
+      tags: [permissions]
+      summary: Elenca i grant di una risorsa
+      description: Scope `read:resource`; serve almeno il ruolo `admin` sulla risorsa.
+      x-required-scopes: ["read:resource"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di grant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GrantList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createResourceGrant
+      tags: [permissions]
+      summary: Assegna un ruolo su una risorsa a un utente o a un team
+      description: >
+        Scope `write:resource`; serve il ruolo `admin` sulla risorsa. Un solo
+        grant per (risorsa, soggetto): il secondo risponde 409.
+      x-required-scopes: ["write:resource"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGrantInput"
+      responses:
+        "201":
+          description: Grant creato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Grant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /resources/{resourceId}/grants/{grantId}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIdParam"
+      - $ref: "#/components/parameters/GrantIdParam"
+    patch:
+      operationId: updateResourceGrant
+      tags: [permissions]
+      summary: Cambia il ruolo di un grant
+      x-required-scopes: ["write:resource"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGrantInput"
+      responses:
+        "200":
+          description: Grant aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Grant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteResourceGrant
+      tags: [permissions]
+      summary: Revoca un grant
+      x-required-scopes: ["write:resource"]
+      responses:
+        "204":
+          description: Grant revocato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /resources/{resourceId}/permissions:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIdParam"
+    get:
+      operationId: getMyResourcePermission
+      tags: [permissions]
+      summary: Permesso effettivo del chiamante su una risorsa
+      description: >
+        Ruolo effettivo (grant diretto, via team, amministratore) tenendo
+        conto degli scope del token. Scope `read:resource`.
+      x-required-scopes: ["read:resource"]
+      responses:
+        "200":
+          description: Permesso effettivo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectivePermission"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  # ---------------------------------------------------------------------
+  # Interfaccia interna identity <-> altri servizi. NON esposta dal gateway
+  # (che deve rifiutare /v1/internal/*): raggiungibile solo dalla rete del
+  # cluster e protetta da un segreto condiviso di servizio (`serviceAuth`).
+  # ---------------------------------------------------------------------
+
+  /internal/verify:
+    post:
+      operationId: verifyCredential
+      tags: [internal]
+      summary: Verifica una credenziale (per il gateway)
+      description: >
+        Il gateway invia il valore grezzo della credenziale (cookie di
+        sessione oppure token `gst_...`) e riceve il principal. Non c'e'
+        distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false.
+        Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyCredentialInput"
+      responses:
+        "200":
+          description: Esito della verifica.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyCredentialResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/permissions/check:
+    post:
+      operationId: checkPermission
+      tags: [internal]
+      summary: Verifica un permesso su una risorsa
+      description: >
+        Usata da core e git per applicare i permessi: `allowed` e' vero se
+        l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto,
+        via team o amministratore).
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckPermissionInput"
+      responses:
+        "200":
+          description: Esito.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckPermissionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/ssh-keys/{fingerprint}:
+    parameters:
+      - name: fingerprint
+        in: path
+        required: true
+        description: Fingerprint `SHA256:...` (URL-encoded).
+        schema:
+          type: string
+          pattern: "^SHA256:[A-Za-z0-9+/]{43}$"
+    get:
+      operationId: lookupSshKey
+      tags: [internal]
+      summary: Risolve un utente dal fingerprint di una chiave SSH
+      description: Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Chiave e utente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SshKeyLookup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
 
 components:
   securitySchemes:
@@ -179,8 +1425,23 @@ components:
       scheme: bearer
       bearerFormat: token
       description: >
-        Token verificato dal `gateway` (identity). Stesso schema per UI, CLI
-        `gs`, skills e agenti.
+        Token personale `gst_...` verificato dal `gateway` tramite identity.
+        Stesso schema per CLI `gs`, skills e agenti. Ogni operazione di
+        identity indica gli scope richiesti in `x-required-scopes`; le
+        sessioni web (cookie) non hanno scope.
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: gst_session
+      description: >
+        Sessione web creata da `POST /auth/login` o dal login OIDC. Valore
+        opaco; identity ne conserva solo l'hash.
+    serviceAuth:
+      type: http
+      scheme: bearer
+      description: >
+        Solo interfaccia interna: segreto condiviso di servizio fra gateway,
+        core, git e identity. Non e' un token utente.
 
   parameters:
     ResourceIdParam:
@@ -216,6 +1477,54 @@ components:
         minimum: 1
         maximum: 100
         default: 20
+    UsernameParam:
+      name: username
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Name"
+    OrgParam:
+      name: org
+      in: path
+      required: true
+      description: Nome (slug) dell'organizzazione.
+      schema:
+        $ref: "#/components/schemas/Name"
+    TeamParam:
+      name: team
+      in: path
+      required: true
+      description: Nome (slug) del team, unico dentro l'organizzazione.
+      schema:
+        $ref: "#/components/schemas/Name"
+    TokenIdParam:
+      name: tokenId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SshKeyIdParam:
+      name: keyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GrantIdParam:
+      name: grantId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OidcProviderParam:
+      name: provider
+      in: path
+      required: true
+      description: Slug del provider OIDC.
+      schema:
+        $ref: "#/components/schemas/Name"
 
   schemas:
     Health:
@@ -316,7 +1625,14 @@ components:
 
     Error:
       type: object
-      description: Formato unico degli errori per tutta l'API pubblica.
+      description: >
+        Formato unico degli errori per tutta l'API pubblica. Codici comuni per
+        stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`;
+        403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict`
+        e varianti specifiche (`already_exists`, `last_admin`, `last_owner`,
+        `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed`
+        (`details.fields`). Le risposte 401 non distinguono mai "utente
+        inesistente" da "password errata".
       additionalProperties: false
       required: [error]
       properties:
@@ -336,6 +1652,773 @@ components:
               type: object
               additionalProperties: true
               description: Dettagli opzionali specifici dell'errore.
+    Name:
+      type: string
+      description: >
+        Nome breve in minuscolo (username, organizzazione, team, provider):
+        lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce
+        con un carattere alfanumerico.
+      pattern: "^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$"
+      minLength: 1
+      maxLength: 39
+      example: alice
+
+    TokenScope:
+      type: string
+      description: >
+        Catalogo degli scope dei token personali (unico, condiviso da tutti i
+        servizi). Le sessioni web non hanno scope: valgono i permessi
+        dell'utente. `write:*` include `read:*` dello stesso ambito;
+        `admin:org` include `write:org`.
+      enum:
+        - read:user
+        - write:user
+        - read:org
+        - write:org
+        - admin:org
+        - read:resource
+        - write:resource
+
+    ResourceRole:
+      type: string
+      description: Ruolo su una risorsa, in ordine crescente di potere.
+      enum: [read, write, admin]
+
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 254
+          description: Username oppure email.
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          format: password
+          writeOnly: true
+
+    User:
+      type: object
+      description: >
+        Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono
+        presenti solo per l'utente stesso e per gli amministratori.
+      additionalProperties: false
+      required: [id, username, kind, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+        displayName:
+          type: string
+          maxLength: 128
+        bio:
+          type: string
+          maxLength: 1024
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        isAdmin:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateUserInput:
+      type: object
+      additionalProperties: false
+      required: [username]
+      properties:
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+          default: human
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          maxLength: 128
+        password:
+          type: string
+          minLength: 12
+          maxLength: 1024
+          format: password
+          writeOnly: true
+          description: Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+        isAdmin:
+          type: boolean
+          default: false
+
+    UpdateUserInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          maxLength: 128
+        bio:
+          type: string
+          maxLength: 1024
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        email:
+          type: string
+          format: email
+        isAdmin:
+          type: boolean
+          description: Solo amministratori.
+        isActive:
+          type: boolean
+          description: Solo amministratori. Disattivare revoca le sessioni e i token.
+
+    UserList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    ChangePasswordInput:
+      type: object
+      additionalProperties: false
+      required: [newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          writeOnly: true
+          maxLength: 1024
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 1024
+          format: password
+          writeOnly: true
+
+    CurrentSession:
+      type: object
+      additionalProperties: false
+      required: [user, authMethod]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        authMethod:
+          type: string
+          enum: [password, oidc, token]
+          description: Come e' stato autenticato il chiamante.
+        scopes:
+          type: array
+          description: Solo per `authMethod` = `token`.
+          items:
+            $ref: "#/components/schemas/TokenScope"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    OidcProvider:
+      type: object
+      additionalProperties: false
+      required: [slug, displayName]
+      properties:
+        slug:
+          $ref: "#/components/schemas/Name"
+        displayName:
+          type: string
+
+    OidcProviderList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OidcProvider"
+
+    Token:
+      type: object
+      description: Token personale, senza il valore (che non e' recuperabile).
+      additionalProperties: false
+      required: [id, name, scopes, hint, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        scopes:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TokenScope"
+        hint:
+          type: string
+          minLength: 4
+          maxLength: 4
+          description: Ultimi 4 caratteri del token, per riconoscerlo.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateTokenInput:
+      type: object
+      additionalProperties: false
+      required: [name, scopes]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        scopes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/TokenScope"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Assente = non scade.
+
+    CreatedToken:
+      description: Il token appena creato; `token` compare solo in questa risposta.
+      allOf:
+        - $ref: "#/components/schemas/Token"
+        - type: object
+          required: [token]
+          properties:
+            token:
+              type: string
+              pattern: "^gst_[A-Za-z0-9_-]{32,}$"
+              description: Valore in chiaro, formato `gst_<casuale>`. Non viene salvato.
+
+    TokenList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Token"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    SshKey:
+      type: object
+      additionalProperties: false
+      required: [id, title, keyType, fingerprint, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          minLength: 1
+          maxLength: 64
+        keyType:
+          type: string
+          example: ssh-ed25519
+        fingerprint:
+          type: string
+          pattern: "^SHA256:[A-Za-z0-9+/]{43}$"
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    AddSshKeyInput:
+      type: object
+      additionalProperties: false
+      required: [title, publicKey]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 64
+        publicKey:
+          type: string
+          maxLength: 8192
+          example: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... alice@laptop"
+          description: Riga in formato `authorized_keys` (tipo, base64, commento facoltativo).
+
+    SshKeyList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SshKey"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    SshKeyLookup:
+      type: object
+      additionalProperties: false
+      required: [key, user]
+      properties:
+        key:
+          $ref: "#/components/schemas/SshKey"
+        user:
+          $ref: "#/components/schemas/User"
+
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          $ref: "#/components/schemas/Name"
+        displayName:
+          type: string
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1024
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateOrganizationInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          $ref: "#/components/schemas/Name"
+        displayName:
+          type: string
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1024
+
+    UpdateOrganizationInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1024
+
+    OrganizationList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Organization"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    OrgRole:
+      type: string
+      description: "`owner` gestisce organizzazione, team e membri; `member` no."
+      enum: [owner, member]
+
+    OrgMember:
+      type: object
+      additionalProperties: false
+      required: [user, role, createdAt]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        role:
+          $ref: "#/components/schemas/OrgRole"
+        createdAt:
+          type: string
+          format: date-time
+
+    SetOrgMemberInput:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/OrgRole"
+
+    OrgMemberList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgMember"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    Team:
+      type: object
+      additionalProperties: false
+      required: [id, orgId, name, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        orgId:
+          type: string
+          format: uuid
+        name:
+          $ref: "#/components/schemas/Name"
+        description:
+          type: string
+          maxLength: 1024
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateTeamInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          $ref: "#/components/schemas/Name"
+        description:
+          type: string
+          maxLength: 1024
+
+    UpdateTeamInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          $ref: "#/components/schemas/Name"
+        description:
+          type: string
+          maxLength: 1024
+
+    TeamList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    TeamRole:
+      type: string
+      description: "`maintainer` gestisce i membri del team."
+      enum: [member, maintainer]
+
+    TeamMember:
+      type: object
+      additionalProperties: false
+      required: [user, role, createdAt]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        role:
+          $ref: "#/components/schemas/TeamRole"
+        createdAt:
+          type: string
+          format: date-time
+
+    SetTeamMemberInput:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          $ref: "#/components/schemas/TeamRole"
+
+    TeamMemberList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    Grant:
+      type: object
+      description: Ruolo su una risorsa generica (D15) per un utente o un team.
+      additionalProperties: false
+      required: [id, resourceId, subjectType, subjectId, role, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resourceId:
+          type: string
+          format: uuid
+        subjectType:
+          type: string
+          enum: [user, team]
+        subjectId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateGrantInput:
+      type: object
+      additionalProperties: false
+      required: [subjectType, subjectId, role]
+      properties:
+        subjectType:
+          type: string
+          enum: [user, team]
+        subjectId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+
+    UpdateGrantInput:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+
+    GrantList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Grant"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    EffectivePermission:
+      type: object
+      additionalProperties: false
+      required: [resourceId, role]
+      properties:
+        resourceId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          allOf:
+            - $ref: "#/components/schemas/ResourceRole"
+          nullable: true
+          description: Ruolo effettivo; `null` = nessun accesso.
+
+    VerifyCredentialInput:
+      type: object
+      additionalProperties: false
+      required: [credential]
+      properties:
+        credential:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+          description: Valore grezzo della credenziale (cookie `gst_session` o token `gst_...`).
+        kind:
+          type: string
+          enum: [session, token]
+          description: Facoltativo, evita l'ambiguita' se il gateway la conosce.
+
+    Principal:
+      type: object
+      description: Chi ha presentato la credenziale.
+      additionalProperties: false
+      required: [userId, username, kind, isAdmin, authMethod]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+        isAdmin:
+          type: boolean
+        authMethod:
+          type: string
+          enum: [password, oidc, token]
+        scopes:
+          type: array
+          description: Solo per i token; assenti per le sessioni.
+          items:
+            $ref: "#/components/schemas/TokenScope"
+        credentialId:
+          type: string
+          format: uuid
+          description: Id della sessione o del token (per audit).
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    VerifyCredentialResult:
+      type: object
+      additionalProperties: false
+      required: [active]
+      properties:
+        active:
+          type: boolean
+        principal:
+          $ref: "#/components/schemas/Principal"
+        cacheTtlSeconds:
+          type: integer
+          minimum: 0
+          description: Per quanto tempo il gateway puo' tenere in cache l'esito.
+
+    CheckPermissionInput:
+      type: object
+      additionalProperties: false
+      required: [userId, resourceId, role]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        resourceId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+
+    CheckPermissionResult:
+      type: object
+      additionalProperties: false
+      required: [allowed]
+      properties:
+        allowed:
+          type: boolean
+        effectiveRole:
+          type: string
+          allOf:
+            - $ref: "#/components/schemas/ResourceRole"
+          nullable: true
 
   responses:
     BadRequest:
@@ -368,6 +2451,24 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: >
+        Autenticato ma non autorizzato: scope del token insufficiente
+        (`insufficient_scope`, con `details.required`) o permesso mancante
+        (`forbidden`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnprocessableEntity:
+      description: >
+        Richiesta ben formata ma non valida semanticamente (`validation_failed`,
+        con `details.fields` = mappa campo -> motivo).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 
 security:
   - bearerAuth: []
+  - sessionCookie: []

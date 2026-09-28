@@ -5,3 +5,14 @@ generate:
 output: api.gen.go
 output-options:
   skip-prune: false
+  # Le operazioni di identity (M-02) le serve il servizio identity: questo
+  # servizio implementa solo le proprie.
+  exclude-tags:
+    - auth
+    - users
+    - tokens
+    - ssh-keys
+    - organizations
+    - teams
+    - permissions
+    - internal

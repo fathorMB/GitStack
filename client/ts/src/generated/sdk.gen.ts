@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateResourceData, CreateResourceErrors, CreateResourceResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceResponses, GetHealthData, GetHealthResponses, GetResourceData, GetResourceErrors, GetResourceResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -33,7 +33,15 @@ export const getHealth = <ThrowOnError extends boolean = false>(options?: Option
  *
  */
 export const listResources = <ThrowOnError extends boolean = false>(options?: Options<ListResourcesData, ThrowOnError>): RequestResult<ListResourcesResponses, ListResourcesErrors, ThrowOnError> => (options?.client ?? client).get<ListResourcesResponses, ListResourcesErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
     url: '/resources',
     ...options
 });
@@ -42,7 +50,15 @@ export const listResources = <ThrowOnError extends boolean = false>(options?: Op
  * Crea una risorsa
  */
 export const createResource = <ThrowOnError extends boolean = false>(options: Options<CreateResourceData, ThrowOnError>): RequestResult<CreateResourceResponses, CreateResourceErrors, ThrowOnError> => (options.client ?? client).post<CreateResourceResponses, CreateResourceErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
     url: '/resources',
     ...options,
     headers: {
@@ -55,7 +71,15 @@ export const createResource = <ThrowOnError extends boolean = false>(options: Op
  * Elimina una risorsa
  */
 export const deleteResource = <ThrowOnError extends boolean = false>(options: Options<DeleteResourceData, ThrowOnError>): RequestResult<DeleteResourceResponses, DeleteResourceErrors, ThrowOnError> => (options.client ?? client).delete<DeleteResourceResponses, DeleteResourceErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
     url: '/resources/{resourceId}',
     ...options
 });
@@ -64,7 +88,15 @@ export const deleteResource = <ThrowOnError extends boolean = false>(options: Op
  * Legge una risorsa
  */
 export const getResource = <ThrowOnError extends boolean = false>(options: Options<GetResourceData, ThrowOnError>): RequestResult<GetResourceResponses, GetResourceErrors, ThrowOnError> => (options.client ?? client).get<GetResourceResponses, GetResourceErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
     url: '/resources/{resourceId}',
     ...options
 });
@@ -75,11 +107,832 @@ export const getResource = <ThrowOnError extends boolean = false>(options: Optio
  * Aggiornamento parziale: solo i campi presenti nel corpo cambiano.
  */
 export const updateResource = <ThrowOnError extends boolean = false>(options: Options<UpdateResourceData, ThrowOnError>): RequestResult<UpdateResourceResponses, UpdateResourceErrors, ThrowOnError> => (options.client ?? client).patch<UpdateResourceResponses, UpdateResourceErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
     url: '/resources/{resourceId}',
     ...options,
     headers: {
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Accede con username e password
+ *
+ * Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+ *
+ */
+export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>): RequestResult<LoginResponses, LoginErrors, ThrowOnError> => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
+    url: '/auth/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Termina la sessione corrente
+ *
+ * Revoca la sessione del cookie `gst_session` e lo cancella.
+ */
+export const logout = <ThrowOnError extends boolean = false>(options?: Options<LogoutData, ThrowOnError>): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError> => (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/auth/logout',
+    ...options
+});
+
+/**
+ * Sessione corrente
+ *
+ * Chi e' il chiamante e con quale credenziale (sessione o token personale, con i suoi scope). Non richiede scope: basta essere autenticati.
+ *
+ */
+export const getCurrentSession = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentSessionData, ThrowOnError>): RequestResult<GetCurrentSessionResponses, GetCurrentSessionErrors, ThrowOnError> => (options?.client ?? client).get<GetCurrentSessionResponses, GetCurrentSessionErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/auth/session',
+    ...options
+});
+
+/**
+ * Provider OIDC abilitati
+ *
+ * Elenco pubblico per la pagina di login. Nessun segreto.
+ */
+export const listOidcProviders = <ThrowOnError extends boolean = false>(options?: Options<ListOidcProvidersData, ThrowOnError>): RequestResult<ListOidcProvidersResponses, ListOidcProvidersErrors, ThrowOnError> => (options?.client ?? client).get<ListOidcProvidersResponses, ListOidcProvidersErrors, ThrowOnError>({ url: '/auth/oidc/providers', ...options });
+
+/**
+ * Avvia il login OIDC
+ *
+ * Redirect (302) all'authorization endpoint del provider (authorization code + PKCE). `redirectTo` e' un percorso relativo dove tornare dopo il login.
+ *
+ */
+export const startOidcLogin = <ThrowOnError extends boolean = false>(options: Options<StartOidcLoginData, ThrowOnError>): RequestResult<StartOidcLoginResponses, StartOidcLoginErrors, ThrowOnError> => (options.client ?? client).get<StartOidcLoginResponses, StartOidcLoginErrors, ThrowOnError>({ url: '/auth/oidc/{provider}/start', ...options });
+
+/**
+ * Completa il login OIDC
+ *
+ * Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`; se non lo e' risponde 409 `oidc_identity_unlinked` (il collegamento non e' automatico via email).
+ *
+ */
+export const finishOidcLogin = <ThrowOnError extends boolean = false>(options: Options<FinishOidcLoginData, ThrowOnError>): RequestResult<FinishOidcLoginResponses, FinishOidcLoginErrors, ThrowOnError> => (options.client ?? client).get<FinishOidcLoginResponses, FinishOidcLoginErrors, ThrowOnError>({ url: '/auth/oidc/{provider}/callback', ...options });
+
+/**
+ * Elenca gli utenti
+ *
+ * Richiede lo scope `read:user`. Il profilo pubblico non include l'email.
+ */
+export const listUsers = <ThrowOnError extends boolean = false>(options?: Options<ListUsersData, ThrowOnError>): RequestResult<ListUsersResponses, ListUsersErrors, ThrowOnError> => (options?.client ?? client).get<ListUsersResponses, ListUsersErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users',
+    ...options
+});
+
+/**
+ * Crea un utente
+ *
+ * Solo amministratori, scope `write:user`. Serve a creare utenti umani e agenti; non c'e' auto-registrazione.
+ *
+ */
+export const createUser = <ThrowOnError extends boolean = false>(options: Options<CreateUserData, ThrowOnError>): RequestResult<CreateUserResponses, CreateUserErrors, ThrowOnError> => (options.client ?? client).post<CreateUserResponses, CreateUserErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina un utente
+ *
+ * Solo amministratori, scope `write:user`. Elimina a cascata sessioni, token, chiavi SSH e membership. Non si puo' eliminare l'ultimo amministratore (409 `last_admin`).
+ *
+ */
+export const deleteUser = <ThrowOnError extends boolean = false>(options: Options<DeleteUserData, ThrowOnError>): RequestResult<DeleteUserResponses, DeleteUserErrors, ThrowOnError> => (options.client ?? client).delete<DeleteUserResponses, DeleteUserErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}',
+    ...options
+});
+
+/**
+ * Legge il profilo di un utente
+ *
+ * Scope `read:user`. L'email e i campi amministrativi compaiono solo per l'utente stesso e per gli amministratori.
+ *
+ */
+export const getUser = <ThrowOnError extends boolean = false>(options: Options<GetUserData, ThrowOnError>): RequestResult<GetUserResponses, GetUserErrors, ThrowOnError> => (options.client ?? client).get<GetUserResponses, GetUserErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}',
+    ...options
+});
+
+/**
+ * Aggiorna il profilo
+ *
+ * Scope `write:user`. Solo l'utente stesso (profilo) o un amministratore (anche `isAdmin`, `isActive`).
+ *
+ */
+export const updateUser = <ThrowOnError extends boolean = false>(options: Options<UpdateUserData, ThrowOnError>): RequestResult<UpdateUserResponses, UpdateUserErrors, ThrowOnError> => (options.client ?? client).patch<UpdateUserResponses, UpdateUserErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Cambia la password
+ *
+ * Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+ *
+ */
+export const changePassword = <ThrowOnError extends boolean = false>(options: Options<ChangePasswordData, ThrowOnError>): RequestResult<ChangePasswordResponses, ChangePasswordErrors, ThrowOnError> => (options.client ?? client).put<ChangePasswordResponses, ChangePasswordErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i token personali dell'utente corrente
+ *
+ * Scope `read:user`. Mai il valore del token, solo `hint`.
+ */
+export const listTokens = <ThrowOnError extends boolean = false>(options?: Options<ListTokensData, ThrowOnError>): RequestResult<ListTokensResponses, ListTokensErrors, ThrowOnError> => (options?.client ?? client).get<ListTokensResponses, ListTokensErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/tokens',
+    ...options
+});
+
+/**
+ * Crea un token personale
+ *
+ * Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+ *
+ */
+export const createToken = <ThrowOnError extends boolean = false>(options: Options<CreateTokenData, ThrowOnError>): RequestResult<CreateTokenResponses, CreateTokenErrors, ThrowOnError> => (options.client ?? client).post<CreateTokenResponses, CreateTokenErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/tokens',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoca un token personale
+ *
+ * Scope `write:user`. La revoca e' immediata per identity; il gateway la vede entro il TTL della cache di verifica.
+ */
+export const revokeToken = <ThrowOnError extends boolean = false>(options: Options<RevokeTokenData, ThrowOnError>): RequestResult<RevokeTokenResponses, RevokeTokenErrors, ThrowOnError> => (options.client ?? client).delete<RevokeTokenResponses, RevokeTokenErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/tokens/{tokenId}',
+    ...options
+});
+
+/**
+ * Elenca le chiavi SSH dell'utente corrente
+ */
+export const listSshKeys = <ThrowOnError extends boolean = false>(options?: Options<ListSshKeysData, ThrowOnError>): RequestResult<ListSshKeysResponses, ListSshKeysErrors, ThrowOnError> => (options?.client ?? client).get<ListSshKeysResponses, ListSshKeysErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/ssh-keys',
+    ...options
+});
+
+/**
+ * Aggiunge una chiave SSH
+ *
+ * Scope `write:user`. Il servizio valida la chiave, calcola il fingerprint SHA256 e lo tiene unico: la stessa chiave non puo' appartenere a due utenti (409 `ssh_key_in_use`).
+ *
+ */
+export const addSshKey = <ThrowOnError extends boolean = false>(options: Options<AddSshKeyData, ThrowOnError>): RequestResult<AddSshKeyResponses, AddSshKeyErrors, ThrowOnError> => (options.client ?? client).post<AddSshKeyResponses, AddSshKeyErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/ssh-keys',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina una chiave SSH
+ */
+export const deleteSshKey = <ThrowOnError extends boolean = false>(options: Options<DeleteSshKeyData, ThrowOnError>): RequestResult<DeleteSshKeyResponses, DeleteSshKeyErrors, ThrowOnError> => (options.client ?? client).delete<DeleteSshKeyResponses, DeleteSshKeyErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/ssh-keys/{keyId}',
+    ...options
+});
+
+/**
+ * Legge una chiave SSH
+ */
+export const getSshKey = <ThrowOnError extends boolean = false>(options: Options<GetSshKeyData, ThrowOnError>): RequestResult<GetSshKeyResponses, GetSshKeyErrors, ThrowOnError> => (options.client ?? client).get<GetSshKeyResponses, GetSshKeyErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/ssh-keys/{keyId}',
+    ...options
+});
+
+/**
+ * Elenca le organizzazioni
+ *
+ * Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
+ */
+export const listOrganizations = <ThrowOnError extends boolean = false>(options?: Options<ListOrganizationsData, ThrowOnError>): RequestResult<ListOrganizationsResponses, ListOrganizationsErrors, ThrowOnError> => (options?.client ?? client).get<ListOrganizationsResponses, ListOrganizationsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs',
+    ...options
+});
+
+/**
+ * Crea un'organizzazione
+ *
+ * Scope `write:org`. Il creatore ne diventa `owner`.
+ */
+export const createOrganization = <ThrowOnError extends boolean = false>(options: Options<CreateOrganizationData, ThrowOnError>): RequestResult<CreateOrganizationResponses, CreateOrganizationErrors, ThrowOnError> => (options.client ?? client).post<CreateOrganizationResponses, CreateOrganizationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina un'organizzazione
+ *
+ * Scope `admin:org`, ruolo `owner`. Elimina a cascata team e membership.
+ */
+export const deleteOrganization = <ThrowOnError extends boolean = false>(options: Options<DeleteOrganizationData, ThrowOnError>): RequestResult<DeleteOrganizationResponses, DeleteOrganizationErrors, ThrowOnError> => (options.client ?? client).delete<DeleteOrganizationResponses, DeleteOrganizationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}',
+    ...options
+});
+
+/**
+ * Legge un'organizzazione
+ */
+export const getOrganization = <ThrowOnError extends boolean = false>(options: Options<GetOrganizationData, ThrowOnError>): RequestResult<GetOrganizationResponses, GetOrganizationErrors, ThrowOnError> => (options.client ?? client).get<GetOrganizationResponses, GetOrganizationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}',
+    ...options
+});
+
+/**
+ * Aggiorna un'organizzazione
+ *
+ * Scope `write:org`, ruolo `owner`.
+ */
+export const updateOrganization = <ThrowOnError extends boolean = false>(options: Options<UpdateOrganizationData, ThrowOnError>): RequestResult<UpdateOrganizationResponses, UpdateOrganizationErrors, ThrowOnError> => (options.client ?? client).patch<UpdateOrganizationResponses, UpdateOrganizationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i membri di un'organizzazione
+ */
+export const listOrgMembers = <ThrowOnError extends boolean = false>(options: Options<ListOrgMembersData, ThrowOnError>): RequestResult<ListOrgMembersResponses, ListOrgMembersErrors, ThrowOnError> => (options.client ?? client).get<ListOrgMembersResponses, ListOrgMembersErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/members',
+    ...options
+});
+
+/**
+ * Rimuove un membro
+ *
+ * Scope `write:org`, ruolo `owner` (o l'utente stesso). Lo toglie anche da tutti i team. Non si rimuove l'ultimo `owner` (409 `last_owner`).
+ *
+ */
+export const removeOrgMember = <ThrowOnError extends boolean = false>(options: Options<RemoveOrgMemberData, ThrowOnError>): RequestResult<RemoveOrgMemberResponses, RemoveOrgMemberErrors, ThrowOnError> => (options.client ?? client).delete<RemoveOrgMemberResponses, RemoveOrgMemberErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/members/{username}',
+    ...options
+});
+
+/**
+ * Aggiunge un membro o ne cambia il ruolo
+ *
+ * Scope `write:org`, ruolo `owner`. Idempotente.
+ */
+export const setOrgMember = <ThrowOnError extends boolean = false>(options: Options<SetOrgMemberData, ThrowOnError>): RequestResult<SetOrgMemberResponses, SetOrgMemberErrors, ThrowOnError> => (options.client ?? client).put<SetOrgMemberResponses, SetOrgMemberErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/members/{username}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i team di un'organizzazione
+ */
+export const listTeams = <ThrowOnError extends boolean = false>(options: Options<ListTeamsData, ThrowOnError>): RequestResult<ListTeamsResponses, ListTeamsErrors, ThrowOnError> => (options.client ?? client).get<ListTeamsResponses, ListTeamsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams',
+    ...options
+});
+
+/**
+ * Crea un team
+ *
+ * Scope `write:org`, ruolo `owner`.
+ */
+export const createTeam = <ThrowOnError extends boolean = false>(options: Options<CreateTeamData, ThrowOnError>): RequestResult<CreateTeamResponses, CreateTeamErrors, ThrowOnError> => (options.client ?? client).post<CreateTeamResponses, CreateTeamErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina un team
+ *
+ * Elimina anche i grant assegnati al team.
+ */
+export const deleteTeam = <ThrowOnError extends boolean = false>(options: Options<DeleteTeamData, ThrowOnError>): RequestResult<DeleteTeamResponses, DeleteTeamErrors, ThrowOnError> => (options.client ?? client).delete<DeleteTeamResponses, DeleteTeamErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams/{team}',
+    ...options
+});
+
+/**
+ * Legge un team
+ */
+export const getTeam = <ThrowOnError extends boolean = false>(options: Options<GetTeamData, ThrowOnError>): RequestResult<GetTeamResponses, GetTeamErrors, ThrowOnError> => (options.client ?? client).get<GetTeamResponses, GetTeamErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams/{team}',
+    ...options
+});
+
+/**
+ * Aggiorna un team
+ */
+export const updateTeam = <ThrowOnError extends boolean = false>(options: Options<UpdateTeamData, ThrowOnError>): RequestResult<UpdateTeamResponses, UpdateTeamErrors, ThrowOnError> => (options.client ?? client).patch<UpdateTeamResponses, UpdateTeamErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams/{team}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i membri di un team
+ */
+export const listTeamMembers = <ThrowOnError extends boolean = false>(options: Options<ListTeamMembersData, ThrowOnError>): RequestResult<ListTeamMembersResponses, ListTeamMembersErrors, ThrowOnError> => (options.client ?? client).get<ListTeamMembersResponses, ListTeamMembersErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams/{team}/members',
+    ...options
+});
+
+/**
+ * Rimuove un membro dal team
+ */
+export const removeTeamMember = <ThrowOnError extends boolean = false>(options: Options<RemoveTeamMemberData, ThrowOnError>): RequestResult<RemoveTeamMemberResponses, RemoveTeamMemberErrors, ThrowOnError> => (options.client ?? client).delete<RemoveTeamMemberResponses, RemoveTeamMemberErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams/{team}/members/{username}',
+    ...options
+});
+
+/**
+ * Aggiunge un membro al team o ne cambia il ruolo
+ *
+ * Scope `write:org`. L'utente deve essere gia' membro dell'organizzazione (altrimenti 422 `not_org_member`). Idempotente.
+ *
+ */
+export const setTeamMember = <ThrowOnError extends boolean = false>(options: Options<SetTeamMemberData, ThrowOnError>): RequestResult<SetTeamMemberResponses, SetTeamMemberErrors, ThrowOnError> => (options.client ?? client).put<SetTeamMemberResponses, SetTeamMemberErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/teams/{team}/members/{username}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i grant di una risorsa
+ *
+ * Scope `read:resource`; serve almeno il ruolo `admin` sulla risorsa.
+ */
+export const listResourceGrants = <ThrowOnError extends boolean = false>(options: Options<ListResourceGrantsData, ThrowOnError>): RequestResult<ListResourceGrantsResponses, ListResourceGrantsErrors, ThrowOnError> => (options.client ?? client).get<ListResourceGrantsResponses, ListResourceGrantsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/resources/{resourceId}/grants',
+    ...options
+});
+
+/**
+ * Assegna un ruolo su una risorsa a un utente o a un team
+ *
+ * Scope `write:resource`; serve il ruolo `admin` sulla risorsa. Un solo grant per (risorsa, soggetto): il secondo risponde 409.
+ *
+ */
+export const createResourceGrant = <ThrowOnError extends boolean = false>(options: Options<CreateResourceGrantData, ThrowOnError>): RequestResult<CreateResourceGrantResponses, CreateResourceGrantErrors, ThrowOnError> => (options.client ?? client).post<CreateResourceGrantResponses, CreateResourceGrantErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/resources/{resourceId}/grants',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoca un grant
+ */
+export const deleteResourceGrant = <ThrowOnError extends boolean = false>(options: Options<DeleteResourceGrantData, ThrowOnError>): RequestResult<DeleteResourceGrantResponses, DeleteResourceGrantErrors, ThrowOnError> => (options.client ?? client).delete<DeleteResourceGrantResponses, DeleteResourceGrantErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/resources/{resourceId}/grants/{grantId}',
+    ...options
+});
+
+/**
+ * Cambia il ruolo di un grant
+ */
+export const updateResourceGrant = <ThrowOnError extends boolean = false>(options: Options<UpdateResourceGrantData, ThrowOnError>): RequestResult<UpdateResourceGrantResponses, UpdateResourceGrantErrors, ThrowOnError> => (options.client ?? client).patch<UpdateResourceGrantResponses, UpdateResourceGrantErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/resources/{resourceId}/grants/{grantId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Permesso effettivo del chiamante su una risorsa
+ *
+ * Ruolo effettivo (grant diretto, via team, amministratore) tenendo conto degli scope del token. Scope `read:resource`.
+ *
+ */
+export const getMyResourcePermission = <ThrowOnError extends boolean = false>(options: Options<GetMyResourcePermissionData, ThrowOnError>): RequestResult<GetMyResourcePermissionResponses, GetMyResourcePermissionErrors, ThrowOnError> => (options.client ?? client).get<GetMyResourcePermissionResponses, GetMyResourcePermissionErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/resources/{resourceId}/permissions',
+    ...options
+});
+
+/**
+ * Verifica una credenziale (per il gateway)
+ *
+ * Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
+ *
+ */
+export const verifyCredential = <ThrowOnError extends boolean = false>(options: Options<VerifyCredentialData, ThrowOnError>): RequestResult<VerifyCredentialResponses, VerifyCredentialErrors, ThrowOnError> => (options.client ?? client).post<VerifyCredentialResponses, VerifyCredentialErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/verify',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Verifica un permesso su una risorsa
+ *
+ * Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+ *
+ */
+export const checkPermission = <ThrowOnError extends boolean = false>(options: Options<CheckPermissionData, ThrowOnError>): RequestResult<CheckPermissionResponses, CheckPermissionErrors, ThrowOnError> => (options.client ?? client).post<CheckPermissionResponses, CheckPermissionErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/permissions/check',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Risolve un utente dal fingerprint di una chiave SSH
+ *
+ * Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
+ */
+export const lookupSshKey = <ThrowOnError extends boolean = false>(options: Options<LookupSshKeyData, ThrowOnError>): RequestResult<LookupSshKeyResponses, LookupSshKeyErrors, ThrowOnError> => (options.client ?? client).get<LookupSshKeyResponses, LookupSshKeyErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/ssh-keys/{fingerprint}',
+    ...options
 });
