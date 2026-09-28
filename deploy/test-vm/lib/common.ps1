@@ -285,8 +285,13 @@ function Resolve-VmIPv4ViaArp {
         [int]$PollSeconds = 5
     )
     $interfaceAlias = "vEthernet ($SwitchName)"
-    if (-not (Get-NetAdapter -Name $interfaceAlias -ErrorAction SilentlyContinue)) {
-        throw "L'interfaccia host '$interfaceAlias' non esiste: lo switch virtuale '$SwitchName' non ha un adattatore vEthernet sull'host (verifica con 'Get-NetAdapter' e 'Get-VMSwitch')."
+    # -IncludeHidden: l'adattatore vEthernet del Default Switch puo' essere
+    # nascosto (Get-NetAdapter senza questo switch non lo restituisce anche
+    # se e' Up e ha un IP configurato, vedi GIT-26). Get-NetIPAddress e
+    # Get-NetNeighbor piu' sotto interrogano per -InterfaceAlias e trovano
+    # l'adattatore nascosto senza bisogno di un flag equivalente.
+    if (-not (Get-NetAdapter -Name $interfaceAlias -IncludeHidden -ErrorAction SilentlyContinue)) {
+        throw "L'interfaccia host '$interfaceAlias' non esiste: lo switch virtuale '$SwitchName' non ha un adattatore vEthernet sull'host (verifica con 'Get-NetAdapter -IncludeHidden' e 'Get-VMSwitch')."
     }
     $macs = Get-VmMacAddresses -VmName $VmName
     if (-not $macs) {
@@ -298,15 +303,24 @@ function Resolve-VmIPv4ViaArp {
     while ((Get-Date) -lt $deadline) {
         $neighbors = Get-NetNeighbor -InterfaceAlias $interfaceAlias -AddressFamily IPv4 -ErrorAction SilentlyContinue |
             Where-Object { $_.State -in @('Reachable', 'Stale', 'Delay', 'Probe', 'Permanent') }
-        $match = $neighbors | Where-Object {
+        $candidates = @($neighbors | Where-Object {
             try { $macs -contains (ConvertTo-NormalizedMacAddress $_.LinkLayerAddress) } catch { $false }
-        } | Select-Object -First 1
-        if ($match) {
-            if (Test-TcpPortOnce -IpAddress $match.IPAddress -Port 22) {
-                Write-Host "    IP trovato via ARP e confermato su :22: $($match.IPAddress)"
-                return $match.IPAddress
+        })
+        # Piu' voci ARP possono corrispondere allo stesso MAC (es. residuo di
+        # un checkpoint precedente ancora in cache accanto a quella nuova):
+        # provarle tutte su :22, non solo la prima, e restituire la prima
+        # che risponde davvero.
+        $confirmed = $null
+        foreach ($candidate in $candidates) {
+            if (Test-TcpPortOnce -IpAddress $candidate.IPAddress -Port 22) {
+                $confirmed = $candidate
+                break
             }
-            Write-Host "    Voce ARP $($match.IPAddress) per MAC $($match.LinkLayerAddress) trovata ma la porta 22 non risponde ancora (boot in corso, o voce residua di un checkpoint precedente): continuo ad attendere."
+            Write-Host "    Voce ARP $($candidate.IPAddress) per MAC $($candidate.LinkLayerAddress) trovata ma la porta 22 non risponde ancora (boot in corso, o voce residua di un checkpoint precedente): provo le altre voci/continuo ad attendere."
+        }
+        if ($confirmed) {
+            Write-Host "    IP trovato via ARP e confermato su :22: $($confirmed.IPAddress)"
+            return $confirmed.IPAddress
         }
         try {
             Invoke-Ipv4ArpSweep -InterfaceAlias $interfaceAlias
