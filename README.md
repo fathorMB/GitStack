@@ -16,9 +16,11 @@ Dettagli dei componenti e dei flussi chiave: `.lmbrain-lite/knowledge/architectu
 ## Struttura del monorepo
 
 ```
+api/        contratto OpenAPI unico dell'API pubblica (fonte di verità)
 services/   servizi Go (gateway, identity, git, core), un modulo per servizio
 web/        web UI React + TypeScript
 cli/        CLI gs in Go
+client/     client Go e TypeScript generati dal contratto OpenAPI
 skills/     pacchetto di skills per agenti di coding
 deploy/     manifest k3s / Helm chart interno e installer
 docs/       documentazione per chi installa e usa GitStack
@@ -29,16 +31,16 @@ Ogni cartella ha un proprio README con lo stato e i rimandi alle milestone che l
 ## Licenze
 
 - **AGPL-3.0** in radice (`LICENSE`): copre il prodotto server (`services/`, `web/`, `deploy/`, `docs/`). Scelta per proteggere dal "prendi e chiudi" — prendere il software e chiuderlo senza condividere i contributi — seguendo i precedenti di Forgejo, Grafana e Mattermost (decisione D13 [c_c0aa0b2a2659ff40]).
-- **Apache-2.0** solo in `cli/` e `skills/` (un `LICENSE` dedicato in ciascuna cartella): il client non deve porre barriere all'integrazione negli strumenti degli agenti di coding, mentre il cuore del prodotto resta protetto da AGPL-3.0 (decisione D17 [c_1d1d61aca3dea601]).
+- **Apache-2.0** solo in `cli/`, `client/` (`client/go/`, `client/ts/`) e `skills/` (un `LICENSE` dedicato in ciascuna cartella): il client non deve porre barriere all'integrazione negli strumenti degli agenti di coding, mentre il cuore del prodotto — incluso il contratto OpenAPI in `api/` — resta protetto da AGPL-3.0 (decisione D17 [c_1d1d61aca3dea601]).
 
 GitStack è interamente open source; eventuali ricavi vengono da supporto e servizi, non dalla chiusura del codice (decisione D12 [c_85f1f52e96d98e7f]).
 
 ## Avviare lo sviluppo
 
-Prerequisiti: Go (workspace in `go.work`, un modulo per servizio sotto `services/` più `cli/`) e Node.js con `pnpm` (vedi `web/package.json` → `packageManager`, e `web/pnpm-lock.yaml`).
+Prerequisiti: Go (workspace in `go.work`, un modulo per servizio sotto `services/` più `cli/` e `client/go/`) e Node.js con `pnpm` (vedi `web/package.json` → `packageManager`, e `web/pnpm-lock.yaml`).
 
 ```sh
-# Go: tutti i moduli dei servizi e la CLI sono nel workspace di radice
+# Go: tutti i moduli dei servizi, la CLI e il client Go sono nel workspace di radice
 go work sync
 bash scripts/go-each.sh go build ./...   # dalla radice, un modulo alla volta
 
@@ -49,14 +51,34 @@ pnpm install
 
 `go build ./...` non funziona dalla radice: con `go.work` la radice stessa non è un modulo, quindi il tool `go` va invocato dentro ciascun modulo. `scripts/go-each.sh` risolve il problema ricavando la lista dei moduli da `go list -m` (cioè da `go.work` stesso, non da una lista scritta a mano) e la usa per iterare: lo usano sia questo README sia la pipeline CI (`.github/workflows/ci.yml`), così restano sempre allineati a `go.work` anche quando si aggiunge o toglie un modulo.
 
-Questo è il primo item del monorepo (M-01/T-01): oggi contiene solo la struttura, le licenze e gli scheletri dei moduli (più un package `doc.go`/`main.go` minimo per modulo, così build/lint/test hanno qualcosa su cui lavorare). Il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01.
+## Contratto API e client generati
+
+`api/openapi.yaml` è la fonte unica dell'API pubblica (decisione D8
+[c_f68d7615da93197a]); da lì si generano il client Go (`client/go/`) e il
+client TypeScript (`client/ts/`) — codice generato, non si modifica a mano.
+Un comando, dalla radice del monorepo, dopo `go work sync`, rigenera
+entrambi:
+
+```sh
+go work sync
+./scripts/generate-api.sh
+```
+
+In CI il check `api-contract` (`.github/workflows/api-contract.yml`) lancia
+lo stesso script e fallisce se il codice generato committato non è allineato
+al contratto. Dettagli: `api/README.md`, `client/README.md`.
 
 ## CI
 
-Ogni push e pull request fa girare `.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-latest`):
+`.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-latest`) gira su
+ogni pull request sempre, e sui push solo verso `main` e sui tag (non su
+ogni push di ramo, per non far girare la pipeline due volte sulle PR dello
+stesso repo):
 
-- **go**: `go work sync`, build, `golangci-lint` e `go test ./... -race` per ciascun modulo Go (`scripts/go-each.sh`).
+- **go**: `go work sync`, build, `golangci-lint` e `go test ./... -race` per ciascun modulo Go, incluso `client/go` (`scripts/go-each.sh`).
 - **ts**: `pnpm install`, lint, typecheck e test di `web/`.
-- **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
+- **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Gira solo dopo che `go` e `ts` sono verdi, solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
 
-Gli stessi controlli Go e TS sono dichiarati in `.galaxylab/checks.toml` per l'esecuzione sui rami integrati.
+Gli stessi controlli Go e TS sono dichiarati in `.galaxylab/checks.toml` per l'esecuzione sui rami integrati. Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra), che gira sia su push a `main` sia su pull request.
+
+Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.

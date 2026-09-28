@@ -1,0 +1,9 @@
+apis:
+  gitstack@v1:
+    root: openapi.yaml
+extends:
+  - recommended
+rules:
+  operation-operationId: error
+  operation-2xx-response: error
+  no-unused-components: error

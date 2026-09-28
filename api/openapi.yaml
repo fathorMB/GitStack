@@ -1,0 +1,373 @@
+openapi: 3.0.3
+info:
+  title: GitStack API
+  version: "0.1.0"
+  description: >
+    API pubblica di GitStack (fonte unica del contratto, decisione D8
+    [c_f68d7615da93197a]). Unico punto d'ingresso: il servizio `gateway`.
+    UI web, CLI `gs`, skills per agenti e in futuro server MCP usano tutti
+    questa stessa API (principio API-first, decisione D7 [c_3780bc749c6ed28d]).
+
+    Il modello dati usa risorse generiche (decisione D15
+    [c_4ef209e79c5b2ddb]): oggi la sola risorsa di prova dello scheletro
+    end-to-end, domani repository, applicazioni, database e altro senza
+    cambiare forma dell'API.
+
+    Ogni versione dell'API vive sotto un prefisso di percorso esplicito
+    (`/v1`); `info.version` segue in aggiunta il contratto stesso (SemVer).
+  license:
+    name: AGPL-3.0-only
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+externalDocs:
+  description: Architettura e decisioni di GitStack
+  url: https://github.com/fathorMB/GitStack/tree/main/.lmbrain-lite/knowledge
+servers:
+  - url: /v1
+    description: Gateway pubblico di GitStack (dietro Traefik)
+
+tags:
+  - name: system
+    description: Stato del sistema.
+  - name: resources
+    description: >
+      Risorsa di prova generica, usata dal flusso end-to-end (UI → gateway →
+      core → Postgres) e come base del modello a risorse generiche (D15).
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      summary: Stato del servizio
+      description: >
+        Controllo di salute, senza autenticazione: usato da orchestratore
+        (k3s) e dai probe di deploy.
+      security: []
+      responses:
+        "200":
+          description: Il servizio è operativo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: ok
+                version: "0.1.0"
+
+  /resources:
+    get:
+      operationId: listResources
+      tags: [resources]
+      summary: Elenca le risorse
+      description: >
+        Elenco paginato delle risorse, con filtro opzionale per tipo (es.
+        `repo`). Il tipo non è vincolato a un insieme fisso: nuove milestone
+        aggiungono nuovi tipi senza cambiare l'endpoint (D15).
+      parameters:
+        - $ref: "#/components/parameters/ResourceTypeFilter"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di risorse.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createResource
+      tags: [resources]
+      summary: Crea una risorsa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceInput"
+      responses:
+        "201":
+          description: Risorsa creata.
+          headers:
+            Location:
+              description: URL della risorsa creata.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /resources/{resourceId}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIdParam"
+    get:
+      operationId: getResource
+      tags: [resources]
+      summary: Legge una risorsa
+      responses:
+        "200":
+          description: Risorsa trovata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateResource
+      tags: [resources]
+      summary: Aggiorna una risorsa
+      description: "Aggiornamento parziale: solo i campi presenti nel corpo cambiano."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateResourceInput"
+      responses:
+        "200":
+          description: Risorsa aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteResource
+      tags: [resources]
+      summary: Elimina una risorsa
+      responses:
+        "204":
+          description: Risorsa eliminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+      description: >
+        Token verificato dal `gateway` (identity). Stesso schema per UI, CLI
+        `gs`, skills e agenti.
+
+  parameters:
+    ResourceIdParam:
+      name: resourceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Identificatore della risorsa.
+    ResourceTypeFilter:
+      name: type
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+      description: Filtra per tipo di risorsa (es. `repo`).
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPageParam:
+      name: perPage
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        version:
+          type: string
+          description: Versione del contratto API in esecuzione (`info.version`).
+
+    Resource:
+      type: object
+      description: >
+        Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro
+        anche per repository, applicazioni e database, senza cambiare forma.
+      additionalProperties: false
+      required: [id, type, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          minLength: 1
+          example: repo
+          description: "Tipo di risorsa, aperto: non un enum fisso (D15)."
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        attributes:
+          type: object
+          description: Attributi specifici del tipo di risorsa, a forma libera.
+          additionalProperties: true
+          default: {}
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateResourceInput:
+      type: object
+      additionalProperties: false
+      required: [type, name]
+      properties:
+        type:
+          type: string
+          minLength: 1
+          example: repo
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        attributes:
+          type: object
+          additionalProperties: true
+
+    UpdateResourceInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        attributes:
+          type: object
+          additionalProperties: true
+
+    ResourceList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Resource"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    Error:
+      type: object
+      description: Formato unico degli errori per tutta l'API pubblica.
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Codice stabile leggibile da macchina (es. `not_found`).
+              example: not_found
+            message:
+              type: string
+              description: Messaggio leggibile da persone, non contrattuale.
+            details:
+              type: object
+              additionalProperties: true
+              description: Dettagli opzionali specifici dell'errore.
+
+  responses:
+    BadRequest:
+      description: Richiesta non valida.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Token mancante o non valido.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Risorsa non trovata.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Conflitto con lo stato attuale della risorsa.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnexpectedError:
+      description: Errore imprevisto.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+security:
+  - bearerAuth: []
