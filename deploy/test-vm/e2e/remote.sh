@@ -53,6 +53,23 @@ NATS_BOX_IMAGE="${NATS_BOX_IMAGE:-natsio/nats-box:0.20.0}"
 KUBECONFIG_PATH="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 export KUBECONFIG="${KUBECONFIG_PATH}"
 
+# Un solo trap EXIT per tutto lo script (un trap dentro una funzione verrebbe
+# sovrascritto o scatterebbe alla fine di una subshell): ripulisce i file
+# temporanei e i pod effimeri registrati negli array.
+CLEANUP_FILES=()
+CLEANUP_PODS=()
+cleanup() {
+  local f p
+  for f in "${CLEANUP_FILES[@]:-}"; do
+    [ -n "${f}" ] && rm -f "${f}"
+  done
+  for p in "${CLEANUP_PODS[@]:-}"; do
+    [ -n "${p}" ] && k3s kubectl delete pod "${p#*/}" --namespace "${p%%/*}" --wait=false --ignore-not-found >/dev/null 2>&1
+  done
+  return 0
+}
+trap cleanup EXIT
+
 log() {
   printf '==> %s\n' "$*"
 }
@@ -114,23 +131,50 @@ jetstream_count() {
   local release="${2:-gitstack}"
   local ns="${3:-default}"
   local nats_addr="${release}-nats.${ns}.svc.cluster.local:4222"
-  local pod_name="gitstack-e2e-natsbox-$$"
-  local out status
+  local pod_name="gitstack-e2e-natsbox-$$-${RANDOM}"
+  local err_file
+  err_file="$(mktemp)"
+  CLEANUP_FILES+=("${err_file}")
+  CLEANUP_PODS+=("${ns}/${pod_name}")
 
-  set +e
-  out="$(k3s kubectl run "${pod_name}" --namespace "${ns}" --rm -i --restart=Never \
-    --image="${NATS_BOX_IMAGE}" --command -- \
-    nats stream info "${stream}" --server "nats://${nats_addr}" --json </dev/null 2>&1)"
-  status=$?
-  set -e
-  if [ "${status}" -ne 0 ]; then
-    fail "'nats stream info ${stream}' (pod effimero ${pod_name}) fallito: ${out}"
+  # Niente attach (-i/--rm): con un pod che finisce subito l'attach puo'
+  # perdere l'output ("If you don't see a command prompt...") e mescolare
+  # stdout e stderr. Il pod gira fino in fondo, si attende la fase finale e
+  # il JSON si legge da 'kubectl logs' (solo stdout del container). Il pod
+  # viene cancellato dal trap EXIT dello script, anche in caso di errore.
+  if ! k3s kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
+      --image="${NATS_BOX_IMAGE}" --command -- \
+      nats stream info "${stream}" --server "nats://${nats_addr}" --json \
+      >/dev/null 2>"${err_file}"; then
+    fail "creazione del pod ${pod_name} fallita: $(cat "${err_file}")"
+  fi
+
+  local phase="" _i
+  for _i in $(seq 1 45); do
+    phase="$(k3s kubectl get pod "${pod_name}" --namespace "${ns}" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    if [ "${phase}" = "Succeeded" ] || [ "${phase}" = "Failed" ]; then
+      break
+    fi
+    sleep 2
+  done
+  if [ "${phase}" != "Succeeded" ]; then
+    local pod_state pod_events pod_logs
+    pod_state="$(k3s kubectl get pod "${pod_name}" --namespace "${ns}" -o wide 2>&1 | tail -n 2 | tr '\n' ' ')"
+    pod_events="$(k3s kubectl get events --namespace "${ns}" --field-selector "involvedObject.name=${pod_name}" -o custom-columns=REASON:.reason,MSG:.message --no-headers 2>&1 | tail -n 5 | tr '\n' ' ')"
+    pod_logs="$(k3s kubectl logs "${pod_name}" --namespace "${ns}" 2>&1 | tail -n 5 | tr '\n' ' ')"
+    fail "il pod ${pod_name} non e' arrivato a Succeeded (fase: '${phase:-sconosciuta}'). Stato: ${pod_state} Eventi: ${pod_events} Log: ${pod_logs}"
+  fi
+
+  local out
+  if ! out="$(k3s kubectl logs "${pod_name}" --namespace "${ns}" 2>"${err_file}")"; then
+    fail "lettura dei log del pod ${pod_name} fallita: $(cat "${err_file}")"
   fi
 
   local messages
   messages="$(printf '%s' "${out}" | grep -o '"messages"[[:space:]]*:[[:space:]]*[0-9]\+' | head -n1 | grep -o '[0-9]\+$' || true)"
-  [ -n "${messages}" ] || fail "impossibile leggere 'messages' dall'output di 'nats stream info ${stream}': ${out}"
-  printf '%s\n' "${messages}"
+  [ -n "${messages}" ] || fail "impossibile leggere 'messages' dai log di 'nats stream info ${stream}' (pod ${pod_name}, fase ${phase}): ${out}"
+  printf '%s
+' "${messages}"
 }
 
 # --- postgres-secret-hash -------------------------------------------------
