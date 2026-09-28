@@ -326,6 +326,112 @@ VHDX, ISO e le due cartelle della VM sono stati eliminati.
    comando `ssh` — sono le informazioni minime per collegarsi e lanciare le
    prove.
 
+## Test end-to-end (GIT-11)
+
+`e2e.ps1` è il comando che il board lancia, da PowerShell **come
+amministratore**, dalla radice di un checkout del ramo da provare, per la
+prova end-to-end di M-01 (criteri di GIT-11). Fa tutto in un colpo: reset
+della VM, controllo che sia davvero pulita, installer di GIT-9 dal commit
+indicato di `main` (nel modo in cui lo userebbe il cliente, `curl | sudo
+bash`), verifica di UI/API/evento JetStream, una seconda esecuzione
+dell'installer per provare l'idempotenza, e la raccolta della diagnostica
+dalla VM — sempre, anche se un passo fallisce.
+
+Nessun agente ha accesso a Hyper-V o alla VM: prepara lo script, il board lo
+esegue e incolla l'output nell'item.
+
+### Prerequisiti aggiuntivi (oltre a quelli di `new-vm.ps1`/`reset-vm.ps1`)
+
+- Una coppia di chiavi SSH **dedicata** a questo test (non quella personale
+  del board): ed25519, **senza passphrase**, con la chiave pubblica già
+  passata a `new-vm.ps1` (utente `-VmUser`, default `gitstack`) e la privata
+  in `$env:USERPROFILE\.ssh\gitstack_vm`. Mai nel repository; `reset-vm.ps1`
+  non la tocca.
+- Il client `git` nel PATH (per risolvere lo SHA corrente di `origin/main`
+  quando `-Ref` non è passato) e connessione a Internet (GitHub, ghcr.io).
+
+### Comando
+
+```powershell
+.\deploy\test-vm\e2e.ps1
+```
+
+Parametri principali (tutti con un default sensato):
+
+| Parametro | Default | Note |
+|---|---|---|
+| `-VmName` | `gitstack-test-vm` | Stessa VM di GIT-9/GIT-12. |
+| `-VmUser` | `gitstack` | Utente SSH con sudo senza password. |
+| `-KeyPath` | `$env:USERPROFILE\.ssh\gitstack_vm` | Chiave privata dedicata (vedi sopra). |
+| `-GitStackRepo` | `fathorMB/GitStack` | `owner/repo` su GitHub e ghcr.io. |
+| `-Ref` | SHA corrente di `origin/main`, risolto con `git ls-remote` e stampato | Commit da provare. |
+| `-OutDir` | `%LOCALAPPDATA%\GitStack\e2e-runs\<timestamp>` | Log, diagnostica della VM e `known_hosts` isolato; a fine esecuzione anche `<OutDir>.zip`. |
+| `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
+| `-JetStreamPollAttempts` / `-JetStreamPollIntervalSeconds` | `6` / `5` | Passo (e): letture del conteggio JetStream dopo la create, ogni N secondi, finché supera la baseline (fino a 30s in totale di default). |
+
+### Output atteso, passo per passo
+
+Una riga `[PASS] <passo>` o `[FAIL] <passo>: <motivo>` per ciascuno. In una
+esecuzione verde sono **7 righe `[PASS]`**, in quest'ordine (output reale di
+Atlas del 28/09 sulla VM, Ref 2819e60):
+
+```
+[PASS] a. reset-vm.ps1 (checkpoint clean)
+[PASS] b. macchina pulita (nessun k3s/kubectl, /etc/rancher, /var/lib/rancher, porte libere)
+[PASS] d.1 immagini su ghcr.io per sha-<Ref>
+[PASS] d.2 installer (prima esecuzione)
+[PASS] c. requisiti minimi registrati nel log
+[PASS] e. UI, /api/healthz, create+read risorsa di prova, evento JetStream
+[PASS] f. idempotenza (seconda esecuzione, k3s non reinstallato, password invariata, healthz OK)
+RISULTATO: VERDE
+```
+
+Cosa controlla ciascun passo:
+
+- **a.** `reset-vm.ps1` (checkpoint `clean`) e IP della VM.
+- **b.** macchina pulita: nessun `k3s`/`kubectl`, nessun servizio `k3s`,
+  niente `/etc/rancher` o `/var/lib/rancher`, porte 80/443/6443 libere. Se
+  fallisce, lo script si ferma: non installa nulla.
+- **d.1** le tre immagini (`gitstack-gateway`, `gitstack-core`,
+  `gitstack-web`) esistono su ghcr.io con tag `sha-<Ref>` (pubblicate dal
+  job `registry` della CI dopo un push su `main`).
+- **d.2** prima esecuzione dell'installer via SSH (`installer-run1.log`).
+- **c.** le righe di preflight (OS, architettura, CPU, RAM, disco) sono
+  presenti nel log della prima esecuzione.
+- **e.** UI (`http://<ip>/`, dall'host Windows) -> 200 con l'HTML della web
+  UI; `/api/healthz` -> 200 `{"status":"ok",...}`; create + read della
+  risorsa di prova via `/api/v1/resources`; i messaggi dello stream
+  JetStream `CORE` aumentano dopo la create (letti dalla VM con un pod
+  `natsio/nats-box` pinnato, senza attach: pod creato, atteso `Succeeded`,
+  JSON preso da `kubectl logs` solo su stdout, pod sempre cancellato).
+  `core` pubblica l'evento in una goroutine **dopo** il 201 (timeout 5s),
+  quindi il conteggio e' un polling (`-JetStreamPollAttempts` tentativi
+  ogni `-JetStreamPollIntervalSeconds`, default 6x5s), e ogni tentativo e'
+  scritto nel log.
+- **f.** idempotenza: seconda esecuzione (`installer-run2.log`) -> exit 0,
+  hash della password di Postgres invariato, `ActiveEnterTimestamp` di
+  `k3s` invariato, `/api/healthz` ancora 200.
+- **g.** (sempre, anche dopo un fallimento) diagnostica raccolta dalla VM
+  (`journalctl -u k3s`, `kubectl get all -A`, describe/log dei pod, eventi,
+  `helm status`, `df`/`free`) in `<OutDir>\vm-diagnostics\`.
+
+Esiste anche una riga `[FAIL] preparazione: copia di .../remote.sh sulla
+VM`, ma solo se ssh/scp verso la VM non funziona: in un'esecuzione verde
+non compare.
+
+Alla fine: il riepilogo, il percorso dello zip `<OutDir>.zip` (log +
+diagnostica, **sempre creato**) e `RISULTATO: VERDE` o `RISULTATO: ROSSO`.
+Il codice di uscita e' diverso da zero se un passo e' fallito.
+
+### Cosa mandare al team
+
+L'output completo della console **e** il file `<OutDir>.zip`: contiene
+`e2e.log` (tutto quello stampato a schermo), `installer-run1.log`,
+`installer-run2.log`, `reset-vm.log` e `vm-diagnostics\` (o una nota se la
+diagnostica non è stata raccolta, es. VM irraggiungibile via SSH). Un'
+esecuzione con tutti i passi `[PASS]` sul commit di `main`, con questo zip
+allegato all'item, è il criterio "Verde sul ramo principale" di GIT-11.
+
 ## Limiti noti e verifiche fatte in questa sessione (GIT-25)
 
 L'ambiente di questa sessione ha Hyper-V raggiungibile, diritti di

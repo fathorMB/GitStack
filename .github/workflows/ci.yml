@@ -121,7 +121,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/test-vm/e2e/remote.sh scripts/*.sh
 
   # Costruisce e pubblica le immagini dei servizi su un registry parametrico
   # (ghcr.io di default). Richiede che build/lint/test (go, ts) siano verdi
