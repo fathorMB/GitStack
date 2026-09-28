@@ -1,0 +1,14 @@
+// Package openapi contiene l'interfaccia server generata dal contratto
+// OpenAPI di GitStack (api/openapi.yaml): tipi e ServerInterface con un
+// metodo per ogni operationId del contratto. Non modificare a mano il file
+// generato (api.gen.go): rigenerarlo con `scripts/generate-api.sh` dalla
+// radice del monorepo, dopo `go work sync`.
+//
+// core implementa questa interfaccia (vedi package httpserver) invece di
+// definire le proprie rotte a mano: così non può discostarsi dal contratto,
+// e la CI (check `api-contract`) lo verifica rigenerando e controllando che
+// il repository resti pulito. Stessa convenzione del gateway
+// (services/gateway/internal/openapi).
+package openapi
+
+//go:generate go tool oapi-codegen -config oapi-codegen.yaml ../../../../api/openapi.yaml
