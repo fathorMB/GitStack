@@ -20,6 +20,21 @@
 # nessun utente admin viene creato qui. Completamento previsto in M-02/M-08.
 set -euo pipefail
 
+# Cartelle temporanee da rimuovere all'uscita (download del chart quando non
+# c'è un checkout locale, download del tarball di Helm). Un unico trap EXIT
+# condiviso, impostato una sola volta qui: un secondo `trap ... EXIT` in una
+# funzione chiamata più avanti (es. install_helm dopo resolve_chart_dir)
+# sovrascriverebbe questo e perderebbe la pulizia della cartella registrata
+# per prima.
+TMP_DIRS=()
+cleanup_tmp_dirs() {
+  local d
+  for d in "${TMP_DIRS[@]:-}"; do
+    [ -n "${d}" ] && rm -rf "${d}"
+  done
+}
+trap cleanup_tmp_dirs EXIT
+
 # --- Parametri (sovrascrivibili da variabile d'ambiente o da flag) --------
 
 # Versione di k3s, pinnata: v1.36.4+k3s1 include il chart Traefik 40.1.0
@@ -49,10 +64,23 @@ GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 
 # Requisiti minimi della macchina di destinazione in M-01 (decisione di
 # Atlas, provvisoria, da rivedere con M-08 [c_8458909a21d9035f]): Ubuntu
-# Server 24.04 LTS x86_64, 4 vCPU, 8 GB di RAM, 60 GB di disco libero.
+# Server 24.04 LTS x86_64, 4 vCPU, 8 GB di RAM, disco da 60 GB (profilo
+# della VM di GIT-12).
 MIN_CPU=4
 MIN_RAM_GB=8
+# Profilo nominale, citato nei messaggi (il disco della macchina dovrebbe
+# essere di questa taglia): non è la soglia controllata direttamente, vedi
+# MIN_DISK_TOTAL_GB/MIN_DISK_FREE_GB e preflight_disk più sotto.
 MIN_DISK_GB=60
+# Soglie realmente verificate da preflight_disk. Il profilo minimo (GIT-12)
+# è un disco da 60 GB pieno: dopo le partizioni di boot/EFI il filesystem
+# risultante è un po' più piccolo del disco nominale, e lo spazio libero
+# cala ulteriormente dopo k3s e le immagini di GitStack (il preflight gira
+# anche alle esecuzioni successive, per idempotenza). Richiedere 60 GB
+# liberi fallirebbe quindi proprio sulla macchina di riferimento: due
+# soglie più realistiche, con margine dichiarato invece che il disco pieno.
+MIN_DISK_TOTAL_GB=55
+MIN_DISK_FREE_GB=20
 REQUIRED_OS_ID="ubuntu"
 REQUIRED_OS_VERSION="24.04"
 REQUIRED_ARCH="x86_64"
@@ -218,18 +246,35 @@ preflight_ram() {
 }
 
 preflight_disk() {
-  # Spazio libero sul filesystem che ospiterà i dati di k3s (PVC di
-  # Postgres/NATS inclusi). /var/lib/rancher se già un mountpoint dedicato,
-  # altrimenti /. GB decimali (10^9 byte), stesso motivo del controllo RAM.
+  # Filesystem che ospiterà i dati di k3s (PVC di Postgres/NATS inclusi):
+  # /var/lib/rancher se esiste già (creata da un'installazione k3s
+  # precedente, sullo stesso filesystem di / nel caso comune a disco
+  # singolo di M-01), altrimenti /. Non distingue un mountpoint dedicato da
+  # una sottocartella di /: a disco singolo sono la stessa cosa.
   local target="/var/lib/rancher"
   [ -d "${target}" ] || target="/"
+
+  # Due soglie, non una (vedi il commento su MIN_DISK_TOTAL_GB/
+  # MIN_DISK_FREE_GB più sopra): la dimensione del filesystem (vicina al
+  # disco nominale di MIN_DISK_GB, con margine per l'overhead di
+  # partizionamento) e lo spazio libero (che si riduce dopo k3s e le
+  # immagini, anche alle esecuzioni successive). GB decimali (10^9 byte),
+  # stesso motivo del controllo RAM.
+  local size_bytes size_gb
+  size_bytes="$(df --output=size -B1 "${target}" | tail -n1 | tr -d ' ')"
+  size_gb="$(awk -v b="${size_bytes}" 'BEGIN { printf "%.1f", b / 1000000000 }')"
+  if ! awk -v gb="${size_gb}" -v min="${MIN_DISK_TOTAL_GB}" 'BEGIN { exit !(gb >= min) }'; then
+    fail "disco troppo piccolo su ${target}. Filesystem trovato: ${size_gb} GB. Richiesti almeno: ${MIN_DISK_TOTAL_GB} GB (profilo minimo: disco da ${MIN_DISK_GB} GB, vedi README)."
+  fi
+
   local avail_bytes avail_gb
   avail_bytes="$(df --output=avail -B1 "${target}" | tail -n1 | tr -d ' ')"
   avail_gb="$(awk -v b="${avail_bytes}" 'BEGIN { printf "%.1f", b / 1000000000 }')"
-  if ! awk -v gb="${avail_gb}" -v min="${MIN_DISK_GB}" 'BEGIN { exit !(gb >= min) }'; then
-    fail "disco libero insufficiente su ${target}. Trovati: ${avail_gb} GB. Richiesti almeno: ${MIN_DISK_GB} GB."
+  if ! awk -v gb="${avail_gb}" -v min="${MIN_DISK_FREE_GB}" 'BEGIN { exit !(gb >= min) }'; then
+    fail "disco libero insufficiente su ${target}. Trovati: ${avail_gb} GB. Richiesti almeno: ${MIN_DISK_FREE_GB} GB."
   fi
-  log "Disco libero su ${target}: ${avail_gb} GB (richiesti almeno: ${MIN_DISK_GB} GB) OK"
+
+  log "Disco su ${target}: ${size_gb} GB di filesystem (richiesti almeno: ${MIN_DISK_TOTAL_GB} GB), ${avail_gb} GB liberi (richiesti almeno: ${MIN_DISK_FREE_GB} GB) OK"
 }
 
 preflight_ports() {
@@ -273,10 +318,10 @@ run_preflight() {
 
 # Imposta la variabile globale CHART_DIR. Non usa "$(...)" per restituire il
 # risultato di proposito: quando scarica il sorgente (ramo remoto, sotto)
-# deve poter registrare un trap di pulizia che sopravviva alla funzione; un
-# trap impostato dentro una command substitution vale solo per la subshell
-# di quella substitution e scatterebbe subito, cancellando la cartella
-# scaricata prima ancora che il chiamante la usi.
+# aggiunge la cartella temporanea a TMP_DIRS (pulita dal trap EXIT comune,
+# vedi sopra) e questo deve valere per il processo principale, non per una
+# subshell che sparisce subito dopo — una command substitution gira in una
+# subshell, dove un `TMP_DIRS+=(...)` non sarebbe visibile al chiamante.
 CHART_DIR=""
 
 resolve_chart_dir() {
@@ -306,8 +351,7 @@ resolve_chart_dir() {
   sha="$(resolve_commit_sha "${ref}")"
   local workdir
   workdir="$(mktemp -d)"
-  # shellcheck disable=SC2064
-  trap "rm -rf '${workdir}'" EXIT
+  TMP_DIRS+=("${workdir}")
 
   log "Nessun checkout locale del repository: scarico deploy/gitstack da ${GITSTACK_REPO}@${sha} ..."
   local tarball="${workdir}/gitstack.tar.gz"
@@ -396,21 +440,76 @@ wait_for_k3s_ready() {
   fail "il nodo k3s non è diventato Ready in tempo. Diagnostica: journalctl -u k3s -n 100, k3s kubectl get nodes."
 }
 
+# Diagnostica stampata su stderr quando l'attesa della CRD Traefik fallisce:
+# lo stato del HelmChart interno di k3s (il Job che lo applica, i suoi pod)
+# in kube-system, che spiega perché la CRD non è ancora arrivata.
+traefik_crd_diagnostics() {
+  KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl -n kube-system get helmchart,job,pods 2>&1 || true
+}
+
+# Il nodo Ready (wait_for_k3s_ready) non garantisce che il HelmChart
+# "traefik" interno di k3s abbia già applicato le sue CRD: k3s lo installa
+# in modo asincrono tramite un Job separato dopo l'avvio del nodo. Senza
+# questa attesa, su una macchina pulita `helm upgrade --install` del chart
+# di GitStack incontra la stessa race del job "chart" su main (run
+# 36437112985, GIT-21): il Middleware `traefik.io/v1alpha1` dell'Ingress
+# fallisce con "no matches for kind Middleware" perché
+# `middlewares.traefik.io` non esiste ancora. Due fasi, come da nota CTO:
+# prima un'attesa che la CRD compaia, poi che sia Established (accettata
+# dall'API server). Alle esecuzioni successive (idempotenza) la CRD esiste
+# già ed è già Established: entrambe le fasi passano subito.
+wait_for_traefik_crd() {
+  log "Attendo la CRD Traefik middlewares.traefik.io (il HelmChart interno di k3s la applica in modo asincrono dopo che il nodo è Ready) ..."
+  local _i found=0
+  for _i in $(seq 1 60); do
+    if KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl get crd middlewares.traefik.io >/dev/null 2>&1; then
+      found=1
+      break
+    fi
+    sleep 5
+  done
+  if [ "${found}" -ne 1 ]; then
+    traefik_crd_diagnostics >&2
+    fail "la CRD middlewares.traefik.io non è comparsa entro 300s. Diagnostica sopra (kube-system: helmchart/job/pods). Vedi anche: journalctl -u k3s -n 100."
+  fi
+  if ! KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl wait --for=condition=Established crd/middlewares.traefik.io --timeout=120s >/dev/null 2>&1; then
+    traefik_crd_diagnostics >&2
+    fail "la CRD middlewares.traefik.io non è diventata Established entro 120s. Diagnostica sopra (kube-system: helmchart/job/pods)."
+  fi
+  log "CRD middlewares.traefik.io Established."
+}
+
 # --- Helm ------------------------------------------------------------------
 
+# Tarball ufficiale pinnato alla versione esatta più il suo checksum
+# pubblicato, invece dello script get-helm-3 di helm/helm@main: quello
+# script è un riferimento mobile su un branch (si aggiorna sotto i piedi,
+# anche se poi installa comunque la DESIRED_VERSION richiesta), e dipende
+# da raw.githubusercontent.com invece che dal dominio ufficiale delle
+# release (get.helm.sh). Stesso principio del pin di k3s: niente scaricato
+# da un riferimento non pinnato.
 install_helm() {
   if command -v helm >/dev/null 2>&1; then
     log "helm è già presente ($(helm version --short 2>/dev/null || echo versione sconosciuta)): non reinstallo."
     return 0
   fi
   log "Installo Helm ${GITSTACK_HELM_VERSION} (pinnato) ..."
-  local get_helm
-  get_helm="$(mktemp)"
-  curl -fsSL -o "${get_helm}" https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
-    || fail "download dello script di installazione di Helm fallito."
-  chmod +x "${get_helm}"
-  DESIRED_VERSION="${GITSTACK_HELM_VERSION}" "${get_helm}" || fail "installazione di Helm fallita."
-  rm -f "${get_helm}"
+  command -v sha256sum >/dev/null 2>&1 || fail "serve 'sha256sum' per verificare il tarball di Helm."
+  local tarball_name="helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz"
+  local workdir
+  workdir="$(mktemp -d)"
+  TMP_DIRS+=("${workdir}")
+
+  curl -fsSL -o "${workdir}/${tarball_name}" "https://get.helm.sh/${tarball_name}" \
+    || fail "download del tarball di Helm fallito (https://get.helm.sh/${tarball_name})."
+  curl -fsSL -o "${workdir}/${tarball_name}.sha256sum" "https://get.helm.sh/${tarball_name}.sha256sum" \
+    || fail "download del checksum di Helm fallito (https://get.helm.sh/${tarball_name}.sha256sum)."
+  (cd "${workdir}" && sha256sum -c "${tarball_name}.sha256sum") \
+    || fail "il tarball di Helm scaricato non corrisponde al checksum pubblicato."
+
+  tar -xzf "${workdir}/${tarball_name}" -C "${workdir}"
+  [ -f "${workdir}/linux-amd64/helm" ] || fail "il tarball di Helm non contiene linux-amd64/helm."
+  install -m 0755 "${workdir}/linux-amd64/helm" /usr/local/bin/helm
 }
 
 install_gitstack() {
@@ -497,6 +596,7 @@ main() {
 
   install_k3s
   wait_for_k3s_ready
+  wait_for_traefik_crd
   install_helm
   install_gitstack "${chart_dir}" "${image_tag}"
 

@@ -33,18 +33,26 @@ Soglia provvisoria (decisione di Atlas), da rivedere con M-08 [c_8458909a21d9035
 | Sistema operativo | Ubuntu Server 24.04 LTS, architettura x86_64 |
 | CPU | 4 vCPU |
 | RAM | 8 GB |
-| Disco libero | 60 GB (sul filesystem che ospiterà i dati di k3s: `/var/lib/rancher` se esiste già come mountpoint dedicato, altrimenti `/`) |
+| Disco | macchina con almeno 60 GB di disco (sul filesystem che ospiterà i dati di k3s: `/var/lib/rancher` se esiste già, altrimenti `/`); il preflight verifica in concreto ≥55 GB di filesystem e ≥20 GB liberi — vedi sotto |
 | Accesso | root o sudo |
 | Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile — non è un vincolo air-gapped, quello arriva con M-08) |
 | Porte libere | 80, 443, 6443 (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) |
 
-I controlli RAM e disco usano GB decimali (10⁹ byte), non GiB: una macchina con "8 GB" di RAM nominali riporta spesso qualche centinaio di MiB in meno in `/proc/meminfo` per memoria riservata a firmware/hypervisor — con i GiB il controllo fallirebbe quasi sempre anche su una macchina conforme.
+I controlli RAM usano GB decimali (10⁹ byte), non GiB: una macchina con "8 GB" di RAM nominali riporta spesso qualche centinaio di MiB in meno in `/proc/meminfo` per memoria riservata a firmware/hypervisor — con i GiB il controllo fallirebbe quasi sempre anche su una macchina conforme.
+
+Per il disco il preflight non richiede "60 GB liberi": su un disco *da* 60 GB (il profilo minimo, uguale al disco della VM di GIT-12), dopo il sistema operativo lo spazio libero è per costruzione sotto i 60 GB, e cala ulteriormente dopo k3s e le immagini di GitStack — anche alle esecuzioni successive, perché il preflight gira a ogni avvio dello script. Controlla quindi due soglie più realistiche, entrambe in GB decimali: la dimensione del filesystem (**≥55 GB**, con margine per l'overhead di partizionamento/boot rispetto ai 60 GB nominali) e lo spazio libero (**≥20 GB**, sufficiente per k3s, le immagini di GitStack e i volumi di Postgres/NATS). Verificato simulando in un container Ubuntu 24.04 un disco ext4 da 60 GiB (come quello di GIT-12): il filesystem risultante è ~63 GB decimali con ~60 GB liberi appena formattato, ben sopra entrambe le soglie.
 
 Per saltare i controlli (solo su una macchina già verificata a mano): `--skip-preflight` o `GITSTACK_SKIP_PREFLIGHT=1`. Non è mai attivo di default.
 
 ### k3s e Traefik v3
 
-`INSTALL_K3S_VERSION` è pinnato a `v1.36.4+k3s1` (mai `latest`): quella versione include il chart Traefik `40.1.0` (`appVersion: v3.7.0`, cioè Traefik v3), richiesto dal Middleware `traefik.io/v1alpha1` dell'Ingress del chart (`gitstack/templates/ingress.yaml`, vedi `gitstack/README.md`). Sovrascrivibile con `--k3s-version`/`INSTALL_K3S_VERSION` se serve un'altra versione, purché includa Traefik v3.
+`INSTALL_K3S_VERSION` è pinnato a `v1.36.4+k3s1` (mai `latest`): quella versione include il chart Traefik `40.1.0` (`appVersion: v3.7.0`, cioè Traefik v3), richiesto dal Middleware `traefik.io/v1alpha1` dell'Ingress del chart (`gitstack/templates/ingress.yaml`, vedi `gitstack/README.md`). Sovrascrivibile con `INSTALL_K3S_VERSION` se serve un'altra versione, purché includa Traefik v3.
+
+k3s installa la CRD `middlewares.traefik.io` (serve al Middleware dell'Ingress) in modo **asincrono**, tramite un HelmChart/Job interni che partono dopo che il nodo è Ready: `install.sh` aspetta esplicitamente che quella CRD compaia e diventi `Established` prima di lanciare `helm upgrade --install` del chart di GitStack, altrimenti su una macchina pulita si incontra la stessa race del job "chart" della CI (`no matches for kind Middleware`). Con la CRD già presente (esecuzioni successive) l'attesa passa subito.
+
+### Helm
+
+Se `helm` non è già presente, lo script scarica il tarball ufficiale pinnato a `GITSTACK_HELM_VERSION` (default `v3.16.3`, stessa versione testata in `gitstack/README.md`) da `get.helm.sh` e ne verifica il checksum `.sha256sum` pubblicato, invece dello script mobile `get-helm-3` di `helm/helm@main`: stesso principio del pin di k3s, niente scaricato da un riferimento non pinnato.
 
 ### Immagini: tag sha del commit, non "latest"
 
