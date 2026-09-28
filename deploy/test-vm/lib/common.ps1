@@ -626,6 +626,89 @@ function Convert-QcowToVhdxDynamic {
     Write-Host "    Conversione completata: $DestinationPath"
 }
 
+# --- Rimozione file con retry (GIT-27: vmms/vmwp puo' tenere il lock un attimo dopo Remove-VM) ---
+
+function Remove-ItemWithRetry {
+    <#
+      Rimuove -Path (file o cartella, con -Recurse) ritentando per un tempo
+      breve e limitato se il percorso e' ancora bloccato: un primo tentativo
+      subito, poi uno ogni -RetryIntervalSeconds finche' non passano
+      -TimeoutSeconds. Non lancia mai un'eccezione: ritorna $true se alla
+      fine il percorso non esiste piu', $false se resta bloccato (il
+      chiamante decide cosa fare, es. avvisare l'utente).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [switch]$Recurse,
+        [int]$TimeoutSeconds = 30,
+        [int]$RetryIntervalSeconds = 3
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return $true }
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    while ($true) {
+        try {
+            if ($Recurse) {
+                Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            } else {
+                Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+            }
+        } catch {
+            $lastError = $_
+        }
+        if (-not (Test-Path -LiteralPath $Path)) { return $true }
+        if ((Get-Date) -ge $deadline) {
+            if ($lastError) {
+                Write-Warning "    '$Path' ancora bloccato dopo $TimeoutSeconds secondi di tentativi: $($lastError.Exception.Message)"
+            }
+            return $false
+        }
+        Start-Sleep -Seconds $RetryIntervalSeconds
+    }
+}
+
+function Test-VmOwnedFolder {
+    <#
+      True se -Path e' una cartella dedicata solo a -VmName e quindi sicura
+      da rimuovere con -Recurse: il suo nome finale (leaf) deve essere uguale
+      a -VmName, E il percorso non deve coincidere ne' essere un antenato di
+      -HostVirtualMachinePath.
+
+      -HostVirtualMachinePath e' la cartella predefinita dell'host per le VM
+      create senza -Path ((Get-VMHost).VirtualMachinePath), condivisa da
+      TUTTE le VM: senza questo secondo controllo, una VM il cui nome
+      coincidesse per caso con il leaf di quella cartella condivisa (o un suo
+      antenato) farebbe cancellare con -Recurse -Force anche le
+      configurazioni di altre VM (GIT-27, rework: verificato sulla macchina
+      del board che ConfigurationLocation di una VM senza -Path e' proprio
+      quella cartella condivisa).
+
+      Confronto case-insensitive (percorsi Windows), ignora gli eventuali
+      separatori finali.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$HostVirtualMachinePath
+    )
+    $normalizedPath = $Path.TrimEnd('\', '/')
+    $normalizedHostPath = $HostVirtualMachinePath.TrimEnd('\', '/')
+
+    $leaf = Split-Path -Path $normalizedPath -Leaf
+    if ($leaf -ne $VmName) { return $false }
+
+    if ($normalizedPath -ieq $normalizedHostPath) { return $false }
+
+    # $Path e' un antenato di $HostVirtualMachinePath se quest'ultimo comincia
+    # con "$Path\": cancellarlo con -Recurse cancellerebbe anche la cartella
+    # condivisa dell'host (e quindi le altre VM che ci vivono dentro).
+    if ($normalizedHostPath.StartsWith($normalizedPath + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        return $false
+    }
+
+    return $true
+}
+
 function Write-VmSummary {
     <# Stampa il riepilogo "Cosa comunicare al team": VM, switch, utente, IP, specifiche, comando ssh. #>
     param(
