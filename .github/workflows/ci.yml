@@ -97,9 +97,11 @@ jobs:
   registry:
     name: Registry — build & push immagini
     needs: [go, ts]
-    # Un `if:` personalizzato su un job con `needs` sostituisce il check di
-    # successo implicito: va richiamato esplicitamente con success(), altrimenti
-    # il job girerebbe anche se go/ts sono falliti.
+    # success() qui è ridondante ma esplicito per chiarezza: quando un `if:`
+    # non usa nessuna funzione di stato, GitHub Actions vi antepone
+    # automaticamente `success() &&`, quindi il comportamento sarebbe lo
+    # stesso anche senza scriverlo. Lo lasciamo a scanso di equivoci, visto
+    # che questo job dipende da `needs` per non pubblicare immagini rotte.
     if: success() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
