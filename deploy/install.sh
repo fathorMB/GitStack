@@ -361,9 +361,11 @@ resolve_chart_dir() {
 
   local extracted
   extracted="$(find "${workdir}" -mindepth 1 -maxdepth 1 -type d | head -n1)"
-  [ -n "${extracted}" ] && [ -f "${extracted}/deploy/gitstack/Chart.yaml" ] \
-    || fail "il sorgente scaricato non contiene deploy/gitstack/Chart.yaml."
-  CHART_DIR="${extracted}/deploy/gitstack"
+  if [ -n "${extracted}" ] && [ -f "${extracted}/deploy/gitstack/Chart.yaml" ]; then
+    CHART_DIR="${extracted}/deploy/gitstack"
+  else
+    fail "il sorgente scaricato non contiene deploy/gitstack/Chart.yaml."
+  fi
 }
 
 # Sha del commit di GITSTACK_REPO al ref dato, via l'API di GitHub (nessuna
@@ -547,7 +549,11 @@ primary_ip() {
   if [ -z "${ip}" ]; then
     ip="$(KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || true)"
   fi
-  [ -n "${ip}" ] && printf '%s' "${ip}" || printf 'localhost'
+  if [ -n "${ip}" ]; then
+    printf '%s' "${ip}"
+  else
+    printf 'localhost'
+  fi
 }
 
 print_summary() {
