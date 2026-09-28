@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Esegue un comando in ciascun modulo Go del workspace (vedi go.work),
-# dalla radice del monorepo. Un modulo Go multi-radice non supporta
-# pattern "./..." dalla radice (il tool go richiede di stare dentro un
-# modulo): questo script è l'unica fonte della lista dei moduli, usata sia
-# dal README sia dalla pipeline CI, così restano sempre allineati.
+# Esegue un comando in ciascun modulo Go del workspace, dalla radice del
+# monorepo. Un workspace Go multi-modulo non supporta pattern "./..." dalla
+# radice (il tool go richiede di stare dentro un modulo): questo script
+# risolve il problema iterando sui moduli.
+#
+# La lista dei moduli non è scritta a mano: viene ricavata da `go list -m`,
+# cioè dal workspace stesso (go.work), così README e CI restano allineati a
+# go.work anche quando qualcuno aggiunge o toglie un modulo.
 set -euo pipefail
 
 if [ "$#" -eq 0 ]; then
@@ -11,18 +14,17 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
-modules=(
-  cli
-  services/core
-  services/gateway
-  services/git
-  services/identity
-)
+mapfile -t modules < <(go list -m -f '{{.Dir}}')
+
+if [ "${#modules[@]}" -eq 0 ]; then
+  echo "go-each.sh: nessun modulo trovato nel workspace (go list -m non ha restituito nulla)" >&2
+  exit 1
+fi
 
 status=0
-for module in "${modules[@]}"; do
-  echo "==> ${module}: $*"
-  if ! (cd "${module}" && "$@"); then
+for module_dir in "${modules[@]}"; do
+  echo "==> ${module_dir}: $*"
+  if ! (cd "${module_dir}" && "$@"); then
     status=1
   fi
 done

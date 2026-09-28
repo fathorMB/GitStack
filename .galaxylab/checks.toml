@@ -2,6 +2,13 @@
 # run_checks). Rispecchiano i job Go e TS di .github/workflows/ci.yml, così
 # un item integrato senza controlli passati non arriva mai a main (vedi
 # GIT-2, nota del CTO su MR-1 unito senza controlli automatici).
+#
+# Prerequisiti sull'host che esegue questi comandi: bash (Git Bash su
+# Windows) e golangci-lint nel PATH. Il check "go-test" usa `go test ./...`
+# senza `-race`: il motore gira su questa macchina (Windows, senza gcc/cgo),
+# dove il race detector fallirebbe sempre indipendentemente dal codice. Il
+# race detector resta nel job "go" di .github/workflows/ci.yml, che gira su
+# ubuntu-latest (gcc preinstallato).
 
 [[checks]]
 name = "go-build"
@@ -13,7 +20,7 @@ run = "bash scripts/go-each.sh golangci-lint run ./... --timeout=5m"
 
 [[checks]]
 name = "go-test"
-run = "bash scripts/go-each.sh go test ./... -race"
+run = "bash scripts/go-each.sh go test ./..."
 
 [[checks]]
 name = "web-lint"

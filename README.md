@@ -47,7 +47,7 @@ cd web
 pnpm install
 ```
 
-`go build ./...` non funziona dalla radice: con `go.work` la radice stessa non è un modulo, quindi il tool `go` va invocato dentro ciascun modulo. `scripts/go-each.sh` è l'unica fonte della lista dei moduli del workspace (`cli`, `services/core`, `services/gateway`, `services/git`, `services/identity`): lo usano sia questo README sia la pipeline CI (`.github/workflows/ci.yml`), così restano sempre allineati.
+`go build ./...` non funziona dalla radice: con `go.work` la radice stessa non è un modulo, quindi il tool `go` va invocato dentro ciascun modulo. `scripts/go-each.sh` risolve il problema ricavando la lista dei moduli da `go list -m` (cioè da `go.work` stesso, non da una lista scritta a mano) e la usa per iterare: lo usano sia questo README sia la pipeline CI (`.github/workflows/ci.yml`), così restano sempre allineati a `go.work` anche quando si aggiunge o toglie un modulo.
 
 Questo è il primo item del monorepo (M-01/T-01): oggi contiene solo la struttura, le licenze e gli scheletri dei moduli (più un package `doc.go`/`main.go` minimo per modulo, così build/lint/test hanno qualcosa su cui lavorare). Il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01.
 

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
     tags: ['v*']
   pull_request:
 
@@ -88,13 +88,19 @@ jobs:
         run: pnpm run test
 
   # Costruisce e pubblica le immagini dei servizi su un registry parametrico
-  # (ghcr.io di default). Solo su push a main o su tag, mai sulle PR (anche
-  # da fork): l'evento "pull_request" non è tra i trigger di questo job.
+  # (ghcr.io di default). Richiede che build/lint/test (go, ts) siano verdi
+  # (needs), altrimenti un push rosso pubblicherebbe comunque un'immagine.
+  # Solo su push a main o su tag, mai sulle PR (anche da fork): l'evento
+  # "pull_request" non è tra i trigger di questo job.
   # Un servizio senza Dockerfile viene saltato (arriva con GIT-4/GIT-5):
   # il job resta pronto, senza fallire la pipeline.
   registry:
     name: Registry — build & push immagini
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    needs: [go, ts]
+    # Un `if:` personalizzato su un job con `needs` sostituisce il check di
+    # successo implicito: va richiamato esplicitamente con success(), altrimenti
+    # il job girerebbe anche se go/ts sono falliti.
+    if: success() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
