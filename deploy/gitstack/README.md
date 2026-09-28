@@ -18,17 +18,17 @@ helm install gitstack deploy/gitstack
 | PVC repo Git (`gitData.enabled`, **default `false`**) | PersistentVolumeClaim | Predisposto per i futuri repository Git (D6), non un criterio di accettazione di questo item. Disattivato di default: nessun pod lo monta ancora (il servizio "git" arriva con una milestone successiva a M-01) e la storage class di default di k3s (`local-path`, `WaitForFirstConsumer`) lo lascerebbe "Pending" per sempre, bloccando `helm install --wait`. Attivalo solo insieme al servizio che lo monta. |
 | Ingress | Ingress + Middleware Traefik | `/` verso `web`, `/api` verso `gateway` (con lo strip del prefisso, vedi sotto). |
 
-## Web: `web.enabled` finché l'immagine non esiste (GIT-7)
+## Web: `web.enabled` (GIT-7)
 
-L'immagine di `web` arriva con GIT-7, **in parallelo** a questo chart (GIT-8). Il Deployment e il Service di `web` sono già definiti, con l'immagine configurabile (`web.image.*`) e un interruttore `web.enabled` (default `true`).
+L'immagine di `web` (GIT-7) esiste dalla sua integrazione: `web.containerPort` (8080) e `web.probes.path` (`/healthz`) nei values combaciano con l'immagine reale (`web/Dockerfile`, `EXPOSE 8080`; `web/deploy/nginx.conf.template`, `location = /healthz`). Il Deployment imposta anche `GATEWAY_UPSTREAM` al Service k3s del gateway (`gitstack.gateway.url` in `_helpers.tpl`), sovrascrivendo il default dell'immagine (`http://gateway:8080`, che non risolverebbe: il Service si chiama `<release>-gateway`) — altrimenti il proxy `/api/*` di nginx verso il gateway non risolverebbe nel cluster.
 
-Finché `ghcr.io/fathormb/gitstack-web` non esiste, un'installazione con i valori di default fallisce a tirare giù l'immagine (`ImagePullBackOff`). Disattiva `web` esplicitamente:
+Se serve installare senza l'immagine di `web` (es. un registry senza quel pacchetto pubblicato), disattivala esplicitamente:
 
 ```sh
 helm install gitstack deploy/gitstack --set web.enabled=false
 ```
 
-Con `web.enabled=false`, l'Ingress espone solo `/api` (nessuna regola `/`): è quanto fa l'installazione di prova in CI (vedi `.github/workflows/ci.yml`, job `chart`) finché GIT-7 non pubblica l'immagine.
+Con `web.enabled=false`, l'Ingress espone solo `/api` (nessuna regola `/`): è quanto fa ancora oggi l'installazione di prova in CI (vedi `.github/workflows/ci.yml`, job `chart`), che costruisce in locale solo le immagini di `gateway` e `core`. L'ambiente di sviluppo locale (`make dev-up`, GIT-10, vedi sotto) costruisce e importa anche l'immagine di `web` e la lascia attiva.
 
 ## Tag delle immagini
 
@@ -88,5 +88,9 @@ Tutti i servizi Go (`gateway`, `core`) hanno probe HTTP su `/healthz` (liveness)
 1. `helm lint deploy/gitstack`.
 2. Crea un cluster effimero k3d (Traefik e le sue CRD sono già incluse, essendo `k3d` un vero k3s in Docker).
 3. `helm install` con `--set web.enabled=false --set global.image.tag=sha-<sha del commit>` (l'immagine di `web` non esiste ancora, vedi sopra).
-4. Attende che `gateway` e `core` siano `Ready` (`kubectl wait`).
+4. Attende che `gateway` e `core` siano `Ready` (`kubectl rollout status`).
 5. Interroga `/healthz` tramite l'Ingress su `/api/healthz` e verifica una risposta 200.
+
+## Ambiente di sviluppo locale (`make dev-up`, GIT-10)
+
+Per uno sviluppo locale — cluster persistente, `web` incluso, ciclo modifica → rebuild → redeploy di un solo servizio — usa i target `make dev-*` alla radice del repo, che riusano questo stesso chart e la stessa sequenza del job `chart` sopra (k3d, build locale, `k3d image import`, `helm upgrade --install`). Guida completa: `docs/dev-environment.md`.

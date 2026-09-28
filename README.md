@@ -51,6 +51,10 @@ pnpm install
 
 `go build ./...` non funziona dalla radice: con `go.work` la radice stessa non è un modulo, quindi il tool `go` va invocato dentro ciascun modulo. `scripts/go-each.sh` risolve il problema ricavando la lista dei moduli da `go list -m` (cioè da `go.work` stesso, non da una lista scritta a mano) e la usa per iterare: lo usano sia questo README sia la pipeline CI (`.github/workflows/ci.yml`), così restano sempre allineati a `go.work` anche quando si aggiunge o toglie un modulo.
 
+## Ambiente di sviluppo locale (cluster k3d)
+
+Per provare le modifiche su un cluster reale, senza una VM: `make dev-up` crea un cluster [k3d](https://k3d.io/) locale e installa GitStack (chart `deploy/gitstack`, GIT-8) dalle immagini costruite in locale; `make dev-down` lo distrugge; `make dev-redeploy SVC=gateway` (o `core`/`web`) ricostruisce e ridistribuisce un solo servizio. Guida completa (prerequisiti Linux/macOS/Windows-WSL2, ciclo modifica → rebuild → redeploy): `docs/dev-environment.md`.
+
 ## Contratto API e client generati
 
 `api/openapi.yaml` è la fonte unica dell'API pubblica (decisione D8
