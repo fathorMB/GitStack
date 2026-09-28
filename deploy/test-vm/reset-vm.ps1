@@ -9,6 +9,12 @@
     checkpoint 'clean' creato da new-vm.ps1, riavvia la VM e attende che SSH
     risponda prima di stampare IP e comando pronto.
 
+    L'IP viene letto prima via KVP; se la VM usa la cloud image generica
+    (senza hv_kvp_daemon, vedi GIT-25) lo script passa automaticamente al
+    fallback MAC -> cache ARP dell'host (Wait-VmIPv4Address in
+    lib/common.ps1), sulla stessa interfaccia dello switch passato a
+    new-vm.ps1 (-SwitchName, default 'Default Switch').
+
 .EXAMPLE
     .\reset-vm.ps1
 .EXAMPLE
@@ -18,6 +24,8 @@
 param(
     [string]$VmName = 'gitstack-test-vm',
     [string]$VmUser = 'gitstack',
+    # Switch virtuale Hyper-V della VM: deve combaciare con quello passato a new-vm.ps1 (serve al fallback MAC -> ARP per trovare l'interfaccia host giusta).
+    [string]$SwitchName = 'Default Switch',
     [string]$CheckpointName = 'clean',
     [int]$BootTimeoutSeconds = 300,
     [int]$SshTimeoutSeconds = 180
@@ -54,7 +62,7 @@ try {
     Write-Host "==> Riavvio la VM"
     Start-VM -Name $VmName
 
-    $ip = Wait-VmIPv4Address -VmName $VmName -TimeoutSeconds $BootTimeoutSeconds
+    $ip = Wait-VmIPv4Address -VmName $VmName -SwitchName $SwitchName -TimeoutSeconds $BootTimeoutSeconds
     Wait-TcpPort -IpAddress $ip -Port 22 -TimeoutSeconds $SshTimeoutSeconds
 
     Write-Host ""

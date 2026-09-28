@@ -6,4 +6,6 @@
 *.vhd
 *.vhdx
 *.iso
+*.img
+*.img.partial
 image-cache/
