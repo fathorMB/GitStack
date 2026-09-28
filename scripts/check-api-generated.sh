@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Controllo di CI: il codice generato (client/go, client/ts) deve essere
-# allineato al contratto OpenAPI (api/openapi.yaml). Rigenera e fallisce se
-# il repository risulta sporco dopo la rigenerazione: vuol dire che qualcuno
-# ha cambiato il contratto (o modificato a mano il codice generato) senza
-# rilanciare ./scripts/generate-api.sh.
+# Controllo di CI: il codice generato (client/go, client/ts e l'interfaccia
+# server del gateway in services/gateway) deve essere allineato al contratto
+# OpenAPI (api/openapi.yaml). Rigenera e fallisce se l'albero di lavoro
+# risulta sporco dopo la rigenerazione: vuol dire che qualcuno ha cambiato il
+# contratto (o modificato a mano il codice generato) senza rilanciare
+# ./scripts/generate-api.sh. Usa `git status --porcelain` (nessun effetto
+# sull'index) invece di `git add`, per non toccare lo stato che l'eventuale
+# commit successivo si aspetta.
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -11,13 +14,13 @@ cd "$root_dir"
 
 ./scripts/generate-api.sh
 
-git add -A -- api client
-if ! git diff --cached --quiet -- api client; then
+status="$(git status --porcelain -- api client services/gateway)"
+if [ -n "$status" ]; then
   echo
   echo "Il codice generato non è allineato al contratto OpenAPI." >&2
   echo "Rilancia ./scripts/generate-api.sh e committa il risultato." >&2
   echo
-  git diff --cached --stat -- api client
+  echo "$status"
   exit 1
 fi
 
