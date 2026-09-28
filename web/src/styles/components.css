@@ -1,0 +1,91 @@
+/*
+ * Componenti di base (web/src/components), dallo styleguide
+ * (.lmbrain-lite/design/styleguide/index.html, sezioni Bottoni/Form/Badge/
+ * Feedback). Solo var(--token) per colori, raggi, font e ombre; niente
+ * colori fissi (es. il #fff dello styleguide qui e' var(--accent-fg)).
+ * Le classi base (.btn, .input, .field, .badge, .empty...) stanno in base.css.
+ */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Pulsanti: varianti */
+.btn-danger{color:var(--danger)}
+.btn-danger:hover{background:var(--danger);border-color:var(--danger);color:var(--accent-fg)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--text-muted)}
+.btn-ghost:hover{background:var(--surface-2);color:var(--text)}
+.btn-lg{height:40px;padding:0 16px;font-size:var(--fs-base)}
+.btn-sm{gap:4px}
+.btn[disabled]:hover{background:var(--surface)}
+.btn-primary[disabled]:hover{background:var(--accent)}
+
+/* Campi */
+.field .error{font-size:var(--fs-sm);color:var(--danger)}
+.field label{font-weight:600;font-size:13px}
+.input,.select{height:32px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:var(--fs-base) var(--font-sans);width:100%}
+.input::placeholder{color:var(--text-subtle)}
+.input[aria-invalid="true"],.select[aria-invalid="true"]{border-color:var(--danger)}
+.input:focus-visible,.select:focus-visible,.select[data-state="open"]{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
+.input:disabled,.select[data-disabled]{opacity:0.5;cursor:not-allowed}
+.input-wrap{position:relative}
+.input-has-action{padding-right:36px}
+.input-action{position:absolute;right:2px;top:2px;bottom:2px;width:28px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:var(--r-sm);background:transparent;color:var(--text-muted);cursor:pointer}
+.input-action:hover{background:var(--surface-2);color:var(--text)}
+.input-action:focus-visible{outline:none;box-shadow:var(--focus)}
+.select{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left}
+.select[data-placeholder]{color:var(--text-subtle)}
+.select-content{z-index:50;min-width:var(--radix-select-trigger-width);max-height:var(--radix-select-content-available-height)}
+.menu{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2);padding:4px}
+.menu-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:var(--r-sm);cursor:pointer;color:var(--text);outline:none;user-select:none}
+.menu-item[data-highlighted]{background:var(--surface-2)}
+.menu-check{display:inline-flex;color:var(--accent-text)}
+
+.check{display:flex;align-items:flex-start;gap:8px}
+.check label{cursor:pointer;font-weight:500;font-size:13px}
+.check-box{flex:none;width:16px;height:16px;margin-top:2px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--surface);color:var(--accent-fg);cursor:pointer}
+.check-box[data-state="checked"]{background:var(--accent);border-color:var(--accent)}
+.check-box:focus-visible{outline:none;box-shadow:var(--focus)}
+.check-box[data-disabled]{opacity:0.5;cursor:not-allowed}
+
+/* Badge di stato: colore + icona + testo */
+.badge-open{background:var(--success);border-color:var(--success);color:var(--accent-fg)}
+.badge-closed{background:var(--closed);border-color:var(--closed);color:var(--accent-fg)}
+.badge-danger{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.badge-accent{background:var(--accent-soft);border-color:transparent;color:var(--accent-text)}
+.badge-agent{background:var(--agent-soft);border-color:transparent;color:var(--agent);font-family:var(--font-mono);font-size:var(--fs-xs);height:18px;padding:0 6px}
+
+/* Tabella */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl th{color:var(--text-muted);font-weight:600;font-size:var(--fs-sm);background:var(--surface-2)}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover{background:var(--surface-2)}
+
+/* Stato vuoto */
+.empty-action{margin-top:12px}
+
+/* Dialog */
+.dialog-overlay{position:fixed;inset:0;z-index:40;background:var(--sidebar-bg);opacity:0.6}
+.dialog{position:fixed;z-index:41;top:50%;left:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 32px));background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2);padding:20px}
+.dialog:focus-visible{outline:none}
+.dialog-title{font-size:var(--fs-md);font-weight:600;margin-bottom:8px}
+.dialog-desc{color:var(--text-muted);font-size:13px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+
+/* Toast */
+.toast-viewport{position:fixed;z-index:60;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;width:min(380px,calc(100vw - 32px));margin:0;padding:0;list-style:none;outline:none}
+.toast{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-lg);background:var(--sidebar-bg);color:var(--sidebar-fg-strong);box-shadow:var(--shadow-2);font-size:13px}
+.toast .icon{flex:none;color:var(--sidebar-accent)}
+.toast-error .icon{color:var(--danger)}
+.toast-success .icon{color:var(--success)}
+.toast-close{margin-left:auto;display:inline-flex;padding:4px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--sidebar-fg);cursor:pointer}
+.toast-close:hover{color:var(--sidebar-fg-strong)}
+.toast-close:focus-visible{outline:none;box-shadow:var(--focus)}
+
+/* Pagina componenti e login segnaposto */
+.demo-sec{margin-bottom:32px}
+.demo-sec>h2{font-size:var(--fs-md);font-weight:600;margin-bottom:12px}
+.demo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg)}
+.login-card{width:min(380px,100%);padding:24px;display:flex;flex-direction:column;gap:16px}
+.login-card h1{font-size:var(--fs-lg);font-weight:600}
+a:focus-visible{outline:none;box-shadow:var(--focus);border-radius:var(--r-sm)}
