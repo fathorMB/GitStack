@@ -8,7 +8,16 @@
   "scripts": {
     "dev": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1",
     "build": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1",
-    "test": "echo \"TODO: scaffold Vite/React (GIT-7)\" && exit 1"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
-  "packageManager": "pnpm@11.28.1"
+  "packageManager": "pnpm@11.28.1",
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "eslint": "^9.38.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^3.2.4"
+  }
 }

@@ -39,12 +39,24 @@ Prerequisiti: Go (workspace in `go.work`, un modulo per servizio sotto `services
 
 ```sh
 # Go: tutti i moduli dei servizi e la CLI sono nel workspace di radice
-go build ./...          # dalla radice, una volta che i servizi hanno codice
 go work sync
+bash scripts/go-each.sh go build ./...   # dalla radice, un modulo alla volta
 
 # Web UI
 cd web
 pnpm install
 ```
 
-Questo è il primo item del monorepo (M-01/T-01): oggi contiene solo la struttura, le licenze e gli scheletri dei moduli. Il codice dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01.
+`go build ./...` non funziona dalla radice: con `go.work` la radice stessa non è un modulo, quindi il tool `go` va invocato dentro ciascun modulo. `scripts/go-each.sh` è l'unica fonte della lista dei moduli del workspace (`cli`, `services/core`, `services/gateway`, `services/git`, `services/identity`): lo usano sia questo README sia la pipeline CI (`.github/workflows/ci.yml`), così restano sempre allineati.
+
+Questo è il primo item del monorepo (M-01/T-01): oggi contiene solo la struttura, le licenze e gli scheletri dei moduli (più un package `doc.go`/`main.go` minimo per modulo, così build/lint/test hanno qualcosa su cui lavorare). Il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01.
+
+## CI
+
+Ogni push e pull request fa girare `.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-latest`):
+
+- **go**: `go work sync`, build, `golangci-lint` e `go test ./... -race` per ciascun modulo Go (`scripts/go-each.sh`).
+- **ts**: `pnpm install`, lint, typecheck e test di `web/`.
+- **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
+
+Gli stessi controlli Go e TS sono dichiarati in `.galaxylab/checks.toml` per l'esecuzione sui rami integrati.

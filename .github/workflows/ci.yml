@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+
+# Un solo run per ramo/PR alla volta: un push nuovo cancella quello vecchio.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOLANGCI_LINT_VERSION: v2.14.0
+
+jobs:
+  go:
+    name: Go — build, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      # Ordine e comandi identici a quelli documentati nel README di radice
+      # (sezione "Avviare lo sviluppo"): go work sync, poi la build.
+      - name: go work sync
+        run: go work sync
+
+      - name: go build (dalla radice, come da README)
+        run: bash scripts/go-each.sh go build ./...
+
+      - name: Installa golangci-lint ${{ env.GOLANGCI_LINT_VERSION }}
+        run: |
+          set -euo pipefail
+          version="${GOLANGCI_LINT_VERSION#v}"
+          curl -sSL -o /tmp/golangci-lint.tar.gz \
+            "https://github.com/golangci/golangci-lint/releases/download/${GOLANGCI_LINT_VERSION}/golangci-lint-${version}-linux-amd64.tar.gz"
+          tar -xzf /tmp/golangci-lint.tar.gz -C /tmp
+          install -Dm755 "/tmp/golangci-lint-${version}-linux-amd64/golangci-lint" "$(go env GOPATH)/bin/golangci-lint"
+          golangci-lint version
+
+      - name: golangci-lint (per modulo)
+        run: bash scripts/go-each.sh golangci-lint run ./... --timeout=5m
+
+      - name: go test -race (per modulo)
+        run: bash scripts/go-each.sh go test ./... -race
+
+  ts:
+    name: Web — lint, typecheck, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm lint
+        run: pnpm run lint
+
+      - name: pnpm typecheck
+        run: pnpm run typecheck
+
+      - name: pnpm test
+        run: pnpm run test
+
+  # Costruisce e pubblica le immagini dei servizi su un registry parametrico
+  # (ghcr.io di default). Solo su push a main o su tag, mai sulle PR (anche
+  # da fork): l'evento "pull_request" non è tra i trigger di questo job.
+  # Un servizio senza Dockerfile viene saltato (arriva con GIT-4/GIT-5):
+  # il job resta pronto, senza fallire la pipeline.
+  registry:
+    name: Registry — build & push immagini
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gateway, identity, git, core]
+    env:
+      # Parametro, non hard-coded nei Dockerfile: così il chart di GIT-8
+      # potrà puntare a un mirror (vedi M-08, air-gapped).
+      REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verifica Dockerfile
+        id: dockerfile
+        run: |
+          path="services/${{ matrix.service }}/Dockerfile"
+          if [ -f "${path}" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::${path} non esiste ancora (arriva con GIT-4/GIT-5): job registry saltato per ${{ matrix.service }}."
+          fi
+
+      - name: Log in a ${{ env.REGISTRY }}
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadati immagine
+        if: steps.dockerfile.outputs.exists == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/gitstack-${{ matrix.service }}
+          tags: |
+            type=sha,format=long
+            type=ref,event=tag
+
+      - name: Build & push
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
