@@ -47,10 +47,27 @@ const migrationsTable = "schema_migrations"
 // eseguito prima di New/Up: golang-migrate, con search_path=core, crea la
 // propria tabella di stato dentro il primo schema del search_path che
 // esiste già, quindi lo schema deve esistere prima di aprire la connessione
-// di migrazione.
+// di migrazione (la migrazione 0001 non lo crea più: vedi sql/0001).
+//
+// Controlla prima pg_namespace ed esegue CREATE SCHEMA solo se manca
+// davvero: con un ruolo a permessi limitati che possiede già lo schema (D6
+// [c_4df04d65b3ac4910], bootstrap-role.sql) senza CREATE sul database,
+// "CREATE SCHEMA IF NOT EXISTS" fallisce comunque con "permission denied
+// for database", perché Postgres controlla il privilegio CREATE prima di
+// valutare IF NOT EXISTS. Interrogando pg_namespace prima, il caso comune
+// (schema già creato da un operatore) non esegue mai CREATE SCHEMA, quindi
+// non serve quel privilegio.
 func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS "+Schema)
+	var exists bool
+	err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = $1)`, Schema).Scan(&exists)
 	if err != nil {
+		return fmt.Errorf("verifica esistenza schema %q non riuscita: %w", Schema, err)
+	}
+	if exists {
+		return nil
+	}
+
+	if _, err := pool.Exec(ctx, "CREATE SCHEMA "+Schema); err != nil {
 		return fmt.Errorf("creazione schema %q non riuscita: %w", Schema, err)
 	}
 	return nil

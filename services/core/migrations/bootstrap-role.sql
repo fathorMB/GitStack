@@ -22,7 +22,17 @@ CREATE SCHEMA IF NOT EXISTS core AUTHORIZATION core_app;
 
 -- Nessun permesso di default su "public" o su schema di altri servizi: il
 -- ruolo core_app non riceve alcun GRANT fuori da "core".
-REVOKE ALL ON SCHEMA public FROM core_app;
+--
+-- "REVOKE ALL ON SCHEMA public FROM core_app" da solo non basterebbe: i
+-- privilegi su "public" arrivano dal ruolo implicito PUBLIC (concesso a
+-- ogni ruolo, incluso core_app), non da un GRANT diretto a core_app: va
+-- revocato da PUBLIC, non da core_app. Questo è globale al database (tocca
+-- ogni ruolo che vi si connette, non solo core_app): è la linea di base
+-- comunque raccomandata quando più servizi condividono lo stesso database
+-- (nessuno crea oggetti in "public"), Postgres 15+ lo fa già di default per
+-- i nuovi database; qui lo rendiamo esplicito per non dipendere dalla
+-- versione del cluster.
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 -- Con lo schema di proprietà, core_app può già creare tabelle/indici al suo
 -- interno (le migrazioni di internal/migrate/sql lo fanno con

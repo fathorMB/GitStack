@@ -1,12 +1,13 @@
--- Schema dedicato a core (D6 [c_4df04d65b3ac4910]): uno schema per
--- servizio, nessun servizio legge le tabelle di un altro. In un ambiente di
--- produzione lo schema (e il ruolo DB con permessi solo su di esso) possono
--- essere già stati creati da un operatore (vedi
--- services/core/migrations/bootstrap-role.sql); qui è "IF NOT EXISTS" per
--- restare idempotente anche in sviluppo/CI, dove core si occupa da solo del
--- proprio schema.
-CREATE SCHEMA IF NOT EXISTS core;
-
+-- Lo schema dedicato "core" (D6 [c_4df04d65b3ac4910]) non lo crea questa
+-- migrazione: ci pensa internal/migrate.EnsureSchema, eseguita prima di
+-- aprire questa connessione di migrazione (la tabella di stato di
+-- golang-migrate, core.schema_migrations, ha già bisogno dello schema
+-- prima della 0001). EnsureSchema controlla pg_namespace ed esegue
+-- CREATE SCHEMA solo se manca davvero: con un ruolo a permessi limitati che
+-- possiede già lo schema (bootstrap-role.sql) senza CREATE sul database,
+-- un "CREATE SCHEMA IF NOT EXISTS" qui fallirebbe comunque con
+-- "permission denied for database" (Postgres controlla il privilegio
+-- CREATE prima di valutare IF NOT EXISTS).
 CREATE TABLE IF NOT EXISTS core.resources (
     id UUID PRIMARY KEY,
     type TEXT NOT NULL,

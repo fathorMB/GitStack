@@ -53,6 +53,17 @@ jobs:
       - name: go test -race (per modulo)
         run: bash scripts/go-each.sh go test ./... -race
 
+      # Test d'integrazione di core contro un Postgres reale (criterio di
+      # accettazione di GIT-5), con testcontainers-go: il tag "integration"
+      # li tiene fuori dallo step precedente (go test ./... -race, che deve
+      # restare veloce e non richiedere Docker). ubuntu-latest ha già un
+      # demone Docker raggiungibile, che testcontainers usa per avviare
+      # Postgres. Solo services/core: è l'unico modulo con test così
+      # taggati.
+      - name: go test -tags=integration -race (services/core, Postgres reale via testcontainers)
+        working-directory: services/core
+        run: go test -tags=integration ./... -race
+
   ts:
     name: Web — lint, typecheck, test
     runs-on: ubuntu-latest
