@@ -214,21 +214,46 @@ rimozione checkpoint, rimozione VM, eliminazione dei file.
 ### Rimozione dei file dopo `Remove-VM` (GIT-27)
 
 Subito dopo `Remove-VM`, i processi Hyper-V (`vmms`/`vmwp`) possono tenere
-ancora per qualche secondo il lock su VHDX, ISO seed e cartella di
-configurazione della VM appena rimossa. `remove-vm.ps1` non ignora più
-l'errore in silenzio: per ciascun percorso ritenta la rimozione (`Remove-Item`)
-fino a 30 secondi, ogni 3 secondi (funzione `Remove-ItemWithRetry` in
-`lib/common.ps1`), finché il file non si sblocca.
+ancora per qualche secondo il lock su VHDX, ISO seed e cartelle della VM
+appena rimossa. `remove-vm.ps1` non ignora più l'errore in silenzio: per
+ciascun percorso ritenta la rimozione (`Remove-Item`) fino a 30 secondi, ogni
+3 secondi (funzione `Remove-ItemWithRetry` in `lib/common.ps1`), finché il
+file non si sblocca.
 
-Se anche dopo i tentativi resta qualcosa (VHDX, ISO o cartella), lo script:
+**Due cartelle distinte, entrambe rimosse**: `New-VM -Path $VmPath` crea la
+configurazione della VM in una sottocartella `<VmPath>\<VmName>`
+(`$vm.ConfigurationLocation`), mentre VHDX e ISO seed generati da
+`new-vm.ps1` vivono direttamente in `<VmPath>` (es. `<VmPath>\<VmName>.vhdx`).
+Dopo aver eliminato i file e la sottocartella di configurazione,
+`remove-vm.ps1` rimuove anche `<VmPath>` stessa se è rimasta vuota — è "la
+cartella della VM" in senso stretto (quella passata a `-VmPath`, di default
+`C:\HyperV-VMs\<VmName>`).
+
+**Guardia contro la cancellazione di cartelle di altre VM**: una VM creata
+*senza* `-Path` esplicito ha `ConfigurationLocation` uguale alla cartella
+predefinita dell'host, **condivisa da tutte le VM**
+(`(Get-VMHost).VirtualMachinePath`, tipicamente
+`C:\ProgramData\Microsoft\Windows\Hyper-V`). Prima di cancellare una cartella
+con `-Recurse`, `remove-vm.ps1` verifica con `Test-VmOwnedFolder`
+(`lib/common.ps1`) che sia *dedicata solo a questa VM*: il suo nome finale
+deve coincidere con `-VmName`, e il percorso non deve coincidere né essere un
+antenato della cartella condivisa dell'host. Se la verifica fallisce, la
+cartella **non** viene cancellata con `-Recurse`: si rimuove solo se già
+vuota (come prima di GIT-27); se non è vuota resta sul posto e lo script
+avvisa, elencando cosa contiene ancora, invece di rischiare di cancellare
+configurazioni di altre VM.
+
+Se alla fine resta qualcosa (VHDX, ISO, sottocartella di configurazione o
+cartella `-VmPath`, per lock persistente o per la guardia sopra), lo script:
 
 - stampa un avviso con l'elenco esatto dei percorsi rimasti e il comando
-  `Remove-Item` da usare per toglierli a mano;
+  `Remove-Item` da usare per toglierli a mano (dopo aver verificato il
+  contenuto, se la guardia li ha lasciati per sicurezza);
 - esce con codice **1** (la VM risulta comunque già rimossa da Hyper-V: solo
-  i file su disco sono rimasti).
+  i file/cartelle su disco sono rimasti).
 
 In assenza di problemi, `remove-vm.ps1` esce con codice 0 e conferma che
-VHDX, ISO e cartella di configurazione sono stati eliminati.
+VHDX, ISO e le due cartelle della VM sono stati eliminati.
 
 ### Se qualcosa non torna
 
@@ -266,14 +291,18 @@ VHDX, ISO e cartella di configurazione sono stati eliminati.
   Secure Boot (`Set-VMFirmware -EnableSecureBoot Off`), necessario perché il
   template predefinito di Hyper-V è per Windows. Se serve riattivarlo, usa il
   template `MicrosoftUEFICertificateAuthority`.
-- **`remove-vm.ps1` esce con codice 1 e avvisa che dei file sono rimasti**:
-  la VM è comunque già stata tolta da Hyper-V; VHDX/ISO/cartella erano ancora
-  bloccati da `vmms`/`vmwp` oltre i 30s di tentativi. Rilanciare
-  `remove-vm.ps1` non aiuta (la VM non esiste più, quindi non ricalcola quei
-  percorsi): aspetta qualche secondo che il processo che li blocca (di solito
-  `vmwp.exe`, verificabile con `Get-Process vmwp`, o Hyper-V Manager ancora
-  aperto su quella VM) li rilasci, poi lancia a mano il comando `Remove-Item`
-  stampato dall'avviso.
+- **`remove-vm.ps1` esce con codice 1 e avvisa che dei file/cartelle sono
+  rimasti**: la VM è comunque già stata tolta da Hyper-V. Due cause
+  possibili, distinguibili dal testo dell'avviso: (1) VHDX/ISO/cartella erano
+  ancora bloccati da `vmms`/`vmwp` oltre i 30s di tentativi — aspetta qualche
+  secondo che il processo che li blocca (di solito `vmwp.exe`, verificabile
+  con `Get-Process vmwp`, o Hyper-V Manager ancora aperto su quella VM) li
+  rilasci, poi lancia a mano il comando `Remove-Item` stampato dall'avviso;
+  (2) la cartella non è risultata dimostrabilmente dedicata solo a questa VM
+  (`Test-VmOwnedFolder`, vedi sopra) e non era vuota — verifica a mano cosa
+  contiene (elencato nell'avviso) prima di cancellarla, potrebbe contenere
+  file di un'altra VM. Rilanciare `remove-vm.ps1` non aiuta in nessuno dei
+  due casi (la VM non esiste più, quindi non ricalcola quei percorsi).
 
 ## Come lo usano GIT-9 e GIT-11
 

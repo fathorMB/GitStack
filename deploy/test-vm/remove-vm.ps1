@@ -36,6 +36,15 @@ try {
     $vmConfigPath = $vm.ConfigurationLocation
     $hardDiskPaths = (Get-VMHardDiskDrive -VMName $VmName | Select-Object -ExpandProperty Path) 2> $null
     $dvdPaths = (Get-VMDvdDrive -VMName $VmName | Where-Object { $_.Path } | Select-Object -ExpandProperty Path) 2> $null
+    # Cartella "della VM" (-VmPath di new-vm.ps1): il padre comune di VHDX/ISO,
+    # es. 'F:\HyperV-VMs\gitstack-test-vm' se il disco e' '...\gitstack-test-vm\gitstack-test-vm.vhdx'.
+    # E' distinta da $vmConfigPath ('...\gitstack-test-vm\gitstack-test-vm', la
+    # sottocartella che New-VM -Path crea per la configurazione).
+    $diskParentPaths = @($hardDiskPaths + $dvdPaths) | Where-Object { $_ } | ForEach-Object { Split-Path -Parent $_ } | Select-Object -Unique
+    # Cartella predefinita dell'host per le VM create senza -Path, condivisa da
+    # TUTTE le VM: mai cancellarla (ne' un suo antenato) con -Recurse, vedi
+    # Test-VmOwnedFolder in lib/common.ps1.
+    $hostVmPath = (Get-VMHost).VirtualMachinePath
 
     if (-not $Force) {
         $answer = Read-Host "Rimuovere definitivamente la VM '$VmName' (dischi, ISO seed e checkpoint inclusi)? Digita 'si' per confermare"
@@ -77,17 +86,59 @@ try {
         }
     }
     if ($vmConfigPath -and (Test-Path -LiteralPath $vmConfigPath)) {
-        Write-Host "==> Elimino $vmConfigPath"
-        if (-not (Remove-ItemWithRetry -Path $vmConfigPath -Recurse -TimeoutSeconds 30 -RetryIntervalSeconds 3)) {
-            $remainingPaths += $vmConfigPath
+        if (Test-VmOwnedFolder -Path $vmConfigPath -VmName $VmName -HostVirtualMachinePath $hostVmPath) {
+            Write-Host "==> Elimino $vmConfigPath"
+            if (-not (Remove-ItemWithRetry -Path $vmConfigPath -Recurse -TimeoutSeconds 30 -RetryIntervalSeconds 3)) {
+                $remainingPaths += $vmConfigPath
+            }
+        } else {
+            # Non e' (in modo dimostrabile) una cartella dedicata solo a questa
+            # VM: puo' essere la cartella condivisa dell'host per le VM create
+            # senza -Path, o un suo antenato. Mai -Recurse alla cieca: si
+            # rimuove solo se gia' vuota (comportamento precedente a GIT-27),
+            # altrimenti si avvisa e basta.
+            $remaining = Get-ChildItem -LiteralPath $vmConfigPath -Recurse -ErrorAction SilentlyContinue
+            if (-not $remaining) {
+                Write-Host "==> Elimino $vmConfigPath (vuota)"
+                if (-not (Remove-ItemWithRetry -Path $vmConfigPath -TimeoutSeconds 30 -RetryIntervalSeconds 3)) {
+                    $remainingPaths += $vmConfigPath
+                }
+            } else {
+                Write-Warning "'$vmConfigPath' non ha il nome finale uguale a '$VmName', oppure coincide con la cartella condivisa dell'host (Get-VMHost).VirtualMachinePath ('$hostVmPath') o un suo antenato, e non e' vuota: non la rimuovo con -Recurse per non cancellare file di altre VM. Ripulisci a mano solo i file di '$VmName' al suo interno."
+                $remainingPaths += $vmConfigPath
+            }
+        }
+    }
+
+    # Cartella "della VM" (-VmPath di new-vm.ps1, padre di VHDX/ISO): a questo
+    # punto dovrebbe essere vuota (file e sottocartella di configurazione gia'
+    # rimossi sopra). Stessa guardia di $vmConfigPath: rimossa solo se dedicata
+    # a questa VM, e solo se davvero vuota (mai -Recurse su una cartella che
+    # contiene altro).
+    foreach ($diskParent in $diskParentPaths) {
+        if (-not $diskParent -or -not (Test-Path -LiteralPath $diskParent)) { continue }
+        if ($diskParent -ieq $vmConfigPath) { continue } # gia' gestita sopra
+        if (-not (Test-VmOwnedFolder -Path $diskParent -VmName $VmName -HostVirtualMachinePath $hostVmPath)) {
+            continue # non dimostrabilmente dedicata a questa VM: non la tocco
+        }
+        $leftovers = Get-ChildItem -LiteralPath $diskParent -ErrorAction SilentlyContinue
+        if ($leftovers) {
+            Write-Warning "La cartella della VM '$diskParent' contiene ancora altri file/cartelle (elencati sotto): non la rimuovo con -Recurse."
+            $leftovers | ForEach-Object { Write-Warning "    $($_.FullName)" }
+            $remainingPaths += $diskParent
+            continue
+        }
+        Write-Host "==> Elimino $diskParent (vuota)"
+        if (-not (Remove-ItemWithRetry -Path $diskParent -TimeoutSeconds 30 -RetryIntervalSeconds 3)) {
+            $remainingPaths += $diskParent
         }
     }
 
     Write-Host ""
     if ($remainingPaths) {
-        Write-Warning "VM '$VmName' rimossa da Hyper-V, ma alcuni percorsi sono rimasti su disco (probabilmente ancora bloccati da un processo Hyper-V, es. vmms/vmwp):"
+        Write-Warning "VM '$VmName' rimossa da Hyper-V, ma alcuni percorsi sono rimasti su disco (bloccati da un processo Hyper-V come vmms/vmwp oltre i tentativi, o non rimossi per sicurezza: vedi gli avvisi sopra per il motivo di ciascuno):"
         foreach ($p in $remainingPaths) { Write-Warning "  - $p" }
-        Write-Warning "Riprova tra qualche secondo a mano, per esempio:"
+        Write-Warning "Quando non sono piu' bloccati e ne hai verificato il contenuto, rimuovili a mano, per esempio:"
         foreach ($p in $remainingPaths) { Write-Warning "  Remove-Item -LiteralPath '$p' -Recurse -Force" }
         exit 1
     }

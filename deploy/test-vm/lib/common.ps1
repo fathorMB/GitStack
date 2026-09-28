@@ -667,6 +667,48 @@ function Remove-ItemWithRetry {
     }
 }
 
+function Test-VmOwnedFolder {
+    <#
+      True se -Path e' una cartella dedicata solo a -VmName e quindi sicura
+      da rimuovere con -Recurse: il suo nome finale (leaf) deve essere uguale
+      a -VmName, E il percorso non deve coincidere ne' essere un antenato di
+      -HostVirtualMachinePath.
+
+      -HostVirtualMachinePath e' la cartella predefinita dell'host per le VM
+      create senza -Path ((Get-VMHost).VirtualMachinePath), condivisa da
+      TUTTE le VM: senza questo secondo controllo, una VM il cui nome
+      coincidesse per caso con il leaf di quella cartella condivisa (o un suo
+      antenato) farebbe cancellare con -Recurse -Force anche le
+      configurazioni di altre VM (GIT-27, rework: verificato sulla macchina
+      del board che ConfigurationLocation di una VM senza -Path e' proprio
+      quella cartella condivisa).
+
+      Confronto case-insensitive (percorsi Windows), ignora gli eventuali
+      separatori finali.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$HostVirtualMachinePath
+    )
+    $normalizedPath = $Path.TrimEnd('\', '/')
+    $normalizedHostPath = $HostVirtualMachinePath.TrimEnd('\', '/')
+
+    $leaf = Split-Path -Path $normalizedPath -Leaf
+    if ($leaf -ne $VmName) { return $false }
+
+    if ($normalizedPath -ieq $normalizedHostPath) { return $false }
+
+    # $Path e' un antenato di $HostVirtualMachinePath se quest'ultimo comincia
+    # con "$Path\": cancellarlo con -Recurse cancellerebbe anche la cartella
+    # condivisa dell'host (e quindi le altre VM che ci vivono dentro).
+    if ($normalizedHostPath.StartsWith($normalizedPath + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        return $false
+    }
+
+    return $true
+}
+
 function Write-VmSummary {
     <# Stampa il riepilogo "Cosa comunicare al team": VM, switch, utente, IP, specifiche, comando ssh. #>
     param(
