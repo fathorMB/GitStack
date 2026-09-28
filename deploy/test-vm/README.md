@@ -389,8 +389,8 @@ Verifiche fatte per davvero in questa sessione:
   `[System.Management.Automation.Language.Parser]::ParseFile`.
   PSScriptAnalyzer non è disponibile in questo ambiente.
 - **cloud-init invariato (criterio 4)**: `user-data.yaml.tmpl` non toccato
-  da questo item; confermato a mano `packages: []`, `package_upgrade:
-  false`, `ssh_pwauth: false`, `lock_passwd: true`, nessun `passwd:`/hash.
+  da questo item; confermato a mano `package_upgrade:
+  false` (la chiave `packages` non c'è più dopo GIT-28: nessun pacchetto), `ssh_pwauth: false`, `lock_passwd: true`, nessun `passwd:`/hash.
 - **Generazione dell'ISO seed `cidata`**: `New-CloudInitSeedIso` (non
   toccata da GIT-25) non ri-verificata in questa sessione oltre al parser;
   era già stata provata isolatamente in una sessione precedente (GIT-12).
