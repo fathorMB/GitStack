@@ -64,20 +64,34 @@ try {
     Write-Host "==> Rimuovo la VM '$VmName' da Hyper-V"
     Remove-VM -Name $VmName -Force
 
+    # Subito dopo Remove-VM, vmms/vmwp possono tenere il lock su VHDX/ISO/cartella
+    # ancora per qualche secondo: Remove-ItemWithRetry ritenta fino a 30s (ogni 3s)
+    # prima di arrendersi, invece di ignorare l'errore in silenzio.
+    $remainingPaths = @()
+
     $filesToRemove = @($hardDiskPaths + $dvdPaths) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
     foreach ($file in $filesToRemove) {
         Write-Host "==> Elimino $file"
-        Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
+        if (-not (Remove-ItemWithRetry -Path $file -TimeoutSeconds 30 -RetryIntervalSeconds 3)) {
+            $remainingPaths += $file
+        }
     }
     if ($vmConfigPath -and (Test-Path -LiteralPath $vmConfigPath)) {
-        $remaining = Get-ChildItem -LiteralPath $vmConfigPath -Recurse -ErrorAction SilentlyContinue
-        if (-not $remaining) {
-            Remove-Item -LiteralPath $vmConfigPath -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "==> Elimino $vmConfigPath"
+        if (-not (Remove-ItemWithRetry -Path $vmConfigPath -Recurse -TimeoutSeconds 30 -RetryIntervalSeconds 3)) {
+            $remainingPaths += $vmConfigPath
         }
     }
 
     Write-Host ""
-    Write-Host "VM '$VmName' rimossa. Per ricrearla: '.\new-vm.ps1' (vedi README.md)."
+    if ($remainingPaths) {
+        Write-Warning "VM '$VmName' rimossa da Hyper-V, ma alcuni percorsi sono rimasti su disco (probabilmente ancora bloccati da un processo Hyper-V, es. vmms/vmwp):"
+        foreach ($p in $remainingPaths) { Write-Warning "  - $p" }
+        Write-Warning "Riprova tra qualche secondo a mano, per esempio:"
+        foreach ($p in $remainingPaths) { Write-Warning "  Remove-Item -LiteralPath '$p' -Recurse -Force" }
+        exit 1
+    }
+    Write-Host "VM '$VmName' rimossa, VHDX/ISO/cartella di configurazione eliminati. Per ricrearla: '.\new-vm.ps1' (vedi README.md)."
 } catch {
     Write-Error $_.Exception.Message
     exit 1

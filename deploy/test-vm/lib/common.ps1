@@ -626,6 +626,47 @@ function Convert-QcowToVhdxDynamic {
     Write-Host "    Conversione completata: $DestinationPath"
 }
 
+# --- Rimozione file con retry (GIT-27: vmms/vmwp puo' tenere il lock un attimo dopo Remove-VM) ---
+
+function Remove-ItemWithRetry {
+    <#
+      Rimuove -Path (file o cartella, con -Recurse) ritentando per un tempo
+      breve e limitato se il percorso e' ancora bloccato: un primo tentativo
+      subito, poi uno ogni -RetryIntervalSeconds finche' non passano
+      -TimeoutSeconds. Non lancia mai un'eccezione: ritorna $true se alla
+      fine il percorso non esiste piu', $false se resta bloccato (il
+      chiamante decide cosa fare, es. avvisare l'utente).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [switch]$Recurse,
+        [int]$TimeoutSeconds = 30,
+        [int]$RetryIntervalSeconds = 3
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return $true }
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    while ($true) {
+        try {
+            if ($Recurse) {
+                Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            } else {
+                Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+            }
+        } catch {
+            $lastError = $_
+        }
+        if (-not (Test-Path -LiteralPath $Path)) { return $true }
+        if ((Get-Date) -ge $deadline) {
+            if ($lastError) {
+                Write-Warning "    '$Path' ancora bloccato dopo $TimeoutSeconds secondi di tentativi: $($lastError.Exception.Message)"
+            }
+            return $false
+        }
+        Start-Sleep -Seconds $RetryIntervalSeconds
+    }
+}
+
 function Write-VmSummary {
     <# Stampa il riepilogo "Cosa comunicare al team": VM, switch, utente, IP, specifiche, comando ssh. #>
     param(

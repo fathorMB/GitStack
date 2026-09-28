@@ -14,7 +14,7 @@ Milestone [c_8289c650b4118599] (M-01), item GIT-12.
 |---|---|
 | `new-vm.ps1` | Crea la VM (Generazione 2, Ubuntu Server 24.04 LTS via cloud-init) e cattura lo checkpoint `clean`. Idempotente: se la VM esiste già, si ferma con un messaggio chiaro. |
 | `reset-vm.ps1` | Riporta la VM al checkpoint `clean`, la riavvia e stampa il suo IP (KVP, o MAC → ARP in fallback). Da lanciare prima di ogni prova di GIT-9/GIT-11. |
-| `remove-vm.ps1` | Rimuove la VM, i suoi checkpoint e i file (VHDX, ISO seed). Chiede conferma a meno di `-Force`. |
+| `remove-vm.ps1` | Rimuove la VM, i suoi checkpoint e i file (VHDX, ISO seed, cartella di configurazione). Chiede conferma a meno di `-Force`; se un file resta bloccato ritenta fino a 30s e avvisa se non basta (vedi sotto). |
 | `cloud-init/user-data.yaml.tmpl` | Template cloud-init: utente, chiave SSH, sudo senza password, nessun pacchetto extra. `{{...}}` sostituiti da `new-vm.ps1`. |
 | `cloud-init/meta-data.yaml.tmpl` | Template cloud-init: hostname e instance-id. |
 | `lib/common.ps1` | Funzioni condivise (attesa IP/SSH/cloud-init, creazione ISO seed, controlli). Non va eseguito direttamente. |
@@ -211,6 +211,25 @@ IP/SSH, poi IP e comando `ssh` pronto (qualche minuto, molto più veloce di
 `remove-vm.ps1` chiede conferma (a meno di `-Force`), poi stampa spegnimento,
 rimozione checkpoint, rimozione VM, eliminazione dei file.
 
+### Rimozione dei file dopo `Remove-VM` (GIT-27)
+
+Subito dopo `Remove-VM`, i processi Hyper-V (`vmms`/`vmwp`) possono tenere
+ancora per qualche secondo il lock su VHDX, ISO seed e cartella di
+configurazione della VM appena rimossa. `remove-vm.ps1` non ignora più
+l'errore in silenzio: per ciascun percorso ritenta la rimozione (`Remove-Item`)
+fino a 30 secondi, ogni 3 secondi (funzione `Remove-ItemWithRetry` in
+`lib/common.ps1`), finché il file non si sblocca.
+
+Se anche dopo i tentativi resta qualcosa (VHDX, ISO o cartella), lo script:
+
+- stampa un avviso con l'elenco esatto dei percorsi rimasti e il comando
+  `Remove-Item` da usare per toglierli a mano;
+- esce con codice **1** (la VM risulta comunque già rimossa da Hyper-V: solo
+  i file su disco sono rimasti).
+
+In assenza di problemi, `remove-vm.ps1` esce con codice 0 e conferma che
+VHDX, ISO e cartella di configurazione sono stati eliminati.
+
 ### Se qualcosa non torna
 
 - **`new-vm.ps1` si ferma su "la VM esiste già"**: è il comportamento atteso
@@ -247,6 +266,14 @@ rimozione checkpoint, rimozione VM, eliminazione dei file.
   Secure Boot (`Set-VMFirmware -EnableSecureBoot Off`), necessario perché il
   template predefinito di Hyper-V è per Windows. Se serve riattivarlo, usa il
   template `MicrosoftUEFICertificateAuthority`.
+- **`remove-vm.ps1` esce con codice 1 e avvisa che dei file sono rimasti**:
+  la VM è comunque già stata tolta da Hyper-V; VHDX/ISO/cartella erano ancora
+  bloccati da `vmms`/`vmwp` oltre i 30s di tentativi. Rilanciare
+  `remove-vm.ps1` non aiuta (la VM non esiste più, quindi non ricalcola quei
+  percorsi): aspetta qualche secondo che il processo che li blocca (di solito
+  `vmwp.exe`, verificabile con `Get-Process vmwp`, o Hyper-V Manager ancora
+  aperto su quella VM) li rilasci, poi lancia a mano il comando `Remove-Item`
+  stampato dall'avviso.
 
 ## Come lo usano GIT-9 e GIT-11
 
