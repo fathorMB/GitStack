@@ -180,6 +180,7 @@ Parametri principali (tutti con un default sensato):
 | `-Ref` | SHA corrente di `origin/main`, risolto con `git ls-remote` e stampato | Commit da provare. |
 | `-OutDir` | `%LOCALAPPDATA%\GitStack\e2e-runs\<timestamp>` | Log, diagnostica della VM e `known_hosts` isolato; a fine esecuzione anche `<OutDir>.zip`. |
 | `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
+| `-JetStreamPollAttempts` / `-JetStreamPollIntervalSeconds` | `6` / `5` | Passo (e): letture del conteggio JetStream dopo la create, ogni N secondi, finché supera la baseline (fino a 30s in totale di default). |
 
 ### Output atteso, passo per passo
 
@@ -202,7 +203,11 @@ Una riga `[PASS] <passo>` o `[FAIL] <passo>: <motivo>` per ciascuno:
    della risorsa di prova via `http://<ip>/api/v1/resources`; il numero di
    messaggi dello stream JetStream `CORE` (dominio dell'evento di prova,
    GIT-6) aumenta dopo la create (verificato dalla VM con un pod effimero
-   `natsio/nats-box`, immagine pinnata).
+   `natsio/nats-box`, immagine pinnata). `core` pubblica l'evento in una
+   goroutine **dopo** aver risposto 201 (timeout 5s): il conteggio non è
+   una lettura sola, ma un polling (`-JetStreamPollAttempts` tentativi ogni
+   `-JetStreamPollIntervalSeconds`, default 6×5s = fino a 30s), per non dare
+   un FAIL spurio per una corsa persa con la pubblicazione asincrona.
 8. **f.** idempotenza: seconda esecuzione dell'installer (log in
    `installer-run2.log`) → exit 0, hash della password di Postgres invariato,
    `ActiveEnterTimestamp` di `k3s` invariato (non reinstallato/riavviato),
@@ -302,3 +307,17 @@ Hyper-V:
   `jetstream-count` (subject/stream derivati da `pkg/events`, sha256 letta
   da `nats stream info --json`) è stata rivista a mano contro
   `pkg/events/stream.go`/`testevent.go` e `deploy/gitstack/templates/nats`.
+- **Rework (revisione CTO sul commit 8b62fd7)**: `core` pubblica l'evento
+  di prova in una goroutine dopo aver risposto 201
+  (`services/core/internal/httpserver/resources.go`,
+  `publishTestResourceCreated`, timeout 5s), quindi il passo (e) ora
+  rilegge il conteggio JetStream con un polling (`-JetStreamPollAttempts`/
+  `-JetStreamPollIntervalSeconds`, default 6×5s) invece di una lettura
+  sola. La logica del ciclo (si ferma al primo aumento, esaurisce tutti i
+  tentativi se non aumenta mai, nessuna `Start-Sleep` dopo l'ultimo
+  tentativo) è stata provata isolatamente con una funzione finta al posto
+  di `Invoke-RemoteHelper`, fuori dal repository: un caso che aumenta al
+  terzo tentativo si ferma subito (`jsOk=True`, 3 tentativi usati) e un
+  caso che non aumenta mai esaurisce tutti e 6 i tentativi
+  (`jsOk=False`). Riparser PowerShell e shellcheck rilanciati dopo la
+  modifica: nessun errore.

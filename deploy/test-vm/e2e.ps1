@@ -21,7 +21,12 @@
          nello stesso modo in cui lo userebbe il cliente (curl | sudo bash).
       e. verifiche end-to-end: UI (dall'host Windows), /api/healthz,
          create+read della risorsa di prova via API, evento di prova
-         pubblicato su JetStream (stream CORE, GIT-6).
+         pubblicato su JetStream (stream CORE, GIT-6). core pubblica
+         l'evento in una goroutine dopo aver risposto 201 (timeout 5s):
+         il conteggio dei messaggi si rilegge con un polling
+         (-JetStreamPollAttempts tentativi ogni
+         -JetStreamPollIntervalSeconds, default 6x5s), non con una lettura
+         sola, per non dare un FAIL spurio per una corsa persa.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -42,6 +47,15 @@
     debug di questo script: normalmente la VM viene sempre ripristinata al
     checkpoint 'clean' prima di ogni prova.
 
+.PARAMETER JetStreamPollAttempts
+    Passo (e): numero di letture del conteggio JetStream dopo la create,
+    finche' supera la baseline (core pubblica l'evento in una goroutine
+    dopo il 201, non prima). Default 6.
+
+.PARAMETER JetStreamPollIntervalSeconds
+    Passo (e): secondi di attesa tra un tentativo e il successivo. Default
+    5 (6x5s = fino a 30s in totale).
+
 .EXAMPLE
     .\e2e.ps1
 .EXAMPLE
@@ -60,7 +74,9 @@ param(
     [int]$SshTimeoutSeconds = 180,
     [int]$SshConnectTimeoutSeconds = 15,
     [int]$SshCommandTimeoutSeconds = 60,
-    [int]$InstallTimeoutSeconds = 900
+    [int]$InstallTimeoutSeconds = 900,
+    [int]$JetStreamPollAttempts = 6,
+    [int]$JetStreamPollIntervalSeconds = 5
 )
 
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
@@ -121,7 +137,7 @@ function Invoke-ExternalCommand {
         $proc = Start-Process -FilePath $FilePath -ArgumentList $argString -NoNewWindow -PassThru `
             -RedirectStandardOutput $stdOutFile -RedirectStandardError $stdErrFile -RedirectStandardInput $stdInFile
         # Toccare .Handle subito dopo Start-Process: senza questo, in Windows
-        # PowerShell 5.1 l'handle del processo può essere aperto con diritti
+        # PowerShell 5.1 l'handle del processo puo essere aperto con diritti
         # insufficienti e .ExitCode risulta $null/inaccessibile anche dopo
         # che WaitForExit ritorna true (bug noto di .NET/PowerShell 5.1).
         $null = $proc.Handle
@@ -430,16 +446,36 @@ function Main {
         }
 
         if ($eOk -and $null -ne $baselineCount) {
-            $after = Invoke-RemoteHelper -RemoteArgs @('jetstream-count', 'CORE', 'gitstack', 'default') -TimeoutSeconds 60
-            if ($after.ExitCode -ne 0 -or -not ($after.StdOut.Trim() -match '^\d+$')) {
-                $eOk = $false; $eDetails += "conteggio JetStream (dopo la create) non riuscito: $($after.StdOut) $($after.StdErr)"
-            } else {
-                $afterCount = [int]$after.StdOut.Trim()
-                if ($afterCount -le $baselineCount) {
-                    $eOk = $false; $eDetails += "stream CORE: messaggi non aumentati dopo la create (prima: $baselineCount, dopo: $afterCount)"
+            # core pubblica l'evento di prova in una goroutine DOPO aver
+            # risposto 201 (services/core/internal/httpserver/resources.go,
+            # publishTestResourceCreated, timeout 5s): una lettura sola del
+            # conteggio JetStream subito dopo la create rischia un FAIL
+            # spurio per una corsa persa, non per un bug reale. Polling con
+            # backoff fisso: si ferma al primo tentativo che supera la
+            # baseline, o dopo -JetStreamPollAttempts tentativi.
+            $jsOk = $false
+            $jsLastDetail = ''
+            for ($attempt = 1; $attempt -le $JetStreamPollAttempts; $attempt++) {
+                $after = Invoke-RemoteHelper -RemoteArgs @('jetstream-count', 'CORE', 'gitstack', 'default') -TimeoutSeconds 60
+                if ($after.ExitCode -ne 0 -or -not ($after.StdOut.Trim() -match '^\d+$')) {
+                    $jsLastDetail = "conteggio JetStream (tentativo $attempt/$JetStreamPollAttempts) non riuscito: $($after.StdOut) $($after.StdErr)"
+                    Write-Log $jsLastDetail
                 } else {
-                    Write-Log "Stream CORE: messaggi $baselineCount -> $afterCount"
+                    $afterCount = [int]$after.StdOut.Trim()
+                    Write-Log "Stream CORE (tentativo $attempt/$JetStreamPollAttempts): messaggi $baselineCount -> $afterCount"
+                    if ($afterCount -gt $baselineCount) {
+                        $jsOk = $true
+                        break
+                    }
+                    $jsLastDetail = "stream CORE: messaggi non ancora aumentati dopo la create (prima: $baselineCount, ultimo: $afterCount)"
                 }
+                if ($attempt -lt $JetStreamPollAttempts) {
+                    Start-Sleep -Seconds $JetStreamPollIntervalSeconds
+                }
+            }
+            if (-not $jsOk) {
+                $eOk = $false
+                $eDetails += "$jsLastDetail dopo $JetStreamPollAttempts tentativi ogni ${JetStreamPollIntervalSeconds}s"
             }
         }
 
@@ -548,7 +584,7 @@ function Main {
         # dal blocco 'try' con un 'return' anticipato (per non proseguire con
         # i passi successivi), e 'return' fa terminare la funzione non
         # appena 'finally' ha finito, saltando qualunque istruzione dopo il
-        # blocco try/catch/finally (compreso un 'exit' messo lì).
+        # blocco try/catch/finally (compreso un 'exit' messo li).
         exit $exitCode
     }
 }
