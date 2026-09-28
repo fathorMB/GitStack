@@ -13,11 +13,20 @@
 #                assoluti ne' "..")
 #     timeout_s  facoltativo, default 600, massimo 3600
 #
-# Prerequisiti dell'host (unico, per ora): Go nel PATH.
-# Nessun altro strumento (bash, pnpm, golangci-lint) e' richiesto da questo
+# Prerequisiti dell'host:
+# - Go nel PATH (check go-*);
+# - Node (verificato v24.11.1) e corepack (verificato 0.34.2) nel PATH
+#   (check web-*). pnpm arriva da corepack, alla versione fissata da
+#   "packageManager" in web/package.json (pnpm@11.28.1): i check web
+#   invocano `corepack pnpm ...` e NON usano lo shim `pnpm` del PATH
+#   (pnpm.ps1, versione diversa).
+# Non lanciare `corepack use` in web/: riscrive package.json.
+# Nessun altro strumento (bash, golangci-lint) e' richiesto da questo
 # file: la shell e il PATH del motore non sono noti, quindi nessun comando usa
 # $(...), pipe o `&&`. Verificato che il comando gira invariato in PowerShell,
 # cmd.exe e Git Bash sull'host di sviluppo (vedi riepilogo di consegna GIT-13).
+# Anche i comandi web sono stati verificati in PowerShell, cmd.exe e Git Bash
+# (vedi riepilogo di consegna GIT-45).
 
 [[check]]
 name = "go-build"
