@@ -25,6 +25,9 @@ contratto OpenAPI e il codice server restano AGPL-3.0 (decisione D17
 
 Il codice generato (`go/gitstack.gen.go`, `ts/src/generated/**`) non si
 modifica a mano. Se il contratto cambia, si cambia `api/openapi.yaml` e si
-rilancia `./scripts/generate-api.sh`; in CI un check fallisce se il codice
-generato committato non è allineato al contratto (vedi
-`.github/workflows/api-contract.yml`).
+rilancia `go work sync && ./scripts/generate-api.sh`, committando anche
+tutti i go.mod/go.sum che `go work sync` ha cambiato; in CI il job
+`check-generated` del workflow `api-contract` fallisce se il codice
+generato committato non è allineato al contratto, e il job separato
+`workspace-sync` fallisce se `go work sync` non è stato committato (vedi
+`.github/workflows/api-contract.yml` e il README di radice).

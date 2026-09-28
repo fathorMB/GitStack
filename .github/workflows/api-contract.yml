@@ -6,6 +6,19 @@ name: api-contract
 # La CI generale di build/lint/test di Go e TypeScript arriva con M-01/T-02;
 # questo workflow copre solo il criterio di accettazione specifico del
 # contratto API.
+#
+# Due job distinti apposta (GIT-20), niente `paths:` a limitare i trigger:
+# entrambi girano su ogni push a main e ogni pull request, qualunque file
+# cambi.
+# - check-generated: confronta solo il codice generato dal contratto
+#   OpenAPI. Non lancia `go work sync`: i moduli coinvolti si generano dal
+#   proprio go.mod/go.sum già committato, e mischiare `go work sync` in
+#   questo job aveva reso il check rosso (messaggio "non allineato al
+#   contratto") per go.mod/go.sum di moduli che l'item non aveva toccato
+#   (successo due volte, GIT-16 e GIT-19), che è un problema distinto:
+#   workspace-sync se ne occupa.
+# - workspace-sync: lancia `go work sync` e verifica che non sporchi
+#   go.mod/go.sum/go.work.sum di nessun modulo del workspace.
 on:
   push:
     branches: [main]
@@ -16,6 +29,7 @@ permissions:
 
 jobs:
   check-generated:
+    name: Codice generato allineato al contratto OpenAPI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +48,18 @@ jobs:
           cache: pnpm
           cache-dependency-path: client/ts/pnpm-lock.yaml
 
-      - name: go work sync
-        run: go work sync
-
       - name: Verifica che client/go e client/ts siano allineati ad api/openapi.yaml
         run: ./scripts/check-api-generated.sh
+
+  workspace-sync:
+    name: Workspace Go sincronizzato
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+
+      - name: Verifica che `go work sync` non modifichi go.mod/go.sum
+        run: ./scripts/check-go-work-sync.sh

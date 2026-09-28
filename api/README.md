@@ -28,16 +28,21 @@ i client, non un'estrazione a posteriori dal codice.
 npx --yes @redocly/cli@2 lint api/openapi.yaml --config api/redocly.yaml
 ```
 
-Girato anche da `./scripts/generate-api.sh` (radice del monorepo) e dal
-check CI `api-contract` (`.github/workflows/api-contract.yml`).
+Girato anche da `./scripts/generate-api.sh` (radice del monorepo) e dal job
+`check-generated` del workflow `api-contract`
+(`.github/workflows/api-contract.yml`).
 
 ## Cambiare il contratto
 
 1. Modifica `openapi.yaml` (e questo README se cambiano i principi).
 2. Dalla radice: `go work sync && ./scripts/generate-api.sh` per rigenerare
    `client/go` e `client/ts`.
-3. Commit del contratto insieme al codice generato: il check CI fallisce se
-   non sono allineati.
+3. Commit del contratto insieme al codice generato e a tutti i go.mod/go.sum
+   che `go work sync` ha cambiato (non solo quelli del modulo toccato): il
+   workflow `api-contract` ha due job separati che controllano ciascuno la
+   sua parte — `check-generated` per il codice generato, `workspace-sync`
+   per go.mod/go.sum — vedi il README di radice, sezione "Contratto API e
+   client generati".
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice); i
 client generati in `client/` sono invece Apache-2.0 (decisione D17

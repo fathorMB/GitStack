@@ -64,9 +64,26 @@ go work sync
 ./scripts/generate-api.sh
 ```
 
-In CI il check `api-contract` (`.github/workflows/api-contract.yml`) lancia
-lo stesso script e fallisce se il codice generato committato non è allineato
-al contratto. Dettagli: `api/README.md`, `client/README.md`.
+In CI il workflow `api-contract` (`.github/workflows/api-contract.yml`) ha
+due job separati (GIT-20), apposta non accoppiati:
+
+- `check-generated` lancia `./scripts/check-api-generated.sh` e fallisce se
+  il codice generato committato (`client/go/*.gen.go`,
+  `client/ts/src/generated/**`, `internal/openapi/api.gen.go` di gateway e
+  core) non è allineato al contratto.
+- `workspace-sync` lancia `./scripts/check-go-work-sync.sh`, che esegue
+  `go work sync` e fallisce se sporca go.mod/go.sum/go.work.sum di un
+  modulo qualsiasi del workspace: `go work sync` alza le dipendenze
+  indirette condivise in **tutti** i moduli, anche quelli che una modifica
+  non ha toccato, quindi questo controllo deve restare separato da quello
+  del contratto API (altrimenti un modulo nuovo o un cambio di dipendenza
+  fa fallire "codice generato non allineato" per moduli estranei al
+  contratto, un falso indizio già capitato con GIT-16 e GIT-19).
+
+Dopo aver aggiunto un modulo al workspace o cambiato una dipendenza, lancia
+`go work sync` dalla radice e committa tutti i go.mod/go.sum che cambiano,
+non solo quelli del modulo toccato. Dettagli: `api/README.md`,
+`client/README.md`.
 
 ## CI
 
@@ -79,6 +96,6 @@ stesso repo):
 - **ts**: `pnpm install`, lint, typecheck e test di `web/`.
 - **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Gira solo dopo che `go` e `ts` sono verdi, solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
 
-Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra), che gira sia su push a `main` sia su pull request.
+Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra, sezione "Contratto API e client generati"), che gira sia su push a `main` sia su pull request, su qualunque file cambi (nessun filtro `paths:`), così anche un cambio ai soli `go.work`/`go.mod`/`go.sum` fa girare `workspace-sync`.
 
 Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
