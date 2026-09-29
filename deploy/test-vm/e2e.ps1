@@ -522,33 +522,33 @@ function Main {
         Add-StepResult -Name 'e. UI, /api/healthz, create+read risorsa di prova, evento JetStream' -Ok $eOk -Detail ($eDetails -join '; ')
 
         # --- e2. identity attraverso il gateway (GIT-36) -----------------
-      Write-Log "==> Passo e2: identity attraverso il gateway (sessione assente, login con credenziali inventate) ..."
-      $e2Ok = $true
-      $e2Details = @()
+        Write-Log "==> Passo e2: identity attraverso il gateway (sessione assente, login con credenziali inventate) ..."
+        $e2Ok = $true
+        $e2Details = @()
 
-      $sess = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/session"
-      if ($sess.StatusCode -ne 401 -or $sess.Body -notmatch '"code"\s*:\s*"unauthenticated"') {
-          $e2Ok = $false
-          $e2Details += "GET /api/v1/auth/session senza cookie: status $($sess.StatusCode) (atteso 401 unauthenticated), corpo '$($sess.Body)' $($sess.Error)"
-      }
+        $sess = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/session"
+        if ($sess.StatusCode -ne 401 -or $sess.Body -notmatch '"code"\s*:\s*"unauthenticated"') {
+            $e2Ok = $false
+            $e2Details += "GET /api/v1/auth/session senza cookie: status $($sess.StatusCode) (atteso 401 unauthenticated), corpo '$($sess.Body)' $($sess.Error)"
+        }
 
-      $loginBody = @{ username = 'e2e-nessun-utente'; password = 'e2e-password-inventata' } | ConvertTo-Json
-      $login = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body $loginBody
-      if ($login.StatusCode -ne 401 -or $login.Body -notmatch '"code"\s*:\s*"invalid_credentials"') {
-          $e2Ok = $false
-          $e2Details += "POST /api/v1/auth/login con credenziali inventate: status $($login.StatusCode) (atteso 401 invalid_credentials), corpo '$($login.Body)' $($login.Error)"
-      }
+        $loginBody = @{ username = 'e2e-nessun-utente'; password = 'e2e-password-inventata' } | ConvertTo-Json
+        $login = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body $loginBody
+        if ($login.StatusCode -ne 401 -or $login.Body -notmatch '"code"\s*:\s*"invalid_credentials"') {
+            $e2Ok = $false
+            $e2Details += "POST /api/v1/auth/login con credenziali inventate: status $($login.StatusCode) (atteso 401 invalid_credentials), corpo '$($login.Body)' $($login.Error)"
+        }
 
-      # /internal/* non deve essere raggiungibile dal gateway.
-      $internal = Invoke-HttpRaw -Uri "$baseUrl/api/v1/internal/verify" -Method 'POST' -Body '{}'
-      if ($internal.StatusCode -ne 404) {
-          $e2Ok = $false
-          $e2Details += "POST /api/v1/internal/verify: status $($internal.StatusCode), atteso 404 (interfaccia interna non esposta)"
-      }
+        # /internal/* non deve essere raggiungibile dal gateway.
+        $internal = Invoke-HttpRaw -Uri "$baseUrl/api/v1/internal/verify" -Method 'POST' -Body '{}'
+        if ($internal.StatusCode -ne 404) {
+            $e2Ok = $false
+            $e2Details += "POST /api/v1/internal/verify: status $($internal.StatusCode), atteso 404 (interfaccia interna non esposta)"
+        }
 
-      Add-StepResult -Name 'e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto' -Ok $e2Ok -Detail ($e2Details -join '; ')
+        Add-StepResult -Name 'e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto' -Ok $e2Ok -Detail ($e2Details -join '; ')
 
-      # --- f. idempotenza -----------------------------------------------
+        # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
         $hashBefore = Invoke-RemoteHelper -RemoteArgs @('postgres-secret-hash', 'gitstack', 'default') -TimeoutSeconds 30
         $activeBefore = Invoke-RemoteHelper -RemoteArgs @('k3s-active-since') -TimeoutSeconds 30
