@@ -61,6 +61,12 @@ gateway:
     logLevel: info
     coreTimeout: 5s
     identityTimeout: 5s
+    # CIDR dei proxy davanti al gateway di cui ci si fida per
+    # X-Forwarded-For (GITSTACK_GATEWAY_TRUSTED_PROXIES). Default: rete dei
+    # pod di k3s (cluster-cidr 10.42.0.0/16) dove gira Traefik; cambialo se il
+    # cluster usa un CIDR diverso. Vuoto = nessun proxy fidato (IP client =
+    # indirizzo del peer).
+    trustedProxies: "10.42.0.0/16"
   resources:
     requests:
       cpu: 25m
@@ -132,6 +138,13 @@ identity:
     password: ""
     # Alternativa: nome di un Secret esistente con la chiave `password`.
     existingSecret: ""
+  serviceSecret:
+    # Segreto condiviso con il gateway per /internal/*
+    # (GITSTACK_IDENTITY_SERVICE_SECRET). Il chart lo genera una sola volta in
+    # un Secret <release>-identity-service (chiave `secret`,
+    # helm.sh/resource-policy: keep); non si scrive nei values.
+    # Alternativa: nome di un Secret esistente con la chiave `secret`.
+    existingSecret: ""
   # GITSTACK_IDENTITY_DB_URL e calcolato dal Service di postgres (o da
   # postgres.external): non serve qui.
   env:
@@ -140,6 +153,9 @@ identity:
     migrationsTimeout: 30s
     # Durata assoluta della sessione web (GITSTACK_IDENTITY_SESSION_TTL).
     sessionTTL: 168h
+    # Durata massima dei token personali (GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME,
+    # es. 8760h). Vuoto = variabile non impostata, vale il default di identity.
+    tokenMaxLifetime: ""
     # CIDR da cui identity si fida dell'header X-Gitstack-Client-Ip messo dal
     # gateway (GITSTACK_IDENTITY_TRUSTED_PROXIES). Default: rete dei pod di
     # k3s (cluster-cidr 10.42.0.0/16); cambialo se il cluster usa un CIDR

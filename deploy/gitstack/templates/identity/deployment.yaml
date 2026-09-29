@@ -16,6 +16,7 @@
 {{- $pgAdmin = .Values.postgres.external.username -}}
 {{- $pgSSL = .Values.postgres.external.sslMode -}}
 {{- end -}}
+{{- $svcSecret := .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -109,6 +110,16 @@ spec:
               value: {{ .Values.identity.env.logLevel | quote }}
             - name: GITSTACK_IDENTITY_SESSION_TTL
               value: {{ .Values.identity.env.sessionTTL | quote }}
+            # Segreto di servizio per /internal/*: solo da Secret, mai in chiaro.
+            - name: GITSTACK_IDENTITY_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $svcSecret }}
+                  key: secret
+            {{- if .Values.identity.env.tokenMaxLifetime }}
+            - name: GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME
+              value: {{ .Values.identity.env.tokenMaxLifetime | quote }}
+            {{- end }}
             {{- if .Values.identity.env.trustedProxies }}
             - name: GITSTACK_IDENTITY_TRUSTED_PROXIES
               value: {{ .Values.identity.env.trustedProxies | quote }}

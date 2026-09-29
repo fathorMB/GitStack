@@ -20,7 +20,7 @@ In M-01 il gateway fa solo routing e osservabilità: verifica del token e rate l
 | `GITSTACK_IDENTITY_URL` | no | — | Base URL di `identity` (es. `http://identity:8080`); il chart Helm (GIT-36) la imposta. Senza, le rotte di identity non sono montate (404) |
 | `GITSTACK_IDENTITY_TIMEOUT` | no | `5s` | Timeout per le richieste instradate verso `identity` |
 | `GITSTACK_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
-| `GITSTACK_GATEWAY_TRUSTED_PROXIES` | no | vuoto | CIDR separati da virgola dei proxy davanti al gateway (es. la rete di Traefik, `10.42.0.0/16`). Solo da questi peer si legge `X-Forwarded-For` per l'IP del client (ultimo indirizzo non fidato da destra); vuoto = nessuno fidato, l'IP è quello della connessione e `X-Forwarded-For` di un peer non fidato è ignorato |
+| `GITSTACK_GATEWAY_TRUSTED_PROXIES` | no | vuoto | CIDR separati da virgola dei proxy davanti al gateway (es. la rete di Traefik, `10.42.0.0/16`). Solo da questi peer si legge `X-Forwarded-For` per l'IP del client (ultimo indirizzo non fidato da destra); vuoto = nessuno fidato, l'IP è quello della connessione e `X-Forwarded-For` di un peer non fidato è ignorato  Il chart lo imposta da `gateway.env.trustedProxies` (default `10.42.0.0/16`) |
 
 ### Sviluppo locale
 
