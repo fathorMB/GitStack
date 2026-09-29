@@ -305,7 +305,7 @@ func (s *Service) Update(ctx context.Context, username string, in UpdateInput) (
 	if in.IsActive != nil {
 		newActive = *in.IsActive
 	}
-	if cur.IsAdmin && cur.IsActive && !(newAdmin && newActive) {
+	if cur.IsAdmin && cur.IsActive && (!newAdmin || !newActive) {
 		if err := requireOtherAdmin(ctx, tx, cur.ID); err != nil {
 			return User{}, err
 		}
