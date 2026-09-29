@@ -351,7 +351,7 @@ type CreateTeamInput struct {
 
 // CreateTokenInput defines model for CreateTokenInput.
 type CreateTokenInput struct {
-	// ExpiresAt Assente = non scade.
+	// ExpiresAt Obbligatoria: la scadenza deve essere nel futuro e non oltre il massimo configurato dall'installazione (default 365 giorni), altrimenti 422.
 	ExpiresAt *time.Time   `json:"expiresAt,omitempty"`
 	Name      string       `json:"name"`
 	Scopes    []TokenScope `json:"scopes"`

@@ -35,19 +35,79 @@ func (e CreateUserInputKind) Valid() bool {
 
 // Defines values for CurrentSessionAuthMethod.
 const (
-	Oidc     CurrentSessionAuthMethod = "oidc"
-	Password CurrentSessionAuthMethod = "password"
-	Token    CurrentSessionAuthMethod = "token"
+	CurrentSessionAuthMethodOidc     CurrentSessionAuthMethod = "oidc"
+	CurrentSessionAuthMethodPassword CurrentSessionAuthMethod = "password"
+	CurrentSessionAuthMethodToken    CurrentSessionAuthMethod = "token"
 )
 
 // Valid indicates whether the value is a known member of the CurrentSessionAuthMethod enum.
 func (e CurrentSessionAuthMethod) Valid() bool {
 	switch e {
-	case Oidc:
+	case CurrentSessionAuthMethodOidc:
 		return true
-	case Password:
+	case CurrentSessionAuthMethodPassword:
 		return true
-	case Token:
+	case CurrentSessionAuthMethodToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PrincipalAuthMethod.
+const (
+	PrincipalAuthMethodOidc     PrincipalAuthMethod = "oidc"
+	PrincipalAuthMethodPassword PrincipalAuthMethod = "password"
+	PrincipalAuthMethodToken    PrincipalAuthMethod = "token"
+)
+
+// Valid indicates whether the value is a known member of the PrincipalAuthMethod enum.
+func (e PrincipalAuthMethod) Valid() bool {
+	switch e {
+	case PrincipalAuthMethodOidc:
+		return true
+	case PrincipalAuthMethodPassword:
+		return true
+	case PrincipalAuthMethodToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PrincipalKind.
+const (
+	PrincipalKindAgent PrincipalKind = "agent"
+	PrincipalKindHuman PrincipalKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the PrincipalKind enum.
+func (e PrincipalKind) Valid() bool {
+	switch e {
+	case PrincipalKindAgent:
+		return true
+	case PrincipalKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceRole.
+const (
+	Admin ResourceRole = "admin"
+	Read  ResourceRole = "read"
+	Write ResourceRole = "write"
+)
+
+// Valid indicates whether the value is a known member of the ResourceRole enum.
+func (e ResourceRole) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case Read:
+		return true
+	case Write:
 		return true
 	default:
 		return false
@@ -105,10 +165,60 @@ func (e UserKind) Valid() bool {
 	}
 }
 
+// Defines values for VerifyCredentialInputKind.
+const (
+	VerifyCredentialInputKindSession VerifyCredentialInputKind = "session"
+	VerifyCredentialInputKindToken   VerifyCredentialInputKind = "token"
+)
+
+// Valid indicates whether the value is a known member of the VerifyCredentialInputKind enum.
+func (e VerifyCredentialInputKind) Valid() bool {
+	switch e {
+	case VerifyCredentialInputKindSession:
+		return true
+	case VerifyCredentialInputKindToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// AddSshKeyInput defines model for AddSshKeyInput.
+type AddSshKeyInput struct {
+	// PublicKey Riga in formato `authorized_keys` (tipo, base64, commento facoltativo).
+	//
+	// Example: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... alice@laptop
+	PublicKey string `json:"publicKey"`
+	Title     string `json:"title"`
+}
+
 // ChangePasswordInput defines model for ChangePasswordInput.
 type ChangePasswordInput struct {
 	CurrentPassword *string `json:"currentPassword,omitempty"`
 	NewPassword     *string `json:"newPassword,omitempty"`
+}
+
+// CheckPermissionInput defines model for CheckPermissionInput.
+type CheckPermissionInput struct {
+	ResourceId openapi_types.UUID `json:"resourceId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role   ResourceRole       `json:"role"`
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// CheckPermissionResult defines model for CheckPermissionResult.
+type CheckPermissionResult struct {
+	Allowed       bool          `json:"allowed"`
+	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
+}
+
+// CreateTokenInput defines model for CreateTokenInput.
+type CreateTokenInput struct {
+	// ExpiresAt Obbligatoria: la scadenza deve essere nel futuro e non oltre il massimo configurato dall'installazione (default 365 giorni), altrimenti 422.
+	ExpiresAt *time.Time   `json:"expiresAt,omitempty"`
+	Name      string       `json:"name"`
+	Scopes    []TokenScope `json:"scopes"`
 }
 
 // CreateUserInput defines model for CreateUserInput.
@@ -130,6 +240,22 @@ type CreateUserInput struct {
 
 // CreateUserInputKind defines model for CreateUserInput.Kind.
 type CreateUserInputKind string
+
+// CreatedToken Il token appena creato; `token` compare solo in questa risposta.
+type CreatedToken struct {
+	CreatedAt time.Time  `json:"createdAt"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+
+	// Hint Ultimi 4 caratteri del token, per riconoscerlo.
+	Hint       string              `json:"hint"`
+	Id         *openapi_types.UUID `json:"id,omitempty"`
+	LastUsedAt *time.Time          `json:"lastUsedAt,omitempty"`
+	Name       string              `json:"name"`
+	Scopes     []TokenScope        `json:"scopes"`
+
+	// Token Valore in chiaro, formato `gst_<casuale>`. Non viene salvato.
+	Token string `json:"token"`
+}
 
 // CurrentSession defines model for CurrentSession.
 type CurrentSession struct {
@@ -192,6 +318,85 @@ type OidcProviderList struct {
 	Items []OidcProvider `json:"items"`
 }
 
+// Principal Chi ha presentato la credenziale.
+type Principal struct {
+	AuthMethod PrincipalAuthMethod `json:"authMethod"`
+
+	// CredentialId Id della sessione o del token (per audit).
+	CredentialId *openapi_types.UUID `json:"credentialId,omitempty"`
+	ExpiresAt    *time.Time          `json:"expiresAt,omitempty"`
+	IsAdmin      bool                `json:"isAdmin"`
+	Kind         PrincipalKind       `json:"kind"`
+
+	// Scopes Solo per i token; assenti per le sessioni.
+	Scopes *[]TokenScope      `json:"scopes,omitempty"`
+	UserId openapi_types.UUID `json:"userId"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// PrincipalAuthMethod defines model for Principal.AuthMethod.
+type PrincipalAuthMethod string
+
+// PrincipalKind defines model for Principal.Kind.
+type PrincipalKind string
+
+// ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
+type ResourceRole string
+
+// SshKey defines model for SshKey.
+type SshKey struct {
+	CreatedAt   time.Time           `json:"createdAt"`
+	Fingerprint string              `json:"fingerprint"`
+	Id          *openapi_types.UUID `json:"id,omitempty"`
+
+	// KeyType Example: ssh-ed25519
+	KeyType    string     `json:"keyType"`
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	Title      string     `json:"title"`
+}
+
+// SshKeyList defines model for SshKeyList.
+type SshKeyList struct {
+	Items   []SshKey `json:"items"`
+	Page    int      `json:"page"`
+	PerPage int      `json:"perPage"`
+	Total   int      `json:"total"`
+}
+
+// SshKeyLookup defines model for SshKeyLookup.
+type SshKeyLookup struct {
+	Key SshKey `json:"key"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
+}
+
+// Token Token personale, senza il valore (che non e' recuperabile).
+type Token struct {
+	CreatedAt time.Time  `json:"createdAt"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+
+	// Hint Ultimi 4 caratteri del token, per riconoscerlo.
+	Hint       string              `json:"hint"`
+	Id         *openapi_types.UUID `json:"id,omitempty"`
+	LastUsedAt *time.Time          `json:"lastUsedAt,omitempty"`
+	Name       string              `json:"name"`
+	Scopes     []TokenScope        `json:"scopes"`
+}
+
+// TokenList defines model for TokenList.
+type TokenList struct {
+	Items   []Token `json:"items"`
+	Page    int     `json:"page"`
+	PerPage int     `json:"perPage"`
+	Total   int     `json:"total"`
+}
+
 // TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
 type TokenScope string
 
@@ -237,6 +442,29 @@ type UserList struct {
 	Page    int    `json:"page"`
 	PerPage int    `json:"perPage"`
 	Total   int    `json:"total"`
+}
+
+// VerifyCredentialInput defines model for VerifyCredentialInput.
+type VerifyCredentialInput struct {
+	// Credential Valore grezzo della credenziale (cookie `gst_session` o token `gst_...`).
+	Credential *string `json:"credential,omitempty"`
+
+	// Kind Facoltativo, evita l'ambiguita' se il gateway la conosce.
+	Kind *VerifyCredentialInputKind `json:"kind,omitempty"`
+}
+
+// VerifyCredentialInputKind Facoltativo, evita l'ambiguita' se il gateway la conosce.
+type VerifyCredentialInputKind string
+
+// VerifyCredentialResult defines model for VerifyCredentialResult.
+type VerifyCredentialResult struct {
+	Active bool `json:"active"`
+
+	// CacheTtlSeconds Per quanto tempo il gateway puo' tenere in cache l'esito.
+	CacheTtlSeconds *int `json:"cacheTtlSeconds,omitempty"`
+
+	// Principal Chi ha presentato la credenziale.
+	Principal *Principal `json:"principal,omitempty"`
 }
 
 // GrantIdParam defines model for GrantIdParam.
@@ -312,6 +540,18 @@ type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
 
+// ListSshKeysParams defines parameters for ListSshKeys.
+type ListSshKeysParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListTokensParams defines parameters for ListTokens.
+type ListTokensParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	// Q Prefisso di username o nome visualizzato.
@@ -322,6 +562,18 @@ type ListUsersParams struct {
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
+
+// CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
+type CheckPermissionJSONRequestBody = CheckPermissionInput
+
+// VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
+type VerifyCredentialJSONRequestBody = VerifyCredentialInput
+
+// AddSshKeyJSONRequestBody defines body for AddSshKey for application/json ContentType.
+type AddSshKeyJSONRequestBody = AddSshKeyInput
+
+// CreateTokenJSONRequestBody defines body for CreateToken for application/json ContentType.
+type CreateTokenJSONRequestBody = CreateTokenInput
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserInput
@@ -352,6 +604,36 @@ type ServerInterface interface {
 	// GetCurrentSession Sessione corrente
 	// (GET /auth/session)
 	GetCurrentSession(w http.ResponseWriter, r *http.Request)
+	// CheckPermission Verifica un permesso su una risorsa
+	// (POST /internal/permissions/check)
+	CheckPermission(w http.ResponseWriter, r *http.Request)
+	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
+	// (GET /internal/ssh-keys/{fingerprint})
+	LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprint string)
+	// VerifyCredential Verifica una credenziale (per il gateway)
+	// (POST /internal/verify)
+	VerifyCredential(w http.ResponseWriter, r *http.Request)
+	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
+	// (GET /user/ssh-keys)
+	ListSshKeys(w http.ResponseWriter, r *http.Request, params ListSshKeysParams)
+	// AddSshKey Aggiunge una chiave SSH
+	// (POST /user/ssh-keys)
+	AddSshKey(w http.ResponseWriter, r *http.Request)
+	// DeleteSshKey Elimina una chiave SSH
+	// (DELETE /user/ssh-keys/{keyId})
+	DeleteSshKey(w http.ResponseWriter, r *http.Request, keyId SshKeyIdParam)
+	// GetSshKey Legge una chiave SSH
+	// (GET /user/ssh-keys/{keyId})
+	GetSshKey(w http.ResponseWriter, r *http.Request, keyId SshKeyIdParam)
+	// ListTokens Elenca i token personali dell'utente corrente
+	// (GET /user/tokens)
+	ListTokens(w http.ResponseWriter, r *http.Request, params ListTokensParams)
+	// CreateToken Crea un token personale
+	// (POST /user/tokens)
+	CreateToken(w http.ResponseWriter, r *http.Request)
+	// RevokeToken Revoca un token personale
+	// (DELETE /user/tokens/{tokenId})
+	RevokeToken(w http.ResponseWriter, r *http.Request, tokenId TokenIdParam)
 	// ListUsers Elenca gli utenti
 	// (GET /users)
 	ListUsers(w http.ResponseWriter, r *http.Request, params ListUsersParams)
@@ -525,6 +807,258 @@ func (siw *ServerInterfaceWrapper) GetCurrentSession(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCurrentSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CheckPermission operation middleware
+func (siw *ServerInterfaceWrapper) CheckPermission(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CheckPermission(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LookupSshKey operation middleware
+func (siw *ServerInterfaceWrapper) LookupSshKey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "fingerprint" -------------
+	var fingerprint string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "fingerprint", r.PathValue("fingerprint"), &fingerprint, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fingerprint", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LookupSshKey(w, r, fingerprint)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// VerifyCredential operation middleware
+func (siw *ServerInterfaceWrapper) VerifyCredential(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.VerifyCredential(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSshKeys operation middleware
+func (siw *ServerInterfaceWrapper) ListSshKeys(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListSshKeysParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSshKeys(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddSshKey operation middleware
+func (siw *ServerInterfaceWrapper) AddSshKey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddSshKey(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteSshKey operation middleware
+func (siw *ServerInterfaceWrapper) DeleteSshKey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "keyId" -------------
+	var keyId SshKeyIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "keyId", r.PathValue("keyId"), &keyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "keyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteSshKey(w, r, keyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSshKey operation middleware
+func (siw *ServerInterfaceWrapper) GetSshKey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "keyId" -------------
+	var keyId SshKeyIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "keyId", r.PathValue("keyId"), &keyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "keyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSshKey(w, r, keyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListTokens operation middleware
+func (siw *ServerInterfaceWrapper) ListTokens(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTokensParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListTokens(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateToken operation middleware
+func (siw *ServerInterfaceWrapper) CreateToken(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateToken(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeToken operation middleware
+func (siw *ServerInterfaceWrapper) RevokeToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tokenId" -------------
+	var tokenId TokenIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", r.PathValue("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tokenId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeToken(w, r, tokenId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -843,6 +1377,16 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}", wrapper.GetUser)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/users/{username}", wrapper.UpdateUser)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/users/{username}/password", wrapper.ChangePassword)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/tokens", wrapper.ListTokens)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/tokens", wrapper.CreateToken)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/tokens/{tokenId}", wrapper.RevokeToken)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys", wrapper.ListSshKeys)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.GetSshKey)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/verify", wrapper.VerifyCredential)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/check", wrapper.CheckPermission)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
 
 	return m
 }

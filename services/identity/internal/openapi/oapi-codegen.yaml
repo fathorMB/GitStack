@@ -5,9 +5,12 @@ generate:
 output: api.gen.go
 output-options:
   skip-prune: false
-  # Questo item (GIT-33) serve solo auth e users; gli altri tag di identity
-  # (tokens, ssh-keys, organizations, teams, permissions, internal) li
-  # aggiungono gli item successivi, e le operazioni di core non sono nostre.
+  # Tag serviti da identity. Restano fuori organizations, teams e permissions
+  # (item successivi) e le operazioni di core. internal e' servito solo in
+  # parte (verifyCredential, lookupSshKey): il resto risponde 501.
   include-tags:
     - auth
     - users
+    - tokens
+    - ssh-keys
+    - internal

@@ -1931,7 +1931,9 @@ components:
         expiresAt:
           type: string
           format: date-time
-          description: Assente = non scade.
+          description: >
+            Obbligatoria: la scadenza deve essere nel futuro e non oltre il
+            massimo configurato dall'installazione (default 365 giorni), altrimenti 422.
 
     CreatedToken:
       description: Il token appena creato; `token` compare solo in questa risposta.
