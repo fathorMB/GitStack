@@ -205,6 +205,12 @@ func (s *Service) Get(ctx context.Context, username string) (User, error) {
 	return scanUser(s.pool.QueryRow(ctx, `SELECT `+userCols+` FROM identity.users WHERE username = $1`, username))
 }
 
+// GetByEmail legge un utente per email, senza distinzione di maiuscole
+// (indice users_email_key). ErrNotFound se non esiste.
+func (s *Service) GetByEmail(ctx context.Context, email string) (User, error) {
+	return scanUser(s.pool.QueryRow(ctx, `SELECT `+userCols+` FROM identity.users WHERE lower(email) = lower($1)`, email))
+}
+
 // GetByID legge un utente per id.
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return scanUser(s.pool.QueryRow(ctx, `SELECT `+userCols+` FROM identity.users WHERE id = $1`, id))

@@ -1093,7 +1093,7 @@ type ClientInterface interface {
 
 	// FinishOidcLogin Completa il login OIDC
 	//
-	// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`; se non lo e' risponde 409 `oidc_identity_unlinked` (il collegamento non e' automatico via email).
+	// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`. Altrimenti decide la configurazione del provider: con `linkByVerifiedEmail` (default false) e un'email che il provider dichiara verificata (`email_verified`) collega l'identita' all'utente locale con quella email; con `autoCreateUsers` (default false) crea un nuovo utente (senza password) e lo collega; un'email non verificata non si collega mai a un utente esistente. In tutti gli altri casi (compreso il default, con entrambe le opzioni a false) risponde 409 `oidc_identity_unlinked`.
 	//
 	// Corresponds with GET /auth/oidc/{provider}/callback (the `FinishOidcLogin` operationId).
 	FinishOidcLogin(ctx context.Context, provider OidcProviderParam, params *FinishOidcLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1639,7 +1639,7 @@ func (c *Client) ListOidcProviders(ctx context.Context, reqEditors ...RequestEdi
 
 // FinishOidcLogin Completa il login OIDC
 //
-// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`; se non lo e' risponde 409 `oidc_identity_unlinked` (il collegamento non e' automatico via email).
+// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`. Altrimenti decide la configurazione del provider: con `linkByVerifiedEmail` (default false) e un'email che il provider dichiara verificata (`email_verified`) collega l'identita' all'utente locale con quella email; con `autoCreateUsers` (default false) crea un nuovo utente (senza password) e lo collega; un'email non verificata non si collega mai a un utente esistente. In tutti gli altri casi (compreso il default, con entrambe le opzioni a false) risponde 409 `oidc_identity_unlinked`.
 //
 // Corresponds with GET /auth/oidc/{provider}/callback (the `FinishOidcLogin` operationId).
 func (c *Client) FinishOidcLogin(ctx context.Context, provider OidcProviderParam, params *FinishOidcLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5120,7 +5120,7 @@ type ClientWithResponsesInterface interface {
 
 	// FinishOidcLoginWithResponse Completa il login OIDC
 	//
-	// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`; se non lo e' risponde 409 `oidc_identity_unlinked` (il collegamento non e' automatico via email).
+	// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`. Altrimenti decide la configurazione del provider: con `linkByVerifiedEmail` (default false) e un'email che il provider dichiara verificata (`email_verified`) collega l'identita' all'utente locale con quella email; con `autoCreateUsers` (default false) crea un nuovo utente (senza password) e lo collega; un'email non verificata non si collega mai a un utente esistente. In tutti gli altri casi (compreso il default, con entrambe le opzioni a false) risponde 409 `oidc_identity_unlinked`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -9157,7 +9157,7 @@ func (c *ClientWithResponses) ListOidcProvidersWithResponse(ctx context.Context,
 
 // FinishOidcLoginWithResponse Completa il login OIDC
 //
-// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`; se non lo e' risponde 409 `oidc_identity_unlinked` (il collegamento non e' automatico via email).
+// Callback del provider. Se l'identita' (provider, subject) e' gia' collegata a un utente crea la sessione (cookie `gst_session`) e fa redirect (302) a `redirectTo`. Altrimenti decide la configurazione del provider: con `linkByVerifiedEmail` (default false) e un'email che il provider dichiara verificata (`email_verified`) collega l'identita' all'utente locale con quella email; con `autoCreateUsers` (default false) crea un nuovo utente (senza password) e lo collega; un'email non verificata non si collega mai a un utente esistente. In tutti gli altri casi (compreso il default, con entrambe le opzioni a false) risponde 409 `oidc_identity_unlinked`.
 //
 // Returns a wrapper object for the known response body format(s).
 //

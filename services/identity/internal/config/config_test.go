@@ -144,3 +144,68 @@ func TestLoad_ServiceSecretETokenMaxLifetime(t *testing.T) {
 		t.Errorf("il segreto compare nell'errore: %v", err)
 	}
 }
+
+const testKey = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=" // 32 byte
+
+func oidcEnv(extra map[string]string) map[string]string {
+	m := map[string]string{
+		EnvDatabaseURL:    "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable",
+		EnvOIDCConfigFile: "/etc/gitstack/oidc.json",
+		EnvOIDCEncKey:     testKey,
+		EnvOIDCEncKeyID:   "k1",
+		EnvPublicURL:      "https://git.example.com/",
+	}
+	for k, v := range extra {
+		m[k] = v
+	}
+	return m
+}
+
+func TestLoad_OIDCOffByDefault(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		EnvDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable",
+		EnvOIDCEncKey:  "non-base64!!", // ignorata senza file
+	}))
+	if err != nil {
+		t.Fatalf("errore inatteso: %v", err)
+	}
+	if cfg.OIDCConfigFile != "" || cfg.OIDCEncKey != nil {
+		t.Errorf("OIDC dovrebbe essere spento: %+v", cfg)
+	}
+}
+
+func TestLoad_OIDCOK(t *testing.T) {
+	cfg, err := load(lookupFrom(oidcEnv(nil)))
+	if err != nil {
+		t.Fatalf("errore inatteso: %v", err)
+	}
+	if cfg.OIDCConfigFile != "/etc/gitstack/oidc.json" || len(cfg.OIDCEncKey) != 32 || cfg.OIDCEncKeyID != "k1" {
+		t.Errorf("config OIDC inattesa: file=%q key=%d id=%q", cfg.OIDCConfigFile, len(cfg.OIDCEncKey), cfg.OIDCEncKeyID)
+	}
+	if cfg.PublicURL != "https://git.example.com" {
+		t.Errorf("PublicURL = %q, senza slash finale", cfg.PublicURL)
+	}
+}
+
+func TestLoad_OIDCErrors(t *testing.T) {
+	cases := map[string]map[string]string{
+		"chiave mancante":   {EnvOIDCEncKey: ""},
+		"chiave non base64": {EnvOIDCEncKey: "@@@"},
+		"chiave corta":      {EnvOIDCEncKey: "c2hvcnQ="},
+		"key id mancante":   {EnvOIDCEncKeyID: ""},
+		"url mancante":      {EnvPublicURL: ""},
+		"url relativo":      {EnvPublicURL: "/git"},
+		"url con query":     {EnvPublicURL: "https://git.example.com/?a=b"},
+	}
+	for name, extra := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := load(lookupFrom(oidcEnv(extra)))
+			if err == nil {
+				t.Fatal("attendevo un errore")
+			}
+			if strings.Contains(err.Error(), "c2hvcnQ=") || strings.Contains(err.Error(), testKey) {
+				t.Errorf("l'errore contiene la chiave: %v", err)
+			}
+		})
+	}
+}

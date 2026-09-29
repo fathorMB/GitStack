@@ -26,6 +26,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/identity/internal/loginlimit"
 	"github.com/fathorMB/GitStack/services/identity/internal/migrate"
+	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
@@ -152,7 +153,13 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 		Sessions: sessions.New(pool, time.Now, cfg.SessionTTL),
 		Limiter:  loginlimit.New(lcfg, time.Now),
 	}
-	router := buildRouter(cfg, pool, svc, logger)
+	oidcSvc, err := buildOIDC(ctx, cfg, pool, svc, logger)
+	if err != nil {
+		// Nessun segreto nell'errore: solo percorso del file e motivo.
+		logger.Error("login OIDC non avviabile", "err", err)
+		return 1
+	}
+	router := buildRouter(cfg, pool, svc, oidcSvc, logger)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -188,7 +195,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 // buildRouter monta il router reale del servizio: auth/users, token
 // personali, chiavi SSH e /internal/* (protetto dal segreto di servizio). Il
 // segreto non viene mai loggato: si segnala solo se manca.
-func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, logger *slog.Logger) http.Handler {
+func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcSvc *oidc.Service, logger *slog.Logger) http.Handler {
 	if cfg.ServiceSecret == "" {
 		logger.Warn("segreto di servizio non configurato: /internal/* risponde sempre 401",
 			"env", config.EnvServiceSecret)
@@ -198,8 +205,41 @@ func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, logge
 		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
 		httpapi.WithSSHKeys(userkeys.New(pool, time.Now)),
 		httpapi.WithServiceSecret(cfg.ServiceSecret),
+		httpapi.WithOIDC(oidcSvc),
 	)
 	return httpserver.NewRouter(pool, api)
+}
+
+// buildOIDC carica il file dei provider OIDC (se configurato), sincronizza i
+// provider in identity.oidc_providers e crea il servizio. Senza file ritorna
+// un servizio senza provider: elenco vuoto e start 404.
+func buildOIDC(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, logger *slog.Logger) (*oidc.Service, error) {
+	store := oidc.NewPGStore(pool, svc.Users, svc.Sessions, time.Now)
+	if cfg.OIDCConfigFile == "" {
+		logger.Info("login OIDC spento", "env", config.EnvOIDCConfigFile)
+		return oidc.New(store, oidc.Config{}, logger, time.Now)
+	}
+	providers, err := oidc.LoadFile(cfg.OIDCConfigFile, oidc.Options{})
+	if err != nil {
+		return nil, err
+	}
+	o, err := oidc.New(store, oidc.Config{
+		Providers: providers, Key: cfg.OIDCEncKey, KeyID: cfg.OIDCEncKeyID, PublicURL: cfg.PublicURL,
+	}, logger, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	sctx, cancel := context.WithTimeout(ctx, cfg.MigrationsTimeout)
+	defer cancel()
+	if err := o.Sync(sctx); err != nil {
+		return nil, err
+	}
+	slugs := make([]string, 0, len(providers))
+	for _, p := range providers {
+		slugs = append(slugs, p.Slug)
+	}
+	logger.Info("login OIDC attivo", "providers", slugs)
+	return o, nil
 }
 
 func parseLevel(level string) (slog.Level, bool) {

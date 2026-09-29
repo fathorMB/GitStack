@@ -31,6 +31,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
@@ -64,6 +65,7 @@ type server struct {
 	log           *slog.Logger
 	tokens        *apitokens.Service
 	keys          *userkeys.Service
+	oidc          *oidc.Service
 	serviceSecret string
 
 	trustedProxies []*net.IPNet
@@ -282,18 +284,6 @@ func (s *server) GetCurrentSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, openapi.CurrentSession{
 		User: toUser(cur.User, true), AuthMethod: openapi.CurrentSessionAuthMethod(cur.Session.AuthMethod), ExpiresAt: &exp,
 	})
-}
-
-func notImplemented(w http.ResponseWriter) {
-	writeError(w, http.StatusNotImplemented, "not_implemented", "Login OIDC non ancora disponibile.")
-}
-
-func (s *server) ListOidcProviders(w http.ResponseWriter, r *http.Request) { notImplemented(w) }
-func (s *server) StartOidcLogin(w http.ResponseWriter, r *http.Request, _ openapi.OidcProviderParam, _ openapi.StartOidcLoginParams) {
-	notImplemented(w)
-}
-func (s *server) FinishOidcLogin(w http.ResponseWriter, r *http.Request, _ openapi.OidcProviderParam, _ openapi.FinishOidcLoginParams) {
-	notImplemented(w)
 }
 
 // ---- users ----
