@@ -474,7 +474,17 @@ wait_for_traefik_crd() {
     traefik_crd_diagnostics >&2
     fail "la CRD middlewares.traefik.io non è comparsa entro 300s. Diagnostica sopra (kube-system: helmchart/job/pods). Vedi anche: journalctl -u k3s -n 100."
   fi
-  if ! KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl wait --for=condition=Established crd/middlewares.traefik.io --timeout=120s >/dev/null 2>&1; then
+  # Polling su jsonpath: su una CRD appena creata "kubectl wait" esce subito
+  # se status.conditions non c'è ancora (GIT-50).
+  local established=0
+  for _i in $(seq 1 60); do
+    if [ "$(KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl get crd middlewares.traefik.io -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' 2>/dev/null || true)" = "True" ]; then
+      established=1
+      break
+    fi
+    sleep 2
+  done
+  if [ "${established}" -ne 1 ]; then
     traefik_crd_diagnostics >&2
     fail "la CRD middlewares.traefik.io non è diventata Established entro 120s. Diagnostica sopra (kube-system: helmchart/job/pods)."
   fi
