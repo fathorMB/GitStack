@@ -136,9 +136,9 @@ func TestRouter_ResourcesInstradato(t *testing.T) {
 	}))
 	defer fakeCore.Close()
 
-	router := NewRouter(newTestConfig(t, fakeCore.URL), discardLogger())
+	router := NewRouter(newTestConfig(t, fakeCore.URL), discardLogger(), WithVerifier(allowAll()))
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/resources?type=repo", nil)
+	req := authedRequest(http.MethodGet, "/v1/resources?type=repo")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

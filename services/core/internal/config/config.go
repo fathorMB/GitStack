@@ -40,6 +40,13 @@ type Config struct {
 	// di GIT-8 la imposta esplicitamente.
 	NatsURL string
 
+	// ServiceSecret è il segreto di servizio (Secret
+	// `<release>-identity-service`, chiave `secret`) con cui il gateway firma
+	// l'identità inoltrata a core. Come NatsURL serve solo al comando
+	// "serve" (che lo richiede, vedi main.go), non a "migrate up|down". Mai
+	// loggato.
+	ServiceSecret string
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -52,6 +59,7 @@ const (
 	envMigrationsTimeout = "GITSTACK_CORE_MIGRATIONS_TIMEOUT"
 	envNatsURL           = "GITSTACK_CORE_NATS_URL"
 	envLogLevel          = "GITSTACK_CORE_LOG_LEVEL"
+	envServiceSecret     = "GITSTACK_IDENTITY_SERVICE_SECRET"
 
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
@@ -113,6 +121,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envNatsURL); ok && strings.TrimSpace(v) != "" {
 		cfg.NatsURL = v
+	}
+
+	if v, ok := lookup(envServiceSecret); ok {
+		cfg.ServiceSecret = strings.TrimSpace(v)
 	}
 
 	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {

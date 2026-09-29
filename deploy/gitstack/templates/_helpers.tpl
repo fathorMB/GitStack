@@ -94,6 +94,15 @@ URL NATS usato da core (GITSTACK_CORE_NATS_URL).
 {{- end -}}
 
 {{/*
+Nome del Secret con il segreto di servizio (chiave `secret`): condiviso da
+gateway, identity e core. Generato dal chart (service-secret.yaml) o dato con
+identity.serviceSecret.existingSecret.
+*/}}
+{{- define "gitstack.serviceSecret.name" -}}
+{{- .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
+{{- end -}}
+
+{{/*
 URL core usato dal gateway (GITSTACK_CORE_URL).
 */}}
 {{- define "gitstack.core.url" -}}

@@ -67,6 +67,12 @@ gateway:
     # cluster usa un CIDR diverso. Vuoto = nessun proxy fidato (IP client =
     # indirizzo del peer).
     trustedProxies: "10.42.0.0/16"
+    # Cache delle verifiche di credenziale (GITSTACK_GATEWAY_AUTH_CACHE_TTL e
+    # ..._NEGATIVE_TTL): esiti positivi (mai oltre expiresAt) e negativi. Dopo
+    # una revoca il gateway può accettare la vecchia credenziale fino a
+    # authCacheTTL.
+    authCacheTTL: 30s
+    authCacheNegativeTTL: 5s
   resources:
     requests:
       cpu: 25m

@@ -27,6 +27,8 @@ generated_paths=(
   'client/go/*.gen.go'
   'client/ts/src/generated'
   'services/gateway/internal/openapi/api.gen.go'
+  'services/gateway/internal/identityclient/types.gen.go'
+  'services/gateway/internal/security/routes.gen.go'
   'services/core/internal/openapi/api.gen.go'
   'services/identity/internal/openapi/api.gen.go'
 )

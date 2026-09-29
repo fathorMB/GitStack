@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Option configura ToCore.
@@ -11,6 +12,30 @@ type Option func(*options)
 
 type options struct {
 	trusted []*net.IPNet
+
+	// serviceSecret firma l'identità autenticata verso il servizio a valle
+	// (vedi package trust); vuoto = nessuna identità inoltrata.
+	serviceSecret string
+	// dropCredentials toglie Authorization e Cookie dalla richiesta a valle
+	// (core non li vede mai: si fida dell'identità firmata).
+	dropCredentials bool
+	now             func() time.Time
+}
+
+// WithServiceSecret abilita l'inoltro dell'identità autenticata (header
+// X-Gitstack-User-Id/-Username/-Scopes firmati con secret).
+func WithServiceSecret(secret string) Option {
+	return func(o *options) { o.serviceSecret = secret }
+}
+
+// WithDropCredentials toglie Authorization e Cookie dalle richieste inoltrate.
+func WithDropCredentials() Option {
+	return func(o *options) { o.dropCredentials = true }
+}
+
+// WithClock sostituisce l'orologio usato per il timestamp della firma (test).
+func WithClock(now func() time.Time) Option {
+	return func(o *options) { o.now = now }
 }
 
 // WithTrustedProxies indica le reti (CIDR) dei proxy davanti al gateway

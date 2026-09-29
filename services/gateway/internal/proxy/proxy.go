@@ -18,6 +18,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/gateway/internal/middleware"
 	"github.com/fathorMB/GitStack/services/gateway/internal/openapi"
+	"github.com/fathorMB/GitStack/services/gateway/internal/trust"
 )
 
 // PrefixV1 è il prefisso di versione dell'API pubblica esposta dal gateway
@@ -54,6 +55,9 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 	for _, opt := range opts {
 		opt(&o)
 	}
+	if o.now == nil {
+		o.now = time.Now
+	}
 	rp := &httputil.ReverseProxy{
 		// Rewrite sostituisce Director (deprecato dal Go 1.26). A differenza
 		// di Director, ReverseProxy non propaga più da solo la catena
@@ -65,8 +69,16 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
 			pr.SetXForwarded()
-			// Mai fidarsi del valore in ingresso: si cancella e si riscrive.
-			pr.Out.Header.Del(ClientIPHeader)
+			// Mai fidarsi del valore in ingresso: ogni X-Gitstack-* del client
+			// (identità inclusa) si cancella, poi il gateway scrive i propri.
+			trust.StripClientHeaders(pr.Out.Header)
+			if o.dropCredentials {
+				pr.Out.Header.Del("Authorization")
+				pr.Out.Header.Del("Cookie")
+			}
+			if id, ok := trust.FromContext(pr.In.Context()); ok && o.serviceSecret != "" {
+				trust.Sign(pr.Out.Header, o.serviceSecret, id, o.now())
+			}
 			// L'IP del client viene da X-Forwarded-For solo se la connessione
 			// arriva da un proxy fidato (es. Traefik), altrimenti da RemoteAddr.
 			if ip := ClientIP(pr.In, o.trusted); ip != "" {

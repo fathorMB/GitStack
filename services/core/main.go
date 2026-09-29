@@ -109,6 +109,11 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
+	if cfg.ServiceSecret == "" {
+		logger.Error("configurazione non valida", "err", "GITSTACK_IDENTITY_SERVICE_SECRET è obbligatoria per avviare il server (non per 'migrate up|down'): senza, core non può verificare l'identità inoltrata dal gateway")
+		return 1
+	}
+
 	// NATSPublisher (internal/events, libreria condivisa di GIT-6): si
 	// connette a NATS, apre il contesto JetStream e assicura lo stream del
 	// dominio "core" prima che il server accetti richieste. La connessione
@@ -121,7 +126,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	}
 	defer nc.Close()
 
-	router := httpserver.NewRouter(pool, publisher)
+	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

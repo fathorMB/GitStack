@@ -4,7 +4,10 @@ go 1.26.2
 
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 
-require github.com/oapi-codegen/runtime v1.7.0
+require (
+	github.com/oapi-codegen/runtime v1.7.0
+	gopkg.in/yaml.v3 v3.0.1
+)
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
@@ -26,5 +29,4 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.50.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

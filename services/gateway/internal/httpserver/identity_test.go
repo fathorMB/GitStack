@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/fathorMB/GitStack/services/gateway/internal/security"
 )
 
 // contractRoutes legge api/openapi.yaml (senza dipendenze YAML: il file ha
@@ -80,7 +82,11 @@ func TestIdentityRoutes_SecondoIlContratto(t *testing.T) {
 	cfg := newTestConfig(t, fakeCore.URL)
 	cfg.IdentityURL = mustURL(t, fakeIdentity.URL)
 	cfg.IdentityTimeout = cfg.CoreTimeout
-	router := NewRouter(cfg, discardLogger())
+	router := NewRouter(cfg, discardLogger(), WithVerifier(allowAll()))
+	table, err := security.NewTable(security.Routes)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	param := regexp.MustCompile(`\{[^}]+\}`)
 	methods := []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodDelete}
@@ -92,7 +98,15 @@ func TestIdentityRoutes_SecondoIlContratto(t *testing.T) {
 			for _, m := range methods {
 				identityPaths, corePaths = nil, nil
 				rec := httptest.NewRecorder()
-				router.ServeHTTP(rec, httptest.NewRequest(m, "/v1"+concrete, nil))
+				router.ServeHTTP(rec, authedRequestFor(table, m, "/v1"+concrete))
+				if _, declared := table.Lookup(m, concrete); !declared {
+					// Metodo non dichiarato dal contratto: il gateway non lo
+					// inoltra a identity.
+					if rec.Code != http.StatusNotFound || len(identityPaths)+len(corePaths) != 0 {
+						t.Errorf("%s /v1%s non dichiarata: status %d, a valle identity %v core %v; atteso 404 senza inoltro", m, concrete, rec.Code, identityPaths, corePaths)
+					}
+					continue
+				}
 				if rec.Code == http.StatusNotFound || rec.Code == http.StatusMethodNotAllowed {
 					t.Errorf("%s /v1%s: status %d, atteso l'instradamento verso identity", m, concrete, rec.Code)
 				}
@@ -104,7 +118,7 @@ func TestIdentityRoutes_SecondoIlContratto(t *testing.T) {
 			for _, m := range methods {
 				identityPaths, corePaths = nil, nil
 				rec := httptest.NewRecorder()
-				router.ServeHTTP(rec, httptest.NewRequest(m, "/v1"+concrete, nil))
+				router.ServeHTTP(rec, authedRequest(m, "/v1"+concrete))
 				if rec.Code != http.StatusNotFound {
 					t.Errorf("%s /v1%s: status %d, /internal/* non va esposto (atteso 404)", m, concrete, rec.Code)
 				}
@@ -127,11 +141,11 @@ func TestIdentityRoutes_InternalNonEsposto(t *testing.T) {
 	defer fake.Close()
 	cfg := newTestConfig(t, fake.URL)
 	cfg.IdentityURL = mustURL(t, fake.URL)
-	router := NewRouter(cfg, discardLogger())
+	router := NewRouter(cfg, discardLogger(), WithVerifier(allowAll()))
 
 	for _, p := range []string{"/v1/internal/verify", "/internal/verify", "/v1/internal/permissions/check", "/v1/internal/ssh-keys/abc", "/v1/auth/../internal/verify"} {
 		rec := httptest.NewRecorder()
-		router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, p, nil))
+		router.ServeHTTP(rec, authedRequest(http.MethodPost, p))
 		if rec.Code == http.StatusNoContent || seen != 0 {
 			t.Errorf("POST %s ha raggiunto un servizio a valle (status %d)", p, rec.Code)
 		}
@@ -141,23 +155,25 @@ func TestIdentityRoutes_InternalNonEsposto(t *testing.T) {
 // TestIdentityRoutes_SenzaIdentityUrl: senza GITSTACK_IDENTITY_URL le rotte
 // di identity non sono montate.
 func TestIdentityRoutes_SenzaIdentityUrl(t *testing.T) {
-	router := NewRouter(newTestConfig(t, "http://127.0.0.1:1"), discardLogger())
+	router := NewRouter(newTestConfig(t, "http://127.0.0.1:1"), discardLogger(), WithVerifier(allowAll()))
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/auth/session", nil))
+	router.ServeHTTP(rec, authedRequest(http.MethodGet, "/v1/auth/session"))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, atteso 404 senza identity configurata", rec.Code)
 	}
 }
 
 // TestIdentityRoutes_IdentityGiu: identity irraggiungibile -> 503 con code
-// identity_unavailable (risposta del gateway, non di core).
+// identity_unavailable (risposta del gateway, non di core), anche per la
+// verifica della credenziale: mai fail open.
 func TestIdentityRoutes_IdentityGiu(t *testing.T) {
 	cfg := newTestConfig(t, "http://127.0.0.1:1")
 	cfg.IdentityURL = mustURL(t, "http://127.0.0.1:1")
 	cfg.IdentityTimeout = cfg.CoreTimeout
+	cfg.IdentityServiceSecret = testSecret
 	router := NewRouter(cfg, discardLogger())
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/auth/session", nil))
+	router.ServeHTTP(rec, authedRequest(http.MethodGet, "/v1/auth/session"))
 	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "identity_unavailable") {
 		t.Fatalf("status = %d, corpo = %s; atteso 503 identity_unavailable", rec.Code, rec.Body.String())
 	}

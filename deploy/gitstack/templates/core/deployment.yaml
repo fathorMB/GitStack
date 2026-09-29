@@ -76,6 +76,13 @@ spec:
               value: {{ .Values.core.env.migrationsTimeout | quote }}
             - name: GITSTACK_CORE_NATS_URL
               value: {{ include "gitstack.nats.url" . | quote }}
+            # Segreto di servizio: core accetta l'identità solo se firmata dal
+            # gateway con questo segreto. Solo da Secret.
+            - name: GITSTACK_IDENTITY_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.serviceSecret.name" . }}
+                  key: secret
             - name: GITSTACK_CORE_LOG_LEVEL
               value: {{ .Values.core.env.logLevel | quote }}
           livenessProbe:

@@ -16,7 +16,7 @@
 {{- $pgAdmin = .Values.postgres.external.username -}}
 {{- $pgSSL = .Values.postgres.external.sslMode -}}
 {{- end -}}
-{{- $svcSecret := .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
+{{- $svcSecret := include "gitstack.serviceSecret.name" . -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
 {{- $adminSecret := .Values.identity.admin.existingSecret | default (printf "%s-identity-admin" (include "gitstack.fullname" .)) -}}
 {{- $oidc := and .Values.identity.oidc.enabled -}}

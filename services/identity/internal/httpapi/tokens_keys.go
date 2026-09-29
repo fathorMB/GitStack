@@ -362,18 +362,15 @@ func (s *server) VerifyCredential(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	if cur.MustChange {
-		// Password iniziale non ancora cambiata: per gli altri servizi la
-		// sessione non autentica niente (identity la accetta solo per
-		// GET /auth/session, logout e cambio password).
-		inactive()
-		return
-	}
 	id, uid := openapi_types.UUID(cur.Session.ID), openapi_types.UUID(cur.User.ID)
 	exp := cur.Session.ExpiresAt
 	writeJSON(w, http.StatusOK, openapi.VerifyCredentialResult{Active: true, CacheTtlSeconds: &ttl, Principal: &openapi.Principal{
 		UserId: uid, Username: cur.User.Username, Kind: openapi.PrincipalKind(cur.User.Kind), IsAdmin: cur.User.IsAdmin,
 		AuthMethod: openapi.PrincipalAuthMethod(cur.Session.AuthMethod), CredentialId: &id, ExpiresAt: &exp,
+		// Password iniziale da cambiare: la sessione e' valida, ma il gateway
+		// risponde 403 password_change_required a ogni rotta tranne le tre
+		// eccezioni del contratto (x-password-change-exempt).
+		MustChangePassword: &cur.MustChange,
 	}})
 }
 

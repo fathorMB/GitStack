@@ -1,7 +1,9 @@
 // Command gateway è l'unico punto d'ingresso API di GitStack, dietro
 // Traefik: espone /healthz, /readyz e l'API pubblica /v1/* (contratto
-// api/openapi.yaml), instradata verso core. Verifica token e rate limiting
-// arrivano in M-02; qui c'è solo il punto di aggancio (no-op).
+// api/openapi.yaml), instradata verso core e identity. Autentica ogni rotta
+// secondo la sua dichiarazione di sicurezza (sessione o token verificati da
+// identity, scope per rotta); il rate limiting è ancora un punto di aggancio
+// (no-op).
 package main
 
 import (
