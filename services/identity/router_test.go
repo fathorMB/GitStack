@@ -34,7 +34,7 @@ func TestBuildRouter_RotteMontate(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.Config{ServiceSecret: tc.secret}
-			router := buildRouter(cfg, nil, &auth.Service{}, logger)
+			router := buildRouter(cfg, nil, &auth.Service{}, nil, logger)
 			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader("{}"))
 			if tc.auth != "" {
 				req.Header.Set("Authorization", tc.auth)
@@ -56,7 +56,7 @@ func TestBuildRouter_RotteMontate(t *testing.T) {
 // gestore: un corpo non valido dà 400, non 401/501.
 func TestBuildRouter_InternalVerifyConSegreto(t *testing.T) {
 	cfg := config.Config{ServiceSecret: "s3gr3to"}
-	router := buildRouter(cfg, nil, &auth.Service{}, slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil)))
+	router := buildRouter(cfg, nil, &auth.Service{}, nil, slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil)))
 	req := httptest.NewRequest("POST", "/internal/verify", strings.NewReader("non json"))
 	req.Header.Set("Authorization", "Bearer s3gr3to")
 	rec := httptest.NewRecorder()

@@ -5,8 +5,10 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -51,6 +53,20 @@ type Config struct {
 	// TokenMaxLifetime è la durata massima concessa ai token personali.
 	// Zero (default): vale apitokens.DefaultMaxLifetime.
 	TokenMaxLifetime time.Duration
+
+	// OIDCConfigFile è il file JSON dei provider OIDC (nel deploy montato da
+	// un Secret). Vuoto (default): il login OIDC è spento.
+	OIDCConfigFile string
+
+	// OIDCEncKey (32 byte) e OIDCEncKeyID cifrano i client secret nel
+	// database e il cookie di stato del flusso. Obbligatori con OIDCConfigFile.
+	// La chiave non va mai nei log né negli errori.
+	OIDCEncKey   []byte
+	OIDCEncKeyID string
+
+	// PublicURL è l'URL pubblico di GitStack (senza slash finale), da cui si
+	// costruisce la redirect_uri OIDC. Obbligatorio con OIDCConfigFile.
+	PublicURL string
 }
 
 const (
@@ -88,6 +104,18 @@ const (
 	// EnvTokenMaxLifetime: durata massima dei token personali (default:
 	// quella di apitokens.DefaultMaxLifetime).
 	EnvTokenMaxLifetime = "GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME"
+
+	// EnvOIDCConfigFile: percorso del file JSON con i provider OIDC.
+	EnvOIDCConfigFile = "GITSTACK_IDENTITY_OIDC_CONFIG_FILE"
+
+	// EnvOIDCEncKey: chiave AES-256 (32 byte in base64) per i segreti OIDC.
+	EnvOIDCEncKey = "GITSTACK_IDENTITY_OIDC_ENC_KEY"
+
+	// EnvOIDCEncKeyID: identificativo della chiave (salvato in oidc_providers.enc_key_id).
+	EnvOIDCEncKeyID = "GITSTACK_IDENTITY_OIDC_ENC_KEY_ID"
+
+	// EnvPublicURL: URL pubblico di GitStack, es. https://git.example.com.
+	EnvPublicURL = "GITSTACK_IDENTITY_PUBLIC_URL"
 
 	defaultSessionTTL = 7 * 24 * time.Hour
 
@@ -159,6 +187,8 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 
+	errs = append(errs, loadOIDC(lookup, &cfg)...)
+
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = v
 	}
@@ -212,4 +242,54 @@ func parsePositiveInt32(v string) (int32, error) {
 		return 0, fmt.Errorf("valore non valido: %q", v)
 	}
 	return int32(n), nil
+}
+
+// loadOIDC legge le variabili del login OIDC. Con il file di configurazione
+// servono anche chiave, key id e URL pubblico; senza file il resto è ignorato.
+func loadOIDC(lookup func(string) (string, bool), cfg *Config) []string {
+	file, _ := lookup(EnvOIDCConfigFile)
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return nil
+	}
+	cfg.OIDCConfigFile = file
+	var errs []string
+
+	// Il valore della chiave non entra mai nei messaggi.
+	keyRaw, _ := lookup(EnvOIDCEncKey)
+	if strings.TrimSpace(keyRaw) == "" {
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria con %s (32 byte in base64)", EnvOIDCEncKey, EnvOIDCConfigFile))
+	} else if key, err := decodeKey(keyRaw); err != nil {
+		errs = append(errs, fmt.Sprintf("%s non valida: %s", EnvOIDCEncKey, err))
+	} else {
+		cfg.OIDCEncKey = key
+	}
+
+	id, _ := lookup(EnvOIDCEncKeyID)
+	id = strings.TrimSpace(id)
+	if id == "" || len(id) > 64 {
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria con %s (1-64 caratteri)", EnvOIDCEncKeyID, EnvOIDCConfigFile))
+	} else {
+		cfg.OIDCEncKeyID = id
+	}
+
+	pub, _ := lookup(EnvPublicURL)
+	pub = strings.TrimRight(strings.TrimSpace(pub), "/")
+	if u, err := url.Parse(pub); pub == "" || err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria con %s (URL http(s) assoluto, es. https://git.example.com)", EnvPublicURL, EnvOIDCConfigFile))
+	} else {
+		cfg.PublicURL = pub
+	}
+	return errs
+}
+
+func decodeKey(v string) ([]byte, error) {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(v))
+	if err != nil {
+		return nil, fmt.Errorf("non è base64 valido")
+	}
+	if len(raw) != 32 {
+		return nil, fmt.Errorf("deve essere di 32 byte, sono %d", len(raw))
+	}
+	return raw, nil
 }

@@ -161,6 +161,35 @@ identity:
     # k3s (cluster-cidr 10.42.0.0/16); cambialo se il cluster usa un CIDR
     # diverso. Vuoto = nessun proxy fidato (IP client = indirizzo del peer).
     trustedProxies: "10.42.0.0/16"
+  # Login esterno OIDC (M-02/K, GIT-39). Spento di default: senza file di
+  # configurazione listOidcProviders risponde items [] e start risponde 404.
+  # Esempi per Entra ID, Google e Keycloak: docs/identity-oidc.md.
+  oidc:
+    enabled: false
+    # URL pubblico di GitStack, come lo raggiunge il browser (senza slash
+    # finale): la redirect_uri da registrare presso il provider e
+    # <publicUrl>/api/v1/auth/oidc/<slug>/callback (GITSTACK_IDENTITY_PUBLIC_URL).
+    publicUrl: ""
+    # Provider, nel formato del file di configurazione di identity
+    # (slug, displayName, issuer, clientId, clientSecret, scopes, claims,
+    # linkByVerifiedEmail, autoCreateUsers). Il chart li scrive in un Secret
+    # <release>-identity-oidc (chiave oidc.json), montato come file: il
+    # clientSecret non finisce mai in un ConfigMap. Per non tenerlo nei values
+    # usa existingSecret.
+    providers: []
+    # Alternativa a providers: nome di un Secret esistente con la chiave
+    # oidc.json (l'intero file di configurazione).
+    existingSecret: ""
+    # Chiave AES-256 (GITSTACK_IDENTITY_OIDC_ENC_KEY) che cifra i client secret
+    # nel database e il cookie di stato del login. Il chart la genera una sola
+    # volta in un Secret <release>-identity-oidc-key (chiave `key`, 32 byte in
+    # base64; lookup + helm.sh/resource-policy: keep, come gli altri segreti).
+    # Alternativa: nome di un Secret esistente con la chiave `key`.
+    encKey:
+      existingSecret: ""
+      # Identificativo della chiave (GITSTACK_IDENTITY_OIDC_ENC_KEY_ID): va
+      # cambiato insieme alla chiave (rotazione) per riscrivere i segreti.
+      keyId: k1
   resources:
     requests:
       cpu: 25m

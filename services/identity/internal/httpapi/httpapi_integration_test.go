@@ -268,10 +268,14 @@ func TestSessionAndLogout(t *testing.T) {
 	errCode(t, e.do("GET", "/auth/session", nil, other), 401, "unauthenticated")
 }
 
-func TestOIDCNotImplemented(t *testing.T) {
+// Senza WithOIDC (nessun file di configurazione) il login OIDC è spento.
+func TestOIDCOffWithoutConfig(t *testing.T) {
 	e := newEnv(t, cfg)
-	for _, p := range []string{"/auth/oidc/providers", "/auth/oidc/google/start", "/auth/oidc/google/callback?code=x&state=y"} {
-		errCode(t, e.do("GET", p, nil, nil), 501, "not_implemented")
+	if r := e.do("GET", "/auth/oidc/providers", nil, nil); r.StatusCode != 200 {
+		t.Errorf("providers: status %d", r.StatusCode)
+	}
+	for _, p := range []string{"/auth/oidc/google/start", "/auth/oidc/google/callback?code=x&state=y"} {
+		errCode(t, e.do("GET", p, nil, nil), 404, "not_found")
 	}
 }
 

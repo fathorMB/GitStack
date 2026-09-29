@@ -3,11 +3,13 @@ module github.com/fathorMB/GitStack/services/identity
 go 1.26.2
 
 require (
+	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/oapi-codegen/runtime v1.7.0
 	golang.org/x/crypto v0.57.0
+	golang.org/x/oauth2 v0.37.0
 )
 
 require (
@@ -18,6 +20,7 @@ require (
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/getkin/kin-openapi v0.142.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/jsonpointer v1.0.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

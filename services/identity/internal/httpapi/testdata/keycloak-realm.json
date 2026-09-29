@@ -1,0 +1,57 @@
+{
+  "realm": "gitstack",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "clients": [
+    {
+      "clientId": "gitstack",
+      "name": "GitStack (test)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "keycloak-test-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://git.test/api/v1/auth/oidc/keycloak/callback"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": ["web-origins", "profile", "email", "roles"]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Example",
+      "credentials": [{ "type": "password", "value": "alice-password", "temporary": false }]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "email": "bob@example.com",
+      "emailVerified": false,
+      "firstName": "Bob",
+      "lastName": "Example",
+      "credentials": [{ "type": "password", "value": "bob-password", "temporary": false }]
+    },
+    {
+      "username": "dave",
+      "enabled": true,
+      "email": "dave@example.com",
+      "emailVerified": true,
+      "firstName": "Dave",
+      "lastName": "Example",
+      "credentials": [{ "type": "password", "value": "dave-password", "temporary": false }]
+    }
+  ]
+}
