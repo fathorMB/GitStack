@@ -21,7 +21,10 @@
 #   invocano `corepack pnpm ...` e NON usano lo shim `pnpm` del PATH
 #   (pnpm.ps1, versione diversa).
 # Non lanciare `corepack use` in web/: riscrive package.json.
-# Nessun altro strumento (bash, golangci-lint) e' richiesto da questo
+# - golangci-lint >= v2.14.0 nel PATH (check go-lint-*; sull'host di sviluppo
+#   c'e' v2.14.0 in C:\Users\moren\go\bin). Deve essere costruito con Go >= quello
+#   dei go.mod; la configurazione e' .golangci.yml in radice.
+# Nessun altro strumento (bash) e' richiesto da questo
 # file: la shell e il PATH del motore non sono noti, quindi nessun comando usa
 # $(...), pipe o `&&`. Verificato che il comando gira invariato in PowerShell,
 # cmd.exe e Git Bash sull'host di sviluppo (vedi riepilogo di consegna GIT-13).
@@ -37,7 +40,8 @@ name = "go-build"
 # di ogni modulo elencato in go.work (verificati con `go work edit -json`).
 # Quando si aggiunge un modulo a go.work, aggiungere qui il suo pattern
 # "<path>/..." (e anche nel check go-test qui sotto: i due elenchi vanno
-# tenuti allineati). Un controllo successivo, in un item separato, sostituira'
+# tenuti allineati); un modulo nuovo richiede anche il suo go-lint-<modulo>
+# (una tabella per modulo, vedi in fondo). Un controllo successivo, in un item separato, sostituira'
 # questo elenco con uno script (es. scripts/go-each.sh) quando sapremo come
 # il motore lancia la shell.
 run = "go build ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
@@ -46,7 +50,7 @@ timeout_s = 600
 [[check]]
 name = "go-test"
 # Stessi pattern di go-build: aggiornare entrambi quando si aggiunge un modulo
-# a go.work. Non richiede Postgres.
+# a go.work (e aggiungere il go-lint-<modulo> del modulo). Non richiede Postgres.
 run = "go test ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
 timeout_s = 900
 
@@ -82,3 +86,55 @@ name = "web-check-tokens"
 run = "corepack pnpm run check-tokens"
 cwd = "web"
 timeout_s = 300
+
+# Lint per modulo (golangci-lint, config .golangci.yml in radice). Uno per
+# ogni modulo di go.work: aggiornare insieme a go-build/go-test.
+
+[[check]]
+name = "go-lint-cli"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "cli"
+timeout_s = 600
+paths = ["cli/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-client-go"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "client/go"
+timeout_s = 600
+paths = ["client/go/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-pkg-events"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "pkg/events"
+timeout_s = 600
+paths = ["pkg/events/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-core"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "services/core"
+timeout_s = 600
+paths = ["services/core/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-gateway"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "services/gateway"
+timeout_s = 600
+paths = ["services/gateway/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-git"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "services/git"
+timeout_s = 600
+paths = ["services/git/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-identity"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "services/identity"
+timeout_s = 600
+paths = ["services/identity/**", ".golangci.yml", "go.work", "go.work.sum"]
