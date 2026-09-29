@@ -530,7 +530,7 @@ function Main {
         $resourceId = $null
         if ($e4Ok) {
             $createBody = @{ type = 'gitstack-e2e'; name = "e2e-$(Get-Date -Format 'yyyyMMddHHmmss')" } | ConvertTo-Json
-            $created = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources" -Method 'POST' -Body $createBody -Headers $ck
+            $created = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources" -Method 'POST' -Body $createBody -Cookie $ck
             if ($created.StatusCode -ne 201) {
                 $e4Ok = $false; $e4Details += "create risorsa con la sessione: status $($created.StatusCode) (atteso 201), corpo '$($created.Body)' $($created.Error)"
             } else {
@@ -540,9 +540,9 @@ function Main {
         }
 
         if ($e4Ok -and $resourceId) {
-            $read = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources/$resourceId" -Headers $ck
+            $read = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources/$resourceId" -Cookie $ck
             if ($read.StatusCode -ne 200 -or ($read.Body | ConvertFrom-Json).id -ne $resourceId) {
-                $e4Ok = $false; $e4Details += "read risorsa $resourceId: status $($read.StatusCode), corpo '$($read.Body)' $($read.Error)"
+                $e4Ok = $false; $e4Details += "read risorsa ${resourceId}: status $($read.StatusCode), corpo '$($read.Body)' $($read.Error)"
             }
         }
 
