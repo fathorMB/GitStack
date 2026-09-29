@@ -231,7 +231,7 @@ func TestGatewayIdentityCore(t *testing.T) {
 
 	// --- con un token con scope ---------------------------------------------
 	exp := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
-	tok := s.gw("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"read:user"}, "expiresAt": exp}, nil, cookie)
+	tok := s.gw("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"read:user", "read:resource"}, "expiresAt": exp}, nil, cookie)
 	want(t, tok, 201, "")
 	token, _ := tok.json()["token"].(string)
 	if !strings.HasPrefix(token, "gst_") {
@@ -240,9 +240,19 @@ func TestGatewayIdentityCore(t *testing.T) {
 	bearer := map[string]string{"Authorization": "Bearer " + token}
 	want(t, s.gw("GET", "/resources", nil, bearer, nil), 200, "")
 	want(t, s.gw("GET", "/resources/"+id, nil, bearer, nil), 200, "")
-	// Le rotte di identity con un token: il gateway le lascia passare (scope
-	// ok), ma i gestori di identity autenticano ancora solo il cookie di
-	// sessione (vedi il README del gateway, "Limiti"): non si asserisce nulla.
+	// Le rotte di identity con un token: dopo GIT-57 identity accetta
+	// l'identità firmata dal gateway, quindi con lo scope giusto rispondono 200.
+	want(t, s.gw("GET", "/users/admin", nil, bearer, nil), 200, "")
+	// token con il solo read:user: /resources richiede read:resource
+	tokUser := s.gw("POST", "/user/tokens", map[string]any{"name": "solo-user", "scopes": []string{"read:user"}, "expiresAt": exp}, nil, cookie)
+	want(t, tokUser, 201, "")
+	tokenUser, _ := tokUser.json()["token"].(string)
+	userOnly := map[string]string{"Authorization": "Bearer " + tokenUser}
+	ru := s.gw("GET", "/resources", nil, userOnly, nil)
+	want(t, ru, 403, "insufficient_scope")
+	if e, _ := ru.json()["error"].(map[string]any); fmt.Sprint(e["details"]) != "map[required:[read:resource]]" {
+		t.Errorf("details = %v", e["details"])
+	}
 	// scope insufficiente: 403 dal gateway, senza arrivare a identity
 	r := s.gw("POST", "/orgs", map[string]any{"name": "acme"}, bearer, nil)
 	want(t, r, 403, "insufficient_scope")
