@@ -2,67 +2,77 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"log/slog"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/fathorMB/GitStack/services/identity/internal/db"
+	"github.com/fathorMB/GitStack/services/identity/internal/config"
 )
 
-// TestDSNNonInLog verifica che la stringa di connessione (che contiene la
-// password) non finisca nel log quando db.Open fallisce.
-// main.go non passa "err" al logger per l'errore di connessione,
-// quindi il DSN non compare mai nei log (come richiesto dal CTO su GIT-30).
-func TestDSNNonInLog(t *testing.T) {
+// TestNoDSNInLog verifica che, al fallimento della connessione Postgres,
+// la password nel DSN non compaia mai nei log del servizio.
+// main.go usa pgxpool.ParseConfig per estrarre host/port/database
+// ed evita di loggare la password.
+func TestNoDSNInLog(t *testing.T) {
 	password := "super-secret-pw-12345"
-	dsn := "postgres://identity:" + password + "@localhost:5432/gitstack"
+	dsn := "postgres://identity:" + password + "@127.0.0.1:5999/gitstack?sslmode=disable"
 
-	// db.Open non logga nulla: il log è fatto solo in main.go.
-	// Qui verifichiamo solo che Open restituisca un errore e che
-	// il DSN non sia necessario per la comunicazione dell'errore
-	// all'utente (il messaggio "connessione a Postgres non riuscita"
-	// è sufficiente).
-	ctx := context.Background()
-	_, err := db.Open(ctx, dsn, 1)
-	if err == nil {
-		t.Fatal("attendevo un errore da db.Open")
+	// Imposta la variabile d'ambiente prima di chiamare run.
+	t.Setenv("GITSTACK_IDENTITY_DB_URL", dsn)
+
+	var buf bytes.Buffer
+	exitCode := run(nil, &buf)
+
+	// run dovrebbe restituire 1 (connessione fallita).
+	if exitCode != 1 {
+		t.Fatalf("exit code = %d, voluto 1", exitCode)
 	}
 
-	// Il messaggio di db.Open inizia con "connessione a Postgres non riuscita:"
-	// e il DSN è nel %w incapsulato. main.go non logga "err", quindi:
-	// - il messaggio di log è "connessione a Postgres non riuscita" (pulito)
-	// - non c'è alcun campo "err" con il DSN
-	_ = err
+	logOutput := buf.String()
 
-	// Verifica a livello di codice: db.Open include il DSN solo nel %w.
-	errMsg := err.Error()
-	if strings.Contains(errMsg, password) {
-		t.Logf("Nota: il messaggio di errore di Open contiene la password: %s", errMsg)
-		t.Log("Questo è sicuro perché main.go non passa 'err' al logger, solo il messaggio.")
+	// La password non deve mai comparire nel log.
+	if strings.Contains(logOutput, password) {
+		t.Fatalf("la password %q è comparsa nel log!\n%s", password, logOutput)
+	}
+
+	// Il log deve contenere il messaggio di errore e le info di connessione.
+	if !strings.Contains(logOutput, "connessione a Postgres non riuscita") {
+		t.Fatalf("log mancante di messaggio di errore:\n%s", logOutput)
+	}
+	// Il log dovrebbe contenere host e database (estratti da ParseConfig).
+	if !strings.Contains(logOutput, `"host":"127.0.0.1"`) {
+		t.Errorf("log mancante di host:\n%s", logOutput)
+	}
+	if !strings.Contains(logOutput, `"database":"gitstack"`) {
+		t.Errorf("log mancante di database:\n%s", logOutput)
 	}
 }
 
-// TestNoErrFieldInConnectionLog verifica che la chiamata a logger.Error per
-// la connessione Postgres non includa il campo "err" (quindi il DSN non
-// può finire nei log). Questo è verificato a livello di code review su main.go.
-func TestNoErrFieldInConnectionLog(t *testing.T) {
-	var buf bytes.Buffer
-	handler := slog.NewJSONHandler(&buf, nil)
-	logger := slog.New(handler)
+// TestDefaultConfig verifica che i valori di default siano corretti
+// quando non sono impostate variabili d'ambiente override.
+func TestDefaultConfig(t *testing.T) {
+	os.Setenv(config.EnvDatabaseURL, "postgres://identity:secret@localhost:5432/gitstack")
+	os.Unsetenv(config.EnvAddr)
+	os.Unsetenv(config.EnvDBMaxConns)
+	os.Unsetenv(config.EnvMigrationsTimeout)
+	os.Unsetenv(config.EnvLogLevel)
 
-	// Simuliamo la chiamata di main.go: logger.Error("connessione a Postgres non riuscita")
-	// senza il campo "err".
-	logger.Error("connessione a Postgres non riuscita")
-
-	output := buf.String()
-	// Il JSON non dovrebbe contenere la parola "err" come chiave.
-	if strings.Contains(output, `"err"`) {
-		t.Errorf("il log contiene il campo \"err\": %s", output)
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("errore inatteso: %v", err)
 	}
-	// Dovrebbe contenere il messaggio.
-	if !strings.Contains(output, "connessione a Postgres non riuscita") {
-		t.Errorf("il log non contiene il messaggio: %s", output)
+	if cfg.Addr != ":8080" {
+		t.Errorf("Addr = %q, voluto :8080", cfg.Addr)
+	}
+	if cfg.DBMaxConns != 10 {
+		t.Errorf("DBMaxConns = %d, voluto 10", cfg.DBMaxConns)
+	}
+	if cfg.MigrationsTimeout != 30*time.Second {
+		t.Errorf("MigrationsTimeout = %v, voluto 30s", cfg.MigrationsTimeout)
+	}
+	if cfg.LogLevel != "info" {
+		t.Errorf("LogLevel = %q, voluto info", cfg.LogLevel)
 	}
 }
 

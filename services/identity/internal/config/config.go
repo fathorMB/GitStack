@@ -36,11 +36,25 @@ type Config struct {
 }
 
 const (
-	envAddr              = "GITSTACK_IDENTITY_ADDR"
-	envDatabaseURL       = "GITSTACK_IDENTITY_DB_URL"
-	envDBMaxConns        = "GITSTACK_IDENTITY_DB_MAX_CONNS"
-	envMigrationsTimeout = "GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT"
-	envLogLevel          = "GITSTACK_IDENTITY_LOG_LEVEL"
+	// EnvAddr è il nome della variabile d'ambiente per l'indirizzo di
+	// ascolto HTTP (default ":8080").
+	EnvAddr = "GITSTACK_IDENTITY_ADDR"
+
+	// EnvDatabaseURL è il nome della variabile d'ambiente obbligatoria
+	// per la stringa di connessione Postgres.
+	EnvDatabaseURL = "GITSTACK_IDENTITY_DB_URL"
+
+	// EnvDBMaxConns è il nome della variabile d'ambiente per il numero
+	// massimo di connessioni nel pool Postgres (default 10).
+	EnvDBMaxConns = "GITSTACK_IDENTITY_DB_MAX_CONNS"
+
+	// EnvMigrationsTimeout è il nome della variabile d'ambiente per il
+	// timeout massimo delle migrazioni (default 30s).
+	EnvMigrationsTimeout = "GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT"
+
+	// EnvLogLevel è il nome della variabile d'ambiente per il livello
+	// dei log (default "info").
+	EnvLogLevel = "GITSTACK_IDENTITY_LOG_LEVEL"
 
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
@@ -71,42 +85,42 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		LogLevel:          defaultLogLevel,
 	}
 
-	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
+	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = v
 	}
 
-	dbURLRaw, ok := lookup(envDatabaseURL)
+	dbURLRaw, ok := lookup(EnvDatabaseURL)
 	if !ok || strings.TrimSpace(dbURLRaw) == "" {
-		errs = append(errs, fmt.Sprintf("%s è obbligatoria (es. postgres://identity:***@postgres:5432/gitstack?sslmode=disable)", envDatabaseURL))
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria (es. postgres://identity:***@postgres:5432/gitstack?sslmode=disable)", EnvDatabaseURL))
 	} else {
 		cfg.DatabaseURL = dbURLRaw
 	}
 
-	if v, ok := lookup(envDBMaxConns); ok && strings.TrimSpace(v) != "" {
+	if v, ok := lookup(EnvDBMaxConns); ok && strings.TrimSpace(v) != "" {
 		n, err := parsePositiveInt32(v)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("%s non è un intero positivo valido: %q", envDBMaxConns, v))
+			errs = append(errs, fmt.Sprintf("%s non è un intero positivo valido: %q", EnvDBMaxConns, v))
 		} else {
 			cfg.DBMaxConns = n
 		}
 	}
 
-	if v, ok := lookup(envMigrationsTimeout); ok && strings.TrimSpace(v) != "" {
+	if v, ok := lookup(EnvMigrationsTimeout); ok && strings.TrimSpace(v) != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil || d <= 0 {
-			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envMigrationsTimeout, v))
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", EnvMigrationsTimeout, v))
 		} else {
 			cfg.MigrationsTimeout = d
 		}
 	}
 
-	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {
+	if v, ok := lookup(EnvLogLevel); ok && strings.TrimSpace(v) != "" {
 		level := strings.ToLower(strings.TrimSpace(v))
 		switch level {
 		case "debug", "info", "warn", "error":
 			cfg.LogLevel = level
 		default:
-			errs = append(errs, fmt.Sprintf("%s non è un livello valido: %q (debug|info|warn|error)", envLogLevel, v))
+			errs = append(errs, fmt.Sprintf("%s non è un livello valido: %q (debug|info|warn|error)", EnvLogLevel, v))
 		}
 	}
 

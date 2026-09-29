@@ -68,13 +68,43 @@ Vincoli notevoli: username/nomi minuscoli con CHECK di formato; email unica case
 
 Aperto per gli item successivi: nessuna API di amministrazione dei provider OIDC (oggi righe di `oidc_providers` inserite da configurazione/operatore); gli stati di `state`/`nonce` del login OIDC non sono a database (cookie firmato, decisione di GIT-3x).
 
-### Provare le migrazioni su un Postgres vero
+## Configurazione
 
-```
-docker run -d --rm --name identity-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=gitstack -p 55432:5432 postgres:16-alpine
-cd services/identity
-GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslmode=disable" \
-  go test -tags=integration -count=1 -v ./internal/migrate/
-```
+Tutta la configurazione da variabili d'ambiente, prefisso `GITSTACK_IDENTITY_`.
+Nessun file di configurazione: il binario è pensato per container Docker e
+deployment Kubernetes.
 
-Il test applica up (due volte: idempotenza), verifica le tabelle, applica down di 2 passi, riapplica up, e prova i vincoli (unicità, CHECK sugli hash, scope sconosciuti, FK composta team/org, grant con due soggetti). Senza la variabile viene saltato. Per provare con il ruolo a permessi limitati: `psql -v identity_password=... -f migrations/bootstrap-role.sql` e usare `identity_app` nel DSN.
+| Variabile | Default | Obbligatoria | Descrizione |
+|---|---|---|---|
+| `GITSTACK_IDENTITY_ADDR` | `:8080` | no | Indirizzo di ascolto HTTP (es. `:8080`, `0.0.0.0:8080`). |
+| `GITSTACK_IDENTITY_DB_URL` | *(nessuno)* | sì | Stringa di connessione Postgres (es. `postgres://identity:***@postgres:5432/gitstack?sslmode=disable`). |
+| `GITSTACK_IDENTITY_DB_MAX_CONNS` | `10` | no | Numero massimo di connessioni nel pool verso Postgres. |
+| `GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT` | `30s` | no | Tempo massimo per l'applicazione delle migrazioni all'avvio. |
+| `GITSTACK_IDENTITY_LOG_LEVEL` | `info` | no | Livello minimo dei log strutturati (`debug`, `info`, `warn`, `error`). |
+
+## Utilizzo
+
+Il binario supporta tre modalità di esecuzione:
+
+- `identity` oppure `identity serve`: applica le migrazioni non ancora applicate
+  e avvia il server HTTP. È il comportamento di default nel container.
+- `identity migrate up`: applica tutte le migrazioni non ancora applicate ed
+  esce. Utile per un Job Kubernetes separato dalle migrazioni.
+- `identity migrate down [N]`: applica il rollback delle ultime N migrazioni
+  (default 1 step). Pensato per lo sviluppo e la CI.
+
+## Probe di salute
+
+Il server HTTP espone due endpoint per i probe Kubernetes (non versionati):
+
+- `GET /healthz`: risponde sempre `200 OK` finché il processo è vivo
+  (liveness probe). Non verifica dipendenze esterne.
+- `GET /readyz`: risponde `200 OK` se Postgres è raggiungibile entro
+  3 secondi, altrimenti `503 Service Unavailable` (readiness probe).
+
+## Note di sicurezza
+
+La stringa di connessione Postgres contiene la password. Il servizio la usa per
+aprire il pool di connessioni e per le migrazioni, ma **non la logga mai**:
+nessun log contiene né la password né la stringa di connessione. I log di errore
+di avvio indicano host e database, mai credenziali.

@@ -1,17 +1,15 @@
-// Package identity gestisce utenti locali, sessioni, token con scope, chiavi
-// SSH e login OIDC. L'implementazione arriva con le milestone successive a
-// M-01/T-01 (vedi services/README.md).
-//
-// Questo file avvia il servizio identity con le sue dipendenze:
-// configurazione da variabili d'ambiente (GITSTACK_IDENTITY_*),
-// connessione a Postgres, migrazioni applicate all'avvio, e server HTTP
-// con /healthz (liveness) e /readyz (readiness, verifica database).
+// Command identity avvia il servizio identity: configurazione da variabili
+// d'ambiente (GITSTACK_IDENTITY_*), connessione a Postgres, migrazioni
+// applicate all'avvio, server HTTP con /healthz (liveness) e /readyz
+// (readiness, verifica database), arresto pulito su SIGINT/SIGTERM.
+// Nessuna password o DSN compare mai nei log.
 package main
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,7 +26,7 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:]))
+	os.Exit(run(os.Args[1:], os.Stdout))
 }
 
 // run gestisce due modalità, entrambe richieste dal criterio di
@@ -38,8 +36,11 @@ func main() {
 //   - `identity migrate up` / `identity migrate down [N]`: applica solo le
 //     migrazioni (o il loro rollback, N step, default 1) ed esce, senza
 //     avviare il server: per un job dedicato (es. init container o Job Helm).
-func run(args []string) int {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+//
+// Il parametro `out` è il writer usato per i log strutturati; in produzione
+// è os.Stdout, nei test è un bytes.Buffer per verificare il contenuto.
+func run(args []string, out io.Writer) int {
+	logger := slog.New(slog.NewJSONHandler(out, nil))
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -48,7 +49,7 @@ func run(args []string) int {
 	}
 	logger = logger.With("service", "identity")
 	if lvl, ok := parseLevel(cfg.LogLevel); ok {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: lvl})).With("service", "identity")
+		logger = slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{Level: lvl})).With("service", "identity")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -58,9 +59,17 @@ func run(args []string) int {
 	// qualunque comando che lo tocchi.
 	pool, err := db.Open(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
 	if err != nil {
-		// Non logghiamo mai "err": il DSN contiene la password e un
-		// errore di pgx può includere il DSN completo (il CTO su GIT-30).
-		logger.Error("connessione a Postgres non riuscita")
+		// Logghiamo host e database (estratti da ParseConfig) per
+		// aiutare il debug, senza mai loggare la password: il DSN
+		// contiene credenziali e un errore pgx potrebbe includerlo.
+		if pcfg, perr := pgxpool.ParseConfig(cfg.DatabaseURL); perr == nil {
+			logger.Error("connessione a Postgres non riuscita",
+				"host", pcfg.ConnConfig.Host,
+				"port", pcfg.ConnConfig.Port,
+				"database", pcfg.ConnConfig.Database)
+		} else {
+			logger.Error("GITSTACK_IDENTITY_DB_URL non valida")
+		}
 		return 1
 	}
 	defer pool.Close()
@@ -76,7 +85,7 @@ func run(args []string) int {
 		mctx, cancel := context.WithTimeout(ctx, cfg.MigrationsTimeout)
 		defer cancel()
 		if err := migrate.Down(mctx, pool, cfg.DatabaseURL, steps); err != nil {
-			// Come per Up: non logghiamo mai "err" per non esporre il DSN.
+			// Non logghiamo mai "err" per non esporre il DSN.
 			logger.Error("rollback migrazioni non riuscito")
 			return 1
 		}
@@ -104,9 +113,14 @@ func applyMigrations(ctx context.Context, cfg config.Config, pool *pgxpool.Pool,
 	mctx, cancel := context.WithTimeout(ctx, cfg.MigrationsTimeout)
 	defer cancel()
 	if err := migrate.Up(mctx, pool, cfg.DatabaseURL); err != nil {
-		// Come per la connessione: non logghiamo mai "err" perché il DSN
-		// potrebbe comparire nell'errore del driver di migrazione.
-		logger.Error("applicazione migrazioni non riuscita")
+		// Logghiamo solo host e database, mai il DSN completo.
+		if pcfg, perr := pgxpool.ParseConfig(cfg.DatabaseURL); perr == nil {
+			logger.Error("applicazione migrazioni non riuscita",
+				"host", pcfg.ConnConfig.Host,
+				"database", pcfg.ConnConfig.Database)
+		} else {
+			logger.Error("applicazione migrazioni non riuscita")
+		}
 		return err
 	}
 	logger.Info("migrazioni applicate")

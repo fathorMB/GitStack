@@ -14,7 +14,7 @@ func lookupFrom(m map[string]string) func(string) (string, bool) {
 
 func TestLoad_Defaults(t *testing.T) {
 	cfg, err := load(lookupFrom(map[string]string{
-		envDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable",
+		EnvDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable",
 	}))
 	if err != nil {
 		t.Fatalf("errore inatteso: %v", err)
@@ -42,11 +42,11 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 
 func TestLoad_Overrides(t *testing.T) {
 	cfg, err := load(lookupFrom(map[string]string{
-		envAddr:              ":9090",
-		envDatabaseURL:       "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable",
-		envDBMaxConns:        "25",
-		envMigrationsTimeout: "45s",
-		envLogLevel:          "DEBUG",
+		EnvAddr:              ":9090",
+		EnvDatabaseURL:       "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable",
+		EnvDBMaxConns:        "25",
+		EnvMigrationsTimeout: "45s",
+		EnvLogLevel:          "DEBUG",
 	}))
 	if err != nil {
 		t.Fatalf("errore inatteso: %v", err)
@@ -68,16 +68,16 @@ func TestLoad_Overrides(t *testing.T) {
 func TestLoad_InvalidValues(t *testing.T) {
 	cases := map[string]map[string]string{
 		"db max conns non numerico": {
-			envDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack",
-			envDBMaxConns:  "abc",
+			EnvDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack",
+			EnvDBMaxConns:  "abc",
 		},
 		"migrations timeout non valido": {
-			envDatabaseURL:       "postgres://identity:secret@localhost:5432/gitstack",
-			envMigrationsTimeout: "abc",
+			EnvDatabaseURL:       "postgres://identity:secret@localhost:5432/gitstack",
+			EnvMigrationsTimeout: "abc",
 		},
 		"log level non valido": {
-			envDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack",
-			envLogLevel:    "verbose",
+			EnvDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack",
+			EnvLogLevel:    "verbose",
 		},
 	}
 	for name, env := range cases {

@@ -1,5 +1,3 @@
-// Package httpserver gestisce le rotte HTTP di identity: /healthz e /readyz,
-// con il pool Postgres condiviso per il readiness probe.
 package httpserver
 
 import (

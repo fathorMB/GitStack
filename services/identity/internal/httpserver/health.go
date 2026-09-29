@@ -6,6 +6,7 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 )
@@ -18,9 +19,7 @@ const dbPingTimeout = 3 * time.Second
 // un database temporaneamente non raggiungibile non fa riavviare
 // continuamente il pod).
 func Healthz(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, healthResponse{
-		Status: "ok",
-	})
+	writeHealth(w, http.StatusOK, "ok")
 }
 
 // Readyz è la readiness probe: identity è pronto a servire traffico solo se
@@ -29,14 +28,10 @@ func Healthz(w http.ResponseWriter, r *http.Request) {
 func Readyz(pool pinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if pingDB(r.Context(), pool) != nil {
-			writeJSON(w, http.StatusServiceUnavailable, healthResponse{
-				Status: "degraded",
-			})
+			writeHealth(w, http.StatusServiceUnavailable, "degraded")
 			return
 		}
-		writeJSON(w, http.StatusOK, healthResponse{
-			Status: "ok",
-		})
+		writeHealth(w, http.StatusOK, "ok")
 	}
 }
 
@@ -53,14 +48,9 @@ func pingDB(ctx context.Context, pool pinger) error {
 	return pool.Ping(ctx)
 }
 
-// healthResponse è la risposta JSON condivisa da /healthz e /readyz.
-type healthResponse struct {
-	Status string `json:"status"`
-}
-
-// writeJSON scrive una risposta JSON con il dato status code.
-func writeJSON(w http.ResponseWriter, status int, v any) {
+// writeHealth scrive una risposta JSON con lo status code e lo stato.
+func writeHealth(w http.ResponseWriter, status int, state string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_, _ = w.Write([]byte(`{"status":"` + v.(healthResponse).Status + `"}`))
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": state})
 }
