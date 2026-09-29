@@ -550,3 +550,18 @@ due percorsi, **nessuno dei due richiede modifiche a GIT-11**:
   eredita il default `'Default Switch'` della nuova firma — funziona senza
   toccare il ramo `item/GIT-11`, a patto che la VM sia sul `Default Switch`
   (il default anche di `new-vm.ps1`).
+
+### Test di `Invoke-HttpRaw` (GIT-58)
+
+`Invoke-HttpRaw` sta in `lib/http.ps1` (dot-sourced da `e2e.ps1`). Su Windows
+PowerShell 5.1 `Invoke-WebRequest -Headers @{ Cookie = ... }` non manda il
+cookie, quindi si usa `-Cookie 'gst_session=<valore>'`, che costruisce una
+`WebRequestSession` con un cookie non Secure sull'host dell'URI. Il corpo delle
+risposte 4xx/5xx si legge da `$_.ErrorDetails.Message` e, se vuoto, dallo stream
+riportato a Position 0. `tests/http.Tests.ps1` lo prova con un `HttpListener` su
+127.0.0.1 (401 con corpo JSON che rimanda il Cookie ricevuto); esce con codice
+!= 0 se fallisce:
+
+```powershell
+powershell.exe -NoProfile -File deploy\test-vm\tests\http.Tests.ps1
+```

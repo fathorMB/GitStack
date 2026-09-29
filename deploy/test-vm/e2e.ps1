@@ -94,6 +94,7 @@ param(
 )
 
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
+. (Join-Path $PSScriptRoot 'lib\http.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
@@ -253,45 +254,6 @@ function Test-GhcrImageExists {
 }
 
 # --- main --------------------------------------------------------------
-
-# Chiamata HTTP che non solleva eccezioni sugli status 4xx/5xx (Windows
-# PowerShell 5.1 lancia una WebException): ritorna StatusCode e corpo come
-# testo, oppure StatusCode 0 con Error se la connessione fallisce. Usata per
-# verificare risposte 401 di identity.
-function Invoke-HttpRaw {
-    param(
-        [Parameter(Mandatory)][string]$Uri,
-        [string]$Method = 'GET',
-        [string]$Body,
-        [hashtable]$Headers,
-        [int]$TimeoutSec = 20
-    )
-    $params = @{ Uri = $Uri; Method = $Method; TimeoutSec = $TimeoutSec; UseBasicParsing = $true }
-    if ($Body) { $params.Body = $Body; $params.ContentType = 'application/json' }
-    if ($Headers) { $params.Headers = $Headers }
-    try {
-        $r = Invoke-WebRequest @params
-        $text = if ($r.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($r.Content) } else { [string]$r.Content }
-        # Cookie di sessione (gst_session): e Secure, quindi il cookie jar di
-        # PowerShell non lo rimanda su HTTP; lo si rimanda a mano.
-        $cookie = $null
-        $setCookie = @($r.Headers['Set-Cookie']) -join ','
-        if ($setCookie -match 'gst_session=([^;,\s]+)') { $cookie = "gst_session=$($Matches[1])" }
-        return [pscustomobject]@{ StatusCode = [int]$r.StatusCode; Body = $text; Error = $null; Cookie = $cookie }
-    } catch {
-        $resp = $_.Exception.Response
-        if ($null -ne $resp) {
-            $text = ''
-            try {
-                $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
-                $text = $reader.ReadToEnd()
-                $reader.Close()
-            } catch { $text = '' }
-            return [pscustomobject]@{ StatusCode = [int]$resp.StatusCode; Body = $text; Error = $null }
-        }
-        return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.Message }
-    }
-}
 
 function Main {
     Assert-Administrator
@@ -515,19 +477,19 @@ function Main {
                 $e3Ok = $false
                 $e3Details += "login admin: status $($adminLogin.StatusCode) (atteso 200 con mustChangePassword=true e cookie di sessione) $($adminLogin.Error)"
             } else {
-                $ck = @{ Cookie = $adminLogin.Cookie }
-                $blocked = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Headers $ck
+                $ck = $adminLogin.Cookie
+                $blocked = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Cookie $ck
                 if ($blocked.StatusCode -ne 403 -or $blocked.Body -notmatch '"code"\s*:\s*"password_change_required"') {
                     $e3Ok = $false
                     $e3Details += "GET /api/v1/users prima del cambio: status $($blocked.StatusCode) (atteso 403 password_change_required)"
                 }
                 $changeBody = @{ currentPassword = $adminInitialPassword; newPassword = $adminNewPassword } | ConvertTo-Json
-                $change = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users/admin/password" -Method 'PUT' -Body $changeBody -Headers $ck
+                $change = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users/admin/password" -Method 'PUT' -Body $changeBody -Cookie $ck
                 if ($change.StatusCode -ne 204) {
                     $e3Ok = $false
                     $e3Details += "PUT /api/v1/users/admin/password: status $($change.StatusCode) (atteso 204)"
                 } else {
-                    $authed = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Headers $ck
+                    $authed = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Cookie $ck
                     if ($authed.StatusCode -ne 200) {
                         $e3Ok = $false
                         $e3Details += "GET /api/v1/users dopo il cambio: status $($authed.StatusCode) (atteso 200)"
