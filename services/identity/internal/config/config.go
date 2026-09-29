@@ -56,18 +56,6 @@ const (
 	// dei log (default "info").
 	EnvLogLevel = "GITSTACK_IDENTITY_LOG_LEVEL"
 
-	// EnvLoginAttemptsUser è il nome della variabile d'ambiente per il
-	// limite di tentativi falliti per utente (default 5).
-	EnvLoginAttemptsUser = "GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_USER"
-
-	// EnvLoginAttemptsIP è il nome della variabile d'ambiente per il
-	// limite di tentativi falliti per IP (default 20).
-	EnvLoginAttemptsIP = "GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP"
-
-	// EnvLoginWindow è il nome della variabile d'ambiente per la durata
-	// della finestra di rate limit del login (default 15m).
-	EnvLoginWindow = "GITSTACK_IDENTITY_LOGIN_WINDOW"
-
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
 	defaultMigrationsTimeout = 30 * time.Second

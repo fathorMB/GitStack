@@ -23,10 +23,13 @@ Errori: formato unico `Error` con codici stabili per 401/403/404/409/422 (vedi l
 - **Autorizzazione grossolana (scope)**: la applica il gateway usando `x-required-scopes` dell'operazione e gli `scopes` del principal; se mancano, risponde 403 `insufficient_scope` senza chiamare il servizio a valle. Le sessioni non hanno scope e passano.
 - **Autorizzazione fine (ruolo su una risorsa, ruolo in org)**: la applica il servizio proprietario del dato (core, git, identity stessa), che chiede a identity `POST /internal/permissions/check` (o legge il principal per i casi banali). Il gateway non conosce le risorse.
 - **Rotte di identity** (`/v1/auth/*`, `/v1/users*`, `/v1/user/*`, `/v1/orgs*`, `/v1/resources/{id}/grants*`, `/v1/resources/{id}/permissions`) sono instradate dal gateway a identity; il resto a core. `/v1/internal/*` **non** è mai instradato: il gateway lo rifiuta (404).
+- **Interfaccia interna** (`/internal/verify`, `/internal/permissions/check`, `/internal/ssh-keys/{fingerprint}`): protetta dallo schema `serviceAuth` (segreto condiviso di servizio da un Secret k8s, mai un token utente) e raggiungibile solo dal cluster. `/internal/ssh-keys/{fingerprint}` serve al servizio git per mappare una chiave SSH a un utente.
 
-## Verifica delle credenziali da parte del gateway
+## Come il gateway verifica sessioni e token — scelta: chiamata a identity con cache breve
 
-Il gateway non sa mai la password di un utente; verifica le credenziali chiamando `POST /internal/verify` su identity e ne usa il risultato. Il flusso:
+Il gateway estrae la credenziale (`Authorization: Bearer gst_...` oppure cookie `gst_session`) e chiama `POST /internal/verify`. L'esito è tenuto in una cache in memoria del gateway.
+
+Flusso:
 
 1. Nessuna credenziale → il gateway lascia passare solo le rotte pubbliche (`security: []`: login, provider OIDC, health); altrimenti 401 `unauthenticated`.
 2. La chiave di cache è lo SHA-256 della credenziale (mai il valore in chiaro in memoria o nei log).
@@ -64,7 +67,6 @@ Nessun segreto in chiaro:
 Vincoli notevoli: username/nomi minuscoli con CHECK di formato; email unica case-insensitive; `team_members` ha una FK composta verso `org_members`, quindi un membro di team è sempre membro dell'organizzazione e uscire dall'org lo toglie dai team; `resource_grants` ha esattamente un soggetto (utente **o** team, CHECK `num_nonnulls = 1`), un grant per (risorsa, soggetto), e **nessuna FK** su `resource_id` perché la risorsa vive nello schema `core` (D6).
 
 Aperto per gli item successivi: nessuna API di amministrazione dei provider OIDC (oggi righe di `oidc_providers` inserite da configurazione/operatore); gli stati di `state`/`nonce` del login OIDC non sono a database (cookie firmato, decisione di GIT-3x).
-
 ## Configurazione
 
 Tutta la configurazione da variabili d'ambiente, prefisso `GITSTACK_IDENTITY_`.
@@ -73,41 +75,51 @@ deployment Kubernetes.
 
 | Variabile | Default | Obbligatoria | Descrizione |
 |---|---|---|---|
-| `GITSTACK_IDENTITY_ADDR` | `:8080` | no | Indirizzo di ascolto HTTP (es. `:8080`, `0.0.0.0:8080`). |
-| `GITSTACK_IDENTITY_DB_URL` | *(nessuno)* | sì | Stringa di connessione Postgres (es. `postgres://identity:***@postgres:5432/gitstack?sslmode=disable`). |
-| `GITSTACK_IDENTITY_DB_MAX_CONNS` | `10` | no | Numero massimo di connessioni nel pool verso Postgres. |
-| `GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT` | `30s` | no | Tempo massimo per l'applicazione delle migrazioni all'avvio. |
-| `GITSTACK_IDENTITY_LOG_LEVEL` | `info` | no | Livello minimo dei log strutturati (`debug`, `info`, `warn`, `error`). |
-| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_USER` | `5` | no | Fallimenti massimi per utente nella finestra di rate limit del login. |
-| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | no | Fallimenti massimi per IP nella finestra di rate limit del login. |
-| `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | no | Durata della finestra scorrevole per il rate limit del login (formato Go). |
+| `GITSTACK_IDENTITY_ADDR` | `:8080` | no | indirizzo di ascolto HTTP |
+| `GITSTACK_IDENTITY_DB_URL` | — | sì | stringa di connessione Postgres |
+| `GITSTACK_IDENTITY_DB_MAX_CONNS` | `10` | no | connessioni massime nel pool |
+| `GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT` | `30s` | no | timeout migrazioni all'avvio |
+| `GITSTACK_IDENTITY_LOG_LEVEL` | `info` | no | livello log (debug|info|warn|error) |
+| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_USER` | `5` | no | fallimenti per utente nella finestra |
+| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | no | fallimenti per IP nella finestra |
+| `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | no | durata della finestra (formato Go) |
 
 ## Utilizzo
 
-Il binario supporta tre modalità di esecuzione:
+Il binario supporta i comandi:
 
-- `identity` oppure `identity serve`: applica le migrazioni non ancora applicate
-  e avvia il server HTTP. È il comportamento di default nel container.
-- `identity migrate up`: applica tutte le migrazioni non ancora applicate ed
-  esce. Utile per un Job Kubernetes separato dalle migrazioni.
-- `identity migrate down [N]`: applica il rollback delle ultime N migrazioni
-  (default 1 step). Pensato per lo sviluppo e la CI.
+- `identity serve` — avvia il server HTTP (default, nessun sotto-commando).
+- `identity migrate up` — applica tutte le migrazioni SQL in `internal/migrate/sql`.
+- `identity migrate down [N]` — rimuove N step di migrazione (default 1).
+
+Le migrazioni vengono applicate all'avvio di `serve` prima di accettare richieste.
 
 ## Probe di salute
 
-Il server HTTP espone due endpoint per i probe Kubernetes (non versionati):
+Tutti i servizi GitStack espongono due endpoint HTTP:
 
-- `GET /healthz`: risponde sempre `200 OK` finché il processo è vivo
-  (liveness probe). Non verifica dipendenze esterne.
-- `GET /readyz`: risponde `200 OK` se Postgres è raggiungibile entro
-  3 secondi, altrimenti `503 Service Unavailable` (readiness probe).
+- `GET /healthz` — risponde `200 OK` finché il processo è vivo.
+- `GET /readyz` — risponde `200 OK` se la connessione a Postgres è attiva; altrimenti `503 Service Unavailable`.
+
+Il probe di readiness ha un timeout breve: se Postgres non risponde entro qualche secondo, il servizio è segnato non pronto.
 
 ## Note di sicurezza
 
-La stringa di connessione Postgres contiene la password. Il servizio la usa per
-aprire il pool di connessioni e per le migrazioni, ma **non la logga mai**:
-nessun log contiene né la password né la stringa di connessione. I log di errore
-di avvio indicano host e database, mai credenziali.
+Nessun segreto nei log. La `GITSTACK_IDENTITY_DB_URL` contiene la password di Postgres:
+il servizio la registra solo come `host`, `port` e `database`, mai il valore intero.
+Anche in caso di errore di connessione, il log non contiene né la password né il DSN completo.
+
+
+### Provare le migrazioni su un Postgres vero
+
+```
+docker run -d --rm --name identity-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=gitstack -p 55432:5432 postgres:16-alpine
+cd services/identity
+GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslmode=disable" \
+  go test -tags=integration -count=1 -v ./internal/migrate/
+```
+
+Il test applica up (due volte: idempotenza), verifica le tabelle, applica down di 2 passi, riapplica up, e prova i vincoli (unicità, CHECK sugli hash, scope sconosciuti, FK composta team/org, grant con due soggetti). Senza la variabile viene saltato. Per provare con il ruolo a permessi limitati: `psql -v identity_password=... -f migrations/bootstrap-role.sql` e usare `identity_app` nel DSN.
 
 ## Utenti locali, password e sessioni web (GIT-33, M-02/E)
 
@@ -117,20 +129,16 @@ Fase 1 (senza handler HTTP: main, config e router sono di GIT-30). Pacchetti in 
 |---|---|
 | `password` | hash argon2id in formato PHC, verifica a tempo costante, politica, hash finto per il login |
 | `users` | creazione, lettura, elenco, aggiornamento, disattivazione, eliminazione, cambio password; protezione dell'ultimo amministratore |
-| `sessions` | login/logout, revoca sessione, scadenza 7 giorni, `last_seen_at` |
-| `loginlimit` | finestra scorrevole con contatori per utente e IP, rate-limit sul login |
-| `auth` | composizione di users, sessions, loginlimit; `Login` con controllo rate limit, verifica argon2id, creazione sessione, revoca in transazione |
+| `sessions` | sessioni web su `identity.sessions` (solo SHA-256 del cookie), scadenza assoluta, revoca |
+| `loginlimit` | rate limit dei login falliti per utente e per IP, con clock iniettato |
+| `auth` | `Login`, `Logout`, `Session` e i cookie `gst_session` (`SessionCookie`, `ClearCookie`) |
+| `dbtest` | Postgres reale per i test d'integrazione (tag `integration`) |
 
-### Utenti
+### Password (argon2id)
 
-- `CreateUser(username, email, password)`: genera l'hash argon2id, lo salva, torna `ErrAlreadyExists` se username o email esistono già.
-- `GetUser(ctx, userID)`: ritorna `ErrNotFound` se non esiste.
-- `ListUsers(ctx, offset, limit)`: elenco paginato (offset=0, limit=20 di default); solo admin possono vedere l'email e il campo `admin`.
-- `UpdateUser(ctx, userID, changes)`: cambia email, nome, admin. Un utente non-admin non può diventare admin se è l'unico (serve `ErrLastAdmin`). Cambio email: se quella email esiste già → `ErrAlreadyExists`.
-- `DeleteUser(ctx, userID)`: revoca tutte le sessioni e i token, poi elimina. Se l'utente è l'ultimo admin → `ErrLastAdmin`.
-- `DisableUser(ctx, userID)`: revoca tutto, imposta `active=false`. Utile per licenze revocate.
-- `ChangePassword(ctx, userID, old, new)`: verifica la vecchia password, sostituisce con la nuova hash; revoca tutte le sessioni dell'utente per sicurezza.
-- Politica minima: 12–1024 caratteri (come il contratto), non solo spazi, diversa da username ed email.
+Formato salvato in `credentials.secret_hash`: `$argon2id$v=19$m=<KiB>,t=<passate>,p=<thread>$<salt>$<hash>` (base64 senza padding). Parametri costanti (OWASP: 19 MiB, 2 passate, 1 thread): `m=19456,t=2,p=1`, salt 16 byte da `crypto/rand`, chiave 32 byte. Parametri e salt stanno nell'hash: cambiare le costanti in `password` non invalida gli hash esistenti, che al primo login riuscito vengono riscritti con i parametri nuovi (`NeedsRehash`). Confronto con `subtle.ConstantTimeCompare`; i parametri letti da un hash salvato hanno un tetto (memoria ≤ 1 GiB, t ≤ 64).
+
+Politica minima: 12–1024 caratteri (come il contratto), non solo spazi, diversa da username ed email.
 
 ### Login e sessioni
 
@@ -149,7 +157,7 @@ Finestra scorrevole in memoria del processo (con più repliche il limite vale pe
 | `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | fallimenti per IP nella finestra |
 | `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | durata della finestra (formato Go) |
 
-`loginlimit.FromEnv` le legge; la lettura è ora integrata in `config.Load()` (GIT-30).
+`loginlimit.FromEnv` le legge; main.go la chiama all'avvio (GIT-30).
 
 ### Test d'integrazione
 
@@ -164,7 +172,7 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 
 ### Livello HTTP (GIT-33, fase 2)
 
-`internal/openapi` contiene la `ServerInterface` generata da `api/openapi.yaml` per i tag `auth` e `users` (`include-tags` in `oapi-codegen.yaml`; si rigenera con `scripts/generate-api.sh`). `internal/httpapi` la implementa: `httpapi.New(*auth.Service, *slog.Logger) http.Handler` è pronta da montare (percorsi senza `/v1`, come core: il prefisso lo toglie il gateway). Il collegamento a `main.go` e a `internal/config` è stato completato in GIT-30.
+`internal/openapi` contiene la `ServerInterface` generata da `api/openapi.yaml` per i tag `auth` e `users` (`include-tags` in `oapi-codegen.yaml`; si rigenera con `scripts/generate-api.sh`). `internal/httpapi` la implementa: `httpapi.New(*auth.Service, *slog.Logger) http.Handler` è pronto da montare (percorsi senza `/v1`, come core: il prefisso lo toglie il gateway). `main.go` lo monta su `/` accanto a `/healthz` e `/readyz` (GIT-30).
 
 - Autenticazione: solo cookie `gst_session` (i token personali sono di un altro item). Senza sessione valida 401 `unauthenticated`.
 - Permessi: creare ed eliminare utenti solo admin (403 `forbidden` altrimenti); aggiornare profilo e cambiare password admin o l'utente stesso (chi non è admin né l'utente stesso non scopre nemmeno se l'utente esiste: 403); `isAdmin`/`isActive` solo admin; leggere utenti qualunque utente autenticato (email e campi amministrativi solo per sé e per gli admin).
