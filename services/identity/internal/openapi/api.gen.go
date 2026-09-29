@@ -90,6 +90,24 @@ func (e GrantSubjectType) Valid() bool {
 	}
 }
 
+// Defines values for OrgRole.
+const (
+	OrgRoleMember OrgRole = "member"
+	OrgRoleOwner  OrgRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the OrgRole enum.
+func (e OrgRole) Valid() bool {
+	switch e {
+	case OrgRoleMember:
+		return true
+	case OrgRoleOwner:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PrincipalAuthMethod.
 const (
 	PrincipalAuthMethodOidc     PrincipalAuthMethod = "oidc"
@@ -144,6 +162,24 @@ func (e ResourceRole) Valid() bool {
 	case Read:
 		return true
 	case Write:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TeamRole.
+const (
+	TeamRoleMaintainer TeamRole = "maintainer"
+	TeamRoleMember     TeamRole = "member"
+)
+
+// Valid indicates whether the value is a known member of the TeamRole enum.
+func (e TeamRole) Valid() bool {
+	switch e {
+	case TeamRoleMaintainer:
+		return true
+	case TeamRoleMember:
 		return true
 	default:
 		return false
@@ -259,6 +295,29 @@ type CreateGrantInput struct {
 
 // CreateGrantInputSubjectType defines model for CreateGrantInput.SubjectType.
 type CreateGrantInputSubjectType string
+
+// CreateOrganizationInput defines model for CreateOrganizationInput.
+type CreateOrganizationInput struct {
+	Description *string `json:"description,omitempty"`
+	DisplayName *string `json:"displayName,omitempty"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name `json:"name"`
+}
+
+// CreateTeamInput defines model for CreateTeamInput.
+type CreateTeamInput struct {
+	Description *string `json:"description,omitempty"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name `json:"name"`
+}
 
 // CreateTokenInput defines model for CreateTokenInput.
 type CreateTokenInput struct {
@@ -399,6 +458,50 @@ type OidcProviderList struct {
 	Items []OidcProvider `json:"items"`
 }
 
+// OrgMember defines model for OrgMember.
+type OrgMember struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Role `owner` gestisce organizzazione, team e membri; `member` no.
+	Role OrgRole `json:"role"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
+}
+
+// OrgMemberList defines model for OrgMemberList.
+type OrgMemberList struct {
+	Items   []OrgMember `json:"items"`
+	Page    int         `json:"page"`
+	PerPage int         `json:"perPage"`
+	Total   int         `json:"total"`
+}
+
+// OrgRole `owner` gestisce organizzazione, team e membri; `member` no.
+type OrgRole string
+
+// Organization defines model for Organization.
+type Organization struct {
+	CreatedAt   *time.Time          `json:"createdAt,omitempty"`
+	Description *string             `json:"description,omitempty"`
+	DisplayName *string             `json:"displayName,omitempty"`
+	Id          *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name `json:"name"`
+}
+
+// OrganizationList defines model for OrganizationList.
+type OrganizationList struct {
+	Items   []Organization `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
 // Principal Chi ha presentato la credenziale.
 type Principal struct {
 	AuthMethod PrincipalAuthMethod `json:"authMethod"`
@@ -432,6 +535,18 @@ type PrincipalKind string
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
+// SetOrgMemberInput defines model for SetOrgMemberInput.
+type SetOrgMemberInput struct {
+	// Role `owner` gestisce organizzazione, team e membri; `member` no.
+	Role OrgRole `json:"role"`
+}
+
+// SetTeamMemberInput defines model for SetTeamMemberInput.
+type SetTeamMemberInput struct {
+	// Role `maintainer` gestisce i membri del team.
+	Role *TeamRole `json:"role,omitempty"`
+}
+
 // SshKey defines model for SshKey.
 type SshKey struct {
 	CreatedAt   time.Time           `json:"createdAt"`
@@ -459,6 +574,50 @@ type SshKeyLookup struct {
 	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
 	User User `json:"user"`
 }
+
+// Team defines model for Team.
+type Team struct {
+	CreatedAt   *time.Time          `json:"createdAt,omitempty"`
+	Description *string             `json:"description,omitempty"`
+	Id          *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name  Name               `json:"name"`
+	OrgId openapi_types.UUID `json:"orgId"`
+}
+
+// TeamList defines model for TeamList.
+type TeamList struct {
+	Items   []Team `json:"items"`
+	Page    int    `json:"page"`
+	PerPage int    `json:"perPage"`
+	Total   int    `json:"total"`
+}
+
+// TeamMember defines model for TeamMember.
+type TeamMember struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Role `maintainer` gestisce i membri del team.
+	Role TeamRole `json:"role"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
+}
+
+// TeamMemberList defines model for TeamMemberList.
+type TeamMemberList struct {
+	Items   []TeamMember `json:"items"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+	Total   int          `json:"total"`
+}
+
+// TeamRole `maintainer` gestisce i membri del team.
+type TeamRole string
 
 // Token Token personale, senza il valore (che non e' recuperabile).
 type Token struct {
@@ -488,6 +647,23 @@ type TokenScope string
 type UpdateGrantInput struct {
 	// Role Ruolo su una risorsa, in ordine crescente di potere.
 	Role ResourceRole `json:"role"`
+}
+
+// UpdateOrganizationInput defines model for UpdateOrganizationInput.
+type UpdateOrganizationInput struct {
+	Description *string `json:"description,omitempty"`
+	DisplayName *string `json:"displayName,omitempty"`
+}
+
+// UpdateTeamInput defines model for UpdateTeamInput.
+type UpdateTeamInput struct {
+	Description *string `json:"description,omitempty"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name *Name `json:"name,omitempty"`
 }
 
 // UpdateUserInput defines model for UpdateUserInput.
@@ -630,6 +806,30 @@ type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
 
+// ListOrganizationsParams defines parameters for ListOrganizations.
+type ListOrganizationsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListOrgMembersParams defines parameters for ListOrgMembers.
+type ListOrgMembersParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListTeamsParams defines parameters for ListTeams.
+type ListTeamsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListTeamMembersParams defines parameters for ListTeamMembers.
+type ListTeamMembersParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // ListResourceGrantsParams defines parameters for ListResourceGrants.
 type ListResourceGrantsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -664,6 +864,24 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
+
+// CreateOrganizationJSONRequestBody defines body for CreateOrganization for application/json ContentType.
+type CreateOrganizationJSONRequestBody = CreateOrganizationInput
+
+// UpdateOrganizationJSONRequestBody defines body for UpdateOrganization for application/json ContentType.
+type UpdateOrganizationJSONRequestBody = UpdateOrganizationInput
+
+// SetOrgMemberJSONRequestBody defines body for SetOrgMember for application/json ContentType.
+type SetOrgMemberJSONRequestBody = SetOrgMemberInput
+
+// CreateTeamJSONRequestBody defines body for CreateTeam for application/json ContentType.
+type CreateTeamJSONRequestBody = CreateTeamInput
+
+// UpdateTeamJSONRequestBody defines body for UpdateTeam for application/json ContentType.
+type UpdateTeamJSONRequestBody = UpdateTeamInput
+
+// SetTeamMemberJSONRequestBody defines body for SetTeamMember for application/json ContentType.
+type SetTeamMemberJSONRequestBody = SetTeamMemberInput
 
 // CreateResourceGrantJSONRequestBody defines body for CreateResourceGrant for application/json ContentType.
 type CreateResourceGrantJSONRequestBody = CreateGrantInput
@@ -715,6 +933,54 @@ type ServerInterface interface {
 	// VerifyCredential Verifica una credenziale (per il gateway)
 	// (POST /internal/verify)
 	VerifyCredential(w http.ResponseWriter, r *http.Request)
+	// ListOrganizations Elenca le organizzazioni
+	// (GET /orgs)
+	ListOrganizations(w http.ResponseWriter, r *http.Request, params ListOrganizationsParams)
+	// CreateOrganization Crea un'organizzazione
+	// (POST /orgs)
+	CreateOrganization(w http.ResponseWriter, r *http.Request)
+	// DeleteOrganization Elimina un'organizzazione
+	// (DELETE /orgs/{org})
+	DeleteOrganization(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// GetOrganization Legge un'organizzazione
+	// (GET /orgs/{org})
+	GetOrganization(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// UpdateOrganization Aggiorna un'organizzazione
+	// (PATCH /orgs/{org})
+	UpdateOrganization(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// ListOrgMembers Elenca i membri di un'organizzazione
+	// (GET /orgs/{org}/members)
+	ListOrgMembers(w http.ResponseWriter, r *http.Request, org OrgParam, params ListOrgMembersParams)
+	// RemoveOrgMember Rimuove un membro
+	// (DELETE /orgs/{org}/members/{username})
+	RemoveOrgMember(w http.ResponseWriter, r *http.Request, org OrgParam, username UsernameParam)
+	// SetOrgMember Aggiunge un membro o ne cambia il ruolo
+	// (PUT /orgs/{org}/members/{username})
+	SetOrgMember(w http.ResponseWriter, r *http.Request, org OrgParam, username UsernameParam)
+	// ListTeams Elenca i team di un'organizzazione
+	// (GET /orgs/{org}/teams)
+	ListTeams(w http.ResponseWriter, r *http.Request, org OrgParam, params ListTeamsParams)
+	// CreateTeam Crea un team
+	// (POST /orgs/{org}/teams)
+	CreateTeam(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// DeleteTeam Elimina un team
+	// (DELETE /orgs/{org}/teams/{team})
+	DeleteTeam(w http.ResponseWriter, r *http.Request, org OrgParam, team TeamParam)
+	// GetTeam Legge un team
+	// (GET /orgs/{org}/teams/{team})
+	GetTeam(w http.ResponseWriter, r *http.Request, org OrgParam, team TeamParam)
+	// UpdateTeam Aggiorna un team
+	// (PATCH /orgs/{org}/teams/{team})
+	UpdateTeam(w http.ResponseWriter, r *http.Request, org OrgParam, team TeamParam)
+	// ListTeamMembers Elenca i membri di un team
+	// (GET /orgs/{org}/teams/{team}/members)
+	ListTeamMembers(w http.ResponseWriter, r *http.Request, org OrgParam, team TeamParam, params ListTeamMembersParams)
+	// RemoveTeamMember Rimuove un membro dal team
+	// (DELETE /orgs/{org}/teams/{team}/members/{username})
+	RemoveTeamMember(w http.ResponseWriter, r *http.Request, org OrgParam, team TeamParam, username UsernameParam)
+	// SetTeamMember Aggiunge un membro al team o ne cambia il ruolo
+	// (PUT /orgs/{org}/teams/{team}/members/{username})
+	SetTeamMember(w http.ResponseWriter, r *http.Request, org OrgParam, team TeamParam, username UsernameParam)
 	// ListResourceGrants Elenca i grant di una risorsa
 	// (GET /resources/{resourceId}/grants)
 	ListResourceGrants(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam, params ListResourceGrantsParams)
@@ -978,6 +1244,607 @@ func (siw *ServerInterfaceWrapper) VerifyCredential(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.VerifyCredential(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrganizations operation middleware
+func (siw *ServerInterfaceWrapper) ListOrganizations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListOrganizationsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrganizations(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateOrganization operation middleware
+func (siw *ServerInterfaceWrapper) CreateOrganization(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateOrganization(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteOrganization operation middleware
+func (siw *ServerInterfaceWrapper) DeleteOrganization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteOrganization(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrganization operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganization(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateOrganization operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOrganization(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateOrganization(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrgMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListOrgMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListOrgMembersParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrgMembers(w, r, org, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveOrgMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveOrgMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveOrgMember(w, r, org, username)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetOrgMember operation middleware
+func (siw *ServerInterfaceWrapper) SetOrgMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetOrgMember(w, r, org, username)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListTeams operation middleware
+func (siw *ServerInterfaceWrapper) ListTeams(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTeamsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListTeams(w, r, org, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateTeam operation middleware
+func (siw *ServerInterfaceWrapper) CreateTeam(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateTeam(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteTeam operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTeam(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "team" -------------
+	var team TeamParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "team", r.PathValue("team"), &team, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "team", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteTeam(w, r, org, team)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetTeam operation middleware
+func (siw *ServerInterfaceWrapper) GetTeam(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "team" -------------
+	var team TeamParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "team", r.PathValue("team"), &team, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "team", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTeam(w, r, org, team)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateTeam operation middleware
+func (siw *ServerInterfaceWrapper) UpdateTeam(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "team" -------------
+	var team TeamParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "team", r.PathValue("team"), &team, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "team", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateTeam(w, r, org, team)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListTeamMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListTeamMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "team" -------------
+	var team TeamParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "team", r.PathValue("team"), &team, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "team", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTeamMembersParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListTeamMembers(w, r, org, team, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveTeamMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveTeamMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "team" -------------
+	var team TeamParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "team", r.PathValue("team"), &team, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "team", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveTeamMember(w, r, org, team, username)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetTeamMember operation middleware
+func (siw *ServerInterfaceWrapper) SetTeamMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "team" -------------
+	var team TeamParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "team", r.PathValue("team"), &team, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "team", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetTeamMember(w, r, org, team, username)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1678,6 +2545,22 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.GetSshKey)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs", wrapper.ListOrganizations)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs", wrapper.CreateOrganization)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/orgs/{org}", wrapper.DeleteOrganization)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}", wrapper.GetOrganization)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/orgs/{org}", wrapper.UpdateOrganization)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/members", wrapper.ListOrgMembers)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/orgs/{org}/members/{username}", wrapper.RemoveOrgMember)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/orgs/{org}/members/{username}", wrapper.SetOrgMember)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/teams", wrapper.ListTeams)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs/{org}/teams", wrapper.CreateTeam)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/orgs/{org}/teams/{team}", wrapper.DeleteTeam)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/teams/{team}", wrapper.GetTeam)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/orgs/{org}/teams/{team}", wrapper.UpdateTeam)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/teams/{team}/members", wrapper.ListTeamMembers)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/orgs/{org}/teams/{team}/members/{username}", wrapper.RemoveTeamMember)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/orgs/{org}/teams/{team}/members/{username}", wrapper.SetTeamMember)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}/grants", wrapper.ListResourceGrants)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources/{resourceId}/grants", wrapper.CreateResourceGrant)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/resources/{resourceId}/grants/{grantId}", wrapper.DeleteResourceGrant)
