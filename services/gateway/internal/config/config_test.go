@@ -114,9 +114,10 @@ func TestLoad_TrustedProxies(t *testing.T) {
 
 func TestLoad_Identity(t *testing.T) {
 	cfg, err := load(lookupFrom(map[string]string{
-		envCoreURL:         "http://core:8080",
-		envIdentityURL:     "http://identity:8080",
-		envIdentityTimeout: "2s",
+		envCoreURL:               "http://core:8080",
+		envIdentityURL:           "http://identity:8080",
+		envIdentityTimeout:       "2s",
+		envIdentityServiceSecret: "segreto",
 	}))
 	if err != nil {
 		t.Fatalf("load() errore inatteso: %v", err)
@@ -138,5 +139,50 @@ func TestLoad_Identity(t *testing.T) {
 
 	if _, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envIdentityURL: "identity"})); err == nil {
 		t.Error("una IdentityURL non assoluta deve dare errore")
+	}
+}
+
+func TestLoad_AuthSecretECache(t *testing.T) {
+	base := map[string]string{envCoreURL: "http://core:8080"}
+	with := func(kv ...string) map[string]string {
+		m := map[string]string{}
+		for k, v := range base {
+			m[k] = v
+		}
+		for i := 0; i < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return m
+	}
+
+	// Con identity il segreto di servizio è obbligatorio.
+	if _, err := load(lookupFrom(with(envIdentityURL, "http://identity:8080"))); err == nil {
+		t.Error("IdentityURL senza segreto di servizio deve dare errore")
+	}
+
+	def, err := load(lookupFrom(with()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if def.AuthCacheTTL != 30*time.Second || def.AuthCacheNegativeTTL != 5*time.Second {
+		t.Errorf("TTL di default = %v/%v, voluti 30s/5s", def.AuthCacheTTL, def.AuthCacheNegativeTTL)
+	}
+
+	cfg, err := load(lookupFrom(with(
+		envIdentityURL, "http://identity:8080", envIdentityServiceSecret, " s3gr3t0 ",
+		envAuthCacheTTL, "10s", envAuthCacheNegativeTTL, "2s")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.IdentityServiceSecret != "s3gr3t0" || cfg.AuthCacheTTL != 10*time.Second || cfg.AuthCacheNegativeTTL != 2*time.Second {
+		t.Errorf("cfg = %+v", cfg)
+	}
+
+	for _, env := range []string{envAuthCacheTTL, envAuthCacheNegativeTTL} {
+		for _, bad := range []string{"abc", "0s", "-1s"} {
+			if _, err := load(lookupFrom(with(env, bad))); err == nil {
+				t.Errorf("%s=%q accettato", env, bad)
+			}
+		}
 	}
 }

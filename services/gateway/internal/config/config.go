@@ -36,6 +36,21 @@ type Config struct {
 	// IdentityTimeout è il timeout per le richieste instradate verso identity.
 	IdentityTimeout time.Duration
 
+	// IdentityServiceSecret è il segreto di servizio (Secret
+	// `<release>-identity-service`, chiave `secret`): il gateway lo usa come
+	// Bearer verso /internal/verify di identity e per firmare l'identità
+	// inoltrata a core (package trust). Obbligatorio se IdentityURL è
+	// impostata; mai loggato.
+	IdentityServiceSecret string
+
+	// AuthCacheTTL è per quanto tempo si tiene in cache un esito positivo di
+	// /internal/verify (mai oltre expiresAt della credenziale).
+	AuthCacheTTL time.Duration
+
+	// AuthCacheNegativeTTL è per quanto tempo si tiene in cache un esito
+	// negativo (credenziale non attiva).
+	AuthCacheNegativeTTL time.Duration
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -57,6 +72,13 @@ const (
 
 	envIdentityURL     = "GITSTACK_IDENTITY_URL"
 	envIdentityTimeout = "GITSTACK_IDENTITY_TIMEOUT"
+
+	envIdentityServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	envAuthCacheTTL          = "GITSTACK_GATEWAY_AUTH_CACHE_TTL"
+	envAuthCacheNegativeTTL  = "GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL"
+
+	defaultAuthCacheTTL         = 30 * time.Second
+	defaultAuthCacheNegativeTTL = 5 * time.Second
 
 	defaultAddr        = ":8080"
 	defaultCoreTimeout = 5 * time.Second
@@ -87,6 +109,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 		IdentityTimeout: defaultIdentityTimeout,
 		LogLevel:        defaultLogLevel,
+
+		AuthCacheTTL:         defaultAuthCacheTTL,
+		AuthCacheNegativeTTL: defaultAuthCacheNegativeTTL,
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
@@ -144,6 +169,30 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envIdentityTimeout, v))
 		} else {
 			cfg.IdentityTimeout = d
+		}
+	}
+
+	if v, ok := lookup(envIdentityServiceSecret); ok {
+		cfg.IdentityServiceSecret = strings.TrimSpace(v)
+	}
+	if cfg.IdentityURL != nil && cfg.IdentityServiceSecret == "" {
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria quando %s è impostata (segreto di servizio verso identity e verso core)", envIdentityServiceSecret, envIdentityURL))
+	}
+
+	for _, d := range []struct {
+		env string
+		dst *time.Duration
+	}{
+		{envAuthCacheTTL, &cfg.AuthCacheTTL},
+		{envAuthCacheNegativeTTL, &cfg.AuthCacheNegativeTTL},
+	} {
+		if v, ok := lookup(d.env); ok && strings.TrimSpace(v) != "" {
+			dur, err := time.ParseDuration(v)
+			if err != nil || dur <= 0 {
+				errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", d.env, v))
+			} else {
+				*d.dst = dur
+			}
 		}
 	}
 

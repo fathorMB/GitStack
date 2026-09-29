@@ -553,6 +553,9 @@ type Principal struct {
 	IsAdmin      bool                `json:"isAdmin"`
 	Kind         PrincipalKind       `json:"kind"`
 
+	// MustChangePassword Vero per una sessione la cui password iniziale non e' ancora stata cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify` risponde comunque `active` true: il gateway risponde 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza. Assente equivale a falso.
+	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
+
 	// Scopes Solo per i token; assenti per le sessioni.
 	Scopes *[]TokenScope      `json:"scopes,omitempty"`
 	UserId openapi_types.UUID `json:"userId"`

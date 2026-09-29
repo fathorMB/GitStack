@@ -444,7 +444,7 @@ function Main {
         }
 
         # --- e. verifiche end-to-end -------------------------------------
-        Write-Log "==> Passo e: verifiche UI, /api/healthz, create+read della risorsa di prova, evento JetStream ..."
+        Write-Log "==> Passo e: verifiche UI e /api/healthz ..."
         $baseUrl = "http://$script:VmIp"
         $eOk = $true
         $eDetails = @()
@@ -467,72 +467,7 @@ function Main {
             $eOk = $false; $eDetails += "/api/healthz non raggiungibile: $($_.Exception.Message)"
         }
 
-        $baselineCount = $null
-        if ($eOk) {
-            $baseline = Invoke-RemoteHelper -RemoteArgs @('jetstream-count', 'CORE', 'gitstack', 'default') -TimeoutSeconds 60
-            if ($baseline.ExitCode -ne 0 -or -not ($baseline.StdOut.Trim() -match '^\d+$')) {
-                $eOk = $false; $eDetails += "conteggio JetStream (baseline) non riuscito: $($baseline.StdOut) $($baseline.StdErr)"
-            } else {
-                $baselineCount = [int]$baseline.StdOut.Trim()
-            }
-        }
-
-        $resourceId = $null
-        if ($eOk) {
-            try {
-                $createBody = @{ type = 'gitstack-e2e'; name = "e2e-$(Get-Date -Format 'yyyyMMddHHmmss')" } | ConvertTo-Json
-                $created = Invoke-RestMethod -Uri "$baseUrl/api/v1/resources" -Method Post -Body $createBody -ContentType 'application/json' -TimeoutSec 20
-                $resourceId = $created.id
-                if (-not $resourceId) { $eOk = $false; $eDetails += "create risorsa: risposta senza 'id'" }
-            } catch {
-                $eOk = $false; $eDetails += "create risorsa fallita: $($_.Exception.Message)"
-            }
-        }
-
-        if ($eOk -and $resourceId) {
-            try {
-                $read = Invoke-RestMethod -Uri "$baseUrl/api/v1/resources/$resourceId" -TimeoutSec 20
-                if ($read.id -ne $resourceId) { $eOk = $false; $eDetails += "read risorsa: id inatteso '$($read.id)'" }
-            } catch {
-                $eOk = $false; $eDetails += "read risorsa $resourceId fallita: $($_.Exception.Message)"
-            }
-        }
-
-        if ($eOk -and $null -ne $baselineCount) {
-            # core pubblica l'evento di prova in una goroutine DOPO aver
-            # risposto 201 (services/core/internal/httpserver/resources.go,
-            # publishTestResourceCreated, timeout 5s): una lettura sola del
-            # conteggio JetStream subito dopo la create rischia un FAIL
-            # spurio per una corsa persa, non per un bug reale. Polling con
-            # backoff fisso: si ferma al primo tentativo che supera la
-            # baseline, o dopo -JetStreamPollAttempts tentativi.
-            $jsOk = $false
-            $jsLastDetail = ''
-            for ($attempt = 1; $attempt -le $JetStreamPollAttempts; $attempt++) {
-                $after = Invoke-RemoteHelper -RemoteArgs @('jetstream-count', 'CORE', 'gitstack', 'default') -TimeoutSeconds 60
-                if ($after.ExitCode -ne 0 -or -not ($after.StdOut.Trim() -match '^\d+$')) {
-                    $jsLastDetail = "conteggio JetStream (tentativo $attempt/$JetStreamPollAttempts) non riuscito: $($after.StdOut) $($after.StdErr)"
-                    Write-Log $jsLastDetail
-                } else {
-                    $afterCount = [int]$after.StdOut.Trim()
-                    Write-Log "Stream CORE (tentativo $attempt/$JetStreamPollAttempts): messaggi $baselineCount -> $afterCount"
-                    if ($afterCount -gt $baselineCount) {
-                        $jsOk = $true
-                        break
-                    }
-                    $jsLastDetail = "stream CORE: messaggi non ancora aumentati dopo la create (prima: $baselineCount, ultimo: $afterCount)"
-                }
-                if ($attempt -lt $JetStreamPollAttempts) {
-                    Start-Sleep -Seconds $JetStreamPollIntervalSeconds
-                }
-            }
-            if (-not $jsOk) {
-                $eOk = $false
-                $eDetails += "$jsLastDetail dopo $JetStreamPollAttempts tentativi ogni ${JetStreamPollIntervalSeconds}s"
-            }
-        }
-
-        Add-StepResult -Name 'e. UI, /api/healthz, create+read risorsa di prova, evento JetStream' -Ok $eOk -Detail ($eDetails -join '; ')
+        Add-StepResult -Name 'e. UI e /api/healthz' -Ok $eOk -Detail ($eDetails -join '; ')
 
         # --- e2. identity attraverso il gateway (GIT-36) -----------------
         Write-Log "==> Passo e2: identity attraverso il gateway (sessione assente, login con credenziali inventate) ..."
@@ -567,6 +502,7 @@ function Main {
         $e3Details = @()
         $adminNewPassword = 'E2e-nuova-password-lunga-42'
         $adminInitialPassword = $null
+        $ck = $null
         $adminPwRes = Invoke-RemoteHelper -RemoteArgs @('admin-password', 'gitstack', 'default') -TimeoutSeconds 30
         if ($adminPwRes.ExitCode -ne 0 -or [string]::IsNullOrEmpty($adminPwRes.StdOut)) {
             $e3Ok = $false
@@ -600,6 +536,89 @@ function Main {
             }
         }
         Add-StepResult -Name 'e3. admin via gateway: login con password del Secret, 403 password_change_required, cambio password, chiamata autenticata 200' -Ok $e3Ok -Detail ($e3Details -join '; ')
+
+        # --- e4. risorsa di prova autenticata + evento JetStream (GIT-54) ---
+        # Dal GIT-54 il gateway autentica ogni rotta tranne le pubbliche: la
+        # risorsa di prova si crea e si legge con la sessione dell'admin
+        # (password gia cambiata nel passo e3), e senza credenziali risponde
+        # 401 unauthenticated.
+        Write-Log "==> Passo e4: risorsa di prova senza credenziali (401) e con la sessione dell'admin, evento JetStream ..."
+        $e4Ok = $true
+        $e4Details = @()
+
+        $anon = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources"
+        if ($anon.StatusCode -ne 401 -or $anon.Body -notmatch '"code"\s*:\s*"unauthenticated"') {
+            $e4Ok = $false
+            $e4Details += "GET /api/v1/resources senza credenziali: status $($anon.StatusCode) (atteso 401 unauthenticated), corpo '$($anon.Body)' $($anon.Error)"
+        }
+
+        $baselineCount = $null
+        if (-not $ck) {
+            $e4Ok = $false
+            $e4Details += "manca la sessione dell'admin (passo e3 fallito): impossibile creare la risorsa di prova"
+        } else {
+            $baseline = Invoke-RemoteHelper -RemoteArgs @('jetstream-count', 'CORE', 'gitstack', 'default') -TimeoutSeconds 60
+            if ($baseline.ExitCode -ne 0 -or -not ($baseline.StdOut.Trim() -match '^\d+$')) {
+                $e4Ok = $false; $e4Details += "conteggio JetStream (baseline) non riuscito: $($baseline.StdOut) $($baseline.StdErr)"
+            } else {
+                $baselineCount = [int]$baseline.StdOut.Trim()
+            }
+        }
+
+        $resourceId = $null
+        if ($e4Ok) {
+            $createBody = @{ type = 'gitstack-e2e'; name = "e2e-$(Get-Date -Format 'yyyyMMddHHmmss')" } | ConvertTo-Json
+            $created = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources" -Method 'POST' -Body $createBody -Headers $ck
+            if ($created.StatusCode -ne 201) {
+                $e4Ok = $false; $e4Details += "create risorsa con la sessione: status $($created.StatusCode) (atteso 201), corpo '$($created.Body)' $($created.Error)"
+            } else {
+                $resourceId = ($created.Body | ConvertFrom-Json).id
+                if (-not $resourceId) { $e4Ok = $false; $e4Details += "create risorsa: risposta senza 'id'" }
+            }
+        }
+
+        if ($e4Ok -and $resourceId) {
+            $read = Invoke-HttpRaw -Uri "$baseUrl/api/v1/resources/$resourceId" -Headers $ck
+            if ($read.StatusCode -ne 200 -or ($read.Body | ConvertFrom-Json).id -ne $resourceId) {
+                $e4Ok = $false; $e4Details += "read risorsa $resourceId: status $($read.StatusCode), corpo '$($read.Body)' $($read.Error)"
+            }
+        }
+
+        if ($e4Ok -and $null -ne $baselineCount) {
+            # core pubblica l'evento di prova in una goroutine DOPO aver
+            # risposto 201 (services/core/internal/httpserver/resources.go,
+            # publishTestResourceCreated, timeout 5s): una lettura sola del
+            # conteggio JetStream subito dopo la create rischia un FAIL
+            # spurio per una corsa persa, non per un bug reale. Polling con
+            # backoff fisso: si ferma al primo tentativo che supera la
+            # baseline, o dopo -JetStreamPollAttempts tentativi.
+            $jsOk = $false
+            $jsLastDetail = ''
+            for ($attempt = 1; $attempt -le $JetStreamPollAttempts; $attempt++) {
+                $after = Invoke-RemoteHelper -RemoteArgs @('jetstream-count', 'CORE', 'gitstack', 'default') -TimeoutSeconds 60
+                if ($after.ExitCode -ne 0 -or -not ($after.StdOut.Trim() -match '^\d+$')) {
+                    $jsLastDetail = "conteggio JetStream (tentativo $attempt/$JetStreamPollAttempts) non riuscito: $($after.StdOut) $($after.StdErr)"
+                    Write-Log $jsLastDetail
+                } else {
+                    $afterCount = [int]$after.StdOut.Trim()
+                    Write-Log "Stream CORE (tentativo $attempt/$JetStreamPollAttempts): messaggi $baselineCount -> $afterCount"
+                    if ($afterCount -gt $baselineCount) {
+                        $jsOk = $true
+                        break
+                    }
+                    $jsLastDetail = "stream CORE: messaggi non ancora aumentati dopo la create (prima: $baselineCount, ultimo: $afterCount)"
+                }
+                if ($attempt -lt $JetStreamPollAttempts) {
+                    Start-Sleep -Seconds $JetStreamPollIntervalSeconds
+                }
+            }
+            if (-not $jsOk) {
+                $e4Ok = $false
+                $e4Details += "$jsLastDetail dopo $JetStreamPollAttempts tentativi ogni ${JetStreamPollIntervalSeconds}s"
+            }
+        }
+
+        Add-StepResult -Name 'e4. risorsa di prova: 401 senza credenziali, create+read con la sessione, evento JetStream' -Ok $e4Ok -Detail ($e4Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."

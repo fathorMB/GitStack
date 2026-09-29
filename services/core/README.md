@@ -8,6 +8,7 @@ In M-01, core implementa solo la risorsa di prova del contratto (`Resource`, sch
 
 - `GET /healthz`, `GET /readyz`: probe di liveness/readiness (convenzione k8s), non fanno parte del contratto pubblico `api/openapi.yaml`. `/healthz` risponde sempre `ok` (il processo è vivo, senza controllare il database). `/readyz` risponde `ok` solo se Postgres è raggiungibile in tempo utile.
 - `GET /health`, `/resources`, `/resources/{resourceId}`: le operazioni del contratto OpenAPI, generate in `internal/openapi` da `api/openapi.yaml` (vedi `scripts/generate-api.sh`, non modificare a mano). Servite senza prefisso `/v1`: è il gateway a esporre `/v1/*` e a rimuovere il prefisso instradando qui (vedi `services/gateway/internal/proxy`). `GET /health` fa lo stesso controllo di `/readyz` (verifica il database): il gateway la chiama per la propria readiness verso core.
+- **Identità (GIT-54)**: core non autentica nessuno, si fida del gateway. Tutte le rotte tranne `/healthz`, `/readyz` e `/health` (pubblica nel contratto) richiedono gli header `X-Gitstack-User-Id/-Username/-Scopes/-Timestamp/-Signature` firmati dal gateway con il segreto di servizio (HMAC-SHA256, finestra di 60 s, schema in `internal/trust`); senza, o con una firma non valida, rispondono 401 `unauthenticated`. Chi raggiunge core direttamente non può spacciarsi per un utente. Test: `internal/trust`, `TestRouter_IdentitaSoloDalGateway`.
 - Le operazioni sulla risorsa (`internal/httpserver/resources.go`) leggono/scrivono tramite `internal/store` sullo schema `core`. La creazione (`POST /resources`) pubblica anche l'evento di prova (vedi "Evento di prova" più sotto).
 
 ### Migrazioni (`internal/migrate`)
@@ -40,6 +41,7 @@ All'avvio del server (non per `core migrate up|down`, che non tocca NATS), `main
 | `GITSTACK_CORE_DB_MAX_CONNS` | no | `10` | Numero massimo di connessioni nel pool |
 | `GITSTACK_CORE_MIGRATIONS_TIMEOUT` | no | `30s` | Timeout per l'applicazione delle migrazioni (formato `time.Duration` di Go) |
 | `GITSTACK_CORE_NATS_URL` | sì, per `serve` | — | Indirizzo del bus NATS JetStream (es. `nats://nats:4222`); non serve a `migrate up\|down` |
+| `GITSTACK_IDENTITY_SERVICE_SECRET` | sì, per `serve` | — | Segreto di servizio (Secret `<release>-identity-service`, chiave `secret`): con questo core verifica la firma dell'identità inoltrata dal gateway; non serve a `migrate up\|down`. Mai nei log |
 | `GITSTACK_CORE_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
 
 ### Sviluppo locale

@@ -406,6 +406,11 @@ export type Principal = {
      */
     scopes?: Array<TokenScope>;
     /**
+     * Vero per una sessione la cui password iniziale non e' ancora stata cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify` risponde comunque `active` true: il gateway risponde 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza. Assente equivale a falso.
+     *
+     */
+    mustChangePassword?: boolean;
+    /**
      * Id della sessione o del token (per audit).
      */
     credentialId?: string;

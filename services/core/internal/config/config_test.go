@@ -38,6 +38,24 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 }
 
+func TestLoad_ServiceSecret(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envDatabaseURL:   "postgres://core:secret@localhost:5432/gitstack?sslmode=disable",
+		envServiceSecret: " s3gr3t0 ",
+	}))
+	if err != nil {
+		t.Fatalf("errore inatteso: %v", err)
+	}
+	if cfg.ServiceSecret != "s3gr3t0" {
+		t.Errorf("ServiceSecret = %q", cfg.ServiceSecret)
+	}
+	// Come NatsURL, è richiesto dal solo comando serve (main.go), non da load.
+	cfg, err = load(lookupFrom(map[string]string{envDatabaseURL: "postgres://x"}))
+	if err != nil || cfg.ServiceSecret != "" {
+		t.Errorf("senza segreto: err=%v secret=%q", err, cfg.ServiceSecret)
+	}
+}
+
 func TestLoad_MissingDatabaseURL(t *testing.T) {
 	_, err := load(lookupFrom(map[string]string{}))
 	if err == nil {

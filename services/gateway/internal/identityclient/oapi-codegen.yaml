@@ -1,0 +1,10 @@
+package: identityclient
+generate:
+  models: true
+output: types.gen.go
+output-options:
+  skip-prune: false
+  # Solo i tipi dell'interfaccia interna di identity (POST /internal/verify):
+  # il gateway non serve queste operazioni, le chiama.
+  include-tags:
+    - internal

@@ -411,15 +411,9 @@ Cosa controlla ciascun passo:
 - **c.** le righe di preflight (OS, architettura, CPU, RAM, disco) sono
   presenti nel log della prima esecuzione.
 - **e.** UI (`http://<ip>/`, dall'host Windows) -> 200 con l'HTML della web
-  UI; `/api/healthz` -> 200 `{"status":"ok",...}`; create + read della
-  risorsa di prova via `/api/v1/resources`; i messaggi dello stream
-  JetStream `CORE` aumentano dopo la create (letti dalla VM con un pod
-  `natsio/nats-box` pinnato, senza attach: pod creato, atteso `Succeeded`,
-  JSON preso da `kubectl logs` solo su stdout, pod sempre cancellato).
-  `core` pubblica l'evento in una goroutine **dopo** il 201 (timeout 5s),
-  quindi il conteggio e' un polling (`-JetStreamPollAttempts` tentativi
-  ogni `-JetStreamPollIntervalSeconds`, default 6x5s), e ogni tentativo e'
-  scritto nel log.
+  UI; `/api/healthz` -> 200 `{"status":"ok",...}`. La risorsa di prova e
+  l'evento JetStream sono nel passo **e4** (dal GIT-54 il gateway richiede
+  l'autenticazione anche per `/api/v1/resources`).
 - **e2.** identity attraverso il gateway (GIT-36), dall'host Windows e senza
   credenziali valide: `GET /api/v1/auth/session` senza cookie -> 401 con
   code `unauthenticated`; `POST /api/v1/auth/login` con credenziali
@@ -427,6 +421,16 @@ Cosa controlla ciascun passo:
   del gateway, che darebbe 404/503); `POST /api/v1/internal/verify` -> 404
   (interfaccia interna non esposta). Il login con l'admin e una chiamata
   autenticata si aggiungono con GIT-35 (admin al primo avvio).
+- **e4.** risorsa di prova (GIT-54): `GET /api/v1/resources` senza
+  credenziali -> 401 `unauthenticated`; create + read via `/api/v1/resources`
+  con la sessione dell'admin (password gia cambiata nel passo e3); i messaggi
+  dello stream JetStream `CORE` aumentano dopo la create (letti dalla VM con
+  un pod `natsio/nats-box` pinnato, senza attach: pod creato, atteso
+  `Succeeded`, JSON preso da `kubectl logs` solo su stdout, pod sempre
+  cancellato). `core` pubblica l'evento in una goroutine **dopo** il 201
+  (timeout 5s), quindi il conteggio e' un polling
+  (`-JetStreamPollAttempts` tentativi ogni `-JetStreamPollIntervalSeconds`,
+  default 6x5s), e ogni tentativo e' scritto nel log.
 - **f.** idempotenza: seconda esecuzione (`installer-run2.log`) -> exit 0,
   hash della password di Postgres invariato, `ActiveEnterTimestamp` di
   `k3s` invariato, `/api/healthz` ancora 200.

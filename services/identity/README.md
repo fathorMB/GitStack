@@ -46,6 +46,8 @@ Perché non la verifica locale:
 
 Compromesso accettato: dopo una revoca il gateway può accettare la vecchia credenziale fino a 30 s (il TTL della cache). Identity la rifiuta subito. Se serve una revoca immediata, si aggiunge senza cambiare il contratto un evento sul bus (D4) `identity.credential.revoked` che il gateway usa per svuotare la voce; non è nell'ambito di M-02/A.
 
+**Realizzazione (GIT-54)**: vedi `services/gateway/README.md`, sezione "Autenticazione centralizzata". Una sessione con la password iniziale da cambiare (`mustChange`) è per `/internal/verify` **attiva** con `principal.mustChangePassword: true`: è il gateway a rispondere 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza (`x-password-change-exempt` nel contratto).
+
 Le sessioni sono cookie opachi `gst_session` (HttpOnly, Secure, SameSite=Lax) con scadenza assoluta e `last_seen_at`; sono verificate con lo stesso `/internal/verify` dei token.
 
 ## Modello dati (schema Postgres `identity`)

@@ -16,6 +16,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
 
 // stubPublisher registra gli eventi pubblicati invece di mandarli su NATS:
@@ -50,11 +51,23 @@ func (p *stubPublisher) snapshot() (string, int, any, int) {
 func TestRouter_ResourceLifecycleAndHealth(t *testing.T) {
 	pool, _ := dbtest.NewPool(t)
 	pub := &stubPublisher{}
-	router := httpserver.NewRouter(pool, pub)
+	router := httpserver.NewRouter(pool, pub, testSecret)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
-	client := srv.Client()
+	// Come il gateway, il client firma l'identità di ogni richiesta.
+	client := &http.Client{Transport: signingTransport{}}
+
+	// Senza identità firmata le rotte di risorse rispondono 401 (con i
+	// probe e /health che restano pubblici, provati sotto).
+	if resp, err := http.Get(srv.URL + "/resources"); err != nil {
+		t.Fatalf("GET /resources non riuscita: %v", err)
+	} else {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("GET /resources senza identità = %d, voluto 401", resp.StatusCode)
+		}
+	}
 
 	// /healthz: liveness, sempre 200.
 	resp, err := client.Get(srv.URL + "/healthz")
@@ -186,3 +199,15 @@ func waitForPublish(t *testing.T, pub *stubPublisher) {
 }
 
 func strPtr(s string) *string { return &s }
+
+const testSecret = "segreto-di-servizio-di-prova"
+
+// signingTransport aggiunge a ogni richiesta l'identità firmata, come il
+// gateway.
+type signingTransport struct{}
+
+func (signingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	trust.Sign(req.Header, testSecret, trust.Identity{UserID: "11111111-1111-1111-1111-111111111111", Username: "alice"}, time.Now())
+	return http.DefaultTransport.RoundTrip(req)
+}

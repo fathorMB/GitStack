@@ -241,6 +241,7 @@ paths:
     post:
       operationId: logout
       tags: [auth]
+      x-password-change-exempt: always
       summary: Termina la sessione corrente
       description: Revoca la sessione del cookie `gst_session` e lo cancella.
       security:
@@ -257,6 +258,7 @@ paths:
     get:
       operationId: getCurrentSession
       tags: [auth]
+      x-password-change-exempt: always
       summary: Sessione corrente
       description: >
         Chi e' il chiamante e con quale credenziale (sessione o token
@@ -535,6 +537,7 @@ paths:
     put:
       operationId: changePassword
       tags: [users]
+      x-password-change-exempt: self
       summary: Cambia la password
       description: >
         Scope `write:user`. L'utente stesso deve fornire `currentPassword`;
@@ -2392,6 +2395,15 @@ components:
           description: Solo per i token; assenti per le sessioni.
           items:
             $ref: "#/components/schemas/TokenScope"
+        mustChangePassword:
+          type: boolean
+          description: >
+            Vero per una sessione la cui password iniziale non e' ancora stata
+            cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify`
+            risponde comunque `active` true: il gateway risponde 403
+            `password_change_required` a ogni rotta tranne `GET /auth/session`,
+            `POST /auth/logout` e `PUT /users/{username}/password` sulla propria
+            utenza. Assente equivale a falso.
         credentialId:
           type: string
           format: uuid
