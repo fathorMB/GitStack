@@ -16,8 +16,9 @@
 #
 # Sicurezza (CA interna, certificati, utente admin): non ancora implementati
 # in v0. L'installazione parla HTTP in chiaro sull'IP della macchina. Il
-# servizio "identity" è nel chart (GIT-36) ma nessun utente admin viene
-# ancora creato qui (GIT-35). Completamento previsto in M-02/M-08.
+# servizio "identity" è nel chart (GIT-36) e crea l'utente admin al primo
+# avvio (GIT-35): la password iniziale è generata dal chart in un Secret, mai
+# stampata. Completamento previsto in M-02/M-08.
 set -euo pipefail
 
 # Cartelle temporanee da rimuovere all'uscita (download del chart quando non
@@ -584,15 +585,20 @@ Verifica lo stato:
 Log di k3s:
   journalctl -u k3s -f
 
-Sicurezza (CA interna, certificati, utente admin): non ancora implementati
-in v0 (identity è nel chart, ma l'utente admin non viene ancora creato:
-GIT-35). Completamento previsto in M-02/M-08 [c_8458909a21d9035f]. Per ora
+Utente admin: al primo avvio identity crea l'utente 'admin' con una password
+iniziale generata e salvata in un Secret Kubernetes (non viene stampata qui).
+Per leggerla:
+  KUBECONFIG=${GITSTACK_KUBECONFIG} k3s kubectl -n ${GITSTACK_NAMESPACE} get secret ${GITSTACK_RELEASE_NAME}-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
+Al primo login la password va cambiata prima di qualunque altra operazione.
+
+Sicurezza (CA interna, certificati): non ancora implementati in v0.
+Completamento previsto in M-02/M-08 [c_8458909a21d9035f]. Per ora
 l'accesso è HTTP in chiaro sull'IP della macchina.
 
 Rieseguire questo script in qualsiasi momento è sicuro: non reinstalla k3s
 se è già presente e usa 'helm upgrade --install', che non rompe
-un'installazione esistente (la password di Postgres resta quella già
-generata, vedi deploy/gitstack/README.md).
+un'installazione esistente (la password di Postgres e quella
+dell'admin restano quelle già generate, vedi deploy/gitstack/README.md).
 EOF
 }
 

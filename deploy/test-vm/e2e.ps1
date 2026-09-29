@@ -33,11 +33,17 @@
          inventate -> 401 con code `invalid_credentials`: sono risposte di
          identity, non del gateway (che darebbe 404 o 503). Inoltre
          /api/v1/internal/verify deve dare 404 (interfaccia interna non
-         esposta). Il login con l'admin e la chiamata autenticata arrivano
-         con GIT-35 (admin al primo avvio).
+         esposto).
+      e3. admin del primo avvio (GIT-35): login con la password letta dal
+         Secret gitstack-identity-admin (mai stampata), 403
+         password_change_required sulle altre chiamate, cambio password e
+         chiamata autenticata attraverso il gateway.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
+      f2. (GIT-35) dopo la seconda esecuzione il Secret dell'admin ha stessa
+         resourceVersion e stessi dati, e l'admin non e stato ricreato: la
+         password iniziale non vale piu, quella cambiata in e3 si.
       g. SEMPRE (anche dopo un fallimento): raccolta della diagnostica
          dalla VM e uno zip in -OutDir. Riepilogo finale PASS/FAIL. Exit
          code diverso da zero se un passo e fallito.
@@ -257,14 +263,21 @@ function Invoke-HttpRaw {
         [Parameter(Mandatory)][string]$Uri,
         [string]$Method = 'GET',
         [string]$Body,
+        [hashtable]$Headers,
         [int]$TimeoutSec = 20
     )
     $params = @{ Uri = $Uri; Method = $Method; TimeoutSec = $TimeoutSec; UseBasicParsing = $true }
     if ($Body) { $params.Body = $Body; $params.ContentType = 'application/json' }
+    if ($Headers) { $params.Headers = $Headers }
     try {
         $r = Invoke-WebRequest @params
         $text = if ($r.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($r.Content) } else { [string]$r.Content }
-        return [pscustomobject]@{ StatusCode = [int]$r.StatusCode; Body = $text; Error = $null }
+        # Cookie di sessione (gst_session): e Secure, quindi il cookie jar di
+        # PowerShell non lo rimanda su HTTP; lo si rimanda a mano.
+        $cookie = $null
+        $setCookie = @($r.Headers['Set-Cookie']) -join ','
+        if ($setCookie -match 'gst_session=([^;,\s]+)') { $cookie = "gst_session=$($Matches[1])" }
+        return [pscustomobject]@{ StatusCode = [int]$r.StatusCode; Body = $text; Error = $null; Cookie = $cookie }
     } catch {
         $resp = $_.Exception.Response
         if ($null -ne $resp) {
@@ -548,8 +561,49 @@ function Main {
 
         Add-StepResult -Name 'e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto' -Ok $e2Ok -Detail ($e2Details -join '; ')
 
+        # --- e3. admin del primo avvio via gateway (GIT-35) ---------------
+        Write-Log "==> Passo e3: login admin con la password del Secret, cambio obbligatorio, chiamata autenticata (la password non viene mai stampata) ..."
+        $e3Ok = $true
+        $e3Details = @()
+        $adminNewPassword = 'E2e-nuova-password-lunga-42'
+        $adminInitialPassword = $null
+        $adminPwRes = Invoke-RemoteHelper -RemoteArgs @('admin-password', 'gitstack', 'default') -TimeoutSeconds 30
+        if ($adminPwRes.ExitCode -ne 0 -or [string]::IsNullOrEmpty($adminPwRes.StdOut)) {
+            $e3Ok = $false
+            $e3Details += "impossibile leggere la password iniziale dal Secret gitstack-identity-admin (exit $($adminPwRes.ExitCode))"
+        } else {
+            $adminInitialPassword = $adminPwRes.StdOut.TrimEnd("`r", "`n")
+            $adminLoginBody = @{ username = 'admin'; password = $adminInitialPassword } | ConvertTo-Json
+            $adminLogin = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body $adminLoginBody
+            if ($adminLogin.StatusCode -ne 200 -or -not $adminLogin.Cookie -or $adminLogin.Body -notmatch '"mustChangePassword"\s*:\s*true') {
+                $e3Ok = $false
+                $e3Details += "login admin: status $($adminLogin.StatusCode) (atteso 200 con mustChangePassword=true e cookie di sessione) $($adminLogin.Error)"
+            } else {
+                $ck = @{ Cookie = $adminLogin.Cookie }
+                $blocked = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Headers $ck
+                if ($blocked.StatusCode -ne 403 -or $blocked.Body -notmatch '"code"\s*:\s*"password_change_required"') {
+                    $e3Ok = $false
+                    $e3Details += "GET /api/v1/users prima del cambio: status $($blocked.StatusCode) (atteso 403 password_change_required)"
+                }
+                $changeBody = @{ currentPassword = $adminInitialPassword; newPassword = $adminNewPassword } | ConvertTo-Json
+                $change = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users/admin/password" -Method 'PUT' -Body $changeBody -Headers $ck
+                if ($change.StatusCode -ne 204) {
+                    $e3Ok = $false
+                    $e3Details += "PUT /api/v1/users/admin/password: status $($change.StatusCode) (atteso 204)"
+                } else {
+                    $authed = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Headers $ck
+                    if ($authed.StatusCode -ne 200) {
+                        $e3Ok = $false
+                        $e3Details += "GET /api/v1/users dopo il cambio: status $($authed.StatusCode) (atteso 200)"
+                    }
+                }
+            }
+        }
+        Add-StepResult -Name 'e3. admin via gateway: login con password del Secret, 403 password_change_required, cambio password, chiamata autenticata 200' -Ok $e3Ok -Detail ($e3Details -join '; ')
+
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
+        $adminStateBefore = Invoke-RemoteHelper -RemoteArgs @('admin-secret-state', 'gitstack', 'default') -TimeoutSeconds 30
         $hashBefore = Invoke-RemoteHelper -RemoteArgs @('postgres-secret-hash', 'gitstack', 'default') -TimeoutSeconds 30
         $activeBefore = Invoke-RemoteHelper -RemoteArgs @('k3s-active-since') -TimeoutSeconds 30
 
@@ -588,6 +642,31 @@ function Main {
             }
         }
         Add-StepResult -Name 'f. idempotenza (seconda esecuzione, k3s non reinstallato, password invariata, healthz OK)' -Ok $fOk -Detail ($fDetails -join '; ')
+
+        # --- f2. admin e Secret invariati dopo la seconda esecuzione (GIT-35) ---
+        Write-Log "==> Passo f2: dopo la seconda esecuzione l'admin e il Secret sono invariati ..."
+        $f2Ok = $true
+        $f2Details = @()
+        $adminStateAfter = Invoke-RemoteHelper -RemoteArgs @('admin-secret-state', 'gitstack', 'default') -TimeoutSeconds 30
+        if ($adminStateBefore.ExitCode -ne 0 -or $adminStateAfter.ExitCode -ne 0) {
+            $f2Ok = $false; $f2Details += "impossibile leggere lo stato del Secret dell'admin"
+        } elseif ($adminStateBefore.StdOut.Trim() -ne $adminStateAfter.StdOut.Trim()) {
+            $f2Ok = $false; $f2Details += "il Secret dell'admin e cambiato (resourceVersion/dati: '$($adminStateBefore.StdOut.Trim())' -> '$($adminStateAfter.StdOut.Trim())')"
+        }
+        if (-not $adminInitialPassword) {
+            $f2Ok = $false; $f2Details += "manca la password iniziale (passo e3 fallito): impossibile provare l'admin"
+        } else {
+            # Admin non ricreato: la password iniziale non vale piu, quella nuova si.
+            $oldTry = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body (@{ username = 'admin'; password = $adminInitialPassword } | ConvertTo-Json)
+            if ($oldTry.StatusCode -ne 401) {
+                $f2Ok = $false; $f2Details += "login con la password iniziale dopo la seconda esecuzione: status $($oldTry.StatusCode) (atteso 401: l'admin non va ricreato)"
+            }
+            $newTry = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body (@{ username = 'admin'; password = $adminNewPassword } | ConvertTo-Json)
+            if ($newTry.StatusCode -ne 200 -or $newTry.Body -notmatch '"mustChangePassword"\s*:\s*false') {
+                $f2Ok = $false; $f2Details += "login con la password cambiata dopo la seconda esecuzione: status $($newTry.StatusCode) (atteso 200 con mustChangePassword=false)"
+            }
+        }
+        Add-StepResult -Name 'f2. seconda esecuzione: Secret admin invariato (resourceVersion e dati), admin non ricreato (password cambiata ancora valida)' -Ok $f2Ok -Detail ($f2Details -join '; ')
 
         $exitCode = 0
     } catch {

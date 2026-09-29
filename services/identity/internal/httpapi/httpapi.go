@@ -172,8 +172,33 @@ func (s *server) trusted(ip net.IP) bool {
 	return false
 }
 
-// current risolve il chiamante dal cookie; se manca scrive 401.
+// current risolve il chiamante dal cookie; se manca scrive 401. Se la
+// password dell'utente va cambiata (must_change) scrive 403
+// password_change_required: sono le uniche eccezioni currentPending
+// (GET /auth/session, PUT /users/{username}/password) e Logout.
 func (s *server) current(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
+	cur, ok := s.currentPending(w, r)
+	if !ok {
+		return auth.Current{}, false
+	}
+	if cur.MustChange {
+		passwordChangeRequired(w)
+		return auth.Current{}, false
+	}
+	return cur, true
+}
+
+// passwordChangeRequired: 403 con il codice dedicato del contratto.
+func passwordChangeRequired(w http.ResponseWriter) {
+	writeError(w, http.StatusForbidden, CodePasswordChangeRequired, "La password va cambiata prima di continuare.")
+}
+
+// CodePasswordChangeRequired è il codice di errore (403) di ogni chiamata
+// autenticata mentre la password iniziale non è stata cambiata.
+const CodePasswordChangeRequired = "password_change_required"
+
+// currentPending come current, ma accetta anche chi deve cambiare la password.
+func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
 	c, err := r.Cookie(auth.CookieName)
 	if err != nil {
 		unauthenticated(w)
@@ -253,6 +278,7 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 	exp := res.Session.ExpiresAt
 	writeJSON(w, http.StatusOK, openapi.CurrentSession{
 		User: toUser(res.User, true), AuthMethod: openapi.CurrentSessionAuthMethod("password"), ExpiresAt: &exp,
+		MustChangePassword: res.MustChange,
 	})
 }
 
@@ -276,13 +302,14 @@ func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) GetCurrentSession(w http.ResponseWriter, r *http.Request) {
-	cur, ok := s.current(w, r)
+	cur, ok := s.currentPending(w, r)
 	if !ok {
 		return
 	}
 	exp := cur.Session.ExpiresAt
 	writeJSON(w, http.StatusOK, openapi.CurrentSession{
 		User: toUser(cur.User, true), AuthMethod: openapi.CurrentSessionAuthMethod(cur.Session.AuthMethod), ExpiresAt: &exp,
+		MustChangePassword: cur.MustChange,
 	})
 }
 
@@ -429,11 +456,16 @@ func (s *server) DeleteUser(w http.ResponseWriter, r *http.Request, username ope
 }
 
 func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username openapi.UsernameParam) {
-	cur, ok := s.current(w, r)
+	cur, ok := s.currentPending(w, r)
 	if !ok {
 		return
 	}
 	self := cur.User.Username == username
+	if cur.MustChange && !self {
+		// Con la password da cambiare si può cambiare solo la propria.
+		passwordChangeRequired(w)
+		return
+	}
 	if !self && !cur.User.IsAdmin {
 		forbidden(w)
 		return

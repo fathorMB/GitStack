@@ -120,6 +120,9 @@ func run(args []string, out io.Writer) int {
 		if err := applyMigrations(ctx, cfg, pool, logger); err != nil {
 			return 1
 		}
+		if err := bootstrapAdmin(ctx, cfg, users.New(pool, time.Now), logger); err != nil {
+			return 1
+		}
 		return serve(ctx, cfg, pool, lcfg, logger)
 	}
 }
@@ -142,6 +145,41 @@ func applyMigrations(ctx context.Context, cfg config.Config, pool *pgxpool.Pool,
 		return err
 	}
 	logger.Info("migrazioni applicate")
+	return nil
+}
+
+// adminBootstrapper è la parte di users.Service usata dal bootstrap.
+type adminBootstrapper interface {
+	BootstrapAdmin(ctx context.Context, in users.BootstrapAdminInput) (bool, error)
+}
+
+// bootstrapAdmin crea l'admin iniziale se il database non ne ha nessuno e la
+// password iniziale è configurata (Secret). Idempotente: con un admin già
+// presente non fa nulla. Nei log compaiono solo lo username e l'esito, mai la
+// password né errori che potrebbero contenerla.
+func bootstrapAdmin(ctx context.Context, cfg config.Config, svc adminBootstrapper, logger *slog.Logger) error {
+	if cfg.AdminPassword == "" {
+		logger.Info("nessuna password iniziale dell'admin configurata: bootstrap saltato", "env", config.EnvAdminPassword)
+		return nil
+	}
+	bctx, cancel := context.WithTimeout(ctx, cfg.MigrationsTimeout)
+	defer cancel()
+	created, err := svc.BootstrapAdmin(bctx, users.BootstrapAdminInput{Username: cfg.AdminUsername, Password: cfg.AdminPassword})
+	if err != nil {
+		var ve *users.ValidationError
+		if errors.As(err, &ve) {
+			// I motivi per campo non contengono la password.
+			logger.Error("bootstrap dell'admin non riuscito: dati non validi", "username", cfg.AdminUsername, "err", ve)
+		} else {
+			logger.Error("bootstrap dell'admin non riuscito", "username", cfg.AdminUsername)
+		}
+		return err
+	}
+	if created {
+		logger.Info("utente admin creato: la password va cambiata al primo accesso", "username", cfg.AdminUsername)
+	} else {
+		logger.Info("bootstrap dell'admin non necessario: esiste già un amministratore")
+	}
 	return nil
 }
 

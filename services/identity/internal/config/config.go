@@ -67,6 +67,13 @@ type Config struct {
 	// PublicURL è l'URL pubblico di GitStack (senza slash finale), da cui si
 	// costruisce la redirect_uri OIDC. Obbligatorio con OIDCConfigFile.
 	PublicURL string
+
+	// AdminUsername e AdminPassword sono i dati dell'admin creato al primo
+	// avvio su database senza amministratori. AdminPassword arriva da un
+	// Secret (generato dall'installer); vuota (default): nessun bootstrap.
+	// La password non va mai nei log né negli errori.
+	AdminUsername string
+	AdminPassword string
 }
 
 const (
@@ -116,6 +123,16 @@ const (
 
 	// EnvPublicURL: URL pubblico di GitStack, es. https://git.example.com.
 	EnvPublicURL = "GITSTACK_IDENTITY_PUBLIC_URL"
+
+	// EnvAdminUsername: nome dell'admin iniziale (default "admin").
+	EnvAdminUsername = "GITSTACK_IDENTITY_ADMIN_USERNAME"
+
+	// EnvAdminPassword: password iniziale dell'admin (da Secret). Se vuota
+	// non si crea nessun admin.
+	EnvAdminPassword = "GITSTACK_IDENTITY_ADMIN_PASSWORD"
+
+	// DefaultAdminUsername è il nome dell'admin iniziale.
+	DefaultAdminUsername = "admin"
 
 	defaultSessionTTL = 7 * 24 * time.Hour
 
@@ -185,6 +202,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			}
 			cfg.TrustedProxies = append(cfg.TrustedProxies, n)
 		}
+	}
+
+	cfg.AdminUsername = DefaultAdminUsername
+	if v, ok := lookup(EnvAdminUsername); ok && strings.TrimSpace(v) != "" {
+		cfg.AdminUsername = strings.TrimSpace(v)
+	}
+	// Nessun trim: la password è quella del Secret, e non entra mai nei messaggi.
+	if v, ok := lookup(EnvAdminPassword); ok {
+		cfg.AdminPassword = v
 	}
 
 	errs = append(errs, loadOIDC(lookup, &cfg)...)

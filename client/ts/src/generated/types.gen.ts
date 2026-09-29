@@ -56,7 +56,7 @@ export type ResourceList = {
 };
 
 /**
- * Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+ * Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
  *
  */
 export type Error = {
@@ -160,6 +160,11 @@ export type CurrentSession = {
      * Come e' stato autenticato il chiamante.
      */
     authMethod: 'password' | 'oidc' | 'token';
+    /**
+     * Vero per l'amministratore creato al primo avvio finche' non cambia la password iniziale. Finche' e' vero ogni chiamata autenticata risponde 403 `password_change_required`, tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` (solo sulla propria utenza).
+     *
+     */
+    mustChangePassword: boolean;
     /**
      * Solo per `authMethod` = `token`.
      */
@@ -500,6 +505,11 @@ export type CurrentSessionWritable = {
      * Come e' stato autenticato il chiamante.
      */
     authMethod: 'password' | 'oidc' | 'token';
+    /**
+     * Vero per l'amministratore creato al primo avvio finche' non cambia la password iniziale. Finche' e' vero ogni chiamata autenticata risponde 403 `password_change_required`, tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` (solo sulla propria utenza).
+     *
+     */
+    mustChangePassword: boolean;
     /**
      * Solo per `authMethod` = `token`.
      */
@@ -1118,7 +1128,7 @@ export type ListUsersErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1156,7 +1166,7 @@ export type CreateUserErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1201,7 +1211,7 @@ export type DeleteUserErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1245,7 +1255,7 @@ export type GetUserErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1289,7 +1299,7 @@ export type UpdateUserErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1342,7 +1352,7 @@ export type ChangePasswordErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1388,7 +1398,7 @@ export type ListTokensErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1426,7 +1436,7 @@ export type CreateTokenErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1471,7 +1481,7 @@ export type RevokeTokenErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1512,7 +1522,7 @@ export type ListSshKeysErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1550,7 +1560,7 @@ export type AddSshKeyErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1595,7 +1605,7 @@ export type DeleteSshKeyErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1635,7 +1645,7 @@ export type GetSshKeyErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1676,7 +1686,7 @@ export type ListOrganizationsErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1714,7 +1724,7 @@ export type CreateOrganizationErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1762,7 +1772,7 @@ export type DeleteOrganizationErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1805,7 +1815,7 @@ export type GetOrganizationErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1852,7 +1862,7 @@ export type UpdateOrganizationErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1903,7 +1913,7 @@ export type ListOrgMembersErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1947,7 +1957,7 @@ export type RemoveOrgMemberErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -1999,7 +2009,7 @@ export type SetOrgMemberErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2054,7 +2064,7 @@ export type ListTeamsErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2101,7 +2111,7 @@ export type CreateTeamErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2157,7 +2167,7 @@ export type DeleteTeamErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2204,7 +2214,7 @@ export type GetTeamErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2255,7 +2265,7 @@ export type UpdateTeamErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2314,7 +2324,7 @@ export type ListTeamMembersErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2362,7 +2372,7 @@ export type RemoveTeamMemberErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2414,7 +2424,7 @@ export type SetTeamMemberErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2465,7 +2475,7 @@ export type ListResourceGrantsErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2512,7 +2522,7 @@ export type CreateResourceGrantErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2565,7 +2575,7 @@ export type DeleteResourceGrantErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2613,7 +2623,7 @@ export type UpdateResourceGrantErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;
@@ -2661,7 +2671,7 @@ export type GetMyResourcePermissionErrors = {
      */
     401: Error;
     /**
-     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`).
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
      *
      */
     403: Error;

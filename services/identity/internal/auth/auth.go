@@ -62,6 +62,8 @@ type LoginResult struct {
 	User         users.User
 	Session      sessions.Session
 	SessionValue string
+	// MustChange: la password va cambiata prima di qualunque altra operazione.
+	MustChange bool
 }
 
 // Login verifica le credenziali e apre una sessione.
@@ -100,7 +102,11 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (LoginResult, error)
 	if err != nil {
 		return LoginResult{}, err
 	}
-	return LoginResult{User: acc.User, Session: sess, SessionValue: value}, nil
+	must, err := s.Users.MustChangePassword(ctx, acc.User.ID)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	return LoginResult{User: acc.User, Session: sess, SessionValue: value, MustChange: must}, nil
 }
 
 func (s *Service) fail(in LoginInput) (LoginResult, error) {
@@ -124,6 +130,8 @@ func (s *Service) Logout(ctx context.Context, sessionValue string) error {
 type Current struct {
 	User    users.User
 	Session sessions.Session
+	// MustChange: la password dell'utente va cambiata prima di altre operazioni.
+	MustChange bool
 }
 
 // Session risolve il valore del cookie nella sessione e nell'utente
@@ -144,7 +152,11 @@ func (s *Service) Session(ctx context.Context, sessionValue string) (Current, er
 	if err != nil {
 		return Current{}, err
 	}
-	return Current{User: u, Session: sess}, nil
+	must, err := s.Users.MustChangePassword(ctx, u.ID)
+	if err != nil {
+		return Current{}, err
+	}
+	return Current{User: u, Session: sess, MustChange: must}, nil
 }
 
 // SessionCookie costruisce il cookie di sessione: HttpOnly, Secure,

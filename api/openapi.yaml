@@ -1640,7 +1640,7 @@ components:
       description: >
         Formato unico degli errori per tutta l'API pubblica. Codici comuni per
         stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`;
-        403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict`
+        403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict`
         e varianti specifiche (`already_exists`, `last_admin`, `last_owner`,
         `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed`
         (`details.fields`). Le risposte 401 non distinguono mai "utente
@@ -1845,7 +1845,7 @@ components:
     CurrentSession:
       type: object
       additionalProperties: false
-      required: [user, authMethod]
+      required: [user, authMethod, mustChangePassword]
       properties:
         user:
           $ref: "#/components/schemas/User"
@@ -1853,6 +1853,14 @@ components:
           type: string
           enum: [password, oidc, token]
           description: Come e' stato autenticato il chiamante.
+        mustChangePassword:
+          type: boolean
+          description: >
+            Vero per l'amministratore creato al primo avvio finche' non cambia
+            la password iniziale. Finche' e' vero ogni chiamata autenticata
+            risponde 403 `password_change_required`, tranne `GET
+            /auth/session`, `POST /auth/logout` e `PUT
+            /users/{username}/password` (solo sulla propria utenza).
         scopes:
           type: array
           description: Solo per `authMethod` = `token`.
@@ -2483,7 +2491,8 @@ components:
       description: >
         Autenticato ma non autorizzato: scope del token insufficiente
         (`insufficient_scope`, con `details.required`) o permesso mancante
-        (`forbidden`).
+        (`forbidden`), oppure password iniziale ancora da cambiare
+        (`password_change_required`).
       content:
         application/json:
           schema:

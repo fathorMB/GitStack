@@ -209,3 +209,17 @@ func TestLoad_OIDCErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_AdminBootstrap(t *testing.T) {
+	base := map[string]string{EnvDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack"}
+	cfg, err := load(lookupFrom(base))
+	if err != nil || cfg.AdminUsername != DefaultAdminUsername || cfg.AdminPassword != "" {
+		t.Fatalf("default: %+v %v", cfg, err)
+	}
+	base[EnvAdminUsername] = " root "
+	base[EnvAdminPassword] = "una-password-iniziale"
+	cfg, err = load(lookupFrom(base))
+	if err != nil || cfg.AdminUsername != "root" || cfg.AdminPassword != "una-password-iniziale" {
+		t.Fatalf("valori: %+v %v", cfg, err)
+	}
+}
