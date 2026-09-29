@@ -1,7 +1,7 @@
 // Auth e profilo via client generato. Usa il client di default dell'SDK
 // (niente `client:` nelle options), cosi' l'interceptor 401 di
 // unauthorized.ts vede tutte le risposte.
-import { getCurrentSession, listOidcProviders, login, logout, updateUser } from '@gitstack/api-client';
+import { changePassword, getCurrentSession, listOidcProviders, login, logout, updateUser } from '@gitstack/api-client';
 import type { CurrentSession, OidcProvider, UpdateUserInput, User } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
@@ -37,4 +37,12 @@ export function oidcStartUrl(slug: string, redirectTo: string): string {
 
 export async function updateProfile(username: string, input: UpdateUserInput): Promise<User> {
   return unwrap(await updateUser({ baseUrl: API_BASE_URL, path: { username }, body: input }));
+}
+
+// Cambio password (PUT /users/{username}/password, 204). Per la propria utenza
+// serve currentPassword.
+export async function changeOwnPassword(username: string, currentPassword: string, newPassword: string): Promise<void> {
+  unwrapEmpty(
+    await changePassword({ baseUrl: API_BASE_URL, path: { username }, body: { currentPassword, newPassword } }),
+  );
 }

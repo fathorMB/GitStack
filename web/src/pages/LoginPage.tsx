@@ -14,7 +14,7 @@ import { useAuth } from '../routes/auth';
 // Il cookie di sessione e' HttpOnly: la UI non lo legge, dopo il 200 si va
 // dove si voleva andare (stato di rotta `from`).
 export function LoginPage() {
-  const { clearUnauthorized } = useAuth();
+  const { clearUnauthorized, setMustChangePassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
@@ -44,9 +44,15 @@ export function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await loginWithPassword(username.trim(), password);
+      const session = await loginWithPassword(username.trim(), password);
       clearUnauthorized();
-      navigate(from, { replace: true });
+      if (session?.mustChangePassword) {
+        setMustChangePassword(true);
+        navigate('/change-password', { replace: true, state: { from } });
+      } else {
+        setMustChangePassword(false);
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       setError(describeError(err));
       setSubmitting(false);
