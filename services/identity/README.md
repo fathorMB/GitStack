@@ -186,7 +186,7 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 - Permessi: creare ed eliminare utenti solo admin (403 `forbidden` altrimenti); aggiornare profilo e cambiare password admin o l'utente stesso (chi non è admin né l'utente stesso non scopre nemmeno se l'utente esiste: 403); `isAdmin`/`isActive` solo admin; leggere utenti qualunque utente autenticato (email e campi amministrativi solo per sé e per gli admin).
 - Login: 200 con `CurrentSession` e `Set-Cookie`; 401 `invalid_credentials` identico (stesso status e corpo) per password errata, utente inesistente e utente disattivato; 429 `too_many_attempts` con `Retry-After` in secondi (per eccesso). L'IP del rate limit è `r.RemoteAddr` senza porta, mai `X-Forwarded-For`; solo da un proxy fidato (`GITSTACK_IDENTITY_TRUSTED_PROXIES`) si usa `X-Gitstack-Client-Ip` del gateway (vedi sopra). Se non determinabile vale solo il limite per utente.
 - `changePassword`: password attuale sbagliata → 403 `forbidden` (non 401: il chiamante è già autenticato); revoca le altre sessioni (l'admin che agisce su un altro utente le revoca tutte).
-- Errori nel formato `Error`; 400 `bad_request` per JSON malformato/campi sconosciuti/parametri fuori range, 422 `validation_failed` con `details.fields`, 409 `already_exists`/`last_admin`, 500 senza dettagli. Le operazioni OIDC rispondono 501 `not_implemented` (altro item).
+- Errori nel formato `Error`; 400 `bad_request` per JSON malformato/campi sconosciuti/parametri fuori range, 422 `validation_failed` con `details.fields`, 409 `already_exists`/`last_admin`, 500 senza dettagli. Le operazioni OIDC sono descritte nella sezione «Login esterno OIDC» più sotto.
 
 ## Token personali, chiavi SSH e interfaccia interna (GIT-34, M-02/F)
 
@@ -198,3 +198,20 @@ Pacchetti: `internal/apitokens` (token `gst_...`), `internal/userkeys` (chiavi S
 - **serviceAuth**: middleware su `/internal/*`, `Authorization: Bearer <segreto>` confrontato in tempo costante; segreto vuoto = tutto 401.
 - Le operazioni `/user/*` accettano oggi solo il cookie di sessione: l'autenticazione con token (e il controllo degli scope) è del gateway.
 - Test: `go test -tags integration ./internal/apitokens ./internal/userkeys ./internal/httpapi` con `GITSTACK_TEST_DATABASE_URL`.
+
+## Login esterno OIDC (GIT-39, M-02/K)
+
+Provider OIDC configurati dall'amministratore (Entra ID, Google, Keycloak, qualunque provider conforme): authorization code flow con PKCE (S256), `state` e `nonce` verificati, token ID validato da `go-oidc/v3` (firma, issuer, audience, scadenza). **Guida completa, formato del file ed esempi per Entra ID, Google e Keycloak: [docs/identity-oidc.md](../../docs/identity-oidc.md).**
+
+Variabili (senza `GITSTACK_IDENTITY_OIDC_CONFIG_FILE` il login OIDC è spento: elenco vuoto, start 404):
+
+| Variabile | Significato |
+|---|---|
+| `GITSTACK_IDENTITY_OIDC_CONFIG_FILE` | file JSON dei provider (nel deploy montato da un Secret) |
+| `GITSTACK_IDENTITY_OIDC_ENC_KEY` | chiave AES-256, 32 byte in base64 (obbligatoria con il file) |
+| `GITSTACK_IDENTITY_OIDC_ENC_KEY_ID` | identificativo della chiave (obbligatoria con il file) |
+| `GITSTACK_IDENTITY_PUBLIC_URL` | URL pubblico; la redirect_uri è `<url>/api/v1/auth/oidc/<slug>/callback` (obbligatoria con il file) |
+
+Pacchetti: `internal/oidc` (`config.go` file e validazione, `crypto.go` AES-256-GCM per segreti e cookie di stato, `service.go` flusso e collegamento, `store.go` Postgres), handler in `internal/httpapi/oidc.go`. Il collegamento a un utente locale segue la configurazione per provider (`linkByVerifiedEmail`, `autoCreateUsers`, entrambe `false` di default → 409 `oidc_identity_unlinked`); un'email non verificata non collega mai un utente esistente.
+
+Test: unit test con un IdP finto in `httptest` (`go test ./internal/oidc`: firma, issuer, audience, scadenza, nonce, state, cookie scaduto, `email_verified` in tutte le forme); con Postgres (`-tags integration`, `GITSTACK_TEST_DATABASE_URL`) la sincronizzazione dei provider e il collegamento; con un Keycloak vero (`GITSTACK_TEST_KEYCLOAK_URL`, realm in `internal/httpapi/testdata/keycloak-realm.json`) il flusso completo attraverso gli handler HTTP — il job `identity-oidc` della CI lo lancia.

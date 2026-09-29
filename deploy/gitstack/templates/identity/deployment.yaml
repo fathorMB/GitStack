@@ -18,6 +18,12 @@
 {{- end -}}
 {{- $svcSecret := .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
+{{- $oidc := and .Values.identity.oidc.enabled -}}
+{{- $oidcSecret := .Values.identity.oidc.existingSecret | default (printf "%s-identity-oidc" (include "gitstack.fullname" .)) -}}
+{{- $oidcKeySecret := .Values.identity.oidc.encKey.existingSecret | default (printf "%s-identity-oidc-key" (include "gitstack.fullname" .)) -}}
+{{- if and $oidc (not .Values.identity.oidc.publicUrl) -}}
+{{- fail "identity.oidc.enabled=true: compila identity.oidc.publicUrl (URL pubblico di GitStack, es. https://git.example.com)." -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,6 +42,10 @@ spec:
       annotations:
         # Un cambio del bootstrap SQL rilancia il pod (e l'initContainer).
         checksum/bootstrap: {{ .Files.Get "files/identity-bootstrap-role.sql" | sha256sum }}
+        {{- if and $oidc (not .Values.identity.oidc.existingSecret) }}
+        # Un cambio dei provider OIDC rilancia il pod (il file si legge all'avvio).
+        checksum/oidc: {{ .Values.identity.oidc.providers | toJson | sha256sum }}
+        {{- end }}
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -116,6 +126,20 @@ spec:
                 secretKeyRef:
                   name: {{ $svcSecret }}
                   key: secret
+            {{- if $oidc }}
+            # Login OIDC: file dei provider da Secret montato, chiave da Secret.
+            - name: GITSTACK_IDENTITY_OIDC_CONFIG_FILE
+              value: /etc/gitstack/oidc/oidc.json
+            - name: GITSTACK_IDENTITY_OIDC_ENC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $oidcKeySecret }}
+                  key: key
+            - name: GITSTACK_IDENTITY_OIDC_ENC_KEY_ID
+              value: {{ .Values.identity.oidc.encKey.keyId | quote }}
+            - name: GITSTACK_IDENTITY_PUBLIC_URL
+              value: {{ .Values.identity.oidc.publicUrl | quote }}
+            {{- end }}
             {{- if .Values.identity.env.tokenMaxLifetime }}
             - name: GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME
               value: {{ .Values.identity.env.tokenMaxLifetime | quote }}
@@ -138,8 +162,22 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.identity.resources | nindent 12 }}
+          {{- if $oidc }}
+          volumeMounts:
+            - name: oidc
+              mountPath: /etc/gitstack/oidc
+              readOnly: true
+          {{- end }}
       volumes:
         - name: bootstrap
           configMap:
             name: {{ include "gitstack.fullname" . }}-identity-bootstrap
+        {{- if $oidc }}
+        - name: oidc
+          secret:
+            secretName: {{ $oidcSecret }}
+            items:
+              - key: oidc.json
+                path: oidc.json
+        {{- end }}
 {{- end }}

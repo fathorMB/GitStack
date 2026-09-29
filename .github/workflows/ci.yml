@@ -64,6 +64,70 @@ jobs:
         working-directory: services/core
         run: go test -tags=integration ./... -race
 
+  # Login esterno OIDC di identity (GIT-39, M-02/K): test d'integrazione contro
+  # un Keycloak vero (realm importato da testdata) e un Postgres di servizio.
+  # Il test Keycloak si salta senza GITSTACK_TEST_KEYCLOAK_URL; qui la
+  # variabile c'è, quindi gira davvero. Job separato da "go" perché serve
+  # Docker per Keycloak e non deve rallentare né dipendere dal resto.
+  # Immagine Keycloak a versione esatta, per riproducibilità.
+  identity-oidc:
+    name: Identity — login OIDC (Keycloak, Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      KEYCLOAK_IMAGE: quay.io/keycloak/keycloak:26.0.7
+      GITSTACK_TEST_DATABASE_URL: postgres://postgres:pw@localhost:5432/gitstack?sslmode=disable
+      GITSTACK_TEST_KEYCLOAK_URL: http://localhost:8080
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: pw
+          POSTGRES_DB: gitstack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Avvia Keycloak (realm importato)
+        run: |
+          docker run -d --name keycloak -p 8080:8080             -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin             -v "${GITHUB_WORKSPACE}/services/identity/internal/httpapi/testdata/keycloak-realm.json:/opt/keycloak/data/import/gitstack-realm.json:ro"             "${KEYCLOAK_IMAGE}" start-dev --import-realm
+
+      - name: Attendi il realm gitstack
+        run: |
+          url="${GITSTACK_TEST_KEYCLOAK_URL}/realms/gitstack/.well-known/openid-configuration"
+          for i in $(seq 1 90); do
+            if curl -fsS "${url}" > /dev/null 2>&1; then
+              echo "Keycloak pronto dopo ${i} tentativi"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "FALLITO: ${url} non risponde entro 180s" >&2
+          docker logs keycloak >&2
+          exit 1
+
+      - name: go test -tags=integration -race (services/identity)
+        working-directory: services/identity
+        run: go test -tags=integration -race -count=1 ./...
+
+      - name: Log di Keycloak (solo se fallisce)
+        if: failure()
+        run: docker logs keycloak
+
   ts:
     name: Web — lint, typecheck, test
     runs-on: ubuntu-latest
