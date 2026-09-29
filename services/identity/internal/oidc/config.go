@@ -159,8 +159,7 @@ func validate(r rawProvider, opts Options) (Provider, []string) {
 	if n := utf8.RuneCountInString(strings.TrimSpace(r.DisplayName)); n < 1 || n > 64 {
 		errs = append(errs, "displayName obbligatorio, al massimo 64 caratteri")
 	}
-	if u, err := url.Parse(r.Issuer); err != nil || u.Host == "" || u.RawQuery != "" || u.Fragment != "" ||
-		!(u.Scheme == "https" || (opts.AllowInsecureIssuer && u.Scheme == "http")) {
+	if !validIssuer(r.Issuer, opts) {
 		errs = append(errs, "issuer deve essere un URL https senza query né frammento")
 	}
 	if strings.TrimSpace(r.ClientID) == "" {
@@ -218,6 +217,14 @@ func validate(r rawProvider, opts Options) (Provider, []string) {
 		Scopes: scopes, Claims: c,
 		LinkByVerifiedEmail: r.LinkByVerifiedEmail, AutoCreateUsers: r.AutoCreateUsers,
 	}, errs
+}
+
+func validIssuer(issuer string, opts Options) bool {
+	u, err := url.Parse(issuer)
+	if err != nil || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
+		return false
+	}
+	return u.Scheme == "https" || (opts.AllowInsecureIssuer && u.Scheme == "http")
 }
 
 // ParseKey decodifica la chiave di cifratura: 32 byte in base64.
