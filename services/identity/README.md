@@ -83,6 +83,12 @@ deployment Kubernetes.
 | `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_USER` | `5` | no | fallimenti per utente nella finestra |
 | `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | no | fallimenti per IP nella finestra |
 | `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | no | durata della finestra (formato Go) |
+| `GITSTACK_IDENTITY_SESSION_TTL` | `168h` | no | durata assoluta delle sessioni web |
+| `GITSTACK_IDENTITY_TRUSTED_PROXIES` | vuoto | no | CIDR separati da virgola da cui ci si fida di `X-Gitstack-Client-Ip` (es. la rete dei pod del gateway) |
+
+### IP del client dietro il gateway
+
+Il gateway cancella sempre l'header `X-Gitstack-Client-Ip` in ingresso e lo riscrive con l'IP della connessione che lo raggiunge. Identity lo legge solo se `r.RemoteAddr` cade in `GITSTACK_IDENTITY_TRUSTED_PROXIES`; altrimenti (o con l'elenco vuoto) usa `RemoteAddr` e ignora l'header. Senza questa configurazione, dietro il gateway tutti i client hanno l'IP del gateway e il limite per IP colpisce tutti insieme. Lo stesso IP e lo stesso limitatore valgono per `changePassword`: la verifica della password attuale (chiave utente) conta i fallimenti come il login e a limite raggiunto risponde 429 con `Retry-After`.
 
 ## Utilizzo
 
@@ -176,7 +182,7 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 
 - Autenticazione: solo cookie `gst_session` (i token personali sono di un altro item). Senza sessione valida 401 `unauthenticated`.
 - Permessi: creare ed eliminare utenti solo admin (403 `forbidden` altrimenti); aggiornare profilo e cambiare password admin o l'utente stesso (chi non è admin né l'utente stesso non scopre nemmeno se l'utente esiste: 403); `isAdmin`/`isActive` solo admin; leggere utenti qualunque utente autenticato (email e campi amministrativi solo per sé e per gli admin).
-- Login: 200 con `CurrentSession` e `Set-Cookie`; 401 `invalid_credentials` identico (stesso status e corpo) per password errata, utente inesistente e utente disattivato; 429 `too_many_attempts` con `Retry-After` in secondi (per eccesso). L'IP del rate limit è `r.RemoteAddr` senza porta, mai `X-Forwarded-For`; se non determinabile vale solo il limite per utente. Dietro il gateway `RemoteAddr` è l'indirizzo del gateway: per un limite per client reale servirà un meccanismo fidato dal gateway (da decidere).
+- Login: 200 con `CurrentSession` e `Set-Cookie`; 401 `invalid_credentials` identico (stesso status e corpo) per password errata, utente inesistente e utente disattivato; 429 `too_many_attempts` con `Retry-After` in secondi (per eccesso). L'IP del rate limit è `r.RemoteAddr` senza porta, mai `X-Forwarded-For`; solo da un proxy fidato (`GITSTACK_IDENTITY_TRUSTED_PROXIES`) si usa `X-Gitstack-Client-Ip` del gateway (vedi sopra). Se non determinabile vale solo il limite per utente.
 - `changePassword`: password attuale sbagliata → 403 `forbidden` (non 401: il chiamante è già autenticato); revoca le altre sessioni (l'admin che agisce su un altro utente le revoca tutte).
 - Errori nel formato `Error`; 400 `bad_request` per JSON malformato/campi sconosciuti/parametri fuori range, 422 `validation_failed` con `details.fields`, 409 `already_exists`/`last_admin`, 500 senza dettagli. Le operazioni OIDC rispondono 501 `not_implemented` (altro item).
 

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 
@@ -23,6 +24,16 @@ func WithTokens(t *apitokens.Service) Option { return func(s *server) { s.tokens
 
 // WithSSHKeys abilita le chiavi SSH (tag ssh-keys) e /internal/ssh-keys.
 func WithSSHKeys(k *userkeys.Service) Option { return func(s *server) { s.keys = k } }
+
+// ClientIPHeader è l'header con l'IP del client impostato dal gateway
+// (stesso nome di gateway/internal/proxy.ClientIPHeader). Vale solo se la
+// connessione viene da un proxy fidato.
+const ClientIPHeader = "X-Gitstack-Client-Ip"
+
+// WithTrustedProxies indica le reti da cui ci si fida di ClientIPHeader.
+func WithTrustedProxies(nets []*net.IPNet) Option {
+	return func(s *server) { s.trustedProxies = nets }
+}
 
 // WithServiceSecret imposta il segreto condiviso di servizio (schema
 // serviceAuth) che protegge /internal/*. Vuoto = ogni chiamata interna è

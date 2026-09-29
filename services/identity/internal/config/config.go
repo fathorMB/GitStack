@@ -6,6 +6,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -33,6 +34,14 @@ type Config struct {
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
+
+	// SessionTTL è la durata assoluta di una sessione web.
+	SessionTTL time.Duration
+
+	// TrustedProxies sono le reti (CIDR) da cui identity si fida
+	// dell'header X-Gitstack-Client-Ip impostato dal gateway. Vuoto (default):
+	// l'IP del client è sempre r.RemoteAddr.
+	TrustedProxies []*net.IPNet
 }
 
 const (
@@ -55,6 +64,15 @@ const (
 	// EnvLogLevel è il nome della variabile d'ambiente per il livello
 	// dei log (default "info").
 	EnvLogLevel = "GITSTACK_IDENTITY_LOG_LEVEL"
+
+	// EnvSessionTTL: durata delle sessioni web (default 168h, 7 giorni).
+	EnvSessionTTL = "GITSTACK_IDENTITY_SESSION_TTL"
+
+	// EnvTrustedProxies: elenco CIDR separati da virgola dei proxy fidati
+	// (es. "10.42.0.0/16"). Default vuoto.
+	EnvTrustedProxies = "GITSTACK_IDENTITY_TRUSTED_PROXIES"
+
+	defaultSessionTTL = 7 * 24 * time.Hour
 
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
@@ -83,6 +101,31 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		DBMaxConns:        defaultDBMaxConns,
 		MigrationsTimeout: defaultMigrationsTimeout,
 		LogLevel:          defaultLogLevel,
+		SessionTTL:        defaultSessionTTL,
+	}
+
+	if v, ok := lookup(EnvSessionTTL); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil || d <= 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", EnvSessionTTL, v))
+		} else {
+			cfg.SessionTTL = d
+		}
+	}
+
+	if v, ok := lookup(EnvTrustedProxies); ok && strings.TrimSpace(v) != "" {
+		for _, part := range strings.Split(v, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			_, n, err := net.ParseCIDR(part)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s contiene un CIDR non valido: %q", EnvTrustedProxies, part))
+				continue
+			}
+			cfg.TrustedProxies = append(cfg.TrustedProxies, n)
+		}
 	}
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -448,4 +449,53 @@ func TestChangePassword(t *testing.T) {
 	status(t, e.do("PUT", "/users/bob/password", map[string]any{"newPassword": newPw}, root), 204)
 	errCode(t, e.do("GET", "/auth/session", nil, bob), 401, "unauthenticated")
 	errCode(t, e.do("PUT", "/users/nessuno/password", map[string]any{"newPassword": newPw}, root), 404, "not_found")
+}
+
+// changePassword con password attuale errata ripetuta: dopo MaxPerUser
+// tentativi 429 con Retry-After, anche con la password giusta.
+func TestChangePasswordRateLimited(t *testing.T) {
+	e := newEnv(t, cfg) // MaxPerUser = 3
+	e.mk("alice", false)
+	alice := e.mustLogin("alice")
+	body := map[string]any{"currentPassword": "sbagliata sbagliata", "newPassword": "nuova password lunga"}
+	for i := 0; i < cfg.MaxPerUser; i++ {
+		errCode(t, e.do("PUT", "/users/alice/password", body, alice), 403, "forbidden")
+	}
+	r := e.do("PUT", "/users/alice/password", body, alice)
+	errCode(t, r, 429, "too_many_attempts")
+	if r.Header.Get("Retry-After") == "" {
+		t.Fatal("manca Retry-After")
+	}
+	// Anche la password giusta è respinta finché il limite è attivo.
+	errCode(t, e.do("PUT", "/users/alice/password", map[string]any{"currentPassword": pw, "newPassword": "nuova password lunga"}, alice), 429, "too_many_attempts")
+	// Scaduta la finestra si può di nuovo.
+	e.clock.advance(cfg.Window + time.Second)
+	status(t, e.do("PUT", "/users/alice/password", map[string]any{"currentPassword": pw, "newPassword": "nuova password lunga"}, alice), 204)
+}
+
+// Il limite per IP usa l'header del gateway solo da proxy fidati.
+func TestLoginIPFidato(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	c := &clock{t: time.Now().UTC().Truncate(time.Microsecond)}
+	us := users.New(pool, c.now)
+	svc := &auth.Service{Users: us, Sessions: sessions.New(pool, c.now, time.Hour),
+		Limiter: loginlimit.New(loginlimit.Config{MaxPerUser: 100, MaxPerIP: 2, Window: time.Minute}, c.now)}
+	_, gw, _ := net.ParseCIDR("192.0.2.0/24")
+	h := httpapi.New(svc, nil, httpapi.WithTrustedProxies([]*net.IPNet{gw}))
+	try := func(ip string) int {
+		req := httptest.NewRequest("POST", "/auth/login", strings.NewReader(`{"username":"x","password":"y"}`))
+		req.RemoteAddr = "192.0.2.10:1"
+		req.Header.Set(httpapi.ClientIPHeader, ip)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	try("203.0.113.1")
+	try("203.0.113.1")
+	if got := try("203.0.113.1"); got != 429 {
+		t.Fatalf("stesso client: %d, atteso 429", got)
+	}
+	if got := try("203.0.113.2"); got != 401 {
+		t.Fatalf("altro client: %d, atteso 401 (non bloccato)", got)
+	}
 }
