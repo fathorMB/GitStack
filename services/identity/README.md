@@ -127,3 +127,13 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 ```
 
 `dbtest` crea un database per test (`CREATE DATABASE`), quindi i pacchetti girano in parallelo; se il ruolo non può creare database ripiega sul database indicato (allora `-p 1`). Senza la variabile i test d'integrazione sono saltati. Il blocco dopo N tentativi e lo sblocco dopo la finestra (clock finto, senza sleep) sono in `auth/auth_integration_test.go`.
+
+### Livello HTTP (GIT-33, fase 2)
+
+`internal/openapi` contiene la `ServerInterface` generata da `api/openapi.yaml` per i tag `auth` e `users` (`include-tags` in `oapi-codegen.yaml`; si rigenera con `scripts/generate-api.sh`). `internal/httpapi` la implementa: `httpapi.New(*auth.Service, *slog.Logger) http.Handler` è pronto da montare (percorsi senza `/v1`, come core: il prefisso lo toglie il gateway). Il collegamento a `main.go` e a `internal/config` (compresa la lettura di `loginlimit.FromEnv`) è di GIT-30.
+
+- Autenticazione: solo cookie `gst_session` (i token personali sono di un altro item). Senza sessione valida 401 `unauthenticated`.
+- Permessi: creare ed eliminare utenti solo admin (403 `forbidden` altrimenti); aggiornare profilo e cambiare password admin o l'utente stesso (chi non è admin né l'utente stesso non scopre nemmeno se l'utente esiste: 403); `isAdmin`/`isActive` solo admin; leggere utenti qualunque utente autenticato (email e campi amministrativi solo per sé e per gli admin).
+- Login: 200 con `CurrentSession` e `Set-Cookie`; 401 `invalid_credentials` identico (stesso status e corpo) per password errata, utente inesistente e utente disattivato; 429 `too_many_attempts` con `Retry-After` in secondi (per eccesso). L'IP del rate limit è `r.RemoteAddr` senza porta, mai `X-Forwarded-For`; se non determinabile vale solo il limite per utente. Dietro il gateway `RemoteAddr` è l'indirizzo del gateway: per un limite per client reale servirà un meccanismo fidato dal gateway (da decidere).
+- `changePassword`: password attuale sbagliata → 403 `forbidden` (non 401: il chiamante è già autenticato); revoca le altre sessioni (l'admin che agisce su un altro utente le revoca tutte).
+- Errori nel formato `Error`; 400 `bad_request` per JSON malformato/campi sconosciuti/parametri fuori range, 422 `validation_failed` con `details.fields`, 409 `already_exists`/`last_admin`, 500 senza dettagli. Le operazioni OIDC rispondono 501 `not_implemented` (altro item).
