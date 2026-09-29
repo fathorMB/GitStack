@@ -87,3 +87,13 @@ func TestFromEnv(t *testing.T) {
 		t.Fatal("N=0 accettato")
 	}
 }
+
+func TestEmptyIPIsNotSharedKey(t *testing.T) {
+	c := newClock()
+	l := New(Config{MaxPerUser: 100, MaxPerIP: 1, Window: time.Hour}, c.now)
+	l.Fail("a", "")
+	l.Fail("b", "")
+	if ok, _ := l.Check("c", ""); !ok {
+		t.Fatal("un IP vuoto non deve diventare una chiave condivisa")
+	}
+}

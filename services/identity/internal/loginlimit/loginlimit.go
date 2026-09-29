@@ -127,7 +127,10 @@ func (l *Limiter) Check(login, ip string) (allowed bool, retryAfter time.Duratio
 	defer l.mu.Unlock()
 	now := l.now()
 	ru := l.retryAfter(userKey(login), l.cfg.MaxPerUser, now)
-	ri := l.retryAfter(ipKey(ip), l.cfg.MaxPerIP, now)
+	var ri time.Duration
+	if ip != "" { // IP ignoto: nessuna chiave condivisa fra tutti gli sconosciuti
+		ri = l.retryAfter(ipKey(ip), l.cfg.MaxPerIP, now)
+	}
 	if ru <= 0 && ri <= 0 {
 		return true, 0
 	}
@@ -145,7 +148,11 @@ func (l *Limiter) Fail(login, ip string) {
 	if len(l.fails) >= maxKeys {
 		l.sweep(now)
 	}
-	for _, k := range []string{userKey(login), ipKey(ip)} {
+	keys := []string{userKey(login)}
+	if ip != "" {
+		keys = append(keys, ipKey(ip))
+	}
+	for _, k := range keys {
 		if _, ok := l.fails[k]; !ok && len(l.fails) >= maxKeys {
 			continue // pieno anche dopo lo sweep: meglio non registrare che crescere
 		}

@@ -204,7 +204,9 @@ paths:
         Crea una sessione. La risposta imposta il cookie `gst_session`
         (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le
         credenziali sbagliate e l'utente disattivato rispondono entrambi 401
-        con `invalid_credentials`, senza distinguere i casi.
+        con `invalid_credentials`, senza distinguere i casi. Dopo troppi
+        tentativi falliti (per utente o per indirizzo IP) risponde 429
+        `too_many_attempts` con l'header `Retry-After` in secondi.
       security: []
       requestBody:
         required: true
@@ -230,6 +232,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -528,7 +532,9 @@ paths:
       summary: Cambia la password
       description: >
         Scope `write:user`. L'utente stesso deve fornire `currentPassword`;
-        un amministratore no. Revoca le altre sessioni dell'utente.
+        un amministratore no. Con `currentPassword` sbagliata risponde 403
+        `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire
+        il client). Revoca le altre sessioni dell'utente.
       x-required-scopes: ["write:user"]
       requestBody:
         required: true
@@ -1628,7 +1634,7 @@ components:
       description: >
         Formato unico degli errori per tutta l'API pubblica. Codici comuni per
         stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`;
-        403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict`
+        403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict`
         e varianti specifiche (`already_exists`, `last_admin`, `last_owner`,
         `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed`
         (`details.fields`). Le risposte 401 non distinguono mai "utente
@@ -2421,6 +2427,20 @@ components:
           nullable: true
 
   responses:
+    TooManyRequests:
+      description: >
+        Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di
+        secondi indicato in `Retry-After`.
+      headers:
+        Retry-After:
+          description: Secondi da attendere prima di riprovare.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     BadRequest:
       description: Richiesta non valida.
       content:
