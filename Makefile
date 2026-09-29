@@ -5,7 +5,7 @@
 # Docker, Traefik e le sue CRD già incluse), costruisce le immagini in
 # locale, le importa nel cluster con `k3d image import` e installa il chart
 # con `helm upgrade --install`. Nessun secondo chart, nessun manifest
-# parallelo: le immagini sono le stesse gateway/core/web di GIT-4/GIT-5/GIT-7.
+# parallelo: le immagini sono le stesse gateway/identity/core/web di GIT-4/GIT-5/GIT-7/GIT-36.
 #
 # Richiede bash: su Windows usa Git Bash o WSL2 (`make` su cmd.exe/PowerShell
 # non è supportato). Guida completa, prerequisiti per Linux/macOS/Windows e
@@ -14,7 +14,7 @@
 # Target pensati per l'uso interattivo da riga di comando:
 #   make dev-up                    crea il cluster (se manca) e installa/aggiorna GitStack
 #   make dev-down                  distrugge il cluster
-#   make dev-redeploy SVC=gateway  ricostruisce e ridistribuisce un solo servizio (gateway|core|web)
+#   make dev-redeploy SVC=gateway  ricostruisce e ridistribuisce un solo servizio (gateway|identity|core|web)
 #   make dev-status                pod e ingress del rilascio corrente
 
 SHELL := bash
@@ -47,10 +47,12 @@ HELM_VERSION ?= v3.16.3
 # ancora un Dockerfile: arrivano con milestone successive a M-01, come nel
 # job "registry" di ci.yml). contesto/Dockerfile identici alla matrice di
 # quel job.
-DEV_SERVICES := gateway core web
+DEV_SERVICES := gateway identity core web
 
 CONTEXT_gateway    := services/gateway
 DOCKERFILE_gateway := services/gateway/Dockerfile
+CONTEXT_identity   := services/identity
+DOCKERFILE_identity := services/identity/Dockerfile
 CONTEXT_core       := services/core
 DOCKERFILE_core    := services/core/Dockerfile
 # web: contesto la radice del monorepo (dipende in locale da client/ts, vedi
@@ -59,6 +61,7 @@ CONTEXT_web        := .
 DOCKERFILE_web     := web/Dockerfile
 
 IMAGE_gateway := $(REGISTRY)/$(OWNER)/gitstack-gateway:$(IMAGE_TAG)
+IMAGE_identity := $(REGISTRY)/$(OWNER)/gitstack-identity:$(IMAGE_TAG)
 IMAGE_core    := $(REGISTRY)/$(OWNER)/gitstack-core:$(IMAGE_TAG)
 IMAGE_web     := $(REGISTRY)/$(OWNER)/gitstack-web:$(IMAGE_TAG)
 
@@ -129,7 +132,7 @@ _dev-build-all:
 
 _dev-import-all:
 	@echo "==> Importo le immagini nel cluster k3d '$(CLUSTER_NAME)'..."
-	@k3d image import $(IMAGE_gateway) $(IMAGE_core) $(IMAGE_web) -c $(CLUSTER_NAME)
+	@k3d image import $(IMAGE_gateway) $(IMAGE_identity) $(IMAGE_core) $(IMAGE_web) -c $(CLUSTER_NAME)
 
 _dev-helm:
 	@echo "==> helm upgrade --install $(RELEASE) deploy/gitstack (tag immagine: $(IMAGE_TAG))..."
@@ -138,6 +141,7 @@ _dev-helm:
 		--set global.image.tag=$(IMAGE_TAG) \
 		--wait --timeout 3m
 	@kubectl rollout status deployment/$(RELEASE)-gateway --timeout=120s
+	@kubectl rollout status deployment/$(RELEASE)-identity --timeout=120s
 	@kubectl rollout status deployment/$(RELEASE)-core --timeout=120s
 	@kubectl rollout status deployment/$(RELEASE)-web --timeout=120s
 

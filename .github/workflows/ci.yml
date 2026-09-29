@@ -271,16 +271,24 @@ jobs:
       - name: helm lint
         run: helm lint deploy/gitstack
 
+      # Le due copie del bootstrap SQL di identity (una nel servizio, una nel
+      # chart: Helm non legge file fuori dal chart) devono restare identiche.
+      - name: Le copie del bootstrap SQL di identity coincidono
+        run: diff services/identity/migrations/bootstrap-role.sql deploy/gitstack/files/identity-bootstrap-role.sql
+
       - name: Owner dell'immagine in minuscolo (richiesto da Docker/OCI)
         id: owner
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Costruisci le immagini di gateway e core (stesso tag che pubblica il job "registry")
+      - name: Costruisci le immagini di gateway, identity e core (stesso tag che pubblica il job "registry")
         run: |
           set -euo pipefail
           docker build -f services/gateway/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
             services/gateway
+          docker build -f services/identity/Dockerfile \
+            -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
+            services/identity
           docker build -f services/core/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             services/core
@@ -363,6 +371,7 @@ jobs:
         run: |
           k3d image import \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
+            "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             -c gitstack-ci
 
@@ -377,10 +386,11 @@ jobs:
             --set global.image.tag="${IMAGE_TAG}" \
             --wait --timeout 3m
 
-      - name: Attendi che gateway e core siano Ready
+      - name: Attendi che gateway, identity e core siano Ready
         run: |
           kubectl get pods -o wide
           kubectl rollout status deployment/gitstack-gateway --timeout=120s
+          kubectl rollout status deployment/gitstack-identity --timeout=120s
           kubectl rollout status deployment/gitstack-core --timeout=120s
 
       - name: Verifica /healthz tramite l'Ingress Traefik (/api)
@@ -404,6 +414,34 @@ jobs:
           fi
           echo "OK: GET /api/healthz -> 200 (via Ingress Traefik)"
 
+      # identity dietro il gateway: senza cookie la sessione è 401
+      # "unauthenticated" (risposta di identity, non del gateway) e /internal
+      # non è esposto.
+      - name: Verifica identity tramite l'Ingress (/api/v1/auth/session)
+        run: |
+          set -euo pipefail
+          ok=""
+          body=""
+          for _ in $(seq 1 30); do
+            body=$(curl -s -w ' HTTP=%{http_code}' http://localhost:8080/api/v1/auth/session || true)
+            case "$body" in
+              *unauthenticated*"HTTP=401") ok=1; break ;;
+            esac
+            sleep 2
+          done
+          if [ -z "$ok" ]; then
+            echo "FALLITO: GET /api/v1/auth/session non ha risposto 401 unauthenticated (ultimo: $body)" >&2
+            kubectl logs deployment/gitstack-identity --tail=100 || true
+            kubectl logs deployment/gitstack-gateway --tail=100 || true
+            exit 1
+          fi
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{}' http://localhost:8080/api/v1/internal/verify)
+          if [ "$code" != "404" ]; then
+            echo "FALLITO: /api/v1/internal/verify risponde $code, atteso 404 (non esposto)" >&2
+            exit 1
+          fi
+          echo "OK: identity raggiungibile via gateway, /internal non esposto"
+
       # GIT-21: ogni comando ha "|| true" perché questo step deve restare
       # utile anche quando l'API server del cluster è irraggiungibile (il
       # guasto intermittente osservato dopo MR-14, run 36442771214): in quel
@@ -426,4 +464,6 @@ jobs:
           kubectl describe ingress gitstack || true
           echo "--- log gateway/core ---"
           kubectl logs deployment/gitstack-gateway --tail=200 || true
+          kubectl logs deployment/gitstack-identity --tail=200 || true
+          kubectl logs deployment/gitstack-identity -c bootstrap-db --tail=100 || true
           kubectl logs deployment/gitstack-core --tail=200 || true

@@ -15,9 +15,9 @@
 # Debian/RHEL e WSL2 arrivano con M-08 [c_8458909a21d9035f].
 #
 # Sicurezza (CA interna, certificati, utente admin): non ancora implementati
-# in v0. L'installazione parla HTTP in chiaro sull'IP della macchina; non
-# esiste ancora un servizio "identity" nel chart (arriva dopo M-01), quindi
-# nessun utente admin viene creato qui. Completamento previsto in M-02/M-08.
+# in v0. L'installazione parla HTTP in chiaro sull'IP della macchina. Il
+# servizio "identity" è nel chart (GIT-36) ma nessun utente admin viene
+# ancora creato qui (GIT-35). Completamento previsto in M-02/M-08.
 set -euo pipefail
 
 # Cartelle temporanee da rimuovere all'uscita (download del chart quando non
@@ -108,7 +108,7 @@ Opzioni:
   --namespace NS            Namespace Kubernetes (default: default).
   --chart-dir PATH          Usa un chart locale invece di quello accanto a
                              questo script o scaricato dal repository.
-  --image-tag TAG           Tag immagine per gateway/core/web (default:
+  --image-tag TAG           Tag immagine per gateway/identity/core/web (default:
                              risolto automaticamente dal commit corrente).
   --image-registry HOST     Registry delle immagini GitStack (default: dal
                              chart, ghcr.io). Utile per un mirror (M-08).
@@ -585,9 +585,9 @@ Log di k3s:
   journalctl -u k3s -f
 
 Sicurezza (CA interna, certificati, utente admin): non ancora implementati
-in v0 (nessun servizio "identity" nel chart, arriva dopo M-01). Completamento
-previsto in M-02/M-08 [c_8458909a21d9035f]. Per ora l'accesso è HTTP in
-chiaro sull'IP della macchina, senza autenticazione.
+in v0 (identity è nel chart, ma l'utente admin non viene ancora creato:
+GIT-35). Completamento previsto in M-02/M-08 [c_8458909a21d9035f]. Per ora
+l'accesso è HTTP in chiaro sull'IP della macchina.
 
 Rieseguire questo script in qualsiasi momento è sicuro: non reinstalla k3s
 se è già presente e usa 'helm upgrade --install', che non rompe

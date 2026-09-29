@@ -27,6 +27,14 @@
          (-JetStreamPollAttempts tentativi ogni
          -JetStreamPollIntervalSeconds, default 6x5s), non con una lettura
          sola, per non dare un FAIL spurio per una corsa persa.
+      e2. identity attraverso il gateway (GIT-36), senza credenziali valide:
+         GET /api/v1/auth/session senza cookie -> 401 con code
+         `unauthenticated`, POST /api/v1/auth/login con credenziali
+         inventate -> 401 con code `invalid_credentials`: sono risposte di
+         identity, non del gateway (che darebbe 404 o 503). Inoltre
+         /api/v1/internal/verify deve dare 404 (interfaccia interna non
+         esposta). Il login con l'admin e la chiamata autenticata arrivano
+         con GIT-35 (admin al primo avvio).
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -240,6 +248,38 @@ function Test-GhcrImageExists {
 
 # --- main --------------------------------------------------------------
 
+# Chiamata HTTP che non solleva eccezioni sugli status 4xx/5xx (Windows
+# PowerShell 5.1 lancia una WebException): ritorna StatusCode e corpo come
+# testo, oppure StatusCode 0 con Error se la connessione fallisce. Usata per
+# verificare risposte 401 di identity.
+function Invoke-HttpRaw {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [string]$Method = 'GET',
+        [string]$Body,
+        [int]$TimeoutSec = 20
+    )
+    $params = @{ Uri = $Uri; Method = $Method; TimeoutSec = $TimeoutSec; UseBasicParsing = $true }
+    if ($Body) { $params.Body = $Body; $params.ContentType = 'application/json' }
+    try {
+        $r = Invoke-WebRequest @params
+        $text = if ($r.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($r.Content) } else { [string]$r.Content }
+        return [pscustomobject]@{ StatusCode = [int]$r.StatusCode; Body = $text; Error = $null }
+    } catch {
+        $resp = $_.Exception.Response
+        if ($null -ne $resp) {
+            $text = ''
+            try {
+                $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
+                $text = $reader.ReadToEnd()
+                $reader.Close()
+            } catch { $text = '' }
+            return [pscustomobject]@{ StatusCode = [int]$resp.StatusCode; Body = $text; Error = $null }
+        }
+        return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.Message }
+    }
+}
+
 function Main {
     Assert-Administrator
     Assert-HyperVAvailable
@@ -346,11 +386,11 @@ function Main {
         Add-StepResult -Name 'b. macchina pulita (nessun k3s/kubectl, /etc/rancher, /var/lib/rancher, porte libere)' -Ok $true
 
         # --- d.1 immagini pubblicate su ghcr.io per sha-<Ref> -----------
-        Write-Log "==> Passo d (1/2): verifico che le immagini gateway/core/web esistano su ghcr.io per sha-$Ref ..."
+        Write-Log "==> Passo d (1/2): verifico che le immagini gateway/identity/core/web esistano su ghcr.io per sha-$Ref ..."
         $ownerRepo = $GitStackRepo -split '/'
         $owner = $ownerRepo[0]
         $missingImages = @()
-        foreach ($svc in @('gitstack-gateway', 'gitstack-core', 'gitstack-web')) {
+        foreach ($svc in @('gitstack-gateway', 'gitstack-identity', 'gitstack-core', 'gitstack-web')) {
             if (-not (Test-GhcrImageExists -Owner $owner -Repo $svc -Tag "sha-$Ref")) {
                 $missingImages += $svc
             }
@@ -481,7 +521,34 @@ function Main {
 
         Add-StepResult -Name 'e. UI, /api/healthz, create+read risorsa di prova, evento JetStream' -Ok $eOk -Detail ($eDetails -join '; ')
 
-        # --- f. idempotenza -----------------------------------------------
+        # --- e2. identity attraverso il gateway (GIT-36) -----------------
+      Write-Log "==> Passo e2: identity attraverso il gateway (sessione assente, login con credenziali inventate) ..."
+      $e2Ok = $true
+      $e2Details = @()
+
+      $sess = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/session"
+      if ($sess.StatusCode -ne 401 -or $sess.Body -notmatch '"code"\s*:\s*"unauthenticated"') {
+          $e2Ok = $false
+          $e2Details += "GET /api/v1/auth/session senza cookie: status $($sess.StatusCode) (atteso 401 unauthenticated), corpo '$($sess.Body)' $($sess.Error)"
+      }
+
+      $loginBody = @{ username = 'e2e-nessun-utente'; password = 'e2e-password-inventata' } | ConvertTo-Json
+      $login = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body $loginBody
+      if ($login.StatusCode -ne 401 -or $login.Body -notmatch '"code"\s*:\s*"invalid_credentials"') {
+          $e2Ok = $false
+          $e2Details += "POST /api/v1/auth/login con credenziali inventate: status $($login.StatusCode) (atteso 401 invalid_credentials), corpo '$($login.Body)' $($login.Error)"
+      }
+
+      # /internal/* non deve essere raggiungibile dal gateway.
+      $internal = Invoke-HttpRaw -Uri "$baseUrl/api/v1/internal/verify" -Method 'POST' -Body '{}'
+      if ($internal.StatusCode -ne 404) {
+          $e2Ok = $false
+          $e2Details += "POST /api/v1/internal/verify: status $($internal.StatusCode), atteso 404 (interfaccia interna non esposta)"
+      }
+
+      Add-StepResult -Name 'e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto' -Ok $e2Ok -Detail ($e2Details -join '; ')
+
+      # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
         $hashBefore = Invoke-RemoteHelper -RemoteArgs @('postgres-secret-hash', 'gitstack', 'default') -TimeoutSeconds 30
         $activeBefore = Invoke-RemoteHelper -RemoteArgs @('k3s-active-since') -TimeoutSeconds 30

@@ -31,6 +31,12 @@ spec:
               value: {{ printf ":%d" (.Values.gateway.containerPort | int) | quote }}
             - name: GITSTACK_CORE_URL
               value: {{ include "gitstack.core.url" . | quote }}
+            {{- if .Values.identity.enabled }}
+            - name: GITSTACK_IDENTITY_URL
+              value: {{ include "gitstack.identity.url" . | quote }}
+            - name: GITSTACK_IDENTITY_TIMEOUT
+              value: {{ .Values.gateway.env.identityTimeout | quote }}
+            {{- end }}
             - name: GITSTACK_CORE_TIMEOUT
               value: {{ .Values.gateway.env.coreTimeout | quote }}
             - name: GITSTACK_LOG_LEVEL

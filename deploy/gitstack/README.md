@@ -1,6 +1,6 @@
 # Chart Helm `gitstack`
 
-Installa su k3s tutti i componenti di M-01 con un solo `helm install`: `gateway`, `core`, `web`, PostgreSQL e NATS JetStream, con Traefik (già incluso in k3s) come ingresso. Configurazione minima (D1 [c_741b20b583f88c3c]): i valori di default bastano per un k3s a nodo singolo.
+Installa su k3s i componenti di GitStack con un solo `helm install`: `gateway`, `identity`, `core`, `web`, PostgreSQL e NATS JetStream, con Traefik (già incluso in k3s) come ingresso. Configurazione minima (D1 [c_741b20b583f88c3c]): i valori di default bastano per un k3s a nodo singolo.
 
 ```sh
 helm install gitstack deploy/gitstack
@@ -11,12 +11,23 @@ helm install gitstack deploy/gitstack
 | Componente | Kind | Note |
 |---|---|---|
 | `gateway` | Deployment + Service | Go, M-01/T-04. Probe `/healthz` (liveness) e `/readyz` (readiness). |
+| `identity` | Deployment + Service + Secret + ConfigMap | Go, M-02. Probe `/healthz` e `/readyz` (readiness verifica Postgres). Ruolo e schema Postgres dedicati, vedi sotto. Il gateway lo raggiunge con `GITSTACK_IDENTITY_URL` (calcolata dal chart). |
 | `core` | Deployment + Service | Go, M-01/T-05. Stesse probe. Applica le proprie migrazioni Postgres all'avvio (nessun Job separato necessario per l'uso minimale di default). |
 | `web` | Deployment + Service | React/SPA, M-01/T-07 — **vedi sotto**, `web.enabled`. |
 | `postgres` | StatefulSet + Service headless + PVC | Bundle di default (D6 [c_4df04d65b3ac4910]); opzione DB esterno del cliente, vedi sotto. |
 | `nats` | StatefulSet + Service headless + PVC | JetStream (D11 [c_74dcf9721e6f7b3e]), storage su file. |
 | PVC repo Git (`gitData.enabled`, **default `false`**) | PersistentVolumeClaim | Predisposto per i futuri repository Git (D6), non un criterio di accettazione di questo item. Disattivato di default: nessun pod lo monta ancora (il servizio "git" arriva con una milestone successiva a M-01) e la storage class di default di k3s (`local-path`, `WaitForFirstConsumer`) lo lascerebbe "Pending" per sempre, bloccando `helm install --wait`. Attivalo solo insieme al servizio che lo monta. |
 | Ingress | Ingress + Middleware Traefik | `/` verso `web`, `/api` verso `gateway` (con lo strip del prefisso, vedi sotto). |
+
+## identity: ruolo e schema dedicati (GIT-36)
+
+identity usa lo schema `identity` (D6) nello stesso database di core, con un ruolo Postgres proprio, `identity_app`, proprietario di quel solo schema e senza permessi sugli schema degli altri servizi. La password del ruolo sta in un Secret `<release>-identity-db`, generato una sola volta con `helm.sh/resource-policy: keep` (come quello di postgres: un reinstall sul volume superstite combacia col ruolo già creato); in alternativa `identity.db.existingSecret` (chiave `password`).
+
+Il ruolo e lo schema li crea un initContainer del Deployment (`bootstrap-db`, immagine di postgres per `psql`) con le credenziali amministrative di Postgres (`postgres.auth` o `postgres.external`), eseguendo `files/identity-bootstrap-role.sql`. È idempotente (`CREATE ROLE` protetto da un controllo su `pg_roles`, la password si riallinea a quella del Secret) e gira a ogni avvio del pod. Le credenziali amministrative non arrivano mai al container di identity, che si connette solo come `identity_app`. Con un Postgres esterno l'utente amministrativo deve poter creare ruoli (`CREATEROLE`). `files/identity-bootstrap-role.sql` è copia identica di `services/identity/migrations/bootstrap-role.sql` (un chart non legge file fuori dalla propria cartella): il job `chart` della CI le confronta.
+
+Variabili (`identity.env.*`): `logLevel`, `dbMaxConns`, `migrationsTimeout`, `sessionTTL`, `trustedProxies` (CIDR da cui identity si fida dell'header `X-Gitstack-Client-Ip` impostato dal gateway; default `10.42.0.0/16`, la rete dei pod di k3s: cambialo se il cluster usa un CIDR diverso). Le migrazioni le applica identity stesso all'avvio.
+
+Il gateway instrada a identity i percorsi di `api/openapi.yaml` dei tag `auth`, `users`, `tokens`, `ssh-keys`, `organizations`, `teams` e `permissions` (`/v1/auth/*`, `/v1/users*`, `/v1/user/tokens*`, `/v1/user/ssh-keys*`, `/v1/orgs*`, `/v1/resources/{id}/grants*` e `/permissions`); `/v1/internal/*` non è esposto (404). Con `identity.enabled=false` il gateway parte senza `GITSTACK_IDENTITY_URL` e quelle rotte non sono montate.
 
 ## Web: `web.enabled` (GIT-7)
 
@@ -32,7 +43,7 @@ Con `web.enabled=false`, l'Ingress espone solo `/api` (nessuna regola `/`): è q
 
 ## Tag delle immagini
 
-`gateway` e `core` sono pubblicate su ghcr.io dal job `registry` del workflow CI (`.github/workflows/ci.yml`) con due tag per ogni push a `main`/tag:
+`gateway`, `identity` e `core` sono pubblicate su ghcr.io dal job `registry` del workflow CI (`.github/workflows/ci.yml`) con due tag per ogni push a `main`/tag:
 
 - **tag sha**: `sha-<commit-sha-completo>` (sempre, a ogni push su `main` o su un tag `vX.Y.Z`).
 - **tag di versione**: pubblicato solo quando viene spinto un tag `vX.Y.Z` — non ancora avvenuto in questo repository (nessun tag esiste al 2026-09-28, GitStack è ancora in M-01, prima del primo rilascio). Non è un difetto del workflow: semplicemente nessun rilascio è stato ancora tagliato. Il job `registry` è già pronto a farlo (`on.push.tags: ['v*']` e `github.ref` che matcha `refs/tags/*`) al primo `git tag vX.Y.Z && git push --tags`.
@@ -79,7 +90,7 @@ Il chart valida questi campi a `helm template`/`helm install` e si ferma con un 
 
 ## Probe di liveness/readiness
 
-Tutti i servizi Go (`gateway`, `core`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).
+Tutti i servizi Go (`gateway`, `identity`, `core`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).
 
 ## `helm lint` e installazione di prova in CI
 
@@ -89,9 +100,10 @@ Tutti i servizi Go (`gateway`, `core`) hanno probe HTTP su `/healthz` (liveness)
 2. Crea un cluster effimero k3d (Traefik e le sue CRD sono già incluse, essendo `k3d` un vero k3s in Docker) con `k3d cluster create --wait`.
 3. Attende (con timeout esplicito, GIT-21) che l'API server del cluster risponda in modo stabile (`kubectl get --raw=/readyz` in loop, poi `kubectl wait --for=condition=Ready node --all`): su un runner CI il cluster appena creato può restare intermittentemente irraggiungibile per qualche secondo dopo che `k3d cluster create --wait` è tornato.
 4. Attende (con timeout esplicito, GIT-21) che la CRD `middlewares.traefik.io` sia presente e `Established` (polling jsonpath su `.status.conditions`, GIT-50: `kubectl wait` esce subito su una CRD appena creata): su k3d, Traefik e le sue CRD vengono installate in modo asincrono dall'helm-controller di k3s, e un `helm install` troppo anticipato del chart (che usa un Middleware Traefik, vedi sopra) fallirebbe con un errore criptico ("no matches for kind Middleware").
-5. `helm install` con `--set web.enabled=false --set global.image.tag=sha-<sha del commit>` (l'immagine di `web` non esiste ancora, vedi sopra).
-6. Attende che `gateway` e `core` siano `Ready` (`kubectl rollout status`, non `kubectl wait`: nota di revisione di GIT-8, allineata qui).
+5. `helm install` (gateway, identity e core costruiti in locale) con `--set web.enabled=false --set global.image.tag=sha-<sha del commit>` (l'immagine di `web` non esiste ancora, vedi sopra).
+6. Attende che `gateway`, `identity` e `core` siano `Ready` (`kubectl rollout status`, non `kubectl wait`: nota di revisione di GIT-8, allineata qui).
 7. Interroga `/healthz` tramite l'Ingress su `/api/healthz` e verifica una risposta 200.
+8. Verifica identity dietro il gateway: `GET /api/v1/auth/session` senza cookie risponde 401 `unauthenticated` e `POST /api/v1/internal/verify` risponde 404. Prima di tutto, `diff` fra le due copie del bootstrap SQL.
 
 ## Ambiente di sviluppo locale (`make dev-up`, GIT-10)
 

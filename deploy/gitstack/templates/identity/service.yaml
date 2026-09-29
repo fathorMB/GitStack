@@ -1,0 +1,15 @@
+{{- if .Values.identity.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitstack.fullname" . }}-identity
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "identity") | nindent 4 }}
+spec:
+  selector:
+    {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "identity") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.identity.service.port }}
+      targetPort: http
+{{- end }}
