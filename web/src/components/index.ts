@@ -13,3 +13,5 @@ export { StatusBadge } from './StatusBadge';
 export type { Status } from './StatusBadge';
 export { PasswordInput, TextInput } from './TextField';
 export { ToastProvider, useToast } from './Toast';
+export { ErrorAlert } from './ErrorAlert';
+export { Logo } from './Logo';

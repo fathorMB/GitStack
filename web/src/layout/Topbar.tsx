@@ -1,14 +1,36 @@
+import { LogOut, Settings } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { signOut } from '../lib/authApi';
+
 // Barra superiore (52px), stessa altezza e stile di
-// design/mockups-v1/index.html (.topbar): breadcrumb a sinistra, resto
-// vuoto per ora (nessuna ricerca/utente finti: identity/auth arrivano in
-// una milestone successiva, vedi M-01 scope).
+// design/mockups-v1/index.html (.topbar): breadcrumb a sinistra, a destra
+// impostazioni personali e uscita.
 export function Topbar({ crumb }: { crumb: string }) {
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch {
+      // Sessione gia' scaduta o rete assente: si torna comunque al login.
+    }
+    navigate('/login', { replace: true });
+  }
+
   return (
     <header className="topbar">
       <div className="crumb">
         <b>{crumb}</b>
       </div>
       <span className="sp" />
+      <Link className="btn btn-ghost btn-sm" to="/settings/profile">
+        <Settings size={14} aria-hidden="true" />
+        Settings
+      </Link>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => void handleSignOut()}>
+        <LogOut size={14} aria-hidden="true" />
+        Sign out
+      </button>
     </header>
   );
 }

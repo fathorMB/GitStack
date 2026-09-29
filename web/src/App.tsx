@@ -1,12 +1,16 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ResourcesPage } from './pages/ResourcesPage';
+import { ProfilePage } from './pages/settings/ProfilePage';
+import { SettingsLayout } from './pages/settings/SettingsLayout';
+import { SshKeysPage } from './pages/settings/SshKeysPage';
+import { TokensPage } from './pages/settings/TokensPage';
 import { AuthProvider, RequireAuth } from './routes/auth';
 
-// Rotte: /login (segnaposto, GIT-40 lo sostituisce) e le pagine protette, che
+// Rotte: /login e le pagine protette (risorse, impostazioni personali), che
 // dopo un 401 dal client generato rimandano a /login. /_components e' la
 // pagina interna di revisione del design system: fuori dalla sidebar.
 export function AppRoutes() {
@@ -33,6 +37,21 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/settings"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Settings">
+              <SettingsLayout />
+            </AppShell>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<Navigate to="profile" replace />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="tokens" element={<TokensPage />} />
+        <Route path="ssh-keys" element={<SshKeysPage />} />
+      </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

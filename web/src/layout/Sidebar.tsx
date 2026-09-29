@@ -1,5 +1,6 @@
 import { Boxes, Database, Grid2x2, Home, Server, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Logo } from '../components';
 
 // Struttura a gruppi (Workspace / Platform / Administration) e voci
 // disattivate con etichetta "Soon" identiche a design/mockups-v1/index.html
@@ -36,25 +37,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sb-brand">
-        <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M16 3.5 28.5 10 16 16.5 3.5 10Z" fill="currentColor" />
-          <path
-            d="M3.5 16 16 22.5 28.5 16"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity="0.75"
-          />
-          <path
-            d="M3.5 22 16 28.5 28.5 22"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity="0.45"
-          />
-        </svg>
+        <Logo />
         GitStack
       </div>
 
