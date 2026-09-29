@@ -78,3 +78,52 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 ```
 
 Il test applica up (due volte: idempotenza), verifica le tabelle, applica down di 2 passi, riapplica up, e prova i vincoli (unicità, CHECK sugli hash, scope sconosciuti, FK composta team/org, grant con due soggetti). Senza la variabile viene saltato. Per provare con il ruolo a permessi limitati: `psql -v identity_password=... -f migrations/bootstrap-role.sql` e usare `identity_app` nel DSN.
+
+## Utenti locali, password e sessioni web (GIT-33, M-02/E)
+
+Fase 1 (senza handler HTTP: main, config e router sono di GIT-30). Pacchetti in `internal/`:
+
+| Pacchetto | Cosa fa |
+|---|---|
+| `password` | hash argon2id in formato PHC, verifica a tempo costante, politica, hash finto per il login |
+| `users` | creazione, lettura, elenco, aggiornamento, disattivazione, eliminazione, cambio password; protezione dell'ultimo amministratore |
+| `sessions` | sessioni web su `identity.sessions` (solo SHA-256 del cookie), scadenza assoluta, revoca |
+| `loginlimit` | rate limit dei login falliti per utente e per IP, con clock iniettato |
+| `auth` | `Login`, `Logout`, `Session` e i cookie `gst_session` (`SessionCookie`, `ClearCookie`) |
+| `dbtest` | Postgres reale per i test d'integrazione (tag `integration`) |
+
+### Password (argon2id)
+
+Formato salvato in `credentials.secret_hash`: `$argon2id$v=19$m=<KiB>,t=<passate>,p=<thread>$<salt>$<hash>` (base64 senza padding). Parametri costanti (OWASP: 19 MiB, 2 passate, 1 thread): `m=19456,t=2,p=1`, salt 16 byte da `crypto/rand`, chiave 32 byte. Parametri e salt stanno nell'hash: cambiare le costanti in `password` non invalida gli hash esistenti, che al primo login riuscito vengono riscritti con i parametri nuovi (`NeedsRehash`). Confronto con `subtle.ConstantTimeCompare`; i parametri letti da un hash salvato hanno un tetto (memoria ≤ 1 GiB, t ≤ 64).
+
+Politica minima: 12–1024 caratteri (come il contratto), non solo spazi, diversa da username ed email.
+
+### Login e sessioni
+
+- Utente inesistente, password errata, utente disattivato e utente senza password danno lo stesso `ErrInvalidCredentials` (401 `invalid_credentials`) e fanno tutti una verifica argon2id (contro un hash finto per l'inesistente), quindi i tempi restano simili.
+- Cookie `gst_session`: 32 byte casuali in base64url; `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`. Nel database c'è solo lo SHA-256 grezzo (`tokens.HashBytes`). Durata assoluta 7 giorni (`sessions.DefaultTTL`); `last_seen_at` si aggiorna al più una volta al minuto.
+- Logout: revoca la sessione corrente. Cambio password: revoca tutte le sessioni dell'utente, oppure tutte tranne quella del chiamante (`KeepSessionID`, il contratto dice "le altre sessioni"). Disattivazione: revoca tutte le sessioni e tutti i token personali. Tutto nella stessa transazione della modifica.
+- Password, hash e valore del cookie non sono mai nei log né negli errori.
+
+### Rate limit del login
+
+Finestra scorrevole in memoria del processo (con più repliche il limite vale per replica). Ogni fallimento conta sulla chiave dell'utente (username/email in minuscolo, esista o no) e su quella dell'IP; a limite raggiunto `Login` risponde `*RateLimitedError{RetryAfter}` prima di toccare database e hash (il livello HTTP lo mapperà a 429 con `Retry-After`). Un login riuscito azzera il contatore dell'utente. Variabili (tutte opzionali):
+
+| Variabile | Default | Significato |
+|---|---|---|
+| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_USER` | `5` | fallimenti per utente nella finestra |
+| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | fallimenti per IP nella finestra |
+| `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | durata della finestra (formato Go) |
+
+`loginlimit.FromEnv` le legge; il collegamento a `internal/config` è della fase 2.
+
+### Test d'integrazione
+
+```
+docker run -d --rm --name identity-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=gitstack -p 55432:5432 postgres:16-alpine
+cd services/identity
+GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslmode=disable" \
+  go test -tags=integration -count=1 ./...
+```
+
+`dbtest` crea un database per test (`CREATE DATABASE`), quindi i pacchetti girano in parallelo; se il ruolo non può creare database ripiega sul database indicato (allora `-p 1`). Senza la variabile i test d'integrazione sono saltati. Il blocco dopo N tentativi e lo sblocco dopo la finestra (clock finto, senza sleep) sono in `auth/auth_integration_test.go`.
