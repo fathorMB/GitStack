@@ -85,6 +85,8 @@ deployment Kubernetes.
 | `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | no | durata della finestra (formato Go) |
 | `GITSTACK_IDENTITY_SESSION_TTL` | `168h` | no | durata assoluta delle sessioni web |
 | `GITSTACK_IDENTITY_TRUSTED_PROXIES` | vuoto | no | CIDR separati da virgola da cui ci si fida di `X-Gitstack-Client-Ip` (es. la rete dei pod del gateway) |
+| `GITSTACK_IDENTITY_SERVICE_SECRET` | vuoto | no (sì per il gateway) | segreto condiviso che protegge `/internal/*` (`Authorization: Bearer <segreto>`, schema `serviceAuth`). Vuoto: ogni chiamata a `/internal/*` risponde 401 e all'avvio compare un avviso. Il valore non viene mai scritto nei log né nei messaggi d'errore della configurazione; va fornito da un Secret, non da un file in chiaro |
+| `GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME` | `8760h` (365 giorni) | no | durata massima concessa ai token personali (formato Go, es. `2160h`); una scadenza oltre il massimo è rifiutata dalla validazione |
 
 ### IP del client dietro il gateway
 

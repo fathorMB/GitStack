@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strings"
@@ -28,6 +29,11 @@ type Config struct {
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
+
+	// TrustedProxies sono le reti (CIDR) dei proxy davanti al gateway (es.
+	// Traefik) di cui ci si fida per X-Forwarded-For. Vuoto (default):
+	// nessun proxy fidato, l'IP del client è quello della connessione.
+	TrustedProxies []*net.IPNet
 }
 
 const (
@@ -35,6 +41,9 @@ const (
 	envCoreURL     = "GITSTACK_CORE_URL"
 	envCoreTimeout = "GITSTACK_CORE_TIMEOUT"
 	envLogLevel    = "GITSTACK_LOG_LEVEL"
+
+	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
+	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
 
 	defaultAddr        = ":8080"
 	defaultCoreTimeout = 5 * time.Second
@@ -85,6 +94,21 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envCoreTimeout, v))
 		} else {
 			cfg.CoreTimeout = d
+		}
+	}
+
+	if v, ok := lookup(envTrustedProxies); ok {
+		for _, part := range strings.Split(v, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			_, n, err := net.ParseCIDR(part)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s contiene un CIDR non valido: %q", envTrustedProxies, part))
+				continue
+			}
+			cfg.TrustedProxies = append(cfg.TrustedProxies, n)
 		}
 	}
 

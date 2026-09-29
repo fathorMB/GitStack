@@ -28,7 +28,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger) http.Handler {
 	readyClient := &http.Client{Timeout: cfg.CoreTimeout}
 	mux.Handle("GET /readyz", base(http.HandlerFunc(readyz(cfg.CoreURL, readyClient, cfg.CoreTimeout))))
 
-	toCore := proxy.ToCore(cfg.CoreURL, cfg.CoreTimeout, logger)
+	toCore := proxy.ToCore(cfg.CoreURL, cfg.CoreTimeout, logger, proxy.WithTrustedProxies(cfg.TrustedProxies))
 	server := &apiServer{proxy: toCore}
 
 	// Middlewares è applicato per ogni operazione generata, dal primo

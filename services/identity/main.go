@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/config"
 	"github.com/fathorMB/GitStack/services/identity/internal/db"
@@ -26,6 +27,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/loginlimit"
 	"github.com/fathorMB/GitStack/services/identity/internal/migrate"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
+	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -150,9 +152,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 		Sessions: sessions.New(pool, time.Now, cfg.SessionTTL),
 		Limiter:  loginlimit.New(lcfg, time.Now),
 	}
-	api := httpapi.New(svc, logger, httpapi.WithTrustedProxies(cfg.TrustedProxies))
-
-	router := httpserver.NewRouter(pool, api)
+	router := buildRouter(cfg, pool, svc, logger)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -183,6 +183,23 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 	}
 
 	return 0
+}
+
+// buildRouter monta il router reale del servizio: auth/users, token
+// personali, chiavi SSH e /internal/* (protetto dal segreto di servizio). Il
+// segreto non viene mai loggato: si segnala solo se manca.
+func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, logger *slog.Logger) http.Handler {
+	if cfg.ServiceSecret == "" {
+		logger.Warn("segreto di servizio non configurato: /internal/* risponde sempre 401",
+			"env", config.EnvServiceSecret)
+	}
+	api := httpapi.New(svc, logger,
+		httpapi.WithTrustedProxies(cfg.TrustedProxies),
+		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
+		httpapi.WithSSHKeys(userkeys.New(pool, time.Now)),
+		httpapi.WithServiceSecret(cfg.ServiceSecret),
+	)
+	return httpserver.NewRouter(pool, api)
 }
 
 func parseLevel(level string) (slog.Level, bool) {
