@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Controllo di CI: il codice generato (client/go/*.gen.go,
-# client/ts/src/generated/**, e internal/openapi/api.gen.go di gateway e
+# client/ts/src/generated/**, e internal/openapi/api.gen.go di gateway, identity e
 # core) deve essere allineato al contratto OpenAPI (api/openapi.yaml).
 # Rigenera e fallisce se l'albero di lavoro risulta sporco dopo la
 # rigenerazione, ma SOLO su questi file: vuol dire che qualcuno ha cambiato
@@ -28,6 +28,7 @@ generated_paths=(
   'client/ts/src/generated'
   'services/gateway/internal/openapi/api.gen.go'
   'services/core/internal/openapi/api.gen.go'
+  'services/identity/internal/openapi/api.gen.go'
 )
 
 status="$(git status --porcelain -- "${generated_paths[@]}")"
