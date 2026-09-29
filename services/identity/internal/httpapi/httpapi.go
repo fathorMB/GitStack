@@ -33,8 +33,11 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
+	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
+	"github.com/fathorMB/GitStack/services/identity/internal/trust"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -201,8 +204,7 @@ const CodePasswordChangeRequired = "password_change_required"
 func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
 	c, err := r.Cookie(auth.CookieName)
 	if err != nil {
-		unauthenticated(w)
-		return auth.Current{}, false
+		return s.currentSigned(w, r)
 	}
 	cur, err := s.auth.Session(r.Context(), c.Value)
 	if errors.Is(err, auth.ErrUnauthenticated) {
@@ -214,6 +216,39 @@ func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Cu
 		return auth.Current{}, false
 	}
 	return cur, true
+}
+
+// currentSigned risolve il chiamante dall'identità inoltrata dal gateway
+// (header X-Gitstack-* firmati con il segreto di servizio), per le richieste
+// senza cookie: token personali. Segreto non configurato, header mancanti,
+// firma non valida o scaduta, utente inesistente o disattivato: 401. Il
+// Current restituito non ha sessione (Session.ID è uuid.Nil).
+func (s *server) currentSigned(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
+	id, ok := trust.Verify(r.Header, s.serviceSecret, time.Now())
+	if !ok {
+		unauthenticated(w)
+		return auth.Current{}, false
+	}
+	uid, err := uuid.Parse(id.UserID)
+	if err != nil {
+		unauthenticated(w)
+		return auth.Current{}, false
+	}
+	u, err := s.users.GetByID(r.Context(), uid)
+	if errors.Is(err, users.ErrNotFound) || (err == nil && !u.IsActive) {
+		unauthenticated(w)
+		return auth.Current{}, false
+	}
+	if err != nil {
+		s.internal(w, r, err)
+		return auth.Current{}, false
+	}
+	must, err := s.users.MustChangePassword(r.Context(), u.ID)
+	if err != nil {
+		s.internal(w, r, err)
+		return auth.Current{}, false
+	}
+	return auth.Current{User: u, Session: sessions.Session{UserID: u.ID, AuthMethod: "token"}, MustChange: must}, true
 }
 
 // ---- conversioni ----
@@ -306,11 +341,15 @@ func (s *server) GetCurrentSession(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	exp := cur.Session.ExpiresAt
-	writeJSON(w, http.StatusOK, openapi.CurrentSession{
-		User: toUser(cur.User, true), AuthMethod: openapi.CurrentSessionAuthMethod(cur.Session.AuthMethod), ExpiresAt: &exp,
+	out := openapi.CurrentSession{
+		User: toUser(cur.User, true), AuthMethod: openapi.CurrentSessionAuthMethod(cur.Session.AuthMethod),
 		MustChangePassword: cur.MustChange,
-	})
+	}
+	if !cur.Session.ExpiresAt.IsZero() {
+		exp := cur.Session.ExpiresAt
+		out.ExpiresAt = &exp
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // ---- users ----
@@ -496,7 +535,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 			return
 		}
 	}
-	if self {
+	if self && cur.Session.ID != uuid.Nil {
 		id := cur.Session.ID
 		ci.KeepSessionID = &id // "revoca le altre sessioni"
 	}

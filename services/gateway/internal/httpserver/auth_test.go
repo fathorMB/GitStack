@@ -423,7 +423,7 @@ func TestAuth_PasswordDaCambiare(t *testing.T) {
 // firmati: core può verificare che vengono dal gateway.
 func TestAuth_IdentitaFirmataVersoIServiziAValle(t *testing.T) {
 	v := &stubVerifier{results: map[string]identityclient.Result{
-		"gst_tok":  tokenResult("write:user", "read:org"),
+		"gst_tok":  tokenResult("write:user", "read:org", "read:resource"),
 		"sess":     sessionResult("alice", false),
 		"gst_evil": tokenResult("read:resource"),
 	}}
@@ -458,7 +458,7 @@ func TestAuth_IdentitaFirmataVersoIServiziAValle(t *testing.T) {
 			t.Fatal(rec.Code)
 		}
 		got := e.core.last()
-		expect(t, got, trust.Identity{UserID: "22222222-2222-2222-2222-222222222222", Username: "bot", Scopes: []string{"write:user", "read:org"}})
+		expect(t, got, trust.Identity{UserID: "22222222-2222-2222-2222-222222222222", Username: "bot", Scopes: []string{"write:user", "read:org", "read:resource"}})
 		// core non vede mai la credenziale del client.
 		if got.Header.Get("Authorization") != "" || got.Header.Get("Cookie") != "" {
 			t.Errorf("credenziali arrivate a core: Authorization=%q Cookie=%q", got.Header.Get("Authorization"), got.Header.Get("Cookie"))
