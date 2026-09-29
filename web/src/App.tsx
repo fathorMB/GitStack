@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ResourcesPage } from './pages/ResourcesPage';
@@ -19,6 +20,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route
         path="/"
         element={
