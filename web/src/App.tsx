@@ -4,6 +4,8 @@ import { AppShell } from './layout/AppShell';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ResourcesPage } from './pages/ResourcesPage';
+import { OrgPage } from './pages/orgs/OrgPage';
+import { OrgsPage } from './pages/orgs/OrgsPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { SshKeysPage } from './pages/settings/SshKeysPage';
@@ -33,6 +35,26 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Components">
               <ComponentsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/orgs"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Organizations">
+              <OrgsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/orgs/:org"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Organization">
+              <OrgPage />
             </AppShell>
           </RequireAuth>
         }
