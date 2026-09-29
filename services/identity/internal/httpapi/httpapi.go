@@ -25,8 +25,10 @@ import (
 	"strconv"
 	"unicode/utf8"
 
+	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
+	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -35,13 +37,17 @@ const maxBody = 1 << 20
 
 // New assembla l'handler HTTP di identity per i tag auth e users.
 // logger nil usa slog.Default().
-func New(a *auth.Service, logger *slog.Logger) http.Handler {
+func New(a *auth.Service, logger *slog.Logger, opts ...Option) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	s := &server{auth: a, users: a.Users, log: logger}
+	for _, o := range opts {
+		o(s)
+	}
 	return openapi.HandlerWithOptions(s, openapi.StdHTTPServerOptions{
-		BaseRouter: http.NewServeMux(),
+		BaseRouter:  http.NewServeMux(),
+		Middlewares: []openapi.MiddlewareFunc{s.serviceAuth},
 		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			writeError(w, http.StatusBadRequest, "bad_request", "Richiesta non valida.")
 		},
@@ -49,9 +55,12 @@ func New(a *auth.Service, logger *slog.Logger) http.Handler {
 }
 
 type server struct {
-	auth  *auth.Service
-	users *users.Service
-	log   *slog.Logger
+	auth          *auth.Service
+	users         *users.Service
+	log           *slog.Logger
+	tokens        *apitokens.Service
+	keys          *userkeys.Service
+	serviceSecret string
 }
 
 var _ openapi.ServerInterface = (*server)(nil)

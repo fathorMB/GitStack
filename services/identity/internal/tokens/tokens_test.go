@@ -268,7 +268,7 @@ func TestRoundTrip(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			raw := make([]byte, 32)
 			for j := range raw {
-				raw[j] = byte(i*31 + j*17) & 0xFF
+				raw[j] = byte(i*31+j*17) & 0xFF
 			}
 			enc := base62Encode(raw)
 			if len(enc) != payloadLen {
@@ -321,7 +321,7 @@ func TestHashBytes(t *testing.T) {
 	t.Run("HashBytes non restituisce il token", func(t *testing.T) {
 		token := "gst_" + strings.Repeat("A", payloadLen) + "_" + strings.Repeat("A", checksumLen)
 		h := HashBytes(token)
-		_ = token     // il byte slice non contiene il token
+		_ = token       // il byte slice non contiene il token
 		_ = [32]byte(h) // 32 byte grezzi, non il token
 	})
 }
@@ -359,7 +359,7 @@ func TestCompareToken(t *testing.T) {
 	t.Run("token corretto", func(t *testing.T) {
 		token := "gst_" + strings.Repeat("A", payloadLen) + "_" + strings.Repeat("A", checksumLen)
 		h := HashBytes(token)
-		if !CompareToken(token, string(h[:])) {
+		if !CompareToken(token, h[:]) {
 			t.Error("CompareToken non ha confrontato correttamente")
 		}
 	})
@@ -368,17 +368,17 @@ func TestCompareToken(t *testing.T) {
 		token := "gst_" + strings.Repeat("A", payloadLen) + "_" + strings.Repeat("A", checksumLen)
 		wrong := make([]byte, 32)
 		wrong[0] = 0xFF
-		if CompareToken(token, string(wrong)) {
+		if CompareToken(token, wrong) {
 			t.Error("CompareToken ha confrontato hash errato come corretto")
 		}
 	})
 
 	t.Run("hash di lunghezza sbagliata", func(t *testing.T) {
 		token := "gst_" + strings.Repeat("A", payloadLen) + "_" + strings.Repeat("A", checksumLen)
-		if CompareToken(token, "") {
+		if CompareToken(token, nil) {
 			t.Error("CompareToken con hash vuoto ha restituito true")
 		}
-		if CompareToken(token, "abc") {
+		if CompareToken(token, []byte("abc")) {
 			t.Error("CompareToken con hash corto ha restituito true")
 		}
 	})
@@ -561,7 +561,7 @@ func TestValidateErrors(t *testing.T) {
 	})
 
 	t.Run("prefisso errato → ErrInvalidToken", func(t *testing.T) {
-		err := validate("xx" + strings.Repeat("A", payloadLen)+"_AAAAAA")
+		err := validate("xx" + strings.Repeat("A", payloadLen) + "_AAAAAA")
 		if err == nil || !errors.Is(err, ErrInvalidToken) {
 			t.Errorf("validate('xx…') = %v, voleva ErrInvalidToken", err)
 		}

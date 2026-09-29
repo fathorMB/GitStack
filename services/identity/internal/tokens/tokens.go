@@ -188,12 +188,12 @@ func Hash(token string) string {
 // costante per prevenire side-channel attack.
 //
 // Se l'hash non ha esattamente 32 byte, ritorna false.
-func CompareToken(token, hashStr string) bool {
-	if len(hashStr) != 32 {
+func CompareToken(token string, stored []byte) bool {
+	if len(stored) != 32 {
 		return false
 	}
 	tokenHash := HashBytes(token)
-	return subtle.ConstantTimeCompare(tokenHash[:], []byte(hashStr)) == 1
+	return subtle.ConstantTimeCompare(tokenHash[:], stored) == 1
 }
 
 // ParseScopes analizza una lista di scope stringa e restituisce una
@@ -203,7 +203,7 @@ func CompareToken(token, hashStr string) bool {
 // ErrDuplicateScope se trova duplicati. Restituisce la lista
 // normalizzata (ordine alfabetico) in caso di successo.
 var (
-	ErrUnknownScope  = errors.New("scope sconosciuto")
+	ErrUnknownScope   = errors.New("scope sconosciuto")
 	ErrDuplicateScope = errors.New("scope duplicato")
 )
 

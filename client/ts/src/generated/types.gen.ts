@@ -196,7 +196,8 @@ export type CreateTokenInput = {
     name: string;
     scopes: Array<TokenScope>;
     /**
-     * Assente = non scade.
+     * Obbligatoria: la scadenza deve essere nel futuro e non oltre il massimo configurato dall'installazione (default 365 giorni), altrimenti 422.
+     *
      */
     expiresAt?: string;
 };
