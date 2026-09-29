@@ -94,3 +94,11 @@ export function describeError(err: unknown): string {
   if (err instanceof Error && err.name === 'ApiError') return err.message;
   return 'Could not reach the server. Check your connection and try again.';
 }
+
+/** Errori per campo di un 422 validation_failed (details.fields), altrimenti {}. */
+export function fieldErrors(err: unknown): Record<string, string> {
+  if (!(err instanceof ApiError) || err.status !== 422) return {};
+  const fields = err.details?.fields;
+  if (!fields || typeof fields !== 'object') return {};
+  return Object.fromEntries(Object.entries(fields as Record<string, unknown>).map(([k, v]) => [k, String(v)]));
+}

@@ -1,5 +1,6 @@
 import { Boxes, Database, Grid2x2, Home, Server, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { NavLink } from 'react-router-dom';
 import { Logo } from '../components';
 
 // Struttura a gruppi (Workspace / Platform / Administration) e voci
@@ -16,14 +17,24 @@ function SidebarItem({
   active = false,
   disabled = false,
   soon = false,
+  to,
 }: {
   icon: ReactNode;
   label: string;
   active?: boolean;
   disabled?: boolean;
   soon?: boolean;
+  to?: string;
 }) {
   const className = ['sb-item', active ? 'active' : '', disabled ? 'disabled' : ''].filter(Boolean).join(' ');
+  if (to) {
+    return (
+      <NavLink to={to} end={to === '/'} className={({ isActive }) => `sb-item${isActive ? ' active' : ''}`}>
+        {icon}
+        <span>{label}</span>
+      </NavLink>
+    );
+  }
   return (
     <button type="button" className={className} disabled={disabled} aria-current={active ? 'page' : undefined}>
       {icon}
@@ -43,14 +54,14 @@ export function Sidebar() {
 
       <div className="sb-grp">Workspace</div>
       <SidebarItem icon={<Home size={18} strokeWidth={1.8} />} label="Home" disabled soon />
-      <SidebarItem icon={<Boxes size={18} strokeWidth={1.8} />} label="Resources" active />
+      <SidebarItem icon={<Boxes size={18} strokeWidth={1.8} />} label="Resources" to="/" />
 
       <div className="sb-grp">Platform</div>
       <SidebarItem icon={<Grid2x2 size={18} strokeWidth={1.8} />} label="Apps" disabled soon />
       <SidebarItem icon={<Database size={18} strokeWidth={1.8} />} label="Databases" disabled soon />
 
       <div className="sb-grp">Administration</div>
-      <SidebarItem icon={<Users size={18} strokeWidth={1.8} />} label="Organization" disabled soon />
+      <SidebarItem icon={<Users size={18} strokeWidth={1.8} />} label="Organization" to="/orgs" />
       <SidebarItem icon={<Server size={18} strokeWidth={1.8} />} label="System" disabled soon />
     </aside>
   );
