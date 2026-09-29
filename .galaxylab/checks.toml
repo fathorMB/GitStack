@@ -44,14 +44,14 @@ name = "go-build"
 # (una tabella per modulo, vedi in fondo). Un controllo successivo, in un item separato, sostituira'
 # questo elenco con uno script (es. scripts/go-each.sh) quando sapremo come
 # il motore lancia la shell.
-run = "go build ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
+run = "go build ./api/... ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
 timeout_s = 600
 
 [[check]]
 name = "go-test"
 # Stessi pattern di go-build: aggiornare entrambi quando si aggiunge un modulo
 # a go.work (e aggiungere il go-lint-<modulo> del modulo). Non richiede Postgres.
-run = "go test ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
+run = "go test ./api/... ./cli/... ./client/go/... ./pkg/events/... ./services/core/... ./services/gateway/... ./services/git/... ./services/identity/..."
 timeout_s = 900
 
 [[check]]
@@ -138,3 +138,10 @@ run = "golangci-lint run ./... --timeout=5m"
 cwd = "services/identity"
 timeout_s = 600
 paths = ["services/identity/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "go-lint-api"
+run = "golangci-lint run ./... --timeout=5m"
+cwd = "api"
+timeout_s = 600
+paths = ["api/**", ".golangci.yml", "go.work", "go.work.sum"]

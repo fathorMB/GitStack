@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -14,9 +16,15 @@ import (
 // una struttura regolare) e ritorna, per ogni percorso, i tag dell'operazione.
 func contractRoutes(t *testing.T) map[string][]string {
 	t.Helper()
-	raw, err := os.ReadFile("../../../../api/openapi.yaml")
+	// La spec arriva dal modulo api (go run in modalità workspace), non da
+	// un percorso relativo fuori dal modulo.
+	specFile := filepath.Join(t.TempDir(), "openapi.yaml")
+	if out, err := exec.Command("go", "run", "github.com/fathorMB/GitStack/api/cmd/specdump", specFile).CombinedOutput(); err != nil {
+		t.Fatalf("specdump: %v\n%s", err, out)
+	}
+	raw, err := os.ReadFile(specFile)
 	if err != nil {
-		t.Fatalf("lettura di api/openapi.yaml: %v", err)
+		t.Fatalf("lettura della spec: %v", err)
 	}
 	pathRe := regexp.MustCompile(`^  (/[^\s:]*):\s*$`)
 	tagsRe := regexp.MustCompile(`^\s+tags:\s*\[([^\]]*)\]`)

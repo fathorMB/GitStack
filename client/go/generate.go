@@ -7,4 +7,5 @@
 // del server (AGPL-3.0): decisione D17.
 package gitstack
 
-//go:generate go tool oapi-codegen -config oapi-codegen.yaml ../../api/openapi.yaml
+//go:generate go run github.com/fathorMB/GitStack/api/cmd/specdump .openapi.spec.yaml
+//go:generate go tool oapi-codegen -config oapi-codegen.yaml .openapi.spec.yaml
