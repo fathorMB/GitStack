@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -125,7 +127,13 @@ func cookieReq(method, target, value string) *http.Request {
 // Una rotta nuova nel contratto (o un pattern nuovo) senza dichiarazione fa
 // fallire questo test.
 func TestSicurezza_OgniRottaHaLaSuaDichiarazione(t *testing.T) {
-	raw, err := os.ReadFile("../../../../api/openapi.yaml")
+	// La spec arriva dal modulo api (go run in modalità workspace), come in
+	// contractRoutes.
+	specFile := filepath.Join(t.TempDir(), "openapi.yaml")
+	if out, err := exec.Command("go", "run", "github.com/fathorMB/GitStack/api/cmd/specdump", specFile).CombinedOutput(); err != nil {
+		t.Fatalf("specdump: %v\n%s", err, out)
+	}
+	raw, err := os.ReadFile(specFile)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,8 @@
 // richiesta a /v1/* che non corrisponde a nessuna dichiarazione non passa.
 package security
 
-//go:generate go run ./gen -contract ../../../../api/openapi.yaml -out routes.gen.go
+//go:generate go run github.com/fathorMB/GitStack/api/cmd/specdump .openapi.spec.yaml
+//go:generate go run ./gen -contract .openapi.spec.yaml -out routes.gen.go
 
 import (
 	"strings"
