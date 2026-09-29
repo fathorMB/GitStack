@@ -67,6 +67,48 @@ Nessun segreto in chiaro:
 Vincoli notevoli: username/nomi minuscoli con CHECK di formato; email unica case-insensitive; `team_members` ha una FK composta verso `org_members`, quindi un membro di team è sempre membro dell'organizzazione e uscire dall'org lo toglie dai team; `resource_grants` ha esattamente un soggetto (utente **o** team, CHECK `num_nonnulls = 1`), un grant per (risorsa, soggetto), e **nessuna FK** su `resource_id` perché la risorsa vive nello schema `core` (D6).
 
 Aperto per gli item successivi: nessuna API di amministrazione dei provider OIDC (oggi righe di `oidc_providers` inserite da configurazione/operatore); gli stati di `state`/`nonce` del login OIDC non sono a database (cookie firmato, decisione di GIT-3x).
+## Configurazione
+
+Tutta la configurazione da variabili d'ambiente, prefisso `GITSTACK_IDENTITY_`.
+Nessun file di configurazione: il binario è pensato per container Docker e
+deployment Kubernetes.
+
+| Variabile | Default | Obbligatoria | Descrizione |
+|---|---|---|---|
+| `GITSTACK_IDENTITY_ADDR` | `:8080` | no | indirizzo di ascolto HTTP |
+| `GITSTACK_IDENTITY_DB_URL` | — | sì | stringa di connessione Postgres |
+| `GITSTACK_IDENTITY_DB_MAX_CONNS` | `10` | no | connessioni massime nel pool |
+| `GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT` | `30s` | no | timeout migrazioni all'avvio |
+| `GITSTACK_IDENTITY_LOG_LEVEL` | `info` | no | livello log (debug|info|warn|error) |
+| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_USER` | `5` | no | fallimenti per utente nella finestra |
+| `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | no | fallimenti per IP nella finestra |
+| `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | no | durata della finestra (formato Go) |
+
+## Utilizzo
+
+Il binario supporta i comandi:
+
+- `identity serve` — avvia il server HTTP (default, nessun sotto-commando).
+- `identity migrate up` — applica tutte le migrazioni SQL in `internal/migrate/sql`.
+- `identity migrate down [N]` — rimuove N step di migrazione (default 1).
+
+Le migrazioni vengono applicate all'avvio di `serve` prima di accettare richieste.
+
+## Probe di salute
+
+Tutti i servizi GitStack espongono due endpoint HTTP:
+
+- `GET /healthz` — risponde `200 OK` finché il processo è vivo.
+- `GET /readyz` — risponde `200 OK` se la connessione a Postgres è attiva; altrimenti `503 Service Unavailable`.
+
+Il probe di readiness ha un timeout breve: se Postgres non risponde entro qualche secondo, il servizio è segnato non pronto.
+
+## Note di sicurezza
+
+Nessun segreto nei log. La `GITSTACK_IDENTITY_DB_URL` contiene la password di Postgres:
+il servizio la registra solo come `host`, `port` e `database`, mai il valore intero.
+Anche in caso di errore di connessione, il log non contiene né la password né il DSN completo.
+
 
 ### Provare le migrazioni su un Postgres vero
 
@@ -115,7 +157,7 @@ Finestra scorrevole in memoria del processo (con più repliche il limite vale pe
 | `GITSTACK_IDENTITY_LOGIN_MAX_ATTEMPTS_IP` | `20` | fallimenti per IP nella finestra |
 | `GITSTACK_IDENTITY_LOGIN_WINDOW` | `15m` | durata della finestra (formato Go) |
 
-`loginlimit.FromEnv` le legge; il collegamento a `internal/config` è della fase 2.
+`loginlimit.FromEnv` le legge; main.go la chiama all'avvio (GIT-30).
 
 ### Test d'integrazione
 
@@ -130,7 +172,7 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 
 ### Livello HTTP (GIT-33, fase 2)
 
-`internal/openapi` contiene la `ServerInterface` generata da `api/openapi.yaml` per i tag `auth` e `users` (`include-tags` in `oapi-codegen.yaml`; si rigenera con `scripts/generate-api.sh`). `internal/httpapi` la implementa: `httpapi.New(*auth.Service, *slog.Logger) http.Handler` è pronto da montare (percorsi senza `/v1`, come core: il prefisso lo toglie il gateway). Il collegamento a `main.go` e a `internal/config` (compresa la lettura di `loginlimit.FromEnv`) è di GIT-30.
+`internal/openapi` contiene la `ServerInterface` generata da `api/openapi.yaml` per i tag `auth` e `users` (`include-tags` in `oapi-codegen.yaml`; si rigenera con `scripts/generate-api.sh`). `internal/httpapi` la implementa: `httpapi.New(*auth.Service, *slog.Logger) http.Handler` è pronto da montare (percorsi senza `/v1`, come core: il prefisso lo toglie il gateway). `main.go` lo monta su `/` accanto a `/healthz` e `/readyz` (GIT-30).
 
 - Autenticazione: solo cookie `gst_session` (i token personali sono di un altro item). Senza sessione valida 401 `unauthenticated`.
 - Permessi: creare ed eliminare utenti solo admin (403 `forbidden` altrimenti); aggiornare profilo e cambiare password admin o l'utente stesso (chi non è admin né l'utente stesso non scopre nemmeno se l'utente esiste: 403); `isAdmin`/`isActive` solo admin; leggere utenti qualunque utente autenticato (email e campi amministrativi solo per sé e per gli admin).
