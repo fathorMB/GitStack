@@ -343,10 +343,20 @@ jobs:
             elapsed=$((elapsed + 3))
           done
           echo "OK: CRD middlewares.traefik.io presente dopo ${elapsed}s, attendo Established..."
-          if ! kubectl wait --for=condition=established crd/middlewares.traefik.io --timeout=60s; then
-            echo "FALLITO: la CRD middlewares.traefik.io non è diventata Established in tempo" >&2
-            exit 1
-          fi
+          # Polling su jsonpath invece di "kubectl wait": su una CRD appena
+          # creata status.conditions puo' non esistere ancora e kubectl wait
+          # esce subito con "accessor error" (GIT-50).
+          est_timeout=60
+          est_elapsed=0
+          until [ "$(kubectl get crd middlewares.traefik.io -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' 2>/dev/null || true)" = "True" ]; do
+            if [ "${est_elapsed}" -ge "${est_timeout}" ]; then
+              echo "FALLITO: la CRD middlewares.traefik.io non è diventata Established entro ${est_timeout}s" >&2
+              kubectl get crd middlewares.traefik.io -o yaml || true
+              exit 1
+            fi
+            sleep 2
+            est_elapsed=$((est_elapsed + 2))
+          done
           echo "OK: CRD middlewares.traefik.io Established"
 
       - name: Importa le immagini nel cluster (nessun push su un registry per questo job)
