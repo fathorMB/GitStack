@@ -76,6 +76,7 @@ paths:
     get:
       operationId: listResources
       tags: [resources]
+      x-required-scopes: ["read:resource"]
       summary: Elenca le risorse
       description: >
         Elenco paginato delle risorse, con filtro opzionale per tipo (es.
@@ -101,6 +102,7 @@ paths:
     post:
       operationId: createResource
       tags: [resources]
+      x-required-scopes: ["write:resource"]
       summary: Crea una risorsa
       requestBody:
         required: true
@@ -136,6 +138,7 @@ paths:
     get:
       operationId: getResource
       tags: [resources]
+      x-required-scopes: ["read:resource"]
       summary: Legge una risorsa
       responses:
         "200":
@@ -153,6 +156,7 @@ paths:
     patch:
       operationId: updateResource
       tags: [resources]
+      x-required-scopes: ["write:resource"]
       summary: Aggiorna una risorsa
       description: "Aggiornamento parziale: solo i campi presenti nel corpo cambiano."
       requestBody:
@@ -179,6 +183,7 @@ paths:
     delete:
       operationId: deleteResource
       tags: [resources]
+      x-required-scopes: ["write:resource"]
       summary: Elimina una risorsa
       responses:
         "204":

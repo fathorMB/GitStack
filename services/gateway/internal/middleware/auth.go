@@ -88,6 +88,12 @@ func Auth(cfg AuthConfig) Middleware {
 			}
 			p := res.Principal
 
+			// Il logout revoca la sessione: la voce in cache non deve restare valida
+			// fino al TTL, neanche se identity risponde 204.
+			if route.OperationID == "logout" && cfg.Forgetter != nil {
+				defer cfg.Forgetter.Forget(cred)
+			}
+
 			if p.MustChangePassword {
 				exempt := route.PasswordChangeExempt == security.ExemptAlways ||
 					(route.PasswordChangeExempt == security.ExemptSelf && m.Params["username"] == p.Username)
