@@ -77,7 +77,15 @@ Lo script stampa l'URL della UI (`http://<ip-macchina>/`), l'URL di salute dell'
 
 ### Sicurezza: CA interna, certificati, utente admin
 
-Non ancora implementati in v0: l'installazione parla HTTP in chiaro sull'IP della macchina e non crea ancora nessun utente admin: il servizio `identity` è nel chart (GIT-36), ma l'admin al primo avvio arriva con GIT-35. Completamento previsto in M-02/M-08 [c_8458909a21d9035f].
+CA interna e certificati non sono ancora implementati in v0: l'installazione parla HTTP in chiaro sull'IP della macchina. Completamento previsto in M-02/M-08 [c_8458909a21d9035f].
+
+**Utente admin (GIT-35).** Al primo avvio, su un database senza nessun amministratore, `identity` crea l'utente `admin`. La password iniziale la genera il chart una sola volta nel Secret `<release>-identity-admin` (`helm.sh/resource-policy: keep`): l'installer non la stampa mai, mostra solo il comando per leggerla:
+
+```sh
+k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
+Al primo login la password va cambiata: finché non lo fai ogni altra chiamata risponde 403 `password_change_required`. Rieseguire `install.sh` non cambia né il Secret né l'admin.
 
 ### Opzioni principali
 

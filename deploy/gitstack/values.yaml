@@ -138,6 +138,16 @@ identity:
     password: ""
     # Alternativa: nome di un Secret esistente con la chiave `password`.
     existingSecret: ""
+  admin:
+    # Utente admin creato al primo avvio (solo se il database non ha nessun
+    # amministratore). Password iniziale: generata una sola volta dal chart in
+    # un Secret <release>-identity-admin (chiavi `username` e `password`,
+    # helm.sh/resource-policy: keep), mai nei values ne nei log; l'admin deve
+    # cambiarla al primo login. Un upgrade/reinstall non la rigenera.
+    username: admin
+    # Alternativa: nome di un Secret esistente con le chiavi `username` e
+    # `password`.
+    existingSecret: ""
   serviceSecret:
     # Segreto condiviso con il gateway per /internal/*
     # (GITSTACK_IDENTITY_SERVICE_SECRET). Il chart lo genera una sola volta in

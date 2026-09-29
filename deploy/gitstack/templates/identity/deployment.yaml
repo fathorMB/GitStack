@@ -18,6 +18,7 @@
 {{- end -}}
 {{- $svcSecret := .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
+{{- $adminSecret := .Values.identity.admin.existingSecret | default (printf "%s-identity-admin" (include "gitstack.fullname" .)) -}}
 {{- $oidc := and .Values.identity.oidc.enabled -}}
 {{- $oidcSecret := .Values.identity.oidc.existingSecret | default (printf "%s-identity-oidc" (include "gitstack.fullname" .)) -}}
 {{- $oidcKeySecret := .Values.identity.oidc.encKey.existingSecret | default (printf "%s-identity-oidc-key" (include "gitstack.fullname" .)) -}}
@@ -126,6 +127,19 @@ spec:
                 secretKeyRef:
                   name: {{ $svcSecret }}
                   key: secret
+            # Admin del primo avvio: la password iniziale arriva solo dal Secret
+            # (mai da values, mai nei log). identity crea l'admin solo se il
+            # database non ne ha nessuno.
+            - name: GITSTACK_IDENTITY_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $adminSecret }}
+                  key: username
+            - name: GITSTACK_IDENTITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $adminSecret }}
+                  key: password
             {{- if $oidc }}
             # Login OIDC: file dei provider da Secret montato, chiave da Secret.
             - name: GITSTACK_IDENTITY_OIDC_CONFIG_FILE

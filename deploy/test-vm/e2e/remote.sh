@@ -28,6 +28,15 @@
 #                                             l'idempotenza (criterio f del
 #                                             piano CTO) senza mai stampare
 #                                             la password in chiaro.
+#   admin-password <release> <ns>            Password iniziale dell'admin dal
+#                                             Secret "<release>-identity-admin"
+#                                             (GIT-35). Solo per il login
+#                                             dell'e2e: chi lo chiama non
+#                                             deve scriverla in nessun log.
+#   admin-secret-state <release> <ns>        resourceVersion e sha256 dei dati
+#                                             del Secret dell'admin, senza mai
+#                                             stampare la password: per la
+#                                             prova di idempotenza (GIT-35).
 #   k3s-active-since                         ActiveEnterTimestamp del
 #                                             servizio systemd k3s: se
 #                                             un'installazione idempotente
@@ -191,6 +200,31 @@ postgres_secret_hash() {
   printf '%s' "${pwd_b64}" | sha256sum | awk '{print $1}'
 }
 
+# --- admin-password / admin-secret-state (GIT-35) ---------------------------
+
+admin_password() {
+  local release="${1:-gitstack}"
+  local ns="${2:-default}"
+  local secret="${release}-identity-admin"
+  local pwd_b64
+  pwd_b64="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data.password}' 2>&1)" \
+    || fail "impossibile leggere il Secret '${secret}' nel namespace '${ns}'."
+  [ -n "${pwd_b64}" ] || fail "il Secret '${secret}' non ha la chiave 'password'."
+  printf '%s' "${pwd_b64}" | base64 -d
+}
+
+admin_secret_state() {
+  local release="${1:-gitstack}"
+  local ns="${2:-default}"
+  local secret="${release}-identity-admin"
+  local rv data
+  rv="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.metadata.resourceVersion}' 2>&1)" \
+    || fail "impossibile leggere il Secret '${secret}' nel namespace '${ns}'."
+  data="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data}' 2>&1)" \
+    || fail "impossibile leggere i dati del Secret '${secret}'."
+  printf '%s %s\n' "${rv}" "$(printf '%s' "${data}" | sha256sum | awk '{print $1}')"
+}
+
 # --- k3s-active-since ------------------------------------------------------
 
 k3s_active_since() {
@@ -247,7 +281,7 @@ usage() {
   cat <<'EOF'
 Uso: remote.sh <sottocomando> [argomenti]
 Sottocomandi: clean-check, jetstream-count, postgres-secret-hash,
-k3s-active-since, collect-diagnostics. Vedi l'intestazione del file.
+admin-password, admin-secret-state, k3s-active-since, collect-diagnostics. Vedi l'intestazione del file.
 EOF
 }
 
@@ -260,6 +294,8 @@ main() {
     clean-check) clean_check "$@" ;;
     jetstream-count) jetstream_count "$@" ;;
     postgres-secret-hash) postgres_secret_hash "$@" ;;
+    admin-password) admin_password "$@" ;;
+    admin-secret-state) admin_secret_state "$@" ;;
     k3s-active-since) k3s_active_since "$@" ;;
     collect-diagnostics) collect_diagnostics "$@" ;;
     -h|--help) usage ;;
