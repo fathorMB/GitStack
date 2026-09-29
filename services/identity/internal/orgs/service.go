@@ -16,10 +16,10 @@ import (
 
 // Errori di dominio.
 var (
-	ErrNotFound        = errors.New("organizzazione non trovata")
-	ErrLastOwner       = errors.New("non si può rimuovere o declassare l'ultimo owner")
-	ErrNotOrgMember    = errors.New("utente non membro dell'organizzazione")
-	ErrInvalidRole     = errors.New("ruolo non valido")
+	ErrNotFound     = errors.New("organizzazione non trovata")
+	ErrLastOwner    = errors.New("non si può rimuovere o declassare l'ultimo owner")
+	ErrNotOrgMember = errors.New("utente non membro dell'organizzazione")
+	ErrInvalidRole  = errors.New("ruolo non valido")
 )
 
 // ValidationError raccoglie i motivi di rifiuto per campo (422).

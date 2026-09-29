@@ -36,7 +36,6 @@ func (s *server) orgResolve(w http.ResponseWriter, r *http.Request, org openapi.
 
 // ---- organizations ----
 
-
 func (s *server) ListOrganizations(w http.ResponseWriter, r *http.Request, params openapi.ListOrganizationsParams) {
 	if s.orgs == nil {
 		unavailable(w)
