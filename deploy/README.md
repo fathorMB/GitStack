@@ -2,7 +2,7 @@
 
 Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno dei servizi (`gateway`, `identity`, `git`, `core`, `web`, `postgres`, `nats`), lo script di installazione a comando singolo e la VM di test riproducibile. Architettura: `.lmbrain-lite/knowledge/architecture.md`.
 
-- `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` e `git` non hanno ancora un'immagine (arrivano con milestone successive a M-01): non sono nel chart.
+- `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `identity`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` (GIT-36) è nel chart, con ruolo e schema Postgres dedicati e le sue rotte instradate dal gateway; `git` non ha ancora un'immagine: non è nel chart.
 - `install.sh` — Installer v0 (M-01/T-09, questo item): un solo comando installa k3s e GitStack (chart di `gitstack/`) su una macchina Linux pulita. Dettagli sotto.
 - `test-vm/` — script che creano, ripristinano e distruggono la VM Linux locale usata per provare l'installer (M-01/T-12, GIT-12). Vedi `test-vm/README.md`.
 
@@ -77,7 +77,7 @@ Lo script stampa l'URL della UI (`http://<ip-macchina>/`), l'URL di salute dell'
 
 ### Sicurezza: CA interna, certificati, utente admin
 
-Non ancora implementati in v0: l'installazione parla HTTP in chiaro sull'IP della macchina e non crea nessun utente, perché il servizio `identity` non è ancora nel chart (arriva dopo M-01). Completamento previsto in M-02/M-08 [c_8458909a21d9035f].
+Non ancora implementati in v0: l'installazione parla HTTP in chiaro sull'IP della macchina e non crea ancora nessun utente admin: il servizio `identity` è nel chart (GIT-36), ma l'admin al primo avvio arriva con GIT-35. Completamento previsto in M-02/M-08 [c_8458909a21d9035f].
 
 ### Opzioni principali
 

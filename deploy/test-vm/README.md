@@ -344,7 +344,7 @@ amministratore**, dalla radice di un checkout del ramo da provare, per la
 prova end-to-end di M-01 (criteri di GIT-11). Fa tutto in un colpo: reset
 della VM, controllo che sia davvero pulita, installer di GIT-9 dal commit
 indicato di `main` (nel modo in cui lo userebbe il cliente, `curl | sudo
-bash`), verifica di UI/API/evento JetStream, una seconda esecuzione
+bash`), verifica di UI/API/evento JetStream e di identity attraverso il gateway, una seconda esecuzione
 dell'installer per provare l'idempotenza, e la raccolta della diagnostica
 dalla VM — sempre, anche se un passo fallisce.
 
@@ -383,8 +383,8 @@ Parametri principali (tutti con un default sensato):
 ### Output atteso, passo per passo
 
 Una riga `[PASS] <passo>` o `[FAIL] <passo>: <motivo>` per ciascuno. In una
-esecuzione verde sono **7 righe `[PASS]`**, in quest'ordine (output reale di
-Atlas del 28/09 sulla VM, Ref 2819e60):
+esecuzione verde sono **8 righe `[PASS]`** (7 nell'output reale di Atlas del 28/09, Ref
+2819e60, prima del passo e2 di GIT-36), in quest'ordine:
 
 ```
 [PASS] a. reset-vm.ps1 (checkpoint clean)
@@ -393,6 +393,7 @@ Atlas del 28/09 sulla VM, Ref 2819e60):
 [PASS] d.2 installer (prima esecuzione)
 [PASS] c. requisiti minimi registrati nel log
 [PASS] e. UI, /api/healthz, create+read risorsa di prova, evento JetStream
+[PASS] e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto
 [PASS] f. idempotenza (seconda esecuzione, k3s non reinstallato, password invariata, healthz OK)
 RISULTATO: VERDE
 ```
@@ -403,8 +404,8 @@ Cosa controlla ciascun passo:
 - **b.** macchina pulita: nessun `k3s`/`kubectl`, nessun servizio `k3s`,
   niente `/etc/rancher` o `/var/lib/rancher`, porte 80/443/6443 libere. Se
   fallisce, lo script si ferma: non installa nulla.
-- **d.1** le tre immagini (`gitstack-gateway`, `gitstack-core`,
-  `gitstack-web`) esistono su ghcr.io con tag `sha-<Ref>` (pubblicate dal
+- **d.1** le quattro immagini (`gitstack-gateway`, `gitstack-identity`,
+  `gitstack-core`, `gitstack-web`) esistono su ghcr.io con tag `sha-<Ref>` (pubblicate dal
   job `registry` della CI dopo un push su `main`).
 - **d.2** prima esecuzione dell'installer via SSH (`installer-run1.log`).
 - **c.** le righe di preflight (OS, architettura, CPU, RAM, disco) sono
@@ -419,6 +420,13 @@ Cosa controlla ciascun passo:
   quindi il conteggio e' un polling (`-JetStreamPollAttempts` tentativi
   ogni `-JetStreamPollIntervalSeconds`, default 6x5s), e ogni tentativo e'
   scritto nel log.
+- **e2.** identity attraverso il gateway (GIT-36), dall'host Windows e senza
+  credenziali valide: `GET /api/v1/auth/session` senza cookie -> 401 con
+  code `unauthenticated`; `POST /api/v1/auth/login` con credenziali
+  inventate -> 401 con code `invalid_credentials` (risposte di identity, non
+  del gateway, che darebbe 404/503); `POST /api/v1/internal/verify` -> 404
+  (interfaccia interna non esposta). Il login con l'admin e una chiamata
+  autenticata si aggiungono con GIT-35 (admin al primo avvio).
 - **f.** idempotenza: seconda esecuzione (`installer-run2.log`) -> exit 0,
   hash della password di Postgres invariato, `ActiveEnterTimestamp` di
   `k3s` invariato, `/api/healthz` ancora 200.

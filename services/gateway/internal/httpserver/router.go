@@ -42,9 +42,51 @@ func NewRouter(cfg config.Config, logger *slog.Logger) http.Handler {
 		base,
 	}
 
+	if cfg.IdentityURL != nil {
+		mountIdentity(mux, proxy.ToIdentity(cfg.IdentityURL, cfg.IdentityTimeout, logger, proxy.WithTrustedProxies(cfg.TrustedProxies)), apiMiddlewares)
+	}
+
 	return openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
 		BaseURL:     proxy.PrefixV1,
 		BaseRouter:  mux,
 		Middlewares: apiMiddlewares,
 	})
+}
+
+// identityPatterns sono le rotte di api/openapi.yaml servite da identity
+// (tag auth, users, tokens, ssh-keys, organizations, teams, permissions),
+// nella sintassi di http.ServeMux, con il prefisso di versione. Il
+// contratto le elenca tutte sotto questi percorsi; il test
+// TestIdentityRoutes_SecondoIlContratto le confronta con openapi.yaml, così
+// una rotta nuova non resta fuori dal gateway senza che la CI lo dica.
+//
+// /internal/* (tag internal: verifica credenziali, permessi, chiavi SSH fra
+// servizi) NON è in elenco e non va mai esposto dal gateway: senza pattern,
+// il mux risponde 404.
+var identityPatterns = []string{
+	"/v1/auth/{rest...}",
+	"/v1/users",
+	"/v1/users/{rest...}",
+	"/v1/user/tokens",
+	"/v1/user/tokens/{rest...}",
+	"/v1/user/ssh-keys",
+	"/v1/user/ssh-keys/{rest...}",
+	"/v1/orgs",
+	"/v1/orgs/{rest...}",
+	"/v1/resources/{resourceId}/grants",
+	"/v1/resources/{resourceId}/grants/{grantId}",
+	"/v1/resources/{resourceId}/permissions",
+}
+
+// mountIdentity registra su mux le rotte di identity, sotto la stessa catena
+// di middleware delle operazioni instradate verso core.
+func mountIdentity(mux *http.ServeMux, h http.Handler, mws []openapi.MiddlewareFunc) {
+	// Stesso ordine di openapi.HandlerWithOptions: il primo elemento è il più
+	// interno, l'ultimo il più esterno.
+	for _, mw := range mws {
+		h = mw(h)
+	}
+	for _, p := range identityPatterns {
+		mux.Handle(p, h)
+	}
 }

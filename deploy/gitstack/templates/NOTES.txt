@@ -2,6 +2,7 @@ GitStack è installato (rilascio "{{ .Release.Name }}", namespace "{{ .Release.N
 
 Componenti attivi:
   - gateway:  {{ .Values.gateway.enabled }}
+  - identity: {{ .Values.identity.enabled }}
   - core:     {{ .Values.core.enabled }}
   - web:      {{ .Values.web.enabled }}
   - postgres: {{ if .Values.postgres.enabled }}bundle{{ else }}esterno (D6){{ end }}

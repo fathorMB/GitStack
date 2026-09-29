@@ -5,7 +5,7 @@
 global:
   image:
     # Registry di default per le immagini di GitStack (gateway, core, web:
-    # pubblicate su ghcr.io dal job "registry" del workflow CI). postgres e
+    # pubblicate su ghcr.io dal job "registry" del workflow CI; idem identity). postgres e
     # nats sono immagini di terze parti e hanno il proprio registry di
     # default (Docker Hub, vedi postgres.image.registry/nats.image.registry
     # più sotto): global.image.registry non li tocca.
@@ -54,11 +54,19 @@ gateway:
   containerPort: 8080
   service:
     port: 8080
-  # GITSTACK_CORE_URL è calcolato automaticamente dal nome del Service di
-  # core (vedi templates/gateway/deployment.yaml): non serve impostarlo qui.
+  # GITSTACK_CORE_URL e GITSTACK_IDENTITY_URL (questa solo con
+  # identity.enabled) sono calcolate dal nome dei Service (vedi
+  # templates/gateway/deployment.yaml): non serve impostarle qui.
   env:
     logLevel: info
     coreTimeout: 5s
+    identityTimeout: 5s
+    # CIDR dei proxy davanti al gateway di cui ci si fida per
+    # X-Forwarded-For (GITSTACK_GATEWAY_TRUSTED_PROXIES). Default: rete dei
+    # pod di k3s (cluster-cidr 10.42.0.0/16) dove gira Traefik; cambialo se il
+    # cluster usa un CIDR diverso. Vuoto = nessun proxy fidato (IP client =
+    # indirizzo del peer).
+    trustedProxies: "10.42.0.0/16"
   resources:
     requests:
       cpu: 25m
@@ -97,6 +105,62 @@ core:
     logLevel: info
     dbMaxConns: 10
     migrationsTimeout: 30s
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+# --- identity ---------------------------------------------------------------
+# Utenti, sessioni, token e chiavi SSH (M-02). Usa lo schema dedicato
+# "identity" (D6) dello stesso database di core, con un ruolo Postgres
+# proprio (identity_app) e una password propria in un Secret generato dal
+# chart. L'initContainer del Deployment crea ruolo e schema in modo
+# idempotente (files/identity-bootstrap-role.sql) con le credenziali
+# amministrative di Postgres (postgres.auth / postgres.external).
+identity:
+  enabled: true
+  replicaCount: 1
+  image:
+    registry: ""
+    repository: fathormb/gitstack-identity
+    tag: ""
+  # Porta su cui il processo ascolta nel container (GITSTACK_IDENTITY_ADDR):
+  # fissa, combacia con l'EXPOSE del Dockerfile.
+  containerPort: 8080
+  service:
+    port: 8080
+  db:
+    # Password del ruolo identity_app. Se vuota, il chart la genera una sola
+    # volta in un Secret <release>-identity-db (helm.sh/resource-policy: keep,
+    # non rigenerata da upgrade/reinstall).
+    password: ""
+    # Alternativa: nome di un Secret esistente con la chiave `password`.
+    existingSecret: ""
+  serviceSecret:
+    # Segreto condiviso con il gateway per /internal/*
+    # (GITSTACK_IDENTITY_SERVICE_SECRET). Il chart lo genera una sola volta in
+    # un Secret <release>-identity-service (chiave `secret`,
+    # helm.sh/resource-policy: keep); non si scrive nei values.
+    # Alternativa: nome di un Secret esistente con la chiave `secret`.
+    existingSecret: ""
+  # GITSTACK_IDENTITY_DB_URL e calcolato dal Service di postgres (o da
+  # postgres.external): non serve qui.
+  env:
+    logLevel: info
+    dbMaxConns: 10
+    migrationsTimeout: 30s
+    # Durata assoluta della sessione web (GITSTACK_IDENTITY_SESSION_TTL).
+    sessionTTL: 168h
+    # Durata massima dei token personali (GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME,
+    # es. 8760h). Vuoto = variabile non impostata, vale il default di identity.
+    tokenMaxLifetime: ""
+    # CIDR da cui identity si fida dell'header X-Gitstack-Client-Ip messo dal
+    # gateway (GITSTACK_IDENTITY_TRUSTED_PROXIES). Default: rete dei pod di
+    # k3s (cluster-cidr 10.42.0.0/16); cambialo se il cluster usa un CIDR
+    # diverso. Vuoto = nessun proxy fidato (IP client = indirizzo del peer).
+    trustedProxies: "10.42.0.0/16"
   resources:
     requests:
       cpu: 25m

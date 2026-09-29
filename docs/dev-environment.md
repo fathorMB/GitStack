@@ -27,7 +27,7 @@ Se lavori da Git Bash su Windows con il repo su una cartella Windows nativa (es.
 ## Un comando per crearlo, uno per distruggerlo
 
 ```sh
-make dev-up      # crea il cluster k3d (se manca), costruisce le immagini di gateway/core/web
+make dev-up      # crea il cluster k3d (se manca), costruisce le immagini di gateway/identity/core/web
                   # dai Dockerfile del repo, le importa nel cluster e fa
                   # `helm upgrade --install` del chart deploy/gitstack (web incluso, GIT-7)
 make dev-down     # distrugge il cluster k3d
@@ -52,7 +52,7 @@ Per aggiornare le versioni pinnate, cambia `K3D_VERSION`/`K3S_IMAGE` in cima al 
 
 ## Ciclo modifica → rebuild → redeploy di un solo servizio
 
-Per non ricostruire e reinstallare tutto il chart a ogni modifica, `make dev-redeploy SVC=<servizio>` ricostruisce **una sola immagine** (`gateway`, `core` o `web`), la reimporta nel cluster e forza il rollout del solo `Deployment` di quel servizio:
+Per non ricostruire e reinstallare tutto il chart a ogni modifica, `make dev-redeploy SVC=<servizio>` ricostruisce **una sola immagine** (`gateway`, `identity`, `core` o `web`), la reimporta nel cluster e forza il rollout del solo `Deployment` di quel servizio:
 
 ```sh
 # 1. modifica il codice di un servizio, es. services/gateway/internal/httpserver/health.go
@@ -72,4 +72,4 @@ Elenca i pod e l'Ingress del rilascio corrente (`kubectl get pods -o wide`, `kub
 
 ## Differenze rispetto all'installazione di prova in CI
 
-Il job `chart` di `.github/workflows/ci.yml` costruisce e installa solo `gateway`/`core` (`--set web.enabled=false`), usa un tag immagine legato al commit (`sha-<sha>`) ed è pensato per un'esecuzione singola ed effimera in un runner. `make dev-up` costruisce e installa anche `web` (immagine disponibile da GIT-7), usa un tag fisso (`dev`) pensato per essere sovrascritto ripetutamente durante lo sviluppo, e il cluster resta in piedi tra un comando e l'altro (persistente, non effimero) finché non lanci `make dev-down`. La sequenza di fondo — creazione del cluster k3d, build locale, `k3d image import`, `helm upgrade --install` — è la stessa, per non manutenere due logiche diverse.
+Il job `chart` di `.github/workflows/ci.yml` costruisce e installa solo `gateway`/`identity`/`core` (`--set web.enabled=false`), usa un tag immagine legato al commit (`sha-<sha>`) ed è pensato per un'esecuzione singola ed effimera in un runner. `make dev-up` costruisce e installa anche `web` (immagine disponibile da GIT-7), usa un tag fisso (`dev`) pensato per essere sovrascritto ripetutamente durante lo sviluppo, e il cluster resta in piedi tra un comando e l'altro (persistente, non effimero) finché non lanci `make dev-down`. La sequenza di fondo — creazione del cluster k3d, build locale, `k3d image import`, `helm upgrade --install` — è la stessa, per non manutenere due logiche diverse.

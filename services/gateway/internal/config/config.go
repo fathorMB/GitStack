@@ -26,6 +26,16 @@ type Config struct {
 	// CoreTimeout è il timeout per le richieste instradate verso core.
 	CoreTimeout time.Duration
 
+	// IdentityURL è la base URL del servizio identity (es.
+	// "http://identity:8080"), verso cui il gateway instrada le rotte dei tag
+	// auth, users, tokens, ssh-keys, organizations, teams e permissions del
+	// contratto. Opzionale: se assente queste rotte non sono montate (404),
+	// così un gateway senza identity resta avviabile.
+	IdentityURL *url.URL
+
+	// IdentityTimeout è il timeout per le richieste instradate verso identity.
+	IdentityTimeout time.Duration
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -45,9 +55,14 @@ const (
 	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
 	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
 
+	envIdentityURL     = "GITSTACK_IDENTITY_URL"
+	envIdentityTimeout = "GITSTACK_IDENTITY_TIMEOUT"
+
 	defaultAddr        = ":8080"
 	defaultCoreTimeout = 5 * time.Second
-	defaultLogLevel    = "info"
+
+	defaultIdentityTimeout = 5 * time.Second
+	defaultLogLevel        = "info"
 )
 
 // Load legge la configurazione dall'ambiente di processo. Ritorna un errore
@@ -69,7 +84,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	cfg := Config{
 		Addr:        defaultAddr,
 		CoreTimeout: defaultCoreTimeout,
-		LogLevel:    defaultLogLevel,
+
+		IdentityTimeout: defaultIdentityTimeout,
+		LogLevel:        defaultLogLevel,
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
@@ -109,6 +126,24 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 				continue
 			}
 			cfg.TrustedProxies = append(cfg.TrustedProxies, n)
+		}
+	}
+
+	if v, ok := lookup(envIdentityURL); ok && strings.TrimSpace(v) != "" {
+		u, err := url.Parse(strings.TrimSpace(v))
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			errs = append(errs, fmt.Sprintf("%s non è una URL assoluta valida: %q", envIdentityURL, v))
+		} else {
+			cfg.IdentityURL = u
+		}
+	}
+
+	if v, ok := lookup(envIdentityTimeout); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d <= 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envIdentityTimeout, v))
+		} else {
+			cfg.IdentityTimeout = d
 		}
 	}
 

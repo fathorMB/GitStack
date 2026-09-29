@@ -111,3 +111,32 @@ func TestLoad_TrustedProxies(t *testing.T) {
 		t.Error("CIDR non valido accettato")
 	}
 }
+
+func TestLoad_Identity(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envCoreURL:         "http://core:8080",
+		envIdentityURL:     "http://identity:8080",
+		envIdentityTimeout: "2s",
+	}))
+	if err != nil {
+		t.Fatalf("load() errore inatteso: %v", err)
+	}
+	if cfg.IdentityURL == nil || cfg.IdentityURL.String() != "http://identity:8080" {
+		t.Errorf("IdentityURL = %v", cfg.IdentityURL)
+	}
+	if cfg.IdentityTimeout != 2*time.Second {
+		t.Errorf("IdentityTimeout = %v, voluto 2s", cfg.IdentityTimeout)
+	}
+
+	def, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080"}))
+	if err != nil {
+		t.Fatalf("load() errore inatteso: %v", err)
+	}
+	if def.IdentityURL != nil || def.IdentityTimeout != defaultIdentityTimeout {
+		t.Errorf("default identity = %v/%v", def.IdentityURL, def.IdentityTimeout)
+	}
+
+	if _, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envIdentityURL: "identity"})); err == nil {
+		t.Error("una IdentityURL non assoluta deve dare errore")
+	}
+}

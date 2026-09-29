@@ -35,6 +35,21 @@ const ClientIPHeader = "X-Gitstack-Client-Ip"
 // coreURL è la base URL del servizio core (es. http://core:8080); timeout è
 // applicato per ciascuna richiesta instradata.
 func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger, opts ...Option) http.Handler {
+	return ToService("core", coreURL, timeout, logger, opts...)
+}
+
+// ToIdentity costruisce l'handler HTTP che instrada le richieste verso
+// identity: stessa logica di ToCore (riscrittura di host, rimozione del
+// prefisso /v1, IP del client con i proxy fidati), errore 503 con code
+// identity_unavailable.
+func ToIdentity(identityURL *url.URL, timeout time.Duration, logger *slog.Logger, opts ...Option) http.Handler {
+	return ToService("identity", identityURL, timeout, logger, opts...)
+}
+
+// ToService è l'handler generico dietro ToCore e ToIdentity: name è il nome
+// del servizio a valle, usato nei log e nel code dell'errore
+// ("<name>_unavailable").
+func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slog.Logger, opts ...Option) http.Handler {
 	var o options
 	for _, opt := range opts {
 		opt(&o)
@@ -63,12 +78,12 @@ func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger, opts .
 			pr.Out.URL.Path = stripV1(pr.In.URL.Path)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			logger.Error("richiesta verso core non riuscita",
+			logger.Error("richiesta verso "+name+" non riuscita",
 				"request_id", middleware.RequestIDFromContext(r.Context()),
 				"path", r.URL.Path,
 				"err", err,
 			)
-			writeError(w, http.StatusServiceUnavailable, "core_unavailable", "Il servizio core non ha risposto in tempo.")
+			writeError(w, http.StatusServiceUnavailable, name+"_unavailable", "Il servizio "+name+" non ha risposto in tempo.")
 		},
 	}
 

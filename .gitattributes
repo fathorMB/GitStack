@@ -11,3 +11,8 @@ Makefile text eol=lf
 # core.autocrlf=true il worktree Windows lo avrebbe CRLF e dopo
 # "pnpm run check-tokens" git lo vedrebbe modificato (GIT-46).
 web/src/styles/tokens.css text eol=lf
+
+# Le due copie del bootstrap SQL di identity devono restare byte-identiche
+# (il job "chart" della CI le confronta con diff) anche su un checkout Windows.
+services/identity/migrations/bootstrap-role.sql text eol=lf
+deploy/gitstack/files/identity-bootstrap-role.sql text eol=lf

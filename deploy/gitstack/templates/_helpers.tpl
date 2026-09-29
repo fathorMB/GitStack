@@ -101,6 +101,13 @@ URL core usato dal gateway (GITSTACK_CORE_URL).
 {{- end -}}
 
 {{/*
+URL identity usato dal gateway (GITSTACK_IDENTITY_URL).
+*/}}
+{{- define "gitstack.identity.url" -}}
+{{- printf "http://%s-identity:%d" (include "gitstack.fullname" .) (.Values.identity.service.port | int) -}}
+{{- end -}}
+
+{{/*
 URL gateway usato da web (env GATEWAY_UPSTREAM dell'immagine nginx di GIT-7,
 vedi web/deploy/nginx.conf.template): senza questo, il container usa il
 default dell'immagine ("http://gateway:8080"), che non risolve nel cluster

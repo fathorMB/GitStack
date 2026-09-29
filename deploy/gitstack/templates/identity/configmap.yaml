@@ -1,0 +1,11 @@
+{{- if .Values.identity.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gitstack.fullname" . }}-identity-bootstrap
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "identity") | nindent 4 }}
+data:
+  bootstrap-role.sql: |
+    {{- .Files.Get "files/identity-bootstrap-role.sql" | nindent 4 }}
+{{- end }}

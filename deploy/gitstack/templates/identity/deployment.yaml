@@ -1,0 +1,145 @@
+{{- if .Values.identity.enabled -}}
+{{- if not .Values.postgres.enabled -}}
+{{- if or (not .Values.postgres.external.host) (not .Values.postgres.external.database) (not .Values.postgres.external.username) (not .Values.postgres.external.existingSecret) -}}
+{{- fail "postgres.enabled=false (Postgres esterno del cliente, D6): compila postgres.external.host, .database, .username e .existingSecret (Secret con chiave 'password')." -}}
+{{- end -}}
+{{- end -}}
+{{- $pgHost := printf "%s-postgres" (include "gitstack.fullname" .) -}}
+{{- $pgPort := 5432 -}}
+{{- $pgDatabase := .Values.postgres.auth.database -}}
+{{- $pgAdmin := .Values.postgres.auth.username -}}
+{{- $pgSSL := "disable" -}}
+{{- if not .Values.postgres.enabled -}}
+{{- $pgHost = .Values.postgres.external.host -}}
+{{- $pgPort = .Values.postgres.external.port | int -}}
+{{- $pgDatabase = .Values.postgres.external.database -}}
+{{- $pgAdmin = .Values.postgres.external.username -}}
+{{- $pgSSL = .Values.postgres.external.sslMode -}}
+{{- end -}}
+{{- $svcSecret := .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
+{{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitstack.fullname" . }}-identity
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "identity") | nindent 4 }}
+spec:
+  replicas: {{ .Values.identity.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "identity") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "identity") | nindent 8 }}
+      annotations:
+        # Un cambio del bootstrap SQL rilancia il pod (e l'initContainer).
+        checksum/bootstrap: {{ .Files.Get "files/identity-bootstrap-role.sql" | sha256sum }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # Ruolo e schema dedicati (D6): l'initContainer attende Postgres e
+      # applica files/identity-bootstrap-role.sql con le credenziali
+      # amministrative di Postgres. È idempotente (CREATE ROLE protetto da un
+      # controllo su pg_roles), quindi gira a ogni avvio del pod senza errori.
+      # Le credenziali amministrative non arrivano mai al container di
+      # identity, che si connette solo come identity_app.
+      initContainers:
+        - name: bootstrap-db
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.postgres) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          env:
+            - name: PGHOST
+              value: {{ $pgHost | quote }}
+            - name: PGPORT
+              value: {{ $pgPort | quote }}
+            - name: PGDATABASE
+              value: {{ $pgDatabase | quote }}
+            - name: PGUSER
+              value: {{ $pgAdmin | quote }}
+            - name: PGSSLMODE
+              value: {{ $pgSSL | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.postgres.secretName" . }}
+                  key: password
+            - name: IDENTITY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $dbSecret }}
+                  key: password
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until pg_isready -q; do echo "in attesa di postgres ($PGHOST:$PGPORT)..."; sleep 2; done
+              psql -v ON_ERROR_STOP=1 -v identity_password="$IDENTITY_DB_PASSWORD" -f /bootstrap/bootstrap-role.sql
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /bootstrap
+              readOnly: true
+      containers:
+        - name: identity
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.identity) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.identity.containerPort }}
+          env:
+            - name: GITSTACK_IDENTITY_ADDR
+              value: {{ printf ":%d" (.Values.identity.containerPort | int) | quote }}
+            # IDENTITY_DB_PASSWORD deve precedere GITSTACK_IDENTITY_DB_URL
+            # (espansione "$(VAR)" solo su variabili già definite).
+            - name: IDENTITY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $dbSecret }}
+                  key: password
+            - name: GITSTACK_IDENTITY_DB_URL
+              value: {{ printf "postgres://identity_app:$(IDENTITY_DB_PASSWORD)@%s:%d/%s?sslmode=%s" $pgHost ($pgPort | int) $pgDatabase $pgSSL | quote }}
+            - name: GITSTACK_IDENTITY_DB_MAX_CONNS
+              value: {{ .Values.identity.env.dbMaxConns | quote }}
+            - name: GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT
+              value: {{ .Values.identity.env.migrationsTimeout | quote }}
+            - name: GITSTACK_IDENTITY_LOG_LEVEL
+              value: {{ .Values.identity.env.logLevel | quote }}
+            - name: GITSTACK_IDENTITY_SESSION_TTL
+              value: {{ .Values.identity.env.sessionTTL | quote }}
+            # Segreto di servizio per /internal/*: solo da Secret, mai in chiaro.
+            - name: GITSTACK_IDENTITY_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $svcSecret }}
+                  key: secret
+            {{- if .Values.identity.env.tokenMaxLifetime }}
+            - name: GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME
+              value: {{ .Values.identity.env.tokenMaxLifetime | quote }}
+            {{- end }}
+            {{- if .Values.identity.env.trustedProxies }}
+            - name: GITSTACK_IDENTITY_TRUSTED_PROXIES
+              value: {{ .Values.identity.env.trustedProxies | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.identity.resources | nindent 12 }}
+      volumes:
+        - name: bootstrap
+          configMap:
+            name: {{ include "gitstack.fullname" . }}-identity-bootstrap
+{{- end }}
