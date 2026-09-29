@@ -147,10 +147,10 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 	// e loginlimit; httpapi.New lo monta su un handler http.Handler.
 	svc := &auth.Service{
 		Users:    users.New(pool, time.Now),
-		Sessions: sessions.New(pool, time.Now, sessions.DefaultTTL),
+		Sessions: sessions.New(pool, time.Now, cfg.SessionTTL),
 		Limiter:  loginlimit.New(lcfg, time.Now),
 	}
-	api := httpapi.New(svc, logger)
+	api := httpapi.New(svc, logger, httpapi.WithTrustedProxies(cfg.TrustedProxies))
 
 	router := httpserver.NewRouter(pool, api)
 

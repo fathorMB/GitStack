@@ -137,3 +137,28 @@ func TestToCore_CoreIrraggiungibileRitornaErroreDelContratto(t *testing.T) {
 		t.Errorf("error.code = %v, voluto core_unavailable", errObj["code"])
 	}
 }
+
+func TestToCore_SovrascriveHeaderIPClient(t *testing.T) {
+	var got []string
+	core := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Values(ClientIPHeader)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer core.Close()
+
+	coreURL, _ := url.Parse(core.URL)
+	handler := ToCore(coreURL, time.Second, discardLogger())
+
+	// Il client prova a falsificare l'header: a valle deve arrivare solo
+	// l'IP della connessione reale, mai il valore mandato dal client.
+	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	req.RemoteAddr = "198.51.100.9:4321"
+	req.Header.Set(ClientIPHeader, "6.6.6.6")
+	req.Header.Add(ClientIPHeader, "7.7.7.7")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if len(got) != 1 || got[0] != "198.51.100.9" {
+		t.Errorf("%s visto a valle = %v, voluto [198.51.100.9]", ClientIPHeader, got)
+	}
+}

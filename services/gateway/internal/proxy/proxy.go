@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -24,6 +25,12 @@ import (
 // (vedi api/openapi.yaml, servers[0].url). Core espone le stesse operazioni
 // senza questo prefisso: il proxy lo rimuove instradando a valle.
 const PrefixV1 = "/v1"
+
+// ClientIPHeader è l'header con cui il gateway comunica ai servizi a valle
+// l'IP del client. Il gateway lo imposta sempre lui, cancellando qualunque
+// valore arrivato dal client: identity lo legge solo da proxy fidati
+// (services/identity/internal/httpapi, stesso nome).
+const ClientIPHeader = "X-Gitstack-Client-Ip"
 
 // ToCore costruisce l'handler HTTP che instrada le richieste verso core.
 // coreURL è la base URL del servizio core (es. http://core:8080); timeout è
@@ -40,6 +47,11 @@ func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger) http.H
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
 			pr.SetXForwarded()
+			// Mai fidarsi del valore in ingresso: si cancella e si riscrive.
+			pr.Out.Header.Del(ClientIPHeader)
+			if host, _, err := net.SplitHostPort(pr.In.RemoteAddr); err == nil {
+				pr.Out.Header.Set(ClientIPHeader, host)
+			}
 			pr.Out.URL.Scheme = coreURL.Scheme
 			pr.Out.URL.Host = coreURL.Host
 			pr.Out.Host = coreURL.Host

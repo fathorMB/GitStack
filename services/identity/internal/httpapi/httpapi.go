@@ -9,9 +9,11 @@
 // password; qualunque utente autenticato per leggere. Errori nel formato
 // Error del contratto; 500 senza dettagli interni.
 //
-// L'IP per il rate limit del login è r.RemoteAddr (host senza porta), mai
-// X-Forwarded-For (falsificabile dal client). Se non è determinabile resta
-// vuoto e vale solo il limite per utente.
+// L'IP per il rate limit è r.RemoteAddr (host senza porta), mai
+// X-Forwarded-For (falsificabile dal client). Solo se la connessione viene da
+// un proxy fidato (WithTrustedProxies) si legge l'header ClientIPHeader
+// impostato dal gateway. Se l'IP non è determinabile resta vuoto e vale solo
+// il limite per utente.
 package httpapi
 
 import (
@@ -23,6 +25,8 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
@@ -61,6 +65,8 @@ type server struct {
 	tokens        *apitokens.Service
 	keys          *userkeys.Service
 	serviceSecret string
+
+	trustedProxies []*net.IPNet
 }
 
 var _ openapi.ServerInterface = (*server)(nil)
@@ -98,6 +104,16 @@ func unauthenticated(w http.ResponseWriter) {
 	writeError(w, http.StatusUnauthorized, "unauthenticated", "Autenticazione richiesta.")
 }
 
+// tooMany risponde 429 con Retry-After in secondi (per eccesso).
+func (s *server) tooMany(w http.ResponseWriter, retry time.Duration) {
+	secs := int((retry + 999_999_999) / 1_000_000_000)
+	if secs < 1 {
+		secs = 1
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	writeError(w, http.StatusTooManyRequests, "too_many_attempts", "Troppi tentativi: riprova più tardi.")
+}
+
 func forbidden(w http.ResponseWriter) {
 	writeError(w, http.StatusForbidden, "forbidden", "Permesso negato.")
 }
@@ -128,15 +144,30 @@ func decode(w http.ResponseWriter, r *http.Request, dst any) ([]byte, bool) {
 	return raw, true
 }
 
-func clientIP(r *http.Request) string {
+func (s *server) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return ""
 	}
-	if _, err := net.ResolveIPAddr("ip", host); err != nil || net.ParseIP(host) == nil {
+	peer := net.ParseIP(host)
+	if peer == nil {
 		return ""
 	}
-	return host
+	if s.trusted(peer) {
+		if ip := net.ParseIP(strings.TrimSpace(r.Header.Get(ClientIPHeader))); ip != nil {
+			return ip.String()
+		}
+	}
+	return peer.String()
+}
+
+func (s *server) trusted(ip net.IP) bool {
+	for _, n := range s.trustedProxies {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // current risolve il chiamante dal cookie; se manca scrive 401.
@@ -202,17 +233,12 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := s.auth.Login(r.Context(), auth.LoginInput{
-		Login: in.Username, Password: *in.Password, IP: clientIP(r), UserAgent: r.UserAgent(),
+		Login: in.Username, Password: *in.Password, IP: s.clientIP(r), UserAgent: r.UserAgent(),
 	})
 	var rl *auth.RateLimitedError
 	switch {
 	case errors.As(err, &rl):
-		secs := int((rl.RetryAfter + 999_999_999) / 1_000_000_000) // per eccesso
-		if secs < 1 {
-			secs = 1
-		}
-		w.Header().Set("Retry-After", strconv.Itoa(secs))
-		writeError(w, http.StatusTooManyRequests, "too_many_attempts", "Troppi tentativi di accesso: riprova più tardi.")
+		s.tooMany(w, rl.RetryAfter)
 		return
 	case errors.Is(err, auth.ErrInvalidCredentials):
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "Credenziali non valide.")
@@ -439,6 +465,15 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	if in.CurrentPassword != nil {
 		ci.CurrentPassword = *in.CurrentPassword
 	}
+	// Chi verifica la password attuale passa dallo stesso limitatore del
+	// login (chiave utente), anche con una sessione valida.
+	ip := s.clientIP(r)
+	if !ci.Admin {
+		if ok, retry := s.auth.Limiter.Check(username, ip); !ok {
+			s.tooMany(w, retry)
+			return
+		}
+	}
 	if self {
 		id := cur.Session.ID
 		ci.KeepSessionID = &id // "revoca le altre sessioni"
@@ -446,11 +481,15 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	err := s.users.ChangePassword(r.Context(), ci)
 	if errors.Is(err, users.ErrInvalidCredentials) {
 		// 403 e non 401: il chiamante è già autenticato (decisione del CTO).
+		s.auth.Limiter.Fail(username, ip)
 		writeError(w, http.StatusForbidden, "forbidden", "Password attuale errata.")
 		return
 	}
 	if !s.userError(w, r, err) {
 		return
+	}
+	if !ci.Admin {
+		s.auth.Limiter.Success(username)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

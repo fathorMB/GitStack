@@ -88,3 +88,31 @@ func TestLoad_InvalidValues(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_TrustedProxiesESessionTTL(t *testing.T) {
+	base := "postgres://identity:secret@localhost:5432/gitstack"
+	cfg, err := load(lookupFrom(map[string]string{EnvDatabaseURL: base}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.TrustedProxies) != 0 || cfg.SessionTTL != defaultSessionTTL {
+		t.Errorf("default inattesi: %v %s", cfg.TrustedProxies, cfg.SessionTTL)
+	}
+	cfg, err = load(lookupFrom(map[string]string{
+		EnvDatabaseURL: base, EnvTrustedProxies: "10.42.0.0/16, fd00::/8", EnvSessionTTL: "2h",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.TrustedProxies) != 2 || cfg.SessionTTL != 2*time.Hour {
+		t.Errorf("valori inattesi: %v %s", cfg.TrustedProxies, cfg.SessionTTL)
+	}
+	for _, env := range []map[string]string{
+		{EnvDatabaseURL: base, EnvTrustedProxies: "10.0.0.1"},
+		{EnvDatabaseURL: base, EnvSessionTTL: "-1h"},
+	} {
+		if _, err := load(lookupFrom(env)); err == nil {
+			t.Errorf("attendevo un errore per %v", env)
+		}
+	}
+}
