@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -114,5 +115,32 @@ func TestLoad_TrustedProxiesESessionTTL(t *testing.T) {
 		if _, err := load(lookupFrom(env)); err == nil {
 			t.Errorf("attendevo un errore per %v", env)
 		}
+	}
+}
+
+func TestLoad_ServiceSecretETokenMaxLifetime(t *testing.T) {
+	env := map[string]string{EnvDatabaseURL: "postgres://u:p@h/db"}
+	get := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
+
+	cfg, err := load(get)
+	if err != nil || cfg.ServiceSecret != "" || cfg.TokenMaxLifetime != 0 {
+		t.Fatalf("default: err=%v secret=%q max=%v", err, cfg.ServiceSecret, cfg.TokenMaxLifetime)
+	}
+
+	env[EnvServiceSecret] = "  segreto-123  "
+	env[EnvTokenMaxLifetime] = "720h"
+	cfg, err = load(get)
+	if err != nil || cfg.ServiceSecret != "segreto-123" || cfg.TokenMaxLifetime != 720*time.Hour {
+		t.Fatalf("override: err=%v secret=%q max=%v", err, cfg.ServiceSecret, cfg.TokenMaxLifetime)
+	}
+
+	// Un errore di configurazione non deve mai riportare il segreto.
+	env[EnvTokenMaxLifetime] = "boh"
+	_, err = load(get)
+	if err == nil {
+		t.Fatal("durata non valida accettata")
+	}
+	if strings.Contains(err.Error(), "segreto-123") {
+		t.Errorf("il segreto compare nell'errore: %v", err)
 	}
 }

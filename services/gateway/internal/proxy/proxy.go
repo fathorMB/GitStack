@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -35,7 +34,11 @@ const ClientIPHeader = "X-Gitstack-Client-Ip"
 // ToCore costruisce l'handler HTTP che instrada le richieste verso core.
 // coreURL è la base URL del servizio core (es. http://core:8080); timeout è
 // applicato per ciascuna richiesta instradata.
-func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger) http.Handler {
+func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger, opts ...Option) http.Handler {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
 	rp := &httputil.ReverseProxy{
 		// Rewrite sostituisce Director (deprecato dal Go 1.26). A differenza
 		// di Director, ReverseProxy non propaga più da solo la catena
@@ -49,8 +52,10 @@ func ToCore(coreURL *url.URL, timeout time.Duration, logger *slog.Logger) http.H
 			pr.SetXForwarded()
 			// Mai fidarsi del valore in ingresso: si cancella e si riscrive.
 			pr.Out.Header.Del(ClientIPHeader)
-			if host, _, err := net.SplitHostPort(pr.In.RemoteAddr); err == nil {
-				pr.Out.Header.Set(ClientIPHeader, host)
+			// L'IP del client viene da X-Forwarded-For solo se la connessione
+			// arriva da un proxy fidato (es. Traefik), altrimenti da RemoteAddr.
+			if ip := ClientIP(pr.In, o.trusted); ip != "" {
+				pr.Out.Header.Set(ClientIPHeader, ip)
 			}
 			pr.Out.URL.Scheme = coreURL.Scheme
 			pr.Out.URL.Host = coreURL.Host

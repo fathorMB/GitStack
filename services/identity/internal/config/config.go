@@ -42,6 +42,15 @@ type Config struct {
 	// dell'header X-Gitstack-Client-Ip impostato dal gateway. Vuoto (default):
 	// l'IP del client è sempre r.RemoteAddr.
 	TrustedProxies []*net.IPNet
+
+	// ServiceSecret è il segreto condiviso con il gateway che protegge
+	// /internal/*. Vuoto (default): ogni chiamata interna è rifiutata con
+	// 401. Non va mai scritto nei log né negli errori.
+	ServiceSecret string
+
+	// TokenMaxLifetime è la durata massima concessa ai token personali.
+	// Zero (default): vale apitokens.DefaultMaxLifetime.
+	TokenMaxLifetime time.Duration
 }
 
 const (
@@ -71,6 +80,14 @@ const (
 	// EnvTrustedProxies: elenco CIDR separati da virgola dei proxy fidati
 	// (es. "10.42.0.0/16"). Default vuoto.
 	EnvTrustedProxies = "GITSTACK_IDENTITY_TRUSTED_PROXIES"
+
+	// EnvServiceSecret: segreto di servizio per /internal/* (default vuoto:
+	// chiamate interne rifiutate).
+	EnvServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+
+	// EnvTokenMaxLifetime: durata massima dei token personali (default:
+	// quella di apitokens.DefaultMaxLifetime).
+	EnvTokenMaxLifetime = "GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME"
 
 	defaultSessionTTL = 7 * 24 * time.Hour
 
@@ -111,6 +128,20 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		} else {
 			cfg.SessionTTL = d
 		}
+	}
+
+	if v, ok := lookup(EnvTokenMaxLifetime); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil || d <= 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", EnvTokenMaxLifetime, v))
+		} else {
+			cfg.TokenMaxLifetime = d
+		}
+	}
+
+	// Il valore del segreto non entra mai in un messaggio d'errore.
+	if v, ok := lookup(EnvServiceSecret); ok {
+		cfg.ServiceSecret = strings.TrimSpace(v)
 	}
 
 	if v, ok := lookup(EnvTrustedProxies); ok && strings.TrimSpace(v) != "" {

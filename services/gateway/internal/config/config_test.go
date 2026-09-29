@@ -89,3 +89,25 @@ func TestLoad_LogLevelNonValido(t *testing.T) {
 		t.Fatal("load() doveva fallire con LogLevel non valido")
 	}
 }
+
+func TestLoad_TrustedProxies(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envCoreURL:        "http://core:8080",
+		envTrustedProxies: "10.42.0.0/16, 192.168.1.0/24,",
+	}))
+	if err != nil {
+		t.Fatalf("load() errore inatteso: %v", err)
+	}
+	if len(cfg.TrustedProxies) != 2 || cfg.TrustedProxies[0].String() != "10.42.0.0/16" {
+		t.Errorf("TrustedProxies = %v", cfg.TrustedProxies)
+	}
+
+	cfg, err = load(lookupFrom(map[string]string{envCoreURL: "http://core:8080"}))
+	if err != nil || len(cfg.TrustedProxies) != 0 {
+		t.Errorf("default: err=%v proxies=%v, voluto nessuno", err, cfg.TrustedProxies)
+	}
+
+	if _, err = load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envTrustedProxies: "non-un-cidr"})); err == nil {
+		t.Error("CIDR non valido accettato")
+	}
+}
