@@ -56,7 +56,7 @@ export type ResourceList = {
 };
 
 /**
- * Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+ * Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
  *
  */
 export type Error = {
@@ -907,6 +907,11 @@ export type LoginErrors = {
      *
      */
     422: Error;
+    /**
+     * Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di secondi indicato in `Retry-After`.
+     *
+     */
+    429: Error;
     /**
      * Errore imprevisto.
      */

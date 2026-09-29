@@ -1,0 +1,13 @@
+package: openapi
+generate:
+  models: true
+  std-http-server: true
+output: api.gen.go
+output-options:
+  skip-prune: false
+  # Questo item (GIT-33) serve solo auth e users; gli altri tag di identity
+  # (tokens, ssh-keys, organizations, teams, permissions, internal) li
+  # aggiungono gli item successivi, e le operazioni di core non sono nostre.
+  include-tags:
+    - auth
+    - users

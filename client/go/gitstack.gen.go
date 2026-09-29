@@ -417,7 +417,7 @@ type EffectivePermission struct {
 	Role *ResourceRole `json:"role"`
 }
 
-// Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Error struct {
 	Error struct {
 		// Code Codice stabile leggibile da macchina (es. `not_found`).
@@ -838,25 +838,28 @@ type TokenIdParam = openapi_types.UUID
 // Example: alice
 type UsernameParam = Name
 
-// BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
 
-// Conflict Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// Conflict Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Conflict = Error
 
-// Forbidden Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// Forbidden Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Forbidden = Error
 
-// NotFound Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// NotFound Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type NotFound = Error
 
-// Unauthorized Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// TooManyRequests Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+type TooManyRequests = Error
+
+// Unauthorized Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Unauthorized = Error
 
-// UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
 
-// UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+// UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnprocessableEntity = Error
 
 // FinishOidcLoginParams defines parameters for FinishOidcLogin.
@@ -1058,7 +1061,7 @@ type ClientInterface interface {
 
 	// LoginWithBody Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1067,7 +1070,7 @@ type ClientInterface interface {
 
 	// Login Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1545,7 +1548,7 @@ type ClientInterface interface {
 
 	// ChangePasswordWithBody Cambia la password
 	//
-	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1554,7 +1557,7 @@ type ClientInterface interface {
 
 	// ChangePassword Cambia la password
 	//
-	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1564,7 +1567,7 @@ type ClientInterface interface {
 
 // LoginWithBody Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1583,7 +1586,7 @@ func (c *Client) LoginWithBody(ctx context.Context, contentType string, body io.
 
 // Login Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2701,7 +2704,7 @@ func (c *Client) UpdateUser(ctx context.Context, username UsernameParam, body Up
 
 // ChangePasswordWithBody Cambia la password
 //
-// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2720,7 +2723,7 @@ func (c *Client) ChangePasswordWithBody(ctx context.Context, username UsernamePa
 
 // ChangePassword Cambia la password
 //
-// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5081,7 +5084,7 @@ type ClientWithResponsesInterface interface {
 
 	// LoginWithBodyWithResponse Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -5090,7 +5093,7 @@ type ClientWithResponsesInterface interface {
 
 	// LoginWithResponse Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -5630,7 +5633,7 @@ type ClientWithResponsesInterface interface {
 
 	// ChangePasswordWithBodyWithResponse Cambia la password
 	//
-	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -5639,7 +5642,7 @@ type ClientWithResponsesInterface interface {
 
 	// ChangePasswordWithResponse Cambia la password
 	//
-	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -5650,6 +5653,11 @@ type ClientWithResponsesInterface interface {
 // LoginResponse200Headers the declared response headers of an HTTP 200 response for Login
 type LoginResponse200Headers struct {
 	SetCookie *string
+}
+
+// LoginResponse429Headers the declared response headers of an HTTP 429 response for Login
+type LoginResponse429Headers struct {
+	RetryAfter *int
 }
 
 type LoginResponse struct {
@@ -5663,10 +5671,14 @@ type LoginResponse struct {
 	JSON401 *Unauthorized
 	// JSON422 the response for an HTTP 422 `application/json` response
 	JSON422 *UnprocessableEntity
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 	// Headers200 the parsed response headers for an HTTP 200 response
 	Headers200 *LoginResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *LoginResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -5687,6 +5699,11 @@ func (r LoginResponse) GetJSON401() *Unauthorized {
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
 func (r LoginResponse) GetJSON422() *UnprocessableEntity {
 	return r.JSON422
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r LoginResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
 }
 
 // GetJSONDefault returns the response for an HTTP default `application/json` response
@@ -9080,7 +9097,7 @@ func (r ChangePasswordResponse) ContentType() string {
 
 // LoginWithBodyWithResponse Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -9095,7 +9112,7 @@ func (c *ClientWithResponses) LoginWithBodyWithResponse(ctx context.Context, con
 
 // LoginWithResponse Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -10019,7 +10036,7 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userna
 
 // ChangePasswordWithBodyWithResponse Cambia la password
 //
-// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -10034,7 +10051,7 @@ func (c *ClientWithResponses) ChangePasswordWithBodyWithResponse(ctx context.Con
 
 // ChangePasswordWithResponse Cambia la password
 //
-// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -10089,6 +10106,13 @@ func ParseLoginResponse(rsp *http.Response) (*LoginResponse, error) {
 		}
 		response.JSON422 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10109,6 +10133,16 @@ func ParseLoginResponse(rsp *http.Response) (*LoginResponse, error) {
 			headers.SetCookie = &value
 		}
 		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers LoginResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

@@ -53,3 +53,28 @@ func TestReadyz_Available(t *testing.T) {
 		t.Fatalf("status = %d, voluto 200", rec.Code)
 	}
 }
+
+func TestRouter_RoutesHealthAndAPI(t *testing.T) {
+	// Finto handler API che risponde 418 (non è un teapot, è solo un test).
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	})
+
+	router := NewRouter(nil, api)
+
+	// /healthz risponde 200 dal nostro handler.
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("/healthz: status = %d, voluto 200", rec.Code)
+	}
+
+	// /users/x passa all'api (418).
+	req = httptest.NewRequest(http.MethodGet, "/users/x", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTeapot {
+		t.Errorf("/users/x: status = %d, voluto 418", rec.Code)
+	}
+}

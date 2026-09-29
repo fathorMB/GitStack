@@ -18,10 +18,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/config"
 	"github.com/fathorMB/GitStack/services/identity/internal/db"
+	"github.com/fathorMB/GitStack/services/identity/internal/httpapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/identity/internal/loginlimit"
 	"github.com/fathorMB/GitStack/services/identity/internal/migrate"
+	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
+	"github.com/fathorMB/GitStack/services/identity/internal/users"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -47,6 +52,16 @@ func run(args []string, out io.Writer) int {
 		logger.Error("configurazione non valida", "err", err)
 		return 1
 	}
+
+	// Carica il rate limit del login dopo config.Load: le variabili
+	// GITSTACK_IDENTITY_LOGIN_* sono lette da FromEnv (os.Getenv in
+	// produzione). L'errore non contiene segreti.
+	lcfg, err := loginlimit.FromEnv(os.Getenv)
+	if err != nil {
+		logger.Error("configurazione non valida", "err", err)
+		return 1
+	}
+
 	logger = logger.With("service", "identity")
 	if lvl, ok := parseLevel(cfg.LogLevel); ok {
 		logger = slog.New(slog.NewJSONHandler(out, &slog.HandlerOptions{Level: lvl})).With("service", "identity")
@@ -102,7 +117,7 @@ func run(args []string, out io.Writer) int {
 		if err := applyMigrations(ctx, cfg, pool, logger); err != nil {
 			return 1
 		}
-		return serve(ctx, cfg, pool, logger)
+		return serve(ctx, cfg, pool, lcfg, logger)
 	}
 }
 
@@ -127,8 +142,17 @@ func applyMigrations(ctx context.Context, cfg config.Config, pool *pgxpool.Pool,
 	return nil
 }
 
-func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) int {
-	router := httpserver.NewRouter(pool)
+func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg loginlimit.Config, logger *slog.Logger) int {
+	// Assembla il servizio di autenticazione composto da users, sessions
+	// e loginlimit; httpapi.New lo monta su un handler http.Handler.
+	svc := &auth.Service{
+		Users:    users.New(pool, time.Now),
+		Sessions: sessions.New(pool, time.Now, sessions.DefaultTTL),
+		Limiter:  loginlimit.New(lcfg, time.Now),
+	}
+	api := httpapi.New(svc, logger)
+
+	router := httpserver.NewRouter(pool, api)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

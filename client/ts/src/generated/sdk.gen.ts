@@ -127,7 +127,7 @@ export const updateResource = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Accede con username e password
  *
- * Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi.
+ * Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
  *
  */
 export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>): RequestResult<LoginResponses, LoginErrors, ThrowOnError> => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
@@ -307,7 +307,7 @@ export const updateUser = <ThrowOnError extends boolean = false>(options: Option
 /**
  * Cambia la password
  *
- * Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Revoca le altre sessioni dell'utente.
+ * Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
  *
  */
 export const changePassword = <ThrowOnError extends boolean = false>(options: Options<ChangePasswordData, ThrowOnError>): RequestResult<ChangePasswordResponses, ChangePasswordErrors, ThrowOnError> => (options.client ?? client).put<ChangePasswordResponses, ChangePasswordErrors, ThrowOnError>({

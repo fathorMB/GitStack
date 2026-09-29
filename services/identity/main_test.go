@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -51,12 +50,14 @@ func TestNoDSNInLog(t *testing.T) {
 
 // TestDefaultConfig verifica che i valori di default siano corretti
 // quando non sono impostate variabili d'ambiente override.
+// I default sono già verificati da config_test.go; qui si conferma
+// che config.Load() li applica anche con Load() (os.LookupEnv).
 func TestDefaultConfig(t *testing.T) {
-	os.Setenv(config.EnvDatabaseURL, "postgres://identity:secret@localhost:5432/gitstack")
-	os.Unsetenv(config.EnvAddr)
-	os.Unsetenv(config.EnvDBMaxConns)
-	os.Unsetenv(config.EnvMigrationsTimeout)
-	os.Unsetenv(config.EnvLogLevel)
+	t.Setenv(config.EnvDatabaseURL, "postgres://identity:secret@localhost:5432/gitstack")
+	t.Setenv(config.EnvAddr, ":8080")
+	t.Setenv(config.EnvDBMaxConns, "10")
+	t.Setenv(config.EnvMigrationsTimeout, "30s")
+	t.Setenv(config.EnvLogLevel, "info")
 
 	cfg, err := config.Load()
 	if err != nil {
