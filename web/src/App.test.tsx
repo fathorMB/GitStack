@@ -7,6 +7,13 @@ import { AppRoutes } from './App';
 import { ToastProvider } from './components';
 import { AuthProvider } from './routes/auth';
 
+vi.mock('./lib/authApi', () => ({
+  fetchOidcProviders: vi.fn().mockResolvedValue([]),
+  loginWithPassword: vi.fn().mockResolvedValue({}),
+  oidcStartUrl: vi.fn(),
+  signOut: vi.fn(),
+}));
+
 vi.mock('./lib/resourcesApi', () => ({
   ApiError: class ApiError extends Error {},
   fetchResources: vi.fn().mockResolvedValue({ items: [], page: 1, perPage: 20, total: 0 }),
@@ -35,8 +42,10 @@ describe('routing protetto', () => {
     await client.get({ url: '/health', baseUrl: 'http://localhost/api', fetch: fetch401 });
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Sign in to GitStack' })).toBeInTheDocument());
 
-    // Dal segnaposto si torna alla pagina richiesta.
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    // Dal form di login si torna alla pagina richiesta.
+    await user.type(screen.getByLabelText('Username or email'), 'mrossi');
+    await user.type(screen.getByLabelText('Password'), 'secret');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('heading', { name: 'Components' })).toBeInTheDocument();
   });
 });
