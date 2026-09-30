@@ -138,7 +138,7 @@ type Option func(*routerOptions)
 type routerOptions struct {
 	verifier    identityclient.Verifier
 	permissions identityclient.PermissionChecker
-	now      func() time.Time
+	now         func() time.Time
 }
 
 // WithVerifier sostituisce la verifica via identity (test).
