@@ -40,6 +40,37 @@ func (s *stubVerifier) Verify(_ context.Context, credential string, _ identitycl
 	return identityclient.Result{}, nil
 }
 
+// permCall è una richiesta di verifica del permesso vista dal finto identity.
+type permCall struct{ UserID, ResourceID, Role string }
+
+// stubPermissions è un identityclient.PermissionChecker finto: concede tutto
+// salvo indicazione diversa e registra le richieste.
+type stubPermissions struct {
+	mu    sync.Mutex
+	allow func(userID, resourceID, role string) bool
+	err   error
+	calls []permCall
+}
+
+func (s *stubPermissions) CheckPermission(_ context.Context, userID, resourceID, role string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls = append(s.calls, permCall{userID, resourceID, role})
+	if s.err != nil {
+		return false, s.err
+	}
+	if s.allow != nil {
+		return s.allow(userID, resourceID, role), nil
+	}
+	return true, nil
+}
+
+func (s *stubPermissions) seen() []permCall {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]permCall(nil), s.calls...)
+}
+
 var allScopes = []string{"read:user", "write:user", "read:org", "write:org", "admin:org", "read:resource", "write:resource"}
 
 // allowAll accetta qualunque credenziale come token con tutti gli scope.
