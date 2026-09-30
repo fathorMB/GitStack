@@ -27,6 +27,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/loginlimit"
 	"github.com/fathorMB/GitStack/services/identity/internal/migrate"
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
+	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
@@ -242,6 +243,7 @@ func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcS
 		httpapi.WithTrustedProxies(cfg.TrustedProxies),
 		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
 		httpapi.WithSSHKeys(userkeys.New(pool, time.Now)),
+		httpapi.WithPermissions(permissions.New(pool, time.Now)),
 		httpapi.WithServiceSecret(cfg.ServiceSecret),
 		httpapi.WithOIDC(oidcSvc),
 	)
