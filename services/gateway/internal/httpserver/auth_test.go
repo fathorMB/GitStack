@@ -612,3 +612,40 @@ func TestNewRouter_ConfigSenzaSegretoNonProduceIdentitaFirmata(t *testing.T) {
 		t.Fatalf("status %d, richieste a core %d", rec.Code, core.count())
 	}
 }
+
+// Una credenziale oltre i 512 caratteri (maxLength di
+// VerifyCredentialInput.credential) è non valida: 401 senza interrogare
+// identity, che risponderebbe 400 e farebbe scambiare la richiesta per
+// un'indisponibilità.
+func TestAuth_CredenzialeTroppoLunga(t *testing.T) {
+	for name, req := range map[string]*http.Request{
+		"bearer 516": bearerReq("GET", "/v1/resources", "gst_"+strings.Repeat("A", 512)),
+		"cookie 513": cookieReq("GET", "/v1/resources", strings.Repeat("A", 513)),
+	} {
+		v := allowAll()
+		e := newEnv(t, v)
+		rec := e.do(req)
+		if rec.Code != http.StatusUnauthorized || errorCode(t, rec) != "unauthenticated" {
+			t.Errorf("%s: status %d corpo %s, atteso 401 unauthenticated", name, rec.Code, rec.Body.String())
+		}
+		if v.calls != 0 {
+			t.Errorf("%s: il Verifier è stato chiamato %d volte", name, v.calls)
+		}
+		if e.core.count() != 0 {
+			t.Errorf("%s: la richiesta è arrivata a core", name)
+		}
+	}
+}
+
+// Il limite è inclusivo: 512 caratteri esatti arrivano al Verifier.
+func TestAuth_CredenzialeDi512CaratteriArrivaAlVerifier(t *testing.T) {
+	v := &stubVerifier{}
+	e := newEnv(t, v)
+	rec := e.do(bearerReq("GET", "/v1/resources", "gst_"+strings.Repeat("A", 508)))
+	if v.calls != 1 {
+		t.Fatalf("chiamate al Verifier = %d, volevo 1", v.calls)
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status %d, atteso 401 (credenziale non attiva)", rec.Code)
+	}
+}
