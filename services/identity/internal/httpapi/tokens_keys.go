@@ -396,8 +396,3 @@ func (s *server) LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprin
 	}
 	writeJSON(w, http.StatusOK, openapi.SshKeyLookup{Key: toSSHKey(k), User: toUser(u, true)})
 }
-
-// CheckPermission è di un altro item (permessi su risorse).
-func (s *server) CheckPermission(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not_implemented", "Verifica dei permessi non ancora disponibile.")
-}

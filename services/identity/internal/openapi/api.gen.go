@@ -15,6 +15,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for CreateGrantInputSubjectType.
+const (
+	CreateGrantInputSubjectTypeTeam CreateGrantInputSubjectType = "team"
+	CreateGrantInputSubjectTypeUser CreateGrantInputSubjectType = "user"
+)
+
+// Valid indicates whether the value is a known member of the CreateGrantInputSubjectType enum.
+func (e CreateGrantInputSubjectType) Valid() bool {
+	switch e {
+	case CreateGrantInputSubjectTypeTeam:
+		return true
+	case CreateGrantInputSubjectTypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateUserInputKind.
 const (
 	CreateUserInputKindAgent CreateUserInputKind = "agent"
@@ -48,6 +66,24 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	case CurrentSessionAuthMethodPassword:
 		return true
 	case CurrentSessionAuthMethodToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GrantSubjectType.
+const (
+	GrantSubjectTypeTeam GrantSubjectType = "team"
+	GrantSubjectTypeUser GrantSubjectType = "user"
+)
+
+// Valid indicates whether the value is a known member of the GrantSubjectType enum.
+func (e GrantSubjectType) Valid() bool {
+	switch e {
+	case GrantSubjectTypeTeam:
+		return true
+	case GrantSubjectTypeUser:
 		return true
 	default:
 		return false
@@ -213,6 +249,17 @@ type CheckPermissionResult struct {
 	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
 }
 
+// CreateGrantInput defines model for CreateGrantInput.
+type CreateGrantInput struct {
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role        ResourceRole                `json:"role"`
+	SubjectId   openapi_types.UUID          `json:"subjectId"`
+	SubjectType CreateGrantInputSubjectType `json:"subjectType"`
+}
+
+// CreateGrantInputSubjectType defines model for CreateGrantInput.SubjectType.
+type CreateGrantInputSubjectType string
+
 // CreateTokenInput defines model for CreateTokenInput.
 type CreateTokenInput struct {
 	// ExpiresAt Obbligatoria: la scadenza deve essere nel futuro e non oltre il massimo configurato dall'installazione (default 365 giorni), altrimenti 422.
@@ -276,6 +323,14 @@ type CurrentSession struct {
 // CurrentSessionAuthMethod Come e' stato autenticato il chiamante.
 type CurrentSessionAuthMethod string
 
+// EffectivePermission defines model for EffectivePermission.
+type EffectivePermission struct {
+	ResourceId openapi_types.UUID `json:"resourceId"`
+
+	// Role Ruolo effettivo; `null` = nessun accesso.
+	Role *ResourceRole `json:"role"`
+}
+
 // Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Error struct {
 	Error struct {
@@ -290,6 +345,29 @@ type Error struct {
 		// Message Messaggio leggibile da persone, non contrattuale.
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// Grant Ruolo su una risorsa generica (D15) per un utente o un team.
+type Grant struct {
+	CreatedAt  *time.Time          `json:"createdAt,omitempty"`
+	Id         *openapi_types.UUID `json:"id,omitempty"`
+	ResourceId openapi_types.UUID  `json:"resourceId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role        ResourceRole       `json:"role"`
+	SubjectId   openapi_types.UUID `json:"subjectId"`
+	SubjectType GrantSubjectType   `json:"subjectType"`
+}
+
+// GrantSubjectType defines model for Grant.SubjectType.
+type GrantSubjectType string
+
+// GrantList defines model for GrantList.
+type GrantList struct {
+	Items   []Grant `json:"items"`
+	Page    int     `json:"page"`
+	PerPage int     `json:"perPage"`
+	Total   int     `json:"total"`
 }
 
 // LoginInput defines model for LoginInput.
@@ -405,6 +483,12 @@ type TokenList struct {
 
 // TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
 type TokenScope string
+
+// UpdateGrantInput defines model for UpdateGrantInput.
+type UpdateGrantInput struct {
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role ResourceRole `json:"role"`
+}
 
 // UpdateUserInput defines model for UpdateUserInput.
 type UpdateUserInput struct {
@@ -546,6 +630,12 @@ type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
 
+// ListResourceGrantsParams defines parameters for ListResourceGrants.
+type ListResourceGrantsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // ListSshKeysParams defines parameters for ListSshKeys.
 type ListSshKeysParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -574,6 +664,12 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
+
+// CreateResourceGrantJSONRequestBody defines body for CreateResourceGrant for application/json ContentType.
+type CreateResourceGrantJSONRequestBody = CreateGrantInput
+
+// UpdateResourceGrantJSONRequestBody defines body for UpdateResourceGrant for application/json ContentType.
+type UpdateResourceGrantJSONRequestBody = UpdateGrantInput
 
 // AddSshKeyJSONRequestBody defines body for AddSshKey for application/json ContentType.
 type AddSshKeyJSONRequestBody = AddSshKeyInput
@@ -619,6 +715,21 @@ type ServerInterface interface {
 	// VerifyCredential Verifica una credenziale (per il gateway)
 	// (POST /internal/verify)
 	VerifyCredential(w http.ResponseWriter, r *http.Request)
+	// ListResourceGrants Elenca i grant di una risorsa
+	// (GET /resources/{resourceId}/grants)
+	ListResourceGrants(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam, params ListResourceGrantsParams)
+	// CreateResourceGrant Assegna un ruolo su una risorsa a un utente o a un team
+	// (POST /resources/{resourceId}/grants)
+	CreateResourceGrant(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// DeleteResourceGrant Revoca un grant
+	// (DELETE /resources/{resourceId}/grants/{grantId})
+	DeleteResourceGrant(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam, grantId GrantIdParam)
+	// UpdateResourceGrant Cambia il ruolo di un grant
+	// (PATCH /resources/{resourceId}/grants/{grantId})
+	UpdateResourceGrant(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam, grantId GrantIdParam)
+	// GetMyResourcePermission Permesso effettivo del chiamante su una risorsa
+	// (GET /resources/{resourceId}/permissions)
+	GetMyResourcePermission(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
 	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
 	// (GET /user/ssh-keys)
 	ListSshKeys(w http.ResponseWriter, r *http.Request, params ListSshKeysParams)
@@ -867,6 +978,183 @@ func (siw *ServerInterfaceWrapper) VerifyCredential(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.VerifyCredential(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListResourceGrants operation middleware
+func (siw *ServerInterfaceWrapper) ListResourceGrants(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId ResourceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListResourceGrantsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListResourceGrants(w, r, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateResourceGrant operation middleware
+func (siw *ServerInterfaceWrapper) CreateResourceGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId ResourceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateResourceGrant(w, r, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteResourceGrant operation middleware
+func (siw *ServerInterfaceWrapper) DeleteResourceGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId ResourceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "grantId" -------------
+	var grantId GrantIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "grantId", r.PathValue("grantId"), &grantId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "grantId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteResourceGrant(w, r, resourceId, grantId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateResourceGrant operation middleware
+func (siw *ServerInterfaceWrapper) UpdateResourceGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId ResourceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "grantId" -------------
+	var grantId GrantIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "grantId", r.PathValue("grantId"), &grantId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "grantId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateResourceGrant(w, r, resourceId, grantId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMyResourcePermission operation middleware
+func (siw *ServerInterfaceWrapper) GetMyResourcePermission(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId ResourceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyResourcePermission(w, r, resourceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1390,6 +1678,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.GetSshKey)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}/grants", wrapper.ListResourceGrants)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources/{resourceId}/grants", wrapper.CreateResourceGrant)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/resources/{resourceId}/grants/{grantId}", wrapper.DeleteResourceGrant)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/resources/{resourceId}/grants/{grantId}", wrapper.UpdateResourceGrant)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}/permissions", wrapper.GetMyResourcePermission)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/verify", wrapper.VerifyCredential)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/check", wrapper.CheckPermission)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
