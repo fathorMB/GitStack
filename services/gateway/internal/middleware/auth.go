@@ -19,6 +19,10 @@ const SessionCookie = "gst_session"
 // tokenPrefix è il prefisso dei token personali.
 const tokenPrefix = "gst_"
 
+// maxCredentialLen è la lunghezza massima di una credenziale: corrisponde a
+// VerifyCredentialInput.credential maxLength 512 in api/openapi.yaml.
+const maxCredentialLen = 512
+
 // AuthConfig configura Auth.
 type AuthConfig struct {
 	// Table è la dichiarazione di sicurezza di ogni rotta (da
@@ -67,6 +71,12 @@ func Auth(cfg AuthConfig) Middleware {
 			}
 
 			cred, kind := credentialFrom(r)
+			if len(cred) > maxCredentialLen {
+				// identity risponderebbe 400 e il client lo tradurrebbe in 503:
+				// una credenziale troppo lunga è solo non valida.
+				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Credenziale non valida o scaduta.", nil)
+				return
+			}
 			if cred == "" || !route.Accepts(securityKind(kind)) {
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Autenticazione richiesta.", nil)
 				return
