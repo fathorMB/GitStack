@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/db"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -126,7 +128,19 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	}
 	defer nc.Close()
 
-	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret)
+	var routerOpts []httpserver.Option
+	if cfg.IdentityURL != "" {
+		identityURL, err := url.Parse(cfg.IdentityURL)
+		if err != nil || identityURL.Scheme == "" || identityURL.Host == "" {
+			logger.Error("configurazione non valida", "err", "GITSTACK_IDENTITY_URL non è una URL assoluta valida")
+			return 1
+		}
+		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)))
+	} else {
+		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST /resources risponderà 503")
+	}
+
+	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

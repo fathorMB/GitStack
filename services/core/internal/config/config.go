@@ -47,6 +47,12 @@ type Config struct {
 	// loggato.
 	ServiceSecret string
 
+	// IdentityURL è la base URL di identity (GITSTACK_IDENTITY_URL, stesso
+	// nome del gateway): core la usa per assegnare il grant admin a chi crea
+	// una risorsa. Vuota: POST /resources risponde 503 (mai una risorsa senza
+	// grant).
+	IdentityURL string
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -60,6 +66,7 @@ const (
 	envNatsURL           = "GITSTACK_CORE_NATS_URL"
 	envLogLevel          = "GITSTACK_CORE_LOG_LEVEL"
 	envServiceSecret     = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	envIdentityURL       = "GITSTACK_IDENTITY_URL"
 
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
@@ -125,6 +132,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envServiceSecret); ok {
 		cfg.ServiceSecret = strings.TrimSpace(v)
+	}
+
+	if v, ok := lookup(envIdentityURL); ok {
+		cfg.IdentityURL = strings.TrimSpace(v)
 	}
 
 	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {

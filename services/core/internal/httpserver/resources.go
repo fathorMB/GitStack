@@ -11,6 +11,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/google/uuid"
 )
 
@@ -81,6 +82,19 @@ func (s *apiServer) CreateResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Chi crea la risorsa ne diventa admin: servono l'identità firmata dal
+	// gateway e un identity configurato, altrimenti niente risorsa.
+	caller, ok := trust.FromContext(r.Context())
+	creatorID, perr := uuid.Parse(caller.UserID)
+	if !ok || perr != nil {
+		writeError(w, http.StatusUnauthorized, "unauthenticated", "Identità del chiamante assente o non valida.")
+		return
+	}
+	if s.grants == nil {
+		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non configurata: impossibile assegnare i permessi sulla nuova risorsa.")
+		return
+	}
+
 	var attrs map[string]any
 	if body.Attributes != nil {
 		attrs = *body.Attributes
@@ -97,6 +111,20 @@ func (s *apiServer) CreateResource(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la creazione della risorsa.")
+		return
+	}
+
+	if err := s.grants.GrantResourceCreator(r.Context(), created.ID, creatorID); err != nil {
+		slog.Default().Warn("grant admin al creatore non riuscito: la risorsa viene annullata",
+			"resource_id", created.ID, "err", err)
+		// Contesto proprio: quello della richiesta può essere già scaduto.
+		dctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if derr := s.resources.Delete(dctx, created.ID); derr != nil {
+			slog.Default().Error("cancellazione della risorsa senza grant non riuscita: risorsa orfana",
+				"resource_id", created.ID, "err", derr)
+		}
+		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile: la risorsa non è stata creata.")
 		return
 	}
 

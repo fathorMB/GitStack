@@ -118,3 +118,16 @@ func TestLoad_InvalidValues(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_IdentityURL(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envDatabaseURL: "postgres://x", envIdentityURL: " http://identity:8080 ",
+	}))
+	if err != nil || cfg.IdentityURL != "http://identity:8080" {
+		t.Errorf("IdentityURL = %q, err=%v", cfg.IdentityURL, err)
+	}
+	cfg, err = load(lookupFrom(map[string]string{envDatabaseURL: "postgres://x"}))
+	if err != nil || cfg.IdentityURL != "" {
+		t.Errorf("senza URL: err=%v url=%q", err, cfg.IdentityURL)
+	}
+}

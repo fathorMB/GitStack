@@ -459,6 +459,11 @@ type GrantList struct {
 	Total   int     `json:"total"`
 }
 
+// GrantResourceCreatorInput defines model for GrantResourceCreatorInput.
+type GrantResourceCreatorInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
 // Health defines model for Health.
 type Health struct {
 	Status HealthStatus `json:"status"`
@@ -943,6 +948,9 @@ type LoginJSONRequestBody = LoginInput
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
+// GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
+type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -1142,6 +1150,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/permissions/check (the `CheckPermission` operationId).
 	CheckPermission(ctx context.Context, body CheckPermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GrantResourceCreatorWithBody Assegna il ruolo admin al creatore di una risorsa
+	//
+	// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+	GrantResourceCreatorWithBody(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GrantResourceCreator Assegna il ruolo admin al creatore di una risorsa
+	//
+	// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+	GrantResourceCreator(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
 	//
@@ -1739,6 +1765,44 @@ func (c *Client) CheckPermissionWithBody(ctx context.Context, contentType string
 // Corresponds with POST /internal/permissions/check (the `CheckPermission` operationId).
 func (c *Client) CheckPermission(ctx context.Context, body CheckPermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCheckPermissionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GrantResourceCreatorWithBody Assegna il ruolo admin al creatore di una risorsa
+//
+// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+func (c *Client) GrantResourceCreatorWithBody(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGrantResourceCreatorRequestWithBody(c.Server, resourceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GrantResourceCreator Assegna il ruolo admin al creatore di una risorsa
+//
+// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+func (c *Client) GrantResourceCreator(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGrantResourceCreatorRequest(c.Server, resourceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3041,6 +3105,53 @@ func NewCheckPermissionRequestWithBody(server string, contentType string, body i
 	}
 
 	operationPath := fmt.Sprintf("/internal/permissions/check")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGrantResourceCreatorRequest calls the generic GrantResourceCreator builder with application/json body
+func NewGrantResourceCreatorRequest(server string, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGrantResourceCreatorRequestWithBody(server, resourceId, "application/json", bodyReader)
+}
+
+// NewGrantResourceCreatorRequestWithBody constructs an http.Request for the GrantResourceCreator method, with any body, and a specified content type
+func NewGrantResourceCreatorRequestWithBody(server string, resourceId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/resources/%s/grants/creator", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5178,6 +5289,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/permissions/check (the `CheckPermission` operationId).
 	CheckPermissionWithResponse(ctx context.Context, body CheckPermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*CheckPermissionResponse, error)
 
+	// GrantResourceCreatorWithBodyWithResponse Assegna il ruolo admin al creatore di una risorsa
+	//
+	// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+	GrantResourceCreatorWithBodyWithResponse(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GrantResourceCreatorResponse, error)
+
+	// GrantResourceCreatorWithResponse Assegna il ruolo admin al creatore di una risorsa
+	//
+	// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+	GrantResourceCreatorWithResponse(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*GrantResourceCreatorResponse, error)
+
 	// LookupSshKeyWithResponse Risolve un utente dal fingerprint di una chiave SSH
 	//
 	// Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
@@ -6133,6 +6262,82 @@ func (r CheckPermissionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CheckPermissionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GrantResourceCreatorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Grant
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Grant
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GrantResourceCreatorResponse) GetJSON200() *Grant {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r GrantResourceCreatorResponse) GetJSON201() *Grant {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GrantResourceCreatorResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GrantResourceCreatorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GrantResourceCreatorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GrantResourceCreatorResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GrantResourceCreatorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GrantResourceCreatorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GrantResourceCreatorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GrantResourceCreatorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9272,6 +9477,36 @@ func (c *ClientWithResponses) CheckPermissionWithResponse(ctx context.Context, b
 	return ParseCheckPermissionResponse(rsp)
 }
 
+// GrantResourceCreatorWithBodyWithResponse Assegna il ruolo admin al creatore di una risorsa
+//
+// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+func (c *ClientWithResponses) GrantResourceCreatorWithBodyWithResponse(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GrantResourceCreatorResponse, error) {
+	rsp, err := c.GrantResourceCreatorWithBody(ctx, resourceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGrantResourceCreatorResponse(rsp)
+}
+
+// GrantResourceCreatorWithResponse Assegna il ruolo admin al creatore di una risorsa
+//
+// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/resources/{resourceId}/grants/creator (the `GrantResourceCreator` operationId).
+func (c *ClientWithResponses) GrantResourceCreatorWithResponse(ctx context.Context, resourceId openapi_types.UUID, body GrantResourceCreatorJSONRequestBody, reqEditors ...RequestEditorFn) (*GrantResourceCreatorResponse, error) {
+	rsp, err := c.GrantResourceCreator(ctx, resourceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGrantResourceCreatorResponse(rsp)
+}
+
 // LookupSshKeyWithResponse Risolve un utente dal fingerprint di una chiave SSH
 //
 // Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
@@ -10456,6 +10691,67 @@ func ParseCheckPermissionResponse(rsp *http.Response) (*CheckPermissionResponse,
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGrantResourceCreatorResponse parses an HTTP response from a GrantResourceCreatorWithResponse call
+func ParseGrantResourceCreatorResponse(rsp *http.Response) (*GrantResourceCreatorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GrantResourceCreatorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Grant
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Grant
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest

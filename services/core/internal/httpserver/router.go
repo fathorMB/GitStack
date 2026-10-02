@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
@@ -39,6 +40,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		pool:      pool,
 		resources: store.New(pool),
 		events:    publisher,
+		grants:    o.grants,
 	}
 
 	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
@@ -61,7 +63,14 @@ func publicPath(r *http.Request) bool {
 type Option func(*routerOptions)
 
 type routerOptions struct {
-	now func() time.Time
+	now    func() time.Time
+	grants identityclient.CreatorGranter
+}
+
+// WithCreatorGranter imposta il client di identity con cui core assegna il
+// grant admin a chi crea una risorsa. Senza, POST /resources risponde 503.
+func WithCreatorGranter(g identityclient.CreatorGranter) Option {
+	return func(o *routerOptions) { o.grants = g }
 }
 
 // WithClock sostituisce l'orologio con cui si controlla il timestamp della

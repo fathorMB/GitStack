@@ -83,6 +83,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "gitstack.serviceSecret.name" . }}
                   key: secret
+            {{- if .Values.identity.enabled }}
+            # identity: core vi assegna il grant admin a chi crea una risorsa
+            # (POST /internal/resources/{id}/grants/creator). Senza identity,
+            # POST /resources risponde 503.
+            - name: GITSTACK_IDENTITY_URL
+              value: {{ include "gitstack.identity.url" . | quote }}
+            {{- end }}
             - name: GITSTACK_CORE_LOG_LEVEL
               value: {{ .Values.core.env.logLevel | quote }}
           livenessProbe:

@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,6 +20,9 @@ type apiServer struct {
 	pool      *pgxpool.Pool
 	resources *store.Store
 	events    events.Publisher
+	// grants assegna il grant admin al creatore di una risorsa; nil se
+	// identity non è configurata (POST /resources risponde 503).
+	grants identityclient.CreatorGranter
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

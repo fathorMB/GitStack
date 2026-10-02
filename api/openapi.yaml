@@ -1417,6 +1417,53 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/resources/{resourceId}/grants/creator:
+    parameters:
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: grantResourceCreator
+      tags: [internal]
+      summary: Assegna il ruolo admin al creatore di una risorsa
+      description: >
+        Usata da core dopo la creazione di una risorsa: l'utente indicato
+        riceve il grant admin (granted_by = lo stesso utente). Idempotente:
+        se l'utente ha gia' un grant sulla risorsa lo porta ad admin e
+        risponde 200.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantResourceCreatorInput"
+      responses:
+        "200":
+          description: Il grant dell'utente esisteva gia' ed e' ora admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Grant"
+        "201":
+          description: Grant creato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Grant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/ssh-keys/{fingerprint}:
     parameters:
       - name: fingerprint
@@ -2440,6 +2487,15 @@ components:
           type: integer
           minimum: 0
           description: Per quanto tempo il gateway puo' tenere in cache l'esito.
+
+    GrantResourceCreatorInput:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
 
     CheckPermissionInput:
       type: object
