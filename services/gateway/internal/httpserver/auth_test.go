@@ -63,16 +63,17 @@ type env struct {
 	core     *downstream
 	identity *downstream
 	verifier *stubVerifier
+	perms    *stubPermissions
 }
 
 func newEnv(t *testing.T, v *stubVerifier) *env {
 	t.Helper()
-	e := &env{core: newDownstream(t), identity: newDownstream(t), verifier: v}
+	e := &env{core: newDownstream(t), identity: newDownstream(t), verifier: v, perms: &stubPermissions{}}
 	cfg := newTestConfig(t, e.core.srv.URL)
 	cfg.IdentityURL = mustURL(t, e.identity.srv.URL)
 	cfg.IdentityTimeout = time.Second
 	cfg.IdentityServiceSecret = testSecret
-	e.router = NewRouter(cfg, discardLogger(), WithVerifier(v),
+	e.router = NewRouter(cfg, discardLogger(), WithVerifier(v), WithPermissionChecker(e.perms),
 		WithClock(func() time.Time { return time.Unix(1700000000, 0) }))
 	return e
 }

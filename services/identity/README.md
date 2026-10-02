@@ -21,7 +21,7 @@ Errori: formato unico `Error` con codici stabili per 401/403/404/409/422 (vedi l
 
 - **Autenticazione (chi sei)**: la fa identity. Il gateway non interpreta mai il contenuto di una credenziale: la passa a identity e si fida del `Principal` restituito.
 - **Autorizzazione grossolana (scope)**: la applica il gateway usando `x-required-scopes` dell'operazione e gli `scopes` del principal; se mancano, risponde 403 `insufficient_scope` senza chiamare il servizio a valle. Le sessioni non hanno scope e passano.
-- **Autorizzazione fine (ruolo su una risorsa, ruolo in org)**: la applica il servizio proprietario del dato (core, git, identity stessa), che chiede a identity `POST /internal/permissions/check` (o legge il principal per i casi banali). Il gateway non conosce le risorse.
+- **Autorizzazione fine (ruolo su una risorsa, ruolo in org)**: la applica il servizio proprietario del dato (core, git, identity stessa), che chiede a identity `POST /internal/permissions/check` (o legge il principal per i casi banali). Il gateway non conosce le risorse, ma per le rotte di core su `{resourceId}` applica il ruolo dichiarato in `x-required-permission` chiamando lo stesso `POST /internal/permissions/check` (vedi `services/gateway/README.md`).
 - **Rotte di identity** (`/v1/auth/*`, `/v1/users*`, `/v1/user/*`, `/v1/orgs*`, `/v1/resources/{id}/grants*`, `/v1/resources/{id}/permissions`) sono instradate dal gateway a identity; il resto a core. `/v1/internal/*` **non** è mai instradato: il gateway lo rifiuta (404).
 - **Interfaccia interna** (`/internal/verify`, `/internal/permissions/check`, `/internal/ssh-keys/{fingerprint}`): protetta dallo schema `serviceAuth` (segreto condiviso di servizio da un Secret k8s, mai un token utente) e raggiungibile solo dal cluster. `/internal/ssh-keys/{fingerprint}` serve al servizio git per mappare una chiave SSH a un utente.
 
@@ -193,11 +193,11 @@ GITSTACK_TEST_DATABASE_URL="postgres://postgres:pw@localhost:55432/gitstack?sslm
 
 ## Token personali, chiavi SSH e interfaccia interna (GIT-34, M-02/F)
 
-Pacchetti: `internal/apitokens` (token `gst_...`), `internal/userkeys` (chiavi SSH); gli handler stanno in `internal/httpapi/tokens_keys.go`. `httpapi.New` prende opzioni: `WithTokens`, `WithSSHKeys`, `WithServiceSecret`; senza `WithTokens`/`WithSSHKeys` le relative operazioni rispondono 501. L'ambiente (segreto, massimo di durata) lo legge chi monta il server, non questi pacchetti.
+Pacchetti: `internal/apitokens` (token `gst_...`), `internal/userkeys` (chiavi SSH); gli handler stanno in `internal/httpapi/tokens_keys.go`. `httpapi.New` prende opzioni: `WithTokens`, `WithSSHKeys`, `WithPermissions`, `WithServiceSecret`; senza `WithTokens`/`WithSSHKeys` le relative operazioni rispondono 501. L'ambiente (segreto, massimo di durata) lo legge chi monta il server, non questi pacchetti.
 
 - **Token**: nome (1-64), scope dal catalogo (`tokens.ParseScopes`), `expiresAt` **obbligatoria**, nel futuro e non oltre il massimo (parametro di `apitokens.New`, default 365 giorni; altrimenti 422). Nel database c'è solo `tokens.HashBytes` (BYTEA di 32 byte) e l'hint di 4 caratteri; il valore in chiaro è solo nella risposta 201 di `POST /user/tokens`. Elenco senza revocati; il nome di un token revocato si può riusare. Nome duplicato: 409 `already_exists`.
 - **Chiavi SSH**: parsing solo con `sshkeys.Parse`. Fingerprint già registrato (da chiunque, anche dallo stesso utente): 409 `ssh_key_in_use` (indice `ssh_keys_fingerprint_key`); titolo già usato dallo stesso utente: 409 `already_exists` con `field: title` (indice `ssh_keys_user_title_key`). Chiave di un altro utente in GET/DELETE: 404.
-- **`POST /internal/verify`**: accetta cookie di sessione o `gst_...` (o `kind`); sconosciuto, scaduto, revocato, utente disattivato → `active: false` senza distinzione (cache 5 s; 30 s se attivo). `last_used_at` si aggiorna al più una volta al minuto. **`GET /internal/ssh-keys/{fingerprint}`** (URL-encoded) risolve l'utente per il servizio git. `POST /internal/permissions/check` resta 501 (item dei permessi).
+- **`POST /internal/verify`**: accetta cookie di sessione o `gst_...` (o `kind`); sconosciuto, scaduto, revocato, utente disattivato → `active: false` senza distinzione (cache 5 s; 30 s se attivo). `last_used_at` si aggiorna al più una volta al minuto. **`GET /internal/ssh-keys/{fingerprint}`** (URL-encoded) risolve l'utente per il servizio git. `POST /internal/permissions/check` è descritto nella sezione "Permessi su risorse".
 - **serviceAuth**: middleware su `/internal/*`, `Authorization: Bearer <segreto>` confrontato in tempo costante; segreto vuoto = tutto 401.
 - Le operazioni `/user/*` accettano il cookie di sessione o l'identità firmata dal gateway (vedi sopra); il controllo degli scope è del gateway.
 - Test: `go test -tags integration ./internal/apitokens ./internal/userkeys ./internal/httpapi` con `GITSTACK_TEST_DATABASE_URL`.
@@ -218,3 +218,15 @@ Variabili (senza `GITSTACK_IDENTITY_OIDC_CONFIG_FILE` il login OIDC è spento: e
 Pacchetti: `internal/oidc` (`config.go` file e validazione, `crypto.go` AES-256-GCM per segreti e cookie di stato, `service.go` flusso e collegamento, `store.go` Postgres), handler in `internal/httpapi/oidc.go`. Il collegamento a un utente locale segue la configurazione per provider (`linkByVerifiedEmail`, `autoCreateUsers`, entrambe `false` di default → 409 `oidc_identity_unlinked`); un'email non verificata non collega mai un utente esistente.
 
 Test: unit test con un IdP finto in `httptest` (`go test ./internal/oidc`: firma, issuer, audience, scadenza, nonce, state, cookie scaduto, `email_verified` in tutte le forme); con Postgres (`-tags integration`, `GITSTACK_TEST_DATABASE_URL`) la sincronizzazione dei provider e il collegamento; con un Keycloak vero (`GITSTACK_TEST_KEYCLOAK_URL`, realm in `internal/httpapi/testdata/keycloak-realm.json`) il flusso completo attraverso gli handler HTTP — il job `identity-oidc` della CI lo lancia.
+
+## Permessi su risorse (GIT-38)
+
+Pacchetto `internal/permissions` (store e calcolo), handler in `internal/httpapi/permissions.go` (opzione `WithPermissions`; senza, le operazioni rispondono 501). Ordine dei ruoli: `read` < `write` < `admin`.
+
+**Ruolo effettivo** di un utente su una risorsa = massimo fra: grant diretto all'utente; grant ai team di cui è membro; grant ai team di un'organizzazione di cui è **owner** (ereditarietà organizzazione → team → utente: l'owner ha sui team dell'organizzazione il ruolo dei loro membri); `users.is_admin` = `admin`. Un membro semplice dell'organizzazione senza team non eredita niente. Utente inesistente o disattivato: nessun ruolo, nemmeno se admin di sistema. Il calcolo è una sola query (`effectiveSQL`); nessuna cache, un grant cambiato o revocato vale subito.
+
+- `POST /internal/permissions/check` (serviceAuth): `{userId, resourceId, role}` → `{allowed, effectiveRole}`; un utente sconosciuto non è un errore (`allowed: false`).
+- `GET|POST /resources/{id}/grants`, `PATCH|DELETE /resources/{id}/grants/{grantId}`: serve il ruolo `admin` sulla risorsa o l'admin di sistema, altrimenti 403 (identity non distingue risorsa inesistente e risorsa altrui; `resource_id` non ha FK, D6). Il secondo grant per lo stesso soggetto dà 409 `already_exists`; soggetto inesistente o ruolo non valido 422.
+- `GET /resources/{id}/permissions`: ruolo effettivo del chiamante, `role: null` se nessuno (200). Non tiene conto degli scope del token: li applica il gateway.
+
+Fuori perimetro (item successivi): grant admin automatico a chi crea una risorsa; filtro per permesso di `GET /resources`; grant a un'organizzazione come soggetto (il contratto ammette solo `user` e `team`: l'organizzazione pesa tramite il ruolo di owner).

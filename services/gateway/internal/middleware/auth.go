@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/fathorMB/GitStack/services/gateway/internal/identityclient"
@@ -31,6 +32,10 @@ type AuthConfig struct {
 	// Verifier verifica le credenziali (di norma identityclient.Cache). Nil:
 	// identity non è configurata, le rotte autenticate rispondono 503.
 	Verifier identityclient.Verifier
+	// Permissions verifica con identity il permesso su risorsa dichiarato da
+	// una rotta (x-required-permission). Nil: le rotte che lo richiedono
+	// rispondono 503, mai fail open.
+	Permissions identityclient.PermissionChecker
 	// Forgetter, se presente, svuota la voce di cache di una credenziale
 	// dopo una richiesta che ne cambia lo stato (cambio password).
 	Forgetter interface{ Forget(credential string) }
@@ -52,7 +57,12 @@ type AuthConfig struct {
 //     salvo le eccezioni del contratto (x-password-change-exempt);
 //  6. token senza gli scope della rotta: 403 `insufficient_scope`; le
 //     sessioni non hanno scope e passano;
-//  7. l'identità va nel contesto: il proxy la firma verso i servizi a valle.
+//  7. rotta con permesso su risorsa ({resourceId}): identity dice se l'utente
+//     ha almeno quel ruolo (grant diretto, via team, via owner
+//     dell'organizzazione, admin di sistema). Negato: 403 `forbidden` senza
+//     dati della risorsa, anche se non esiste (nessun 404 che ne riveli
+//     l'esistenza); identity non risponde: 503;
+//  8. l'identità va nel contesto: il proxy la firma verso i servizi a valle.
 func Auth(cfg AuthConfig) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +136,12 @@ func Auth(cfg AuthConfig) Middleware {
 				}
 			}
 
+			if route.Permission != security.PermissionNone {
+				if !cfg.checkPermission(w, r, p.UserID, m.Params["resourceId"], route.Permission) {
+					return
+				}
+			}
+
 			scopes := p.Scopes
 			if !p.IsToken {
 				scopes = nil
@@ -135,6 +151,34 @@ func Auth(cfg AuthConfig) Middleware {
 		})
 	}
 }
+
+// checkPermission applica il permesso su risorsa; ritorna false dopo aver
+// scritto la risposta.
+func (c AuthConfig) checkPermission(w http.ResponseWriter, r *http.Request, userID, resourceID string, perm security.Permission) bool {
+	if !uuidRE.MatchString(resourceID) {
+		// Un id che non è un UUID non può esistere: nessun permesso da chiedere.
+		writeAuthError(w, http.StatusBadRequest, "bad_request", "Identificativo della risorsa non valido.", nil)
+		return false
+	}
+	if c.Permissions == nil {
+		writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non è configurato.", nil)
+		return false
+	}
+	allowed, err := c.Permissions.CheckPermission(r.Context(), userID, strings.ToLower(resourceID), string(perm))
+	if err != nil {
+		c.logger().Error("verifica del permesso non riuscita",
+			"request_id", RequestIDFromContext(r.Context()), "err", unavailableReason(err))
+		writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non ha risposto.", nil)
+		return false
+	}
+	if !allowed {
+		writeAuthError(w, http.StatusForbidden, "forbidden", "Permesso negato.", nil)
+		return false
+	}
+	return true
+}
+
+var uuidRE = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 func (c AuthConfig) logger() *slog.Logger {
 	if c.Logger != nil {

@@ -139,6 +139,7 @@ paths:
       operationId: getResource
       tags: [resources]
       x-required-scopes: ["read:resource"]
+      x-required-permission: read
       summary: Legge una risorsa
       responses:
         "200":
@@ -149,6 +150,8 @@ paths:
                 $ref: "#/components/schemas/Resource"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         default:
@@ -157,6 +160,7 @@ paths:
       operationId: updateResource
       tags: [resources]
       x-required-scopes: ["write:resource"]
+      x-required-permission: write
       summary: Aggiorna una risorsa
       description: "Aggiornamento parziale: solo i campi presenti nel corpo cambiano."
       requestBody:
@@ -176,6 +180,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         default:
@@ -184,12 +190,15 @@ paths:
       operationId: deleteResource
       tags: [resources]
       x-required-scopes: ["write:resource"]
+      x-required-permission: admin
       summary: Elimina una risorsa
       responses:
         "204":
           description: Risorsa eliminata.
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         default:

@@ -42,10 +42,14 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	verifier := o.verifier
 	var forgetter interface{ Forget(string) }
 	if verifier == nil && cfg.IdentityURL != nil {
-		cache := identityclient.NewCache(
-			identityclient.NewClient(cfg.IdentityURL, cfg.IdentityServiceSecret, cfg.IdentityTimeout),
-			cfg.AuthCacheTTL, cfg.AuthCacheNegativeTTL, o.now)
+		client := identityclient.NewClient(cfg.IdentityURL, cfg.IdentityServiceSecret, cfg.IdentityTimeout)
+		cache := identityclient.NewCache(client, cfg.AuthCacheTTL, cfg.AuthCacheNegativeTTL, o.now)
 		verifier, forgetter = cache, cache
+		// Il permesso su risorsa non si tiene in cache: un grant revocato vale
+		// subito.
+		if o.permissions == nil {
+			o.permissions = client
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -73,7 +77,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	apiMiddlewares := []openapi.MiddlewareFunc{
 		middleware.RateLimit,
 		middleware.Auth(middleware.AuthConfig{
-			Table: table, Verifier: verifier, Forgetter: forgetter,
+			Table: table, Verifier: verifier, Permissions: o.permissions, Forgetter: forgetter,
 			Prefix: proxy.PrefixV1, Logger: logger,
 		}),
 		base,
@@ -132,13 +136,20 @@ func mountIdentity(mux *http.ServeMux, h http.Handler, mws []openapi.MiddlewareF
 type Option func(*routerOptions)
 
 type routerOptions struct {
-	verifier identityclient.Verifier
-	now      func() time.Time
+	verifier    identityclient.Verifier
+	permissions identityclient.PermissionChecker
+	now         func() time.Time
 }
 
 // WithVerifier sostituisce la verifica via identity (test).
 func WithVerifier(v identityclient.Verifier) Option {
 	return func(o *routerOptions) { o.verifier = v }
+}
+
+// WithPermissionChecker sostituisce la verifica dei permessi via identity
+// (test).
+func WithPermissionChecker(p identityclient.PermissionChecker) Option {
+	return func(o *routerOptions) { o.permissions = p }
 }
 
 // WithClock sostituisce l'orologio di cache e firma (test).

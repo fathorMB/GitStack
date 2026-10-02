@@ -30,6 +30,18 @@ const (
 	ServiceIdentity Service = "identity"
 )
 
+// Permission è il ruolo minimo richiesto sulla risorsa del percorso
+// ({resourceId}), da x-required-permission. PermissionNone: la rotta non
+// dipende da un permesso su risorsa.
+type Permission string
+
+const (
+	PermissionNone  Permission = ""
+	PermissionRead  Permission = "read"
+	PermissionWrite Permission = "write"
+	PermissionAdmin Permission = "admin"
+)
+
 // Exemption dice se una rotta resta raggiungibile con una sessione la cui
 // password iniziale è ancora da cambiare (x-password-change-exempt).
 type Exemption int
@@ -56,7 +68,10 @@ type Route struct {
 	Credentials []CredentialKind
 	// Scopes: scope richiesti a un token (tutti); le sessioni non hanno
 	// scope e passano.
-	Scopes               []string
+	Scopes []string
+	// Permission: ruolo minimo sulla risorsa {resourceId} del percorso; il
+	// gateway lo verifica con identity dopo l'autenticazione.
+	Permission           Permission
 	PasswordChangeExempt Exemption
 }
 

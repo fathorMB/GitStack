@@ -802,6 +802,11 @@ export type DeleteResourceErrors = {
      */
     401: Error;
     /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
      * Risorsa non trovata.
      */
     404: Error;
@@ -839,6 +844,11 @@ export type GetResourceErrors = {
      * Token mancante o non valido.
      */
     401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
     /**
      * Risorsa non trovata.
      */
@@ -881,6 +891,11 @@ export type UpdateResourceErrors = {
      * Token mancante o non valido.
      */
     401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
     /**
      * Risorsa non trovata.
      */

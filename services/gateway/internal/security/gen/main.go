@@ -1,6 +1,6 @@
 // Command gen genera internal/security/routes.gen.go dalla dichiarazione di
 // sicurezza di ogni operazione di api/openapi.yaml: `security` (operazione o
-// globale), `x-required-scopes` e `x-password-change-exempt`. È l'unico modo
+// globale), `x-required-scopes`, `x-required-permission` e `x-password-change-exempt`. È l'unico modo
 // in cui il gateway conosce cosa richiede una rotta: niente tabelle scritte
 // a mano che possano divergere dal contratto (la CI rigenera e confronta,
 // vedi scripts/check-api-generated.sh).
@@ -32,6 +32,7 @@ type operation struct {
 	Security             *[]map[string][]string `yaml:"security"`
 	RequiredScopes       []string               `yaml:"x-required-scopes"`
 	PasswordChangeExempt string                 `yaml:"x-password-change-exempt"`
+	RequiredPermission   string                 `yaml:"x-required-permission"`
 }
 
 var methods = map[string]string{
@@ -52,6 +53,7 @@ type route struct {
 	Credentials                        []string
 	Scopes                             []string
 	Exempt                             string
+	Permission                         string
 }
 
 func main() {
@@ -111,9 +113,9 @@ func run(contractPath, outPath string) error {
 	b.WriteString("// Routes è la dichiarazione di sicurezza di ogni operazione pubblica del\n// contratto, con il percorso senza prefisso di versione.\n")
 	b.WriteString("var Routes = []Route{\n")
 	for _, r := range routes {
-		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, PasswordChangeExempt: %s},\n",
+		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s},\n",
 			r.Method, r.Path, r.OperationID, "Service"+strings.ToUpper(r.Service[:1])+r.Service[1:], r.Public,
-			creds(r.Credentials), strs(r.Scopes), exempt(r.Exempt))
+			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt))
 	}
 	b.WriteString("}\n")
 	src, err := format.Source(b.Bytes())
@@ -149,10 +151,13 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 	if op.Security != nil {
 		reqs = *op.Security
 	}
-	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt}
+	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt, Permission: op.RequiredPermission}
 	if len(reqs) == 0 {
 		if len(op.RequiredScopes) > 0 {
 			return route{}, false, fmt.Errorf("%s: rotta pubblica con x-required-scopes", where)
+		}
+		if op.RequiredPermission != "" {
+			return route{}, false, fmt.Errorf("%s: rotta pubblica con x-required-permission", where)
 		}
 		r.Public = true
 		return r, false, nil
@@ -176,6 +181,24 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 		}
 	}
 	sort.Strings(r.Credentials)
+	switch op.RequiredPermission {
+	case "":
+		// Le rotte di core su una risorsa ({resourceId}) devono dichiarare il
+		// permesso: niente rotte aperte per dimenticanza. Quelle di identity
+		// (grant, permesso effettivo) applicano il ruolo admin da sé.
+		if service == "core" && strings.Contains(path, "{resourceId}") {
+			return route{}, false, fmt.Errorf("%s: rotta su {resourceId} senza x-required-permission (read|write|admin)", where)
+		}
+	case "read", "write", "admin":
+		if service != "core" {
+			return route{}, false, fmt.Errorf("%s: x-required-permission è applicato dal gateway solo alle rotte di core", where)
+		}
+		if !strings.Contains(path, "{resourceId}") {
+			return route{}, false, fmt.Errorf("%s: x-required-permission senza {resourceId} nel percorso", where)
+		}
+	default:
+		return route{}, false, fmt.Errorf("%s: x-required-permission %q non valido (read|write|admin)", where, op.RequiredPermission)
+	}
 	switch r.Exempt {
 	case "", "always", "self":
 	default:
@@ -204,6 +227,18 @@ func strs(s []string) string {
 		parts[i] = fmt.Sprintf("%q", v)
 	}
 	return "[]string{" + strings.Join(parts, ", ") + "}"
+}
+
+func permission(p string) string {
+	switch p {
+	case "read":
+		return "PermissionRead"
+	case "write":
+		return "PermissionWrite"
+	case "admin":
+		return "PermissionAdmin"
+	}
+	return "PermissionNone"
 }
 
 func exempt(e string) string {

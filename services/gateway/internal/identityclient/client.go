@@ -58,18 +58,20 @@ type Caller struct {
 // Client chiama POST /internal/verify di identity, autenticandosi con il
 // segreto di servizio.
 type Client struct {
-	endpoint string
-	secret   string
-	http     *http.Client
+	endpoint            string
+	permissionsEndpoint string
+	secret              string
+	http                *http.Client
 }
 
 // NewClient crea il client per la base URL di identity. secret è il segreto
 // di servizio (Bearer verso /internal/*); non viene mai loggato.
 func NewClient(base *url.URL, secret string, timeout time.Duration) *Client {
 	return &Client{
-		endpoint: strings.TrimRight(base.String(), "/") + "/internal/verify",
-		secret:   secret,
-		http:     &http.Client{Timeout: timeout},
+		endpoint:            strings.TrimRight(base.String(), "/") + "/internal/verify",
+		permissionsEndpoint: strings.TrimRight(base.String(), "/") + "/internal/permissions/check",
+		secret:              secret,
+		http:                &http.Client{Timeout: timeout},
 	}
 }
 
