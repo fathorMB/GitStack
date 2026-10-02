@@ -51,7 +51,7 @@ func (p *stubPublisher) snapshot() (string, int, any, int) {
 func TestRouter_ResourceLifecycleAndHealth(t *testing.T) {
 	pool, _ := dbtest.NewPool(t)
 	pub := &stubPublisher{}
-	router := httpserver.NewRouter(pool, pub, testSecret)
+	router := httpserver.NewRouter(pool, pub, testSecret, httpserver.WithCreatorGranter(&fakeGranter{}))
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

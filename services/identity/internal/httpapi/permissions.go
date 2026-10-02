@@ -201,3 +201,29 @@ func (s *server) GetMyResourcePermission(w http.ResponseWriter, r *http.Request,
 	}
 	writeJSON(w, http.StatusOK, out)
 }
+
+// GrantResourceCreator è POST /internal/resources/{resourceId}/grants/creator
+// (protetto da serviceAuth): core lo chiama dopo aver creato una risorsa per
+// dare il ruolo admin a chi l'ha creata. Idempotente (200 se il grant
+// dell'utente esisteva già, 201 se nuovo).
+func (s *server) GrantResourceCreator(w http.ResponseWriter, r *http.Request, resourceId openapi.ResourceIdParam) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	var in openapi.GrantResourceCreatorInput
+	if _, ok := decode(w, r, &in); !ok {
+		return
+	}
+	g, created, err := s.permissions.GrantCreatorAdmin(r.Context(), uuid.UUID(resourceId), uuid.UUID(in.UserId))
+	switch {
+	case errors.Is(err, permissions.ErrSubjectNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Utente non trovato o disattivato.")
+	case err != nil:
+		s.internal(w, r, err)
+	case created:
+		writeJSON(w, http.StatusCreated, toGrant(g))
+	default:
+		writeJSON(w, http.StatusOK, toGrant(g))
+	}
+}

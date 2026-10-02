@@ -283,3 +283,36 @@ func (s *Service) Delete(ctx context.Context, resourceID, grantID uuid.UUID) err
 	}
 	return nil
 }
+
+// GrantCreatorAdmin assegna il ruolo admin all'utente sulla risorsa, con
+// granted_by = l'utente stesso (chi crea una risorsa ne diventa admin).
+// Idempotente: se l'utente ha già un grant diretto lo porta ad admin e
+// created è false. Un utente inesistente o disattivato è ErrSubjectNotFound.
+func (s *Service) GrantCreatorAdmin(ctx context.Context, resourceID, userID uuid.UUID) (g Grant, created bool, err error) {
+	var active bool
+	err = s.pool.QueryRow(ctx, `SELECT is_active FROM identity.users WHERE id = $1`, userID).Scan(&active)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !active) {
+		return Grant{}, false, ErrSubjectNotFound
+	}
+	if err != nil {
+		return Grant{}, false, fmt.Errorf("verifica dell'utente non riuscita: %w", err)
+	}
+	// xmax = 0 solo per una riga appena inserita.
+	var inserted bool
+	var id uuid.UUID
+	var resID uuid.UUID
+	var subj uuid.UUID
+	var st, role string
+	var at time.Time
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO identity.resource_grants (id, resource_id, user_id, role, granted_by, created_at)
+		VALUES ($1, $2, $3, 'admin', $3, $4)
+		ON CONFLICT (resource_id, user_id) WHERE user_id IS NOT NULL
+		DO UPDATE SET role = 'admin'
+		RETURNING id, resource_id, user_id, 'user', role, created_at, (xmax = 0)`,
+		uuid.New(), resourceID, userID, s.now()).Scan(&id, &resID, &subj, &st, &role, &at, &inserted)
+	if err != nil {
+		return Grant{}, false, fmt.Errorf("assegnazione del grant admin non riuscita: %w", err)
+	}
+	return Grant{ID: id, ResourceID: resID, SubjectType: SubjectType(st), SubjectID: subj, Role: Role(role), CreatedAt: at}, inserted, nil
+}

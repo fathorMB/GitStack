@@ -31,6 +31,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
 
@@ -169,10 +170,12 @@ func TestGatewayIdentityCore(t *testing.T) {
 	gatewayBin := build(t, "../../../gateway", "gateway")
 
 	// core: il router vero, in-process, sullo stesso database.
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret))
+	// POST /resources assegna il grant admin al creatore tramite identity.
+	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
+	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second))))
 	t.Cleanup(coreSrv.Close)
 
-	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
 	start(t, "identity", identityBin, identityAddr,
 		"GITSTACK_IDENTITY_ADDR="+identityAddr,
 		"GITSTACK_IDENTITY_DB_URL="+dsn,

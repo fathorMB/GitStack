@@ -9,6 +9,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for GrantSubjectType.
+const (
+	GrantSubjectTypeTeam GrantSubjectType = "team"
+	GrantSubjectTypeUser GrantSubjectType = "user"
+)
+
+// Valid indicates whether the value is a known member of the GrantSubjectType enum.
+func (e GrantSubjectType) Valid() bool {
+	switch e {
+	case GrantSubjectTypeTeam:
+		return true
+	case GrantSubjectTypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PrincipalAuthMethod.
 const (
 	PrincipalAuthMethodOidc     PrincipalAuthMethod = "oidc"
@@ -169,6 +187,26 @@ type Error struct {
 	} `json:"error"`
 }
 
+// Grant Ruolo su una risorsa generica (D15) per un utente o un team.
+type Grant struct {
+	CreatedAt  *time.Time          `json:"createdAt,omitempty"`
+	Id         *openapi_types.UUID `json:"id,omitempty"`
+	ResourceId openapi_types.UUID  `json:"resourceId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role        ResourceRole       `json:"role"`
+	SubjectId   openapi_types.UUID `json:"subjectId"`
+	SubjectType GrantSubjectType   `json:"subjectType"`
+}
+
+// GrantSubjectType defines model for Grant.SubjectType.
+type GrantSubjectType string
+
+// GrantResourceCreatorInput defines model for GrantResourceCreatorInput.
+type GrantResourceCreatorInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
@@ -321,6 +359,9 @@ type UnexpectedError = Error
 
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
+
+// GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
+type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput

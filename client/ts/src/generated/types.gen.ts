@@ -426,6 +426,10 @@ export type VerifyCredentialResult = {
     cacheTtlSeconds?: number;
 };
 
+export type GrantResourceCreatorInput = {
+    userId: string;
+};
+
 export type CheckPermissionInput = {
     userId: string;
     resourceId: string;
@@ -2781,6 +2785,49 @@ export type CheckPermissionResponses = {
 };
 
 export type CheckPermissionResponse = CheckPermissionResponses[keyof CheckPermissionResponses];
+
+export type GrantResourceCreatorData = {
+    body: GrantResourceCreatorInput;
+    path: {
+        resourceId: string;
+    };
+    query?: never;
+    url: '/internal/resources/{resourceId}/grants/creator';
+};
+
+export type GrantResourceCreatorErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GrantResourceCreatorError = GrantResourceCreatorErrors[keyof GrantResourceCreatorErrors];
+
+export type GrantResourceCreatorResponses = {
+    /**
+     * Il grant dell'utente esisteva gia' ed e' ora admin.
+     */
+    200: Grant;
+    /**
+     * Grant creato.
+     */
+    201: Grant;
+};
+
+export type GrantResourceCreatorResponse = GrantResourceCreatorResponses[keyof GrantResourceCreatorResponses];
 
 export type LookupSshKeyData = {
     body?: never;

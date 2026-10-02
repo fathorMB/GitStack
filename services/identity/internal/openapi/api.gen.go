@@ -429,6 +429,11 @@ type GrantList struct {
 	Total   int     `json:"total"`
 }
 
+// GrantResourceCreatorInput defines model for GrantResourceCreatorInput.
+type GrantResourceCreatorInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
 // LoginInput defines model for LoginInput.
 type LoginInput struct {
 	Password *string `json:"password,omitempty"`
@@ -862,6 +867,9 @@ type LoginJSONRequestBody = LoginInput
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
+// GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
+type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -927,6 +935,9 @@ type ServerInterface interface {
 	// CheckPermission Verifica un permesso su una risorsa
 	// (POST /internal/permissions/check)
 	CheckPermission(w http.ResponseWriter, r *http.Request)
+	// GrantResourceCreator Assegna il ruolo admin al creatore di una risorsa
+	// (POST /internal/resources/{resourceId}/grants/creator)
+	GrantResourceCreator(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
 	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
 	// (GET /internal/ssh-keys/{fingerprint})
 	LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprint string)
@@ -1204,6 +1215,32 @@ func (siw *ServerInterfaceWrapper) CheckPermission(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CheckPermission(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GrantResourceCreator operation middleware
+func (siw *ServerInterfaceWrapper) GrantResourceCreator(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GrantResourceCreator(w, r, resourceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2568,6 +2605,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}/permissions", wrapper.GetMyResourcePermission)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/verify", wrapper.VerifyCredential)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/check", wrapper.CheckPermission)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/resources/{resourceId}/grants/creator", wrapper.GrantResourceCreator)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
 
 	return m
