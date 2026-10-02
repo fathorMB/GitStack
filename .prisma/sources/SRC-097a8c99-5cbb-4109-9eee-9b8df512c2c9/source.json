@@ -1,0 +1,17 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-097a8c99-5cbb-4109-9eee-9b8df512c2c9",
+  "imported": "2026-09-30T20:55:44.558748300+00:00",
+  "locators": [
+    "# Design system",
+    "## Regole chiave",
+    "## Librerie previste"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/knowledge/design-system.md",
+  "original_filename": "design-system.md",
+  "schema_version": 1,
+  "sha256": "18d929e569775158cb55b1441c86db0783c0f3a5643acaca81dffc48fadcfdbd",
+  "stored_path": "sources/SRC-097a8c99-5cbb-4109-9eee-9b8df512c2c9/original.md",
+  "warnings": []
+}

@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-147bbf18-d2b1-4982-88b7-c1eb3adbb2b5",
+  "imported": "2026-09-30T20:55:44.568280300+00:00",
+  "locators": [
+    "# M-03 — Hosting dei repository Git",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-03.md",
+  "original_filename": "M-03.md",
+  "schema_version": 1,
+  "sha256": "b0ba3d3f61220d436d32405ca3287d4376bb9988d30a8344c2a831e020df1266",
+  "stored_path": "sources/SRC-147bbf18-d2b1-4982-88b7-c1eb3adbb2b5/original.md",
+  "warnings": []
+}

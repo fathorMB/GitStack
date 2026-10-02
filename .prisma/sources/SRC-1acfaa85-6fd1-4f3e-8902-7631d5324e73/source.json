@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-1acfaa85-6fd1-4f3e-8902-7631d5324e73",
+  "imported": "2026-09-30T20:55:44.565913900+00:00",
+  "locators": [
+    "# M-02 — Identità, organizzazioni e permessi",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-02.md",
+  "original_filename": "M-02.md",
+  "schema_version": 1,
+  "sha256": "9b25d20c44840cede13b0fbaf47bc9ad248b42862e61b63135f89a9b05a5aa24",
+  "stored_path": "sources/SRC-1acfaa85-6fd1-4f3e-8902-7631d5324e73/original.md",
+  "warnings": []
+}

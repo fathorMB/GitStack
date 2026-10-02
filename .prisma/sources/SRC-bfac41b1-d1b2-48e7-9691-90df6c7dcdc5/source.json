@@ -1,0 +1,17 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5",
+  "imported": "2026-09-30T20:55:44.556315200+00:00",
+  "locators": [
+    "# Decisioni",
+    "## Scelte di default (prese senza domanda, modificabili)",
+    "## Punti aperti"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/knowledge/decisions.md",
+  "original_filename": "decisions.md",
+  "schema_version": 1,
+  "sha256": "69f14342a1e661ff7edf25249a9ab04ae00c73d41339072656eaee328ec0b2a8",
+  "stored_path": "sources/SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5/original.md",
+  "warnings": []
+}

@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-08c9e756-736d-4c30-9853-5ec054ce0dc6",
+  "imported": "2026-09-30T20:55:44.573178600+00:00",
+  "locators": [
+    "# M-05 — Issues",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-05.md",
+  "original_filename": "M-05.md",
+  "schema_version": 1,
+  "sha256": "b50b851db142d389289c639f4b66f3e87cdeab69950e8755b10791763cd47efa",
+  "stored_path": "sources/SRC-08c9e756-736d-4c30-9853-5ec054ce0dc6/original.md",
+  "warnings": []
+}

@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-38b1e3dd-30bd-4ef1-a524-8e5ac8ed20fd",
+  "imported": "2026-09-30T20:55:44.583456800+00:00",
+  "locators": [
+    "# M-09 — Rilascio v1.0",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-09.md",
+  "original_filename": "M-09.md",
+  "schema_version": 1,
+  "sha256": "fb0209ce0e44170db7a75c3f346c039bf155cf59a898cae7e6b5010804755355",
+  "stored_path": "sources/SRC-38b1e3dd-30bd-4ef1-a524-8e5ac8ed20fd/original.md",
+  "warnings": []
+}

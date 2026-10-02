@@ -1,0 +1,17 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-7daaa215-dddf-4cb7-8c49-4b4f2e2b77fb",
+  "imported": "2026-09-30T20:55:44.561409600+00:00",
+  "locators": [
+    "# Visione",
+    "## Percorso a tappe",
+    "## Principi"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/knowledge/vision.md",
+  "original_filename": "vision.md",
+  "schema_version": 1,
+  "sha256": "8608a2bccc51d77eac67edac117f9a14bb9be5e2032c49fe8ce2b80b9dee5018",
+  "stored_path": "sources/SRC-7daaa215-dddf-4cb7-8c49-4b4f2e2b77fb/original.md",
+  "warnings": []
+}

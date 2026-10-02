@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-e4f600d1-e05b-48da-8d7e-529da7164494",
+  "imported": "2026-09-30T20:55:44.578219600+00:00",
+  "locators": [
+    "# M-07 — CLI gs e skills per agenti",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-07.md",
+  "original_filename": "M-07.md",
+  "schema_version": 1,
+  "sha256": "38bfe2bee2447016f873a824e33361d95a70a05f059c18782c68a22b41cb5e06",
+  "stored_path": "sources/SRC-e4f600d1-e05b-48da-8d7e-529da7164494/original.md",
+  "warnings": []
+}

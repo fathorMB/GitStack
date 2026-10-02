@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "id": "MIG-c719d1e9-10c5-41d3-9a7b-f3969584da1c",
+  "source": "lite",
+  "original_files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "8eb448960de56663c2951e0a4a5de25605060611cd7efd63eb13b50879f31ebb",
+      "bytes": 85,
+      "category": "reference_only"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "ea6f893862c8422df41135f942143281f1cbc7436acd1df43bea714756eca79c",
+      "bytes": 100,
+      "category": "reference_only"
+    },
+    {
+      "path": ".kit-baseline.json",
+      "sha256": "86a29fb45743a8795ed54643109371633eca7ff067a1862b562abdaf9f24871e",
+      "bytes": 1868,
+      "category": "reference_only"
+    },
+    {
+      "path": "AGENT.md",
+      "sha256": "64c790d9484afdb7c6d7efc9deff8701f45420855773d6437db69e64ad5af5d3",
+      "bytes": 9818,
+      "category": "reference_only"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "56fe2f58223fc86384668f49b9d1e8b62b79512682a78df6b6c80beb977cf7f1",
+      "bytes": 4335,
+      "category": "reference_only"
+    },
+    {
+      "path": "HARNESSES.json",
+      "sha256": "dc10db5472f7852d60fef780bf2366bd63a21c7ec52aa6673dffe06ac03332ec",
+      "bytes": 41,
+      "category": "reference_only"
+    },
+    {
+      "path": "LOG.md",
+      "sha256": "24593c15c9261a616972eeaccfdac98370d24b2fb7a8b7318accdeba0041a06d",
+      "bytes": 5905,
+      "category": "reference_only"
+    },
+    {
+      "path": "NOTE.md",
+      "sha256": "8a9977f0d52442fb114853411c65d20b2b3be990899a8b2cdae796e8af8544a6",
+      "bytes": 227,
+      "category": "reference_only"
+    },
+    {
+      "path": "OPERATOR.md",
+      "sha256": "21abf1695d46df6d442a967ba1119e451c910ee811698f77a4a95cd18a744b91",
+      "bytes": 5046,
+      "category": "reference_only"
+    },
+    {
+      "path": "PROJECT.md",
+      "sha256": "782aa19e0caee47bef2b5f97eedd1834f5fc603ecb01590a1971ecc3cb4177d9",
+      "bytes": 1588,
+      "category": "project"
+    },
+    {
+      "path": "README.md",
+      "sha256": "f65e2504f590973a9311e88063a874c505cb1bb940e9c857355d8538c6973ed2",
+      "bytes": 1465,
+      "category": "reference_only"
+    },
+    {
+      "path": "ROADMAP.md",
+      "sha256": "1246d78d6a6cfe49d5b2c1bbfbec92cd1bb66cd48e273f1181e4e5445cfe7632",
+      "bytes": 3175,
+      "category": "roadmap"
+    },
+    {
+      "path": "UPGRADING.md",
+      "sha256": "a5f30bca609a84ac58388a91bc0d47ca1c7474aaad6c65d996e1ad3d6a5a86cb",
+      "bytes": 2486,
+      "category": "reference_only"
+    },
+    {
+      "path": "VERSION",
+      "sha256": "71015c979ccb0fc8a0be7ca0ae83046ab045cdc2c8faa09fb2f0f7e440f9b4a6",
+      "bytes": 6,
+      "category": "reference_only"
+    },
+    {
+      "path": "design/README.md",
+      "sha256": "46b20702cffc391c1d816b32fe450c1413cdf10e92becad8116f2dec2c4f974f",
+      "bytes": 469,
+      "category": "design"
+    },
+    {
+      "path": "design/mockups-v1/README.md",
+      "sha256": "07f39803a47a11dcc9cff2a2630e96e0ce176e2e075d5bf2b1d88456fc8050f9",
+      "bytes": 1115,
+      "category": "design"
+    },
+    {
+      "path": "design/mockups-v1/index.html",
+      "sha256": "ca48e4edc0cee0504c89d9556b0fb2caeea03d465799a80ff6e65f94a7020059",
+      "bytes": 118500,
+      "category": "design"
+    },
+    {
+      "path": "design/mockups-v1/manifest.json",
+      "sha256": "c735b516fb6062229cc1e7e3d91ceb5de3177f4ba53950d3e4cfb5ab0c0b64ae",
+      "bytes": 240,
+      "category": "design"
+    },
+    {
+      "path": "design/styleguide/index.html",
+      "sha256": "5754eefe4ed1d32d524bbeb2693e40dce8d1138ffc2d1b2a0aaf4a781344a9c6",
+      "bytes": 51918,
+      "category": "design"
+    },
+    {
+      "path": "design/styleguide/manifest.json",
+      "sha256": "6f80b2498d0ca96b11817f46fc90092a7729d9829369e8b0bb8ba07b3196f27c",
+      "bytes": 222,
+      "category": "design"
+    },
+    {
+      "path": "knowledge/README.md",
+      "sha256": "2c6ab640124ae8b6817dff0e4385d099a6fe4e5698deb859d74c527195db6aeb",
+      "bytes": 527,
+      "category": "knowledge"
+    },
+    {
+      "path": "knowledge/architecture.md",
+      "sha256": "40de8c82532878c4c390a35ca166c2e6beebae636a533c5e9dda92d44b500ace",
+      "bytes": 1831,
+      "category": "knowledge"
+    },
+    {
+      "path": "knowledge/decisions.md",
+      "sha256": "69f14342a1e661ff7edf25249a9ab04ae00c73d41339072656eaee328ec0b2a8",
+      "bytes": 5731,
+      "category": "knowledge"
+    },
+    {
+      "path": "knowledge/design-system.md",
+      "sha256": "18d929e569775158cb55b1441c86db0783c0f3a5643acaca81dffc48fadcfdbd",
+      "bytes": 1811,
+      "category": "knowledge"
+    },
+    {
+      "path": "knowledge/vision.md",
+      "sha256": "8608a2bccc51d77eac67edac117f9a14bb9be5e2032c49fe8ce2b80b9dee5018",
+      "bytes": 1338,
+      "category": "knowledge"
+    },
+    {
+      "path": "mcp/README.md",
+      "sha256": "c81f2ca902e1c81341959000c758f05de1a08caa5e81ad8bfba6044809bacd09",
+      "bytes": 2506,
+      "category": "reference_only"
+    },
+    {
+      "path": "milestones/M-01.md",
+      "sha256": "b99209da0cc7b54a7fec8673138d099d89a0317fa5a0540cd6e5d48b75b5a5c3",
+      "bytes": 1509,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-02.md",
+      "sha256": "9b25d20c44840cede13b0fbaf47bc9ad248b42862e61b63135f89a9b05a5aa24",
+      "bytes": 1121,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-03.md",
+      "sha256": "b0ba3d3f61220d436d32405ca3287d4376bb9988d30a8344c2a831e020df1266",
+      "bytes": 1053,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-04.md",
+      "sha256": "e9ad887dc90498568d35ad711890b365cd7481d8dcf1df7791d976696eb67080",
+      "bytes": 795,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-05.md",
+      "sha256": "b50b851db142d389289c639f4b66f3e87cdeab69950e8755b10791763cd47efa",
+      "bytes": 795,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-06.md",
+      "sha256": "a41ff91f6031a2d553a165e7055b2d532340bbdf94d23acbdb53ab3354f2561a",
+      "bytes": 1022,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-07.md",
+      "sha256": "38bfe2bee2447016f873a824e33361d95a70a05f059c18782c68a22b41cb5e06",
+      "bytes": 1038,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-08.md",
+      "sha256": "4ac66df33734f884de6bf0d88ef3e84f84b869c71382fde2684b58c4a18bbd3b",
+      "bytes": 1200,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/M-09.md",
+      "sha256": "fb0209ce0e44170db7a75c3f346c039bf155cf59a898cae7e6b5010804755355",
+      "bytes": 674,
+      "category": "roadmap"
+    },
+    {
+      "path": "milestones/README.md",
+      "sha256": "81e302cdd3fa4d5978a2e7d92012946b923be287e7bb44134aab18218de140f1",
+      "bytes": 865,
+      "category": "roadmap"
+    },
+    {
+      "path": "reports/README.md",
+      "sha256": "33a83e6994da6357f9b218964694bbf902ea377b636790809c2f94ca6372a10d",
+      "bytes": 370,
+      "category": "reference_only"
+    },
+    {
+      "path": "reports/lmbrain-kit-feedback.md",
+      "sha256": "aaae54eda5a37b1ba35977146a516467b42c279bac366f6526fea0bfd2baf15a",
+      "bytes": 411,
+      "category": "reference_only"
+    },
+    {
+      "path": "skills/README.md",
+      "sha256": "98b25b7d7c57b34f173d24250782545ed3fe6c0dd7033f35d8ec60e651cc596e",
+      "bytes": 454,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/carve-out-prompt.md",
+      "sha256": "b222999189442c45c3522b54ceab91e7917c4153f87d20295ece40068249ce78",
+      "bytes": 849,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/dreaming-session-prompt.md",
+      "sha256": "a287994249b38ee4b651739515e486f19965a0076b0ed9e9096673cef7abf406",
+      "bytes": 552,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/lead-bootstrap-prompt.md",
+      "sha256": "a091ea5ee57b2a742386ccf82b69d0bf050a7204570aa6fff7e7cdac904de07b",
+      "bytes": 1033,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/milestone.md",
+      "sha256": "f70ae48534090511ada647998b84ef56b8fd8afeee95eee2e0e14c1d70bd493d",
+      "bytes": 369,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/resume-milestone-prompt.md",
+      "sha256": "73b6388e0baa3472c9cb15b386e8daf1aef16123c1ef8ff7d06d6f76ab196cc5",
+      "bytes": 113,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/skill.md",
+      "sha256": "74b675146624a47e50226348bc14184f19bc344f865b3740affd63db8544ba51",
+      "bytes": 242,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/subagent-brief.md",
+      "sha256": "b56fe8fe45fc9af60690cb0b99be8f9bcec5f070506bd91600ffdc2ff7c997db",
+      "bytes": 2558,
+      "category": "reference_only"
+    },
+    {
+      "path": "templates/takeover-prompt.md",
+      "sha256": "fb7b621128e28431954fc02ae284d3a297933dc0067626c486477777330f3cb7",
+      "bytes": 2169,
+      "category": "reference_only"
+    }
+  ],
+  "integration_hashes": {
+    ".codex/config.toml": null,
+    ".mcp.json": "214527d32dbf1675a9e3d16f25bd710e9913fc5a4b9f5ce0c4fa4fa929d3cb42",
+    ".pi/mcp.json": null,
+    "AGENTS.md": "66dc131f2f913bb98f885cc531376579d927b9504c21334aab84bd8f1944a0d9"
+  },
+  "integrations": [
+    {
+      "path": ".mcp.json",
+      "before": "{\n  \"mcpServers\": {\n    \"lmbrain-lite\": {\n      \"args\": [\n        \"--root\",\n        \"E:\\\\Git\\\\GitStack\"\n      ],\n      \"command\": \"C:\\\\Users\\\\moren\\\\AppData\\\\Local\\\\LMBrain Lite\\\\lmbrain-lite-mcp.exe\"\n    }\n  }\n}",
+      "after": "{\n  \"mcpServers\": {\n    \"lmbrain-lite\": {\n      \"args\": [\n        \"--root\",\n        \"E:\\\\Git\\\\GitStack\"\n      ],\n      \"command\": \"C:\\\\Users\\\\moren\\\\AppData\\\\Local\\\\LMBrain Lite\\\\lmbrain-lite-mcp.exe\"\n    },\n    \"prisma-coding\": {\n      \"args\": [\n        \"--root\",\n        \"\\\\\\\\?\\\\E:\\\\Git\\\\GitStack\",\n        \"--role\",\n        \"coding\"\n      ],\n      \"command\": \"\\\\\\\\?\\\\C:\\\\Users\\\\moren\\\\AppData\\\\Local\\\\Prisma\\\\prisma-mcp.exe\"\n    }\n  }\n}\n"
+    },
+    {
+      "path": "AGENTS.md",
+      "before": "<!-- lmbrain:begin -->\n# LMBrain Lite Agent Instructions\n\nRead `.lmbrain-lite/AGENT.md` first: it is the operating contract for the lead agent in this workspace. Start every session with the `lite_digest` MCP tool. Track work with `lite_task_set` and `lite_log`. Never edit `.lmbrain-lite/ROADMAP.md` by hand: it is generated from `.lmbrain-lite/milestones/`.\n<!-- lmbrain:end -->\n",
+      "after": "<!-- lmbrain:begin -->\n# LMBrain Lite Agent Instructions\n\nRead `.lmbrain-lite/AGENT.md` first: it is the operating contract for the lead agent in this workspace. Start every session with the `lite_digest` MCP tool. Track work with `lite_task_set` and `lite_log`. Never edit `.lmbrain-lite/ROADMAP.md` by hand: it is generated from `.lmbrain-lite/milestones/`.\n<!-- lmbrain:end -->\n\n\n<!-- prisma:begin -->\n# Prisma documentation companion\nFor Prisma knowledge consultation and development notes, read `.prisma/CODING.md`. Keep following this project's existing coding instructions and skills. Use only the Prisma MCP coding role; do not edit Prisma knowledge or confirm analysis proposals.\n<!-- prisma:end -->\n"
+    }
+  ],
+  "warnings": [
+    "Imported documents are source evidence; the analysis agent must classify accepted, proposed and superseded decisions and prepare the high-level roadmap before confirmation."
+  ],
+  "conflicts": [],
+  "review_summary": "Revisione semantica del cervello LMBrain Lite (2026-09-27) integrata con la documentazione del repo (README, docs/, README di servizi e deploy) e con la storia dei commit fino a af42239. Conoscenza: 10 topic (visione, decisioni D1–D20 tutte accettate con teal e valutazione licenza client segnate come superate, architettura, design system, contratto API, identità e sicurezza, eventi, installazione e deploy, sviluppo e CI, stato di realizzazione). Roadmap prodotto: M-01 completata non riportata come obiettivo (registrata nello stato di realizzazione); M-02 in horizon now con la parte mancante (permessi sulle risorse); M-03…M-09 in next; v1.1, v2 e v3 della visione in later. Stato scelto dall'operatore: quello risultante dal repo (opzione 1), non \"tutte completate\". Analisi: 3 temi aperti (permessi fini e visibilità repo, WSL2 in produzione, requisiti e distribuzioni dell'installer definitivo). Design: styleguide e mockups-v1 copiati. Integrazioni: aggiunta del server prisma-coding a .mcp.json e di un blocco Prisma in AGENTS.md; nessun'altra configurazione toccata. Il cervello Lite resta invariato."
+}

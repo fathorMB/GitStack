@@ -1,0 +1,24 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-e44cf26d-7f3c-466b-a405-558022e98ca5",
+  "imported": "2026-09-30T20:55:44.542034400+00:00",
+  "locators": [
+    "# Roadmap",
+    "## M-01 — Scheletro che cammina",
+    "## M-02 — Identità, organizzazioni e permessi",
+    "## M-03 — Hosting dei repository Git",
+    "## M-04 — Browser del codice",
+    "## M-05 — Issues",
+    "## M-06 — Collegamenti, notifiche e webhook",
+    "## M-07 — CLI gs e skills per agenti",
+    "## M-08 — Installazione, aggiornamenti e backup",
+    "## M-09 — Rilascio v1.0"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/ROADMAP.md",
+  "original_filename": "ROADMAP.md",
+  "schema_version": 1,
+  "sha256": "1246d78d6a6cfe49d5b2c1bbfbec92cd1bb66cd48e273f1181e4e5445cfe7632",
+  "stored_path": "sources/SRC-e44cf26d-7f3c-466b-a405-558022e98ca5/original.md",
+  "warnings": []
+}

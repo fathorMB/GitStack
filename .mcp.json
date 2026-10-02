@@ -6,6 +6,15 @@
         "E:\\Git\\GitStack"
       ],
       "command": "C:\\Users\\moren\\AppData\\Local\\LMBrain Lite\\lmbrain-lite-mcp.exe"
+    },
+    "prisma-coding": {
+      "args": [
+        "--root",
+        "\\\\?\\E:\\Git\\GitStack",
+        "--role",
+        "coding"
+      ],
+      "command": "\\\\?\\C:\\Users\\moren\\AppData\\Local\\Prisma\\prisma-mcp.exe"
     }
   }
 }

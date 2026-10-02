@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-176c2e31-e34b-4c7e-98eb-0cdec1543d99",
+  "imported": "2026-09-30T20:55:44.563734500+00:00",
+  "locators": [
+    "# M-01 — Scheletro che cammina",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-01.md",
+  "original_filename": "M-01.md",
+  "schema_version": 1,
+  "sha256": "b99209da0cc7b54a7fec8673138d099d89a0317fa5a0540cd6e5d48b75b5a5c3",
+  "stored_path": "sources/SRC-176c2e31-e34b-4c7e-98eb-0cdec1543d99/original.md",
+  "warnings": []
+}

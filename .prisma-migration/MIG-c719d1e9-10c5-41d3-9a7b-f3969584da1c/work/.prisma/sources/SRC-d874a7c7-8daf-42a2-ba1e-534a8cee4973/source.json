@@ -1,0 +1,20 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-d874a7c7-8daf-42a2-ba1e-534a8cee4973",
+  "imported": "2026-09-30T20:55:44.539464200+00:00",
+  "locators": [
+    "# Project",
+    "## What it is",
+    "## Who uses it and why",
+    "## Stack and how to run it",
+    "## Constraints",
+    "## Out of scope (v1)"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/PROJECT.md",
+  "original_filename": "PROJECT.md",
+  "schema_version": 1,
+  "sha256": "782aa19e0caee47bef2b5f97eedd1834f5fc603ecb01590a1971ecc3cb4177d9",
+  "stored_path": "sources/SRC-d874a7c7-8daf-42a2-ba1e-534a8cee4973/original.md",
+  "warnings": []
+}

@@ -1,0 +1,19 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-5d952707-85b7-46bf-bf7c-41dc9a714236",
+  "imported": "2026-09-30T20:55:44.553072300+00:00",
+  "locators": [
+    "# Architettura v1",
+    "## Componenti (un container ciascuno, su k3s)",
+    "## Flussi chiave",
+    "## Contratti",
+    "## Installazione"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/knowledge/architecture.md",
+  "original_filename": "architecture.md",
+  "schema_version": 1,
+  "sha256": "40de8c82532878c4c390a35ca166c2e6beebae636a533c5e9dda92d44b500ace",
+  "stored_path": "sources/SRC-5d952707-85b7-46bf-bf7c-41dc9a714236/original.md",
+  "warnings": []
+}

@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-3a56865c-1998-4463-a28c-f0ed0c260e56",
+  "imported": "2026-09-30T20:55:44.575359500+00:00",
+  "locators": [
+    "# M-06 — Collegamenti, notifiche e webhook",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-06.md",
+  "original_filename": "M-06.md",
+  "schema_version": 1,
+  "sha256": "a41ff91f6031a2d553a165e7055b2d532340bbdf94d23acbdb53ab3354f2561a",
+  "stored_path": "sources/SRC-3a56865c-1998-4463-a28c-f0ed0c260e56/original.md",
+  "warnings": []
+}

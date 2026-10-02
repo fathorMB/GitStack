@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "PROP-d4d9b00c-ae53-4a70-8d37-b3c728eb9990",
+  "state": "applied",
+  "created": "2026-09-30T21:33:01.298250+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Aggiornare lo scope di M-02 (regole P1–P7 e gestione admin dei token degli utenti agent, P5) e di M-03 (visibilità privato/interno, default privato, nessun accesso anonimo). Orizzonti invariati.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-c79ed133-8339-4a82-9f91-6b100a636da1",
+          "knowledge": [
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "Scope rimanente aggiornato con le regole P1–P7 (P5 aggiunge la gestione admin dei token degli agent).",
+          "schema_version": 1,
+          "title": "Identità, organizzazioni e permessi",
+          "updated": "2026-09-30T21:34:14.676728300+00:00"
+        },
+        "body": "\n# Identità, organizzazioni e permessi\n\n## Outcome\n\nUtenti e agenti si autenticano (password, token con scope, chiavi SSH, OIDC esterno) e i permessi su organizzazioni, team e risorse generiche sono applicati ovunque.\n\n## Rationale\n\nD5 e D15: identità pronta all'uso dopo l'installazione, token con permessi limitati per gli agenti, permessi modellati su risorse generiche così che repo, app e database futuri si aggancino senza riscritture. È la base di tutte le milestone successive.\n\n## Scope\n\nGià realizzato: utenti locali e password, admin al primo avvio con cambio password obbligatorio, sessioni, token con scope e scadenza, chiavi SSH, login OIDC (Entra ID, Google, Keycloak), organizzazioni e team, autenticazione centralizzata nel gateway, UI di login, profilo, token, chiavi e organizzazioni.\n\nResta:\n- modello dei permessi sulle risorse secondo P1–P7 (owner di organizzazione e proprietario sempre admin, grant diretti o via team, lettura per le risorse interne, nessun accesso anonimo) con verifica tramite identity;\n- gestione degli utenti agent da parte dell'amministratore: creazione e revoca dei loro token senza login al loro posto, nessuna password per gli agent (P5);\n- test di sicurezza di accesso negato senza permesso.\n\nPriorità 2 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-02.md`\n- `services/identity/README.md`, `services/gateway/README.md`, commit GIT-29…GIT-60\n- Tema di analisi \"Permessi fini sulle risorse e visibilità dei repo\" (P1–P7)\n",
+        "expected_digest": "38576c4d699386935ff774fb9c9829d9e6a79d9185d1a2b9470439096b0797d1",
+        "slug": null,
+        "reason": "Scope rimanente aggiornato con le regole P1–P7 (P5 aggiunge la gestione admin dei token degli agent)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38",
+          "knowledge": [
+            "DOC-8d539b83-ec08-41ca-a680-1529555fc42a",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6"
+          ],
+          "reopen_reason": "Visibilità privato/interno con default privato e nessun accesso anonimo (P2, P3, P7).",
+          "schema_version": 1,
+          "title": "Hosting dei repository Git",
+          "updated": "2026-09-30T21:34:14.678203300+00:00"
+        },
+        "body": "\n# Hosting dei repository Git\n\n## Outcome\n\nSi crea un repo da UI o API e ci si fa clone, push e pull via HTTPS (token) e SSH, con permessi e visibilità rispettati; ogni push pubblica un evento.\n\n## Rationale\n\nD9: è il cuore di un mini GitHub. Usa il binario `git` ufficiale lato server e un server SSH integrato; l'evento `git.push` è la base per collegamenti, notifiche e, più avanti, CI.\n\n## Scope\n\nStorage dei repo su volume persistente; repo con owner utente o organizzazione e visibilità **privato/interno** (default privato, nessun accesso anonimo, anche per clone e pull; P2, P3, P7); push/pull HTTPS con token e SSH con chiavi utente; controllo permessi su ogni operazione Git secondo le regole di [[knowledge/topics/identita-e-sicurezza]]; hook post-receive → `git.push`; modello dati predisposto per le Pull Request (v1.1).\n\nPriorità 3 di 9 nella v1. Mockup 03, 04, 06.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-03.md`\n- Tema di analisi \"Permessi fini sulle risorse e visibilità dei repo\" (P2, P3, P7)\n",
+        "expected_digest": "3a2d90cd889936b89394c850e1751e9b5cf5bc013d9eab945c6463bef90622f3",
+        "slug": null,
+        "reason": "Visibilità privato/interno con default privato e nessun accesso anonimo (P2, P3, P7)."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo le due proposte\" dopo il riepilogo di PROP-d4d9b00c (scope M-02 con P5, visibilità M-03)."
+  }
+}

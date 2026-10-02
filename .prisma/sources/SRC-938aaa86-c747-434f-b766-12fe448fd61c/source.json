@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-938aaa86-c747-434f-b766-12fe448fd61c",
+  "imported": "2026-09-30T20:55:44.570867900+00:00",
+  "locators": [
+    "# M-04 — Browser del codice",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-04.md",
+  "original_filename": "M-04.md",
+  "schema_version": 1,
+  "sha256": "e9ad887dc90498568d35ad711890b365cd7481d8dcf1df7791d976696eb67080",
+  "stored_path": "sources/SRC-938aaa86-c747-434f-b766-12fe448fd61c/original.md",
+  "warnings": []
+}

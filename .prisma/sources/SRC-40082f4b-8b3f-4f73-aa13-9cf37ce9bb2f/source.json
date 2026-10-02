@@ -1,0 +1,15 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-40082f4b-8b3f-4f73-aa13-9cf37ce9bb2f",
+  "imported": "2026-09-30T20:55:44.550247300+00:00",
+  "locators": [
+    "# Knowledge Base"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/knowledge/README.md",
+  "original_filename": "README.md",
+  "schema_version": 1,
+  "sha256": "2c6ab640124ae8b6817dff0e4385d099a6fe4e5698deb859d74c527195db6aeb",
+  "stored_path": "sources/SRC-40082f4b-8b3f-4f73-aa13-9cf37ce9bb2f/original.md",
+  "warnings": []
+}

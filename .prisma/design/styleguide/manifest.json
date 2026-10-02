@@ -1,0 +1,12 @@
+{
+  "description": "Guida di stile di prodotto: principi, marchio, token di colore (chiaro/scuro), tipografia, icone, componenti, layout console, agenti, tono di voce, implementazione.",
+  "id": "DESIGN-f8c9cf6c-8370-4284-8bca-d90775cbbcba",
+  "knowledge": [
+    "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4"
+  ],
+  "schema_version": 1,
+  "status": "ready",
+  "title": "GitStack Styleguide",
+  "update_reason": null,
+  "updated": "2026-09-30T21:43:14.707690100+00:00"
+}

@@ -1,0 +1,18 @@
+{
+  "extraction_status": "ready",
+  "id": "SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7",
+  "imported": "2026-09-30T20:55:44.581278300+00:00",
+  "locators": [
+    "# M-08 — Installazione, aggiornamenti e backup",
+    "## Outcome",
+    "## Tasks",
+    "## Notes"
+  ],
+  "media_type": "text/markdown",
+  "origin_path": ".lmbrain-lite/milestones/M-08.md",
+  "original_filename": "M-08.md",
+  "schema_version": 1,
+  "sha256": "4ac66df33734f884de6bf0d88ef3e84f84b869c71382fde2684b58c4a18bbd3b",
+  "stored_path": "sources/SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7/original.md",
+  "warnings": []
+}
