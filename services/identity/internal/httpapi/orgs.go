@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
+	"github.com/fathorMB/GitStack/services/identity/internal/users"
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -32,6 +35,39 @@ func (s *server) orgResolve(w http.ResponseWriter, r *http.Request, org openapi.
 		return orgs.Organization{}, openapi_types.UUID{}, false
 	}
 	return o, openapi_types.UUID(o.ID), true
+}
+
+// requireOwner risponde 403 se il chiamante non e' admin di sistema ne' owner.
+func (s *server) requireOwner(w http.ResponseWriter, r *http.Request, cur auth.Current, orgID uuid.UUID) bool {
+	if cur.User.IsAdmin {
+		return true
+	}
+	role, err := s.orgs.Role(r.Context(), orgID, cur.User.ID)
+	if err != nil && !errors.Is(err, orgs.ErrNotOrgMember) {
+		s.internal(w, r, err)
+		return false
+	}
+	if err != nil || role != "owner" {
+		writeError(w, http.StatusForbidden, "forbidden", "Serve il ruolo owner dell'organizzazione.")
+		return false
+	}
+	return true
+}
+
+// requireMember risponde 403 se il chiamante non e' admin ne' membro.
+func (s *server) requireMember(w http.ResponseWriter, r *http.Request, cur auth.Current, orgID uuid.UUID) bool {
+	if cur.User.IsAdmin {
+		return true
+	}
+	if _, err := s.orgs.Role(r.Context(), orgID, cur.User.ID); err != nil {
+		if errors.Is(err, orgs.ErrNotOrgMember) {
+			writeError(w, http.StatusForbidden, "forbidden", "Non sei membro dell'organizzazione.")
+			return false
+		}
+		s.internal(w, r, err)
+		return false
+	}
+	return true
 }
 
 // ---- organizations ----
@@ -71,9 +107,11 @@ func (s *server) ListOrganizations(w http.ResponseWriter, r *http.Request, param
 	items := make([]openapi.Organization, 0, len(orgList))
 	for _, o := range orgList {
 		items = append(items, openapi.Organization{
-			Id:        UUIDp(openapi_types.UUID(o.ID)),
-			Name:      o.Name,
-			CreatedAt: Timep(o.CreatedAt),
+			Id:          UUIDp(openapi_types.UUID(o.ID)),
+			Name:        o.Name,
+			Description: &o.Description,
+			DisplayName: &o.DisplayName,
+			CreatedAt:   Timep(o.CreatedAt),
 		})
 	}
 	writeJSON(w, http.StatusOK, openapi.OrganizationList{Items: items, Page: page, PerPage: perPage, Total: total})
@@ -115,9 +153,11 @@ func (s *server) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Location", "/v1/orgs/"+org.Name)
 	writeJSON(w, http.StatusCreated, openapi.Organization{
-		Id:        UUIDp(openapi_types.UUID(org.ID)),
-		Name:      org.Name,
-		CreatedAt: Timep(org.CreatedAt),
+		Id:          UUIDp(openapi_types.UUID(org.ID)),
+		Name:        org.Name,
+		Description: &org.Description,
+		DisplayName: &org.DisplayName,
+		CreatedAt:   Timep(org.CreatedAt),
 	})
 }
 
@@ -126,12 +166,15 @@ func (s *server) GetOrganization(w http.ResponseWriter, r *http.Request, org ope
 		unavailable(w)
 		return
 	}
-	_, ok := s.current(w, r)
+	cur, ok := s.current(w, r)
 	if !ok {
 		return
 	}
 	o, _, ok := s.orgResolve(w, r, org)
 	if !ok {
+		return
+	}
+	if !s.requireMember(w, r, cur, o.ID) {
 		return
 	}
 	writeJSON(w, http.StatusOK, openapi.Organization{
@@ -156,12 +199,8 @@ func (s *server) UpdateOrganization(w http.ResponseWriter, r *http.Request, org 
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	var in openapi.UpdateOrganizationInput
 	if _, ok := decode(w, r, &in); !ok {
@@ -210,12 +249,8 @@ func (s *server) DeleteOrganization(w http.ResponseWriter, r *http.Request, org 
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	err := s.orgs.Delete(r.Context(), o.ID)
 	if errors.Is(err, orgs.ErrNotFound) {
@@ -244,12 +279,8 @@ func (s *server) ListOrgMembers(w http.ResponseWriter, r *http.Request, org open
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireMember(w, r, cur, o.ID) {
+		return
 	}
 	page, perPage := 1, 20
 	if params.Page != nil {
@@ -296,14 +327,14 @@ func (s *server) SetOrgMember(w http.ResponseWriter, r *http.Request, org openap
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	target, err := s.users.Get(r.Context(), string(username))
+	if errors.Is(err, users.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Utente non trovato.")
+		return
+	}
 	if err != nil {
 		s.internal(w, r, err)
 		return
@@ -320,6 +351,10 @@ func (s *server) SetOrgMember(w http.ResponseWriter, r *http.Request, org openap
 	}
 	if errors.Is(err, orgs.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "not_found", "Organizzazione non trovata.")
+		return
+	}
+	if errors.Is(err, orgs.ErrLastOwner) {
+		writeError(w, http.StatusConflict, "last_owner", "Non si puo' rimuovere l'ultimo owner.")
 		return
 	}
 	if err != nil {
@@ -351,17 +386,30 @@ func (s *server) RemoveOrgMember(w http.ResponseWriter, r *http.Request, org ope
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
-	}
 	target, err := s.users.Get(r.Context(), string(username))
+	if errors.Is(err, users.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Utente non trovato.")
+		return
+	}
 	if err != nil {
 		s.internal(w, r, err)
 		return
+	}
+	// Autorizzazione: owner o admin; oppure l'utente rimuove se stesso.
+	if !cur.User.IsAdmin && cur.User.ID != target.ID {
+		role, err := s.orgs.Role(r.Context(), o.ID, cur.User.ID)
+		if errors.Is(err, orgs.ErrNotOrgMember) {
+			writeError(w, http.StatusForbidden, "forbidden", "Permesso negato.")
+			return
+		}
+		if err != nil {
+			s.internal(w, r, err)
+			return
+		}
+		if role != "owner" {
+			writeError(w, http.StatusForbidden, "forbidden", "Permesso negato.")
+			return
+		}
 	}
 	// Verifica: non declassare o rimuovere l'ultimo owner.
 	if err := s.orgs.RemoveOrgMember(r.Context(), o.ID, target.ID); err != nil {
@@ -395,12 +443,8 @@ func (s *server) ListTeams(w http.ResponseWriter, r *http.Request, org openapi.O
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireMember(w, r, cur, o.ID) {
+		return
 	}
 	page, perPage := 1, 20
 	if params.Page != nil {
@@ -421,10 +465,11 @@ func (s *server) ListTeams(w http.ResponseWriter, r *http.Request, org openapi.O
 	items := make([]openapi.Team, 0, len(teams))
 	for _, t := range teams {
 		items = append(items, openapi.Team{
-			Id:        UUIDp(openapi_types.UUID(t.ID)),
-			OrgId:     openapi_types.UUID(t.OrgID),
-			Name:      t.Name,
-			CreatedAt: Timep(t.CreatedAt),
+			Id:          UUIDp(openapi_types.UUID(t.ID)),
+			OrgId:       openapi_types.UUID(t.OrgID),
+			Name:        t.Name,
+			Description: &t.Description,
+			CreatedAt:   Timep(t.CreatedAt),
 		})
 	}
 	writeJSON(w, http.StatusOK, openapi.TeamList{Items: items, Page: page, PerPage: perPage, Total: total})
@@ -443,12 +488,8 @@ func (s *server) CreateTeam(w http.ResponseWriter, r *http.Request, org openapi.
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	var in openapi.CreateTeamInput
 	if _, ok := decode(w, r, &in); !ok {
@@ -458,7 +499,7 @@ func (s *server) CreateTeam(w http.ResponseWriter, r *http.Request, org openapi.
 	if in.Description != nil {
 		ci.Description = *in.Description
 	}
-	t, err := s.orgs.CreateTeam(r.Context(), o.ID, ci, cur.User.ID)
+	t, err := s.orgs.CreateTeam(r.Context(), o.ID, ci)
 	var aee *orgs.AlreadyExistsError
 	if errors.As(err, &aee) {
 		writeError(w, http.StatusConflict, "already_exists", "Team gia' esistente.")
@@ -479,10 +520,11 @@ func (s *server) CreateTeam(w http.ResponseWriter, r *http.Request, org openapi.
 	}
 	w.Header().Set("Location", "/v1/orgs/"+string(org)+"/teams/"+string(in.Name))
 	writeJSON(w, http.StatusCreated, openapi.Team{
-		Id:        UUIDp(openapi_types.UUID(t.ID)),
-		OrgId:     openapi_types.UUID(t.OrgID),
-		Name:      t.Name,
-		CreatedAt: Timep(t.CreatedAt),
+		Id:          UUIDp(openapi_types.UUID(t.ID)),
+		OrgId:       openapi_types.UUID(t.OrgID),
+		Name:        t.Name,
+		Description: &t.Description,
+		CreatedAt:   Timep(t.CreatedAt),
 	})
 }
 
@@ -491,12 +533,15 @@ func (s *server) GetTeam(w http.ResponseWriter, r *http.Request, org openapi.Org
 		unavailable(w)
 		return
 	}
-	_, ok := s.current(w, r)
+	cur, ok := s.current(w, r)
 	if !ok {
 		return
 	}
 	o, _, ok := s.orgResolve(w, r, org)
 	if !ok {
+		return
+	}
+	if !s.requireMember(w, r, cur, o.ID) {
 		return
 	}
 	t, err := s.orgs.GetTeamByName(r.Context(), o.ID, string(team))
@@ -509,10 +554,11 @@ func (s *server) GetTeam(w http.ResponseWriter, r *http.Request, org openapi.Org
 		return
 	}
 	writeJSON(w, http.StatusOK, openapi.Team{
-		Id:        UUIDp(openapi_types.UUID(t.ID)),
-		OrgId:     openapi_types.UUID(t.OrgID),
-		Name:      t.Name,
-		CreatedAt: Timep(t.CreatedAt),
+		Id:          UUIDp(openapi_types.UUID(t.ID)),
+		OrgId:       openapi_types.UUID(t.OrgID),
+		Name:        t.Name,
+		Description: &t.Description,
+		CreatedAt:   Timep(t.CreatedAt),
 	})
 }
 
@@ -529,12 +575,8 @@ func (s *server) UpdateTeam(w http.ResponseWriter, r *http.Request, org openapi.
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	// Verifica che il team esista prima di aggiornare.
 	existing, err := s.orgs.GetTeamByName(r.Context(), o.ID, string(team))
@@ -579,10 +621,11 @@ func (s *server) UpdateTeam(w http.ResponseWriter, r *http.Request, org openapi.
 		return
 	}
 	writeJSON(w, http.StatusOK, openapi.Team{
-		Id:        UUIDp(openapi_types.UUID(result.ID)),
-		OrgId:     openapi_types.UUID(result.OrgID),
-		Name:      result.Name,
-		CreatedAt: Timep(result.CreatedAt),
+		Id:          UUIDp(openapi_types.UUID(result.ID)),
+		OrgId:       openapi_types.UUID(result.OrgID),
+		Name:        result.Name,
+		Description: &result.Description,
+		CreatedAt:   Timep(result.CreatedAt),
 	})
 }
 
@@ -599,12 +642,8 @@ func (s *server) DeleteTeam(w http.ResponseWriter, r *http.Request, org openapi.
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	t, err := s.orgs.GetTeamByName(r.Context(), o.ID, string(team))
 	if errors.Is(err, orgs.ErrNotFound) {
@@ -642,12 +681,8 @@ func (s *server) ListTeamMembers(w http.ResponseWriter, r *http.Request, org ope
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireMember(w, r, cur, o.ID) {
+		return
 	}
 	t, err := s.orgs.GetTeamByName(r.Context(), o.ID, string(team))
 	if errors.Is(err, orgs.ErrNotFound) {
@@ -703,14 +738,14 @@ func (s *server) SetTeamMember(w http.ResponseWriter, r *http.Request, org opena
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	target, err := s.users.Get(r.Context(), string(username))
+	if errors.Is(err, users.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Utente non trovato.")
+		return
+	}
 	if err != nil {
 		s.internal(w, r, err)
 		return
@@ -728,7 +763,11 @@ func (s *server) SetTeamMember(w http.ResponseWriter, r *http.Request, org opena
 	if _, ok := decode(w, r, &in); !ok {
 		return
 	}
-	m, err := s.orgs.SetTeamMember(r.Context(), o.ID, t.ID, target.ID, orgs.SetTeamMemberInput{Role: string(*in.Role)})
+	role := "member"
+	if in.Role != nil {
+		role = string(*in.Role)
+	}
+	m, err := s.orgs.SetTeamMember(r.Context(), o.ID, t.ID, target.ID, orgs.SetTeamMemberInput{Role: role})
 	var ve *orgs.ValidationError
 	if errors.As(err, &ve) {
 		validationFailed(w, ve.Fields)
@@ -771,14 +810,14 @@ func (s *server) RemoveTeamMember(w http.ResponseWriter, r *http.Request, org op
 	if !ok {
 		return
 	}
-	if !cur.User.IsAdmin {
-		has, err := s.orgs.IsOrgMember(r.Context(), o.ID, cur.User.ID)
-		if err != nil || !has {
-			writeError(w, http.StatusForbidden, "forbidden", "Non autorizzato.")
-			return
-		}
+	if !s.requireOwner(w, r, cur, o.ID) {
+		return
 	}
 	target, err := s.users.Get(r.Context(), string(username))
+	if errors.Is(err, users.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Utente non trovato.")
+		return
+	}
 	if err != nil {
 		s.internal(w, r, err)
 		return

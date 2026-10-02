@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -334,8 +335,8 @@ func mapUnique(err error) error {
 		return nil
 	}
 	// PostgreSQL errore 23505 = unique_violation
-	var pgErr interface{ ErrorCode() string }
-	if errors.As(err, &pgErr) && pgErr.ErrorCode() == "23505" {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return &AlreadyExistsError{Field: "nome organizzazione"}
 	}
 	return fmt.Errorf("errore univocita non riuscita: %w", err)
@@ -378,27 +379,24 @@ func (s *Service) SetOrgMember(ctx context.Context, orgID, userID uuid.UUID, in 
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	// Se stiamo declassando un owner, verifichiamo che non sia l'ultimo.
-	if in.Role == "member" {
-		var count int
-		err = tx.QueryRow(ctx, `
-			SELECT count(*) FROM identity.org_members
-			WHERE org_id = $1 AND user_id != $2 AND role = 'owner'
-			FOR UPDATE OF identity.org_members`,
-			orgID, userID).Scan(&count)
+	if in.Role != "owner" {
+		isOwner, owners, err := lockOwners(ctx, tx, orgID, userID)
 		if err != nil {
-			return OrgMember{}, fmt.Errorf("verifica owner non riuscita: %w", err)
+			return OrgMember{}, err
 		}
-		if count == 0 {
+		if isOwner && owners == 1 {
 			return OrgMember{}, ErrLastOwner
 		}
 	}
 
-	_, err = tx.Exec(ctx, `
+	var createdAt time.Time
+	err = tx.QueryRow(ctx, `
 		INSERT INTO identity.org_members (org_id, user_id, role, created_at)
 		VALUES ($1, $2, $3, now())
 		ON CONFLICT (org_id, user_id) DO UPDATE
-			SET role = EXCLUDED.role, updated_at = now()`,
-		orgID, userID, in.Role)
+			SET role = EXCLUDED.role
+		RETURNING created_at`,
+		orgID, userID, in.Role).Scan(&createdAt)
 	if err != nil {
 		return OrgMember{}, fmt.Errorf("impostazione membro organizzazione non riuscita: %w", err)
 	}
@@ -406,7 +404,7 @@ func (s *Service) SetOrgMember(ctx context.Context, orgID, userID uuid.UUID, in 
 	if err := tx.Commit(ctx); err != nil {
 		return OrgMember{}, err
 	}
-	return OrgMember{UserID: userID, Role: in.Role, CreatedAt: time.Now()}, nil
+	return OrgMember{UserID: userID, Role: in.Role, CreatedAt: createdAt}, nil
 }
 
 // RemoveOrgMember rimuove un membro dall'organizzazione.
@@ -418,17 +416,11 @@ func (s *Service) RemoveOrgMember(ctx context.Context, orgID, userID uuid.UUID) 
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// Verifica che non sia l'ultimo owner: SELECT ... FOR UPDATE per blocco concorrente.
-	var count int
-	err = tx.QueryRow(ctx, `
-		SELECT count(*) FROM identity.org_members
-		WHERE org_id = $1 AND user_id != $2 AND role = 'owner'
-		FOR UPDATE OF identity.org_members`,
-		orgID, userID).Scan(&count)
+	isOwner, owners, err := lockOwners(ctx, tx, orgID, userID)
 	if err != nil {
-		return fmt.Errorf("verifica owner non riuscita: %w", err)
+		return err
 	}
-	if count == 0 {
+	if isOwner && owners == 1 {
 		return ErrLastOwner
 	}
 
@@ -439,6 +431,47 @@ func (s *Service) RemoveOrgMember(ctx context.Context, orgID, userID uuid.UUID) 
 		return fmt.Errorf("rimozione membro organizzazione non riuscita: %w", err)
 	}
 	return tx.Commit(ctx)
+}
+
+// lockOwners blocca (FOR UPDATE) tutte le righe degli owner, compreso il
+// bersaglio, e li conta in Go: FOR UPDATE non e' ammesso con gli aggregati.
+// Bloccare tutti gli owner serializza le modifiche concorrenti.
+func lockOwners(ctx context.Context, tx pgx.Tx, orgID, target uuid.UUID) (targetIsOwner bool, owners int, err error) {
+	rows, err := tx.Query(ctx, `
+		SELECT user_id FROM identity.org_members
+		WHERE org_id = $1 AND role = 'owner'
+		ORDER BY user_id
+		FOR UPDATE`, orgID)
+	if err != nil {
+		return false, 0, fmt.Errorf("verifica owner non riuscita: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var uid uuid.UUID
+		if err := rows.Scan(&uid); err != nil {
+			return false, 0, err
+		}
+		owners++
+		if uid == target {
+			targetIsOwner = true
+		}
+	}
+	return targetIsOwner, owners, rows.Err()
+}
+
+// Role restituisce il ruolo di userID in orgID; ErrNotOrgMember se non e' membro.
+func (s *Service) Role(ctx context.Context, orgID, userID uuid.UUID) (string, error) {
+	var role string
+	err := s.pool.QueryRow(ctx, `
+		SELECT role FROM identity.org_members
+		WHERE org_id = $1 AND user_id = $2`, orgID, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotOrgMember
+	}
+	if err != nil {
+		return "", fmt.Errorf("lettura ruolo non riuscita: %w", err)
+	}
+	return role, nil
 }
 
 // ListOrgMembers elenca i membri di un'organizzazione.
@@ -476,7 +509,7 @@ func (s *Service) ListOrgMembers(ctx context.Context, orgID uuid.UUID, page, per
 // ---- Teams ----
 
 // CreateTeam crea un team dentro un'organizzazione.
-func (s *Service) CreateTeam(ctx context.Context, orgID uuid.UUID, in CreateTeamInput, creatorID uuid.UUID) (Team, error) {
+func (s *Service) CreateTeam(ctx context.Context, orgID uuid.UUID, in CreateTeamInput) (Team, error) {
 	if err := validateName(in.Name); err != nil {
 		return Team{}, err
 	}
@@ -484,28 +517,15 @@ func (s *Service) CreateTeam(ctx context.Context, orgID uuid.UUID, in CreateTeam
 		return Team{}, &ValidationError{Fields: map[string]string{"description": "al massimo 1024 caratteri"}}
 	}
 
-	// Verifica che l'organizzazione esista e il creator sia owner.
-	var ownerCount int
-	err := s.pool.QueryRow(ctx, `
-		SELECT count(*) FROM identity.org_members
-		WHERE org_id = $1 AND user_id = $2 AND role = 'owner'`,
-		orgID, creatorID).Scan(&ownerCount)
-	if err != nil {
-		return Team{}, fmt.Errorf("verifica proprietario non riuscita: %w", err)
-	}
-	if ownerCount == 0 {
-		return Team{}, ErrNotFound
-	}
-
 	teamID := uuid.New()
 	now := time.Now()
-	_, err = s.pool.Exec(ctx, `
+	_, err := s.pool.Exec(ctx, `
 		INSERT INTO identity.teams (id, org_id, name, description, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $5)`,
 		teamID, orgID, in.Name, in.Description, now)
 	if err != nil {
-		var pgErr interface{ ErrorCode() string }
-		if errors.As(err, &pgErr) && pgErr.ErrorCode() == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return Team{}, &AlreadyExistsError{Field: "nome team"}
 		}
 		return Team{}, fmt.Errorf("creazione team non riuscita: %w", err)
@@ -558,8 +578,8 @@ func (s *Service) UpdateTeam(ctx context.Context, orgID, teamID uuid.UUID, in Up
 		WHERE id=$4 AND org_id=$5 RETURNING id, org_id, name, description, created_at`,
 		name, desc, now, teamID, orgID)
 	if err != nil {
-		var pgErr interface{ ErrorCode() string }
-		if errors.As(err, &pgErr) && pgErr.ErrorCode() == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return Team{}, &AlreadyExistsError{Field: "nome team"}
 		}
 		return Team{}, fmt.Errorf("aggiornamento team non riuscito: %w", err)
@@ -646,7 +666,7 @@ func (s *Service) SetTeamMember(ctx context.Context, orgID, teamID, userID uuid.
 		INSERT INTO identity.team_members (team_id, org_id, user_id, role, created_at)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (team_id, user_id) DO UPDATE
-			SET role = EXCLUDED.role, updated_at = now()
+			SET role = EXCLUDED.role
 		RETURNING user_id, role, created_at`,
 		teamID, orgID, userID, in.Role, now)
 	if err != nil {

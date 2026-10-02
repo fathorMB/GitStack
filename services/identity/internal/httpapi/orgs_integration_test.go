@@ -3,13 +3,7 @@
 package httpapi_test
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"io"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,299 +17,262 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
 )
 
-const pw2 = "una password lunga e buona"
-
-type orgEnv struct {
-	t     *testing.T
-	h     http.Handler
-	clock *clock
-	users *users.Service
-	orgs  *orgs.Service
-}
-
-func newOrgEnv(t *testing.T, cfg loginlimit.Config) *orgEnv {
+// newOrgEnv come newEnv, ma con il servizio delle organizzazioni attivo.
+func newOrgEnv(t *testing.T) *env {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	c := &clock{t: time.Now().UTC().Truncate(time.Microsecond)}
 	us := users.New(pool, c.now)
 	svc := &auth.Service{Users: us, Sessions: sessions.New(pool, c.now, time.Hour), Limiter: loginlimit.New(cfg, c.now)}
-	os := orgs.New(pool, c.now)
-	e := &orgEnv{t: t, h: httpapi.New(svc, nil, httpapi.WithOrgs(os)), clock: c, users: us, orgs: os}
-	return e
+	h := httpapi.New(svc, nil, httpapi.WithOrgs(orgs.New(pool, c.now)))
+	return &env{t: t, h: h, clock: c, users: us}
 }
 
-func (e *orgEnv) mk(name string, admin bool) {
-	e.t.Helper()
-	_, err := e.users.Create(context.Background(), users.CreateInput{
-		Username: name, Email: name + "@example.com", DisplayName: name, Password: pw2, IsAdmin: admin,
-	})
-	if err != nil {
-		e.t.Fatalf("create %s: %v", name, err)
-	}
+// orgFixture: root (admin di sistema, non membro), alice (owner di acme),
+// bob (member di acme), carol (fuori dall'organizzazione).
+type orgFixture struct {
+	e                       *env
+	root, alice, bob, carol *http.Cookie
 }
 
-func (e *orgEnv) do(method, path string, body any, ck *http.Cookie, hdr ...string) resp {
-	e.t.Helper()
-	var rd io.Reader
-	switch b := body.(type) {
-	case nil:
-	case string:
-		rd = strings.NewReader(b)
-	default:
-		j, _ := json.Marshal(b)
-		rd = bytes.NewReader(j)
-	}
-	req := httptest.NewRequest(method, path, rd)
-	req.RemoteAddr = "192.0.2.10:5555"
-	if ck != nil {
-		req.AddCookie(ck)
-	}
-	for i := 0; i+1 < len(hdr); i += 2 {
-		req.Header.Set(hdr[i], hdr[i+1])
-	}
-	rec := httptest.NewRecorder()
-	e.h.ServeHTTP(rec, req)
-	res := rec.Result()
-	b, _ := io.ReadAll(res.Body)
-	return resp{res, b}
-}
-
-func (e *orgEnv) mustLogin(name string) *http.Cookie {
-	e.t.Helper()
-	c, _ := e.login(name, pw2)
-	return c
-}
-
-func status(t *testing.T, r resp, want int) {
+func newOrgFixture(t *testing.T) orgFixture {
 	t.Helper()
-	if r.StatusCode != want {
-		t.Fatalf("status %d atteso %d: %s", r.StatusCode, want, r.body)
-	}
+	e := newOrgEnv(t)
+	e.mk("root", true)
+	e.mk("alice", false)
+	e.mk("bob", false)
+	e.mk("carol", false)
+	f := orgFixture{e: e, root: e.mustLogin("root"), alice: e.mustLogin("alice"), bob: e.mustLogin("bob"), carol: e.mustLogin("carol")}
+	status(t, e.do("POST", "/orgs", map[string]any{"name": "acme", "displayName": "Acme Inc", "description": "d"}, f.alice), 201)
+	status(t, e.do("PUT", "/orgs/acme/members/bob", map[string]string{"role": "member"}, f.alice), 200)
+	return f
 }
 
-func errCode(t *testing.T, r resp, wantStatus int, wantCode string) {
+func memberRoles(t *testing.T, e *env, ck *http.Cookie) map[string]string {
 	t.Helper()
-	if r.StatusCode != wantStatus {
-		t.Fatalf("status %d atteso %d: %s", r.StatusCode, wantStatus, r.body)
+	r := e.do("GET", "/orgs/acme/members", nil, ck)
+	status(t, r, 200)
+	out := map[string]string{}
+	for _, it := range r.json()["items"].([]any) {
+		m := it.(map[string]any)
+		out[m["user"].(map[string]any)["username"].(string)] = m["role"].(string)
 	}
-	m := r.json()
-	ie, ok := m["error"]
-	if !ok {
-		t.Fatalf("nessun campo error: %s", r.body)
-	}
-	e := ie.(map[string]any)
-	if e["code"] != wantCode {
-		t.Fatalf("codice %q atteso %q: %s", e["code"], wantCode, r.body)
-	}
+	return out
 }
 
-// ---- Rule 1: unique name, validation ----
-
+// Regola 1: nome univoco, slug non valido → 422 con details.fields; campi completi nelle risposte.
 func TestOrgCreateUniqueAndValidation(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	cookie := e.mustLogin("root")
-
-	// Crea prima org.
-	r := e.do("POST", "/orgs", map[string]string{"name": "myorg"}, cookie)
+	f := newOrgFixture(t)
+	e := f.e
+	r := e.do("POST", "/orgs", map[string]any{"name": "proj3", "displayName": "Proj Tre", "description": "desc"}, f.alice)
 	status(t, r, 201)
-
-	// Seconda con lo stesso nome → 409.
-	r = e.do("POST", "/orgs", map[string]string{"name": "myorg"}, cookie)
-	errCode(t, r, 409, "already_exists")
-
-	// Nome con caratteri non validi → 422.
-	r = e.do("POST", "/orgs", map[string]string{"name": "Bad_Name"}, cookie)
-	errCode(t, r, 422, "validation_failed")
-	r = e.do("POST", "/orgs", map[string]string{"name": "ab--"}, cookie)
-	errCode(t, r, 422, "validation_failed")
-	r = e.do("POST", "/orgs", map[string]string{"name": "-start"}, cookie)
-	errCode(t, r, 422, "validation_failed")
+	if m := r.json(); m["displayName"] != "Proj Tre" || m["description"] != "desc" || m["name"] != "proj3" {
+		t.Fatalf("risposta di creazione incompleta: %s", r.body)
+	}
+	errCode(t, e.do("POST", "/orgs", map[string]string{"name": "proj3"}, f.bob), 409, "already_exists")
+	for _, bad := range []string{"Bad_Name", "-start", "ab--"} {
+		r = e.do("POST", "/orgs", map[string]string{"name": bad}, f.alice)
+		errCode(t, r, 422, "validation_failed")
+		if r.json()["error"].(map[string]any)["details"].(map[string]any)["fields"] == nil {
+			t.Fatalf("details.fields mancante: %s", r.body)
+		}
+	}
+	// Lista: displayName e description presenti.
+	r = e.do("GET", "/orgs", nil, f.alice)
+	status(t, r, 200)
+	found := false
+	for _, it := range r.json()["items"].([]any) {
+		if m := it.(map[string]any); m["name"] == "acme" {
+			found = m["displayName"] == "Acme Inc" && m["description"] == "d"
+		}
+	}
+	if !found {
+		t.Fatalf("lista senza displayName/description: %s", r.body)
+	}
+	errCode(t, e.do("POST", "/orgs", map[string]string{"name": "x1"}, nil), 401, "unauthenticated")
 }
 
-// ---- Rule 2: creator becomes owner ----
-
+// Regola 2: chi crea l'organizzazione ne diventa owner.
 func TestOrgCreatorBecomesOwner(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	cookie := e.mustLogin("root")
-
-	e.do("POST", "/orgs", map[string]string{"name": "acme"}, cookie)
-	status(t, e.do("GET", "/orgs/acme", cookie), 200)
-	members := e.do("GET", "/orgs/acme/members", cookie)
-	status(t, members, 200)
-	body := members.json()
-	items := body["items"].([]any)
-	if len(items) != 1 {
-		t.Fatalf("atteso 1 membro, trovato %d: %s", len(items), members.body)
-	}
-	u := items[0].(map[string]any)
-	if u["role"] != "owner" || u["username"] != "root" {
-		t.Fatalf("ruolo inatteso: %v", u)
+	f := newOrgFixture(t)
+	roles := memberRoles(t, f.e, f.alice)
+	if roles["alice"] != "owner" || roles["bob"] != "member" || len(roles) != 2 {
+		t.Fatalf("membri inattesi: %v", roles)
 	}
 }
 
-// ---- Rule 3: last owner protection (with concurrent test) ----
-
-func TestLastOwnerProtection(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	e.mk("alice", false)
-	e.mk("bob", false)
-	rootCookie := e.mustLogin("root")
-	aliceCookie := e.mustLogin("alice")
-	bobCookie := e.mustLogin("bob")
-
-	// root crea org e diventa owner.
-	e.do("POST", "/orgs", map[string]string{"name": "proj"}, rootCookie)
-
-	// root aggiunge alice e bob come owner.
-	e.do("PUT", "/orgs/proj/members/alice", map[string]string{"role": "owner"}, rootCookie)
-	e.do("PUT", "/orgs/proj/members/bob", map[string]string{"role": "owner"}, rootCookie)
-
-	// root declassa alice → ok.
-	e.do("PUT", "/orgs/proj/members/alice", map[string]string{"role": "member"}, rootCookie)
-	status(t, e.do("GET", "/orgs/proj", rootCookie), 200)
-
-	// ora solo root è owner: declassare root → 409.
-	r := e.do("PUT", "/orgs/proj/members/root", map[string]string{"role": "member"}, rootCookie)
-	errCode(t, r, 409, "last_owner")
-
-	// root ripristina.
-	e.do("PUT", "/orgs/proj/members/root", map[string]string{"role": "owner"}, rootCookie)
-}
-
-func TestLastOwnerConcurrent(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	e.mk("alice", false)
-	e.mk("bob", false)
-	rootCookie := e.mustLogin("root")
-
-	// root crea org.
-	e.do("POST", "/orgs", map[string]string{"name": "proj2"}, rootCookie)
-
-	// root promuove alice e bob a owner.
-	e.do("PUT", "/orgs/proj2/members/alice", map[string]string{"role": "owner"}, rootCookie)
-	e.do("PUT", "/orgs/proj2/members/bob", map[string]string{"role": "owner"}, rootCookie)
-
-	// root si declassa a member: deve funzionare (alice e bob sono ancora owner).
-	// Poi alice e bob tentano di declassarsi concorrentemente → solo uno ha successo.
-	var wg sync.WaitGroup
-	var successBob, successAlice int
-	var mu sync.Mutex
-
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		// alice tenta di declassarsi.
-		r := e.do("PUT", "/orgs/proj2/members/alice", map[string]string{"role": "member"}, e.mustLogin("alice"))
-		if r.StatusCode == 200 {
-			mu.Lock()
-			successAlice++
-			mu.Unlock()
+// Regola 4 (a): chi non e' owner riceve 403 su ogni modifica.
+func TestOrgNonOwnerForbidden(t *testing.T) {
+	f := newOrgFixture(t)
+	e := f.e
+	status(t, e.do("POST", "/orgs/acme/teams", map[string]string{"name": "dev"}, f.alice), 201)
+	for name, ck := range map[string]*http.Cookie{"member": f.bob, "esterno": f.carol} {
+		for _, c := range []struct {
+			m, p string
+			body any
+		}{
+			{"PATCH", "/orgs/acme", map[string]string{"description": "x"}},
+			{"DELETE", "/orgs/acme", nil},
+			{"PUT", "/orgs/acme/members/carol", map[string]string{"role": "member"}},
+			{"DELETE", "/orgs/acme/members/alice", nil},
+			{"POST", "/orgs/acme/teams", map[string]string{"name": "ops"}},
+			{"PATCH", "/orgs/acme/teams/dev", map[string]string{"description": "x"}},
+			{"DELETE", "/orgs/acme/teams/dev", nil},
+			{"PUT", "/orgs/acme/teams/dev/members/bob", map[string]string{"role": "member"}},
+			{"DELETE", "/orgs/acme/teams/dev/members/bob", nil},
+		} {
+			r := e.do(c.m, c.p, c.body, ck)
+			if r.StatusCode != 403 {
+				t.Fatalf("%s %s %s: %d atteso 403: %s", name, c.m, c.p, r.StatusCode, r.body)
+			}
+			errCode(t, r, 403, "forbidden")
 		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		// bob tenta di declassarsi.
-		r := e.do("PUT", "/orgs/proj2/members/bob", map[string]string{"role": "member"}, e.mustLogin("bob"))
-		if r.StatusCode == 200 {
-			mu.Lock()
-			successBob++
-			mu.Unlock()
-		}
-	}()
-
-	wg.Wait()
-
-	if successAlice+successBob != 1 {
-		t.Fatalf("atteso 1 successo concorrente, ottenuti %d+%d", successAlice, successBob)
 	}
+	// Letture: un esterno riceve 403, un member passa.
+	for _, p := range []string{"/orgs/acme", "/orgs/acme/members", "/orgs/acme/teams", "/orgs/acme/teams/dev", "/orgs/acme/teams/dev/members"} {
+		errCode(t, e.do("GET", p, nil, f.carol), 403, "forbidden")
+		status(t, e.do("GET", p, nil, f.bob), 200)
+	}
+	// Eccezione: un member puo' rimuovere se stesso.
+	status(t, e.do("DELETE", "/orgs/acme/members/bob", nil, f.bob), 204)
 }
 
-// ---- Rule 4: member/fuori organizza → 403 ----
-
-func TestOrgMemberPermissions(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	e.mk("alice", false)
-	e.mk("bob", false)
-	rootCookie := e.mustLogin("root")
-	aliceCookie := e.mustLogin("alice")
-	bobCookie := e.mustLogin("bob")
-
-	// root crea org.
-	e.do("POST", "/orgs", map[string]string{"name": "proj3"}, rootCookie)
-
-	// bob (fuori org) non può accedere.
-	errCode(t, e.do("GET", "/orgs/proj3", bobCookie), 403, "forbidden")
-	errCode(t, e.do("GET", "/orgs/proj3/teams", bobCookie), 403, "forbidden")
-
-	// alice (fuori org) non può modificare membri.
-	errCode(t, e.do("PUT", "/orgs/proj3/members/bob", map[string]string{"role": "member"}, aliceCookie), 403, "forbidden")
-	errCode(t, e.do("POST", "/orgs/proj3/teams", map[string]string{"name": "dev"}, aliceCookie), 403, "forbidden")
-
-	// root (admin) può tutto.
-	r := e.do("POST", "/orgs/proj3/teams", map[string]string{"name": "dev"}, rootCookie)
+// Regola 4 (b): un admin di sistema non membro puo' sempre.
+func TestOrgSystemAdminNotMember(t *testing.T) {
+	f := newOrgFixture(t)
+	e := f.e
+	status(t, e.do("GET", "/orgs/acme", nil, f.root), 200)
+	status(t, e.do("PUT", "/orgs/acme/members/carol", map[string]string{"role": "member"}, f.root), 200)
+	r := e.do("POST", "/orgs/acme/teams", map[string]any{"name": "dev", "description": "squadra"}, f.root)
 	status(t, r, 201)
-
-	// root (owner di org) può anche gestire membri.
-	r = e.do("PUT", "/orgs/proj3/members/bob", map[string]string{"role": "member"}, rootCookie)
-	status(t, r, 200)
+	if r.json()["description"] != "squadra" {
+		t.Fatalf("team senza description: %s", r.body)
+	}
+	status(t, e.do("PATCH", "/orgs/acme/teams/dev", map[string]string{"description": "nuova"}, f.root), 200)
+	status(t, e.do("PUT", "/orgs/acme/teams/dev/members/carol", map[string]string{"role": "maintainer"}, f.root), 200)
+	status(t, e.do("DELETE", "/orgs/acme/teams/dev/members/carol", nil, f.root), 204)
+	status(t, e.do("DELETE", "/orgs/acme/teams/dev", nil, f.root), 204)
+	status(t, e.do("PATCH", "/orgs/acme", map[string]string{"description": "nuova"}, f.root), 200)
+	status(t, e.do("DELETE", "/orgs/acme/members/carol", nil, f.root), 204)
+	status(t, e.do("DELETE", "/orgs/acme", nil, f.root), 204)
 }
 
-// ---- Rule 5: team membership validation ----
-
-func TestTeamMemberOrgValidation(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	e.mk("alice", false)
-	e.mk("bob", false)
-	rootCookie := e.mustLogin("root")
-
-	// root crea org e team.
-	e.do("POST", "/orgs", map[string]string{"name": "proj4"}, rootCookie)
-	e.do("POST", "/orgs/proj4/teams", map[string]string{"name": "dev"}, rootCookie)
-
-	// Solo root è membro. bob non è membro dell'org.
-	r := e.do("PUT", "/orgs/proj4/teams/dev/members/bob", map[string]string{"role": "member"}, rootCookie)
-	errCode(t, r, 422, "not_org_member")
-
-	// root diventa anche membro di bob.
-	e.do("PUT", "/orgs/proj4/members/bob", map[string]string{"role": "member"}, rootCookie)
-	// Ora bob è membro dell'org: può essere aggiunto al team.
-	r = e.do("PUT", "/orgs/proj4/teams/dev/members/bob", map[string]string{"role": "member"}, rootCookie)
-	status(t, r, 200)
+// Regola 3 (c): l'ultimo owner non si declassa ne' si rimuove.
+func TestOrgLastOwner(t *testing.T) {
+	f := newOrgFixture(t)
+	e := f.e
+	errCode(t, e.do("PUT", "/orgs/acme/members/alice", map[string]string{"role": "member"}, f.alice), 409, "last_owner")
+	errCode(t, e.do("DELETE", "/orgs/acme/members/alice", nil, f.alice), 409, "last_owner")
+	errCode(t, e.do("DELETE", "/orgs/acme/members/alice", nil, f.root), 409, "last_owner")
+	if roles := memberRoles(t, e, f.alice); roles["alice"] != "owner" {
+		t.Fatalf("alice non e' piu' owner: %v", roles)
+	}
+	// Con un secondo owner il declassamento e la rimozione riescono.
+	status(t, e.do("PUT", "/orgs/acme/members/bob", map[string]string{"role": "owner"}, f.alice), 200)
+	status(t, e.do("PUT", "/orgs/acme/members/alice", map[string]string{"role": "member"}, f.bob), 200)
+	errCode(t, e.do("DELETE", "/orgs/acme/members/bob", nil, f.bob), 409, "last_owner")
+	// Declassare un member a member non e' un problema.
+	status(t, e.do("PUT", "/orgs/acme/members/alice", map[string]string{"role": "member"}, f.bob), 200)
 }
 
-// ---- Rule 6: error codes conform to schema ----
+// Regola 3 (d): due owner che si declassano a vicenda: uno passa, l'altro 409.
+func TestOrgLastOwnerConcurrent(t *testing.T) {
+	f := newOrgFixture(t)
+	e := f.e
+	status(t, e.do("PUT", "/orgs/acme/members/bob", map[string]string{"role": "owner"}, f.alice), 200)
+	// Login gia' fatti: nessuna richiesta di login dentro le goroutine.
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	codes := make([]int, 2)
+	bodies := make([]string, 2)
+	run := func(i int, ck *http.Cookie, target string) {
+		defer wg.Done()
+		<-start
+		r := e.do("PUT", "/orgs/acme/members/"+target, map[string]string{"role": "member"}, ck)
+		codes[i], bodies[i] = r.StatusCode, string(r.body)
+	}
+	wg.Add(2)
+	go run(0, f.alice, "alice")
+	go run(1, f.bob, "bob")
+	close(start)
+	wg.Wait()
+	ok, conflict := 0, 0
+	for i, c := range codes {
+		switch c {
+		case 200:
+			ok++
+		case 409:
+			conflict++
+			if want := `"last_owner"`; !contains(bodies[i], want) {
+				t.Fatalf("409 senza last_owner: %s", bodies[i])
+			}
+		default:
+			t.Fatalf("status inatteso %d: %s", c, bodies[i])
+		}
+	}
+	if ok != 1 || conflict != 1 {
+		t.Fatalf("attesi un 200 e un 409, ottenuti %v", codes)
+	}
+	owners := 0
+	for _, role := range memberRoles(t, e, f.root) {
+		if role == "owner" {
+			owners++
+		}
+	}
+	if owners != 1 {
+		t.Fatalf("owner rimasti %d, atteso 1", owners)
+	}
+}
 
-func TestErrorCodes(t *testing.T) {
-	e := newOrgEnv(t, cfg)
-	e.mk("root", true)
-	cookie := e.mustLogin("root")
+func contains(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
 
-	// 401 per non autenticato.
-	r := e.do("GET", "/orgs", nil, nil)
-	errCode(t, r, 401, "unauthenticated")
+// (e) utente bersaglio inesistente → 404.
+func TestOrgUnknownTargetUser(t *testing.T) {
+	f := newOrgFixture(t)
+	e := f.e
+	status(t, e.do("POST", "/orgs/acme/teams", map[string]string{"name": "dev"}, f.alice), 201)
+	errCode(t, e.do("PUT", "/orgs/acme/members/nessuno", map[string]string{"role": "member"}, f.alice), 404, "not_found")
+	errCode(t, e.do("DELETE", "/orgs/acme/members/nessuno", nil, f.alice), 404, "not_found")
+	errCode(t, e.do("PUT", "/orgs/acme/teams/dev/members/nessuno", map[string]string{"role": "member"}, f.alice), 404, "not_found")
+	errCode(t, e.do("DELETE", "/orgs/acme/teams/dev/members/nessuno", nil, f.alice), 404, "not_found")
+	errCode(t, e.do("GET", "/orgs/inesistente", nil, f.alice), 404, "not_found")
+}
 
-	// 404 per org inesistente.
-	r = e.do("GET", "/orgs/nessuna", cookie)
-	errCode(t, r, 404, "not_found")
-
-	// 422 per nome non valido.
-	r = e.do("POST", "/orgs", map[string]string{"name": "X"}, cookie)
-	errCode(t, r, 422, "validation_failed")
-
-	// 409 per duplicato.
-	e.do("POST", "/orgs", map[string]string{"name": "dup"}, cookie)
-	r = e.do("POST", "/orgs", map[string]string{"name": "dup"}, cookie)
-	errCode(t, r, 409, "already_exists")
-
-	// 400 per pagina invalida.
-	r = e.do("GET", "/orgs?perPage=0", cookie)
-	errCode(t, r, 400, "bad_request")
+// Regola 5: team di una sola org; solo membri dell'org; body senza role → member.
+func TestTeamMembers(t *testing.T) {
+	f := newOrgFixture(t)
+	e := f.e
+	r := e.do("POST", "/orgs/acme/teams", map[string]any{"name": "dev", "description": "squadra"}, f.alice)
+	status(t, r, 201)
+	if m := r.json(); m["description"] != "squadra" || m["orgId"] == nil {
+		t.Fatalf("team incompleto: %s", r.body)
+	}
+	errCode(t, e.do("POST", "/orgs/acme/teams", map[string]string{"name": "dev"}, f.alice), 409, "already_exists")
+	// carol non e' membro dell'organizzazione.
+	errCode(t, e.do("PUT", "/orgs/acme/teams/dev/members/carol", map[string]string{"role": "member"}, f.alice), 422, "not_org_member")
+	// Body vuoto: ruolo di default member, nessun panic.
+	r = e.do("PUT", "/orgs/acme/teams/dev/members/bob", map[string]string{}, f.alice)
+	status(t, r, 200)
+	if r.json()["role"] != "member" {
+		t.Fatalf("ruolo di default errato: %s", r.body)
+	}
+	status(t, e.do("PUT", "/orgs/acme/teams/dev/members/bob", map[string]string{"role": "maintainer"}, f.alice), 200)
+	r = e.do("GET", "/orgs/acme/teams/dev/members", nil, f.bob)
+	status(t, r, 200)
+	if items := r.json()["items"].([]any); len(items) != 1 || items[0].(map[string]any)["role"] != "maintainer" {
+		t.Fatalf("membri team inattesi: %s", r.body)
+	}
+	// Lo stesso nome di team in un'altra org e' un altro team.
+	status(t, e.do("POST", "/orgs", map[string]string{"name": "other"}, f.carol), 201)
+	status(t, e.do("POST", "/orgs/other/teams", map[string]string{"name": "dev"}, f.carol), 201)
+	// Team inesistente → 404.
+	errCode(t, e.do("GET", "/orgs/acme/teams/zzz", nil, f.alice), 404, "not_found")
+	status(t, e.do("DELETE", "/orgs/acme/teams/dev/members/bob", nil, f.alice), 204)
 }
