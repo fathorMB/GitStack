@@ -5,13 +5,15 @@ generate:
 output: api.gen.go
 output-options:
   skip-prune: false
-  # Tag serviti da identity. Restano fuori organizations e teams
-  # (item successivi) e le operazioni di core. internal e' servito solo in
+  # Tag serviti da identity. Restano fuori solo le operazioni di core.
+  # internal e' servito solo in
   # parte (verifyCredential, lookupSshKey): il resto risponde 501.
   include-tags:
     - auth
     - users
     - tokens
     - ssh-keys
+    - organizations
+    - teams
     - internal
     - permissions

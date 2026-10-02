@@ -33,6 +33,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
+	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
 	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/trust"
@@ -72,6 +73,7 @@ type server struct {
 	oidc          *oidc.Service
 	permissions   *permissions.Service
 	serviceSecret string
+	orgs          *orgs.Service
 
 	trustedProxies []*net.IPNet
 }
