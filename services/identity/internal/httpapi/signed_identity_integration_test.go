@@ -19,7 +19,7 @@ func signedHdr(sec string, id trust.Identity, at time.Time) []string {
 	h := http.Header{}
 	trust.Sign(h, sec, id, at)
 	var out []string
-	for _, n := range []string{trust.HeaderUserID, trust.HeaderUsername, trust.HeaderScopes, trust.HeaderTimestamp, trust.HeaderSignature} {
+	for _, n := range []string{trust.HeaderUserID, trust.HeaderUsername, trust.HeaderScopes, trust.HeaderTimestamp, trust.HeaderSignature, trust.HeaderTokenID, trust.HeaderTokenName} {
 		out = append(out, n, h.Get(n))
 	}
 	return out
