@@ -13,10 +13,6 @@ func issuesNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Issues non ancora disponibili.")
 }
 
-func (s *apiServer) SearchIssues(w http.ResponseWriter, _ *http.Request, _ openapi.SearchIssuesParams) {
-	issuesNotImplemented(w)
-}
-
 func (s *apiServer) ListIssueTemplates(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
 	issuesNotImplemented(w)
 }

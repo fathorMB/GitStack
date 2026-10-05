@@ -67,6 +67,9 @@ func (f *issuesIdentity) LookupUsers(_ context.Context, ids []uuid.UUID) (map[uu
 			out[u] = identityclient.CodeUser{ID: u, Username: name, Kind: kind}
 		}
 	}
+	if r := uuid.MustParse(roboID); slices.Contains(ids, r) {
+		out[r] = identityclient.CodeUser{ID: r, Username: "robo", Kind: "agent"}
+	}
 	return out, nil
 }
 
@@ -426,9 +429,6 @@ func TestIssues_LetturaEElenco(t *testing.T) {
 		e.want(e.do(http.MethodGet, "/repos/alice/app/issues?page=0", "carol", ""), http.StatusBadRequest, "invalid_page")
 		e.want(e.do(http.MethodGet, "/repos/alice/app/issues?perPage=101", "carol", ""), http.StatusBadRequest, "invalid_per_page")
 		e.want(e.do(http.MethodGet, "/repos/alice/app/issues?sort=relevance", "carol", ""), http.StatusUnprocessableEntity, "validation_failed")
-	})
-	t.Run("ricerca_completa_non_ancora_disponibile", func(t *testing.T) {
-		e.want(e.do(http.MethodGet, "/repos/alice/app/issues?q=is:open", "carol", ""), http.StatusNotImplemented, "not_implemented")
 	})
 }
 

@@ -17,7 +17,7 @@ import (
 // M-05/E (GIT-105): etichette (I5), assegnatari (I6), milestone (I7).
 // alice = admin, bob = write, carol = read (repo internal).
 
-const botID = "eeeeeeee-0000-0000-0000-000000000005"
+const botID = "eeeeeeee-0000-0000-0000-000000000006"
 
 func (e *issuesEnv) labelsRepo(name string) uuid.UUID {
 	e.t.Helper()

@@ -196,3 +196,18 @@ Test: `internal/migrate/issues_integration_test.go` (60 transazioni in parallelo
 - Gli elenchi hanno `{items, page, perPage, total}` come `GET /repos`; `listIssues` restituisce `IssueSummary` (senza testo).
 - `PUT .../assignees|labels|milestone` sostituiscono l'insieme: un agente che «prende» il lavoro si autoassegna con `PUT` mantenendo gli altri assegnatari (I6).
 - Modelli (I11): `listIssueTemplates` leggerà `.gitstack/ISSUE_TEMPLATE/` dal branch principale tramite il servizio git (API interne `gitGetTree` e `gitGetFile` già esistenti).
+
+
+## Ricerca delle issues (M-05/F, GIT-106)
+
+`GET /repos/{owner}/{repo}/issues` e `GET /search/issues` usano la stessa traduzione (`internal/httpserver/issues_search.go`) della sintassi di `pkg/issuequery` (I10) in SQL.
+
+- **Mai testo dell'utente nell'SQL.** Ogni valore (qualificatori, testo libero, filtri espliciti) è un parametro `$n`; le parti di SQL sono costanti. Il testo libero usa `plainto_tsquery` / `phraseto_tsquery` (configurazione `simple`, come l'indice): operatori come `&`, `|`, `!` sono testo. NUL e UTF-8 non valido sono 422.
+- **Cosa si cerca.** Titolo e testo (`issues.search`) e commenti non eliminati (`issue_comments.search`), con gli indici GIN della migrazione 0004. `relevance` ordina per `ts_rank` (massimo fra issue e commenti).
+- **Semantica dei qualificatori ripetuti.** `is:`, `label:`, `assignee:`, `no:` e il testo devono valere tutti (AND); `reason:`, `author:`, `milestone:`, `repo:` e `org:` sono alternative (OR); ogni `-` esclude. `milestone:` accetta titolo o numero. `assignee:@me` è il chiamante; `@agents` sono gli utenti di tipo `agent` (identity `lookup-ids`) fra gli autori/assegnatari dell'ambito. Un login sconosciuto non trova nulla. Su `listIssues` i filtri espliciti si sommano a `q`; `state` vale `open` solo se `q` non ha `is:open|closed`.
+- **Visibilità.** La ricerca globale parte dai repo di readable-resources di identity (`all` per l'admin di sistema, visibilità interna compresa) e non esamina mai gli altri: `i.repo_id = ANY(leggibili)`; i repo eliminati sono esclusi. Le issues nascoste compaiono solo dove il chiamante è admin: core verifica `admin` soltanto sui repo leggibili che hanno issues nascoste (al massimo 200), non su tutti.
+- **Come si limita il costo.**
+  1. *Indici*: ricerca testuale con GIN (`issues_search_idx`, `issue_comments_search_idx`); filtri per repo/stato con `issues_repo_state_idx`, etichette e assegnatari con gli indici di `issue_labels` e `issue_assignees`.
+  2. *LIMIT*: la pagina ha al massimo 100 righe; il totale si conta con `LIMIT 10000` (oltre, `total` vale 10000) e le pagine oltre i primi 10000 risultati sono 422; `@agents` classifica al massimo 5000 utenti.
+  3. *Tempo massimo*: ogni ricerca gira in una transazione con `statement_timeout` di 5 s; oltre risponde 503 `search_timeout` («restringi la ricerca»).
+  Un `repo:` o `org:` restringe l'ambito più di ogni altro filtro. Non c'è un indice sugli hidden: la query sui repo con nascoste è una scansione per repo; se pesasse con milioni di issues si aggiunge un indice parziale `(repo_id) WHERE hidden`.
