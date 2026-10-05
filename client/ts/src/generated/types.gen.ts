@@ -753,6 +753,16 @@ export type FileDiff = {
      */
     truncated: boolean;
     /**
+     * B6: il file e' «chiuso di default» nella UI. Il patch c'e' comunque, se non e' stato omesso per i limiti.
+     *
+     */
+    collapsed?: boolean;
+    /**
+     * Perche' e' chiuso: `large` (piu' di 500 righe cambiate, aggiunte piu' tolte), `lock` (file di lock: package-lock.json, pnpm-lock.yaml, yarn.lock, go.sum, Cargo.lock, ...) o `generated` (file generato o minificato: *.min.js, *.min.css, *.pb.go, ...). Elenco completo nel README del servizio git; lock e generated vincono su large.
+     *
+     */
+    collapseReason?: 'large' | 'lock' | 'generated';
+    /**
      * Diff unificato (hunk), assente per i binari.
      */
     patch?: string;
@@ -771,6 +781,19 @@ export type CommitDetail = {
      * True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
      */
     truncated: boolean;
+    /**
+     * B6: oltre 300 file o 20 000 righe cambiate la risposta porta solo l'elenco dei file con righe aggiunte e tolte, senza `patch`.
+     *
+     */
+    listOnly?: boolean;
+    /**
+     * Il diff e' stato calcolato ignorando gli spazi (`git diff -w`); i file che cambiano solo negli spazi non compaiono.
+     */
+    ignoreWhitespace?: boolean;
+    /**
+     * Tag che puntano al commit (anche annotati), in ordine alfabetico.
+     */
+    tags?: Array<string>;
 };
 
 export type BlameRange = {
@@ -1151,6 +1174,11 @@ export type CommitPageParam = number;
  * Commit per pagina (default 30, massimo 100).
  */
 export type CommitPerPageParam = number;
+
+/**
+ * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+ */
+export type IgnoreWhitespaceParam = boolean;
 
 /**
  * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
@@ -5184,7 +5212,12 @@ export type GitGetCommitData = {
          */
         sha: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+         */
+        ignoreWhitespace?: boolean;
+    };
     url: '/internal/git/repos/{repoId}/commits/{sha}';
 };
 
@@ -5217,6 +5250,108 @@ export type GitGetCommitResponses = {
 };
 
 export type GitGetCommitResponse = GitGetCommitResponses[keyof GitGetCommitResponses];
+
+export type GitGetCommitDiffData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: {
+        /**
+         * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+         */
+        ignoreWhitespace?: boolean;
+    };
+    url: '/internal/git/repos/{repoId}/commits/{sha}/diff';
+};
+
+export type GitGetCommitDiffErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetCommitDiffError = GitGetCommitDiffErrors[keyof GitGetCommitDiffErrors];
+
+export type GitGetCommitDiffResponses = {
+    /**
+     * Il diff.
+     */
+    200: string;
+};
+
+export type GitGetCommitDiffResponse = GitGetCommitDiffResponses[keyof GitGetCommitDiffResponses];
+
+export type GitGetCommitPatchData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: {
+        /**
+         * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+         */
+        ignoreWhitespace?: boolean;
+    };
+    url: '/internal/git/repos/{repoId}/commits/{sha}/patch';
+};
+
+export type GitGetCommitPatchErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetCommitPatchError = GitGetCommitPatchErrors[keyof GitGetCommitPatchErrors];
+
+export type GitGetCommitPatchResponses = {
+    /**
+     * La patch.
+     */
+    200: string;
+};
+
+export type GitGetCommitPatchResponse = GitGetCommitPatchResponses[keyof GitGetCommitPatchResponses];
 
 export type GitGetBlameData = {
     body?: never;

@@ -17,6 +17,8 @@ import (
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
 	"github.com/fathorMB/GitStack/services/git/internal/config"
+	"github.com/fathorMB/GitStack/services/git/internal/gitread"
+	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
@@ -43,6 +45,11 @@ func run(out io.Writer) int {
 	store, err := repostore.New(cfg.DataDir)
 	if err != nil {
 		logger.Error("archivio dei repo non avviabile", "err", err)
+		return 1
+	}
+	runner, err := gitrun.New()
+	if err != nil {
+		logger.Error("git non trovato", "err", err)
 		return 1
 	}
 	if cfg.ServiceSecret == "" {
@@ -72,6 +79,7 @@ func run(out io.Writer) int {
 		Addr: cfg.Addr,
 		Handler: httpserver.NewRouter(httpserver.Deps{
 			Store:   store,
+			Reads:   gitread.New(runner, store.Dir),
 			Content: newContent(),
 			Secret:  cfg.ServiceSecret,
 			Logger:  logger,

@@ -52,6 +52,32 @@ Tag `git-internal` del contratto (D-E di GIT-63). Ogni chiamata richiede gli hea
 
 Contenuto iniziale (R5): se richiesto, un solo commit su `defaultBranch` con `README.md`, `.gitignore` e `LICENSE`, costruito senza worktree (`hash-object -w`, `mktree`, `commit-tree`, `update-ref`); autore e committer sono `author`. `author` è obbligatorio quando c'è almeno un file. I modelli (id di `.gitignore` e licenze, testi e provenienza) sono nel pacchetto `internal/templates` (vedi il suo README); un id sconosciuto dà 400. Il titolare della licenza è `licenseHolder`, altrimenti il nome dell'autore.
 
+## Letture sulla storia (M-04/C)
+
+Sempre nell'API interna, sempre per `repoId` (nessun utente, nessun permesso: li applica core; gli autori non portano `user`). `ref` è obbligatorio ed è un branch, un tag o uno sha (completo o prefisso di almeno 7 cifre); se un nome è sia branch sia tag vince il branch. Un repo nel cestino non si legge (404). Errori: 400 `invalid_ref` / `invalid_path` / `invalid_request`, 404 `ref_not_found` / `not_found`, 400 `blame_unavailable`.
+
+| Operazione | Esito |
+|---|---|
+| `GET …/repos/{repoId}/commits?ref&author&path&page&perPage` | 200 `CommitList`: commit raggiungibili da `ref`, dal più recente; `author` (nome o email, sottostringa, senza distinguere maiuscole, non è una regex); `path` = History di un file o di una cartella (B4); `perPage` default 30, massimo 100 (oltre 400); `hasMore` senza totale |
+| `GET …/commits/{sha}?ignoreWhitespace` | 200 `CommitDetail`: messaggio completo, autore e committer, genitori, `tags` che lo puntano (anche annotati), diff per file con `status` (added, modified, deleted, renamed), righe aggiunte e tolte, `binary` (senza patch) e `patch` (solo hunk). Il diff è contro il **primo genitore** (merge compresi) o contro l'**albero vuoto** per il commit iniziale |
+| `GET …/commits/{sha}/diff` e `…/patch` (`?ignoreWhitespace`) | Diff completo scaricabile, in streaming (nessun buffer in memoria, timeout di 5 minuti): `.diff` = `git diff --binary`, `.patch` = `git format-patch --stdout` (per un merge: messaggio in forma di email e diff contro il primo genitore). Entrambi li accetta `git apply`. `Content-Disposition: attachment; filename="<sha12>.diff|.patch"`, `text/plain`, `nosniff`. Gli errori escono come JSON prima del primo byte |
+| `GET …/blame?ref&path` | 200 `Blame`: intervalli di righe con il commit (sha, autore, data, oggetto) che le ha scritte per ultime. File oltre **1 MB** (1 048 576 byte) o binario: 400 `blame_unavailable`; percorso inesistente o cartella: 404 |
+
+### Limiti del diff (B6)
+
+Costanti in `internal/gitread/diff.go`:
+
+- **File chiuso di default** (`collapsed: true`, con `collapseReason`): più di **500** righe cambiate (aggiunte + tolte) → `large`; file di lock → `lock`; file generati o minificati → `generated`. Lock e generated vincono su large. Il patch c'è comunque (salvo i limiti sotto): la UI decide se aprirlo.
+  - Lock (nome del file, senza distinguere maiuscole): `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `go.sum`, `go.work.sum`, `Cargo.lock`, `composer.lock`, `Gemfile.lock`, `poetry.lock`, `Pipfile.lock`, `uv.lock`, `pdm.lock`, `packages.lock.json`, `gradle.lockfile`, `pubspec.lock`, `mix.lock`, `Podfile.lock`, `flake.lock`, `deno.lock`.
+  - Generati (suffisso): `.min.js`, `.min.mjs`, `.min.css`, `.js.map`, `.css.map`, `.pb.go`, `.pb.gw.go`, `_pb2.py`, `_pb2_grpc.py`, `.pb.cc`, `.pb.h`, `.designer.cs`, `.g.cs`, `.g.dart`, `.freezed.dart`.
+- **Solo l'elenco**: oltre **300** file o **20 000** righe cambiate in totale, `listOnly: true` e `truncated: true`; i file (al massimo i primi 300, `filesChanged` è il numero reale) portano righe aggiunte e tolte ma niente `patch`.
+- Un patch di un singolo file oltre **1 MB** è troncato a fine riga (`truncated: true`); oltre 32 MB di diff in memoria si ricade nel solo elenco.
+- **Ignora spazi**: `ignoreWhitespace=true` usa `git diff -w`; i file che cambiano solo negli spazi non compaiono. Il download con `-w` non è garantito applicabile.
+
+### Sicurezza dei comandi
+
+Ogni comando git passa da `internal/gitrun`: ambiente senza `GIT_*`, niente configurazione di sistema o utente, `--literal-pathspecs`, un timeout (30 s; 5 minuti per lo streaming) e un tetto sull'output tenuto in memoria. `internal/gitref` valida ref (niente `..`, spazi, caratteri di controllo, `~^:?*[\`, `@{`, né un `-` iniziale), percorsi (relativi, senza segmenti `.` o `..`) e sha prima di toccare git, e risolve ref e prefissi di sha in uno sha completo di commit: a git arrivano solo sha esadecimali, i percorsi sempre dopo `--`. `gitref` è il pacchetto da riusare per le altre letture (albero, file, branch, tag).
+
 ## Test
 
 `go test ./...` da `services/git` usa un `git` reale (`t.Skip` se manca dal PATH) e directory temporanee.

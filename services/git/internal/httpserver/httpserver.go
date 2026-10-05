@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
@@ -44,6 +45,7 @@ type Store interface {
 type Deps struct {
 	Store   Store
 	Content Content
+	Reads   *gitread.Service // letture sulla storia (nil = rotte non montate)
 	Secret  string
 	Logger  *slog.Logger
 	// Git, se non nil, serve lo smart HTTP su /<owner>/<repo>.git/...
@@ -81,6 +83,9 @@ func NewRouter(d Deps) http.Handler {
 	api.HandleFunc("POST /internal/git/repos/{repoId}/trash", h.trash)
 	api.HandleFunc("POST /internal/git/repos/{repoId}/restore", h.restore)
 	api.HandleFunc("DELETE /internal/git/repos/{repoId}", h.purge)
+	if d.Reads != nil {
+		h.mountReads(api)
+	}
 	mux.Handle("/internal/", trust.Require(d.Secret, nil, d.Now)(api))
 	if d.Git == nil {
 		return mux

@@ -33,6 +33,27 @@ func (e CodeUserKind) Valid() bool {
 	}
 }
 
+// Defines values for FileDiffCollapseReason.
+const (
+	Generated FileDiffCollapseReason = "generated"
+	Large     FileDiffCollapseReason = "large"
+	Lock      FileDiffCollapseReason = "lock"
+)
+
+// Valid indicates whether the value is a known member of the FileDiffCollapseReason enum.
+func (e FileDiffCollapseReason) Valid() bool {
+	switch e {
+	case Generated:
+		return true
+	case Large:
+		return true
+	case Lock:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FileDiffStatus.
 const (
 	Added    FileDiffStatus = "added"
@@ -275,6 +296,15 @@ type CommitDetail struct {
 	// FilesChanged Numero reale di file toccati, anche oltre i 300 elencati.
 	FilesChanged int `json:"filesChanged"`
 
+	// IgnoreWhitespace Il diff e' stato calcolato ignorando gli spazi (`git diff -w`); i file che cambiano solo negli spazi non compaiono.
+	IgnoreWhitespace *bool `json:"ignoreWhitespace,omitempty"`
+
+	// ListOnly B6: oltre 300 file o 20 000 righe cambiate la risposta porta solo l'elenco dei file con righe aggiunte e tolte, senza `patch`.
+	ListOnly *bool `json:"listOnly,omitempty"`
+
+	// Tags Tag che puntano al commit (anche annotati), in ordine alfabetico.
+	Tags *[]string `json:"tags,omitempty"`
+
 	// Truncated True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
 	Truncated bool `json:"truncated"`
 }
@@ -413,7 +443,13 @@ type FileContent struct {
 type FileDiff struct {
 	Additions int  `json:"additions"`
 	Binary    bool `json:"binary"`
-	Deletions int  `json:"deletions"`
+
+	// CollapseReason Perche' e' chiuso: `large` (piu' di 500 righe cambiate, aggiunte piu' tolte), `lock` (file di lock: package-lock.json, pnpm-lock.yaml, yarn.lock, go.sum, Cargo.lock, ...) o `generated` (file generato o minificato: *.min.js, *.min.css, *.pb.go, ...). Elenco completo nel README del servizio git; lock e generated vincono su large.
+	CollapseReason *FileDiffCollapseReason `json:"collapseReason,omitempty"`
+
+	// Collapsed B6: il file e' «chiuso di default» nella UI. Il patch c'e' comunque, se non e' stato omesso per i limiti.
+	Collapsed *bool `json:"collapsed,omitempty"`
+	Deletions int   `json:"deletions"`
 
 	// OldPath Percorso precedente, per rinomine e copie.
 	OldPath *string `json:"oldPath,omitempty"`
@@ -426,6 +462,9 @@ type FileDiff struct {
 	// Truncated True se il patch supera 1 MB o il limite totale di 20 000 righe e' gia' esaurito; `patch` e' parziale o assente.
 	Truncated bool `json:"truncated"`
 }
+
+// FileDiffCollapseReason Perche' e' chiuso: `large` (piu' di 500 righe cambiate, aggiunte piu' tolte), `lock` (file di lock: package-lock.json, pnpm-lock.yaml, yarn.lock, go.sum, Cargo.lock, ...) o `generated` (file generato o minificato: *.min.js, *.min.css, *.pb.go, ...). Elenco completo nel README del servizio git; lock e generated vincono su large.
+type FileDiffCollapseReason string
 
 // FileDiffStatus defines model for FileDiff.Status.
 type FileDiffStatus string

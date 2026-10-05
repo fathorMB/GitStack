@@ -129,6 +129,19 @@ func exists(p string) bool {
 	return err == nil
 }
 
+// Dir è il percorso del repo bare attivo per le letture, o ErrNotFound se non
+// c'è (un repo nel cestino non si legge).
+func (s *Store) Dir(id string) (string, error) {
+	p, err := s.RepoPath(id)
+	if err != nil {
+		return "", err
+	}
+	if !exists(p) {
+		return "", ErrNotFound
+	}
+	return p, nil
+}
+
 // Ready verifica che la directory dei dati esista e sia scrivibile.
 func (s *Store) Ready() error {
 	st, err := os.Stat(s.root)
