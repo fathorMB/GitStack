@@ -1,4 +1,4 @@
-import { Bot, CircleCheck, CircleDot, CircleSlash, Eye, EyeOff, File as FileIcon, Flag, Lock, LockOpen, Plus, Settings, Tag as TagIcon, User as UserIcon } from 'lucide-react';
+import { Archive, Bot, Check, ChevronDown, CircleCheck, CircleDot, CircleSlash, Copy, Eye, EyeOff, File as FileIcon, Flag, Lock, LockOpen, Plus, Settings, Tag as TagIcon, User as UserIcon, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -147,6 +147,11 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
   const [title, setTitle] = useState(issue.title);
   const [body, setBody] = useState(issue.body);
 
+  const hiddenEvent = useMemo(
+    () => events.filter((e) => e.type === 'hidden').sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0],
+    [events],
+  );
+
   const timeline = useMemo(() => {
     type Item = { at: string; node: ReactNode };
     const items: Item[] = [];
@@ -179,16 +184,22 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
         {perm.canEdit && !editing ? (
           <Button onClick={() => { setTitle(issue.title); setBody(issue.body); setEditing(true); }}>Edit</Button>
         ) : null}
-        <Link className="btn btn-primary" to={`/${owner}/${name}/issues/new`}>
-          <Plus size={16} aria-hidden="true" /> New issue
-        </Link>
+        {repo.archived ? null : (
+          <Link className="btn btn-primary" to={`/${owner}/${name}/issues/new`}>
+            <Plus size={16} aria-hidden="true" /> New issue
+          </Link>
+        )}
       </div>
       <div className="row" style={{ paddingBottom: 16, borderBottom: '1px solid var(--border)', marginBottom: 22 }}>
         <StateBadge issue={issue} />
         <span className="muted">
           <b style={{ color: 'var(--text)' }}>{issue.author.username}</b> opened this issue {timeAgo(issue.createdAt)} · {issue.commentCount} comment{issue.commentCount === 1 ? '' : 's'}
         </span>
-        {issue.hidden ? <span className="badge">Hidden</span> : null}
+        {issue.hidden ? (
+          <span className="badge" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>
+            <Eye size={12} aria-hidden="true" /> Hidden
+          </span>
+        ) : null}
         {issue.locked ? (
           <span className="badge">
             <Lock size={12} aria-hidden="true" /> Locked
@@ -197,13 +208,39 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
       </div>
 
       {repo.archived ? (
-        <div className="alert" role="status">
-          This repository is archived: the issue is read-only.
+        <div className="alert alert-warning" role="status" style={{ marginBottom: 16 }}>
+          <Archive size={16} aria-hidden="true" />
+          <div>
+            <b>This repository has been archived.</b> It is read-only: issues can be read and searched, but not opened, edited, commented on, closed or reopened. An admin can unarchive it from Settings.
+          </div>
         </div>
       ) : null}
       {issue.hidden ? (
-        <div className="alert" role="status">
-          This issue is hidden: only admins can see its content.
+        <div className="alert alert-warning" role="status" style={{ marginBottom: 16 }}>
+          <Eye size={16} aria-hidden="true" />
+          <div style={{ flex: 1 }}>
+            <b>This issue is hidden.</b>{' '}
+            {hiddenEvent ? (
+              <>
+                Hidden by <b>{hiddenEvent.actor?.username ?? 'GitStack'}</b> {timeAgo(hiddenEvent.createdAt)}.{' '}
+              </>
+            ) : null}
+            Only repository admins can see its content; the number #{issue.number} is kept and never reused.
+            <div className="hidden-peek">
+              <span className="small muted">What everyone else sees at this address:</span>
+              <div className="row small" style={{ gap: 8, marginTop: 6 }}>
+                <Eye size={14} className="muted" aria-hidden="true" />
+                <span>
+                  <b>#{issue.number}</b> · This issue has been hidden by a repository admin.
+                </span>
+              </div>
+            </div>
+          </div>
+          {perm.canAdmin ? (
+            <Button size="sm" onClick={() => void act(() => setHidden(ref, false))}>
+              Unhide issue
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {actionError ? <ErrorAlert message={actionError} /> : null}
@@ -253,7 +290,7 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
           {timeline}
           <CommentForm repo={repo} issue={issue} perm={perm} ref0={ref} act={act} />
         </div>
-        <Sidebar repo={repo} data={data} perm={perm} ref0={ref} act={act} />
+        <Sidebar data={data} perm={perm} ref0={ref} act={act} />
       </div>
     </div>
   );
@@ -479,29 +516,106 @@ function EventView({ e }: { e: IssueEvent }) {
   );
 }
 
-function CommentForm({ repo, issue, perm, ref0, act }: { repo: Repository; issue: Issue; perm: Perm; ref0: Ref; act: Act }) {
-  const [text, setText] = useState('');
+const CLOSE_OPTIONS: { value: IssueCloseReason; title: string; hint: string }[] = [
+  { value: 'completed', title: 'Close as completed', hint: 'Done, fixed, shipped. Counts toward milestone progress.' },
+  { value: 'not_planned', title: 'Close as not planned', hint: "Won't fix, can't reproduce, stale. Not counted in milestone progress." },
+  { value: 'duplicate', title: 'Close as duplicate of…', hint: 'Not counted in milestone progress.' },
+];
+
+/** Pulsante diviso di chiusura con motivo (I2): il motivo scelto diventa l'etichetta del pulsante principale. */
+function CloseControl({ issueNumber, onClose }: { issueNumber: number; onClose: (reason: IssueCloseReason, duplicateOf?: number) => void }) {
   const [reason, setReason] = useState<IssueCloseReason>('completed');
   const [dup, setDup] = useState('');
+  const [open, setOpen] = useState(false);
+  const dupN = Number(dup);
+  const dupOk = Number.isInteger(dupN) && dupN > 0 && dupN !== issueNumber;
+  const disabled = reason === 'duplicate' && !dupOk;
+  const label = reason === 'duplicate' ? (dupOk ? `Close as duplicate of #${dupN}` : 'Close as duplicate of…') : CLOSE_OPTIONS.find((o) => o.value === reason)?.title;
+  const icon = (r: IssueCloseReason) => (r === 'completed' ? <Check size={16} aria-hidden="true" style={{ color: 'var(--closed)' }} /> : r === 'not_planned' ? <X size={16} aria-hidden="true" className="muted" /> : <Copy size={16} aria-hidden="true" className="muted" />);
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span className="splitbtn">
+        <Button disabled={disabled} onClick={() => onClose(reason, reason === 'duplicate' ? dupN : undefined)}>
+          <CircleCheck size={16} aria-hidden="true" style={{ color: 'var(--closed)' }} />
+          {label}
+        </Button>
+        <Button aria-label="Other close reasons" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <ChevronDown size={16} aria-hidden="true" />
+        </Button>
+      </span>
+      {open ? (
+        <div className="menu close-menu" role="menu" aria-label="Close reasons" style={{ right: 0, bottom: 'calc(100% + 6px)' }}>
+          {CLOSE_OPTIONS.map((o) => (
+            <div key={o.value} className={reason === o.value ? 'mi on' : 'mi'}>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={reason === o.value}
+                className="mi-btn"
+                onClick={() => {
+                  setReason(o.value);
+                  if (o.value !== 'duplicate') setOpen(false);
+                }}
+              >
+                {icon(o.value)}
+                <span>
+                  <b>{o.title}</b>
+                  <span className="small muted" style={{ display: 'block', fontWeight: 400 }}>{o.hint}</span>
+                </span>
+              </button>
+              {reason === o.value ? <Check size={16} aria-hidden="true" style={{ marginLeft: 'auto', color: 'var(--accent)' }} /> : null}
+              {o.value === 'duplicate' && reason === 'duplicate' ? (
+                <input
+                  className="input mono"
+                  style={{ height: 28, width: 100, fontSize: 12 }}
+                  aria-label="Duplicate of issue number"
+                  placeholder="#n"
+                  inputMode="numeric"
+                  value={dup}
+                  onChange={(e) => setDup(e.target.value.replace(/[^0-9]/g, ''))}
+                />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
+function CommentForm({ repo, issue, perm, ref0, act }: { repo: Repository; issue: Issue; perm: Perm; ref0: Ref; act: Act }) {
+  const [text, setText] = useState('');
   const owner = repo.owner.name;
 
-  let notice: string | null = null;
-  if (repo.archived) notice = 'This repository is archived: comments are disabled.';
-  else if (!perm.canComment && issue.locked) notice = 'This conversation is locked. Only people with Write access can comment.';
-  else if (!perm.canComment) notice = 'You cannot comment on this issue.';
-
-  if (!perm.canComment && !perm.canCloseReopen) {
-    return <p className="muted small" role="status">{notice}</p>;
+  let notice: ReactNode = null;
+  if (repo.archived) {
+    notice = (
+      <div className="alert alert-warning" role="status" style={{ marginLeft: 52 }}>
+        <Archive size={16} aria-hidden="true" />
+        <div>The repository is archived: commenting, closing and reopening are disabled.</div>
+      </div>
+    );
+  } else if (!perm.canComment && issue.locked) {
+    notice = (
+      <div className="alert alert-info" role="status" style={{ marginLeft: 52 }}>
+        <Lock size={16} aria-hidden="true" />
+        <div>
+          <b>This conversation has been locked.</b> Only people with Write access to this repository can comment. You can still read the issue, follow it and open a new one.
+        </div>
+      </div>
+    );
+  } else if (!perm.canComment) {
+    notice = <p className="muted small" role="status">You cannot comment on this issue.</p>;
   }
 
-  const dupN = Number(dup);
-  const closeDisabled = reason === 'duplicate' && !(Number.isInteger(dupN) && dupN > 0 && dupN !== issue.number);
+  if (!perm.canComment && !perm.canCloseReopen) return <>{notice}</>;
 
   return (
     <div className="cmt">
       <span className="avatar avatar-lg" aria-hidden="true">+</span>
       <div style={{ flex: 1 }}>
-        {notice ? <p className="muted small" role="status">{notice}</p> : null}
+        {notice ? <div style={{ marginLeft: -52, marginBottom: 8 }}>{notice}</div> : null}
         {perm.canComment ? (
           <IssueEditor
             owner={owner}
@@ -513,22 +627,15 @@ function CommentForm({ repo, issue, perm, ref0, act }: { repo: Repository; issue
             actions={({ attachmentIds, clear }) => (
               <>
                 {perm.canCloseReopen && issue.state === 'open' ? (
-                  <>
-                    <select className="select" aria-label="Close reason" value={reason} onChange={(e) => setReason(e.target.value as IssueCloseReason)}>
-                      <option value="completed">Completed</option>
-                      <option value="not_planned">Not planned</option>
-                      <option value="duplicate">Duplicate</option>
-                    </select>
-                    {reason === 'duplicate' ? (
-                      <input className="input" style={{ width: 90 }} aria-label="Duplicate of issue number" placeholder="#n" inputMode="numeric" value={dup} onChange={(e) => setDup(e.target.value.replace(/[^0-9]/g, ''))} />
-                    ) : null}
-                    <Button disabled={closeDisabled} onClick={() => void act(async () => {
-                      if (text.trim()) await postComment(ref0, text, attachmentIds);
-                      await closeIssueWith(ref0, reason, dupN || undefined);
-                    }).then((ok) => { if (ok) { setText(''); clear(); } })}>
-                      Close issue
-                    </Button>
-                  </>
+                  <CloseControl
+                    issueNumber={issue.number}
+                    onClose={(reason, dupN) =>
+                      void act(async () => {
+                        if (text.trim()) await postComment(ref0, text, attachmentIds);
+                        await closeIssueWith(ref0, reason, dupN);
+                      }).then((ok) => { if (ok) { setText(''); clear(); } })
+                    }
+                  />
                 ) : null}
                 {perm.canCloseReopen && issue.state === 'closed' ? (
                   <Button onClick={() => void act(() => reopen(ref0))}>Reopen issue</Button>
@@ -542,7 +649,9 @@ function CommentForm({ repo, issue, perm, ref0, act }: { repo: Repository; issue
         ) : (
           <div className="row">
             {perm.canCloseReopen && issue.state === 'closed' ? <Button onClick={() => void act(() => reopen(ref0))}>Reopen issue</Button> : null}
-            {perm.canCloseReopen && issue.state === 'open' ? <Button onClick={() => void act(() => closeIssueWith(ref0, 'completed'))}>Close issue</Button> : null}
+            {perm.canCloseReopen && issue.state === 'open' ? (
+              <CloseControl issueNumber={issue.number} onClose={(reason, dupN) => void act(() => closeIssueWith(ref0, reason, dupN))} />
+            ) : null}
           </div>
         )}
       </div>
@@ -550,7 +659,7 @@ function CommentForm({ repo, issue, perm, ref0, act }: { repo: Repository; issue
   );
 }
 
-function Sidebar({ repo, data, perm, ref0, act }: { repo: Repository; data: Data; perm: Perm; ref0: Ref; act: Act }) {
+function Sidebar({ data, perm, ref0, act }: { data: Data; perm: Perm; ref0: Ref; act: Act }) {
   const { issue, labels, milestones } = data;
   const [edit, setEdit] = useState<'assignees' | 'labels' | 'milestone' | null>(null);
   const [assignee, setAssignee] = useState('');
@@ -703,12 +812,13 @@ function Sidebar({ repo, data, perm, ref0, act }: { repo: Repository; data: Data
         </div>
       ) : null}
 
-      <div className="side-sec" style={{ border: 0 }}>
-        <h4>For agents</h4>
-        <div className="cmdblock" style={{ fontSize: 11.5, padding: '8px 10px' }}>
-          gs issue view {repo.owner.name}/{repo.name}#{issue.number} --json
+      {data.role === 'read' && !perm.write ? (
+        <div className="side-sec" style={{ border: 0 }}>
+          <p className="small muted" style={{ margin: 0 }}>
+            You have <b>Read</b> access: you can open issues and comment. Assignees, labels, milestone and closing issues of others need <b>Write</b>.
+          </p>
         </div>
-      </div>
+      ) : null}
       <ConfirmDialog
         open={hideAsk}
         onOpenChange={setHideAsk}

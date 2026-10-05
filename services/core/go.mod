@@ -97,7 +97,7 @@ require (
 	golang.org/x/tools v0.50.0 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
