@@ -48,6 +48,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		grants:       o.grants,
 		readable:     o.readable,
 		repoIdentity: o.repoIdentity,
+		userAccess:   o.userAccess,
 		git:          o.git,
 		clone:        o.clone,
 		now:          now,
@@ -82,6 +83,7 @@ type routerOptions struct {
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister
 	repoIdentity identityclient.RepoIdentity
+	userAccess   identityclient.UserAccessReader
 	git          gitclient.Git
 	clone        CloneConfig
 }
@@ -120,6 +122,13 @@ func WithRepoIdentity(i identityclient.RepoIdentity) Option {
 			o.readable = i
 		}
 	}
+}
+
+// WithUserAccess imposta il client di identity da cui GET
+// /users/{username}/access legge le fonti di accesso di un utente. Senza,
+// risponde 503.
+func WithUserAccess(u identityclient.UserAccessReader) Option {
+	return func(o *routerOptions) { o.userAccess = u }
 }
 
 // WithGit imposta il client dell'API interna del servizio git. Senza, creare

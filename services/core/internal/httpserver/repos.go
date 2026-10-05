@@ -307,7 +307,7 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	visibility := string(openapi.Private) // P7: privato anche se il campo manca
+	visibility := string(openapi.RepoVisibilityPrivate) // P7: privato anche se il campo manca
 	if body.Visibility != nil {
 		visibility = string(*body.Visibility)
 		if !validVisibility(visibility) {

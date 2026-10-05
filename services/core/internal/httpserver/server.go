@@ -31,6 +31,8 @@ type apiServer struct {
 	readable identityclient.ReadableLister
 	// repoIdentity e git servono alle operazioni sui repo (M-03); nil = 503.
 	repoIdentity identityclient.RepoIdentity
+	// userAccess serve GET /users/{username}/access; nil = 503.
+	userAccess identityclient.UserAccessReader
 	git          gitclient.Git
 	clone        CloneConfig
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.

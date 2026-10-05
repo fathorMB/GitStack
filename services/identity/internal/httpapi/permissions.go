@@ -312,3 +312,46 @@ func (s *server) PurgeResourceAccess(w http.ResponseWriter, r *http.Request, res
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// GetUserAccessSources è POST /internal/permissions/user-access (serviceAuth):
+// le fonti del ruolo di un utente sulle risorse raggiungibili, per
+// GET /users/{username}/access di core.
+func (s *server) GetUserAccessSources(w http.ResponseWriter, r *http.Request) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	var in openapi.ReadableResourcesInput
+	if _, ok := decode(w, r, &in); !ok {
+		return
+	}
+	admin, items, err := s.permissions.UserAccess(r.Context(), uuid.UUID(in.UserId))
+	if errors.Is(err, permissions.ErrUserNotFound) {
+		writeError(w, http.StatusNotFound, "not_found", "Utente non trovato.")
+		return
+	}
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	out := openapi.UserAccessSources{Admin: admin, Items: make([]openapi.UserAccessSourcesItem, 0, len(items))}
+	for _, it := range items {
+		srcs := make([]openapi.AccessSource, 0, len(it.Sources))
+		for _, sc := range it.Sources {
+			a := openapi.AccessSource{Kind: openapi.AccessSourceKind(sc.Kind), Role: openapi.ResourceRole(sc.Role)}
+			if sc.Organization != "" {
+				org := sc.Organization
+				a.Organization = &org
+			}
+			if sc.Team != "" {
+				tm := sc.Team
+				a.Team = &tm
+			}
+			srcs = append(srcs, a)
+		}
+		out.Items = append(out.Items, openapi.UserAccessSourcesItem{
+			ResourceId: openapi_types.UUID(it.ResourceID), Role: openapi.ResourceRole(it.Role), Sources: srcs,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}

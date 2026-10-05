@@ -15,6 +15,33 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccessSourceKind.
+const (
+	AccessSourceKindDirect            AccessSourceKind = "direct"
+	AccessSourceKindInstallationAdmin AccessSourceKind = "installation_admin"
+	AccessSourceKindInternal          AccessSourceKind = "internal"
+	AccessSourceKindOwner             AccessSourceKind = "owner"
+	AccessSourceKindTeam              AccessSourceKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the AccessSourceKind enum.
+func (e AccessSourceKind) Valid() bool {
+	switch e {
+	case AccessSourceKindDirect:
+		return true
+	case AccessSourceKindInstallationAdmin:
+		return true
+	case AccessSourceKindInternal:
+		return true
+	case AccessSourceKindOwner:
+		return true
+	case AccessSourceKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGrantInputSubjectType.
 const (
 	CreateGrantInputSubjectTypeTeam CreateGrantInputSubjectType = "team"
@@ -185,16 +212,16 @@ func (e PrincipalKind) Valid() bool {
 
 // Defines values for RepoVisibility.
 const (
-	Internal RepoVisibility = "internal"
-	Private  RepoVisibility = "private"
+	RepoVisibilityInternal RepoVisibility = "internal"
+	RepoVisibilityPrivate  RepoVisibility = "private"
 )
 
 // Valid indicates whether the value is a known member of the RepoVisibility enum.
 func (e RepoVisibility) Valid() bool {
 	switch e {
-	case Internal:
+	case RepoVisibilityInternal:
 		return true
-	case Private:
+	case RepoVisibilityPrivate:
 		return true
 	default:
 		return false
@@ -308,6 +335,23 @@ func (e VerifyCredentialInputKind) Valid() bool {
 		return false
 	}
 }
+
+// AccessSource Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
+type AccessSource struct {
+	Kind AccessSourceKind `json:"kind"`
+
+	// Organization Solo per `team` e per `owner` di un'organizzazione.
+	Organization *string `json:"organization,omitempty"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role ResourceRole `json:"role"`
+
+	// Team Solo per `team`.
+	Team *string `json:"team,omitempty"`
+}
+
+// AccessSourceKind defines model for AccessSource.Kind.
+type AccessSourceKind string
 
 // AddSshKeyInput defines model for AddSshKeyInput.
 type AddSshKeyInput struct {
@@ -829,6 +873,21 @@ type User struct {
 // UserKind defines model for User.Kind.
 type UserKind string
 
+// UserAccessSources defines model for UserAccessSources.
+type UserAccessSources struct {
+	Admin bool                    `json:"admin"`
+	Items []UserAccessSourcesItem `json:"items"`
+}
+
+// UserAccessSourcesItem defines model for UserAccessSourcesItem.
+type UserAccessSourcesItem struct {
+	ResourceId openapi_types.UUID `json:"resourceId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role    ResourceRole   `json:"role"`
+	Sources []AccessSource `json:"sources"`
+}
+
 // UserList defines model for UserList.
 type UserList struct {
 	Items   []User `json:"items"`
@@ -1017,6 +1076,9 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 // ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
 type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
 
+// GetUserAccessSourcesJSONRequestBody defines body for GetUserAccessSources for application/json ContentType.
+type GetUserAccessSourcesJSONRequestBody = ReadableResourcesInput
+
 // SetResourceAttributesJSONRequestBody defines body for SetResourceAttributes for application/json ContentType.
 type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
 
@@ -1100,6 +1162,9 @@ type ServerInterface interface {
 	// ListReadableResources Risorse leggibili da un utente
 	// (POST /internal/permissions/readable-resources)
 	ListReadableResources(w http.ResponseWriter, r *http.Request)
+	// GetUserAccessSources Risorse raggiungibili da un utente, con ruolo e fonti
+	// (POST /internal/permissions/user-access)
+	GetUserAccessSources(w http.ResponseWriter, r *http.Request)
 	// PurgeResourceAccess Toglie grant e attributi di una risorsa cancellata (per core)
 	// (DELETE /internal/resources/{resourceId})
 	PurgeResourceAccess(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
@@ -1438,6 +1503,20 @@ func (siw *ServerInterfaceWrapper) ListReadableResources(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListReadableResources(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUserAccessSources operation middleware
+func (siw *ServerInterfaceWrapper) GetUserAccessSources(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUserAccessSources(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3013,6 +3092,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}/permissions", wrapper.GetMyResourcePermission)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/verify", wrapper.VerifyCredential)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/check", wrapper.CheckPermission)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/user-access", wrapper.GetUserAccessSources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/readable-resources", wrapper.ListReadableResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/resources/{resourceId}/grants/creator", wrapper.GrantResourceCreator)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)

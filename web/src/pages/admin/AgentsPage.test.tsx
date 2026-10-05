@@ -13,7 +13,7 @@ vi.mock('../../lib/agentsApi', () => ({
   fetchAgentTokens: vi.fn(),
   createAgentToken: vi.fn(),
   revokeAgentToken: vi.fn(),
-  fetchAgentTeams: vi.fn(),
+  fetchAgentAccess: vi.fn(),
 }));
 
 import * as api from '../../lib/agentsApi';
@@ -40,7 +40,11 @@ function setup(isAdmin = true) {
   vi.mocked(fetchSession).mockResolvedValue({ user: { username: 'root', isAdmin } } as never);
   vi.mocked(api.fetchAgents).mockResolvedValue([agent('build-agent'), agent('docs-agent')]);
   vi.mocked(api.fetchAgentTokens).mockResolvedValue([token]);
-  vi.mocked(api.fetchAgentTeams).mockResolvedValue([{ org: 'acme', team: 'agents' }]);
+  vi.mocked(api.fetchAgentAccess).mockResolvedValue([
+    { fullName: 'acme/api-gateway', role: 'write', from: 'via team acme/agents' },
+    { fullName: 'acme/infra-charts', role: 'read', from: 'direct grant' },
+    { fullName: 'acme/docs', role: 'read', from: 'internal repository' },
+  ]);
   return render(
     <ToastProvider>
       <AgentsPage />
@@ -67,7 +71,13 @@ describe('AgentsPage', () => {
     expect(await screen.findByText('ci-runner')).toBeInTheDocument();
     expect(screen.getByText('write:resource')).toBeInTheDocument();
     expect(api.fetchAgentTokens).toHaveBeenCalledWith('build-agent');
-    expect(await screen.findByText('acme/agents')).toBeInTheDocument();
+    expect(api.fetchAgentAccess).toHaveBeenCalledWith('build-agent');
+    expect(await screen.findByText('acme/api-gateway')).toBeInTheDocument();
+    expect(screen.getByText('via team acme/agents')).toBeInTheDocument();
+    expect(screen.getByText('direct grant')).toBeInTheDocument();
+    expect(screen.getByText('internal repository')).toBeInTheDocument();
+    expect(screen.getByText('Write')).toBeInTheDocument();
+    expect(screen.getAllByText('Read')).toHaveLength(2);
   });
 
   it('crea un agent senza password', async () => {
