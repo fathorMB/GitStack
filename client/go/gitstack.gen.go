@@ -578,6 +578,17 @@ type PrincipalAuthMethod string
 // PrincipalKind defines model for Principal.Kind.
 type PrincipalKind string
 
+// ReadableResourcesInput defines model for ReadableResourcesInput.
+type ReadableResourcesInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// ReadableResourcesResult defines model for ReadableResourcesResult.
+type ReadableResourcesResult struct {
+	All         bool                 `json:"all"`
+	ResourceIds []openapi_types.UUID `json:"resourceIds"`
+}
+
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
 type Resource struct {
 	// Attributes Attributi specifici del tipo di risorsa, a forma libera.
@@ -948,6 +959,9 @@ type LoginJSONRequestBody = LoginInput
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
+// ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
+type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
+
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 
@@ -1150,6 +1164,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/permissions/check (the `CheckPermission` operationId).
 	CheckPermission(ctx context.Context, body CheckPermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListReadableResourcesWithBody Risorse leggibili da un utente
+	//
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+	ListReadableResourcesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListReadableResources Risorse leggibili da un utente
+	//
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+	ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GrantResourceCreatorWithBody Assegna il ruolo admin al creatore di una risorsa
 	//
@@ -1765,6 +1797,44 @@ func (c *Client) CheckPermissionWithBody(ctx context.Context, contentType string
 // Corresponds with POST /internal/permissions/check (the `CheckPermission` operationId).
 func (c *Client) CheckPermission(ctx context.Context, body CheckPermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCheckPermissionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListReadableResourcesWithBody Risorse leggibili da un utente
+//
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+func (c *Client) ListReadableResourcesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListReadableResourcesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListReadableResources Risorse leggibili da un utente
+//
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+func (c *Client) ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListReadableResourcesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3105,6 +3175,46 @@ func NewCheckPermissionRequestWithBody(server string, contentType string, body i
 	}
 
 	operationPath := fmt.Sprintf("/internal/permissions/check")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListReadableResourcesRequest calls the generic ListReadableResources builder with application/json body
+func NewListReadableResourcesRequest(server string, body ListReadableResourcesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListReadableResourcesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewListReadableResourcesRequestWithBody constructs an http.Request for the ListReadableResources method, with any body, and a specified content type
+func NewListReadableResourcesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/permissions/readable-resources")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5289,6 +5399,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/permissions/check (the `CheckPermission` operationId).
 	CheckPermissionWithResponse(ctx context.Context, body CheckPermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*CheckPermissionResponse, error)
 
+	// ListReadableResourcesWithBodyWithResponse Risorse leggibili da un utente
+	//
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+	ListReadableResourcesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error)
+
+	// ListReadableResourcesWithResponse Risorse leggibili da un utente
+	//
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+	ListReadableResourcesWithResponse(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error)
+
 	// GrantResourceCreatorWithBodyWithResponse Assegna il ruolo admin al creatore di una risorsa
 	//
 	// Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
@@ -6262,6 +6390,68 @@ func (r CheckPermissionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CheckPermissionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListReadableResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReadableResourcesResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListReadableResourcesResponse) GetJSON200() *ReadableResourcesResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListReadableResourcesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListReadableResourcesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListReadableResourcesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListReadableResourcesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListReadableResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListReadableResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListReadableResourcesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9477,6 +9667,36 @@ func (c *ClientWithResponses) CheckPermissionWithResponse(ctx context.Context, b
 	return ParseCheckPermissionResponse(rsp)
 }
 
+// ListReadableResourcesWithBodyWithResponse Risorse leggibili da un utente
+//
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+func (c *ClientWithResponses) ListReadableResourcesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error) {
+	rsp, err := c.ListReadableResourcesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListReadableResourcesResponse(rsp)
+}
+
+// ListReadableResourcesWithResponse Risorse leggibili da un utente
+//
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
+func (c *ClientWithResponses) ListReadableResourcesWithResponse(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error) {
+	rsp, err := c.ListReadableResources(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListReadableResourcesResponse(rsp)
+}
+
 // GrantResourceCreatorWithBodyWithResponse Assegna il ruolo admin al creatore di una risorsa
 //
 // Usata da core dopo la creazione di una risorsa: l'utente indicato riceve il grant admin (granted_by = lo stesso utente). Idempotente: se l'utente ha gia' un grant sulla risorsa lo porta ad admin e risponde 200.
@@ -10712,6 +10932,53 @@ func ParseCheckPermissionResponse(rsp *http.Response) (*CheckPermissionResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListReadableResourcesResponse parses an HTTP response from a ListReadableResourcesWithResponse call
+func ParseListReadableResourcesResponse(rsp *http.Response) (*ListReadableResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListReadableResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReadableResourcesResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

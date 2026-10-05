@@ -135,9 +135,10 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			logger.Error("configurazione non valida", "err", "GITSTACK_IDENTITY_URL non è una URL assoluta valida")
 			return 1
 		}
-		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)))
+		idc := identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)
+		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc))
 	} else {
-		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST /resources risponderà 503")
+		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources risponderanno 503")
 	}
 
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)

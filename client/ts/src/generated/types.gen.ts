@@ -441,6 +441,15 @@ export type CheckPermissionResult = {
     effectiveRole?: ResourceRole | null;
 };
 
+export type ReadableResourcesInput = {
+    userId: string;
+};
+
+export type ReadableResourcesResult = {
+    all: boolean;
+    resourceIds: Array<string>;
+};
+
 /**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
@@ -2785,6 +2794,39 @@ export type CheckPermissionResponses = {
 };
 
 export type CheckPermissionResponse = CheckPermissionResponses[keyof CheckPermissionResponses];
+
+export type ListReadableResourcesData = {
+    body: ReadableResourcesInput;
+    path?: never;
+    query?: never;
+    url: '/internal/permissions/readable-resources';
+};
+
+export type ListReadableResourcesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListReadableResourcesError = ListReadableResourcesErrors[keyof ListReadableResourcesErrors];
+
+export type ListReadableResourcesResponses = {
+    /**
+     * Risorse leggibili.
+     */
+    200: ReadableResourcesResult;
+};
+
+export type ListReadableResourcesResponse = ListReadableResourcesResponses[keyof ListReadableResourcesResponses];
 
 export type GrantResourceCreatorData = {
     body: GrantResourceCreatorInput;

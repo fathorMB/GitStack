@@ -29,6 +29,14 @@ type CreatorGranter interface {
 	GrantResourceCreator(ctx context.Context, resourceID, userID uuid.UUID) error
 }
 
+// ReadableLister elenca le risorse leggibili da un utente
+// (POST /internal/permissions/readable-resources). all è vero solo per
+// l'amministratore di sistema (ids vuoto: vede tutto). Implementato da
+// Client.
+type ReadableLister interface {
+	ReadableResources(ctx context.Context, userID uuid.UUID) (all bool, ids []uuid.UUID, err error)
+}
+
 // Client chiama identity con il segreto di servizio.
 type Client struct {
 	base   string
@@ -74,7 +82,55 @@ func (c *Client) GrantResourceCreator(ctx context.Context, resourceID, userID uu
 	return nil
 }
 
-var _ CreatorGranter = (*Client)(nil)
+// ReadableResources implementa ReadableLister. Errori di trasporto, timeout,
+// stato diverso da 200 e risposte malformate (all mancante, id non uuid)
+// sono ErrUnavailable: core non deve mai ripiegare su un elenco non filtrato.
+func (c *Client) ReadableResources(ctx context.Context, userID uuid.UUID) (bool, []uuid.UUID, error) {
+	body, err := json.Marshal(map[string]string{"userId": userID.String()})
+	if err != nil {
+		return false, nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/internal/permissions/readable-resources", bytes.NewReader(body))
+	if err != nil {
+		return false, nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.secret)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("%w: %s", ErrUnavailable, sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+		return false, nil, fmt.Errorf("%w: l'elenco delle risorse leggibili ha risposto %d", ErrUnavailable, resp.StatusCode)
+	}
+	var out struct {
+		All         *bool    `json:"all"`
+		ResourceIDs []string `json:"resourceIds"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&out); err != nil {
+		return false, nil, fmt.Errorf("%w: risposta non valida", ErrUnavailable)
+	}
+	if out.All == nil {
+		return false, nil, fmt.Errorf("%w: risposta senza il campo all", ErrUnavailable)
+	}
+	ids := make([]uuid.UUID, 0, len(out.ResourceIDs))
+	for _, raw := range out.ResourceIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return false, nil, fmt.Errorf("%w: id di risorsa non valido", ErrUnavailable)
+		}
+		ids = append(ids, id)
+	}
+	return *out.All, ids, nil
+}
+
+var (
+	_ CreatorGranter = (*Client)(nil)
+	_ ReadableLister = (*Client)(nil)
+)
 
 // sanitize toglie dall'errore l'URL (può contenere credenziali).
 func sanitize(err error) string {

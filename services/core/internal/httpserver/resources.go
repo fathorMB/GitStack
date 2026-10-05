@@ -45,7 +45,33 @@ func (s *apiServer) ListResources(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 
-	items, total, err := s.resources.List(r.Context(), params.Type, page, perPage)
+	// Solo le risorse con almeno read: servono l'identità firmata dal gateway
+	// e identity, altrimenti niente elenco (mai non filtrato).
+	caller, ok := trust.FromContext(r.Context())
+	callerID, perr := uuid.Parse(caller.UserID)
+	if !ok || perr != nil {
+		writeError(w, http.StatusUnauthorized, "unauthenticated", "Identità del chiamante assente o non valida.")
+		return
+	}
+	if s.readable == nil {
+		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non configurata: impossibile filtrare le risorse per permesso.")
+		return
+	}
+	all, ids, err := s.readable.ReadableResources(r.Context(), callerID)
+	if err != nil {
+		slog.Default().Warn("elenco delle risorse leggibili non riuscito", "err", err)
+		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile: impossibile filtrare le risorse per permesso.")
+		return
+	}
+	var visible []uuid.UUID
+	if !all {
+		visible = ids
+		if visible == nil {
+			visible = []uuid.UUID{}
+		}
+	}
+
+	items, total, err := s.resources.List(r.Context(), params.Type, visible, page, perPage)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la lettura delle risorse.")
 		return

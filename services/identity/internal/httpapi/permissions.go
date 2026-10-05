@@ -76,6 +76,30 @@ func (s *server) CheckPermission(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// ListReadableResources è POST /internal/permissions/readable-resources
+// (protetto da serviceAuth): le risorse con almeno read per l'utente, o
+// all=true per l'amministratore di sistema.
+func (s *server) ListReadableResources(w http.ResponseWriter, r *http.Request) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	var in openapi.ReadableResourcesInput
+	if _, ok := decode(w, r, &in); !ok {
+		return
+	}
+	all, ids, err := s.permissions.ReadableResources(r.Context(), uuid.UUID(in.UserId))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	out := openapi.ReadableResourcesResult{All: all, ResourceIds: make([]openapi_types.UUID, 0, len(ids))}
+	for _, id := range ids {
+		out.ResourceIds = append(out.ResourceIds, openapi_types.UUID(id))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 func (s *server) ListResourceGrants(w http.ResponseWriter, r *http.Request, resourceId openapi.ResourceIdParam, p openapi.ListResourceGrantsParams) {
 	if s.permissions == nil {
 		unavailable(w)

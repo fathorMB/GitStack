@@ -157,6 +157,60 @@ func (s *Service) EffectiveRole(ctx context.Context, userID, resourceID uuid.UUI
 	return RoleNone, nil
 }
 
+// readableSQL elenca gli id delle risorse su cui l'utente $1 ha almeno read:
+// le stesse tre condizioni di effectiveSQL (grant diretto, team di cui è
+// membro, team delle organizzazioni di cui è owner), utente attivo.
+const readableSQL = `
+SELECT DISTINCT g.resource_id
+FROM identity.resource_grants g
+JOIN identity.users u ON u.id = $1 AND u.is_active
+WHERE g.role IN ('read', 'write', 'admin')
+  AND (
+       g.user_id = u.id
+    OR g.team_id IN (SELECT tm.team_id FROM identity.team_members tm WHERE tm.user_id = u.id)
+    OR g.team_id IN (
+         SELECT t.id FROM identity.teams t
+         JOIN identity.org_members om ON om.org_id = t.org_id
+         WHERE om.user_id = u.id AND om.role = 'owner')
+  )`
+
+// ReadableResources ritorna le risorse leggibili dall'utente. all è vero solo
+// per l'amministratore di sistema (ids vuoto: vede tutto). Un utente
+// inesistente o disattivato non legge nulla (all falso, ids vuoto).
+func (s *Service) ReadableResources(ctx context.Context, userID uuid.UUID) (all bool, ids []uuid.UUID, err error) {
+	var isAdmin, active bool
+	err = s.pool.QueryRow(ctx, `SELECT is_admin, is_active FROM identity.users WHERE id = $1`, userID).Scan(&isAdmin, &active)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, []uuid.UUID{}, nil
+	}
+	if err != nil {
+		return false, nil, fmt.Errorf("lettura dell'utente non riuscita: %w", err)
+	}
+	if !active {
+		return false, []uuid.UUID{}, nil
+	}
+	if isAdmin {
+		return true, []uuid.UUID{}, nil
+	}
+	rows, err := s.pool.Query(ctx, readableSQL, userID)
+	if err != nil {
+		return false, nil, fmt.Errorf("elenco delle risorse leggibili non riuscito: %w", err)
+	}
+	defer rows.Close()
+	ids = []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return false, nil, fmt.Errorf("lettura di una risorsa leggibile non riuscita: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return false, nil, fmt.Errorf("elenco delle risorse leggibili non riuscito: %w", err)
+	}
+	return false, ids, nil
+}
+
 // Check dice se l'utente ha almeno il ruolo min sulla risorsa, e quale ruolo
 // effettivo ha.
 func (s *Service) Check(ctx context.Context, userID, resourceID uuid.UUID, min Role) (bool, Role, error) {

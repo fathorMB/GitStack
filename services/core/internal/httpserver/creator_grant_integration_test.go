@@ -27,6 +27,11 @@ func (f *fakeGranter) GrantResourceCreator(_ context.Context, resourceID, userID
 	return f.err
 }
 
+// ReadableResources: il finto identity lascia vedere tutto (admin).
+func (f *fakeGranter) ReadableResources(context.Context, uuid.UUID) (bool, []uuid.UUID, error) {
+	return true, nil, nil
+}
+
 func TestCreateResource_GrantAlCreatore(t *testing.T) {
 	pool, _ := dbtest.NewPool(t)
 	g := &fakeGranter{}
@@ -60,7 +65,7 @@ func TestCreateResource_GrantFallitoAnnullaLaCreazione(t *testing.T) {
 	if _, err := store.New(pool).Get(t.Context(), g.calls[0].resource); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("la risorsa deve essere stata cancellata, Get = %v", err)
 	}
-	_, total, err := store.New(pool).List(t.Context(), nil, 1, 20)
+	_, total, err := store.New(pool).List(t.Context(), nil, nil, 1, 20)
 	if err != nil || total != 0 {
 		t.Fatalf("List = %d, %v; voluto 0 risorse", total, err)
 	}
