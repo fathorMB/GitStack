@@ -15,9 +15,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/git/internal/access"
 	"github.com/fathorMB/GitStack/services/git/internal/config"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
+	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
+	"github.com/fathorMB/GitStack/services/git/internal/upstream"
 )
 
 func main() {
@@ -48,6 +51,18 @@ func run(out io.Writer) int {
 		logger.Warn("directory dei dati non pronta: /readyz risponde 503", "dir", cfg.DataDir, "err", err)
 	}
 
+	var gitHandler http.Handler
+	if cfg.IdentityURL != "" && cfg.CoreURL != "" && cfg.ServiceSecret != "" {
+		up := upstream.New(cfg.IdentityURL, cfg.CoreURL, cfg.ServiceSecret, 5*time.Second)
+		gitHandler = &smarthttp.Handler{
+			Auth:   &access.Authorizer{Identity: up, Core: up, Disk: store},
+			Logger: logger,
+		}
+	} else {
+		logger.Warn("smart HTTP non configurato: servono identity, core e segreto di servizio", "env", []string{config.EnvIdentityURL, config.EnvCoreURL, config.EnvServiceSecret})
+		gitHandler = unconfigured{}
+	}
+
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpserver.NewRouter(httpserver.Deps{
@@ -55,6 +70,7 @@ func run(out io.Writer) int {
 			Content: newContent(),
 			Secret:  cfg.ServiceSecret,
 			Logger:  logger,
+			Git:     gitHandler,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -91,4 +107,11 @@ func parseLevel(s string) (slog.Level, bool) {
 		return 0, false
 	}
 	return l, true
+}
+
+// unconfigured risponde 503 alle richieste git quando mancano identity o core.
+type unconfigured struct{}
+
+func (unconfigured) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "git HTTP non configurato", http.StatusServiceUnavailable)
 }

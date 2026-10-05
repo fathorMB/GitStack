@@ -19,6 +19,11 @@ const (
 	EnvLogLevel = "GITSTACK_GIT_LOG_LEVEL"
 	// EnvServiceSecret: segreto di servizio, lo stesso di core e identity.
 	EnvServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	// EnvIdentityURL e EnvCoreURL: URL interni di identity e core, usati dallo
+	// smart HTTP (token, permessi, risoluzione owner/repo). Se mancano, le
+	// richieste git rispondono 503.
+	EnvIdentityURL = "GITSTACK_IDENTITY_URL"
+	EnvCoreURL     = "GITSTACK_CORE_URL"
 )
 
 // Config è la configurazione del servizio git.
@@ -29,6 +34,9 @@ type Config struct {
 	// ServiceSecret firma gli header d'identità; vuoto = ogni chiamata
 	// interna è rifiutata con 401. Non va mai nei log né negli errori.
 	ServiceSecret string
+	// IdentityURL e CoreURL: vuoti = smart HTTP non configurato.
+	IdentityURL string
+	CoreURL     string
 }
 
 // Load legge la configurazione dall'ambiente di processo.
@@ -63,6 +71,13 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	// Il valore del segreto non entra mai in un messaggio d'errore.
 	if v, ok := lookup(EnvServiceSecret); ok {
 		cfg.ServiceSecret = strings.TrimSpace(v)
+	}
+
+	if v, ok := lookup(EnvIdentityURL); ok {
+		cfg.IdentityURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(EnvCoreURL); ok {
+		cfg.CoreURL = strings.TrimSpace(v)
 	}
 
 	if len(errs) > 0 {
