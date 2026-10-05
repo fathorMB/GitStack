@@ -86,6 +86,9 @@ REQUIRED_OS_ID="ubuntu"
 REQUIRED_OS_VERSION="24.04"
 REQUIRED_ARCH="x86_64"
 REQUIRED_PORTS="80 443 6443"
+# Porta SSH di git (git.ssh.port del chart, default 2222). Mai la 22: l'installer
+# non tocca l'sshd dell'host (R7). Si cambia con --set git.ssh.port=N.
+GIT_SSH_PORT_DEFAULT=2222
 
 extra_helm_set=()
 extra_helm_values=()
@@ -278,7 +281,23 @@ preflight_disk() {
   log "Disco su ${target}: ${size_gb} GB di filesystem (richiesti almeno: ${MIN_DISK_TOTAL_GB} GB), ${avail_gb} GB liberi (richiesti almeno: ${MIN_DISK_FREE_GB} GB) OK"
 }
 
+# Porta SSH di git: ultimo --set git.ssh.port=N, altrimenti il default.
+git_ssh_port() {
+  local kv port="${GIT_SSH_PORT_DEFAULT}"
+  for kv in "${extra_helm_set[@]:-}"; do
+    case "${kv}" in
+      git.ssh.port=*) port="${kv#git.ssh.port=}" ;;
+    esac
+  done
+  printf '%s' "${port}"
+}
+
 preflight_ports() {
+  local ssh_port
+  ssh_port="$(git_ssh_port)"
+  case "${ssh_port}" in
+    ''|*[!0-9]*) fail "git.ssh.port non valida: '${ssh_port}' (serve un numero di porta)." ;;
+  esac
   # Se k3s è già installato (rieseguo lo script su un'installazione
   # esistente), le porte 80/443/6443 sono normalmente occupate da Traefik e
   # dall'API server di k3s stessi: è atteso, non un conflitto. Il controllo
@@ -288,17 +307,17 @@ preflight_ports() {
     return 0
   fi
   if ! command -v ss >/dev/null 2>&1; then
-    warn "comando 'ss' non trovato: salto il controllo delle porte 80/443/6443. Verificale a mano se l'installazione fallisce."
+    warn "comando 'ss' non trovato: salto il controllo delle porte 80/443/6443 e SSH di git. Verificale a mano se l'installazione fallisce."
     return 0
   fi
   local port busy
-  for port in ${REQUIRED_PORTS}; do
+  for port in ${REQUIRED_PORTS} ${ssh_port}; do
     busy="$(ss -ltnH "( sport = :${port} )" 2>/dev/null || true)"
     if [ -n "${busy}" ]; then
-      fail "porta ${port} già in uso da un altro processo. Richiesta libera per k3s/Traefik. Trovato: $(printf '%s' "${busy}" | head -n1)"
+      fail "porta ${port} già in uso da un altro processo. Richiesta libera per k3s/Traefik e per l'SSH di git (porta ${ssh_port}: libera la porta oppure scegline un'altra con --set git.ssh.port=N; l'installer non modifica mai l'sshd dell'host). Trovato: $(printf '%s' "${busy}" | head -n1)"
     fi
   done
-  log "Porte 80/443/6443: libere OK"
+  log "Porte 80/443/6443 e ${ssh_port} (SSH di git): libere OK"
 }
 
 run_preflight() {

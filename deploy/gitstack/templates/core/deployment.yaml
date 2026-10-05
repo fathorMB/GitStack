@@ -90,6 +90,20 @@ spec:
             - name: GITSTACK_IDENTITY_URL
               value: {{ include "gitstack.identity.url" . | quote }}
             {{- end }}
+            {{- if .Values.git.enabled }}
+            - name: GITSTACK_GIT_URL
+              value: {{ include "gitstack.git.url" . | quote }}
+            {{- end }}
+            {{- with .Values.core.env.publicUrl }}
+            - name: GITSTACK_CORE_PUBLIC_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.core.env.sshHost }}
+            - name: GITSTACK_CORE_SSH_HOST
+              value: {{ . | quote }}
+            {{- end }}
+            - name: GITSTACK_CORE_SSH_PORT
+              value: {{ .Values.git.ssh.port | quote }}
             - name: GITSTACK_CORE_LOG_LEVEL
               value: {{ .Values.core.env.logLevel | quote }}
           livenessProbe:
