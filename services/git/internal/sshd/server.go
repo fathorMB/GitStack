@@ -39,11 +39,11 @@ var sshScopes = []string{access.ScopeRead, access.ScopeWrite}
 
 // Config è la configurazione del server.
 type Config struct {
-	Addr      string
-	HostKey   ssh.Signer
-	Auth      Authorizer
-	Keys      access.Keys
-	Logger    *slog.Logger
+	Addr    string
+	HostKey ssh.Signer
+	Auth    Authorizer
+	Keys    access.Keys
+	Logger  *slog.Logger
 	// GitBin è il binario git (vuoto = "git").
 	GitBin string
 	// HandshakeTimeout limita la fase prima dell'autenticazione (0 = 30s).
