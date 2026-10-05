@@ -230,7 +230,7 @@ func (s *apiServer) GetIssueAttachment(w http.ResponseWriter, r *http.Request, o
 		notFound()
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Mai una pagina (B3): il tipo viene dai byte controllati all'upload e
 	// non può essere html, xml o svg; sempre attachment, nosniff e sandbox.
