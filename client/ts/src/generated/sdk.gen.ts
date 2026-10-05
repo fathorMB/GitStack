@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -1117,7 +1117,7 @@ export const getRepositoryTree = <ThrowOnError extends boolean = false>(options:
 /**
  * Contenuto di un file
  *
- * Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
  *
  */
 export const getRepositoryFile = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryFileData, ThrowOnError>): RequestResult<GetRepositoryFileResponses, GetRepositoryFileErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryFileResponses, GetRepositoryFileErrors, ThrowOnError>({
@@ -1137,7 +1137,7 @@ export const getRepositoryFile = <ThrowOnError extends boolean = false>(options:
 /**
  * Contenuto grezzo di un file (streaming)
  *
- * Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
  *
  */
 export const getRepositoryRaw = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryRawData, ThrowOnError>): RequestResult<GetRepositoryRawResponses, GetRepositoryRawErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryRawResponses, GetRepositoryRawErrors, ThrowOnError>({
@@ -1217,7 +1217,7 @@ export const getRepositoryCommits = <ThrowOnError extends boolean = false>(optio
 /**
  * Dettaglio di un commit con diff per file
  *
- * Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
  *
  */
 export const getRepositoryCommit = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryCommitData, ThrowOnError>): RequestResult<GetRepositoryCommitResponses, GetRepositoryCommitErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryCommitResponses, GetRepositoryCommitErrors, ThrowOnError>({
@@ -1255,9 +1255,9 @@ export const getRepositoryBlame = <ThrowOnError extends boolean = false>(options
 });
 
 /**
- * Archivio ZIP di un ref (streaming)
+ * Archivio ZIP o tar.gz di un ref (streaming)
  *
- * ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
  *
  */
 export const getRepositoryArchive = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryArchiveData, ThrowOnError>): RequestResult<GetRepositoryArchiveResponses, GetRepositoryArchiveErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryArchiveResponses, GetRepositoryArchiveErrors, ThrowOnError>({
@@ -1297,7 +1297,7 @@ export const getRepositoryLanguages = <ThrowOnError extends boolean = false>(opt
 /**
  * README di una cartella
  *
- * Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
  *
  */
 export const getRepositoryReadme = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryReadmeData, ThrowOnError>): RequestResult<GetRepositoryReadmeResponses, GetRepositoryReadmeErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryReadmeResponses, GetRepositoryReadmeErrors, ThrowOnError>({
@@ -1311,6 +1311,86 @@ export const getRepositoryReadme = <ThrowOnError extends boolean = false>(option
             type: 'apiKey'
         }],
     url: '/repos/{owner}/{repo}/readme',
+    ...options
+});
+
+/**
+ * Contenuto grezzo di un file, per indirizzo (streaming)
+ *
+ * Forma a indirizzo di `getRepositoryRaw` (regola B3): il browser la raggiunge come `/<owner>/<repo>/raw/<ref>/<percorso>` (la riscrive il container web, vedi docs/repos.md), l'API come `/v1/repos/<owner>/<repo>/raw/<ref>/<percorso>`. Stesse regole di sicurezza, stessi byte e stesse intestazioni di `getRepositoryRaw` (`text/plain` o allegato, `nosniff`, `Content-Security-Policy: sandbox`). `refAndPath` occupa piu' segmenti: il router di core e la tabella del gateway lo trattano come coda (`x-path-tail`), non come un segmento solo. Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Un ref che non corrisponde a nessun branch, tag o sha risponde 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryRawByPath = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryRawByPathData, ThrowOnError>): RequestResult<GetRepositoryRawByPathResponses, GetRepositoryRawByPathErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryRawByPathResponses, GetRepositoryRawByPathErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/raw/{refAndPath}',
+    ...options
+});
+
+/**
+ * Percorsi di tutti i file di un ref ("Go to file")
+ *
+ * Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per il "Go to file"; la corrispondenza approssimata la fa il client. Al massimo 50 000 percorsi: oltre, `truncated` e' true. Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const listRepositoryFiles = <ThrowOnError extends boolean = false>(options: Options<ListRepositoryFilesData, ThrowOnError>): RequestResult<ListRepositoryFilesResponses, ListRepositoryFilesErrors, ThrowOnError> => (options.client ?? client).get<ListRepositoryFilesResponses, ListRepositoryFilesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/files',
+    ...options
+});
+
+/**
+ * Cerca un testo nel codice di un ref ("Search code")
+ *
+ * Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const searchRepositoryCode = <ThrowOnError extends boolean = false>(options: Options<SearchRepositoryCodeData, ThrowOnError>): RequestResult<SearchRepositoryCodeResponses, SearchRepositoryCodeErrors, ThrowOnError> => (options.client ?? client).get<SearchRepositoryCodeResponses, SearchRepositoryCodeErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/search',
+    ...options
+});
+
+/**
+ * Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+ *
+ * Regola B6: il diff intero del commit, senza i limiti di `getRepositoryCommit` (nessun file chiuso, nessun troncamento), in streaming. `Content-Disposition: attachment` con nome `<sha12>.diff` o `.patch` (lo imposta il servizio git) secondo `format`: `diff` e' `gitGetCommitDiff`, `patch` e' `gitGetCommitPatch`, passati in streaming da core (le interne le definisce GIT-82). Stesse intestazioni di sicurezza di `getRepositoryRaw`. Un commit senza genitori e' confrontato con l'albero vuoto. Un merge e' confrontato con il primo genitore. 400 se `sha` non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404.
+ *
+ */
+export const getRepositoryCommitPatch = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryCommitPatchData, ThrowOnError>): RequestResult<GetRepositoryCommitPatchResponses, GetRepositoryCommitPatchErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryCommitPatchResponses, GetRepositoryCommitPatchErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/commits/{sha}/patch',
     ...options
 });
 
@@ -1574,7 +1654,7 @@ export const gitGetTree = <ThrowOnError extends boolean = false>(options: Option
 /**
  * Contenuto di un file (per core)
  *
- * Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+ * Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Stesse regole B1 di `getRepositoryFile` per `kind`, `display`, `content`, `encoding`, `mimeType` e `truncated` (1 MB evidenziato, 5 MB testo semplice, immagini inline fino a 1 MB). 404 se `path` non esiste o non e' un file.
  *
  */
 export const gitGetFile = <ThrowOnError extends boolean = false>(options: Options<GitGetFileData, ThrowOnError>): RequestResult<GitGetFileResponses, GitGetFileErrors, ThrowOnError> => (options.client ?? client).get<GitGetFileResponses, GitGetFileErrors, ThrowOnError>({
@@ -1590,7 +1670,7 @@ export const gitGetFile = <ThrowOnError extends boolean = false>(options: Option
 /**
  * Contenuto grezzo di un file (streaming) (per core)
  *
- * Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+ * Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Le intestazioni di sicurezza della regola B3 le scrive questo servizio (non nginx, ne' core le riscrive): vedi `getRepositoryRaw`. 404 se `path` non esiste o non e' un file.
  *
  */
 export const gitGetRaw = <ThrowOnError extends boolean = false>(options: Options<GitGetRawData, ThrowOnError>): RequestResult<GitGetRawResponses, GitGetRawErrors, ThrowOnError> => (options.client ?? client).get<GitGetRawResponses, GitGetRawErrors, ThrowOnError>({
@@ -1716,9 +1796,9 @@ export const gitGetBlame = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
- * Archivio ZIP di un ref (streaming) (per core)
+ * Archivio ZIP o tar.gz di un ref (streaming) (per core)
  *
- * Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+ * Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Archivio dell'albero a `ref`, in ZIP (default) o tar.gz secondo `format`, in streaming (nessun buffer in memoria). Il nome del file (`Content-Disposition`) lo mette il servizio con il nome del repo che gli passa core in `name`; stesse intestazioni di sicurezza di `getRepositoryRaw`.
  *
  */
 export const gitGetArchive = <ThrowOnError extends boolean = false>(options: Options<GitGetArchiveData, ThrowOnError>): RequestResult<GitGetArchiveResponses, GitGetArchiveErrors, ThrowOnError> => (options.client ?? client).get<GitGetArchiveResponses, GitGetArchiveErrors, ThrowOnError>({
@@ -1750,7 +1830,7 @@ export const gitGetLanguages = <ThrowOnError extends boolean = false>(options: O
 /**
  * README di una cartella (per core)
  *
- * Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+ * Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents`. 404 se non c'e'.
  *
  */
 export const gitGetReadme = <ThrowOnError extends boolean = false>(options: Options<GitGetReadmeData, ThrowOnError>): RequestResult<GitGetReadmeResponses, GitGetReadmeErrors, ThrowOnError> => (options.client ?? client).get<GitGetReadmeResponses, GitGetReadmeErrors, ThrowOnError>({
@@ -1760,5 +1840,37 @@ export const gitGetReadme = <ThrowOnError extends boolean = false>(options: Opti
             type: 'http'
         }],
     url: '/internal/git/repos/{repoId}/readme',
+    ...options
+});
+
+/**
+ * Percorsi di tutti i file di un ref (per core)
+ *
+ * Corrispondente interno di `listRepositoryFiles`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (al massimo 50 000 percorsi, `truncated`).
+ *
+ */
+export const gitListFiles = <ThrowOnError extends boolean = false>(options: Options<GitListFilesData, ThrowOnError>): RequestResult<GitListFilesResponses, GitListFilesErrors, ThrowOnError> => (options.client ?? client).get<GitListFilesResponses, GitListFilesErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/files',
+    ...options
+});
+
+/**
+ * Cerca un testo nel codice di un ref (per core)
+ *
+ * Corrispondente interno di `searchRepositoryCode`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (100 risultati, 10 secondi, senza indice).
+ *
+ */
+export const gitSearchCode = <ThrowOnError extends boolean = false>(options: Options<GitSearchCodeData, ThrowOnError>): RequestResult<GitSearchCodeResponses, GitSearchCodeErrors, ThrowOnError> => (options.client ?? client).get<GitSearchCodeResponses, GitSearchCodeErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/search',
     ...options
 });

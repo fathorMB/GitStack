@@ -860,6 +860,9 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// CommitShaParam defines model for CommitShaParam.
+type CommitShaParam = string
+
 // GitRepoIdParam defines model for GitRepoIdParam.
 type GitRepoIdParam = openapi_types.UUID
 
@@ -881,6 +884,9 @@ type PageParam = int
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RefAndPathParam defines model for RefAndPathParam.
+type RefAndPathParam = string
 
 // RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
 //

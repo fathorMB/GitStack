@@ -25,7 +25,7 @@ func (s *apiServer) GetRepositoryCommits(w http.ResponseWriter, r *http.Request,
 	s.proxy.ServeHTTP(w, r)
 }
 
-func (s *apiServer) GetRepositoryCommit(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam) {
+func (s *apiServer) GetRepositoryCommit(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam, _ openapi.GetRepositoryCommitParams) {
 	s.proxy.ServeHTTP(w, r)
 }
 
@@ -50,5 +50,21 @@ func (s *apiServer) GetRepositoryTags(w http.ResponseWriter, r *http.Request, _ 
 }
 
 func (s *apiServer) GetRepositoryTree(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.GetRepositoryTreeParams) {
+	s.proxy.ServeHTTP(w, r)
+}
+
+func (s *apiServer) GetRepositoryRawByPath(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.RefAndPathParam) {
+	s.proxy.ServeHTTP(w, r)
+}
+
+func (s *apiServer) ListRepositoryFiles(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListRepositoryFilesParams) {
+	s.proxy.ServeHTTP(w, r)
+}
+
+func (s *apiServer) SearchRepositoryCode(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.SearchRepositoryCodeParams) {
+	s.proxy.ServeHTTP(w, r)
+}
+
+func (s *apiServer) GetRepositoryCommitPatch(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.CommitShaParam, _ openapi.GetRepositoryCommitPatchParams) {
 	s.proxy.ServeHTTP(w, r)
 }

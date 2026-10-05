@@ -21,6 +21,26 @@ info:
 externalDocs:
   description: Architettura e decisioni di GitStack
   url: https://github.com/fathorMB/GitStack/tree/main/.lmbrain-lite/knowledge
+x-code-read-limits:
+  description: >
+    Costanti delle letture del codice (M-04, regole B1, B5, B6; GIT-91). Sono
+    la fonte unica: schemi, descrizioni e docs/repos.md le riportano, e i
+    servizi le definiscono una volta sola come costanti con questi nomi.
+  fileHighlightMaxBytes: 1048576
+  filePlainMaxBytes: 5242880
+  imageInlineMaxBytes: 1048576
+  blameMaxBytes: 1048576
+  treeMaxEntries: 1000
+  commitsPerPageMax: 100
+  diffCollapseLines: 500
+  diffMaxFiles: 300
+  diffMaxLines: 20000
+  diffFileMaxBytes: 1048576
+  fileListMaxPaths: 50000
+  searchMaxResults: 100
+  searchTimeoutSeconds: 10
+  searchFragmentMaxChars: 300
+  searchFileMaxBytes: 1048576
 servers:
   - url: /v1
     description: Gateway pubblico di GitStack (dietro Traefik)
@@ -1749,7 +1769,7 @@ paths:
       x-required-scopes: ["read:resource"]
       summary: Contenuto di un file
       description: >
-        Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
+        Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
         leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
         sha; se manca vale il branch principale (R4). Un `ref` non valido
         risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -1784,7 +1804,7 @@ paths:
       x-required-scopes: ["read:resource"]
       summary: Contenuto grezzo di un file (streaming)
       description: >
-        Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
+        Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
         leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
         sha; se manca vale il branch principale (R4). Un `ref` non valido
         risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -1793,12 +1813,7 @@ paths:
         - $ref: "#/components/parameters/FilePathParam"
       responses:
         "200":
-          description: Byte del file.
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
+          $ref: "#/components/responses/RawFile"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1920,12 +1935,14 @@ paths:
       x-required-scopes: ["read:resource"]
       summary: Dettaglio di un commit con diff per file
       description: >
-        Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo'
+        Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo'
         leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
         sha; se manca vale il branch principale (R4). Un `ref` non valido
         risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
       parameters:
         - $ref: "#/components/parameters/CommitShaParam"
+        - $ref: "#/components/parameters/DiffFilePathParam"
+        - $ref: "#/components/parameters/IgnoreWhitespaceParam"
       responses:
         "200":
           description: Il commit.
@@ -1987,22 +2004,18 @@ paths:
       operationId: getRepositoryArchive
       tags: [repos]
       x-required-scopes: ["read:resource"]
-      summary: Archivio ZIP di un ref (streaming)
+      summary: Archivio ZIP o tar.gz di un ref (streaming)
       description: >
-        ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo'
+        Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo'
         leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
         sha; se manca vale il branch principale (R4). Un `ref` non valido
         risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
       parameters:
         - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/ArchiveFormatParam"
       responses:
         "200":
-          description: L'archivio.
-          content:
-            application/zip:
-              schema:
-                type: string
-                format: binary
+          $ref: "#/components/responses/Archive"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2058,7 +2071,7 @@ paths:
       x-required-scopes: ["read:resource"]
       summary: README di una cartella
       description: >
-        Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo'
+        Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo'
         leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
         sha; se manca vale il branch principale (R4). Un `ref` non valido
         risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -2072,6 +2085,158 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FileContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/raw/{refAndPath}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/RefAndPathParam"
+    get:
+      operationId: getRepositoryRawByPath
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      x-path-tail: refAndPath
+      summary: Contenuto grezzo di un file, per indirizzo (streaming)
+      description: >
+        Forma a indirizzo di `getRepositoryRaw` (regola B3): il browser la
+        raggiunge come `/<owner>/<repo>/raw/<ref>/<percorso>` (la riscrive
+        il container web, vedi docs/repos.md), l'API come
+        `/v1/repos/<owner>/<repo>/raw/<ref>/<percorso>`. Stesse regole di
+        sicurezza, stessi byte e stesse intestazioni di `getRepositoryRaw`
+        (`text/plain` o allegato, `nosniff`, `Content-Security-Policy:
+        sandbox`). `refAndPath` occupa piu' segmenti: il router di core e
+        la tabella del gateway lo trattano come coda (`x-path-tail`), non
+        come un segmento solo. Servono sessione o token con `read`.
+        Come per `getRepository`: un repo che l'utente non puo' leggere, o
+        eliminato, risponde 404. Un ref che non corrisponde a nessun
+        branch, tag o sha risponde 404 `ref_not_found`.
+      responses:
+        "200":
+          $ref: "#/components/responses/RawFile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/files:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listRepositoryFiles
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Percorsi di tutti i file di un ref ("Go to file")
+      description: >
+        Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per
+        il "Go to file"; la corrispondenza approssimata la fa il client.
+        Al massimo 50 000 percorsi: oltre, `truncated` e' true. Un repo vuoto
+        risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+      responses:
+        "200":
+          description: Percorsi dei file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/search:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: searchRepositoryCode
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Cerca un testo nel codice di un ref ("Search code")
+      description: >
+        Regola B5: cerca `q` (sottostringa letterale, senza distinguere
+        maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100
+        risultati con percorso, riga e frammento (`limitReached` se ce ne
+        sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un
+        `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/CodeSearchQueryParam"
+        - $ref: "#/components/parameters/RefParam"
+      responses:
+        "200":
+          description: Risultati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodeSearchResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/commits/{sha}/patch:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/CommitShaParam"
+    get:
+      operationId: getRepositoryCommitPatch
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+      description: >
+        Regola B6: il diff intero del commit, senza i limiti di
+        `getRepositoryCommit` (nessun file chiuso, nessun troncamento), in
+        streaming. `Content-Disposition: attachment` con nome
+        `<sha12>.diff` o `.patch` (lo imposta il servizio git) secondo `format`: `diff` e' `gitGetCommitDiff`, `patch` e'
+        `gitGetCommitPatch`, passati in streaming da core (le interne le
+        definisce GIT-82). Stesse intestazioni di sicurezza di
+        `getRepositoryRaw`. Un commit senza genitori e' confrontato con
+        l'albero vuoto. Un merge e' confrontato con il primo genitore. 400 se `sha` non e' esadecimale, 404 se non
+        esiste. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404.
+      parameters:
+        - $ref: "#/components/parameters/PatchFormatParam"
+        - $ref: "#/components/parameters/IgnoreWhitespaceParam"
+      responses:
+        "200":
+          $ref: "#/components/responses/Patch"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2553,7 +2718,7 @@ paths:
         Corrispondente interno di `getRepositoryFile`: parla solo per
         repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
         (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
-        Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+        Stesse regole B1 di `getRepositoryFile` per `kind`, `display`, `content`, `encoding`, `mimeType` e `truncated` (1 MB evidenziato, 5 MB testo semplice, immagini inline fino a 1 MB). 404 se `path` non esiste o non e' un file.
       security:
         - serviceAuth: []
       parameters:
@@ -2586,7 +2751,7 @@ paths:
         Corrispondente interno di `getRepositoryRaw`: parla solo per
         repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
         (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
-        Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+        Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Le intestazioni di sicurezza della regola B3 le scrive questo servizio (non nginx, ne' core le riscrive): vedi `getRepositoryRaw`. 404 se `path` non esiste o non e' un file.
       security:
         - serviceAuth: []
       parameters:
@@ -2594,12 +2759,7 @@ paths:
         - $ref: "#/components/parameters/FilePathParam"
       responses:
         "200":
-          description: Byte del file.
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
+          $ref: "#/components/responses/RawFile"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2843,24 +3003,26 @@ paths:
     get:
       operationId: gitGetArchive
       tags: [git-internal]
-      summary: "Archivio ZIP di un ref (streaming) (per core)"
+      summary: "Archivio ZIP o tar.gz di un ref (streaming) (per core)"
       description: >
         Corrispondente interno di `getRepositoryArchive`: parla solo per
         repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
         (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
-        ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+        Archivio dell'albero a `ref`, in ZIP (default) o tar.gz secondo `format`, in streaming (nessun buffer in memoria). Il nome del file (`Content-Disposition`) lo mette il servizio con il nome del repo che gli passa core in `name`; stesse intestazioni di sicurezza di `getRepositoryRaw`.
       security:
         - serviceAuth: []
       parameters:
         - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/ArchiveFormatParam"
+        - name: name
+          in: query
+          required: true
+          description: Nome del repo, per comporre il nome del file dell'archivio.
+          schema:
+            $ref: "#/components/schemas/RepoName"
       responses:
         "200":
-          description: L'archivio.
-          content:
-            application/zip:
-              schema:
-                type: string
-                format: binary
+          $ref: "#/components/responses/Archive"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2913,7 +3075,7 @@ paths:
         Corrispondente interno di `getRepositoryReadme`: parla solo per
         repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
         (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
-        Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+        Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents`. 404 se non c'e'.
       security:
         - serviceAuth: []
       parameters:
@@ -2926,6 +3088,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FileContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/files:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitListFiles
+      tags: [git-internal]
+      summary: "Percorsi di tutti i file di un ref (per core)"
+      description: >
+        Corrispondente interno di `listRepositoryFiles`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Stesse regole B5 (al massimo 50 000 percorsi, `truncated`).
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+      responses:
+        "200":
+          description: Percorsi dei file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/search:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitSearchCode
+      tags: [git-internal]
+      summary: "Cerca un testo nel codice di un ref (per core)"
+      description: >
+        Corrispondente interno di `searchRepositoryCode`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Stesse regole B5 (100 risultati, 10 secondi, senza indice).
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CodeSearchQueryParam"
+        - $ref: "#/components/parameters/GitRefParam"
+      responses:
+        "200":
+          description: Risultati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodeSearchResult"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3144,6 +3369,27 @@ components:
         minimum: 1
         maximum: 100
         default: 30
+    ArchiveFormatParam:
+      name: format
+      in: query
+      required: false
+      description: Formato dell'archivio (default `zip`).
+      schema:
+        type: string
+        enum: [zip, tar.gz]
+        default: zip
+    PatchFormatParam:
+      name: format
+      in: query
+      required: false
+      description: >
+        `patch` (default): formato mbox di `git format-patch` con autore,
+        data e messaggio, scaricato come `.patch`; `diff`: solo il diff
+        unificato, scaricato come `.diff`.
+      schema:
+        type: string
+        enum: [diff, patch]
+        default: patch
     IgnoreWhitespaceParam:
       name: ignoreWhitespace
       in: query
@@ -3152,6 +3398,43 @@ components:
       schema:
         type: boolean
         default: false
+    DiffFilePathParam:
+      name: path
+      in: query
+      required: false
+      description: >
+        Se presente, `files` porta solo questo file (core filtra la risposta
+        del servizio git). Con `listOnly` il patch non c'e': per il diff
+        intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel
+        commit.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 4096
+    RefAndPathParam:
+      name: refAndPath
+      in: path
+      required: true
+      description: >
+        Coda del percorso: `<ref>/<percorso del file>`, su piu' segmenti.
+        Un ref puo' contenere `/`: core prende il prefisso piu' lungo che e'
+        il nome di un branch, altrimenti di un tag, altrimenti interpreta il
+        primo segmento come sha (completo o prefisso di almeno 7 caratteri);
+        il resto e' il percorso (stesse regole di `PathParam`, non vuoto).
+        Se un nome e' sia branch sia tag vince il branch.
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 4352
+    CodeSearchQueryParam:
+      name: q
+      in: query
+      required: true
+      description: Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 256
     CommitShaParam:
       name: sha
       in: path
@@ -4539,7 +4822,7 @@ components:
     FileContent:
       type: object
       additionalProperties: false
-      required: [ref, path, name, sha, size, binary, truncated, lastCommit]
+      required: [ref, path, name, sha, size, binary, kind, display, truncated, lastCommit]
       properties:
         ref:
           type: string
@@ -4553,15 +4836,48 @@ components:
         size:
           type: integer
           format: int64
-          description: Dimensione reale in byte, anche se troncato.
+          description: Dimensione reale in byte, sempre, anche se `content` manca.
         binary:
           type: boolean
+          description: True per tutto cio' che non e' testo (anche le immagini, SVG compreso).
+        kind:
+          type: string
+          enum: [text, image, binary]
+          description: >
+            `text`; `image` per PNG, JPEG, GIF, WebP e SVG (riconosciuti dal
+            contenuto, non dall'estensione; SVG solo come immagine, mai come
+            pagina); `binary` per ogni altro file non di testo.
+        mimeType:
+          type: string
+          description: Solo per `kind` `image`, es. `image/png`, `image/svg+xml`.
+        display:
+          type: string
+          enum: [highlight, plain, image, download]
+          description: >
+            Regola B1, sempre presente. `highlight`: testo fino a 1 MB
+            (1 048 576 byte, `fileHighlightMaxBytes`), `content` intero, da
+            evidenziare. `plain`: testo da 1 MB a 5 MB (5 242 880 byte,
+            `filePlainMaxBytes`), `content` intero, senza evidenziazione.
+            `image`: immagine fino a 1 MB (`imageInlineMaxBytes`),
+            `content` in base64. `download`: nessun `content` (testo oltre
+            5 MB, immagine oltre 1 MB, altri binari): si scarica con `raw`.
         truncated:
           type: boolean
-          description: True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+          description: >
+            True se `content` non porta tutto il file per il limite di
+            dimensione: un testo oltre 5 MB (`display` `download`, nessun
+            contenuto). Mai true per binari e immagini, che per natura non
+            hanno `content` testuale; mai true per `highlight`, `plain` e
+            `image`, il cui `content` e' sempre intero.
+        encoding:
+          type: string
+          enum: [utf-8, base64]
+          description: Codifica di `content`; assente se `content` manca. `base64` solo per le immagini.
         content:
           type: string
-          description: Testo UTF-8; assente se `binary` (usare `raw`).
+          description: >
+            Testo UTF-8 (`display` `highlight` o `plain`) o immagine in
+            base64 (`display` `image`); assente con `display` `download`.
         lastCommit:
           $ref: "#/components/schemas/CommitSummary"
 
@@ -4596,7 +4912,7 @@ components:
     Tag:
       type: object
       additionalProperties: false
-      required: [name, commit, annotated]
+      required: [name, commit, annotated, taggedAt]
       properties:
         name:
           type: string
@@ -4604,12 +4920,23 @@ components:
           type: boolean
         message:
           type: string
-          description: Messaggio del tag annotato.
+          description: Messaggio del tag; solo se `annotated`.
         taggedAt:
           type: string
           format: date-time
+          description: Data del tag; per un tag leggero quella del commit (regola B7).
         commit:
           $ref: "#/components/schemas/CommitSummary"
+        zipUrl:
+          type: string
+          description: >
+            Indirizzo di scaricamento ZIP (`getRepositoryArchive` con
+            `ref` il nome del tag, relativo a `/v1`). Lo aggiunge core: il
+            servizio git non conosce owner e nome, quindi nella sua risposta
+            manca; sempre presente in quella pubblica.
+        tarGzUrl:
+          type: string
+          description: Come `zipUrl`, per il tar.gz.
 
     TagList:
       type: object
@@ -4784,6 +5111,70 @@ components:
           format: int64
           minimum: 0
 
+    FileList:
+      type: object
+      additionalProperties: false
+      required: [ref, commitSha, paths, truncated]
+      description: >
+        Percorsi di tutti i file del ref per "Go to file" (regola B5): la
+        corrispondenza approssimata la fa il client sull'elenco.
+      properties:
+        ref:
+          type: string
+          description: Il `ref` risolto (il branch principale se non indicato).
+        commitSha:
+          type: string
+        paths:
+          type: array
+          maxItems: 50000
+          description: Percorsi dei file (non delle cartelle), in ordine alfabetico, al massimo 50 000 (`fileListMaxPaths`).
+          items:
+            type: string
+        truncated:
+          type: boolean
+          description: True se il repo ha piu' di 50 000 file e questi sono i primi 50 000.
+
+    CodeSearchHit:
+      type: object
+      additionalProperties: false
+      required: [path, line, fragment]
+      properties:
+        path:
+          type: string
+        line:
+          type: integer
+          minimum: 1
+          description: Numero di riga (da 1) della corrispondenza.
+        fragment:
+          type: string
+          maxLength: 300
+          description: La riga della corrispondenza, tagliata a 300 caratteri (`searchFragmentMaxChars`) attorno al testo cercato.
+
+    CodeSearchResult:
+      type: object
+      additionalProperties: false
+      required: [ref, query, results, limitReached, timedOut]
+      description: >
+        Risultato di "Search code" (regola B5): ricerca testuale senza indice
+        sul ref scelto, in un solo repo.
+      properties:
+        ref:
+          type: string
+        query:
+          type: string
+        results:
+          type: array
+          maxItems: 100
+          description: Al massimo 100 risultati (`searchMaxResults`), per percorso e riga. Si cerca solo nei file di testo fino a 1 MB (`searchFileMaxBytes`).
+          items:
+            $ref: "#/components/schemas/CodeSearchHit"
+        limitReached:
+          type: boolean
+          description: True se ci sono altri risultati oltre i 100 restituiti.
+        timedOut:
+          type: boolean
+          description: "True se la ricerca e' stata interrotta dopo 10 secondi (`searchTimeoutSeconds`); i risultati sono parziali."
+
     LookupEmailsInput:
       type: object
       additionalProperties: false
@@ -4825,7 +5216,80 @@ components:
                 format: uri
                 nullable: true
 
+  headers:
+    ContentTypeOptions:
+      description: Sempre `nosniff`.
+      schema:
+        type: string
+        enum: [nosniff]
+    ContentSecurityPolicy:
+      description: "Sempre `sandbox`; anche se un browser aprisse il file, non puo' eseguire script."
+      schema:
+        type: string
+        enum: [sandbox]
+    ContentDispositionAttachment:
+      description: "`attachment; filename=\"<nome>\"`: il browser scarica, non mostra."
+      schema:
+        type: string
+
   responses:
+    RawFile:
+      description: >
+        Byte del file (regola B3). Testo (non SVG): `text/plain; charset=utf-8`
+        in linea. Ogni altro file, SVG compreso: `application/octet-stream` con
+        `Content-Disposition: attachment`. Mai `text/html`,
+        `image/svg+xml` o altro tipo che un browser eseguirebbe.
+      headers:
+        X-Content-Type-Options:
+          $ref: "#/components/headers/ContentTypeOptions"
+        Content-Security-Policy:
+          $ref: "#/components/headers/ContentSecurityPolicy"
+        Content-Disposition:
+          $ref: "#/components/headers/ContentDispositionAttachment"
+      content:
+        text/plain:
+          schema:
+            type: string
+            format: binary
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+    Archive:
+      description: L'archivio, sempre come allegato (regola B3).
+      headers:
+        X-Content-Type-Options:
+          $ref: "#/components/headers/ContentTypeOptions"
+        Content-Security-Policy:
+          $ref: "#/components/headers/ContentSecurityPolicy"
+        Content-Disposition:
+          $ref: "#/components/headers/ContentDispositionAttachment"
+      content:
+        application/zip:
+          schema:
+            type: string
+            format: binary
+        application/gzip:
+          schema:
+            type: string
+            format: binary
+    Patch:
+      description: >
+        Il diff completo del commit, sempre come allegato `.diff` o
+        `.patch`, `text/plain; charset=utf-8` senza limiti di dimensione
+        (streaming).
+      headers:
+        X-Content-Type-Options:
+          $ref: "#/components/headers/ContentTypeOptions"
+        Content-Security-Policy:
+          $ref: "#/components/headers/ContentSecurityPolicy"
+        Content-Disposition:
+          $ref: "#/components/headers/ContentDispositionAttachment"
+      content:
+        text/plain:
+          schema:
+            type: string
+            format: binary
     TooManyRequests:
       description: >
         Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di

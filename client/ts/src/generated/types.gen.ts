@@ -682,16 +682,39 @@ export type FileContent = {
      */
     sha: string;
     /**
-     * Dimensione reale in byte, anche se troncato.
+     * Dimensione reale in byte, sempre, anche se `content` manca.
      */
     size: number;
+    /**
+     * True per tutto cio' che non e' testo (anche le immagini, SVG compreso).
+     */
     binary: boolean;
     /**
-     * True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+     * `text`; `image` per PNG, JPEG, GIF, WebP e SVG (riconosciuti dal contenuto, non dall'estensione; SVG solo come immagine, mai come pagina); `binary` per ogni altro file non di testo.
+     *
+     */
+    kind: 'text' | 'image' | 'binary';
+    /**
+     * Solo per `kind` `image`, es. `image/png`, `image/svg+xml`.
+     */
+    mimeType?: string;
+    /**
+     * Regola B1, sempre presente. `highlight`: testo fino a 1 MB (1 048 576 byte, `fileHighlightMaxBytes`), `content` intero, da evidenziare. `plain`: testo da 1 MB a 5 MB (5 242 880 byte, `filePlainMaxBytes`), `content` intero, senza evidenziazione. `image`: immagine fino a 1 MB (`imageInlineMaxBytes`), `content` in base64. `download`: nessun `content` (testo oltre 5 MB, immagine oltre 1 MB, altri binari): si scarica con `raw`.
+     *
+     */
+    display: 'highlight' | 'plain' | 'image' | 'download';
+    /**
+     * True se `content` non porta tutto il file per il limite di dimensione: un testo oltre 5 MB (`display` `download`, nessun contenuto). Mai true per binari e immagini, che per natura non hanno `content` testuale; mai true per `highlight`, `plain` e `image`, il cui `content` e' sempre intero.
+     *
      */
     truncated: boolean;
     /**
-     * Testo UTF-8; assente se `binary` (usare `raw`).
+     * Codifica di `content`; assente se `content` manca. `base64` solo per le immagini.
+     */
+    encoding?: 'utf-8' | 'base64';
+    /**
+     * Testo UTF-8 (`display` `highlight` o `plain`) o immagine in base64 (`display` `image`); assente con `display` `download`.
+     *
      */
     content?: string;
     lastCommit: CommitSummary;
@@ -716,11 +739,23 @@ export type Tag = {
     name: string;
     annotated: boolean;
     /**
-     * Messaggio del tag annotato.
+     * Messaggio del tag; solo se `annotated`.
      */
     message?: string;
-    taggedAt?: string;
+    /**
+     * Data del tag; per un tag leggero quella del commit (regola B7).
+     */
+    taggedAt: string;
     commit: CommitSummary;
+    /**
+     * Indirizzo di scaricamento ZIP (`getRepositoryArchive` con `ref` il nome del tag, relativo a `/v1`). Lo aggiunge core: il servizio git non conosce owner e nome, quindi nella sua risposta manca; sempre presente in quella pubblica.
+     *
+     */
+    zipUrl?: string;
+    /**
+     * Come `zipUrl`, per il tar.gz.
+     */
+    tarGzUrl?: string;
 };
 
 export type TagList = {
@@ -817,6 +852,59 @@ export type LanguageShare = {
 export type Languages = {
     languages: Array<LanguageShare>;
     totalBytes: number;
+};
+
+/**
+ * Percorsi di tutti i file del ref per "Go to file" (regola B5): la corrispondenza approssimata la fa il client sull'elenco.
+ *
+ */
+export type FileList = {
+    /**
+     * Il `ref` risolto (il branch principale se non indicato).
+     */
+    ref: string;
+    commitSha: string;
+    /**
+     * Percorsi dei file (non delle cartelle), in ordine alfabetico, al massimo 50 000 (`fileListMaxPaths`).
+     */
+    paths: Array<string>;
+    /**
+     * True se il repo ha piu' di 50 000 file e questi sono i primi 50 000.
+     */
+    truncated: boolean;
+};
+
+export type CodeSearchHit = {
+    path: string;
+    /**
+     * Numero di riga (da 1) della corrispondenza.
+     */
+    line: number;
+    /**
+     * La riga della corrispondenza, tagliata a 300 caratteri (`searchFragmentMaxChars`) attorno al testo cercato.
+     */
+    fragment: string;
+};
+
+/**
+ * Risultato di "Search code" (regola B5): ricerca testuale senza indice sul ref scelto, in un solo repo.
+ *
+ */
+export type CodeSearchResult = {
+    ref: string;
+    query: string;
+    /**
+     * Al massimo 100 risultati (`searchMaxResults`), per percorso e riga. Si cerca solo nei file di testo fino a 1 MB (`searchFileMaxBytes`).
+     */
+    results: Array<CodeSearchHit>;
+    /**
+     * True se ci sono altri risultati oltre i 100 restituiti.
+     */
+    limitReached: boolean;
+    /**
+     * True se la ricerca e' stata interrotta dopo 10 secondi (`searchTimeoutSeconds`); i risultati sono parziali.
+     */
+    timedOut: boolean;
 };
 
 export type LookupEmailsInput = {
@@ -1176,9 +1264,37 @@ export type CommitPageParam = number;
 export type CommitPerPageParam = number;
 
 /**
+ * Formato dell'archivio (default `zip`).
+ */
+export type ArchiveFormatParam = 'zip' | 'tar.gz';
+
+/**
+ * `patch` (default): formato mbox di `git format-patch` con autore, data e messaggio, scaricato come `.patch`; `diff`: solo il diff unificato, scaricato come `.diff`.
+ *
+ */
+export type PatchFormatParam = 'diff' | 'patch';
+
+/**
  * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
  */
 export type IgnoreWhitespaceParam = boolean;
+
+/**
+ * Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+ *
+ */
+export type DiffFilePathParam = string;
+
+/**
+ * Coda del percorso: `<ref>/<percorso del file>`, su piu' segmenti. Un ref puo' contenere `/`: core prende il prefisso piu' lungo che e' il nome di un branch, altrimenti di un tag, altrimenti interpreta il primo segmento come sha (completo o prefisso di almeno 7 caratteri); il resto e' il percorso (stesse regole di `PathParam`, non vuoto). Se un nome e' sia branch sia tag vince il branch.
+ *
+ */
+export type RefAndPathParam = string;
+
+/**
+ * Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+ */
+export type CodeSearchQueryParam = string;
 
 /**
  * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
@@ -3902,7 +4018,8 @@ export type GetRepositoryRawError = GetRepositoryRawErrors[keyof GetRepositoryRa
 
 export type GetRepositoryRawResponses = {
     /**
-     * Byte del file.
+     * Byte del file (regola B3). Testo (non SVG): `text/plain; charset=utf-8` in linea. Ogni altro file, SVG compreso: `application/octet-stream` con `Content-Disposition: attachment`. Mai `text/html`, `image/svg+xml` o altro tipo che un browser eseguirebbe.
+     *
      */
     200: Blob | File;
 };
@@ -4098,7 +4215,17 @@ export type GetRepositoryCommitData = {
          */
         sha: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+         *
+         */
+        path?: string;
+        /**
+         * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+         */
+        ignoreWhitespace?: boolean;
+    };
     url: '/repos/{owner}/{repo}/commits/{sha}';
 };
 
@@ -4216,6 +4343,10 @@ export type GetRepositoryArchiveData = {
          *
          */
         ref?: string;
+        /**
+         * Formato dell'archivio (default `zip`).
+         */
+        format?: 'zip' | 'tar.gz';
     };
     url: '/repos/{owner}/{repo}/archive';
 };
@@ -4248,7 +4379,7 @@ export type GetRepositoryArchiveError = GetRepositoryArchiveErrors[keyof GetRepo
 
 export type GetRepositoryArchiveResponses = {
     /**
-     * L'archivio.
+     * L'archivio, sempre come allegato (regola B3).
      */
     200: Blob | File;
 };
@@ -4373,6 +4504,247 @@ export type GetRepositoryReadmeResponses = {
 };
 
 export type GetRepositoryReadmeResponse = GetRepositoryReadmeResponses[keyof GetRepositoryReadmeResponses];
+
+export type GetRepositoryRawByPathData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Coda del percorso: `<ref>/<percorso del file>`, su piu' segmenti. Un ref puo' contenere `/`: core prende il prefisso piu' lungo che e' il nome di un branch, altrimenti di un tag, altrimenti interpreta il primo segmento come sha (completo o prefisso di almeno 7 caratteri); il resto e' il percorso (stesse regole di `PathParam`, non vuoto). Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        refAndPath: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/raw/{refAndPath}';
+};
+
+export type GetRepositoryRawByPathErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryRawByPathError = GetRepositoryRawByPathErrors[keyof GetRepositoryRawByPathErrors];
+
+export type GetRepositoryRawByPathResponses = {
+    /**
+     * Byte del file (regola B3). Testo (non SVG): `text/plain; charset=utf-8` in linea. Ogni altro file, SVG compreso: `application/octet-stream` con `Content-Disposition: attachment`. Mai `text/html`, `image/svg+xml` o altro tipo che un browser eseguirebbe.
+     *
+     */
+    200: Blob | File;
+};
+
+export type GetRepositoryRawByPathResponse = GetRepositoryRawByPathResponses[keyof GetRepositoryRawByPathResponses];
+
+export type ListRepositoryFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+    };
+    url: '/repos/{owner}/{repo}/files';
+};
+
+export type ListRepositoryFilesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListRepositoryFilesError = ListRepositoryFilesErrors[keyof ListRepositoryFilesErrors];
+
+export type ListRepositoryFilesResponses = {
+    /**
+     * Percorsi dei file.
+     */
+    200: FileList;
+};
+
+export type ListRepositoryFilesResponse = ListRepositoryFilesResponses[keyof ListRepositoryFilesResponses];
+
+export type SearchRepositoryCodeData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query: {
+        /**
+         * Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+         */
+        q: string;
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+    };
+    url: '/repos/{owner}/{repo}/search';
+};
+
+export type SearchRepositoryCodeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SearchRepositoryCodeError = SearchRepositoryCodeErrors[keyof SearchRepositoryCodeErrors];
+
+export type SearchRepositoryCodeResponses = {
+    /**
+     * Risultati.
+     */
+    200: CodeSearchResult;
+};
+
+export type SearchRepositoryCodeResponse = SearchRepositoryCodeResponses[keyof SearchRepositoryCodeResponses];
+
+export type GetRepositoryCommitPatchData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: {
+        /**
+         * `patch` (default): formato mbox di `git format-patch` con autore, data e messaggio, scaricato come `.patch`; `diff`: solo il diff unificato, scaricato come `.diff`.
+         *
+         */
+        format?: 'diff' | 'patch';
+        /**
+         * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+         */
+        ignoreWhitespace?: boolean;
+    };
+    url: '/repos/{owner}/{repo}/commits/{sha}/patch';
+};
+
+export type GetRepositoryCommitPatchErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryCommitPatchError = GetRepositoryCommitPatchErrors[keyof GetRepositoryCommitPatchErrors];
+
+export type GetRepositoryCommitPatchResponses = {
+    /**
+     * Il diff completo del commit, sempre come allegato `.diff` o `.patch`, `text/plain; charset=utf-8` senza limiti di dimensione (streaming).
+     *
+     */
+    200: Blob | File;
+};
+
+export type GetRepositoryCommitPatchResponse = GetRepositoryCommitPatchResponses[keyof GetRepositoryCommitPatchResponses];
 
 export type VerifyCredentialData = {
     body: VerifyCredentialInputWritable;
@@ -5047,7 +5419,8 @@ export type GitGetRawError = GitGetRawErrors[keyof GitGetRawErrors];
 
 export type GitGetRawResponses = {
     /**
-     * Byte del file.
+     * Byte del file (regola B3). Testo (non SVG): `text/plain; charset=utf-8` in linea. Ogni altro file, SVG compreso: `application/octet-stream` con `Content-Disposition: attachment`. Mai `text/html`, `image/svg+xml` o altro tipo che un browser eseguirebbe.
+     *
      */
     200: Blob | File;
 };
@@ -5419,6 +5792,14 @@ export type GitGetArchiveData = {
          *
          */
         ref: string;
+        /**
+         * Formato dell'archivio (default `zip`).
+         */
+        format?: 'zip' | 'tar.gz';
+        /**
+         * Nome del repo, per comporre il nome del file dell'archivio.
+         */
+        name: RepoName;
     };
     url: '/internal/git/repos/{repoId}/archive';
 };
@@ -5446,7 +5827,7 @@ export type GitGetArchiveError = GitGetArchiveErrors[keyof GitGetArchiveErrors];
 
 export type GitGetArchiveResponses = {
     /**
-     * L'archivio.
+     * L'archivio, sempre come allegato (regola B3).
      */
     200: Blob | File;
 };
@@ -5553,3 +5934,103 @@ export type GitGetReadmeResponses = {
 };
 
 export type GitGetReadmeResponse = GitGetReadmeResponses[keyof GitGetReadmeResponses];
+
+export type GitListFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+    };
+    url: '/internal/git/repos/{repoId}/files';
+};
+
+export type GitListFilesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitListFilesError = GitListFilesErrors[keyof GitListFilesErrors];
+
+export type GitListFilesResponses = {
+    /**
+     * Percorsi dei file.
+     */
+    200: FileList;
+};
+
+export type GitListFilesResponse = GitListFilesResponses[keyof GitListFilesResponses];
+
+export type GitSearchCodeData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+         */
+        q: string;
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+    };
+    url: '/internal/git/repos/{repoId}/search';
+};
+
+export type GitSearchCodeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitSearchCodeError = GitSearchCodeErrors[keyof GitSearchCodeErrors];
+
+export type GitSearchCodeResponses = {
+    /**
+     * Risultati.
+     */
+    200: CodeSearchResult;
+};
+
+export type GitSearchCodeResponse = GitSearchCodeResponses[keyof GitSearchCodeResponses];
