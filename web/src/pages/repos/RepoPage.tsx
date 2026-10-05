@@ -1,17 +1,36 @@
 import { Link as LinkIcon, Terminal } from 'lucide-react';
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { CopyButton, ErrorAlert } from '../../components';
 import { fetchRepo } from '../../lib/reposApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { VisibilityBadge } from './ReposPage';
+import { isRepoAdmin, loadMe } from './repoAdmin';
 
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 export function RepoPage() {
   const { owner = '', repo = '' } = useParams();
   const { data, loading, error } = useLoad(() => fetchRepo(owner, repo));
+
+  // Link alle impostazioni solo a chi ha admin; un errore nel controllo lo nasconde.
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    if (!data) return;
+    let live = true;
+    void (async () => {
+      try {
+        const ok = await isRepoAdmin(data, await loadMe());
+        if (live) setAdmin(ok);
+      } catch {
+        if (live) setAdmin(false);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [data]);
 
   if (loading && data === null) return <p className="muted">Loading repository…</p>;
   if (error || !data) return <ErrorAlert message={error ?? 'Repository not found.'} />;
@@ -24,6 +43,8 @@ export function RepoPage() {
         </h1>
         <VisibilityBadge visibility={data.visibility} />
         {data.archived ? <span className="badge badge-archived">Archived</span> : null}
+        <span className="sp" />
+        {admin ? <Link to={`/${data.owner.name}/${data.name}/settings`}>Settings</Link> : null}
       </div>
       {data.description ? <p className="muted">{data.description}</p> : null}
       {data.empty ? (
