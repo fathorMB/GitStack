@@ -25,6 +25,17 @@ func (h *handler) mountReads(api *http.ServeMux) {
 	api.HandleFunc("GET /internal/git/repos/{repoId}/branches", h.branches)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/tags", h.tags)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/archive", h.archive)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/languages", h.languages)
+}
+
+// languages: byte per lingua a ref (gitGetLanguages).
+func (h *handler) languages(w http.ResponseWriter, r *http.Request) {
+	res, err := h.Reads.Languages(r.Context(), r.PathValue("repoId"), r.URL.Query().Get("ref"))
+	if err != nil {
+		h.readErr(w, "lingue", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (h *handler) commits(w http.ResponseWriter, r *http.Request) {

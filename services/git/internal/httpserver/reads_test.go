@@ -138,3 +138,123 @@ func TestReads_BlameTooLarge(t *testing.T) {
 		t.Fatalf("oltre 1 MB: %d %s", rec.Code, rec.Body)
 	}
 }
+
+func TestReads_Languages(t *testing.T) {
+	e := setup(t)
+	run, err := gitrun.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.h = NewRouter(Deps{Store: e.store, Content: fakeContent{}, Secret: secret, Reads: gitread.New(run, e.store.Dir)})
+	base := "/internal/git/repos/" + rid + "/languages"
+
+	type langs struct {
+		Languages []struct {
+			Name    string  `json:"name"`
+			Bytes   int64   `json:"bytes"`
+			Percent float64 `json:"percent"`
+		} `json:"languages"`
+		TotalBytes int64 `json:"totalBytes"`
+	}
+	get := func(path string) langs {
+		t.Helper()
+		rec := e.do("GET", path, "", true)
+		e.expect(rec, 200)
+		var res langs
+		dec := json.NewDecoder(strings.NewReader(rec.Body.String()))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&res); err != nil {
+			t.Fatalf("%v: %s", err, rec.Body)
+		}
+		return res
+	}
+
+	// Repo creato senza contenuto: nessun commit.
+	if _, err = e.store.Create(context.Background(), rid, repostore.CreateOptions{
+		Author: repostore.Author{Name: "Ada", Email: "ada@example.com"},
+		Now:    time.Unix(1700000000, 0),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Repo vuoto (nessun commit): lista vuota, non 404.
+	res := get(base + "?ref=main")
+	if res.TotalBytes != 0 || res.Languages == nil || len(res.Languages) != 0 {
+		t.Fatalf("repo vuoto: %+v", res)
+	}
+	rec := e.do("GET", base+"?ref=main", "", true)
+	if !strings.Contains(rec.Body.String(), `"languages":[]`) {
+		t.Fatalf("repo vuoto deve dare lista vuota, non null: %s", rec.Body)
+	}
+}
+
+func TestReads_LanguagesContent(t *testing.T) {
+	e := setup(t)
+	run, err := gitrun.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.h = NewRouter(Deps{Store: e.store, Content: fakeContent{}, Secret: secret, Reads: gitread.New(run, e.store.Dir)})
+	_, err = e.store.Create(context.Background(), rid, repostore.CreateOptions{
+		Files: []repostore.File{
+			{Path: "README.md", Content: []byte("# demo\n")},
+			{Path: "main.go", Content: []byte(strings.Repeat("a", 60))},
+			{Path: "util.go", Content: []byte(strings.Repeat("b", 20))},
+			{Path: "run.sh", Content: []byte(strings.Repeat("c", 20))},
+			{Path: "api.gen.go", Content: []byte(strings.Repeat("e", 500))},
+		},
+		Author: repostore.Author{Name: "Ada", Email: "ada@example.com"},
+		Now:    time.Unix(1700000000, 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := "/internal/git/repos/" + rid + "/languages"
+	rec := e.do("GET", base+"?ref=main", "", true)
+	e.expect(rec, 200)
+	var res struct {
+		Languages []struct {
+			Name    string  `json:"name"`
+			Bytes   int64   `json:"bytes"`
+			Percent float64 `json:"percent"`
+		} `json:"languages"`
+		TotalBytes int64 `json:"totalBytes"`
+	}
+	dec := json.NewDecoder(strings.NewReader(rec.Body.String()))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&res); err != nil {
+		t.Fatalf("%v: %s", err, rec.Body)
+	}
+	if res.TotalBytes != 100 || len(res.Languages) != 2 ||
+		res.Languages[0].Name != "Go" || res.Languages[0].Bytes != 80 || res.Languages[0].Percent != 80 ||
+		res.Languages[1].Name != "Shell" || res.Languages[1].Bytes != 20 || res.Languages[1].Percent != 20 {
+		t.Fatalf("lingue: %s", rec.Body)
+	}
+	// Seconda lettura (dalla cache per sha): stessa risposta.
+	if rec2 := e.do("GET", base+"?ref=main", "", true); rec2.Body.String() != rec.Body.String() {
+		t.Fatalf("cache: %s", rec2.Body)
+	}
+
+	for _, c := range []struct {
+		path string
+		code int
+		err  string
+	}{
+		{base, 400, "invalid_ref"},
+		{base + "?ref=--all", 400, "invalid_ref"},
+		{base + "?ref=nonesiste", 404, "ref_not_found"},
+		{"/internal/git/repos/0a1b2c3d-1111-4222-8333-000000000000/languages?ref=main", 404, "not_found"},
+		{"/internal/git/repos/non-un-uuid/languages?ref=main", 400, "invalid_request"},
+	} {
+		rec := e.do("GET", c.path, "", true)
+		var body struct {
+			Error struct{ Code string } `json:"error"`
+		}
+		_ = json.Unmarshal(rec.Body.Bytes(), &body)
+		if rec.Code != c.code || body.Error.Code != c.err {
+			t.Errorf("%s: %d %s, voglio %d %s", c.path, rec.Code, rec.Body, c.code, c.err)
+		}
+	}
+	if rec := e.do("GET", base+"?ref=main", "", false); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("senza firma: %d", rec.Code)
+	}
+}

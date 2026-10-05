@@ -424,3 +424,31 @@ func TestListTree_Recursive(t *testing.T) {
 		t.Fatalf("%+v", items)
 	}
 }
+
+func TestLanguages(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	res, err := f.svc.Languages(ctx, "r1", "main")
+	if err != nil || res.TotalBytes != 0 || res.Languages == nil || len(res.Languages) != 0 {
+		t.Fatalf("repo vuoto: %+v %v", res, err)
+	}
+	f.write("main.go", bytes.Repeat([]byte("a"), 90))
+	f.write("cmd/x/y.go", bytes.Repeat([]byte("b"), 10))
+	f.write("vendor/v/v.go", bytes.Repeat([]byte("c"), 1000))
+	f.write("web/node_modules/p/i.js", bytes.Repeat([]byte("d"), 1000))
+	f.write("web/app.min.js", bytes.Repeat([]byte("e"), 1000))
+	f.write("Makefile", bytes.Repeat([]byte("f"), 25))
+	f.write("pic.png", pngBytes)
+	c := f.commit(alice, "Primo")
+	for _, ref := range []string{"main", c, c[:8]} {
+		res, err = f.svc.Languages(ctx, "r1", ref)
+		if err != nil || res.TotalBytes != 125 || len(res.Languages) != 2 ||
+			res.Languages[0].Name != "Go" || res.Languages[0].Percent != 80 ||
+			res.Languages[1].Name != "Makefile" || res.Languages[1].Percent != 20 {
+			t.Fatalf("%s: %+v %v", ref, res, err)
+		}
+	}
+	if _, err = f.svc.Languages(ctx, "r1", "nonesiste"); !errors.Is(err, gitref.ErrRefNotFound) {
+		t.Fatalf("ref inesistente: %v", err)
+	}
+}
