@@ -16,7 +16,7 @@ WORKDIR /src
 
 # Livello di cache separato per i moduli.
 COPY go.mod go.sum ./
-RUN go mod download
+RUN for i in 1 2 3 4 5; do go mod download && exit 0; echo "go mod download: tentativo $i fallito" >&2; sleep $((i*5)); done; exit 1
 
 COPY . .
 
