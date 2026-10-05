@@ -5,6 +5,9 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ResourcesPage } from './pages/ResourcesPage';
+import { NewRepoPage } from "./pages/repos/NewRepoPage";
+import { RepoPage } from "./pages/repos/RepoPage";
+import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
 import { OrgsPage } from './pages/orgs/OrgsPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
@@ -76,6 +79,37 @@ export function AppRoutes() {
         <Route path="tokens" element={<TokensPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
       </Route>
+      {/* Rotte dinamiche dopo quelle fisse: /:owner/:repo non copre /orgs, /settings... (due segmenti) e i nomi riservati (R1, GIT-64). */}
+      <Route
+        path="/repos"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repositories">
+              <ReposPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/new"
+        element={
+          <RequireAuth>
+            <AppShell crumb="New repository">
+              <NewRepoPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

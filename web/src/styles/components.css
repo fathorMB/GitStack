@@ -216,3 +216,28 @@ ul.list{margin:0;padding:0;list-style:none}
 .list-clean{list-style:none;margin:0;padding:0}
 .card .list{border:0;border-radius:0}
 @media (max-width:1100px){.org-grid{grid-template-columns:1fr}}
+
+/* Repository (mockup 03, 04, 06) */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.seg button{all:unset;cursor:pointer;padding:5px 12px;font-size:13px;font-weight:500;color:var(--text-muted)}
+.seg button:hover{color:var(--text)}
+.seg button.active{background:var(--accent-soft);color:var(--accent-text)}
+.seg button:focus-visible{box-shadow:var(--focus)}
+.input-icon{position:relative;display:flex;align-items:center}
+.input-icon > svg{position:absolute;left:10px;color:var(--text-subtle);pointer-events:none}
+.input-icon .input{padding-left:32px;width:100%}
+.page-narrow{max-width:720px}
+.page-title{font-size:22px;font-weight:600;margin-bottom:4px}
+.repo-name-row{align-items:flex-end;flex-wrap:nowrap;gap:10px}
+.repo-name-row .select{width:200px}
+.repo-slash{font-size:20px;color:var(--text-subtle);padding-bottom:6px}
+.repo-form-foot{border-top:1px solid var(--border);padding-top:16px}
+.scope.selected{border-color:var(--accent);background:var(--accent-soft)}
+.repo-row{padding:14px 16px;align-items:flex-start}
+.repo-row.archived{opacity:.75}
+.repo-link{font-weight:600;font-size:15px}
+.badge-archived{color:var(--warning);border-color:var(--warning)}
+.repo-title{margin-bottom:12px}
+.repo-title h1{font-size:20px;font-weight:600}
+.alert-info{background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 30%, transparent);color:var(--text)}
+.alert-info svg{color:var(--accent);flex:none;margin-top:2px}
