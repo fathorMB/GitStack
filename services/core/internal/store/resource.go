@@ -6,6 +6,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,38 +65,41 @@ func New(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
-// List elenca le risorse, filtrate opzionalmente per tipo, in ordine di
-// creazione, paginate. page e perPage sono già validati (>=1) dal
-// chiamante.
-func (s *Store) List(ctx context.Context, resourceType *string, page, perPage int) (items []Resource, total int, err error) {
+// List elenca le risorse, filtrate opzionalmente per tipo e per id, in ordine
+// di creazione, paginate. page e perPage sono già validati (>=1) dal
+// chiamante. visible nil = nessun filtro sugli id (amministratore di
+// sistema); altrimenti solo le risorse con quegli id, filtrate nella query
+// (total e paginazione contano solo le visibili). Una lista vuota dà
+// risultato vuoto e total 0 senza interrogare il database.
+func (s *Store) List(ctx context.Context, resourceType *string, visible []uuid.UUID, page, perPage int) (items []Resource, total int, err error) {
+	if visible != nil && len(visible) == 0 {
+		return []Resource{}, 0, nil
+	}
 	offset := (page - 1) * perPage
 
-	const countAny = `SELECT count(*) FROM core.resources`
-	const countByType = `SELECT count(*) FROM core.resources WHERE type = $1`
-	const listAny = `SELECT id, type, name, attributes, created_at, updated_at
-		FROM core.resources ORDER BY created_at ASC, id ASC LIMIT $1 OFFSET $2`
-	const listByType = `SELECT id, type, name, attributes, created_at, updated_at
-		FROM core.resources WHERE type = $1 ORDER BY created_at ASC, id ASC LIMIT $2 OFFSET $3`
-
-	if resourceType == nil || *resourceType == "" {
-		if err = s.pool.QueryRow(ctx, countAny).Scan(&total); err != nil {
-			return nil, 0, err
-		}
-		rows, qErr := s.pool.Query(ctx, listAny, perPage, offset)
-		if qErr != nil {
-			return nil, 0, qErr
-		}
-		defer rows.Close()
-		items, err = scanResources(rows)
-		return items, total, err
+	where := ""
+	var args []any
+	if resourceType != nil && *resourceType != "" {
+		args = append(args, *resourceType)
+		where += fmt.Sprintf(" AND type = $%d", len(args))
+	}
+	if visible != nil {
+		args = append(args, visible)
+		where += fmt.Sprintf(" AND id = ANY($%d::uuid[])", len(args))
+	}
+	if where != "" {
+		where = " WHERE " + where[len(" AND "):]
 	}
 
-	if err = s.pool.QueryRow(ctx, countByType, *resourceType).Scan(&total); err != nil {
+	if err = s.pool.QueryRow(ctx, "SELECT count(*) FROM core.resources"+where, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, qErr := s.pool.Query(ctx, listByType, *resourceType, perPage, offset)
-	if qErr != nil {
-		return nil, 0, qErr
+	listArgs := append(append([]any{}, args...), perPage, offset)
+	q := fmt.Sprintf(`SELECT id, type, name, attributes, created_at, updated_at
+		FROM core.resources%s ORDER BY created_at ASC, id ASC LIMIT $%d OFFSET $%d`, where, len(args)+1, len(args)+2)
+	rows, err := s.pool.Query(ctx, q, listArgs...)
+	if err != nil {
+		return nil, 0, err
 	}
 	defer rows.Close()
 	items, err = scanResources(rows)

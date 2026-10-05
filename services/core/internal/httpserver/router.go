@@ -41,6 +41,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		resources: store.New(pool),
 		events:    publisher,
 		grants:    o.grants,
+		readable:  o.readable,
 	}
 
 	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
@@ -63,14 +64,30 @@ func publicPath(r *http.Request) bool {
 type Option func(*routerOptions)
 
 type routerOptions struct {
-	now    func() time.Time
-	grants identityclient.CreatorGranter
+	now      func() time.Time
+	grants   identityclient.CreatorGranter
+	readable identityclient.ReadableLister
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il
 // grant admin a chi crea una risorsa. Senza, POST /resources risponde 503.
+// Se g implementa anche identityclient.ReadableLister (come
+// *identityclient.Client) viene usato pure per filtrare GET /resources, a
+// meno che non lo imposti prima WithReadableLister.
 func WithCreatorGranter(g identityclient.CreatorGranter) Option {
-	return func(o *routerOptions) { o.grants = g }
+	return func(o *routerOptions) {
+		o.grants = g
+		if l, ok := g.(identityclient.ReadableLister); ok && o.readable == nil {
+			o.readable = l
+		}
+	}
+}
+
+// WithReadableLister imposta il client di identity da cui GET /resources
+// ottiene le risorse leggibili dal chiamante. Senza, GET /resources risponde
+// 503 (mai un elenco non filtrato).
+func WithReadableLister(l identityclient.ReadableLister) Option {
+	return func(o *routerOptions) { o.readable = l }
 }
 
 // WithClock sostituisce l'orologio con cui si controlla il timestamp della

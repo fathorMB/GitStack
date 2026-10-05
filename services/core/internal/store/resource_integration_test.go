@@ -55,7 +55,7 @@ func TestStore_CRUD(t *testing.T) {
 		t.Fatalf("UpdatedAt non è avanzato: prima %v, dopo %v", created.UpdatedAt, updated.UpdatedAt)
 	}
 
-	items, total, err := s.List(ctx, nil, 1, 20)
+	items, total, err := s.List(ctx, nil, nil, 1, 20)
 	if err != nil {
 		t.Fatalf("List non riuscita: %v", err)
 	}
@@ -106,11 +106,48 @@ func TestStore_List_FilterByType(t *testing.T) {
 	}
 
 	repoType := "repo"
-	items, total, err := s.List(ctx, &repoType, 1, 20)
+	items, total, err := s.List(ctx, &repoType, nil, 1, 20)
 	if err != nil {
 		t.Fatalf("List non riuscita: %v", err)
 	}
 	if total != 1 || len(items) != 1 || items[0].Type != "repo" {
 		t.Fatalf("List filtrata per type=repo = %+v (total %d), voluto 1 item di tipo repo", items, total)
+	}
+}
+
+func TestStore_List_FilterByVisibleIDs(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	ctx := context.Background()
+	s := store.New(pool)
+
+	var ids []uuid.UUID
+	for _, n := range []string{"a", "b", "c", "d", "e"} {
+		r, err := s.Create(ctx, store.NewInput{Type: "repo", Name: n})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, r.ID)
+	}
+
+	// lista vuota: niente, total 0
+	items, total, err := s.List(ctx, nil, []uuid.UUID{}, 1, 20)
+	if err != nil || total != 0 || len(items) != 0 || items == nil {
+		t.Fatalf("lista vuota: %v %d %v", items, total, err)
+	}
+	// tre visibili su cinque, perPage=2: total 3, pagina 2 con 1 item
+	visible := []uuid.UUID{ids[4], ids[0], ids[2], uuid.New()}
+	items, total, err = s.List(ctx, nil, visible, 1, 2)
+	if err != nil || total != 3 || len(items) != 2 || items[0].ID != ids[0] || items[1].ID != ids[2] {
+		t.Fatalf("pagina 1: %v %d %v", items, total, err)
+	}
+	items, total, err = s.List(ctx, nil, visible, 2, 2)
+	if err != nil || total != 3 || len(items) != 1 || items[0].ID != ids[4] {
+		t.Fatalf("pagina 2: %v %d %v", items, total, err)
+	}
+	// il filtro per tipo si somma a quello per id
+	other := "app"
+	items, total, err = s.List(ctx, &other, visible, 1, 20)
+	if err != nil || total != 0 || len(items) != 0 {
+		t.Fatalf("tipo diverso: %v %d %v", items, total, err)
 	}
 }

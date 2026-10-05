@@ -23,6 +23,9 @@ type apiServer struct {
 	// grants assegna il grant admin al creatore di una risorsa; nil se
 	// identity non è configurata (POST /resources risponde 503).
 	grants identityclient.CreatorGranter
+	// readable elenca le risorse leggibili dal chiamante; nil se identity non
+	// è configurata (GET /resources risponde 503).
+	readable identityclient.ReadableLister
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

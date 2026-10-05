@@ -242,6 +242,17 @@ type PrincipalAuthMethod string
 // PrincipalKind defines model for Principal.Kind.
 type PrincipalKind string
 
+// ReadableResourcesInput defines model for ReadableResourcesInput.
+type ReadableResourcesInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// ReadableResourcesResult defines model for ReadableResourcesResult.
+type ReadableResourcesResult struct {
+	All         bool                 `json:"all"`
+	ResourceIds []openapi_types.UUID `json:"resourceIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -359,6 +370,9 @@ type UnexpectedError = Error
 
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
+
+// ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
+type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
 
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput

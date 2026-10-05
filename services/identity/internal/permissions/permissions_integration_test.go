@@ -277,3 +277,68 @@ func TestGrantCRUD(t *testing.T) {
 		t.Errorf("secondo delete: %v", err)
 	}
 }
+
+func (e *env) readable(t *testing.T, user uuid.UUID) (bool, map[uuid.UUID]bool) {
+	t.Helper()
+	all, ids, err := e.svc.ReadableResources(context.Background(), user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids == nil {
+		t.Fatal("ids nil: voluto un elenco (anche vuoto)")
+	}
+	set := map[uuid.UUID]bool{}
+	for _, id := range ids {
+		if set[id] {
+			t.Errorf("id %s ripetuto", id)
+		}
+		set[id] = true
+	}
+	return all, set
+}
+
+func TestReadableResources(t *testing.T) {
+	e := newEnv(t)
+	admin := e.user(t, "root", true)
+	alice, bob, carol, dave, erin, gone := e.user(t, "alice", false), e.user(t, "bob", false), e.user(t, "carol", false), e.user(t, "dave", false), e.user(t, "erin", false), e.user(t, "gone", false)
+	acme, other := e.org(t, "acme"), e.org(t, "altra")
+	web, ops := e.team(t, acme, "web"), e.team(t, other, "ops")
+	e.orgMember(t, acme, carol, "owner")
+	e.orgMember(t, acme, bob, "member")
+	e.teamMember(t, acme, web, bob)
+	e.orgMember(t, other, erin, "owner")
+	r1, r2, r3, r4 := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	e.grant(t, r1, permissions.SubjectUser, alice, permissions.RoleRead)
+	e.grant(t, r1, permissions.SubjectTeam, web, permissions.RoleWrite) // bob la legge anche per questa via
+	e.grant(t, r2, permissions.SubjectTeam, web, permissions.RoleRead)
+	e.grant(t, r3, permissions.SubjectTeam, ops, permissions.RoleAdmin) // altra organizzazione
+	e.grant(t, r4, permissions.SubjectUser, gone, permissions.RoleRead)
+	e.exec(t, `UPDATE identity.users SET is_active = false WHERE id = $1`, gone)
+
+	for name, tc := range map[string]struct {
+		user    uuid.UUID
+		wantAll bool
+		want    []uuid.UUID
+	}{
+		"diretto":              {alice, false, []uuid.UUID{r1}},
+		"via team (due grant)": {bob, false, []uuid.UUID{r1, r2}},
+		"via owner dell'org":   {carol, false, []uuid.UUID{r1, r2}},
+		"owner dell'altra org": {erin, false, []uuid.UUID{r3}},
+		"senza grant":          {dave, false, nil},
+		"admin di sistema":     {admin, true, nil},
+		"utente disattivato":   {gone, false, nil},
+		"utente inesistente":   {uuid.New(), false, nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			all, set := e.readable(t, tc.user)
+			if all != tc.wantAll || len(set) != len(tc.want) {
+				t.Fatalf("all=%v ids=%v, voluti %v", all, set, tc.want)
+			}
+			for _, id := range tc.want {
+				if !set[id] {
+					t.Errorf("manca %s", id)
+				}
+			}
+		})
+	}
+}

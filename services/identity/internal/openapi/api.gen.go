@@ -537,6 +537,17 @@ type PrincipalAuthMethod string
 // PrincipalKind defines model for Principal.Kind.
 type PrincipalKind string
 
+// ReadableResourcesInput defines model for ReadableResourcesInput.
+type ReadableResourcesInput struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// ReadableResourcesResult defines model for ReadableResourcesResult.
+type ReadableResourcesResult struct {
+	All         bool                 `json:"all"`
+	ResourceIds []openapi_types.UUID `json:"resourceIds"`
+}
+
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
@@ -867,6 +878,9 @@ type LoginJSONRequestBody = LoginInput
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
+// ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
+type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
+
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 
@@ -935,6 +949,9 @@ type ServerInterface interface {
 	// CheckPermission Verifica un permesso su una risorsa
 	// (POST /internal/permissions/check)
 	CheckPermission(w http.ResponseWriter, r *http.Request)
+	// ListReadableResources Risorse leggibili da un utente
+	// (POST /internal/permissions/readable-resources)
+	ListReadableResources(w http.ResponseWriter, r *http.Request)
 	// GrantResourceCreator Assegna il ruolo admin al creatore di una risorsa
 	// (POST /internal/resources/{resourceId}/grants/creator)
 	GrantResourceCreator(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
@@ -1215,6 +1232,20 @@ func (siw *ServerInterfaceWrapper) CheckPermission(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CheckPermission(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListReadableResources operation middleware
+func (siw *ServerInterfaceWrapper) ListReadableResources(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListReadableResources(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2605,6 +2636,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}/permissions", wrapper.GetMyResourcePermission)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/verify", wrapper.VerifyCredential)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/check", wrapper.CheckPermission)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/readable-resources", wrapper.ListReadableResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/resources/{resourceId}/grants/creator", wrapper.GrantResourceCreator)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
 
