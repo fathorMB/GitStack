@@ -21,6 +21,7 @@ const gateway = import.meta.env.VITE_SMOKE_GATEWAY as string | undefined;
 const token = import.meta.env.VITE_SMOKE_TOKEN as string | undefined;
 const repo = (import.meta.env.VITE_SMOKE_REPO as string | undefined) ?? 'alice/quarzo-codice';
 const bigSha = import.meta.env.VITE_SMOKE_SHA as string | undefined;
+const needle = (import.meta.env.VITE_SMOKE_NEEDLE as string | undefined) ?? 'LORENZO-UNICO-5c2e';
 
 const enabled = Boolean(gateway && token && bigSha);
 
@@ -33,8 +34,8 @@ vi.mock('../lib/http', async (importOriginal) => ({
 // Rete vera e Postgres vero: i tempi di default (1 s) di Testing Library sono troppo stretti.
 configure({ asyncUtilTimeout: 15_000 });
 
-// Le pagine del browser del codice dei mockup 07, 08, 09 e 10.
-// La 22 è Blame; la 23 (Tags) e la pagina dei risultati di Search code si aggiungono con GIT-94.
+// Le pagine del browser del codice dei mockup 07, 08, 09 e 10, più la 22 (Blame),
+// la 23 (Tags) e la pagina dei risultati di Search code (GIT-94).
 const pages: { screen: string; path: string; expect: (v: ReturnType<typeof within>) => Promise<unknown> }[] = [
   {
     screen: '07 repo (albero e README)',
@@ -74,6 +75,24 @@ const pages: { screen: string; path: string; expect: (v: ReturnType<typeof withi
     expect: async (v) => {
       expect((await v.findAllByText(/big\.txt/)).length).toBeGreaterThan(0);
       expect((await v.findAllByText(/package-lock\.json/)).length).toBeGreaterThan(0);
+    },
+  },
+  {
+    screen: '23 tag (annotato col messaggio, leggero senza)',
+    path: `/${repo}/tags`,
+    expect: async (v) => {
+      expect(await v.findByText('v1.0')).toBeInTheDocument();
+      expect(await v.findByText(/release 1\.0 del progetto quarzo/)).toBeInTheDocument();
+      expect(await v.findByText('v0.1')).toBeInTheDocument();
+      expect(await v.findByText(/Lightweight tag/)).toBeInTheDocument();
+    },
+  },
+  {
+    screen: 'risultati di Search code',
+    path: `/${repo}/search?q=${encodeURIComponent(needle)}`,
+    expect: async (v) => {
+      expect(await v.findByRole('region', { name: 'main.go' })).toBeInTheDocument();
+      expect(await v.findByRole('region', { name: 'docs/guida.md' })).toBeInTheDocument();
     },
   },
 ];
@@ -125,10 +144,9 @@ describe.skipIf(!enabled)('smoke UI del browser del codice (stack vero)', { time
       throw new Error(`${String(err).split('\n')[0]} | pagina: ${text} | api: ${JSON.stringify(apiCalls)} | console.error: ${JSON.stringify(errors.map((e) => String(e[0]).slice(0, 200)))}`);
     }
 
-    // nessuna chiamata dell'API è andata male, né un 404 né un 5xx né un 501
+    // nessuna chiamata dell'API è andata male, né un 404 né un 5xx
     await waitFor(() => expect(apiCalls.length).toBeGreaterThan(0));
-    // TODO(GIT-117): getRepositoryLanguages risponde ancora 501; togliere l'eccezione quando è su main.
-    const bad = apiCalls.filter((c) => c.status >= 400 && !(c.status === 501 && c.url.includes('/languages')));
+    const bad = apiCalls.filter((c) => c.status >= 400);
     // il README di una sottocartella può non esserci (404 atteso), ma qui è la radice
     expect(bad, `chiamate fallite: ${JSON.stringify(bad)}`).toEqual([]);
     // nessun avviso di errore nella pagina (ruolo alert) né console.error di React
