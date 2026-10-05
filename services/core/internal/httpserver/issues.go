@@ -1,6 +1,9 @@
 package httpserver
 
 import (
+	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -23,16 +26,40 @@ func (s *apiServer) ListIssueTemplates(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 
-	var tree openapi.Tree
-	if !a.readJSON(w, r, "tree", url.Values{"ref": {a.repo.DefaultBranch}, "path": {".gitstack/ISSUE_TEMPLATE"}}, &tree) {
-		// cartella assente o repo vuoto: il contratto dice items: []
-		writeJSON(w, http.StatusOK, openapi.IssueTemplateList{Items: []openapi.IssueTemplate{}})
+	raw, err := a.git.ReadJSON(r.Context(), a.caller, a.repo.ID, "tree", url.Values{
+		"ref":  {a.repo.DefaultBranch},
+		"path": {".gitstack/ISSUE_TEMPLATE"},
+	})
+	if err != nil {
+		var ae *gitclient.APIError
+		if errors.As(err, &ae) && ae.Status == http.StatusNotFound &&
+			(ae.Code == "not_found" || ae.Code == "ref_not_found") {
+			writeJSON(w, http.StatusOK, openapi.IssueTemplateList{Items: []openapi.IssueTemplate{}})
+			return
+		}
+		gitFailure(w, err)
 		return
 	}
 
+	var tree openapi.Tree
+	if err := json.Unmarshal(raw, &tree); err != nil {
+		gitFailure(w, err)
+		return
+	}
+
+	repoKey := a.repo.OwnerName + "/" + a.repo.Name
 	readContents := func(path string) (string, error) {
+		raw2, err := a.git.ReadJSON(r.Context(), a.caller, a.repo.ID, "contents", url.Values{
+			"ref":  {a.repo.DefaultBranch},
+			"path": {path},
+		})
+		if err != nil {
+			slog.Warn("lettura del contenuto del modello non riuscita", "repo", repoKey, "file", path, "err", err)
+			return "", gitclient.ErrNotFound
+		}
 		var fc openapi.FileContent
-		if !a.readJSON(w, r, "contents", url.Values{"ref": {a.repo.DefaultBranch}, "path": {path}}, &fc) {
+		if err := json.Unmarshal(raw2, &fc); err != nil {
+			slog.Warn("parsing del contenuto del modello non riuscito", "repo", repoKey, "file", path, "err", err)
 			return "", gitclient.ErrNotFound
 		}
 		if fc.Content == nil {
@@ -41,6 +68,6 @@ func (s *apiServer) ListIssueTemplates(w http.ResponseWriter, r *http.Request, o
 		return *fc.Content, nil
 	}
 
-	templates := listIssueTemplatesFromTree(tree.Path, tree.Entries, readContents)
+	templates := listIssueTemplatesFromTree(repoKey, tree.Entries, readContents)
 	writeJSON(w, http.StatusOK, openapi.IssueTemplateList{Items: templates})
 }

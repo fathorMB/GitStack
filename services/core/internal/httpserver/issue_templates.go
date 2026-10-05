@@ -50,39 +50,34 @@ func parseIssueTemplate(name, _ string, body string) (openapi.IssueTemplate, err
 		return openapi.IssueTemplate{}, fmt.Errorf("yaml non valido: %w", err)
 	}
 
-	// yaml.v3 non mappa mai []any in []string, quindi se labels è []any
-	// lo convertiamo. yaml.v3 mappa titoli e about correttamente come *string.
-	if fm.Labels == nil {
+	// yaml.v3 unmarshala labels in []string quando la chiave è assente (nil)
+	// o quando è presente con valore di tipo errato (es. "labels:" vuoto come
+	// map[string]any{}). Verifichiamo esplicitamente.
+	if fm.Labels != nil {
+		// già decodificata correttamente da yaml.
+	} else {
 		var rawLabels any
 		if err := yaml.Unmarshal(raw, &rawLabels); err == nil {
-			switch rt := rawLabels.(type) {
-			case map[string]any:
-				rawLabelsVal, ok := rt["labels"]
-				if !ok {
-					// labels non presente nel YAML, nessun problema.
-					fm.Labels = nil
-				} else if rawLabelsVal == nil {
-					// labels: (nessun valore) → nil.
-					fm.Labels = nil
-				} else if _, ok := rawLabelsVal.(map[string]any); ok {
-					// yaml.v3 unmarshala "labels:" vuoto come map[string]any{}:
-					// è un errore semantico.
-					return openapi.IssueTemplate{}, fmt.Errorf("labels: tipo errato map[string]interface{}, attesa lista di stringhe")
-				} else {
-					// qualcos'altro di inaspettato → errore.
-					return openapi.IssueTemplate{}, fmt.Errorf("labels: tipo errato %T, attesa lista di stringhe", rawLabelsVal)
-				}
-			case []any:
-				// yaml.v3 a volte restituisce []any per liste.
-				labels := make([]string, 0, len(rt))
-				for _, item := range rt {
-					s, ok := item.(string)
-					if !ok {
-						return openapi.IssueTemplate{}, fmt.Errorf("labels: elemento non stringa %T", item)
+			if rt, ok := rawLabels.(map[string]any); ok {
+				if lv, present := rt["labels"]; present {
+					switch v := lv.(type) {
+					case []any:
+						labels := make([]string, 0, len(v))
+						for _, item := range v {
+							s, ok := item.(string)
+							if !ok {
+								return openapi.IssueTemplate{}, fmt.Errorf("labels: elemento non stringa %T", item)
+							}
+							labels = append(labels, s)
+						}
+						fm.Labels = labels
+					case nil, map[string]any:
+						// labels presente ma vuota (map[string]any{}) o nil: errore.
+						return openapi.IssueTemplate{}, fmt.Errorf("labels: valore non lista di stringhe")
+					default:
+						return openapi.IssueTemplate{}, fmt.Errorf("labels: tipo errato %T, attesa lista di stringhe", v)
 					}
-					labels = append(labels, s)
 				}
-				fm.Labels = labels
 			}
 		}
 	}
@@ -119,7 +114,7 @@ func findFrontMatterClose(data []byte) int {
 // lo analizza e salta con un avviso quelli malformati. I modelli restanti
 // sono ordinati per nome.
 func listIssueTemplatesFromTree(templatesDir string, entries []openapi.TreeEntry, readContents func(path string) (string, error)) []openapi.IssueTemplate {
-	var result []openapi.IssueTemplate
+	result := []openapi.IssueTemplate{}
 	for _, entry := range entries {
 		if entry.Type != "file" {
 			continue

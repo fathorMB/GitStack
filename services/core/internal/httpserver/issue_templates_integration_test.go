@@ -35,6 +35,8 @@ type templateGit struct {
 
 	// treeEntries restituisce le entries del tree per .gitstack/ISSUE_TEMPLATE/
 	treeEntries func() []openapi.TreeEntry
+	// treeError restituisce un errore da restituire sulle chiamate tree.
+	treeError func() error
 	// contents restituisce il contenuto di un file per path.
 	contents func(path string) (string, bool)
 
@@ -47,6 +49,9 @@ func (g *templateGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID,
 	g.rmu.Unlock()
 
 	if path == "tree" && q.Get("path") == ".gitstack/ISSUE_TEMPLATE" {
+		if g.treeError != nil {
+			return nil, g.treeError()
+		}
 		entries := []openapi.TreeEntry{}
 		if g.treeEntries != nil {
 			entries = g.treeEntries()
@@ -152,12 +157,18 @@ func decodeTemplates(rec *httptest.ResponseRecorder) openapi.IssueTemplateList {
 func TestIssueTemplates_SenzaCartella(t *testing.T) {
 	e := newTemplateEnv(t)
 	e.createRepo("template-test", "internal")
-	// Nessun templateGit configurato: tree restituisce entries vuote.
+	// Il tree risponde con 404 not_found (cartella assente su git).
+	e.git.treeError = func() error {
+		return &gitclient.APIError{Status: 404, Code: "not_found", Message: "Percorso non trovato."}
+	}
 	rec := e.do("GET", "/repos/alice/template-test/issue-templates", "alice", "")
 	e.want(rec, http.StatusOK, "")
 	out := decodeTemplates(rec)
 	if len(out.Items) != 0 {
 		t.Fatalf("atteso 0 modelli, trovato %d", len(out.Items))
+	}
+	if out.Items == nil {
+		t.Errorf("items = nil, voluto []")
 	}
 }
 
@@ -336,4 +347,30 @@ func TestIssueTemplates_Permessi(t *testing.T) {
 	// bob non può leggere (repo privato, bob è solo user)
 	rec = e.do("GET", "/repos/alice/template-private/issue-templates", "bob", "")
 	e.want(rec, http.StatusNotFound, "not_found")
+}
+
+func TestIssueTemplates_RefNotFound(t *testing.T) {
+	e := newTemplateEnv(t)
+	e.createRepo("template-empty", "internal")
+	// Il tree risponde con 404 ref_not_found (repo vuoto).
+	e.git.treeError = func() error {
+		return &gitclient.APIError{Status: 404, Code: "ref_not_found", Message: "Ref non trovato."}
+	}
+	rec := e.do("GET", "/repos/alice/template-empty/issue-templates", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	out := decodeTemplates(rec)
+	if len(out.Items) != 0 {
+		t.Fatalf("atteso 0 modelli, trovato %d", len(out.Items))
+	}
+}
+
+func TestIssueTemplates_Git503(t *testing.T) {
+	e := newTemplateEnv(t)
+	e.createRepo("template-503", "internal")
+	// Il tree risponde con 503 (git non disponibile).
+	e.git.treeError = func() error {
+		return &gitclient.APIError{Status: 503, Code: "git_unavailable", Message: "Servizio git non disponibile."}
+	}
+	rec := e.do("GET", "/repos/alice/template-503/issue-templates", "alice", "")
+	e.want(rec, http.StatusServiceUnavailable, "git_unavailable")
 }
