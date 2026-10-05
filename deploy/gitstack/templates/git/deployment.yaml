@@ -1,0 +1,86 @@
+{{- if .Values.git.enabled -}}
+{{- if not .Values.gitData.enabled -}}
+{{- fail "git.enabled=true richiede gitData.enabled=true: il servizio git tiene i repo sul PVC git-data." -}}
+{{- end -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitstack.fullname" . }}-git
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "git") | nindent 4 }}
+spec:
+  replicas: 1
+  # Il PVC è ReadWriteOnce e i repo non si condividono fra repliche: al
+  # rollout il vecchio pod si ferma prima che parta il nuovo.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "git") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "git") | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        # L'immagine gira come uid 10001 (gitsvc): il volume deve essere scrivibile.
+        fsGroup: 10001
+      containers:
+        - name: git
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.git) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.git.containerPort }}
+            {{- if .Values.git.ssh.enabled }}
+            - name: ssh
+              containerPort: {{ .Values.git.ssh.port }}
+            {{- end }}
+          env:
+            - name: GITSTACK_GIT_ADDR
+              value: {{ printf ":%d" (.Values.git.containerPort | int) | quote }}
+            - name: GITSTACK_GIT_DATA_DIR
+              value: /data
+            - name: GITSTACK_GIT_LOG_LEVEL
+              value: {{ .Values.git.env.logLevel | quote }}
+            - name: GITSTACK_IDENTITY_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.serviceSecret.name" . }}
+                  key: secret
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            {{- if .Values.git.ssh.enabled }}
+            - name: ssh-host-key
+              mountPath: /etc/gitstack/ssh
+              readOnly: true
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.git.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "gitstack.fullname" . }}-git-data
+        {{- if .Values.git.ssh.enabled }}
+        - name: ssh-host-key
+          secret:
+            secretName: {{ include "gitstack.git.sshHostKeySecret" . }}
+        {{- end }}
+{{- end }}

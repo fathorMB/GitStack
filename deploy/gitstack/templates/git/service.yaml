@@ -1,0 +1,34 @@
+{{- if .Values.git.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitstack.fullname" . }}-git
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "git") | nindent 4 }}
+spec:
+  selector:
+    {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "git") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.git.service.port }}
+      targetPort: http
+{{- if .Values.git.ssh.enabled }}
+---
+# SSH raggiungibile dall'esterno (k3s: ServiceLB apre la porta sul nodo). Non
+# tocca mai l'sshd dell'host (R7): la porta è quella di git.ssh.port.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitstack.fullname" . }}-git-ssh
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "git") | nindent 4 }}
+spec:
+  type: LoadBalancer
+  selector:
+    {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "git") | nindent 4 }}
+  ports:
+    - name: ssh
+      port: {{ .Values.git.ssh.port }}
+      targetPort: ssh
+{{- end }}
+{{- end }}

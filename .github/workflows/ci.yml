@@ -344,7 +344,7 @@ jobs:
         id: owner
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Costruisci le immagini di gateway, identity e core (stesso tag che pubblica il job "registry")
+      - name: Costruisci le immagini di gateway, identity, core e git (stesso tag che pubblica il job "registry")
         run: |
           set -euo pipefail
           docker build -f services/gateway/Dockerfile \
@@ -356,6 +356,9 @@ jobs:
           docker build -f services/core/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             services/core
+          docker build -f services/git/Dockerfile \
+            -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
+            services/git
 
       - name: Crea il cluster k3d
         run: |
@@ -437,6 +440,7 @@ jobs:
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
+            "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
             -c gitstack-ci
 
       # web disattivato: la sua immagine arriva con GIT-7, in parallelo
@@ -450,12 +454,13 @@ jobs:
             --set global.image.tag="${IMAGE_TAG}" \
             --wait --timeout 3m
 
-      - name: Attendi che gateway, identity e core siano Ready
+      - name: Attendi che gateway, identity, core e git siano Ready
         run: |
           kubectl get pods -o wide
           kubectl rollout status deployment/gitstack-gateway --timeout=120s
           kubectl rollout status deployment/gitstack-identity --timeout=120s
           kubectl rollout status deployment/gitstack-core --timeout=120s
+          kubectl rollout status deployment/gitstack-git --timeout=120s
 
       - name: Verifica /healthz tramite l'Ingress Traefik (/api)
         run: |

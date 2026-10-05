@@ -111,6 +111,12 @@ core:
     logLevel: info
     dbMaxConns: 10
     migrationsTimeout: 30s
+    # Configurazione di host verso git/SSH (nomi fissati in GIT-67).
+    # GITSTACK_GIT_URL (Service di git) e GITSTACK_CORE_SSH_PORT (git.ssh.port)
+    # sono calcolati. publicUrl e sshHost sono emessi solo se valorizzati: URL
+    # con cui i client raggiungono GitStack e host mostrato negli URL di clone SSH.
+    publicUrl: ""
+    sshHost: ""
   resources:
     requests:
       cpu: 25m
@@ -212,6 +218,40 @@ identity:
       memory: 32Mi
     limits:
       memory: 128Mi
+
+# --- git --------------------------------------------------------------------
+# Servizio git (M-03): repo bare sul PVC git-data (gitData.enabled, deve essere
+# attivo). Oggi ascolta solo HTTP interno (API chiamata da core); lo smart HTTP
+# (Ingress) e il server SSH arrivano con gli item successivi di M-03.
+git:
+  enabled: true
+  image:
+    registry: ""
+    repository: fathormb/gitstack-git
+    tag: ""
+  # GITSTACK_GIT_ADDR: fissa, combacia con l'EXPOSE del Dockerfile.
+  containerPort: 8080
+  service:
+    port: 8080
+  env:
+    logLevel: info
+  ssh:
+    # false finché il server SSH (GIT-71) non è nell'immagine. Con true: Service
+    # LoadBalancer sulla porta sotto (k3s: ServiceLB) e Secret della chiave host.
+    # L'installer non modifica mai l'sshd dell'host (R7): se la porta è occupata
+    # sul nodo, cambiala qui (e passa lo stesso valore a install.sh con --set).
+    enabled: false
+    port: 2222
+    hostKey:
+      # Secret esistente con la chiave `ssh_host_ed25519_key`; vuoto = generata
+      # una sola volta dal chart (<release>-git-ssh-host-key, resource-policy keep).
+      existingSecret: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 256Mi
 
 # --- web --------------------------------------------------------------------
 # L'immagine di web arriva con GIT-7, in parallelo a questo item: il
@@ -327,9 +367,10 @@ nats:
 # per sempre "Pending" — nessun errore, ma `helm install/upgrade --wait`
 # (usato anche dall'installazione di prova in CI) resterebbe in attesa
 # indefinitamente. Attivalo solo insieme a un Deployment/StatefulSet che lo
-# monta subito (il servizio "git" stesso, quando arriva al chart).
+# monta subito: il Deployment del servizio "git" (git.enabled), attivo di
+# default insieme a questo PVC (GIT-74).
 gitData:
-  enabled: false
+  enabled: true
   persistence:
     size: 10Gi
     storageClassName: ""

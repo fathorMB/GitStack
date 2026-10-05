@@ -16,7 +16,8 @@ helm install gitstack deploy/gitstack
 | `web` | Deployment + Service | React/SPA, M-01/T-07 — **vedi sotto**, `web.enabled`. |
 | `postgres` | StatefulSet + Service headless + PVC | Bundle di default (D6 [c_4df04d65b3ac4910]); opzione DB esterno del cliente, vedi sotto. |
 | `nats` | StatefulSet + Service headless + PVC | JetStream (D11 [c_74dcf9721e6f7b3e]), storage su file. |
-| PVC repo Git (`gitData.enabled`, **default `false`**) | PersistentVolumeClaim | Predisposto per i futuri repository Git (D6), non un criterio di accettazione di questo item. Disattivato di default: nessun pod lo monta ancora (il servizio "git" arriva con una milestone successiva a M-01) e la storage class di default di k3s (`local-path`, `WaitForFirstConsumer`) lo lascerebbe "Pending" per sempre, bloccando `helm install --wait`. Attivalo solo insieme al servizio che lo monta. |
+| `git` (`git.enabled`, default `true`) | Deployment (Recreate) + Service + PVC `git-data` | Go, M-03. Probe `/healthz` e `/readyz`. Vedi la sezione Servizio git. |
+| PVC repo Git (`gitData.enabled`, default `true`) | PersistentVolumeClaim | Montato su `/data` dal Deployment `git`. Non va attivato senza di esso: la storage class di default di k3s (`local-path`, `WaitForFirstConsumer`) lo lascerebbe `Pending` per sempre, bloccando `helm install --wait` (il chart rifiuta `git.enabled=true` con `gitData.enabled=false`). |
 | Ingress | Ingress + Middleware Traefik | `/` verso `web`, `/api` verso `gateway` (con lo strip del prefisso, vedi sotto). |
 
 ## identity: ruolo e schema dedicati (GIT-36)
@@ -100,9 +101,30 @@ Il chart valida questi campi a `helm template`/`helm install` e si ferma con un 
 
 `ingress.host` è vuoto di default (Traefik risponde su qualsiasi host, comodo senza DNS su un'installazione a IP fisso); impostalo per restringere l'Ingress a un hostname preciso.
 
+## Servizio git (GIT-74)
+
+Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Oggi il servizio espone solo l'API interna chiamata da core; smart HTTP (Ingress, GIT-70) e SSH (GIT-71) arrivano dopo. Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`).
+
+| Value | Default | Significato |
+|---|---|---|
+| `git.enabled` | `true` | Deployment e Service di git (richiede `gitData.enabled=true`). |
+| `git.image.*` | `fathormb/gitstack-git` | Come gli altri componenti (`global.image.*`). |
+| `git.containerPort`, `git.service.port` | `8080` | Porta HTTP (`GITSTACK_GIT_ADDR`) e del Service. |
+| `git.env.logLevel` | `info` | `GITSTACK_GIT_LOG_LEVEL`. |
+| `git.resources` | 25m / 32Mi, limite 256Mi | Risorse del container. |
+| `git.ssh.enabled` | `false` | Da attivare quando il server SSH (GIT-71) è nell'immagine: crea il Service `<release>-git-ssh` (`LoadBalancer`, in k3s ServiceLB apre la porta sul nodo), la porta del container e il Secret della chiave host montato in `/etc/gitstack/ssh`. |
+| `git.ssh.port` | `2222` | Porta SSH esposta (e `GITSTACK_CORE_SSH_PORT` di core). Mai la 22: l'installer non modifica l'sshd dell'host (R7). |
+| `git.ssh.hostKey.existingSecret` | vuoto | Secret esistente con la chiave `ssh_host_ed25519_key`; vuoto = generata una sola volta (`<release>-git-ssh-host-key`, `lookup` + `helm.sh/resource-policy: keep`, così i client non vedono mai "host key changed"). |
+| `core.env.publicUrl` | vuoto | `GITSTACK_CORE_PUBLIC_URL`, emesso solo se valorizzato. |
+| `core.env.sshHost` | vuoto | `GITSTACK_CORE_SSH_HOST`, emesso solo se valorizzato. |
+
+Core riceve `GITSTACK_GIT_URL` (Service interno di git, se `git.enabled`) e `GITSTACK_CORE_SSH_PORT` (`git.ssh.port`).
+
+Preflight di `install.sh`: la porta SSH (`git.ssh.port`, letta da `--set git.ssh.port=N`, altrimenti 2222) si aggiunge a 80/443/6443; se è occupata l'installer si ferma con un messaggio che dice di liberarla o di sceglierne un'altra con `--set git.ssh.port=N`. Come per le altre porte il controllo è saltato se k3s è già installato.
+
 ## Probe di liveness/readiness
 
-Tutti i servizi Go (`gateway`, `identity`, `core`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).
+Tutti i servizi Go (`gateway`, `identity`, `core`, `git`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).
 
 ## `helm lint` e installazione di prova in CI
 
@@ -112,8 +134,8 @@ Tutti i servizi Go (`gateway`, `identity`, `core`) hanno probe HTTP su `/healthz
 2. Crea un cluster effimero k3d (Traefik e le sue CRD sono già incluse, essendo `k3d` un vero k3s in Docker) con `k3d cluster create --wait`.
 3. Attende (con timeout esplicito, GIT-21) che l'API server del cluster risponda in modo stabile (`kubectl get --raw=/readyz` in loop, poi `kubectl wait --for=condition=Ready node --all`): su un runner CI il cluster appena creato può restare intermittentemente irraggiungibile per qualche secondo dopo che `k3d cluster create --wait` è tornato.
 4. Attende (con timeout esplicito, GIT-21) che la CRD `middlewares.traefik.io` sia presente e `Established` (polling jsonpath su `.status.conditions`, GIT-50: `kubectl wait` esce subito su una CRD appena creata): su k3d, Traefik e le sue CRD vengono installate in modo asincrono dall'helm-controller di k3s, e un `helm install` troppo anticipato del chart (che usa un Middleware Traefik, vedi sopra) fallirebbe con un errore criptico ("no matches for kind Middleware").
-5. `helm install` (gateway, identity e core costruiti in locale) con `--set web.enabled=false --set global.image.tag=sha-<sha del commit>` (l'immagine di `web` non esiste ancora, vedi sopra).
-6. Attende che `gateway`, `identity` e `core` siano `Ready` (`kubectl rollout status`, non `kubectl wait`: nota di revisione di GIT-8, allineata qui).
+5. `helm install` (gateway, identity, core e git costruiti in locale) con `--set web.enabled=false --set global.image.tag=sha-<sha del commit>` (l'immagine di `web` non esiste ancora, vedi sopra).
+6. Attende che `gateway`, `identity`, `core` e `git` siano `Ready` (`kubectl rollout status`, non `kubectl wait`: nota di revisione di GIT-8, allineata qui).
 7. Interroga `/healthz` tramite l'Ingress su `/api/healthz` e verifica una risposta 200.
 8. Verifica identity dietro il gateway: `GET /api/v1/auth/session` senza cookie risponde 401 `unauthenticated` e `POST /api/v1/internal/verify` risponde 404. Prima di tutto, `diff` fra le due copie del bootstrap SQL.
 
