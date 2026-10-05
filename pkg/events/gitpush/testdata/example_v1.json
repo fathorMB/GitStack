@@ -1,0 +1,45 @@
+{
+  "name": "git.push",
+  "version": 1,
+  "id": "0b6f3a52-7d1c-4c0e-9a39-2d1f5c8e7a41",
+  "time": "2026-10-05T12:30:00Z",
+  "payload": {
+    "repo": {
+      "id": "3f1d2c4e-8a55-4b6e-9d0a-1c2b3d4e5f60",
+      "fullName": "ada/demo",
+      "defaultBranch": "main"
+    },
+    "pusher": {
+      "id": "7a9e1b20-5c3d-4e8f-a1b2-c3d4e5f60718",
+      "username": "build-bot",
+      "type": "agent"
+    },
+    "refs": [
+      {
+        "ref": "refs/heads/main",
+        "before": "1111111111111111111111111111111111111111",
+        "after": "2222222222222222222222222222222222222222",
+        "forced": false,
+        "isDefaultBranch": true,
+        "commits": [
+          {
+            "sha": "2222222222222222222222222222222222222222",
+            "author": { "name": "Ada Lovelace", "email": "ada@example.com", "date": "2026-10-05T12:20:00Z" },
+            "committer": { "name": "Ada Lovelace", "email": "ada@example.com", "date": "2026-10-05T12:20:00Z" },
+            "message": "Corregge il parser\n\nfixes #12\n"
+          }
+        ],
+        "commitsTruncated": false
+      },
+      {
+        "ref": "refs/tags/v1.0.0",
+        "before": "0000000000000000000000000000000000000000",
+        "after": "3333333333333333333333333333333333333333",
+        "forced": false,
+        "isDefaultBranch": false,
+        "commits": [],
+        "commitsTruncated": false
+      }
+    ]
+  }
+}

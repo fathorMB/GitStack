@@ -38,7 +38,7 @@ Esempi già previsti dall'architettura:
 
 | Nome evento | Dominio | Pubblicato da | Significato |
 |---|---|---|---|
-| `git.push` | `git` | servizio `git` | hook post-receive dopo un push |
+| `git.push` | `git` | servizio `git` | dopo ogni push accettato, HTTPS o SSH (schema v1 sotto) |
 | `issue.created`, `issue.closed`, ... | `issue` | servizio `core` | ciclo di vita di una issue |
 | `repo.created`, ... | `repo` | servizio `core` | ciclo di vita di un repo |
 | `core.resource.test.created` | `core` | servizio `core` | evento di prova (vedi sotto) |
@@ -101,6 +101,149 @@ prova:
 - nome: `core.resource.test.created`
 - versione: 1
 - payload: `{ "resourceId": string, "type": string, "name": string }`
+
+## `git.push` (schema v1)
+
+Pubblicato dal servizio `git` (dominio `git`, stream `GIT`, subject
+`git.push`) dopo ogni push **accettato**, via HTTPS o SSH. Lo schema è in
+`pkg/events/gitpush` (`Name`, `Version`, `Payload`, `Decode`, `Register`):
+un consumer registra `gitpush.Register(reg)` e decodifica con
+`Registry.Decode`. Consumatori previsti (regole M-06): core chiude le issues
+con `fixes #n` solo quando il commit entra nel branch principale (C2) e solo
+se chi ha fatto il push ha `write` sul repo della issue (C1); il webhook push
+(C6) ricalca quello di GitHub (`ref`, `before`, `after`, `commits`,
+`repository`, `sender`).
+
+Un evento per push, non per ref: un `git push` di più branch e tag produce
+un solo evento con più elementi in `refs`.
+
+### Campi del payload
+
+| Campo | Significato |
+|---|---|
+| `repo.id` | id del repo (uuid, lo stesso di core e identity) |
+| `repo.fullName` | `owner/repo` |
+| `repo.defaultBranch` | branch principale al momento del push (nome corto, es. `main`; R4) |
+| `pusher.id`, `pusher.username` | l'utente **autenticato** che ha fatto il push (token o chiave SSH), non l'autore dei commit |
+| `pusher.type` | `human` o `agent` (se identity non lo dice, `human`) |
+| `refs[].ref` | nome completo del ref: `refs/heads/<branch>`, `refs/tags/<tag>` |
+| `refs[].before` | sha prima del push; `0000000000000000000000000000000000000000` se il ref è stato **creato** |
+| `refs[].after` | sha dopo il push; `0000…0000` se il ref è stato **eliminato** |
+| `refs[].forced` | `true` se `before` non è antenato di `after` (force-push, anche di un tag spostato); sempre `false` per creazione ed eliminazione |
+| `refs[].isDefaultBranch` | `true` se il ref è `refs/heads/<repo.defaultBranch>`; mai per i tag |
+| `refs[].commits` | commit nuovi raggiungibili da `after`, i più recenti per primi, al massimo **100** (`gitpush.MaxCommits`); `[]` (mai `null`) per un ref eliminato o senza commit nuovi |
+| `refs[].commitsTruncated` | `true` se i commit nuovi sono più di 100 |
+| `commits[].sha` | sha del commit |
+| `commits[].author`, `commits[].committer` | `{ "name", "email", "date" }`, `date` in RFC 3339 |
+| `commits[].message` | messaggio **completo** (oggetto, corpo, a capo finale come in git) |
+
+Tag e branch diversi dal principale hanno la stessa forma del branch
+principale. Per un tag annotato `after` è lo sha dell'oggetto tag, non del
+commit puntato.
+
+### Quali commit sono «nuovi»
+
+- Ref **aggiornato**: i commit raggiungibili da `after` e non da `before`,
+  cioè `git log before..after`.
+- Ref **creato**: i commit raggiungibili da `after` e non da nessun ref
+  (branch o tag) che esisteva prima del push. In un repo vuoto, tutta la
+  storia.
+- Ref **eliminato**: nessuno.
+
+### Elenco troncato: come ricostruire il resto
+
+Oltre 100 commit nuovi l'elenco contiene i 100 più recenti
+(`commitsTruncated: true`). Chi ha bisogno di tutti i commit li ricostruisce
+dal repo, col servizio `git` (letture commit/diff) o con git:
+
+```sh
+git log before..after          # ref aggiornato (anche force-push)
+git log after --not <altri ref> # ref creato: before è lo sha zero
+```
+
+Per un force-push `before..after` dà i commit della nuova storia; quelli
+della vecchia storia, `after..before`, sono i commit scartati. Il confronto
+vale finché git non fa il garbage collect degli oggetti non più raggiungibili.
+
+### Esempio completo
+
+Push di `main` (con `fixes #12`) e del tag `v1.0.0` fatto da un utente agent:
+
+```json
+{
+  "name": "git.push",
+  "version": 1,
+  "id": "0b6f3a52-7d1c-4c0e-9a39-2d1f5c8e7a41",
+  "time": "2026-10-05T12:30:00Z",
+  "payload": {
+    "repo": {
+      "id": "3f1d2c4e-8a55-4b6e-9d0a-1c2b3d4e5f60",
+      "fullName": "ada/demo",
+      "defaultBranch": "main"
+    },
+    "pusher": {
+      "id": "7a9e1b20-5c3d-4e8f-a1b2-c3d4e5f60718",
+      "username": "build-bot",
+      "type": "agent"
+    },
+    "refs": [
+      {
+        "ref": "refs/heads/main",
+        "before": "1111111111111111111111111111111111111111",
+        "after": "2222222222222222222222222222222222222222",
+        "forced": false,
+        "isDefaultBranch": true,
+        "commits": [
+          {
+            "sha": "2222222222222222222222222222222222222222",
+            "author": { "name": "Ada Lovelace", "email": "ada@example.com", "date": "2026-10-05T12:20:00Z" },
+            "committer": { "name": "Ada Lovelace", "email": "ada@example.com", "date": "2026-10-05T12:20:00Z" },
+            "message": "Corregge il parser\n\nfixes #12\n"
+          }
+        ],
+        "commitsTruncated": false
+      },
+      {
+        "ref": "refs/tags/v1.0.0",
+        "before": "0000000000000000000000000000000000000000",
+        "after": "3333333333333333333333333333333333333333",
+        "forced": false,
+        "isDefaultBranch": false,
+        "commits": [],
+        "commitsTruncated": false
+      }
+    ]
+  }
+}
+```
+
+### Se NATS non risponde
+
+Il push **non si perde mai per colpa di NATS**: il servizio git risponde al
+client appena `git receive-pack` è finito, e l'evento si pubblica dopo, in
+background.
+
+- All'avvio la connessione a NATS (`GITSTACK_GIT_NATS_URL`) non è
+  obbligatoria: si riprova ogni 2 secondi e lo stream `GIT` si crea alla
+  prima pubblicazione riuscita. Senza `GITSTACK_GIT_NATS_URL` il servizio
+  parte e lo dice nel log (`git.push non verrà pubblicato`).
+- Ogni pubblicazione ha 3 tentativi da 5 secondi, con attesa di 1 e poi 2
+  secondi fra l'uno e l'altro (ogni tentativo aspetta l'ack di JetStream).
+- Se anche l'ultimo fallisce l'evento **è perso**: il servizio registra
+  l'errore nel log (`git.push: pubblicazione non riuscita, evento perso`,
+  con repo, numero di tentativi e numero di ref) e il push resta accettato.
+  Non c'è una coda su disco: un consumer che non può perdere un push deve
+  poterlo ricostruire dal repo (`git for-each-ref`) con una riconciliazione
+  periodica. Se il servizio si ferma con pubblicazioni in corso, aspetta fino
+  a 15 secondi prima di uscire.
+- Se la lettura dei ref prima o dopo il push fallisce (disco), l'evento non
+  si pubblica e l'errore va nel log; i commit non leggibili di un ref danno
+  `commits: []` ma il ref resta nell'evento.
+
+Limite noto: i ref prima e dopo il push si leggono con `git for-each-ref`
+attorno al `receive-pack`. Due push concorrenti sullo stesso repo possono
+vedersi a vicenda; in quel caso un evento può contenere ref aggiornati
+dall'altro push, e nessun ref va perso.
 
 ## Come si avvia NATS per i test
 
