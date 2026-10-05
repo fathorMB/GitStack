@@ -26,9 +26,5 @@ risorsa creata nel setup (`noLeak`).
 | `sessione_dopo_cambio_password` | dopo il cambio password le altre sessioni sono revocate, la vecchia password non entra più |
 | `header_identita_falsificati` | `X-Gitstack-*` al gateway ignorati (anche insieme a un token con pochi scope); a core direttamente: assenti, inventati, firma con altro segreto, firma scaduta, header modificato dopo la firma |
 | `brute_force_login` | dopo 5 fallimenti 429 `too_many_attempts` anche con la password giusta, senza cookie; altri utenti non toccati; utente inesistente trattato come uno esistente |
-| `token_troppo_lungo` | **saltato** (difetto noto): una credenziale di 512 caratteri fa rispondere 503 `identity_unavailable` invece di 401 |
-
-## Da aggiungere
-
-- Permesso mancante su una risorsa di un'altra organizzazione: dipende da GIT-38
-  (grant e `/internal/permissions/check`).
+| `token_troppo_lungo` | Bearer e cookie oltre 512 caratteri: 401 senza chiamare identity (GIT-60); anche a 300 caratteri (sotto il limite) 401 |
+| `risorsa_di_altra_organizzazione` | utente di org B senza grant su una risorsa di org A: GET, PATCH, DELETE e `GET /grants` danno 403 `forbidden` (token e sessione web); `GET /resources` non la elenca e `total` è 0; la risorsa resta intatta. Sanità: chi ha il grant la vede |

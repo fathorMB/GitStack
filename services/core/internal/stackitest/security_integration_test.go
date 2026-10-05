@@ -11,11 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
 
@@ -106,10 +108,11 @@ func newSecEnv(t *testing.T) *secEnv {
 	identityBin := build(t, "../../../identity", "identity")
 	gatewayBin := build(t, "../../../gateway", "gateway")
 
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret))
+	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
+	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+		httpserver.WithCreatorGranter(identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second))))
 	t.Cleanup(coreSrv.Close)
 
-	identityAddr, gatewayAddr := freeAddr(t), freeAddr(t)
 	start(t, "identity", identityBin, identityAddr,
 		"GITSTACK_IDENTITY_ADDR="+identityAddr,
 		"GITSTACK_IDENTITY_DB_URL="+dsn,
@@ -182,15 +185,13 @@ func TestSecurity(t *testing.T) {
 		}
 	})
 
-	// DIFETTO NOTO (da correggere in gateway/identity, non qui): una credenziale
-	// molto lunga (512 caratteri) fa rispondere a identity /internal/verify con
-	// 400 e il gateway la traduce in 503 identity_unavailable invece di 401
-	// unauthenticated. Si chiude fail-closed e senza dati, ma con lo stato
-	// sbagliato. Riproduzione: questo test senza il t.Skip. Togliere lo Skip
-	// quando il difetto e' corretto.
+	// Credenziali oltre 512 caratteri (maxLength di VerifyCredentialInput): il
+	// gateway risponde 401 senza chiamare identity (GIT-60), non 503.
 	t.Run("token_troppo_lungo", func(t *testing.T) {
-		t.Skip("difetto noto: /internal/verify 400 -> gateway 503 invece di 401 (vedi commento sull'item GIT-42)")
-		e.denied(t, e.gw("GET", res, nil, bearer("gst_"+strings.Repeat("A", 512)), nil), 401, "unauthenticated")
+		e.denied(t, e.gw("GET", res, nil, bearer("gst_"+strings.Repeat("A", 513)), nil), 401, "unauthenticated")
+		e.denied(t, e.gw("GET", res, nil, nil, &http.Cookie{Name: "gst_session", Value: strings.Repeat("z", 513)}), 401, "unauthenticated")
+		// sotto il limite arriva a identity e torna inattivo: sempre 401
+		e.denied(t, e.gw("GET", res, nil, bearer("gst_"+strings.Repeat("A", 300)), nil), 401, "unauthenticated")
 		e.denied(t, e.gw("GET", res, nil, nil, &http.Cookie{Name: "gst_session", Value: strings.Repeat("z", 300)}), 401, "unauthenticated")
 	})
 
@@ -286,6 +287,72 @@ func TestSecurity(t *testing.T) {
 		e.denied(t, e.do("GET", e.core+"/resources/"+e.resourceID, nil, tam, nil), 401, "unauthenticated")
 		e.denied(t, e.do("DELETE", e.core+"/resources/"+e.resourceID, nil, forged, nil), 401, "unauthenticated")
 		want(t, e.gw("GET", res, nil, nil, e.admin), 200, "")
+	})
+
+	t.Run("risorsa_di_altra_organizzazione", func(t *testing.T) {
+		// org A (acme) possiede la risorsa tramite un grant al suo team e a anna;
+		// dina e' owner di org B (altra) e non ha alcun grant sulla risorsa.
+		acme, web, other := uuid.New(), uuid.New(), uuid.New()
+		uid := map[string]string{}
+		ck := map[string]*http.Cookie{}
+		bear := map[string]map[string]string{}
+		for _, n := range []string{"anna", "dina"} {
+			u := e.gw("POST", "/users", map[string]any{"username": n, "password": victimPass}, nil, e.admin)
+			want(t, u, 201, "")
+			uid[n], _ = u.json()["id"].(string)
+			ck[n] = e.login(t, n, victimPass)
+			tk := e.gw("POST", "/user/tokens", map[string]any{"name": "t", "scopes": []string{"read:resource", "write:resource"},
+				"expiresAt": time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)}, nil, ck[n])
+			want(t, tk, 201, "")
+			v, _ := tk.json()["token"].(string)
+			bear[n] = bearer(v)
+		}
+		ctx := context.Background()
+		for _, q := range []struct {
+			sql  string
+			args []any
+		}{
+			{`INSERT INTO identity.organizations (id, name) VALUES ($1, 'org-a-sec')`, []any{acme}},
+			{`INSERT INTO identity.organizations (id, name) VALUES ($1, 'org-b-sec')`, []any{other}},
+			{`INSERT INTO identity.teams (id, org_id, name) VALUES ($1, $2, 'web')`, []any{web, acme}},
+			{`INSERT INTO identity.org_members (org_id, user_id, role) VALUES ($1, $2, 'owner')`, []any{acme, uid["anna"]}},
+			{`INSERT INTO identity.org_members (org_id, user_id, role) VALUES ($1, $2, 'owner')`, []any{other, uid["dina"]}},
+			{`INSERT INTO identity.team_members (team_id, org_id, user_id) VALUES ($1, $2, $3)`, []any{web, acme, uid["anna"]}},
+		} {
+			if _, err := e.pool.Exec(ctx, q.sql, q.args...); err != nil {
+				t.Fatalf("%s: %v", q.sql, err)
+			}
+		}
+		want(t, e.gw("POST", res+"/grants", map[string]any{"subjectType": "team", "subjectId": web.String(), "role": "read"}, nil, e.admin), 201, "")
+		want(t, e.gw("POST", res+"/grants", map[string]any{"subjectType": "user", "subjectId": uid["anna"], "role": "write"}, nil, e.admin), 201, "")
+
+		// sanita': chi ha il grant vede la risorsa, quindi i 403 sotto sono per il permesso
+		want(t, e.gw("GET", res, nil, bear["anna"], nil), 200, "")
+
+		// dina (org B, senza grant): GET, PATCH, DELETE rifiutati e senza dati
+		for _, h := range []map[string]string{bear["dina"]} {
+			e.denied(t, e.gw("GET", res, nil, h, nil), 403, "forbidden")
+			e.denied(t, e.gw("PATCH", res, map[string]any{"name": "rubata"}, h, nil), 403, "forbidden")
+			e.denied(t, e.gw("DELETE", res, nil, h, nil), 403, "forbidden")
+			e.denied(t, e.gw("GET", res+"/grants", nil, h, nil), 403, "forbidden")
+		}
+		// stessa cosa con la sessione web
+		e.denied(t, e.gw("GET", res, nil, nil, ck["dina"]), 403, "forbidden")
+		// l'elenco: la risorsa di A non compare e total non la conta
+		lst := e.gw("GET", "/resources", nil, bear["dina"], nil)
+		e.denied(t, lst, 200, "")
+		if total, _ := lst.json()["total"].(float64); total != 0 {
+			t.Errorf("total = %v, atteso 0: %s", total, lst.body)
+		}
+		if items, ok := lst.json()["items"].([]any); !ok || len(items) != 0 {
+			t.Errorf("items = %v, attesa lista vuota: %s", items, lst.body)
+		}
+		// la risorsa e' intatta (nome non cambiato, non cancellata)
+		r := e.gw("GET", res, nil, bear["anna"], nil)
+		want(t, r, 200, "")
+		if r.json()["name"] != secretName {
+			t.Errorf("risorsa modificata: %s", r.body)
+		}
 	})
 
 	t.Run("brute_force_login", func(t *testing.T) {
