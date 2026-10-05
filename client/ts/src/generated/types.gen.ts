@@ -978,6 +978,18 @@ export type LookupEmailsResult = {
     }>;
 };
 
+export type LookupIdsInput = {
+    ids: Array<string>;
+};
+
+export type LookupIdsResult = {
+    users: Array<{
+        id: string;
+        username: Name;
+        kind: 'human' | 'agent';
+    }>;
+};
+
 export type IssueState = 'open' | 'closed';
 
 /**
@@ -7854,6 +7866,39 @@ export type LookupUsersByEmailResponses = {
 };
 
 export type LookupUsersByEmailResponse = LookupUsersByEmailResponses[keyof LookupUsersByEmailResponses];
+
+export type LookupUsersByIdsData = {
+    body: LookupIdsInput;
+    path?: never;
+    query?: never;
+    url: '/internal/users/lookup-ids';
+};
+
+export type LookupUsersByIdsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LookupUsersByIdsError = LookupUsersByIdsErrors[keyof LookupUsersByIdsErrors];
+
+export type LookupUsersByIdsResponses = {
+    /**
+     * Gli utenti trovati.
+     */
+    200: LookupIdsResult;
+};
+
+export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
 
 export type GitGetTreeData = {
     body?: never;
