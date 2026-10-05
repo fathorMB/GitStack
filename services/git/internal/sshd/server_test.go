@@ -30,7 +30,7 @@ const repoID = "0f0f0f0f-1111-4222-8333-444444444444"
 type fakeDir struct {
 	keys     map[string]access.KeyOwner
 	roles    map[string]string // userID -> read|write
-	archived atomic.Bool // scritto dal test mentre il server è in ascolto
+	archived atomic.Bool
 }
 
 func (f *fakeDir) LookupKey(_ context.Context, fp string) (access.KeyOwner, error) {
