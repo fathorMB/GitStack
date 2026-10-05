@@ -7,6 +7,7 @@ import type { Blame, CommitSummary, FileContent } from '../../lib/codeApi';
 import type { Repository } from '../../lib/reposApi';
 import { RepoPage } from './RepoPage';
 import { parseLineHash, splitLines } from '../../lib/codeLines';
+import { isMarkdownName } from '../../lib/codeApi';
 
 vi.mock('../../lib/reposApi', async (orig) => ({ ...(await orig<typeof import('../../lib/reposApi')>()), fetchRepo: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
@@ -154,6 +155,14 @@ describe('FileView', () => {
     expect(await screen.findByRole('heading', { name: 'Titolo' })).toBeInTheDocument();
   });
 
+  it('build.cmd non e Markdown: righe di codice e nessun pulsante Source', async () => {
+    vi.mocked(fetchFile).mockResolvedValue(file({ path: 'build.cmd', name: 'build.cmd', content: '@echo off\n' }));
+    renderAt('/acme/api/blob/main/build.cmd');
+    await screen.findByLabelText('File info');
+    expect(document.querySelectorAll('.codeline')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Source' })).toBeNull();
+  });
+
   it('immagine: solo <img> con data URL', async () => {
     vi.mocked(fetchFile).mockResolvedValue(
       file({ path: 'logo.png', name: 'logo.png', kind: 'image', binary: true, display: 'image', mimeType: 'image/png', encoding: 'base64', content: 'iVBORw0KGgo=' }),
@@ -250,6 +259,13 @@ describe('Blame', () => {
 });
 
 describe('utilita', () => {
+  it('isMarkdownName riconosce solo .md e .markdown', () => {
+    expect(isMarkdownName('README.md')).toBe(true);
+    expect(isMarkdownName('x.MARKDOWN')).toBe(true);
+    expect(isMarkdownName('build.cmd')).toBe(false);
+    expect(isMarkdownName('cmd')).toBe(false);
+    expect(isMarkdownName('notes.txt')).toBe(false);
+  });
   it('parseLineHash', () => {
     expect(parseLineHash('#L10')).toEqual([10, 10]);
     expect(parseLineHash('#L10-L20')).toEqual([10, 20]);

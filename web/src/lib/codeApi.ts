@@ -203,5 +203,5 @@ export function languageFor(fileName: string): string | undefined {
 }
 
 export function isMarkdownName(fileName: string): boolean {
-  return /.(md|markdown)$/i.test(fileName);
+  return /\.(md|markdown)$/i.test(fileName);
 }
