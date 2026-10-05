@@ -11,7 +11,11 @@
 //     (ereditarietà organizzazione → team → utente: chi possiede
 //     l'organizzazione ha sui team dell'organizzazione lo stesso ruolo dei
 //     loro membri);
-//   - admin, se l'utente è amministratore di sistema (users.is_admin).
+//   - admin, se l'utente è amministratore di sistema (users.is_admin);
+//   - dagli attributi della risorsa (identity.resource_attributes, impostati
+//     da core): admin agli owner dell'organizzazione proprietaria (P1) e al
+//     proprietario di un repo personale (P6); read a ogni utente attivo se la
+//     risorsa è interna (P3).
 //
 // Un utente disattivato o inesistente non ha nessun ruolo.
 package permissions
@@ -118,7 +122,7 @@ func New(pool *pgxpool.Pool, now func() time.Time) *Service {
 const effectiveSQL = `
 SELECT CASE
          WHEN u.is_admin THEN 3
-         ELSE COALESCE((
+         ELSE GREATEST(COALESCE((
            SELECT max(CASE g.role WHEN 'admin' THEN 3 WHEN 'write' THEN 2 WHEN 'read' THEN 1 ELSE 0 END)
            FROM identity.resource_grants g
            WHERE g.resource_id = $2
@@ -130,7 +134,19 @@ SELECT CASE
                     JOIN identity.org_members om ON om.org_id = t.org_id
                     WHERE om.user_id = u.id AND om.role = 'owner')
              )
-         ), 0)
+         ), 0), COALESCE((
+           -- P1, P6, P3: owner dell'organizzazione e proprietario del repo
+           -- personale sono admin, una risorsa interna e' leggibile da tutti.
+           SELECT CASE
+                    WHEN a.owner_type = 'user' AND a.owner_id = u.id THEN 3
+                    WHEN a.owner_type = 'organization' AND EXISTS (
+                         SELECT 1 FROM identity.org_members om
+                         WHERE om.org_id = a.owner_id AND om.user_id = u.id AND om.role = 'owner') THEN 3
+                    WHEN a.visibility = 'internal' THEN 1
+                    ELSE 0
+                  END
+           FROM identity.resource_attributes a WHERE a.resource_id = $2
+         ), 0))
        END
 FROM identity.users u
 WHERE u.id = $1 AND u.is_active`
@@ -158,10 +174,11 @@ func (s *Service) EffectiveRole(ctx context.Context, userID, resourceID uuid.UUI
 }
 
 // readableSQL elenca gli id delle risorse su cui l'utente $1 ha almeno read:
-// le stesse tre condizioni di effectiveSQL (grant diretto, team di cui è
-// membro, team delle organizzazioni di cui è owner), utente attivo.
+// le stesse condizioni di effectiveSQL (grant diretto, team di cui è
+// membro, team delle organizzazioni di cui è owner, più P1/P6/P3 dagli
+// attributi della risorsa), utente attivo.
 const readableSQL = `
-SELECT DISTINCT g.resource_id
+SELECT g.resource_id
 FROM identity.resource_grants g
 JOIN identity.users u ON u.id = $1 AND u.is_active
 WHERE g.role IN ('read', 'write', 'admin')
@@ -172,7 +189,16 @@ WHERE g.role IN ('read', 'write', 'admin')
          SELECT t.id FROM identity.teams t
          JOIN identity.org_members om ON om.org_id = t.org_id
          WHERE om.user_id = u.id AND om.role = 'owner')
-  )`
+  )
+UNION
+SELECT a.resource_id
+FROM identity.resource_attributes a
+JOIN identity.users u ON u.id = $1 AND u.is_active
+WHERE a.visibility = 'internal'
+   OR (a.owner_type = 'user' AND a.owner_id = u.id)
+   OR (a.owner_type = 'organization' AND EXISTS (
+         SELECT 1 FROM identity.org_members om
+         WHERE om.org_id = a.owner_id AND om.user_id = u.id AND om.role = 'owner'))`
 
 // ReadableResources ritorna le risorse leggibili dall'utente. all è vero solo
 // per l'amministratore di sistema (ids vuoto: vede tutto). Un utente

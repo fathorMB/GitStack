@@ -10,6 +10,7 @@
 package users
 
 import (
+	"github.com/fathorMB/GitStack/pkg/names"
 	"context"
 	"errors"
 	"fmt"
@@ -37,6 +38,11 @@ var (
 
 // AlreadyExistsError: username o email già usati (Field dice quale).
 type AlreadyExistsError struct{ Field string }
+
+// ReservedNameError: il nome è riservato (R1, pkg/names): 400.
+type ReservedNameError struct{ Name string }
+
+func (e *ReservedNameError) Error() string { return "il nome " + e.Name + " è riservato" }
 
 func (e *AlreadyExistsError) Error() string { return e.Field + " già in uso" }
 
@@ -149,6 +155,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (User, error) {
 	}
 	if len(f) > 0 {
 		return User{}, &ValidationError{Fields: f}
+	}
+	if names.IsReservedOwnerName(in.Username) {
+		return User{}, &ReservedNameError{Name: in.Username}
 	}
 
 	var hash string

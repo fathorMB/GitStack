@@ -251,3 +251,50 @@ func (s *server) GrantResourceCreator(w http.ResponseWriter, r *http.Request, re
 		writeJSON(w, http.StatusOK, toGrant(g))
 	}
 }
+
+// SetResourceAttributes è PUT /internal/resources/{resourceId}/attributes
+// (protetto da serviceAuth): owner e visibilità di una risorsa, per P1, P3 e
+// P6. L'owner non cambia mai (R3).
+func (s *server) SetResourceAttributes(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	var in openapi.ResourceAttributesInput
+	if _, ok := decode(w, r, &in); !ok {
+		return
+	}
+	err := s.permissions.SetAttributes(r.Context(), uuid.UUID(resourceId),
+		permissions.OwnerType(in.OwnerType), uuid.UUID(in.OwnerId), permissions.Visibility(in.Visibility))
+	var ve *permissions.ValidationError
+	switch {
+	case errors.As(err, &ve):
+		writeError(w, http.StatusBadRequest, "bad_request", "Owner o visibilità non validi.")
+	case errors.Is(err, permissions.ErrOwnerNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Owner non trovato.")
+	case errors.Is(err, permissions.ErrOwnerChanged):
+		writeError(w, http.StatusConflict, "already_exists", "La risorsa ha già un altro owner: non può cambiare.")
+	case err != nil:
+		s.internal(w, r, err)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ResolveOwner è GET /internal/owners/{name}: tipo e id di chi si chiama così
+// nello spazio di nomi unico di utenti e organizzazioni (R1).
+func (s *server) ResolveOwner(w http.ResponseWriter, r *http.Request, name string) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	o, err := s.permissions.ResolveOwner(r.Context(), name)
+	switch {
+	case errors.Is(err, permissions.ErrNameNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "Nessun utente o organizzazione con questo nome.")
+	case err != nil:
+		s.internal(w, r, err)
+	default:
+		writeJSON(w, http.StatusOK, openapi.OwnerRef{Id: openapi_types.UUID(o.ID), Name: o.Name, Type: openapi.OwnerType(o.Type)})
+	}
+}

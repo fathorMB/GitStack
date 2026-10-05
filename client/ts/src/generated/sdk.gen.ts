@@ -1053,7 +1053,7 @@ export const verifyCredential = <ThrowOnError extends boolean = false>(options: 
 /**
  * Verifica un permesso su una risorsa
  *
- * Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+ * Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
  *
  */
 export const checkPermission = <ThrowOnError extends boolean = false>(options: Options<CheckPermissionData, ThrowOnError>): RequestResult<CheckPermissionResponses, CheckPermissionErrors, ThrowOnError> => (options.client ?? client).post<CheckPermissionResponses, CheckPermissionErrors, ThrowOnError>({
@@ -1073,7 +1073,7 @@ export const checkPermission = <ThrowOnError extends boolean = false>(options: O
 /**
  * Risorse leggibili da un utente
  *
- * Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+ * Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
  *
  */
 export const listReadableResources = <ThrowOnError extends boolean = false>(options: Options<ListReadableResourcesData, ThrowOnError>): RequestResult<ListReadableResourcesResponses, ListReadableResourcesErrors, ThrowOnError> => (options.client ?? client).post<ListReadableResourcesResponses, ListReadableResourcesErrors, ThrowOnError>({
@@ -1128,7 +1128,7 @@ export const lookupSshKey = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * Imposta owner e visibilita' di una risorsa (per core)
  *
- * Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+ * Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
  *
  */
 export const setResourceAttributes = <ThrowOnError extends boolean = false>(options: Options<SetResourceAttributesData, ThrowOnError>): RequestResult<SetResourceAttributesResponses, SetResourceAttributesErrors, ThrowOnError> => (options.client ?? client).put<SetResourceAttributesResponses, SetResourceAttributesErrors, ThrowOnError>({
@@ -1148,7 +1148,7 @@ export const setResourceAttributes = <ThrowOnError extends boolean = false>(opti
 /**
  * Risolve il nome di un utente o di un'organizzazione
  *
- * Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+ * Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
  *
  */
 export const resolveOwner = <ThrowOnError extends boolean = false>(options: Options<ResolveOwnerData, ThrowOnError>): RequestResult<ResolveOwnerResponses, ResolveOwnerErrors, ThrowOnError> => (options.client ?? client).get<ResolveOwnerResponses, ResolveOwnerErrors, ThrowOnError>({

@@ -532,6 +532,10 @@ func (s *Service) create(ctx context.Context, providerID uuid.UUID, id identity,
 		u, err := s.repo.CreateUser(ctx, users.CreateInput{
 			Username: name, Kind: users.KindHuman, Email: email, DisplayName: display,
 		})
+		var rn *users.ReservedNameError
+		if errors.As(err, &rn) {
+			continue // nome riservato: si prova il successivo con suffisso
+		}
 		var ae *users.AlreadyExistsError
 		if errors.As(err, &ae) {
 			if ae.Field == "email" {

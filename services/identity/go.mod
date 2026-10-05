@@ -19,6 +19,7 @@ require (
 	github.com/docker/docker v28.5.1+incompatible // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
+	github.com/fathorMB/GitStack/pkg/names v0.0.0-20261005080521-b11140daae71
 	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/jsonpointer v1.0.1 // indirect

@@ -28,6 +28,8 @@ Requisiti di M-02 (D5) e comportamento realizzato. Fonti nel repo: `services/ide
 - **Visibilità** (P3): **privato** (solo chi ha un ruolo come sopra) o **interno** (lettura a tutti gli utenti con account). Nessun livello pubblico. La scrittura richiede sempre `write` o `admin`.
 - **Default privato** alla creazione, anche via API o `gs` (P7).
 - **Repo personali** ammessi (P6).
+- **Realizzato (GIT-65, M-03/C):** identity applica P1, P6 e P3 sia in `/internal/permissions/check` sia in `/internal/permissions/readable-resources`, leggendo owner e visibilità che core imposta con `PUT /internal/resources/{id}/attributes` (tabella `identity.resource_attributes`). Utenti disattivati e membri semplici non ricevono niente; un repo interno è leggibile da ogni utente attivo ma si scrive solo con un grant.
+- **Spazio di nomi unico (R1), realizzato:** utenti e organizzazioni condividono i nomi (`identity.owner_names`, migrazione `0003`): un nome già preso dall'altro tipo dà 409, un nome riservato (`pkg/names`) dà 400; la migrazione si ferma con un errore chiaro se esistono già collisioni. `GET /internal/owners/{name}` risolve un nome in tipo e id.
 
 **Agenti (P4, P5).** Per limitare un agente si crea un utente di tipo `agent` con grant solo sulle risorse necessarie; i token non sono limitati a singole risorse nella v1. Solo l'amministratore dell'installazione crea ed elimina utenti agent e può crearne e revocarne i token senza fare login al loro posto. Gli utenti agent non hanno password: si autenticano solo con token.
 

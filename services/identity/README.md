@@ -58,6 +58,7 @@ Migrazioni in `internal/migrate/sql` (embed, golang-migrate, come `services/core
 |---|---|
 | `0001_init_identity_schema` | `users`, `credentials`, `sessions`, `api_tokens`, `ssh_keys`, `oidc_providers`, `oidc_identities` |
 | `0002_orgs_teams_grants` | `organizations`, `org_members`, `teams`, `team_members`, `resource_grants` |
+| `0003_owner_names_resource_attributes` | `owner_names` (spazio di nomi unico, trigger), `resource_attributes` (owner e visibilità) |
 
 Nessun segreto in chiaro:
 
@@ -230,3 +231,21 @@ Pacchetto `internal/permissions` (store e calcolo), handler in `internal/httpapi
 - `GET /resources/{id}/permissions`: ruolo effettivo del chiamante, `role: null` se nessuno (200). Non tiene conto degli scope del token: li applica il gateway.
 
 Fuori perimetro (item successivi): grant admin automatico a chi crea una risorsa; filtro per permesso di `GET /resources`; grant a un'organizzazione come soggetto (il contratto ammette solo `user` e `team`: l'organizzazione pesa tramite il ruolo di owner).
+
+## Permessi da owner, visibilità e spazio di nomi unico (GIT-65, M-03/C)
+
+**Attributi delle risorse.** Core imposta owner e visibilità di una risorsa con `PUT /internal/resources/{id}/attributes` (tabella `identity.resource_attributes`, migrazione `0003`; nessuna FK verso `core`, D6). Idempotente; l'owner non cambia mai (R3: un owner diverso dà 409, un owner inesistente 404, valori non validi 400). Una risorsa senza riga si comporta come prima di M-03.
+
+**Ruolo effettivo** (`/internal/permissions/check`) e **risorse leggibili** (`/internal/permissions/readable-resources`) usano le stesse regole: il massimo fra i grant (diretti, via team, via owner dell'organizzazione sui team), l'admin di sistema e, dagli attributi:
+
+| Regola | Condizione | Ruolo |
+|---|---|---|
+| P1 | l'utente è `owner` dell'organizzazione proprietaria | `admin` |
+| P6 | l'utente è il proprietario del repo personale | `admin` |
+| P3 | la risorsa è `internal` e l'utente è attivo | `read` |
+
+Un repo interno è quindi leggibile da ogni utente attivo ma non scrivibile senza un grant `write`. Un utente disattivato o sconosciuto non ha nessun ruolo, nemmeno da owner o su un repo interno. Un membro semplice o un owner di un'altra organizzazione non ricevono niente da P1.
+
+**Spazio di nomi unico (R1).** La migrazione `0003` crea `identity.owner_names` (nome unico, tipo e id), mantenuta da trigger su `users.username` e `organizations.name`: creare un utente con il nome di un'organizzazione (o viceversa) viola l'unicità comune e dà **409** `already_exists`. `GET /internal/owners/{name}` risolve un nome in tipo e id (404 se libero). I nomi riservati di `pkg/names` (`login`, `settings`, `api`, `admin`…) sono rifiutati con **400** `reserved_name` alla creazione di utenti e organizzazioni; l'admin del primo avvio (`admin`) e i controlli del login OIDC fanno eccezione/ripiego: il bootstrap non applica la lista, l'auto-creazione OIDC passa al nome con suffisso (`admin-2`).
+
+**Collisioni già presenti.** Prima di creare il registro la migrazione verifica che nessun nome sia usato sia da un utente sia da un'organizzazione: se succede si ferma con un errore che elenca i nomi (`migrazione 0003 interrotta: esistono nomi usati sia da un utente sia da un'organizzazione (…)`) e non lascia modifiche a metà (la migrazione è una sola transazione). golang-migrate segna però il database come *dirty* alla versione 3: rinominare uno dei due e poi `migrate force 2` prima di rieseguire.
