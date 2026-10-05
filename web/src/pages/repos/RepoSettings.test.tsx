@@ -6,6 +6,8 @@ import { ToastProvider } from '../../components';
 import { ApiError } from '../../lib/http';
 import type { DeletedRepository, Repository } from '../../lib/reposApi';
 import { daysLeft } from '../../lib/format';
+import { AppRoutes } from '../../App';
+import { AuthProvider } from '../../routes/auth';
 import { DeletedReposPage } from './DeletedReposPage';
 import { RepoPage } from './RepoPage';
 import { RepoSettingsPage } from './RepoSettingsPage';
@@ -313,6 +315,22 @@ describe('DeletedReposPage', () => {
     vi.mocked(fetchDeletedRepos).mockResolvedValue([]);
     renderDeleted();
     expect(await screen.findByText('No deleted repositories')).toBeInTheDocument();
+  });
+
+  it('la rotta vera /orgs/:org/deleted-repos monta la pagina per l organizzazione', async () => {
+    render(
+      <MemoryRouter initialEntries={['/orgs/acme/deleted-repos']}>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Deleted repositories' })).toBeInTheDocument();
+    expect(screen.queryByText('Page not found.')).not.toBeInTheDocument();
+    await waitFor(() => expect(fetchDeletedRepos).toHaveBeenCalledWith('acme'));
+    expect(await screen.findByText('acme/old-docs')).toBeInTheDocument();
   });
 
   it('daysLeft arrotonda per eccesso e non scende sotto 0', () => {

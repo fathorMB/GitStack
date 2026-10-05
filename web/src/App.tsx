@@ -67,6 +67,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/orgs/:org/deleted-repos"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Deleted repositories">
+              <DeletedReposPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/settings"
         element={
           <RequireAuth>

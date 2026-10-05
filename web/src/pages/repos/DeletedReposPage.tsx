@@ -10,7 +10,7 @@ import { useLoad } from '../../lib/useLoad';
 import type { SettingsContext } from '../settings/SettingsLayout';
 
 // Repo eliminati dell'owner (mockup 19): per l'utente (/settings/deleted-repos)
-// e per l'organizzazione (/orgs/:org/settings/deleted-repos). Il backend
+// e per l'organizzazione (/orgs/:org/deleted-repos). Il backend
 // elenca solo quelli su cui l'utente ha admin (R12).
 export function DeletedReposPage() {
   const { org } = useParams<{ org?: string }>();
