@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitErrors, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitErrors, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -302,6 +302,70 @@ export const updateUser = <ThrowOnError extends boolean = false>(options: Option
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Elenca i token di un utente agent
+ *
+ * Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent`: sui token di una persona decide solo lei (409 `not_an_agent`). Mai il valore del token, solo `hint`.
+ *
+ */
+export const listUserTokens = <ThrowOnError extends boolean = false>(options: Options<ListUserTokensData, ThrowOnError>): RequestResult<ListUserTokensResponses, ListUserTokensErrors, ThrowOnError> => (options.client ?? client).get<ListUserTokensResponses, ListUserTokensErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/tokens',
+    ...options
+});
+
+/**
+ * Crea un token per un utente agent
+ *
+ * Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+ *
+ */
+export const createUserToken = <ThrowOnError extends boolean = false>(options: Options<CreateUserTokenData, ThrowOnError>): RequestResult<CreateUserTokenResponses, CreateUserTokenErrors, ThrowOnError> => (options.client ?? client).post<CreateUserTokenResponses, CreateUserTokenErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/tokens',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoca un token di un utente agent
+ *
+ * Solo amministratori, scope `write:user` (regola P5). Un token che non appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+ *
+ */
+export const revokeUserToken = <ThrowOnError extends boolean = false>(options: Options<RevokeUserTokenData, ThrowOnError>): RequestResult<RevokeUserTokenResponses, RevokeUserTokenErrors, ThrowOnError> => (options.client ?? client).delete<RevokeUserTokenResponses, RevokeUserTokenErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/tokens/{tokenId}',
+    ...options
 });
 
 /**
@@ -1093,7 +1157,7 @@ export const getRepositoryRaw = <ThrowOnError extends boolean = false>(options: 
 /**
  * Branch del repo, con conteggi
  *
- * Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
  *
  */
 export const getRepositoryBranches = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryBranchesData, ThrowOnError>): RequestResult<GetRepositoryBranchesResponses, GetRepositoryBranchesErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryBranchesResponses, GetRepositoryBranchesErrors, ThrowOnError>({
@@ -1113,7 +1177,7 @@ export const getRepositoryBranches = <ThrowOnError extends boolean = false>(opti
 /**
  * Tag del repo, con conteggi
  *
- * Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ * Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
  *
  */
 export const getRepositoryTags = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryTagsData, ThrowOnError>): RequestResult<GetRepositoryTagsResponses, GetRepositoryTagsErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryTagsResponses, GetRepositoryTagsErrors, ThrowOnError>({
@@ -1526,7 +1590,7 @@ export const gitGetRaw = <ThrowOnError extends boolean = false>(options: Options
 /**
  * Branch del repo, con conteggi (per core)
  *
- * Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+ * Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
  *
  */
 export const gitGetBranches = <ThrowOnError extends boolean = false>(options: Options<GitGetBranchesData, ThrowOnError>): RequestResult<GitGetBranchesResponses, GitGetBranchesErrors, ThrowOnError> => (options.client ?? client).get<GitGetBranchesResponses, GitGetBranchesErrors, ThrowOnError>({
@@ -1542,7 +1606,7 @@ export const gitGetBranches = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Tag del repo, con conteggi (per core)
  *
- * Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+ * Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
  *
  */
 export const gitGetTags = <ThrowOnError extends boolean = false>(options: Options<GitGetTagsData, ThrowOnError>): RequestResult<GitGetTagsResponses, GitGetTagsErrors, ThrowOnError> => (options.client ?? client).get<GitGetTagsResponses, GitGetTagsErrors, ThrowOnError>({

@@ -6,6 +6,8 @@ import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
+import { DeletedReposPage } from './pages/repos/DeletedReposPage';
+import { RepoSettingsPage } from './pages/repos/RepoSettingsPage';
 import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
@@ -65,6 +67,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/orgs/:org/deleted-repos"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Deleted repositories">
+              <DeletedReposPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/settings"
         element={
           <RequireAuth>
@@ -78,6 +90,7 @@ export function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
+        <Route path="deleted-repos" element={<DeletedReposPage />} />
       </Route>
       {/* Rotte dinamiche dopo quelle fisse: /:owner/:repo non copre /orgs, /settings... (due segmenti) e i nomi riservati (R1, GIT-64). */}
       <Route
@@ -106,6 +119,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Repository">
               <RepoPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/settings"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository settings">
+              <RepoSettingsPage />
             </AppShell>
           </RequireAuth>
         }

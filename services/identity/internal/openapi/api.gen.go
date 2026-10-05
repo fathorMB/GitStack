@@ -996,6 +996,12 @@ type ListUsersParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListUserTokensParams defines parameters for ListUserTokens.
+type ListUserTokensParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
@@ -1055,6 +1061,9 @@ type UpdateUserJSONRequestBody = UpdateUserInput
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = ChangePasswordInput
+
+// CreateUserTokenJSONRequestBody defines body for CreateUserToken for application/json ContentType.
+type CreateUserTokenJSONRequestBody = CreateTokenInput
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -1202,6 +1211,15 @@ type ServerInterface interface {
 	// ChangePassword Cambia la password
 	// (PUT /users/{username}/password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, username UsernameParam)
+	// ListUserTokens Elenca i token di un utente agent
+	// (GET /users/{username}/tokens)
+	ListUserTokens(w http.ResponseWriter, r *http.Request, username UsernameParam, params ListUserTokensParams)
+	// CreateUserToken Crea un token per un utente agent
+	// (POST /users/{username}/tokens)
+	CreateUserToken(w http.ResponseWriter, r *http.Request, username UsernameParam)
+	// RevokeUserToken Revoca un token di un utente agent
+	// (DELETE /users/{username}/tokens/{tokenId})
+	RevokeUserToken(w http.ResponseWriter, r *http.Request, username UsernameParam, tokenId TokenIdParam)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -2679,6 +2697,122 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// ListUserTokens operation middleware
+func (siw *ServerInterfaceWrapper) ListUserTokens(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListUserTokensParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUserTokens(w, r, username, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateUserToken operation middleware
+func (siw *ServerInterfaceWrapper) CreateUserToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateUserToken(w, r, username)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeUserToken operation middleware
+func (siw *ServerInterfaceWrapper) RevokeUserToken(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "tokenId" -------------
+	var tokenId TokenIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", r.PathValue("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tokenId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeUserToken(w, r, username, tokenId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2810,6 +2944,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{username}", wrapper.DeleteUser)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}", wrapper.GetUser)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/users/{username}", wrapper.UpdateUser)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/tokens", wrapper.ListUserTokens)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users/{username}/tokens", wrapper.CreateUserToken)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{username}/tokens/{tokenId}", wrapper.RevokeUserToken)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/users/{username}/password", wrapper.ChangePassword)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/tokens", wrapper.ListTokens)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/tokens", wrapper.CreateToken)

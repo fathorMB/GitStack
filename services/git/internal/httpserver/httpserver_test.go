@@ -171,6 +171,12 @@ func TestCreateConContenuto(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `"empty":false`) {
 		t.Fatalf("risposta: %s", rec.Body)
 	}
+	// GET elenca i branch esistenti (R4): serve a core per validare il branch principale.
+	got := e.do("GET", "/internal/git/repos/"+rid, "", true)
+	e.expect(got, 200)
+	if !strings.Contains(got.Body.String(), `"branches":["main"]`) {
+		t.Fatalf("GET senza i branch: %s", got.Body)
+	}
 	p, _ := e.store.RepoPath(rid)
 	out, err := exec.Command("git", "-C", p, "ls-tree", "--name-only", "main").CombinedOutput()
 	if err != nil {

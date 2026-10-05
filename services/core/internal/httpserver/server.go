@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -26,6 +27,10 @@ type apiServer struct {
 	// readable elenca le risorse leggibili dal chiamante; nil se identity non
 	// è configurata (GET /resources risponde 503).
 	readable identityclient.ReadableLister
+	// repoIdentity e git servono alle operazioni sui repo (M-03); nil = 503.
+	repoIdentity identityclient.RepoIdentity
+	git          gitclient.Git
+	clone        CloneConfig
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

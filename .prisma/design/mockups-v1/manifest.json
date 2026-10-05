@@ -1,16 +1,17 @@
 {
-  "description": "20 schermate della v1 navigabili (login, home, repo, codice, commit, diff, issues e nuova issue, notifiche, token, organizzazione, impostazioni del repo, repo eliminati, webhook, admin). Selettore in alto per cambiare schermata e tema.",
+  "description": "21 schermate della v1 navigabili (login, home, repo, codice, commit, diff, issues e nuova issue, notifiche e preferenze, token, organizzazione, impostazioni del repo, repo eliminati, webhook, admin). Selettore in alto per cambiare schermata e tema.",
   "id": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
   "knowledge": [
     "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4",
     "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
     "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
     "DOC-6878277b-230e-448b-a761-215e9d233c54",
-    "DOC-1565db4b-4108-490d-aca1-28d30c36ad99"
+    "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
+    "DOC-6db23bbe-fbf2-4913-a207-711865af66f6"
   ],
   "schema_version": 1,
   "status": "ready",
   "title": "GitStack Mockups v1",
   "update_reason": null,
-  "updated": "2026-10-05T08:55:00+00:00"
+  "updated": "2026-10-05T09:25:00+00:00"
 }

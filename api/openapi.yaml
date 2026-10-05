@@ -555,6 +555,112 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /users/{username}/tokens:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    get:
+      operationId: listUserTokens
+      tags: [users]
+      summary: Elenca i token di un utente agent
+      description: >
+        Solo amministratori, scope `write:user` (regola P5). Solo per utenti
+        di tipo `agent`: sui token di una persona decide solo lei (409
+        `not_an_agent`). Mai il valore del token, solo `hint`.
+      x-required-scopes: ["write:user"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createUserToken
+      tags: [users]
+      summary: Crea un token per un utente agent
+      description: >
+        Solo amministratori, scope `write:user` (regola P5). Solo per utenti
+        di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei
+        token personali: scope dal catalogo, scadenza obbligatoria con lo
+        stesso massimo, valore (`gst_...`) mostrato una sola volta, nel
+        database solo lo SHA-256.
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTokenInput"
+      responses:
+        "201":
+          description: Token creato.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedToken"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /users/{username}/tokens/{tokenId}:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+      - $ref: "#/components/parameters/TokenIdParam"
+    delete:
+      operationId: revokeUserToken
+      tags: [users]
+      summary: Revoca un token di un utente agent
+      description: >
+        Solo amministratori, scope `write:user` (regola P5). Un token che non
+        appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Token revocato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /users/{username}/password:
     parameters:
       - $ref: "#/components/parameters/UsernameParam"
@@ -1714,10 +1820,9 @@ paths:
       x-required-scopes: ["read:resource"]
       summary: Branch del repo, con conteggi
       description: >
-        Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo'
-        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
-        sha; se manca vale il branch principale (R4). Un `ref` non valido
-        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+        Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+        Come per `getRepository`: un repo che l'utente non puo' leggere, o
+        eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
       responses:
         "200":
           description: Branch.
@@ -1746,10 +1851,9 @@ paths:
       x-required-scopes: ["read:resource"]
       summary: Tag del repo, con conteggi
       description: >
-        Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo'
-        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
-        sha; se manca vale il branch principale (R4). Un `ref` non valido
-        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+        Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+        Come per `getRepository`: un repo che l'utente non puo' leggere, o
+        eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
       responses:
         "200":
           description: Tag.
@@ -2485,8 +2589,7 @@ paths:
       summary: "Branch del repo, con conteggi (per core)"
       description: >
         Corrispondente interno di `getRepositoryBranches`: parla solo per
-        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
-        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core.
         Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
       security:
         - serviceAuth: []
@@ -2515,8 +2618,7 @@ paths:
       summary: "Tag del repo, con conteggi (per core)"
       description: >
         Corrispondente interno di `getRepositoryTags`: parla solo per
-        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
-        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core.
         Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
       security:
         - serviceAuth: []
@@ -3966,6 +4068,12 @@ components:
         ssh:
           type: string
           example: ssh://git@git.example.com:2222/alice/my-app.git
+        sshShort:
+          type: string
+          description: >
+            Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo
+            quando la porta SSH dell'installazione e' 22.
+          example: git@git.example.com:alice/my-app.git
 
     Repository:
       type: object
@@ -4205,6 +4313,11 @@ components:
           type: boolean
         empty:
           type: boolean
+        branches:
+          type: array
+          description: Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
+          items:
+            type: string
 
     CodeUser:
       type: object

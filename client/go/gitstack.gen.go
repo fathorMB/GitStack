@@ -859,9 +859,11 @@ type GitRepoCreated struct {
 
 // GitRepoState defines model for GitRepoState.
 type GitRepoState struct {
-	Empty   bool               `json:"empty"`
-	RepoId  openapi_types.UUID `json:"repoId"`
-	Trashed bool               `json:"trashed"`
+	// Branches Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
+	Branches *[]string          `json:"branches,omitempty"`
+	Empty    bool               `json:"empty"`
+	RepoId   openapi_types.UUID `json:"repoId"`
+	Trashed  bool               `json:"trashed"`
 }
 
 // GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
@@ -1083,6 +1085,12 @@ type RepoCloneUrls struct {
 
 	// Ssh Example: ssh://git@git.example.com:2222/alice/my-app.git
 	Ssh string `json:"ssh"`
+
+	// SshShort Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo quando la porta SSH dell'installazione e' 22.
+	//
+	//
+	// Example: git@git.example.com:alice/my-app.git
+	SshShort *string `json:"sshShort,omitempty"`
 }
 
 // RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
@@ -1783,6 +1791,12 @@ type ListUsersParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListUserTokensParams defines parameters for ListUserTokens.
+type ListUserTokensParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
@@ -1857,6 +1871,9 @@ type UpdateUserJSONRequestBody = UpdateUserInput
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = ChangePasswordInput
+
+// CreateUserTokenJSONRequestBody defines body for CreateUserToken for application/json ContentType.
+type CreateUserTokenJSONRequestBody = CreateTokenInput
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -2038,7 +2055,7 @@ type ClientInterface interface {
 
 	// GitGetBranches Branch del repo, con conteggi (per core)
 	//
-	// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+	// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/branches (the `GitGetBranches` operationId).
 	GitGetBranches(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2092,7 +2109,7 @@ type ClientInterface interface {
 
 	// GitGetTags Tag del repo, con conteggi (per core)
 	//
-	// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+	// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/tags (the `GitGetTags` operationId).
 	GitGetTags(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2480,7 +2497,7 @@ type ClientInterface interface {
 
 	// GetRepositoryBranches Branch del repo, con conteggi
 	//
-	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/branches (the `GetRepositoryBranches` operationId).
 	GetRepositoryBranches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2529,7 +2546,7 @@ type ClientInterface interface {
 
 	// GetRepositoryTags Tag del repo, con conteggi
 	//
-	// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/tags (the `GetRepositoryTags` operationId).
 	GetRepositoryTags(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2780,6 +2797,38 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /users/{username}/password (the `ChangePassword` operationId).
 	ChangePassword(ctx context.Context, username UsernameParam, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListUserTokens Elenca i token di un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent`: sui token di una persona decide solo lei (409 `not_an_agent`). Mai il valore del token, solo `hint`.
+	//
+	// Corresponds with GET /users/{username}/tokens (the `ListUserTokens` operationId).
+	ListUserTokens(ctx context.Context, username UsernameParam, params *ListUserTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUserTokenWithBody Crea un token per un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+	CreateUserTokenWithBody(ctx context.Context, username UsernameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUserToken Crea un token per un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+	CreateUserToken(ctx context.Context, username UsernameParam, body CreateUserTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevokeUserToken Revoca un token di un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Un token che non appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+	//
+	// Corresponds with DELETE /users/{username}/tokens/{tokenId} (the `RevokeUserToken` operationId).
+	RevokeUserToken(ctx context.Context, username UsernameParam, tokenId TokenIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // LoginWithBody Accede con username e password
@@ -3028,7 +3077,7 @@ func (c *Client) GitGetBlame(ctx context.Context, repoId GitRepoIdParam, params 
 
 // GitGetBranches Branch del repo, con conteggi (per core)
 //
-// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
 //
 // Corresponds with GET /internal/git/repos/{repoId}/branches (the `GitGetBranches` operationId).
 func (c *Client) GitGetBranches(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3162,7 +3211,7 @@ func (c *Client) GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqE
 
 // GitGetTags Tag del repo, con conteggi (per core)
 //
-// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
 //
 // Corresponds with GET /internal/git/repos/{repoId}/tags (the `GitGetTags` operationId).
 func (c *Client) GitGetTags(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4050,7 +4099,7 @@ func (c *Client) GetRepositoryBlame(ctx context.Context, owner RepoOwnerParam, r
 
 // GetRepositoryBranches Branch del repo, con conteggi
 //
-// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
 //
 // Corresponds with GET /repos/{owner}/{repo}/branches (the `GetRepositoryBranches` operationId).
 func (c *Client) GetRepositoryBranches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4169,7 +4218,7 @@ func (c *Client) GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, 
 
 // GetRepositoryTags Tag del repo, con conteggi
 //
-// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
 //
 // Corresponds with GET /repos/{owner}/{repo}/tags (the `GetRepositoryTags` operationId).
 func (c *Client) GetRepositoryTags(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4751,6 +4800,78 @@ func (c *Client) ChangePasswordWithBody(ctx context.Context, username UsernamePa
 // Corresponds with PUT /users/{username}/password (the `ChangePassword` operationId).
 func (c *Client) ChangePassword(ctx context.Context, username UsernameParam, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewChangePasswordRequest(c.Server, username, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListUserTokens Elenca i token di un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent`: sui token di una persona decide solo lei (409 `not_an_agent`). Mai il valore del token, solo `hint`.
+//
+// Corresponds with GET /users/{username}/tokens (the `ListUserTokens` operationId).
+func (c *Client) ListUserTokens(ctx context.Context, username UsernameParam, params *ListUserTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUserTokensRequest(c.Server, username, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateUserTokenWithBody Crea un token per un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+func (c *Client) CreateUserTokenWithBody(ctx context.Context, username UsernameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUserTokenRequestWithBody(c.Server, username, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateUserToken Crea un token per un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+func (c *Client) CreateUserToken(ctx context.Context, username UsernameParam, body CreateUserTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUserTokenRequest(c.Server, username, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevokeUserToken Revoca un token di un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Un token che non appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+//
+// Corresponds with DELETE /users/{username}/tokens/{tokenId} (the `RevokeUserToken` operationId).
+func (c *Client) RevokeUserToken(ctx context.Context, username UsernameParam, tokenId TokenIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeUserTokenRequest(c.Server, username, tokenId)
 	if err != nil {
 		return nil, err
 	}
@@ -9216,6 +9337,167 @@ func NewChangePasswordRequestWithBody(server string, username UsernameParam, con
 	return req, nil
 }
 
+// NewListUserTokensRequest constructs an http.Request for the ListUserTokens method
+func NewListUserTokensRequest(server string, username UsernameParam, params *ListUserTokensParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/tokens", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateUserTokenRequest calls the generic CreateUserToken builder with application/json body
+func NewCreateUserTokenRequest(server string, username UsernameParam, body CreateUserTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateUserTokenRequestWithBody(server, username, "application/json", bodyReader)
+}
+
+// NewCreateUserTokenRequestWithBody constructs an http.Request for the CreateUserToken method, with any body, and a specified content type
+func NewCreateUserTokenRequestWithBody(server string, username UsernameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/tokens", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRevokeUserTokenRequest constructs an http.Request for the RevokeUserToken method
+func NewRevokeUserTokenRequest(server string, username UsernameParam, tokenId TokenIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "tokenId", tokenId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/tokens/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -9386,7 +9668,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitGetBranchesWithResponse Branch del repo, con conteggi (per core)
 	//
-	// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+	// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -9456,7 +9738,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitGetTagsWithResponse Tag del repo, con conteggi (per core)
 	//
-	// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+	// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -9888,7 +10170,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetRepositoryBranchesWithResponse Branch del repo, con conteggi
 	//
-	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -9951,7 +10233,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetRepositoryTagsWithResponse Tag del repo, con conteggi
 	//
-	// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10234,6 +10516,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /users/{username}/password (the `ChangePassword` operationId).
 	ChangePasswordWithResponse(ctx context.Context, username UsernameParam, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error)
+
+	// ListUserTokensWithResponse Elenca i token di un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent`: sui token di una persona decide solo lei (409 `not_an_agent`). Mai il valore del token, solo `hint`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /users/{username}/tokens (the `ListUserTokens` operationId).
+	ListUserTokensWithResponse(ctx context.Context, username UsernameParam, params *ListUserTokensParams, reqEditors ...RequestEditorFn) (*ListUserTokensResponse, error)
+
+	// CreateUserTokenWithBodyWithResponse Crea un token per un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+	CreateUserTokenWithBodyWithResponse(ctx context.Context, username UsernameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserTokenResponse, error)
+
+	// CreateUserTokenWithResponse Crea un token per un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+	CreateUserTokenWithResponse(ctx context.Context, username UsernameParam, body CreateUserTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserTokenResponse, error)
+
+	// RevokeUserTokenWithResponse Revoca un token di un utente agent
+	//
+	// Solo amministratori, scope `write:user` (regola P5). Un token che non appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /users/{username}/tokens/{tokenId} (the `RevokeUserToken` operationId).
+	RevokeUserTokenWithResponse(ctx context.Context, username UsernameParam, tokenId TokenIdParam, reqEditors ...RequestEditorFn) (*RevokeUserTokenResponse, error)
 }
 
 // LoginResponse200Headers the declared response headers of an HTTP 200 response for Login
@@ -16484,6 +16802,262 @@ func (r ChangePasswordResponse) ContentType() string {
 	return ""
 }
 
+type ListUserTokensResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TokenList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListUserTokensResponse) GetJSON200() *TokenList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListUserTokensResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListUserTokensResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListUserTokensResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListUserTokensResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ListUserTokensResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListUserTokensResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListUserTokensResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListUserTokensResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListUserTokensResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListUserTokensResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateUserTokenResponse201Headers the declared response headers of an HTTP 201 response for CreateUserToken
+type CreateUserTokenResponse201Headers struct {
+	Location *string
+}
+
+type CreateUserTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CreatedToken
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateUserTokenResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateUserTokenResponse) GetJSON201() *CreatedToken {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateUserTokenResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateUserTokenResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateUserTokenResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateUserTokenResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateUserTokenResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateUserTokenResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateUserTokenResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateUserTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateUserTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateUserTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateUserTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevokeUserTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RevokeUserTokenResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RevokeUserTokenResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RevokeUserTokenResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RevokeUserTokenResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RevokeUserTokenResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RevokeUserTokenResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RevokeUserTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevokeUserTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevokeUserTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevokeUserTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // LoginWithBodyWithResponse Accede con username e password
 //
 // Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
@@ -16694,7 +17268,7 @@ func (c *ClientWithResponses) GitGetBlameWithResponse(ctx context.Context, repoI
 
 // GitGetBranchesWithResponse Branch del repo, con conteggi (per core)
 //
-// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -16812,7 +17386,7 @@ func (c *ClientWithResponses) GitRestoreRepoWithResponse(ctx context.Context, re
 
 // GitGetTagsWithResponse Tag del repo, con conteggi (per core)
 //
-// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -17544,7 +18118,7 @@ func (c *ClientWithResponses) GetRepositoryBlameWithResponse(ctx context.Context
 
 // GetRepositoryBranchesWithResponse Branch del repo, con conteggi
 //
-// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -17649,7 +18223,7 @@ func (c *ClientWithResponses) GetRepositoryReadmeWithResponse(ctx context.Contex
 
 // GetRepositoryTagsWithResponse Tag del repo, con conteggi
 //
-// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -18135,6 +18709,66 @@ func (c *ClientWithResponses) ChangePasswordWithResponse(ctx context.Context, us
 		return nil, err
 	}
 	return ParseChangePasswordResponse(rsp)
+}
+
+// ListUserTokensWithResponse Elenca i token di un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent`: sui token di una persona decide solo lei (409 `not_an_agent`). Mai il valore del token, solo `hint`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /users/{username}/tokens (the `ListUserTokens` operationId).
+func (c *ClientWithResponses) ListUserTokensWithResponse(ctx context.Context, username UsernameParam, params *ListUserTokensParams, reqEditors ...RequestEditorFn) (*ListUserTokensResponse, error) {
+	rsp, err := c.ListUserTokens(ctx, username, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListUserTokensResponse(rsp)
+}
+
+// CreateUserTokenWithBodyWithResponse Crea un token per un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+func (c *ClientWithResponses) CreateUserTokenWithBodyWithResponse(ctx context.Context, username UsernameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserTokenResponse, error) {
+	rsp, err := c.CreateUserTokenWithBody(ctx, username, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUserTokenResponse(rsp)
+}
+
+// CreateUserTokenWithResponse Crea un token per un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users/{username}/tokens (the `CreateUserToken` operationId).
+func (c *ClientWithResponses) CreateUserTokenWithResponse(ctx context.Context, username UsernameParam, body CreateUserTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserTokenResponse, error) {
+	rsp, err := c.CreateUserToken(ctx, username, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUserTokenResponse(rsp)
+}
+
+// RevokeUserTokenWithResponse Revoca un token di un utente agent
+//
+// Solo amministratori, scope `write:user` (regola P5). Un token che non appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /users/{username}/tokens/{tokenId} (the `RevokeUserToken` operationId).
+func (c *ClientWithResponses) RevokeUserTokenWithResponse(ctx context.Context, username UsernameParam, tokenId TokenIdParam, reqEditors ...RequestEditorFn) (*RevokeUserTokenResponse, error) {
+	rsp, err := c.RevokeUserToken(ctx, username, tokenId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeUserTokenResponse(rsp)
 }
 
 // ParseLoginResponse parses an HTTP response from a LoginWithResponse call
@@ -23175,6 +23809,226 @@ func ParseChangePasswordResponse(rsp *http.Response) (*ChangePasswordResponse, e
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListUserTokensResponse parses an HTTP response from a ListUserTokensWithResponse call
+func ParseListUserTokensResponse(rsp *http.Response) (*ListUserTokensResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListUserTokensResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TokenList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateUserTokenResponse parses an HTTP response from a CreateUserTokenWithResponse call
+func ParseCreateUserTokenResponse(rsp *http.Response) (*CreateUserTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateUserTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreatedToken
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateUserTokenResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: "uri"}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRevokeUserTokenResponse parses an HTTP response from a RevokeUserTokenWithResponse call
+func ParseRevokeUserTokenResponse(rsp *http.Response) (*RevokeUserTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevokeUserTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

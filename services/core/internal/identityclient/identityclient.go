@@ -140,3 +140,122 @@ func sanitize(err error) string {
 	}
 	return err.Error()
 }
+
+// ErrNotFound: identity non conosce la risorsa cercata (owner inesistente).
+var ErrNotFound = errors.New("non trovato in identity")
+
+// ErrOwnerConflict: la risorsa ha già un altro owner (R3).
+var ErrOwnerConflict = errors.New("owner già impostato e diverso")
+
+// Owner è un utente o un'organizzazione dello spazio di nomi unico (R1).
+type Owner struct {
+	Type string // user | organization
+	ID   uuid.UUID
+	Name string
+}
+
+// RepoIdentity è l'insieme di operazioni di identity che servono ai repo
+// (M-03): owner, attributi e verifica dei permessi. Implementato da Client.
+type RepoIdentity interface {
+	CreatorGranter
+	ReadableLister
+	// ResolveOwner risolve un nome (utente o organizzazione); ErrNotFound se libero.
+	ResolveOwner(ctx context.Context, name string) (Owner, error)
+	// SetResourceAttributes registra owner e visibilità di una risorsa (idempotente).
+	SetResourceAttributes(ctx context.Context, resourceID uuid.UUID, ownerType string, ownerID uuid.UUID, visibility string) error
+	// HasRole dice se l'utente ha almeno il ruolo (read|write|admin) sulla risorsa.
+	HasRole(ctx context.Context, userID, resourceID uuid.UUID, role string) (bool, error)
+}
+
+func (c *Client) call(ctx context.Context, method, path string, body any, okStatus int, out any) (int, error) {
+	var rdr io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return 0, err
+		}
+		rdr = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, rdr)
+	if err != nil {
+		return 0, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Authorization", "Bearer "+c.secret)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s", ErrUnavailable, sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode == okStatus {
+		if out != nil {
+			if err := json.Unmarshal(data, out); err != nil {
+				return resp.StatusCode, fmt.Errorf("%w: risposta non valida", ErrUnavailable)
+			}
+		}
+	}
+	return resp.StatusCode, nil
+}
+
+// ResolveOwner implementa RepoIdentity.
+func (c *Client) ResolveOwner(ctx context.Context, name string) (Owner, error) {
+	var out struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	st, err := c.call(ctx, http.MethodGet, "/internal/owners/"+url.PathEscape(name), nil, http.StatusOK, &out)
+	if err != nil {
+		return Owner{}, err
+	}
+	switch st {
+	case http.StatusOK:
+		id, perr := uuid.Parse(out.ID)
+		if perr != nil || (out.Type != "user" && out.Type != "organization") {
+			return Owner{}, fmt.Errorf("%w: owner non valido", ErrUnavailable)
+		}
+		return Owner{Type: out.Type, ID: id, Name: out.Name}, nil
+	case http.StatusNotFound:
+		return Owner{}, ErrNotFound
+	}
+	return Owner{}, fmt.Errorf("%w: la risoluzione dell'owner ha risposto %d", ErrUnavailable, st)
+}
+
+// SetResourceAttributes implementa RepoIdentity.
+func (c *Client) SetResourceAttributes(ctx context.Context, resourceID uuid.UUID, ownerType string, ownerID uuid.UUID, visibility string) error {
+	body := map[string]string{"ownerType": ownerType, "ownerId": ownerID.String(), "visibility": visibility}
+	st, err := c.call(ctx, http.MethodPut, "/internal/resources/"+resourceID.String()+"/attributes", body, http.StatusNoContent, nil)
+	if err != nil {
+		return err
+	}
+	switch st {
+	case http.StatusNoContent:
+		return nil
+	case http.StatusNotFound:
+		return ErrNotFound
+	case http.StatusConflict:
+		return ErrOwnerConflict
+	}
+	return fmt.Errorf("%w: gli attributi hanno risposto %d", ErrUnavailable, st)
+}
+
+// HasRole implementa RepoIdentity.
+func (c *Client) HasRole(ctx context.Context, userID, resourceID uuid.UUID, role string) (bool, error) {
+	var out struct {
+		Allowed *bool `json:"allowed"`
+	}
+	body := map[string]string{"userId": userID.String(), "resourceId": resourceID.String(), "role": role}
+	st, err := c.call(ctx, http.MethodPost, "/internal/permissions/check", body, http.StatusOK, &out)
+	if err != nil {
+		return false, err
+	}
+	if st != http.StatusOK || out.Allowed == nil {
+		return false, fmt.Errorf("%w: la verifica del permesso ha risposto %d", ErrUnavailable, st)
+	}
+	return *out.Allowed, nil
+}
+
+var _ RepoIdentity = (*Client)(nil)

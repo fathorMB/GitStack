@@ -486,6 +486,11 @@ export type RepoOwner = {
 export type RepoCloneUrls = {
     https: string;
     ssh: string;
+    /**
+     * Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo quando la porta SSH dell'installazione e' 22.
+     *
+     */
+    sshShort?: string;
 };
 
 export type Repository = {
@@ -596,6 +601,10 @@ export type GitRepoState = {
     repoId: string;
     trashed: boolean;
     empty: boolean;
+    /**
+     * Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
+     */
+    branches?: Array<string>;
 };
 
 /**
@@ -1809,6 +1818,159 @@ export type UpdateUserResponses = {
 };
 
 export type UpdateUserResponse = UpdateUserResponses[keyof UpdateUserResponses];
+
+export type ListUserTokensData = {
+    body?: never;
+    path: {
+        username: Name;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/users/{username}/tokens';
+};
+
+export type ListUserTokensErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListUserTokensError = ListUserTokensErrors[keyof ListUserTokensErrors];
+
+export type ListUserTokensResponses = {
+    /**
+     * Pagina di token.
+     */
+    200: TokenList;
+};
+
+export type ListUserTokensResponse = ListUserTokensResponses[keyof ListUserTokensResponses];
+
+export type CreateUserTokenData = {
+    body: CreateTokenInput;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}/tokens';
+};
+
+export type CreateUserTokenErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateUserTokenError = CreateUserTokenErrors[keyof CreateUserTokenErrors];
+
+export type CreateUserTokenResponses = {
+    /**
+     * Token creato.
+     */
+    201: CreatedToken;
+};
+
+export type CreateUserTokenResponse = CreateUserTokenResponses[keyof CreateUserTokenResponses];
+
+export type RevokeUserTokenData = {
+    body?: never;
+    path: {
+        username: Name;
+        tokenId: string;
+    };
+    query?: never;
+    url: '/users/{username}/tokens/{tokenId}';
+};
+
+export type RevokeUserTokenErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RevokeUserTokenError = RevokeUserTokenErrors[keyof RevokeUserTokenErrors];
+
+export type RevokeUserTokenResponses = {
+    /**
+     * Token revocato.
+     */
+    204: void;
+};
+
+export type RevokeUserTokenResponse = RevokeUserTokenResponses[keyof RevokeUserTokenResponses];
 
 export type ChangePasswordData = {
     body: ChangePasswordInput;
