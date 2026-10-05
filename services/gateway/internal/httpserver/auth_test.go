@@ -101,6 +101,7 @@ func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 func tokenResult(scopes ...string) identityclient.Result {
 	return identityclient.Result{Active: true, Principal: identityclient.Caller{
 		UserID: "22222222-2222-2222-2222-222222222222", Username: "bot", AuthMethod: "token", IsToken: true, Scopes: scopes,
+		CredentialID: "44444444-4444-4444-4444-444444444444", TokenName: "ci-runner",
 	}}
 }
 
@@ -439,6 +440,8 @@ func TestAuth_IdentitaFirmataVersoIServiziAValle(t *testing.T) {
 		r.Header.Set("X-Gitstack-User-Id", "99999999-9999-9999-9999-999999999999")
 		r.Header.Set("X-Gitstack-Username", "root")
 		r.Header.Set("X-Gitstack-Scopes", "admin:org")
+		r.Header.Set("X-Gitstack-Token-Id", "55555555-5555-5555-5555-555555555555")
+		r.Header.Set("x-gitstack-token-name", "finto")
 		r.Header.Set("X-Gitstack-Signature", "abcd")
 		r.Header.Set("x-gitstack-timestamp", "1")
 		r.Header.Set("X-Gitstack-Qualsiasi", "x")
@@ -448,7 +451,7 @@ func TestAuth_IdentitaFirmataVersoIServiziAValle(t *testing.T) {
 		t.Helper()
 		want := http.Header{}
 		trust.Sign(want, testSecret, id, time.Unix(1700000000, 0))
-		for _, h := range []string{trust.HeaderUserID, trust.HeaderUsername, trust.HeaderScopes, trust.HeaderTimestamp, trust.HeaderSignature} {
+		for _, h := range []string{trust.HeaderUserID, trust.HeaderUsername, trust.HeaderScopes, trust.HeaderTokenID, trust.HeaderTokenName, trust.HeaderTimestamp, trust.HeaderSignature} {
 			if got.Header.Get(h) != want.Get(h) || len(got.Header.Values(h)) != 1 {
 				t.Errorf("%s = %v, voluto %q", h, got.Header.Values(h), want.Get(h))
 			}
@@ -466,7 +469,8 @@ func TestAuth_IdentitaFirmataVersoIServiziAValle(t *testing.T) {
 			t.Fatal(rec.Code)
 		}
 		got := e.core.last()
-		expect(t, got, trust.Identity{UserID: "22222222-2222-2222-2222-222222222222", Username: "bot", Scopes: []string{"write:user", "read:org", "read:resource"}})
+		expect(t, got, trust.Identity{UserID: "22222222-2222-2222-2222-222222222222", Username: "bot", Scopes: []string{"write:user", "read:org", "read:resource"},
+			TokenID: "44444444-4444-4444-4444-444444444444", TokenName: "ci-runner"})
 		// core non vede mai la credenziale del client.
 		if got.Header.Get("Authorization") != "" || got.Header.Get("Cookie") != "" {
 			t.Errorf("credenziali arrivate a core: Authorization=%q Cookie=%q", got.Header.Get("Authorization"), got.Header.Get("Cookie"))

@@ -12,6 +12,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -47,16 +48,19 @@ type issueRow struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	CommentCount int
+	ViaTokenID   *uuid.UUID
+	ViaTokenName *string
 }
 
 const issueCols = `i.id, i.number, i.title, i.body, i.state, i.close_reason, i.duplicate_of, i.author_id,
 	i.milestone_id, i.locked, i.hidden, i.edited, i.closed_at, i.created_at, i.updated_at,
-	(SELECT count(*) FROM core.issue_comments c WHERE c.issue_id = i.id AND c.deleted_at IS NULL)`
+	(SELECT count(*) FROM core.issue_comments c WHERE c.issue_id = i.id AND c.deleted_at IS NULL),
+	i.via_token_id, i.via_token_name`
 
 func scanIssue(r pgx.Row) (issueRow, error) {
 	var x issueRow
 	err := r.Scan(&x.ID, &x.Number, &x.Title, &x.Body, &x.State, &x.CloseReason, &x.DuplicateOf, &x.AuthorID,
-		&x.MilestoneID, &x.Locked, &x.Hidden, &x.Edited, &x.ClosedAt, &x.CreatedAt, &x.UpdatedAt, &x.CommentCount)
+		&x.MilestoneID, &x.Locked, &x.Hidden, &x.Edited, &x.ClosedAt, &x.CreatedAt, &x.UpdatedAt, &x.CommentCount, &x.ViaTokenID, &x.ViaTokenName)
 	return x, err
 }
 
@@ -236,6 +240,29 @@ func (v issueViews) milestone(x issueRow) *openapi.IssueMilestoneRef {
 	return nil
 }
 
+// viaToken compone il token di origine; nil per le sessioni web.
+func viaToken(id *uuid.UUID, name *string) *openapi.IssueViaToken {
+	if id == nil {
+		return nil
+	}
+	n := ""
+	if name != nil {
+		n = *name
+	}
+	return &openapi.IssueViaToken{Id: openapi_types.UUID(*id), Name: n}
+}
+
+// tokenOrigin ritorna id e nome del token del chiamante da salvare alla
+// creazione (nil, nil per le sessioni web).
+func tokenOrigin(c trust.Identity) (*uuid.UUID, *string) {
+	id, err := uuid.Parse(c.TokenID)
+	if c.TokenID == "" || err != nil {
+		return nil, nil
+	}
+	name := c.TokenName
+	return &id, &name
+}
+
 func closeReasonPtr(r *string) *openapi.IssueCloseReason {
 	if r == nil {
 		return nil
@@ -254,6 +281,7 @@ func (v issueViews) issue(x issueRow) openapi.Issue {
 		CloseReason:  closeReasonPtr(x.CloseReason),
 		DuplicateOf:  x.DuplicateOf,
 		Author:       v.users[x.AuthorID],
+		ViaToken:     viaToken(x.ViaTokenID, x.ViaTokenName),
 		Labels:       v.labels(x),
 		Assignees:    v.assignees(x),
 		Milestone:    v.milestone(x),

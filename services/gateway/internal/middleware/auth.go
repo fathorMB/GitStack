@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/fathorMB/GitStack/services/gateway/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/gateway/internal/security"
@@ -146,10 +147,25 @@ func Auth(cfg AuthConfig) Middleware {
 			if !p.IsToken {
 				scopes = nil
 			}
-			ctx := trust.WithIdentity(r.Context(), trust.Identity{UserID: p.UserID, Username: p.Username, Scopes: scopes})
+			id := trust.Identity{UserID: p.UserID, Username: p.Username, Scopes: scopes}
+			if p.IsToken {
+				id.TokenID, id.TokenName = p.CredentialID, headerSafe(p.TokenName)
+			}
+			ctx := trust.WithIdentity(r.Context(), id)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// headerSafe toglie i caratteri di controllo (un a capo in un header non
+// passerebbe) dal nome del token prima di firmarlo.
+func headerSafe(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // checkPermission applica il permesso su risorsa; ritorna false dopo aver

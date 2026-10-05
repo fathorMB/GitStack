@@ -414,6 +414,10 @@ export type Principal = {
      * Id della sessione o del token (per audit).
      */
     credentialId?: string;
+    /**
+     * Nome del token; presente solo con `authMethod` token.
+     */
+    tokenName?: string;
     expiresAt?: string | null;
 };
 
@@ -1004,6 +1008,14 @@ export type IssueUser = {
     displayName?: string;
 };
 
+/**
+ * Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+ */
+export type IssueViaToken = {
+    id: string;
+    name: string;
+};
+
 export type IssueLabelRef = {
     id: string;
     name: string;
@@ -1043,6 +1055,7 @@ export type Issue = {
      */
     duplicateOf?: number | null;
     author: IssueUser;
+    viaToken?: IssueViaToken;
     labels: Array<IssueLabelRef>;
     assignees: Array<IssueUser>;
     milestone?: IssueMilestoneRef | null;
@@ -1177,6 +1190,7 @@ export type IssueComment = {
      */
     body: string;
     author: IssueUser;
+    viaToken?: IssueViaToken;
     edited: boolean;
     /**
      * Eliminato (comment deleted, I4): resta la traccia, senza testo.

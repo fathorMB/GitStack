@@ -20,9 +20,58 @@ func signed(id Identity) http.Header {
 // firma cambia da una parte sola, uno dei due test si rompe.
 func TestSign_VettoreDiProva(t *testing.T) {
 	h := signed(Identity{UserID: "11111111-1111-1111-1111-111111111111", Username: "alice", Scopes: []string{"read:user", "write:org"}})
-	const want = "1f1fa6bc1164c65db6b0cc006ba0c317dcfcb6fe650ac53f93212229967ab7b8"
+	const want = "bd36809e19293e4b25d04bf84b6e31cf9862b44893a707744ca4611ede58a363"
 	if got := h.Get(HeaderSignature); got != want {
 		t.Fatalf("firma = %s, voluta %s", got, want)
+	}
+}
+
+func TestSign_VettoreDiProvaToken(t *testing.T) {
+	h := signed(Identity{UserID: "11111111-1111-1111-1111-111111111111", Username: "alice", Scopes: []string{"read:user", "write:org"},
+		TokenID: "22222222-2222-2222-2222-222222222222", TokenName: "ci-runner"})
+	if h.Get(HeaderTokenID) != "22222222-2222-2222-2222-222222222222" || h.Get(HeaderTokenName) != "ci-runner" {
+		t.Fatalf("header = %v", h)
+	}
+	const want = "2ad8821a340ec69859107a68d17cddb013c3613e5f55d52789beecca74585125"
+	if got := h.Get(HeaderSignature); got != want {
+		t.Fatalf("firma = %s, voluta %s", got, want)
+	}
+}
+
+func TestVerify_Token(t *testing.T) {
+	id, ok := Verify(signed(Identity{UserID: "u1", Username: "alice", Scopes: []string{"read:user"}, TokenID: "t1", TokenName: "ci-runner"}), "segreto", t0)
+	if !ok || id.TokenID != "t1" || id.TokenName != "ci-runner" {
+		t.Fatalf("Verify = %+v %v", id, ok)
+	}
+	id, ok = Verify(signed(Identity{UserID: "u1", Username: "bob"}), "segreto", t0)
+	if !ok || id.TokenID != "" || id.TokenName != "" {
+		t.Fatalf("una sessione non ha token: %+v %v", id, ok)
+	}
+}
+
+func TestVerify_RifiutiToken(t *testing.T) {
+	cases := []struct {
+		name   string
+		base   Identity
+		mutate func(http.Header)
+	}{
+		{"id del token cambiato", Identity{UserID: "u1", Username: "a", TokenID: "t1", TokenName: "n"}, func(h http.Header) { h.Set(HeaderTokenID, "t2") }},
+		{"nome del token cambiato", Identity{UserID: "u1", Username: "a", TokenID: "t1", TokenName: "n"}, func(h http.Header) { h.Set(HeaderTokenName, "root") }},
+		{"token aggiunto a una sessione", Identity{UserID: "u1", Username: "a"}, func(h http.Header) { h.Set(HeaderTokenID, "t1"); h.Set(HeaderTokenName, "n") }},
+		{"nome aggiunto a una sessione", Identity{UserID: "u1", Username: "a"}, func(h http.Header) { h.Set(HeaderTokenName, "n") }},
+		{"token tolto", Identity{UserID: "u1", Username: "a", TokenID: "t1", TokenName: "n"}, func(h http.Header) { h.Set(HeaderTokenID, ""); h.Set(HeaderTokenName, "") }},
+		{"manca l'id del token", Identity{UserID: "u1", Username: "a"}, func(h http.Header) { h.Del(HeaderTokenID) }},
+		{"manca il nome del token", Identity{UserID: "u1", Username: "a"}, func(h http.Header) { h.Del(HeaderTokenName) }},
+		{"nome del token ripetuto", Identity{UserID: "u1", Username: "a", TokenID: "t1", TokenName: "n"}, func(h http.Header) { h.Add(HeaderTokenName, "x") }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := signed(c.base)
+			c.mutate(h)
+			if _, ok := Verify(h, "segreto", t0); ok {
+				t.Error("identità accettata")
+			}
+		})
 	}
 }
 

@@ -32,10 +32,10 @@ import {
   updateIssueComment,
   uploadIssueAttachment,
 } from '@gitstack/api-client';
-import type { CreateLabelInput, CreateMilestoneInput, UpdateLabelInput, UpdateMilestoneInput, CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueCommentList, IssueEvent, IssueEventList, TextVersion, IssueList, IssueSummary, IssueUser, Label, LabelList, Milestone, MilestoneList } from '@gitstack/api-client';
+import type { CreateLabelInput, CreateMilestoneInput, UpdateLabelInput, UpdateMilestoneInput, CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueCommentList, IssueEvent, IssueEventList, TextVersion, IssueList, IssueSummary, IssueUser, IssueViaToken, Label, LabelList, Milestone, MilestoneList } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, TextVersion, IssueList, IssueSummary, IssueUser, Label, Milestone };
+export type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, TextVersion, IssueList, IssueSummary, IssueUser, IssueViaToken, Label, Milestone };
 
 export type IssueSort = 'created' | 'updated' | 'comments' | 'relevance';
 

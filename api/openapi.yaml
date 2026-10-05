@@ -6721,6 +6721,9 @@ components:
           type: string
           format: uuid
           description: Id della sessione o del token (per audit).
+        tokenName:
+          type: string
+          description: Nome del token; presente solo con `authMethod` token.
         expiresAt:
           type: string
           format: date-time
@@ -7782,6 +7785,17 @@ components:
           enum: [human, agent]
         displayName:
           type: string
+    IssueViaToken:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      description: Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
     IssueLabelRef:
       type: object
       additionalProperties: false
@@ -7862,6 +7876,8 @@ components:
           description: Numero della issue di cui questa e' un duplicato (solo con `closeReason=duplicate`).
         author:
           $ref: "#/components/schemas/IssueUser"
+        viaToken:
+          $ref: "#/components/schemas/IssueViaToken"
         labels:
           type: array
           items:
@@ -8117,6 +8133,8 @@ components:
           description: Markdown; vuoto se `deleted`.
         author:
           $ref: "#/components/schemas/IssueUser"
+        viaToken:
+          $ref: "#/components/schemas/IssueViaToken"
         edited:
           type: boolean
         deleted:
