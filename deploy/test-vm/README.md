@@ -337,6 +337,12 @@ VHDX, ISO e le due cartelle della VM sono stati eliminati.
    comando `ssh` — sono le informazioni minime per collegarsi e lanciare le
    prove.
 
+### Provare `gitstack` (GIT-142)
+
+`e2e.ps1` installa con `curl | sudo GITSTACK_REF=<Ref> GITSTACK_ADMIN_REQUIRED=1 bash`: il binario viene scaricato dalla release GitHub `sha-<Ref>` (con il suo `.sha256`), pubblicata dal job `admin-binary` di `ci.yml`. Quel job gira **solo dopo il merge su main** (o su un tag), come `registry`: per un commit senza release l'installer esce con errore, per scelta (`GITSTACK_ADMIN_REQUIRED=1`). Il passo f3 esegue `sudo gitstack status` (exit 0, `Versione server: sha-<Ref>`, `Host: <ip VM>`, `Stato: sano`) e `gitstack status` senza sudo (exit 5, config 0600).
+
+Prova a mano di un commit non ancora pubblicato (checkout locale o ramo): costruire il binario Linux sull'host come in `admin/README.md`, copiarlo sulla VM con `scp` insieme al `.sha256` e lanciare `sudo ./install.sh --admin-binary ./gitstack-linux-amd64` dal checkout copiato sulla VM; poi `sudo gitstack status`.
+
 ## Test end-to-end (GIT-11)
 
 `e2e.ps1` è il comando che il board lancia, da PowerShell **come

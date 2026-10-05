@@ -391,7 +391,7 @@ function Main {
 
         # --- d.2 installer, prima esecuzione ----------------------------
         Write-Log "==> Passo d (2/2): eseguo l'installer di GIT-9 dal commit $Ref di main (prima esecuzione) ..."
-        $installCmd = "curl -fsSL https://raw.githubusercontent.com/$GitStackRepo/$Ref/deploy/install.sh | sudo GITSTACK_REF=$Ref bash"
+        $installCmd = "curl -fsSL https://raw.githubusercontent.com/$GitStackRepo/$Ref/deploy/install.sh | sudo GITSTACK_REF=$Ref GITSTACK_ADMIN_REQUIRED=1 bash"
         Write-Log "Comando: $installCmd"
         $install1 = Invoke-VmSsh -Command $installCmd -TimeoutSeconds $InstallTimeoutSeconds
         $install1Log = Join-Path $OutDir 'installer-run1.log'
@@ -861,6 +861,29 @@ function Main {
             }
         }
         Add-StepResult -Name 'f2. seconda esecuzione: Secret admin invariato (resourceVersion e dati), admin non ricreato (password cambiata ancora valida)' -Ok $f2Ok -Detail ($f2Details -join '; ')
+
+        # --- f3. comando di amministrazione gitstack (GIT-142) -----------
+        # Il binario lo pubblica il job admin-binary della CI come asset della
+        # release sha-<Ref>; l'installer (GITSTACK_ADMIN_REQUIRED=1) fallisce se
+        # manca. Qui si prova che sia installato e che dica il vero.
+        Write-Log "==> Passo f3: gitstack status sulla VM (con e senza root) ..."
+        $f3Ok = $true
+        $f3Details = @()
+        $gsRoot = Invoke-VmSsh -Command 'sudo gitstack status' -TimeoutSeconds 60
+        if ($gsRoot.ExitCode -ne 0) {
+            $f3Ok = $false; $f3Details += "sudo gitstack status: exit $($gsRoot.ExitCode) (atteso 0): $($gsRoot.StdOut) $($gsRoot.StdErr)"
+        }
+        foreach ($expected in @("Versione server: sha-$Ref", "Host: $script:VmIp", 'Stato: sano')) {
+            if ($gsRoot.StdOut -notmatch [regex]::Escape($expected)) {
+                $f3Ok = $false; $f3Details += "nell'output di gitstack status manca '$expected'"
+            }
+        }
+        # Senza root il config (0600) non e leggibile: exit 5.
+        $gsUser = Invoke-VmSsh -Command 'gitstack status' -TimeoutSeconds 60
+        if ($gsUser.ExitCode -ne 5) {
+            $f3Ok = $false; $f3Details += "gitstack status senza sudo: exit $($gsUser.ExitCode) (atteso 5, config root-only)"
+        }
+        Add-StepResult -Name 'f3. gitstack status con sudo: exit 0, Versione server sha-<Ref>, Host, Stato sano; senza sudo: exit 5' -Ok $f3Ok -Detail ($f3Details -join '; ')
 
         $exitCode = 0
     } catch {
