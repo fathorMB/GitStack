@@ -52,6 +52,8 @@ github.com/ebitengine/purego v0.8.4 h1:CF7LEKg5FFOsASUj0+QwaXf8Ht6TlFxg09+S9wz0o
 github.com/ebitengine/purego v0.8.4/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf h1:/cEF+DPLPsU6jFftFQLJLZDJbvtjFYd1zPLbU5BFuc4=
 github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf/go.mod h1:c+JPb4jEG9bYHyOulDUfUuhJ6w3EZyVzVsCfDwqCk4E=
+github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa h1:Ma5hyCTSmm1lsPwP/2M0LZR+O+t5gyQScyf6UiHxdxg=
+github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa/go.mod h1:fwJMAFtbcrwXW4ruxBtQ3dimBtlRTvmktDvQR2jPjLA=
 github.com/fathorMB/GitStack/pkg/names v0.0.0-20261005080521-b11140daae71 h1:pooYFyXJfLwzz4INfC2mFnzyC9FcezqLYwU/NXU9ymQ=
 github.com/fathorMB/GitStack/pkg/names v0.0.0-20261005080521-b11140daae71/go.mod h1:Kfmn2Ri+UF1udGtzLRreizc7qXRqxC51J4HLWY/mrrs=
 github.com/felixge/httpsnoop v1.1.0 h1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeORc=
