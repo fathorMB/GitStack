@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -53,6 +54,24 @@ type Config struct {
 	// grant).
 	IdentityURL string
 
+	// GitURL è la base URL interna del servizio git (GITSTACK_GIT_URL):
+	// core la chiama per creare i repo su disco (API interna firmata).
+	// Obbligatoria solo per "serve".
+	GitURL string
+
+	// PublicURL è la base HTTPS pubblica dell'installazione
+	// (GITSTACK_CORE_PUBLIC_URL): da qui si compongono gli indirizzi di clone
+	// HTTPS. Obbligatoria solo per "serve".
+	PublicURL string
+
+	// SSHHost è l'host dell'indirizzo di clone SSH (GITSTACK_CORE_SSH_HOST);
+	// vuoto = l'host di PublicURL.
+	SSHHost string
+
+	// SSHPort è la porta SSH dell'installazione (GITSTACK_CORE_SSH_PORT,
+	// default 2222, R7).
+	SSHPort int
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -67,6 +86,12 @@ const (
 	envLogLevel          = "GITSTACK_CORE_LOG_LEVEL"
 	envServiceSecret     = "GITSTACK_IDENTITY_SERVICE_SECRET"
 	envIdentityURL       = "GITSTACK_IDENTITY_URL"
+	envGitURL            = "GITSTACK_GIT_URL"
+	envPublicURL         = "GITSTACK_CORE_PUBLIC_URL"
+	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
+	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
+
+	defaultSSHPort = 2222
 
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
@@ -138,7 +163,26 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		cfg.IdentityURL = strings.TrimSpace(v)
 	}
 
-	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {
+	cfg.SSHPort = defaultSSHPort
+	if v, ok := lookup(envGitURL); ok {
+		cfg.GitURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envPublicURL); ok {
+		cfg.PublicURL = strings.TrimRight(strings.TrimSpace(v), "/")
+	}
+	if v, ok := lookup(envSSHHost); ok {
+		cfg.SSHHost = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envSSHPort); ok && strings.TrimSpace(v) != "" {
+		n, err := strconv.Atoi(strings.TrimSpace(v))
+		if err != nil || n < 1 || n > 65535 {
+			errs = append(errs, fmt.Sprintf("%s non è una porta valida (1-65535): %q", envSSHPort, v))
+		} else {
+			cfg.SSHPort = n
+		}
+	}
+
+	if v, ok := lookup(envLogLevel); ok &&strings.TrimSpace(v) != "" {
 		level := strings.ToLower(strings.TrimSpace(v))
 		switch level {
 		case "debug", "info", "warn", "error":

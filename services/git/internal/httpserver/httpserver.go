@@ -179,7 +179,7 @@ func (h *handler) get(w http.ResponseWriter, r *http.Request) {
 		h.storeErr(w, "lettura", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"repoId": id, "trashed": info.Trashed, "empty": info.Empty})
+	writeJSON(w, http.StatusOK, map[string]any{"repoId": id, "trashed": info.Trashed, "empty": info.Empty, "branches": info.Branches})
 }
 
 func (h *handler) trash(w http.ResponseWriter, r *http.Request) {

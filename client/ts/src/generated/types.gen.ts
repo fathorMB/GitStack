@@ -486,6 +486,11 @@ export type RepoOwner = {
 export type RepoCloneUrls = {
     https: string;
     ssh: string;
+    /**
+     * Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo quando la porta SSH dell'installazione e' 22.
+     *
+     */
+    sshShort?: string;
 };
 
 export type Repository = {
@@ -596,6 +601,10 @@ export type GitRepoState = {
     repoId: string;
     trashed: boolean;
     empty: boolean;
+    /**
+     * Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
+     */
+    branches?: Array<string>;
 };
 
 /**

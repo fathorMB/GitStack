@@ -43,6 +43,7 @@ All'avvio del server (non per `core migrate up|down`, che non tocca NATS), `main
 | `GITSTACK_CORE_NATS_URL` | sì, per `serve` | — | Indirizzo del bus NATS JetStream (es. `nats://nats:4222`); non serve a `migrate up\|down` |
 | `GITSTACK_IDENTITY_SERVICE_SECRET` | sì, per `serve` | — | Segreto di servizio (Secret `<release>-identity-service`, chiave `secret`): con questo core verifica la firma dell'identità inoltrata dal gateway; non serve a `migrate up\|down`. Mai nei log |
 | `GITSTACK_CORE_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
+| `GITSTACK_GIT_URL`, `GITSTACK_CORE_PUBLIC_URL`, `GITSTACK_CORE_SSH_HOST`, `GITSTACK_CORE_SSH_PORT` | vedi sotto | — | Repo (M-03/E): servizio git, base HTTPS, host e porta SSH; vedi "Variabili d'ambiente dei repo" |
 
 ### Sviluppo locale
 
@@ -115,3 +116,30 @@ Migrazione `0002_repositories` (up/down in `internal/migrate/sql`).
   (Postgres reale con testcontainers): su/giù, stesso nome con owner diversi,
   stesso nome con lo stesso owner anche con `deleted_at`, `Repo` e `x.git`,
   unicità degli altri tipi.
+
+## M-03/E (GIT-67): API dei repo
+
+Operazioni del tag `repos`: `POST /repos`, `GET /repos`, `GET|PATCH /repos/{owner}/{repo}` (handler in `internal/httpserver/repos.go`, SQL in `internal/store/repos.go`). `DELETE`, `GET /repos/deleted` e il ripristino restano 501 (item successivo).
+
+- **Permessi.** Core non decide da solo: chiede a identity (`internal/identityclient`: `ResolveOwner`, `SetResourceAttributes`, `HasRole` = `/internal/permissions/check`, `ReadableResources`). Lettura/elenco: `read`; impostazioni: `admin` (403 se legge soltanto). Un repo che il chiamante non può leggere risponde **404**, identico a uno inesistente.
+- **Creazione** (`POST /repos`). Ordine: validazione (nome con `pkg/names`, R11; visibilità `private` se il campo manca, P7) → owner da identity (404) → attributi del nuovo repo in identity e verifica che il creatore sia `admin` del repo che sta nascendo, cioè sé stesso (P6), owner dell'organizzazione (P1) o amministratore di sistema (403 altrimenti) → una transazione con `core.resources`, `core.repositories` e `core.repo_counters(repo_id, next_number = 1)` (I1; 409 se il nome è occupato per quell'owner, anche da un repo eliminato) → il servizio git crea il repo su disco (R5) → grant admin al creatore → commit. Se git o il grant falliscono la transazione si annulla (nessuna riga in core) e il repo già nato su disco viene tolto (cestino + cancellazione). *Limite noto:* se la verifica del permesso (o un 409) rifiuta la richiesta, in identity resta una riga `resource_attributes` per un id mai usato: innocua (nessuna risorsa in core la richiama).
+- **Impostazioni** (`PATCH`): `description`, `visibility` (aggiorna anche identity, annullando tutto se identity non risponde), `defaultBranch` (R4: deve essere fra i branch che `GET /internal/git/repos/{id}` elenca in `branches`), `protectDefaultBranch` (R9, `true` di default), `archived` (R10). Un repo archiviato risponde **409** `archived` a qualunque modifica tranne `{"archived": false}` da solo. Le modifiche si serializzano con `SELECT … FOR UPDATE`.
+- **Owner in core.** La migrazione `0003_repositories_owner_name` aggiunge `core.repositories.owner_name`, copia del nome scritta alla creazione: serve a risolvere `/repos/{owner}/{repo}` e a comporre `fullName` e indirizzi di clone senza una chiamata a identity per riga (rinomina dell'owner: fuori dalla v1, R3).
+- **`empty`** viene da git (`GET /internal/git/repos/{id}`); se git non risponde l'elenco e la lettura ripiegano su `false` e lo loggano, le modifiche no (503).
+- **Indirizzi di clone** (R1, R7): `https` = `<PUBLIC_URL>/<owner>/<repo>.git`; `ssh` = sempre `ssh://git@<host>:<porta>/<owner>/<repo>.git` (porta 2222 di default); `sshShort` = `git@<host>:<owner>/<repo>.git`, presente **solo con porta 22** (campo opzionale aggiunto a `RepoCloneUrls`).
+- **API interna di git** (`internal/gitclient`): chiamate con gli header `X-Gitstack-*` firmati col segreto di servizio, con l'identità di chi ha fatto la richiesta a core. `GET /internal/git/repos/{id}` ha ora anche `branches` (aggiunto a `GitRepoState`, `services/git`).
+
+### Variabili d'ambiente dei repo (le usa anche il chart, GIT-74)
+
+| Variabile | Obbligatoria | Default | Descrizione |
+|---|---|---|---|
+| `GITSTACK_GIT_URL` | sì, per `serve` | — | URL interno del servizio git (es. `http://git:8080`) |
+| `GITSTACK_CORE_PUBLIC_URL` | sì, per `serve` | — | Base HTTPS pubblica per gli indirizzi di clone (es. `https://git.example.com`) |
+| `GITSTACK_CORE_SSH_HOST` | no | host di `PUBLIC_URL` | Host dell'indirizzo SSH |
+| `GITSTACK_CORE_SSH_PORT` | no | `2222` | Porta SSH dell'installazione (R7) |
+
+Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).
+
+### Test
+
+`internal/httpserver/repos_integration_test.go` (Postgres reale con testcontainers; identity e git sono fake in memoria che riproducono P1/P3/P6 e l'API interna): creazione (default private, riga `repo_counters` a 1, 403, nome non valido, 409, owner inesistente, git/grant che falliscono senza righe a metà), lettura (404 per il repo privato di altri), elenco filtrato e paginato, impostazioni (branch, protezione, visibilità, archiviazione e riattivazione). Unit: `repos_clone_test.go` (R7), `internal/gitclient`, `internal/identityclient`, `internal/config`.

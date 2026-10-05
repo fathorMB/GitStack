@@ -105,3 +105,88 @@ func TestReadableResourcesNetworkError(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func newIdentity(t *testing.T, h http.HandlerFunc) *identityclient.Client {
+	t.Helper()
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	u, _ := url.Parse(srv.URL)
+	return identityclient.New(u, "sec", time.Second)
+}
+
+func TestResolveOwner(t *testing.T) {
+	id := uuid.New()
+	status := 200
+	c := newIdentity(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/internal/owners/acme" || r.Header.Get("Authorization") != "Bearer sec" {
+			t.Errorf("richiesta inattesa: %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(status)
+		if status == 200 {
+			_, _ = w.Write([]byte(`{"type":"organization","id":"` + id.String() + `","name":"acme"}`))
+		}
+	})
+	o, err := c.ResolveOwner(context.Background(), "acme")
+	if err != nil || o.Type != "organization" || o.ID != id || o.Name != "acme" {
+		t.Fatalf("owner = %+v, %v", o, err)
+	}
+	status = 404
+	if _, err := c.ResolveOwner(context.Background(), "acme"); !errors.Is(err, identityclient.ErrNotFound) {
+		t.Fatalf("404: %v", err)
+	}
+	status = 500
+	if _, err := c.ResolveOwner(context.Background(), "acme"); !errors.Is(err, identityclient.ErrUnavailable) {
+		t.Fatalf("500: %v", err)
+	}
+}
+
+func TestSetResourceAttributes(t *testing.T) {
+	rid, oid := uuid.New(), uuid.New()
+	status := 204
+	c := newIdentity(t, func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&in)
+		if r.Method != http.MethodPut || r.URL.Path != "/internal/resources/"+rid.String()+"/attributes" ||
+			in["ownerType"] != "user" || in["ownerId"] != oid.String() || in["visibility"] != "private" {
+			t.Errorf("richiesta inattesa: %s %s %v", r.Method, r.URL.Path, in)
+		}
+		w.WriteHeader(status)
+	})
+	if err := c.SetResourceAttributes(context.Background(), rid, "user", oid, "private"); err != nil {
+		t.Fatal(err)
+	}
+	status = 409
+	if err := c.SetResourceAttributes(context.Background(), rid, "user", oid, "private"); !errors.Is(err, identityclient.ErrOwnerConflict) {
+		t.Fatalf("409: %v", err)
+	}
+	status = 503
+	if err := c.SetResourceAttributes(context.Background(), rid, "user", oid, "private"); !errors.Is(err, identityclient.ErrUnavailable) {
+		t.Fatalf("503: %v", err)
+	}
+}
+
+func TestHasRole(t *testing.T) {
+	uid, rid := uuid.New(), uuid.New()
+	allowed := `{"allowed":true,"effectiveRole":"admin"}`
+	status := 200
+	c := newIdentity(t, func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&in)
+		if r.URL.Path != "/internal/permissions/check" || in["userId"] != uid.String() || in["resourceId"] != rid.String() || in["role"] != "admin" {
+			t.Errorf("richiesta inattesa: %s %v", r.URL.Path, in)
+		}
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(allowed))
+	})
+	if ok, err := c.HasRole(context.Background(), uid, rid, "admin"); err != nil || !ok {
+		t.Fatalf("HasRole = %v, %v", ok, err)
+	}
+	allowed = `{"allowed":false}`
+	if ok, err := c.HasRole(context.Background(), uid, rid, "admin"); err != nil || ok {
+		t.Fatalf("HasRole = %v, %v", ok, err)
+	}
+	status = 500
+	if _, err := c.HasRole(context.Background(), uid, rid, "admin"); !errors.Is(err, identityclient.ErrUnavailable) {
+		t.Fatalf("500: %v", err)
+	}
+}

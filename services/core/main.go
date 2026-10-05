@@ -17,6 +17,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/config"
 	"github.com/fathorMB/GitStack/services/core/internal/db"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
@@ -116,6 +117,17 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
+	gitURL, err := url.Parse(cfg.GitURL)
+	if cfg.GitURL == "" || err != nil || gitURL.Scheme == "" || gitURL.Host == "" {
+		logger.Error("configurazione non valida", "err", "GITSTACK_GIT_URL è obbligatoria per avviare il server (non per 'migrate up|down') e deve essere una URL assoluta: è il servizio git a cui core chiede di creare i repo")
+		return 1
+	}
+	publicURL, err := url.Parse(cfg.PublicURL)
+	if cfg.PublicURL == "" || err != nil || publicURL.Scheme == "" || publicURL.Host == "" {
+		logger.Error("configurazione non valida", "err", "GITSTACK_CORE_PUBLIC_URL è obbligatoria per avviare il server (non per 'migrate up|down') e deve essere una URL assoluta (es. https://git.example.com): serve agli indirizzi di clone")
+		return 1
+	}
+
 	// NATSPublisher (internal/events, libreria condivisa di GIT-6): si
 	// connette a NATS, apre il contesto JetStream e assicura lo stream del
 	// dominio "core" prima che il server accetti richieste. La connessione
@@ -136,11 +148,15 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			return 1
 		}
 		idc := identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)
-		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc))
+		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc), httpserver.WithRepoIdentity(idc))
 	} else {
-		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources risponderanno 503")
+		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources e le operazioni sui repo risponderanno 503")
 	}
 
+	routerOpts = append(routerOpts,
+		httpserver.WithGit(gitclient.New(gitURL, cfg.ServiceSecret, 30*time.Second)),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort}),
+	)
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
 
 	srv := &http.Server{

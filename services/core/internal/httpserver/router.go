@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -37,11 +38,14 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	mux.HandleFunc("GET /readyz", readyz(pool))
 
 	server := &apiServer{
-		pool:      pool,
-		resources: store.New(pool),
-		events:    publisher,
-		grants:    o.grants,
-		readable:  o.readable,
+		pool:         pool,
+		resources:    store.New(pool),
+		events:       publisher,
+		grants:       o.grants,
+		readable:     o.readable,
+		repoIdentity: o.repoIdentity,
+		git:          o.git,
+		clone:        o.clone,
 	}
 
 	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
@@ -64,9 +68,12 @@ func publicPath(r *http.Request) bool {
 type Option func(*routerOptions)
 
 type routerOptions struct {
-	now      func() time.Time
-	grants   identityclient.CreatorGranter
-	readable identityclient.ReadableLister
+	now          func() time.Time
+	grants       identityclient.CreatorGranter
+	readable     identityclient.ReadableLister
+	repoIdentity identityclient.RepoIdentity
+	git          gitclient.Git
+	clone        CloneConfig
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il
@@ -88,6 +95,32 @@ func WithCreatorGranter(g identityclient.CreatorGranter) Option {
 // 503 (mai un elenco non filtrato).
 func WithReadableLister(l identityclient.ReadableLister) Option {
 	return func(o *routerOptions) { o.readable = l }
+}
+
+// WithRepoIdentity imposta il client di identity per le operazioni sui repo
+// (owner, attributi, permessi); imposta anche grant e elenco leggibili se non
+// già impostati. Senza, le operazioni sui repo rispondono 503.
+func WithRepoIdentity(i identityclient.RepoIdentity) Option {
+	return func(o *routerOptions) {
+		o.repoIdentity = i
+		if o.grants == nil {
+			o.grants = i
+		}
+		if o.readable == nil {
+			o.readable = i
+		}
+	}
+}
+
+// WithGit imposta il client dell'API interna del servizio git. Senza, creare
+// e modificare i repo risponde 503.
+func WithGit(g gitclient.Git) Option {
+	return func(o *routerOptions) { o.git = g }
+}
+
+// WithCloneConfig imposta la configurazione degli indirizzi di clone (R7).
+func WithCloneConfig(c CloneConfig) Option {
+	return func(o *routerOptions) { o.clone = c }
 }
 
 // WithClock sostituisce l'orologio con cui si controlla il timestamp della
