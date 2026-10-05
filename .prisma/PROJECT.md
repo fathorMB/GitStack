@@ -1,6 +1,6 @@
 ---
 title: GitStack
-updated: 2026-09-30
+updated: 2026-10-05
 ---
 
 # Project
@@ -21,9 +21,9 @@ Team e aziende che vogliono ospitare codice e issues sui propri server, senza cl
 - Frontend: React + TypeScript, usa solo l'API pubblica REST descritta in OpenAPI.
 - Licenze: AGPL-3.0 per il server, Apache-2.0 per CLI, skills e client.
 
-## Current state (2026-09-30)
+## Current state (2026-10-05)
 
-M-01 "Scheletro che cammina" completata; M-02 "Identità, organizzazioni e permessi" in corso (manca il modello dei permessi sulle risorse); M-03…M-09 da fare. Dettagli in [[knowledge/topics/stato-di-realizzazione]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n).
+M-01 "Scheletro che cammina" completata; M-02 "Identità, organizzazioni e permessi" quasi completata (manca la gestione admin dei token degli agent); M-03 "Hosting Git" in corso (storage, nomi, modelli e UI fatti; API pubblica e protocolli Git da fare); M-04…M-09 da fare. Regole di prodotto per M-03 e M-05 consolidate. Dettagli in [[knowledge/topics/stato-di-realizzazione]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n).
 
 ## Constraints
 

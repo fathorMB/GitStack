@@ -1,5 +1,5 @@
 ---
-{"area":"technical-choices","id":"DOC-8d539b83-ec08-41ca-a680-1529555fc42a","related":[],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/architecture.md","source_id":"SRC-5d952707-85b7-46bf-bf7c-41dc9a714236"}],"tags":["architettura","servizi","k3s"],"title":"Architettura v1","updated":"2026-09-30T21:13:45.436431600+00:00"}
+{"area":"technical-choices","id":"DOC-8d539b83-ec08-41ca-a680-1529555fc42a","related":[],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/architecture.md","source_id":"SRC-5d952707-85b7-46bf-bf7c-41dc9a714236"}],"tags":["architettura","servizi","k3s"],"title":"Architettura v1","updated":"2026-10-05T09:10:00+00:00"}
 ---
 
 # Architettura v1
@@ -15,10 +15,10 @@ Componenti (un container ciascuno, su k3s):
 | Servizio | Ruolo | Stato nel repo |
 |----------|-------|----------------|
 | **gateway** (Go) | Unico ingresso API `/v1/*`: routing, autenticazione centralizzata, scope per rotta, rate limiting (aggancio no-op). Nessun database | realizzato |
-| **identity** (Go) | Utenti, sessioni, token con scope, chiavi SSH, OIDC, organizzazioni, team, grant su risorse. Schema Postgres `identity` | realizzato, manca il controllo permessi fini |
-| **git** (Go + binario `git`) | Push/pull HTTPS e SSH, lettura file/commit/diff, hook post-receive → `git.push` | solo scheletro |
-| **core** (Go) | API di repo, issues, commenti, etichette, milestone, notifiche, webhook; consuma eventi. Schema `core` | oggi solo la risorsa generica di prova |
-| **web** (React + TS, Vite) | SPA servita da nginx non privilegiato; `/api/*` inoltrato al gateway | shell + pagine di M-02 |
+| **identity** (Go) | Utenti, sessioni, token con scope, chiavi SSH, OIDC, organizzazioni, team, grant su risorse. Schema Postgres `identity` | realizzato, compreso il modello dei permessi; manca la gestione admin dei token degli agent |
+| **git** (Go + binario `git`) | Push/pull HTTPS e SSH, lettura file/commit/diff, hook post-receive → `git.push` | storage dei repo e ciclo di vita realizzati; protocolli Git, permessi e `git.push` da fare |
+| **core** (Go) | API di repo, issues, commenti, etichette, milestone, notifiche, webhook; consuma eventi. Schema `core` | contratto e schema dei repo realizzati, handler dei repo ancora 501 (GIT-67); issues da fare |
+| **web** (React + TS, Vite) | SPA servita da nginx non privilegiato; `/api/*` inoltrato al gateway | shell, pagine di M-02, elenco/nuovo/vuoto dei repo |
 | **postgres** | Dati strutturati, uno schema e un ruolo per servizio; nessun servizio legge le tabelle di un altro | nel chart |
 | **nats** (JetStream) | Eventi tra servizi (vedi [[knowledge/topics/eventi]]) | nel chart |
 

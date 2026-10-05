@@ -1,5 +1,5 @@
 ---
-{"area":"requirements","id":"DOC-d1718775-770d-4065-8b27-3dc7a400dad6","related":["TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Integrazione delle scelte P1–P7 sui permessi confermate dall'operatore il 2026-09-30.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-02.md","source_id":"SRC-1acfaa85-6fd1-4f3e-8902-7631d5324e73"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["identity","sicurezza","token","oidc","permessi","visibilità"],"title":"Identità, autenticazione e permessi","updated":"2026-09-30T21:33:27.703115600+00:00"}
+{"area":"requirements","id":"DOC-d1718775-770d-4065-8b27-3dc7a400dad6","related":["TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Integrazione delle scelte P1–P7 sui permessi confermate dall'operatore il 2026-09-30.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-02.md","source_id":"SRC-1acfaa85-6fd1-4f3e-8902-7631d5324e73"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["identity","sicurezza","token","oidc","permessi","visibilità"],"title":"Identità, autenticazione e permessi","updated":"2026-10-05T09:10:00+00:00"}
 ---
 
 
@@ -43,7 +43,6 @@ Requisiti di M-02 (D5) e comportamento realizzato. Fonti nel repo: `services/ide
 
 ## Open questions
 
-- Realizzazione del modello dei permessi (GIT-38): `/internal/permissions/check` risponde ancora 501.
 - Revoca immediata: possibile evento `identity.credential.revoked` sul bus per svuotare la cache del gateway; non pianificato.
 - Nessuna API di amministrazione dei provider OIDC; cambiare i provider richiede il riavvio di identity.
 - Limite ai login e riuso dello `state` OIDC valgono per replica, non per tutto il cluster.

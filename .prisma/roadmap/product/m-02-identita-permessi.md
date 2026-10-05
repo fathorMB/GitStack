@@ -1,5 +1,5 @@
 ---
-{"horizon":"now","id":"OBJ-c79ed133-8339-4a82-9f91-6b100a636da1","knowledge":["DOC-d1718775-770d-4065-8b27-3dc7a400dad6","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"],"reopen_reason":"Scope rimanente aggiornato con le regole P1–P7 (P5 aggiunge la gestione admin dei token degli agent).","schema_version":1,"title":"Identità, organizzazioni e permessi","updated":"2026-09-30T21:34:14.676728300+00:00"}
+{"horizon":"now","id":"OBJ-c79ed133-8339-4a82-9f91-6b100a636da1","knowledge":["DOC-d1718775-770d-4065-8b27-3dc7a400dad6","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"],"reopen_reason":"Scope rimanente riallineato al codice (2026-10-05): resta solo la gestione admin dei token degli agent (P5).","schema_version":1,"title":"Identità, organizzazioni e permessi","updated":"2026-10-05T09:10:00+00:00"}
 ---
 
 
@@ -15,12 +15,11 @@ D5 e D15: identità pronta all'uso dopo l'installazione, token con permessi limi
 
 ## Scope
 
-Già realizzato: utenti locali e password, admin al primo avvio con cambio password obbligatorio, sessioni, token con scope e scadenza, chiavi SSH, login OIDC (Entra ID, Google, Keycloak), organizzazioni e team, autenticazione centralizzata nel gateway, UI di login, profilo, token, chiavi e organizzazioni.
+Già realizzato: utenti locali e password, admin al primo avvio con cambio password obbligatorio, sessioni, token con scope e scadenza, chiavi SSH, login OIDC (Entra ID, Google, Keycloak), organizzazioni e team, autenticazione centralizzata nel gateway, modello dei permessi P1–P7 con verifica tramite identity, grant admin a chi crea una risorsa, utenti agent senza password, test di sicurezza di accesso negato, UI di login, profilo, token, chiavi e organizzazioni.
 
 Resta:
-- modello dei permessi sulle risorse secondo P1–P7 (owner di organizzazione e proprietario sempre admin, grant diretti o via team, lettura per le risorse interne, nessun accesso anonimo) con verifica tramite identity;
-- gestione degli utenti agent da parte dell'amministratore: creazione e revoca dei loro token senza login al loro posto, nessuna password per gli agent (P5);
-- test di sicurezza di accesso negato senza permesso.
+- gestione degli utenti agent da parte dell'amministratore: creazione e revoca dei loro token senza login al loro posto (P5);
+- schermata Admin · Agents (mockup 17).
 
 Priorità 2 di 9 nella v1.
 

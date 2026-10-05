@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "id": "PROP-4b374e33-d569-43ef-bfa1-7d0e284489a8",
+  "state": "applied",
+  "created": "2026-10-05T09:05:00+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Riallineare stato di realizzazione, architettura, identità e PROJECT.md al codice di main (de88a0e); ridurre lo scope rimanente di M-02 alla gestione admin dei token degli agent (P5) e alla schermata Admin · Agents. Orizzonti invariati, nessuna decisione di prodotto cambiata.",
+    "targets": [
+      "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5",
+      "OBJ-c79ed133-8339-4a82-9f91-6b100a636da1",
+      "DOC-8d539b83-ec08-41ca-a680-1529555fc42a",
+      "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+      "PROJECT.md"
+    ],
+    "before_digests": {
+      "knowledge/topics/stato-di-realizzazione.md": "a72d39efc1b58cb030bdd3f79af29f30b640c2ff3e1f5c8dc5bc51f9782141a9",
+      "roadmap/product/m-02-identita-permessi.md": "507187ab284da9203cc43714ed9fcb482ee77f53662c6776cc2b65b17623586a",
+      "knowledge/topics/architettura.md": "91157be8754055b2fde9c6c735c02e5406cfe5e9ca8daf11b757c4d9b3a11ff0",
+      "knowledge/topics/identita-e-sicurezza.md": "24cbe49a1304321de0849a34b4f36137d82c603628e87b53e71d3136f4c54466",
+      "PROJECT.md": "dbc555fee79646d933e1f549dce0688f487d9520b94968d3509f57536da56416"
+    },
+    "operations": [
+      {
+        "target": "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5",
+        "op": "update",
+        "reason": "M-02 quasi completata, M-03 in corso, con prove GIT-n."
+      },
+      {
+        "target": "OBJ-c79ed133-8339-4a82-9f91-6b100a636da1",
+        "op": "update_scope",
+        "reason": "Resta solo P5 (token agent gestiti dall'admin) e mockup 17."
+      },
+      {
+        "target": "DOC-8d539b83-ec08-41ca-a680-1529555fc42a",
+        "op": "update",
+        "reason": "Stato dei servizi identity, git, core, web."
+      },
+      {
+        "target": "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+        "op": "update",
+        "reason": "Rimossa domanda aperta superata su GIT-38."
+      },
+      {
+        "target": "PROJECT.md",
+        "op": "update",
+        "reason": "Current state al 2026-10-05."
+      }
+    ],
+    "evidence": [
+      "git log af42239..de88a0e (GIT-37, 38, 42, 61, 62, 63, 64, 66, 69, 75)",
+      "services/core/internal/httpserver/repos.go (handler repo 501, GIT-67)",
+      "api/openapi.yaml (nessuna API admin per i token degli agent)",
+      "services/identity/internal/users/users.go (agent senza password)"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo e committa su main\" dopo il riepilogo della proposta di pulizia dello stato di realizzazione."
+  }
+}
