@@ -357,3 +357,33 @@ ul.list{margin:0;padding:0;list-style:none}
 .ilist .imeta{margin-top:4px;font-size:12px;color:var(--text-muted)}
 .ilist .iright{color:var(--text-muted);font-size:13px}
 .seg button{display:inline-flex;align-items:center;gap:4px}
+
+/* dettaglio issue (mockup 13) */
+.issue-grid{display:grid;grid-template-columns:1fr 260px;gap:28px;align-items:start}
+.issue-title{font-size:26px;font-weight:500;letter-spacing:-.015em}
+.issue-title span{color:var(--text-subtle);font-weight:300}
+.timeline{position:relative}
+.timeline::before{content:"";position:absolute;left:19px;top:0;bottom:0;width:2px;background:var(--border)}
+.cmt{display:flex;gap:12px;position:relative;margin-bottom:18px}
+.cmt .avatar{position:relative;z-index:1}
+.cmt-box{flex:1;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);min-width:0}
+.cmt-h{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface-2);border-bottom:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;font-size:13px}
+.cmt-h.own{background:var(--accent-soft)}
+.cmt-b{padding:12px 14px}
+.cmt-b p{margin:0 0 8px}.cmt-b p:last-child{margin:0}
+.ev{display:flex;align-items:center;gap:10px;margin:0 0 18px 8px;font-size:13px;color:var(--text-muted);position:relative}
+.ev .evi{width:24px;height:24px;border-radius:50%;background:var(--surface-3);display:flex;align-items:center;justify-content:center;z-index:1;border:2px solid var(--bg)}
+.ev .evi .icon{width:14px;height:14px}
+.ev .evi.closed{background:var(--closed);color:#fff}
+.side-sec{padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
+.side-sec:first-child{padding-top:0}
+.side-sec h4{font-size:12px;color:var(--text-muted);font-weight:600;display:flex;align-items:center;margin-bottom:8px}
+.progress{height:8px;border-radius:4px;background:var(--surface-3);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--success)}
+.editor{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);overflow:hidden}
+.editor .tabs{padding:0 8px;background:var(--surface-2);margin-bottom:0}
+.editor .tab{padding:8px 10px;font-size:13px}
+.editor textarea{border:0;border-radius:0;box-shadow:none!important;min-height:110px;width:100%}
+.editor-preview{padding:12px 14px;min-height:110px}
+.editor-f{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);flex-wrap:wrap}
+@media (max-width:900px){.issue-grid{grid-template-columns:1fr}}

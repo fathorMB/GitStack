@@ -35,6 +35,8 @@ describe('rotte del browser del codice', () => {
     ['/acme/api/commits/main/cmd/main.go', 'commits'],
     ['/acme/api/commit/4e1a9c0', 'commit'],
     ['/acme/api/tags', 'tags'],
+    ['/acme/api/issues', 'issues'],
+    ['/acme/api/issues/41', 'issue'],
     ['/acme/api/search', 'search'],
   ])('%s apre la pagina del repo in modo %s', async (path, mode) => {
     at(path);
