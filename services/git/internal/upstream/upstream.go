@@ -44,6 +44,7 @@ func New(identityURL, coreURL, secret string, timeout time.Duration) *Client {
 var (
 	_ access.Identity = (*Client)(nil)
 	_ access.Core     = (*Client)(nil)
+	_ access.Keys     = (*Client)(nil)
 )
 
 func sanitize(err error) string {
@@ -133,31 +134,68 @@ func (c *Client) HasRole(ctx context.Context, userID, resourceID, role string) (
 
 // ResolveRepo implementa access.Core: GET /repos/{owner}/{repo} firmato con
 // l'identità dell'utente. 404 = inesistente, eliminato o non leggibile.
-func (c *Client) ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (string, error) {
+func (c *Client) ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (access.RepoRef, error) {
 	u := c.core + "/repos/" + url.PathEscape(owner) + "/" + url.PathEscape(name)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return "", err
+		return access.RepoRef{}, err
 	}
 	trust.Sign(req.Header, c.secret, caller, c.now())
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return "", errors.New(sanitize(err))
+		return access.RepoRef{}, errors.New(sanitize(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound, http.StatusBadRequest:
-		return "", access.ErrNotFound
+		return access.RepoRef{}, access.ErrNotFound
 	default:
-		return "", fmt.Errorf("core ha risposto %d", resp.StatusCode)
+		return access.RepoRef{}, fmt.Errorf("core ha risposto %d", resp.StatusCode)
 	}
 	var out struct {
-		ID string `json:"id"`
+		ID       string `json:"id"`
+		Archived bool   `json:"archived"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || out.ID == "" {
-		return "", errors.New("risposta di core non valida")
+		return access.RepoRef{}, errors.New("risposta di core non valida")
 	}
-	return out.ID, nil
+	return access.RepoRef{ID: out.ID, Archived: out.Archived}, nil
+}
+
+// LookupKey implementa access.Keys: GET identity /internal/ssh-keys/{fp}
+// (il fingerprint contiene '/' e '+': va escapato come segmento). Un utente
+// senza isActive nella risposta è trattato come non attivo.
+func (c *Client) LookupKey(ctx context.Context, fingerprint string) (access.KeyOwner, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		c.identity+"/internal/ssh-keys/"+url.PathEscape(fingerprint), nil)
+	if err != nil {
+		return access.KeyOwner{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.secret)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return access.KeyOwner{}, fmt.Errorf("%w: %s", access.ErrUnavailable, sanitize(err))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return access.KeyOwner{}, access.ErrUnknownKey
+	default:
+		return access.KeyOwner{}, fmt.Errorf("%w: ssh-keys ha risposto %d", access.ErrUnavailable, resp.StatusCode)
+	}
+	var out struct {
+		User struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+			IsActive *bool  `json:"isActive"`
+		} `json:"user"`
+	}
+	if err := json.Unmarshal(data, &out); err != nil || out.User.ID == "" {
+		return access.KeyOwner{}, fmt.Errorf("%w: risposta di ssh-keys non valida", access.ErrUnavailable)
+	}
+	return access.KeyOwner{UserID: out.User.ID, Username: out.User.Username, Active: out.User.IsActive != nil && *out.User.IsActive}, nil
 }

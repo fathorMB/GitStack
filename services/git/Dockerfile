@@ -2,7 +2,8 @@
 #
 # Immagine del servizio git. Contesto di build: questa cartella (services/git),
 # non la radice del monorepo: il modulo Go non dipende da altri moduli del
-# workspace, quindi si compila da solo.
+# workspace (golang.org/x/crypto per il server SSH sta in go.mod/go.sum),
+# quindi si compila da solo.
 #
 #   docker build -f services/git/Dockerfile services/git
 #
@@ -13,7 +14,7 @@ FROM golang:1.26-alpine AS build
 
 WORKDIR /src
 
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
@@ -38,6 +39,6 @@ USER gitsvc
 ENV GITSTACK_GIT_DATA_DIR=/data
 
 VOLUME ["/data"]
-EXPOSE 8080
+EXPOSE 8080 2222
 
 ENTRYPOINT ["/usr/local/bin/git-service"]

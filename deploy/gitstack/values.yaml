@@ -236,7 +236,8 @@ git:
   env:
     logLevel: info
   ssh:
-    # false finché il server SSH (GIT-71) non è nell'immagine. Con true: Service
+    # Il server SSH (GIT-71) è nell'immagine; resta false finché non si attiva
+    # (con false il pod avvia git con GITSTACK_GIT_SSH_ADDR=off). Con true: Service
     # LoadBalancer sulla porta sotto (k3s: ServiceLB) e Secret della chiave host.
     # L'installer non modifica mai l'sshd dell'host (R7): se la porta è occupata
     # sul nodo, cambiala qui (e passa lo stesso valore a install.sh con --set).

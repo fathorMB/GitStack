@@ -47,6 +47,17 @@ spec:
               value: /data
             - name: GITSTACK_GIT_LOG_LEVEL
               value: {{ .Values.git.env.logLevel | quote }}
+            # Server SSH integrato (GIT-71): porta e chiave host del Secret; identity
+            # e core (sotto) servono anche a lui. Con ssh.enabled=false resta spento.
+            {{- if .Values.git.ssh.enabled }}
+            - name: GITSTACK_GIT_SSH_ADDR
+              value: {{ printf ":%d" (.Values.git.ssh.port | int) | quote }}
+            - name: GITSTACK_GIT_SSH_HOST_KEY_FILE
+              value: /etc/gitstack/ssh/ssh_host_ed25519_key
+            {{- else }}
+            - name: GITSTACK_GIT_SSH_ADDR
+              value: "off"
+            {{- end }}
             # Smart HTTP (GIT-70): token e permessi da identity, owner/repo da core.
             - name: GITSTACK_IDENTITY_URL
               value: {{ include "gitstack.identity.url" . | quote }}

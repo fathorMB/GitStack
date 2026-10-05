@@ -20,6 +20,7 @@ import (
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
+	"github.com/fathorMB/GitStack/services/git/internal/sshd"
 	"github.com/fathorMB/GitStack/services/git/internal/upstream"
 )
 
@@ -51,13 +52,17 @@ func run(out io.Writer) int {
 		logger.Warn("directory dei dati non pronta: /readyz risponde 503", "dir", cfg.DataDir, "err", err)
 	}
 
-	var gitHandler http.Handler
+	// Un solo upstream.Client e un solo Authorizer per smart HTTP e SSH.
+	var (
+		gitHandler http.Handler
+		auth       *access.Authorizer
+		keys       access.Keys
+	)
 	if cfg.IdentityURL != "" && cfg.CoreURL != "" && cfg.ServiceSecret != "" {
 		up := upstream.New(cfg.IdentityURL, cfg.CoreURL, cfg.ServiceSecret, 5*time.Second)
-		gitHandler = &smarthttp.Handler{
-			Auth:   &access.Authorizer{Identity: up, Core: up, Disk: store},
-			Logger: logger,
-		}
+		auth = &access.Authorizer{Identity: up, Core: up, Disk: store}
+		keys = up
+		gitHandler = &smarthttp.Handler{Auth: auth, Logger: logger}
 	} else {
 		logger.Warn("smart HTTP non configurato: servono identity, core e segreto di servizio", "env", []string{config.EnvIdentityURL, config.EnvCoreURL, config.EnvServiceSecret})
 		gitHandler = unconfigured{}
@@ -75,6 +80,12 @@ func run(out io.Writer) int {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	sshSrv, err := startSSH(cfg, auth, keys, logger)
+	if err != nil {
+		logger.Error("server SSH non avviabile", "err", err)
+		return 1
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -83,7 +94,17 @@ func run(out io.Writer) int {
 		logger.Info("git in ascolto", "addr", cfg.Addr, "dataDir", cfg.DataDir)
 		serveErr <- srv.ListenAndServe()
 	}()
+	sshErr := make(chan error, 1)
+	if sshSrv != nil {
+		go func() { sshErr <- sshSrv.Serve() }()
+		defer func() { _ = sshSrv.Close() }()
+	}
 	select {
+	case err := <-sshErr:
+		if err != nil {
+			logger.Error("il server SSH si è fermato per un errore", "err", err)
+			return 1
+		}
 	case err := <-serveErr:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("il server si è fermato per un errore", "err", err)
@@ -114,4 +135,39 @@ type unconfigured struct{}
 
 func (unconfigured) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "git HTTP non configurato", http.StatusServiceUnavailable)
+}
+
+// startSSH prepara e apre il server SSH integrato, con lo stesso
+// access.Authorizer dello smart HTTP. nil, nil se è disattivato
+// (GITSTACK_GIT_SSH_ADDR=off) o se manca la configurazione di identity e
+// core (auth nil): in quel caso lo dice nel log.
+func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, logger *slog.Logger) (*sshd.Server, error) {
+	if cfg.SSHAddr == "" {
+		logger.Info("server SSH disattivato", "env", config.EnvSSHAddr)
+		return nil, nil
+	}
+	if auth == nil {
+		logger.Warn("server SSH non avviato: servono identity, core e segreto di servizio",
+			"env", []string{config.EnvIdentityURL, config.EnvCoreURL, config.EnvServiceSecret})
+		return nil, nil
+	}
+	key, err := sshd.LoadOrCreateHostKey(cfg.SSHHostKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	srv, err := sshd.New(sshd.Config{
+		Addr:    cfg.SSHAddr,
+		HostKey: key,
+		Auth:    auth,
+		Keys:    keys,
+		Logger:  logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := srv.Listen(); err != nil {
+		return nil, err
+	}
+	logger.Info("SSH in ascolto", "addr", srv.Addr().String(), "hostKey", key.PublicKey().Type())
+	return srv, nil
 }
