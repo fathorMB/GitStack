@@ -1,5 +1,5 @@
 import { CircleCheck, CircleDot, CircleSlash, Flag, MessageSquare, Plus, Search, Tag as TagIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ErrorAlert } from '../../components';
@@ -68,7 +68,6 @@ function IssuesBody({ owner, name, base, q, sort, go }: BodyProps) {
   );
 
   const [text, setText] = useState(withTrailingSpace(q));
-  useEffect(() => setText(withTrailingSpace(q)), [q]);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     go(text);

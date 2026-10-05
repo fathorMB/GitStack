@@ -138,7 +138,9 @@ describe('lista issues', () => {
     const u = userEvent.setup();
     renderAt('/acme/api/issues');
     const bar = await screen.findByLabelText('Search issues');
+    await screen.findByRole("button", { name: /Open 12/ });
     await u.clear(bar);
+    expect(bar).toHaveValue("");
     await u.type(bar, 'is:closed reason:duplicate{Enter}');
     await waitFor(() => expect(decodeURIComponent((screen.getByTestId('where').textContent ?? '').replace(/[+]/g, ' '))).toContain('q=is:closed reason:duplicate'));
     expect(await screen.findByText('No issues match your search.')).toBeInTheDocument();
