@@ -15,3 +15,5 @@ altre guide utente dedicate, il riferimento è
 `repos.md` (M-03/A) documenta scope, owner/visibilità e API interna dei repo.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
+
+`rules-coverage.md` (GIT-115) è la tabella regole di prodotto → test; `scripts/check-rules-coverage.go` ne verifica in CI che i test citati esistano.
