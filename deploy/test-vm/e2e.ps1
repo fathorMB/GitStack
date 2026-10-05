@@ -44,7 +44,8 @@
          nel PATH dell'host.
       e6. browser del codice (GIT-116, M-04): sul repo di e5 aggiunge
          page.html e image.svg (con <script>) e verifica via gateway tree,
-         contents, raw (text/plain o octet-stream+attachment, nosniff, CSP
+         contents, raw (https.txt e page.html come text/plain, mai text/html;
+         image.svg come octet-stream con attachment; nosniff e CSP
          sandbox), commits e dettaglio, e 401/404 senza credenziali.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
@@ -744,17 +745,24 @@ function Main {
             if ($rw.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw "X-Content-Type-Options '$($rw.Headers['X-Content-Type-Options'])', atteso nosniff" }
             if ($rw.Headers['Content-Security-Policy'] -notmatch 'sandbox') { throw "Content-Security-Policy '$($rw.Headers['Content-Security-Policy'])' senza sandbox" }
 
-            $e6Stage = '5. raw di page.html e image.svg'
-            foreach ($f in 'page.html', 'image.svg') {
-                $rw = Invoke-HttpRaw -Uri "$repoApi/raw?path=$f" -Headers $bearer
-                if ($rw.StatusCode -ne 200) { throw "$f status $($rw.StatusCode), corpo '$($rw.Body)' $($rw.Error)" }
-                $ctype = [string]$rw.Headers['Content-Type']
-                if ($ctype -match 'text/html|image/svg\+xml') { throw "$f servito come '$ctype'" }
-                if ($ctype -notmatch '^application/octet-stream') { throw "$f Content-Type '$ctype', atteso application/octet-stream" }
-                if ([string]$rw.Headers['Content-Disposition'] -notmatch '^attachment') { throw "$f Content-Disposition '$($rw.Headers['Content-Disposition'])', atteso attachment" }
-                if ($rw.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw "$f X-Content-Type-Options '$($rw.Headers['X-Content-Type-Options'])', atteso nosniff" }
-                if ($rw.Headers['Content-Security-Policy'] -notmatch 'sandbox') { throw "$f Content-Security-Policy '$($rw.Headers['Content-Security-Policy'])' senza sandbox" }
-            }
+            $e6Stage = '5a. raw di page.html (testo: text/plain, mai eseguibile)'
+            $rw = Invoke-HttpRaw -Uri "$repoApi/raw?path=page.html" -Headers $bearer
+            if ($rw.StatusCode -ne 200) { throw "page.html status $($rw.StatusCode), corpo '$($rw.Body)' $($rw.Error)" }
+            $ctype = [string]$rw.Headers['Content-Type']
+            if ($ctype -match 'text/html|image/svg+xml') { throw "page.html servito come '$ctype'" }
+            if ($ctype -notmatch '^text/plain') { throw "page.html Content-Type '$ctype', atteso text/plain" }
+            if ($rw.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw "page.html X-Content-Type-Options '$($rw.Headers['X-Content-Type-Options'])', atteso nosniff" }
+            if ($rw.Headers['Content-Security-Policy'] -notmatch 'sandbox') { throw "page.html Content-Security-Policy '$($rw.Headers['Content-Security-Policy'])' senza sandbox" }
+
+            $e6Stage = '5b. raw di image.svg (octet-stream, attachment)'
+            $rw = Invoke-HttpRaw -Uri "$repoApi/raw?path=image.svg" -Headers $bearer
+            if ($rw.StatusCode -ne 200) { throw "image.svg status $($rw.StatusCode), corpo '$($rw.Body)' $($rw.Error)" }
+            $ctype = [string]$rw.Headers['Content-Type']
+            if ($ctype -match 'text/html|image/svg+xml') { throw "image.svg servito come '$ctype'" }
+            if ($ctype -notmatch '^application/octet-stream') { throw "image.svg Content-Type '$ctype', atteso application/octet-stream" }
+            if ([string]$rw.Headers['Content-Disposition'] -notmatch '^attachment') { throw "image.svg Content-Disposition '$($rw.Headers['Content-Disposition'])', atteso attachment" }
+            if ($rw.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw "image.svg X-Content-Type-Options '$($rw.Headers['X-Content-Type-Options'])', atteso nosniff" }
+            if ($rw.Headers['Content-Security-Policy'] -notmatch 'sandbox') { throw "image.svg Content-Security-Policy '$($rw.Headers['Content-Security-Policy'])' senza sandbox" }
 
             $e6Stage = '6. commits e dettaglio del commit'
             $cm = Invoke-HttpRaw -Uri "$repoApi/commits" -Headers $bearer
@@ -785,7 +793,7 @@ function Main {
         } finally {
             foreach ($n in $savedEnv6.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv6[$n]) }
         }
-        Add-StepResult -Name 'e6. browser del codice: tree, contents, raw (text/plain o attachment, nosniff, sandbox), commits, nessun dato senza credenziali' -Ok $e6Ok -Detail ($e6Details -join '; ')
+        Add-StepResult -Name 'e6. browser del codice: tree, contents, raw (https.txt e page.html text/plain; image.svg octet-stream+attachment; nosniff, sandbox), commits, nessun dato senza credenziali' -Ok $e6Ok -Detail ($e6Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
