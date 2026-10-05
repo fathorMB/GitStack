@@ -73,6 +73,9 @@ type Client struct {
 	base   string
 	secret string
 	http   *http.Client
+	// stream: stesso trasporto ma senza timeout complessivo, per i corpi in
+	// streaming (raw, archivi); li limita il contesto della richiesta.
+	stream *http.Client
 	now    func() time.Time
 }
 
@@ -83,6 +86,7 @@ func New(base *url.URL, secret string, timeout time.Duration) *Client {
 		base:   strings.TrimRight(base.String(), "/"),
 		secret: secret,
 		http:   &http.Client{Timeout: timeout},
+		stream: &http.Client{},
 		now:    time.Now,
 	}
 }

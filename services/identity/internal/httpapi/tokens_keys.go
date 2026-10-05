@@ -397,8 +397,3 @@ func (s *server) LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprin
 	writeJSON(w, http.StatusOK, openapi.SshKeyLookup{Key: toSSHKey(k), User: toUser(u, true)})
 }
 
-// LookupUsersByEmail (POST /internal/users/lookup-emails, M-04) e' fissata dal
-// contratto; l'implementazione arriva con la lettura del codice.
-func (s *server) LookupUsersByEmail(w http.ResponseWriter, _ *http.Request) {
-	unavailable(w)
-}

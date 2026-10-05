@@ -279,8 +279,13 @@ annotato) e gli indirizzi di scaricamento `zipUrl` e `tarGzUrl` (relativi a
 `/v1`, di `getRepositoryArchive` con `ref` il nome del tag). Li aggiunge core: il
 servizio git non conosce owner e nome. Solo tag nella v1; le release sono in v2.
 
-Stato: i contratti sono fissati da GIT-80 e adeguati alle regole B1–B7 da
-GIT-91; gli handler pubblici di core rispondono 501 fino a GIT-84 (il raw e
-l'IngressRoute del raw sono di GIT-81), l'API interna del servizio git la scrivono GIT-81
-e GIT-82 (a mano, D-E) e `lookup-emails` in identity risponde 501 finché non
-è implementato.
+Stato (GIT-84): gli handler pubblici di core sono implementati (albero, file,
+README, raw nelle due forme, branch, tag, storico, dettaglio, blame, archivi,
+`.diff` e `.patch`); `lookup-emails` in identity collega gli autori ai
+utenti. Restano 501 `getRepositoryLanguages` (GIT-83) e `listRepositoryFiles` e
+`searchRepositoryCode` (GIT-93). Core chiama git con `gitclient.Reader`
+(JSON bufferizzato per le risposte già limitate, streaming per raw, archivi e
+patch); l'accesso è `codeAccess` in `repos_code.go`. La coda `{refAndPath...}` è
+registrata a mano in core (`router.go`) e nel gateway (`mountTail`, e
+`tailParams` nella tabella di sicurezza), perché il codice generato la vede
+come un segmento solo.
