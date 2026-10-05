@@ -111,6 +111,11 @@ function OrgView({ org }: { org: string }) {
           </div>
         </div>
         <span className="sp" />
+        {canManageOrg ? (
+          <Link to={`/orgs/${organization.name}/deleted-repos`} className="small">
+            Deleted repositories
+          </Link>
+        ) : null}
         <Link to="/orgs" className="small">
           All organizations
         </Link>
