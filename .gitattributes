@@ -16,3 +16,6 @@ web/src/styles/tokens.css text eol=lf
 # (il job "chart" della CI le confronta con diff) anche su un checkout Windows.
 services/identity/migrations/bootstrap-role.sql text eol=lf
 deploy/gitstack/files/identity-bootstrap-role.sql text eol=lf
+
+# Modelli di contenuto iniziale (GIT-69): testi in LF anche su Windows.
+services/git/internal/templates/** text eol=lf
