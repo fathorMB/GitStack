@@ -79,16 +79,16 @@ func TestStore_Create_ConflictOnDuplicateTypeAndName(t *testing.T) {
 	ctx := context.Background()
 	s := store.New(pool)
 
-	if _, err := s.Create(ctx, store.NewInput{Type: "repo", Name: "dup"}); err != nil {
+	if _, err := s.Create(ctx, store.NewInput{Type: "app", Name: "dup"}); err != nil {
 		t.Fatalf("prima Create non riuscita: %v", err)
 	}
-	if _, err := s.Create(ctx, store.NewInput{Type: "repo", Name: "dup"}); !errors.Is(err, store.ErrConflict) {
+	if _, err := s.Create(ctx, store.NewInput{Type: "app", Name: "dup"}); !errors.Is(err, store.ErrConflict) {
 		t.Fatalf("seconda Create con stesso type+name = %v, voluto ErrConflict", err)
 	}
 
 	// Stesso name ma type diverso: non è un conflitto (la chiave unica è
 	// (type, name), non name da solo).
-	if _, err := s.Create(ctx, store.NewInput{Type: "app", Name: "dup"}); err != nil {
+	if _, err := s.Create(ctx, store.NewInput{Type: "service", Name: "dup"}); err != nil {
 		t.Fatalf("Create con type diverso non deve andare in conflitto: %v", err)
 	}
 }
@@ -149,5 +149,20 @@ func TestStore_List_FilterByVisibleIDs(t *testing.T) {
 	items, total, err = s.List(ctx, &other, visible, 1, 20)
 	if err != nil || total != 0 || len(items) != 0 {
 		t.Fatalf("tipo diverso: %v %d %v", items, total, err)
+	}
+}
+
+// D-A (M-03): per type='repo' l'unicità non è su (type, name) ma su
+// (owner, name) in core.repositories, quindi due risorse repo con lo stesso
+// name sono ammesse.
+func TestStore_Create_RepoTypeNonHaUnicitaTypeName(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	ctx := context.Background()
+	s := store.New(pool)
+
+	for i := 0; i < 2; i++ {
+		if _, err := s.Create(ctx, store.NewInput{Type: "repo", Name: "dup"}); err != nil {
+			t.Fatalf("Create %d di type repo con lo stesso name non riuscita: %v", i+1, err)
+		}
 	}
 }
