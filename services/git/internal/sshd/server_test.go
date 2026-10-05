@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -29,7 +30,7 @@ const repoID = "0f0f0f0f-1111-4222-8333-444444444444"
 type fakeDir struct {
 	keys     map[string]access.KeyOwner
 	roles    map[string]string // userID -> read|write
-	archived bool
+	archived atomic.Bool
 }
 
 func (f *fakeDir) LookupKey(_ context.Context, fp string) (access.KeyOwner, error) {
@@ -44,7 +45,7 @@ func (f *fakeDir) ResolveRepo(_ context.Context, c trust.Identity, owner, name s
 	if owner != "alice" || name != "app" || f.roles[c.UserID] == "" {
 		return access.RepoRef{}, access.ErrNotFound
 	}
-	return access.RepoRef{ID: repoID, Archived: f.archived}, nil
+	return access.RepoRef{ID: repoID, Archived: f.archived.Load()}, nil
 }
 
 func (f *fakeDir) VerifyToken(context.Context, string) (access.Principal, bool, error) {
@@ -268,7 +269,7 @@ func TestSoloLettura(t *testing.T) {
 
 func TestRepoArchiviatoRifiutaPush(t *testing.T) {
 	e := start(t)
-	e.dir.archived = true
+	e.dir.archived.Store(true)
 	work := t.TempDir()
 	if out, err := e.gitCmd(t, e.rw, work, "clone", e.url("/alice/app.git"), "app"); err != nil {
 		t.Fatalf("clone: %v\n%s", err, out)
