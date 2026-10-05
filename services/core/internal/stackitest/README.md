@@ -57,6 +57,36 @@ né l'id del repo (`leakCheck`); dove serve controlla anche che `refs/heads/main
 | `evento_git_push_su_nats` | nats-server JetStream in-process; dopo un push HTTPS e uno SSH lo stream `GIT` ha due eventi `git.push` decodificati con `gitpush.Register`/`Registry.Decode` (repo, pusher, ref, before/after, commit); un push negato non pubblica niente |
 | `R10_repo_archiviato` | archiviato: si clona (HTTPS e SSH), il push è negato (403 / SSH) e il repo non cambia; riattivato si scrive di nuovo |
 
+## Browser del codice (`browser_e2e_integration_test.go`, `TestBrowserCodice`, GIT-89)
+
+Stesso stack di `TestGitClientReale` (gateway, identity e git binari veri, core in-process, Postgres reale). Il repo si crea
+via API e la storia di prova si spinge **via HTTPS con il git vero** (non con un fetch nel bare), in due repo di `alice`:
+`quarzo-codice` (privato) e `quarzo-aperto` (interno). La storia ha: due branch più `bulk/301`, un tag leggero (`v0.1`) e uno
+annotato (`v1.0`), un merge `--no-ff`, commit di un utente e di un agente (`botty`), un binario, un PNG, un SVG e un HTML con
+`<script>`, file di 1,7 MB (fascia 1–5 MB) e 7 MB (oltre 5 MB), un commit con `big.txt` (600 righe) e `package-lock.json`, un
+commit con 301 file e un README con link relativo e immagine. Letture via gateway con il token di `alice`; le regole sono
+B1–B7 di `.prisma/knowledge/topics/browser-codice.md` (tabella regole→test in `docs/rules-coverage.md`).
+
+| Sottotest | Cosa prova |
+| --- | --- |
+| `albero` | radice e sottocartella (cartelle prima dei file, ultimo commit per voce), albero a un tag, 404 per percorso e ref inesistenti, 400 per ref non valido |
+| `file_B1_tre_fasce` | testo sotto 1 MB `highlight`; 1–5 MB `plain` con contenuto intero; oltre 5 MB `download`, `truncated`, nessun contenuto, ma `raw` porta tutti i byte; PNG e SVG come `image` (base64); binario solo dimensione; HTML è testo |
+| `readme` | README con link relativo e immagine, che puntano a file esistenti |
+| `raw_header_di_sicurezza` | raw (forma a query e a indirizzo, ref con `/`, tag): HTML come `text/plain` in linea, SVG, PNG e binari come allegato `octet-stream`; sempre `nosniff` e `Content-Security-Policy: sandbox`; i byte sono quelli del file; nessun tipo html/svg/xml/javascript |
+| `archivi` | ZIP e tar.gz: stesso albero e stessi byte, nomi `<repo>-<ref>`, `/` del ref diventa `-`, archivio a un tag e a un commit |
+| `branch_e_tag` | 3 branch (default per primo e protetto), 2 tag: annotato col messaggio, leggero senza, data, commit e indirizzi ZIP/tar.gz che scaricano davvero |
+| `storico` | tutti i commit col merge a 2 genitori, badge agent/umano, paginazione, storico di `main.go` (2 commit), filtro per autore, storico a un tag |
+| `dettaglio_commit_B6` | `big.txt` chiuso (`large`), `package-lock.json` chiuso (`lock`), file piccolo aperto col patch; `path`, prefisso dello sha, `ignoreWhitespace`, merge, 301 file → `listOnly` senza patch; sha non esadecimale 400, inesistente 404 |
+| `diff_e_patch_scaricabili` | `.diff` e `.patch` completi (nessun file chiuso né troncato, anche i 301 file), `Content-Disposition` con lo sha, header di sicurezza |
+| `blame` | più commit e autore agente, 66 righe coperte; binario e file oltre 1 MB rifiutati (400) |
+| `ricerca_e_elenco_file` | Search code senza distinguere maiuscole, massimo 100 risultati con `limitReached`, niente binari, `q` di 1 carattere 400; elenco file per Go to file |
+| `lingue` | byte e percentuali per lingua, in ordine decrescente (saltato finché `getRepositoryLanguages` risponde 501, GIT-117) |
+| `permessi` | per ogni lettura: proprietario 200; utente senza permesso su repo privato 404 identico a un repo inesistente; senza credenziali 401 (anche sul repo interno: raw e archivi compresi); token senza `read:resource` 403; repo interno letto da un altro utente; sessione web accettata, token inventato 401. Ogni caso negativo controlla che il corpo non porti nome o id del repo, nomi di file, contenuto, sha (interi e abbreviati), autori |
+| `ui_smoke` | Vitest + Testing Library + jsdom (`web/src/smoke`, lo strumento del resto di web/) contro questo stack: le pagine 07 (albero e README), 08 (file), 09 (storico) e 10 (dettaglio commit) si caricano senza chiamate fallite né `console.error`. Senza node o senza `web/node_modules` è saltato; in CI (`GITSTACK_REQUIRE_UI_SMOKE=1`) è un errore |
+
+Il contratto dice `blame_unavailable` per un blame impossibile, ma core oggi inoltra un 400 `invalid_request`: il test prova lo status.
+Le pagine 22 (Tags) e 23 (Search code) della UI arrivano con GIT-94 e si aggiungono allo smoke quando sono su main.
+
 ## VM di test
 
 `deploy/test-vm/e2e.ps1` ha il passo e5: utente di prova con token e chiave SSH, repo creato via API, push e clone
