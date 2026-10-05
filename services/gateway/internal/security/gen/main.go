@@ -40,7 +40,8 @@ var methods = map[string]string{
 	"patch": "PATCH", "head": "HEAD", "options": "OPTIONS",
 }
 
-var coreTags = map[string]bool{"system": true, "resources": true, "repos": true, "issues": true}
+var coreTags = map[string]bool{"system": true, "resources": true, "repos": true, "issues": true,
+	"notifications": true, "webhooks": true}
 
 var identityTags = map[string]bool{
 	"auth": true, "users": true, "tokens": true, "ssh-keys": true,

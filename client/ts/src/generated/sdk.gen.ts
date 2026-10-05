@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CloseIssueData, CloseIssueErrors, CloseIssueResponses, CreateIssueCommentData, CreateIssueCommentErrors, CreateIssueCommentResponses, CreateIssueData, CreateIssueErrors, CreateIssueResponses, CreateLabelData, CreateLabelErrors, CreateLabelResponses, CreateMilestoneData, CreateMilestoneErrors, CreateMilestoneResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteIssueCommentData, DeleteIssueCommentErrors, DeleteIssueCommentResponses, DeleteLabelData, DeleteLabelErrors, DeleteLabelResponses, DeleteMilestoneData, DeleteMilestoneErrors, DeleteMilestoneResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetIssueAttachmentData, GetIssueAttachmentErrors, GetIssueAttachmentResponses, GetIssueData, GetIssueErrors, GetIssueResponses, GetLabelData, GetLabelErrors, GetLabelResponses, GetMilestoneData, GetMilestoneErrors, GetMilestoneResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserAccessData, GetUserAccessErrors, GetUserAccessResponses, GetUserAccessSourcesData, GetUserAccessSourcesErrors, GetUserAccessSourcesResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListIssueCommentsData, ListIssueCommentsErrors, ListIssueCommentsResponses, ListIssueCommentVersionsData, ListIssueCommentVersionsErrors, ListIssueCommentVersionsResponses, ListIssueEventsData, ListIssueEventsErrors, ListIssueEventsResponses, ListIssuesData, ListIssuesErrors, ListIssuesResponses, ListIssueTemplatesData, ListIssueTemplatesErrors, ListIssueTemplatesResponses, ListIssueVersionsData, ListIssueVersionsErrors, ListIssueVersionsResponses, ListLabelsData, ListLabelsErrors, ListLabelsResponses, ListMilestonesData, ListMilestonesErrors, ListMilestonesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LockIssueData, LockIssueErrors, LockIssueResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, LookupUsersByIdsData, LookupUsersByIdsErrors, LookupUsersByIdsResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ReopenIssueData, ReopenIssueErrors, ReopenIssueResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchIssuesData, SearchIssuesErrors, SearchIssuesResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetIssueAssigneesData, SetIssueAssigneesErrors, SetIssueAssigneesResponses, SetIssueHiddenData, SetIssueHiddenErrors, SetIssueHiddenResponses, SetIssueLabelsData, SetIssueLabelsErrors, SetIssueLabelsResponses, SetIssueMilestoneData, SetIssueMilestoneErrors, SetIssueMilestoneResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UnlockIssueData, UnlockIssueErrors, UnlockIssueResponses, UpdateIssueCommentData, UpdateIssueCommentErrors, UpdateIssueCommentResponses, UpdateIssueData, UpdateIssueErrors, UpdateIssueResponses, UpdateLabelData, UpdateLabelErrors, UpdateLabelResponses, UpdateMilestoneData, UpdateMilestoneErrors, UpdateMilestoneResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, UploadIssueAttachmentData, UploadIssueAttachmentErrors, UploadIssueAttachmentResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CloseIssueData, CloseIssueErrors, CloseIssueResponses, CreateIssueCommentData, CreateIssueCommentErrors, CreateIssueCommentResponses, CreateIssueData, CreateIssueErrors, CreateIssueResponses, CreateLabelData, CreateLabelErrors, CreateLabelResponses, CreateMilestoneData, CreateMilestoneErrors, CreateMilestoneResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateOrgWebhookData, CreateOrgWebhookErrors, CreateOrgWebhookResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateRepoWebhookData, CreateRepoWebhookErrors, CreateRepoWebhookResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteIssueCommentData, DeleteIssueCommentErrors, DeleteIssueCommentResponses, DeleteLabelData, DeleteLabelErrors, DeleteLabelResponses, DeleteMilestoneData, DeleteMilestoneErrors, DeleteMilestoneResponses, DeleteNotificationData, DeleteNotificationErrors, DeleteNotificationResponses, DeleteNotificationsData, DeleteNotificationsErrors, DeleteNotificationsResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteOrgWebhookData, DeleteOrgWebhookErrors, DeleteOrgWebhookResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteRepoWebhookData, DeleteRepoWebhookErrors, DeleteRepoWebhookResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetIssueAttachmentData, GetIssueAttachmentErrors, GetIssueAttachmentResponses, GetIssueData, GetIssueErrors, GetIssueResponses, GetIssueSubscriptionData, GetIssueSubscriptionErrors, GetIssueSubscriptionResponses, GetLabelData, GetLabelErrors, GetLabelResponses, GetMilestoneData, GetMilestoneErrors, GetMilestoneResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetNotificationData, GetNotificationErrors, GetNotificationPreferencesData, GetNotificationPreferencesErrors, GetNotificationPreferencesResponses, GetNotificationResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetOrgWebhookData, GetOrgWebhookDeliveryData, GetOrgWebhookDeliveryErrors, GetOrgWebhookDeliveryResponses, GetOrgWebhookErrors, GetOrgWebhookResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetRepoWatchData, GetRepoWatchErrors, GetRepoWatchResponses, GetRepoWebhookData, GetRepoWebhookDeliveryData, GetRepoWebhookDeliveryErrors, GetRepoWebhookDeliveryResponses, GetRepoWebhookErrors, GetRepoWebhookResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserAccessData, GetUserAccessErrors, GetUserAccessResponses, GetUserAccessSourcesData, GetUserAccessSourcesErrors, GetUserAccessSourcesResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListIssueCommentsData, ListIssueCommentsErrors, ListIssueCommentsResponses, ListIssueCommentVersionsData, ListIssueCommentVersionsErrors, ListIssueCommentVersionsResponses, ListIssueEventsData, ListIssueEventsErrors, ListIssueEventsResponses, ListIssuesData, ListIssuesErrors, ListIssuesResponses, ListIssueTemplatesData, ListIssueTemplatesErrors, ListIssueTemplatesResponses, ListIssueVersionsData, ListIssueVersionsErrors, ListIssueVersionsResponses, ListLabelsData, ListLabelsErrors, ListLabelsResponses, ListMilestonesData, ListMilestonesErrors, ListMilestonesResponses, ListNotificationsData, ListNotificationsErrors, ListNotificationsResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListOrgWebhookDeliveriesData, ListOrgWebhookDeliveriesErrors, ListOrgWebhookDeliveriesResponses, ListOrgWebhooksData, ListOrgWebhooksErrors, ListOrgWebhooksResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListRepoWebhookDeliveriesData, ListRepoWebhookDeliveriesErrors, ListRepoWebhookDeliveriesResponses, ListRepoWebhooksData, ListRepoWebhooksErrors, ListRepoWebhooksResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LockIssueData, LockIssueErrors, LockIssueResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, LookupUsersByIdsData, LookupUsersByIdsErrors, LookupUsersByIdsResponses, MarkAllNotificationsReadData, MarkAllNotificationsReadErrors, MarkAllNotificationsReadResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, ReactivateOrgWebhookData, ReactivateOrgWebhookErrors, ReactivateOrgWebhookResponses, ReactivateRepoWebhookData, ReactivateRepoWebhookErrors, ReactivateRepoWebhookResponses, RedeliverOrgWebhookDeliveryData, RedeliverOrgWebhookDeliveryErrors, RedeliverOrgWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryData, RedeliverRepoWebhookDeliveryErrors, RedeliverRepoWebhookDeliveryResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ReopenIssueData, ReopenIssueErrors, ReopenIssueResponses, ResetRepoWatchData, ResetRepoWatchErrors, ResetRepoWatchResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchIssuesData, SearchIssuesErrors, SearchIssuesResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetIssueAssigneesData, SetIssueAssigneesErrors, SetIssueAssigneesResponses, SetIssueHiddenData, SetIssueHiddenErrors, SetIssueHiddenResponses, SetIssueLabelsData, SetIssueLabelsErrors, SetIssueLabelsResponses, SetIssueMilestoneData, SetIssueMilestoneErrors, SetIssueMilestoneResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetRepoWatchData, SetRepoWatchErrors, SetRepoWatchResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, SubscribeIssueData, SubscribeIssueErrors, SubscribeIssueResponses, UnlockIssueData, UnlockIssueErrors, UnlockIssueResponses, UnsubscribeIssueData, UnsubscribeIssueErrors, UnsubscribeIssueResponses, UpdateIssueCommentData, UpdateIssueCommentErrors, UpdateIssueCommentResponses, UpdateIssueData, UpdateIssueErrors, UpdateIssueResponses, UpdateLabelData, UpdateLabelErrors, UpdateLabelResponses, UpdateMilestoneData, UpdateMilestoneErrors, UpdateMilestoneResponses, UpdateNotificationData, UpdateNotificationErrors, UpdateNotificationPreferencesData, UpdateNotificationPreferencesErrors, UpdateNotificationPreferencesResponses, UpdateNotificationResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateOrgWebhookData, UpdateOrgWebhookErrors, UpdateOrgWebhookResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateRepoWebhookData, UpdateRepoWebhookErrors, UpdateRepoWebhookResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, UploadIssueAttachmentData, UploadIssueAttachmentErrors, UploadIssueAttachmentResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -1709,7 +1709,7 @@ export const setIssueMilestone = <ThrowOnError extends boolean = false>(options:
 /**
  * Cronologia degli eventi
  *
- * Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+ * Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e, da M-06, `referenced_from`, `commit_linked` e `closed_by_commit` (C1, C2). Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
  *
  */
 export const listIssueEvents = <ThrowOnError extends boolean = false>(options: Options<ListIssueEventsData, ThrowOnError>): RequestResult<ListIssueEventsResponses, ListIssueEventsErrors, ThrowOnError> => (options.client ?? client).get<ListIssueEventsResponses, ListIssueEventsErrors, ThrowOnError>({
@@ -2133,6 +2133,671 @@ export const updateMilestone = <ThrowOnError extends boolean = false>(options: O
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Elimina in blocco le notifiche
+ *
+ * Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
+ *
+ */
+export const deleteNotifications = <ThrowOnError extends boolean = false>(options: Options<DeleteNotificationsData, ThrowOnError>): RequestResult<DeleteNotificationsResponses, DeleteNotificationsErrors, ThrowOnError> => (options.client ?? client).delete<DeleteNotificationsResponses, DeleteNotificationsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/notifications',
+    ...options
+});
+
+/**
+ * Casella delle notifiche
+ *
+ * Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason` (uno o piu' motivi separati da virgola), `state` (`unread` default, `read`, `archived`, `all`; le archiviate compaiono solo con `archived` o `all`) e `repo` (`owner/repo`). Stessa casella e stesse regole per persone e agenti (C4); `gs notification list --json` usa questa operazione. Le notifiche di un repo che l'utente non legge piu' non compaiono e vengono eliminate (C9). `unreadCount` conta le non lette non archiviate dell'utente, con i soli filtri `reason` e `repo`.
+ *
+ */
+export const listNotifications = <ThrowOnError extends boolean = false>(options?: Options<ListNotificationsData, ThrowOnError>): RequestResult<ListNotificationsResponses, ListNotificationsErrors, ThrowOnError> => (options?.client ?? client).get<ListNotificationsResponses, ListNotificationsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/notifications',
+    ...options
+});
+
+/**
+ * Segna come lette tutte le notifiche
+ *
+ * Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi (`reason`, `repo`) dell'elenco. Idempotente. Le archiviate non cambiano.
+ *
+ */
+export const markAllNotificationsRead = <ThrowOnError extends boolean = false>(options?: Options<MarkAllNotificationsReadData, ThrowOnError>): RequestResult<MarkAllNotificationsReadResponses, MarkAllNotificationsReadErrors, ThrowOnError> => (options?.client ?? client).post<MarkAllNotificationsReadResponses, MarkAllNotificationsReadErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/notifications/read-all',
+    ...options
+});
+
+/**
+ * Elimina una notifica
+ *
+ * Eliminazione manuale (C9), anche di una non letta.
+ */
+export const deleteNotification = <ThrowOnError extends boolean = false>(options: Options<DeleteNotificationData, ThrowOnError>): RequestResult<DeleteNotificationResponses, DeleteNotificationErrors, ThrowOnError> => (options.client ?? client).delete<DeleteNotificationResponses, DeleteNotificationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/notifications/{notificationId}',
+    ...options
+});
+
+/**
+ * Legge una notifica
+ *
+ * Una notifica di un'altra persona risponde 404, come una inesistente.
+ */
+export const getNotification = <ThrowOnError extends boolean = false>(options: Options<GetNotificationData, ThrowOnError>): RequestResult<GetNotificationResponses, GetNotificationErrors, ThrowOnError> => (options.client ?? client).get<GetNotificationResponses, GetNotificationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/notifications/{notificationId}',
+    ...options
+});
+
+/**
+ * Segna come letta/non letta o archivia
+ *
+ * Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+ *
+ */
+export const updateNotification = <ThrowOnError extends boolean = false>(options: Options<UpdateNotificationData, ThrowOnError>): RequestResult<UpdateNotificationResponses, UpdateNotificationErrors, ThrowOnError> => (options.client ?? client).patch<UpdateNotificationResponses, UpdateNotificationErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/notifications/{notificationId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Preferenze email delle notifiche
+ *
+ * Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
+ *
+ */
+export const getNotificationPreferences = <ThrowOnError extends boolean = false>(options?: Options<GetNotificationPreferencesData, ThrowOnError>): RequestResult<GetNotificationPreferencesResponses, GetNotificationPreferencesErrors, ThrowOnError> => (options?.client ?? client).get<GetNotificationPreferencesResponses, GetNotificationPreferencesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/notification-preferences',
+    ...options
+});
+
+/**
+ * Imposta le preferenze email
+ *
+ * Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+ *
+ */
+export const updateNotificationPreferences = <ThrowOnError extends boolean = false>(options: Options<UpdateNotificationPreferencesData, ThrowOnError>): RequestResult<UpdateNotificationPreferencesResponses, UpdateNotificationPreferencesErrors, ThrowOnError> => (options.client ?? client).put<UpdateNotificationPreferencesResponses, UpdateNotificationPreferencesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/user/notification-preferences',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Riporta il Watch al default
+ *
+ * Torna a `participating`. Idempotente.
+ */
+export const resetRepoWatch = <ThrowOnError extends boolean = false>(options: Options<ResetRepoWatchData, ThrowOnError>): RequestResult<ResetRepoWatchResponses, ResetRepoWatchErrors, ThrowOnError> => (options.client ?? client).delete<ResetRepoWatchResponses, ResetRepoWatchErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/watch',
+    ...options
+});
+
+/**
+ * Watch del repo
+ *
+ * Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul repo; un repo che non si legge risponde 404.
+ *
+ */
+export const getRepoWatch = <ThrowOnError extends boolean = false>(options: Options<GetRepoWatchData, ThrowOnError>): RequestResult<GetRepoWatchResponses, GetRepoWatchErrors, ThrowOnError> => (options.client ?? client).get<GetRepoWatchResponses, GetRepoWatchErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/watch',
+    ...options
+});
+
+/**
+ * Imposta il Watch del repo
+ *
+ * `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+ *
+ */
+export const setRepoWatch = <ThrowOnError extends boolean = false>(options: Options<SetRepoWatchData, ThrowOnError>): RequestResult<SetRepoWatchResponses, SetRepoWatchErrors, ThrowOnError> => (options.client ?? client).put<SetRepoWatchResponses, SetRepoWatchErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/watch',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Smette di seguire la issue (Unsubscribe)
+ *
+ * Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche' non fa Subscribe. Le menzioni dirette (`@utente`) e le assegnazioni notificano comunque. Idempotente.
+ *
+ */
+export const unsubscribeIssue = <ThrowOnError extends boolean = false>(options: Options<UnsubscribeIssueData, ThrowOnError>): RequestResult<UnsubscribeIssueResponses, UnsubscribeIssueErrors, ThrowOnError> => (options.client ?? client).delete<UnsubscribeIssueResponses, UnsubscribeIssueErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/issues/{number}/subscription',
+    ...options
+});
+
+/**
+ * Iscrizione alla issue
+ *
+ * Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati seguono in automatico. Serve poter leggere la issue; una nascosta risponde 404 a chi non e' `admin`.
+ *
+ */
+export const getIssueSubscription = <ThrowOnError extends boolean = false>(options: Options<GetIssueSubscriptionData, ThrowOnError>): RequestResult<GetIssueSubscriptionResponses, GetIssueSubscriptionErrors, ThrowOnError> => (options.client ?? client).get<GetIssueSubscriptionResponses, GetIssueSubscriptionErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/issues/{number}/subscription',
+    ...options
+});
+
+/**
+ * Segue la issue (Subscribe)
+ *
+ * Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter leggere la issue.
+ *
+ */
+export const subscribeIssue = <ThrowOnError extends boolean = false>(options: Options<SubscribeIssueData, ThrowOnError>): RequestResult<SubscribeIssueResponses, SubscribeIssueErrors, ThrowOnError> => (options.client ?? client).put<SubscribeIssueResponses, SubscribeIssueErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/issues/{number}/subscription',
+    ...options
+});
+
+/**
+ * Elenca i webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+ *
+ */
+export const listRepoWebhooks = <ThrowOnError extends boolean = false>(options: Options<ListRepoWebhooksData, ThrowOnError>): RequestResult<ListRepoWebhooksResponses, ListRepoWebhooksErrors, ThrowOnError> => (options.client ?? client).get<ListRepoWebhooksResponses, ListRepoWebhooksErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks',
+    ...options
+});
+
+/**
+ * Crea un webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+ *
+ */
+export const createRepoWebhook = <ThrowOnError extends boolean = false>(options: Options<CreateRepoWebhookData, ThrowOnError>): RequestResult<CreateRepoWebhookResponses, CreateRepoWebhookErrors, ThrowOnError> => (options.client ?? client).post<CreateRepoWebhookResponses, CreateRepoWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina un webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+ *
+ */
+export const deleteRepoWebhook = <ThrowOnError extends boolean = false>(options: Options<DeleteRepoWebhookData, ThrowOnError>): RequestResult<DeleteRepoWebhookResponses, DeleteRepoWebhookErrors, ThrowOnError> => (options.client ?? client).delete<DeleteRepoWebhookResponses, DeleteRepoWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}',
+    ...options
+});
+
+/**
+ * Legge un webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
+ *
+ */
+export const getRepoWebhook = <ThrowOnError extends boolean = false>(options: Options<GetRepoWebhookData, ThrowOnError>): RequestResult<GetRepoWebhookResponses, GetRepoWebhookErrors, ThrowOnError> => (options.client ?? client).get<GetRepoWebhookResponses, GetRepoWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}',
+    ...options
+});
+
+/**
+ * Modifica un webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+ *
+ */
+export const updateRepoWebhook = <ThrowOnError extends boolean = false>(options: Options<UpdateRepoWebhookData, ThrowOnError>): RequestResult<UpdateRepoWebhookResponses, UpdateRepoWebhookErrors, ThrowOnError> => (options.client ?? client).patch<UpdateRepoWebhookResponses, UpdateRepoWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Riattiva un webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+ *
+ */
+export const reactivateRepoWebhook = <ThrowOnError extends boolean = false>(options: Options<ReactivateRepoWebhookData, ThrowOnError>): RequestResult<ReactivateRepoWebhookResponses, ReactivateRepoWebhookErrors, ThrowOnError> => (options.client ?? client).post<ReactivateRepoWebhookResponses, ReactivateRepoWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/reactivate',
+    ...options
+});
+
+/**
+ * Log delle consegne di un webhook di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+ *
+ */
+export const listRepoWebhookDeliveries = <ThrowOnError extends boolean = false>(options: Options<ListRepoWebhookDeliveriesData, ThrowOnError>): RequestResult<ListRepoWebhookDeliveriesResponses, ListRepoWebhookDeliveriesErrors, ThrowOnError> => (options.client ?? client).get<ListRepoWebhookDeliveriesResponses, ListRepoWebhookDeliveriesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/deliveries',
+    ...options
+});
+
+/**
+ * Dettaglio di una consegna di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+ *
+ */
+export const getRepoWebhookDelivery = <ThrowOnError extends boolean = false>(options: Options<GetRepoWebhookDeliveryData, ThrowOnError>): RequestResult<GetRepoWebhookDeliveryResponses, GetRepoWebhookDeliveryErrors, ThrowOnError> => (options.client ?? client).get<GetRepoWebhookDeliveryResponses, GetRepoWebhookDeliveryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}',
+    ...options
+});
+
+/**
+ * Rinvia una consegna (Redeliver) di un repo
+ *
+ * Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+ *
+ */
+export const redeliverRepoWebhookDelivery = <ThrowOnError extends boolean = false>(options: Options<RedeliverRepoWebhookDeliveryData, ThrowOnError>): RequestResult<RedeliverRepoWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryErrors, ThrowOnError> => (options.client ?? client).post<RedeliverRepoWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver',
+    ...options
+});
+
+/**
+ * Elenca i webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+ *
+ */
+export const listOrgWebhooks = <ThrowOnError extends boolean = false>(options: Options<ListOrgWebhooksData, ThrowOnError>): RequestResult<ListOrgWebhooksResponses, ListOrgWebhooksErrors, ThrowOnError> => (options.client ?? client).get<ListOrgWebhooksResponses, ListOrgWebhooksErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks',
+    ...options
+});
+
+/**
+ * Crea un webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+ *
+ */
+export const createOrgWebhook = <ThrowOnError extends boolean = false>(options: Options<CreateOrgWebhookData, ThrowOnError>): RequestResult<CreateOrgWebhookResponses, CreateOrgWebhookErrors, ThrowOnError> => (options.client ?? client).post<CreateOrgWebhookResponses, CreateOrgWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina un webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+ *
+ */
+export const deleteOrgWebhook = <ThrowOnError extends boolean = false>(options: Options<DeleteOrgWebhookData, ThrowOnError>): RequestResult<DeleteOrgWebhookResponses, DeleteOrgWebhookErrors, ThrowOnError> => (options.client ?? client).delete<DeleteOrgWebhookResponses, DeleteOrgWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}',
+    ...options
+});
+
+/**
+ * Legge un webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
+ *
+ */
+export const getOrgWebhook = <ThrowOnError extends boolean = false>(options: Options<GetOrgWebhookData, ThrowOnError>): RequestResult<GetOrgWebhookResponses, GetOrgWebhookErrors, ThrowOnError> => (options.client ?? client).get<GetOrgWebhookResponses, GetOrgWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}',
+    ...options
+});
+
+/**
+ * Modifica un webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+ *
+ */
+export const updateOrgWebhook = <ThrowOnError extends boolean = false>(options: Options<UpdateOrgWebhookData, ThrowOnError>): RequestResult<UpdateOrgWebhookResponses, UpdateOrgWebhookErrors, ThrowOnError> => (options.client ?? client).patch<UpdateOrgWebhookResponses, UpdateOrgWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Riattiva un webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+ *
+ */
+export const reactivateOrgWebhook = <ThrowOnError extends boolean = false>(options: Options<ReactivateOrgWebhookData, ThrowOnError>): RequestResult<ReactivateOrgWebhookResponses, ReactivateOrgWebhookErrors, ThrowOnError> => (options.client ?? client).post<ReactivateOrgWebhookResponses, ReactivateOrgWebhookErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}/reactivate',
+    ...options
+});
+
+/**
+ * Log delle consegne di un webhook di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+ *
+ */
+export const listOrgWebhookDeliveries = <ThrowOnError extends boolean = false>(options: Options<ListOrgWebhookDeliveriesData, ThrowOnError>): RequestResult<ListOrgWebhookDeliveriesResponses, ListOrgWebhookDeliveriesErrors, ThrowOnError> => (options.client ?? client).get<ListOrgWebhookDeliveriesResponses, ListOrgWebhookDeliveriesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}/deliveries',
+    ...options
+});
+
+/**
+ * Dettaglio di una consegna di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+ *
+ */
+export const getOrgWebhookDelivery = <ThrowOnError extends boolean = false>(options: Options<GetOrgWebhookDeliveryData, ThrowOnError>): RequestResult<GetOrgWebhookDeliveryResponses, GetOrgWebhookDeliveryErrors, ThrowOnError> => (options.client ?? client).get<GetOrgWebhookDeliveryResponses, GetOrgWebhookDeliveryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}',
+    ...options
+});
+
+/**
+ * Rinvia una consegna (Redeliver) di un'organizzazione
+ *
+ * Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+ *
+ */
+export const redeliverOrgWebhookDelivery = <ThrowOnError extends boolean = false>(options: Options<RedeliverOrgWebhookDeliveryData, ThrowOnError>): RequestResult<RedeliverOrgWebhookDeliveryResponses, RedeliverOrgWebhookDeliveryErrors, ThrowOnError> => (options.client ?? client).post<RedeliverOrgWebhookDeliveryResponses, RedeliverOrgWebhookDeliveryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver',
+    ...options
 });
 
 /**

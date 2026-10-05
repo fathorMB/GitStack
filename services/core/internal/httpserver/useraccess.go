@@ -101,8 +101,8 @@ func (s *apiServer) GetUserAccess(w http.ResponseWriter, r *http.Request, userna
 		vis := openapi.RepoVisibility(repo.Visibility)
 		item.Visibility = &vis
 		if access.Admin {
-			item.Role = openapi.Admin
-			item.Sources = []openapi.AccessSource{{Kind: openapi.AccessSourceKindInstallationAdmin, Role: openapi.Admin}}
+			item.Role = openapi.ResourceRoleAdmin
+			item.Sources = []openapi.AccessSource{{Kind: openapi.AccessSourceKindInstallationAdmin, Role: openapi.ResourceRoleAdmin}}
 		} else {
 			ra := byID[repo.ID]
 			item.Role = openapi.ResourceRole(ra.Role)

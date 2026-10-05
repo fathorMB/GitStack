@@ -80,6 +80,14 @@ tags:
     description: >
       Issues di un repo (M-05): commenti, cronologia, etichette, milestone,
       assegnatari, allegati, modelli e ricerca. Regole I1-I11. Servite da core.
+  - name: notifications
+    description: >
+      Notifiche in-app dell'utente corrente, iscrizioni alle issues, Watch dei repo e preferenze email (M-06,
+      regole C3-C5, C9). Servite da core.
+  - name: webhooks
+    description: >
+      Webhook di repo e di organizzazione, log delle consegne e Redeliver (M-06, regole C6-C8). Formato dei
+      payload in docs/webhooks.md. Serviti da core.
   - name: git-internal
     description: >
       Interfaccia interna del servizio git verso core (creazione su disco,
@@ -2806,8 +2814,8 @@ paths:
       summary: Cronologia degli eventi
       description: >
         Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette,
-        assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di
-        commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+        assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e, da M-06,
+        `referenced_from`, `commit_linked` e `closed_by_commit` (C1, C2). Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -3475,6 +3483,947 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  # ---------------------------------------------------------------------
+  # Notifiche, iscrizioni, Watch e preferenze email (M-06, regole C3-C5, C9).
+  # Servite da core. La casella e' dell'utente corrente (persona o agente,
+  # C4): nessun percorso con lo username, nessun accesso alla casella altrui.
+  # ---------------------------------------------------------------------
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      x-required-scopes: ["read:resource"]
+      summary: Casella delle notifiche
+      description: >
+        Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason`
+        (uno o piu' motivi separati da virgola), `state` (`unread` default, `read`, `archived`, `all`; le archiviate
+        compaiono solo con `archived` o `all`) e `repo` (`owner/repo`). Stessa casella e stesse regole per persone e
+        agenti (C4); `gs notification list --json` usa questa operazione. Le notifiche di un repo che l'utente non
+        legge piu' non compaiono e vengono eliminate (C9). `unreadCount` conta le non lette non archiviate
+        dell'utente, con i soli filtri `reason` e `repo`.
+      parameters:
+        - $ref: "#/components/parameters/NotificationReasonFilter"
+        - $ref: "#/components/parameters/NotificationStateFilter"
+        - $ref: "#/components/parameters/NotificationRepoFilter"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di notifiche.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteNotifications
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina in blocco le notifiche
+      description: >
+        Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si
+        eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero
+        di notifiche eliminate.
+      parameters:
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [read, archived]
+        - $ref: "#/components/parameters/NotificationReasonFilter"
+        - $ref: "#/components/parameters/NotificationRepoFilter"
+      responses:
+        "200":
+          description: Notifiche eliminate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedNotifications"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Segna come lette tutte le notifiche
+      description: >
+        Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi
+        (`reason`, `repo`) dell'elenco. Idempotente. Le archiviate non cambiano.
+      parameters:
+        - $ref: "#/components/parameters/NotificationReasonFilter"
+        - $ref: "#/components/parameters/NotificationRepoFilter"
+      responses:
+        "200":
+          description: Notifiche segnate come lette.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkedNotifications"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /notifications/{notificationId}:
+    parameters:
+      - $ref: "#/components/parameters/NotificationIdParam"
+    get:
+      operationId: getNotification
+      tags: [notifications]
+      x-required-scopes: ["read:resource"]
+      summary: Legge una notifica
+      description: Una notifica di un'altra persona risponde 404, come una inesistente.
+      responses:
+        "200":
+          description: La notifica.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateNotification
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Segna come letta/non letta o archivia
+      description: >
+        Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un
+        campo, altrimenti 400. Idempotente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationInput"
+      responses:
+        "200":
+          description: Notifica aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteNotification
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina una notifica
+      description: Eliminazione manuale (C9), anche di una non letta.
+      responses:
+        "204":
+          description: Notifica eliminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/notification-preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [notifications]
+      x-required-scopes: ["read:resource"]
+      summary: Preferenze email delle notifiche
+      description: >
+        Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e
+        `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e'
+        un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
+      responses:
+        "200":
+          description: Le preferenze.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    put:
+      operationId: updateNotificationPreferences
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Imposta le preferenze email
+      description: >
+        Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422
+        (`details.fields.email`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationPreferencesInput"
+      responses:
+        "200":
+          description: Preferenze aggiornate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/watch:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepoWatch
+      tags: [notifications]
+      x-required-scopes: ["read:resource"]
+      summary: Watch del repo
+      description: >
+        Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul
+        repo; un repo che non si legge risponde 404.
+      responses:
+        "200":
+          description: Il Watch corrente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoWatch"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    put:
+      operationId: setRepoWatch
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Imposta il Watch del repo
+      description: >
+        `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore,
+        menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal
+        repo, tranne le menzioni dirette. Serve `read` sul repo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetRepoWatchInput"
+      responses:
+        "200":
+          description: Watch aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoWatch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: resetRepoWatch
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Riporta il Watch al default
+      description: Torna a `participating`. Idempotente.
+      responses:
+        "204":
+          description: Watch riportato al default.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/subscription:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    get:
+      operationId: getIssueSubscription
+      tags: [notifications]
+      x-required-scopes: ["read:resource"]
+      summary: Iscrizione alla issue
+      description: >
+        Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati
+        seguono in automatico. Serve poter leggere la issue; una nascosta risponde 404 a chi non e' `admin`.
+      responses:
+        "200":
+          description: Lo stato dell'iscrizione.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    put:
+      operationId: subscribeIssue
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Segue la issue (Subscribe)
+      description: >
+        Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter
+        leggere la issue.
+      responses:
+        "200":
+          description: Iscrizione attiva.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: unsubscribeIssue
+      tags: [notifications]
+      x-required-scopes: ["write:resource"]
+      summary: Smette di seguire la issue (Unsubscribe)
+      description: >
+        Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche'
+        non fa Subscribe. Le menzioni dirette (`@utente`) e le assegnazioni notificano comunque. Idempotente.
+      responses:
+        "200":
+          description: Iscrizione disattivata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/hooks:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listRepoWebhooks
+      tags: [webhooks]
+      x-required-scopes: ["read:resource"]
+      summary: Elenca i webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di webhook.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createRepoWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:resource"]
+      summary: Crea un webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo
+        redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422
+        (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`,
+        `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai
+        nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookInput"
+      responses:
+        "201":
+          description: Webhook creato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/hooks/{hookId}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+    get:
+      operationId: getRepoWebhook
+      tags: [webhooks]
+      x-required-scopes: ["read:resource"]
+      summary: Legge un webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
+      responses:
+        "200":
+          description: Il webhook.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateRepoWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica un webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo
+        toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti
+        (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWebhookInput"
+      responses:
+        "200":
+          description: Webhook aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteRepoWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina un webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+      responses:
+        "204":
+          description: Webhook eliminato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/hooks/{hookId}/reactivate:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+    post:
+      operationId: reactivateRepoWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:resource"]
+      summary: Riattiva un webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active`
+        torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+      responses:
+        "200":
+          description: Webhook riattivato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/hooks/{hookId}/deliveries:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+    get:
+      operationId: listRepoWebhookDeliveries
+      tags: [webhooks]
+      x-required-scopes: ["read:resource"]
+      summary: Log delle consegne di un webhook di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WebhookDeliveryStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di consegne.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+      - $ref: "#/components/parameters/WebhookDeliveryIdParam"
+    get:
+      operationId: getRepoWebhookDelivery
+      tags: [webhooks]
+      x-required-scopes: ["read:resource"]
+      summary: Dettaglio di una consegna di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+      responses:
+        "200":
+          description: La consegna.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+      - $ref: "#/components/parameters/WebhookDeliveryIdParam"
+    post:
+      operationId: redeliverRepoWebhookDelivery
+      tags: [webhooks]
+      x-required-scopes: ["write:resource"]
+      summary: Rinvia una consegna (Redeliver) di un repo
+      description: >
+        Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf`
+        punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il
+        risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu'
+        vecchia di 30 giorni non esiste piu' (404).
+      responses:
+        "202":
+          description: Consegna in coda.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/hooks:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+    get:
+      operationId: listOrgWebhooks
+      tags: [webhooks]
+      x-required-scopes: ["read:org"]
+      summary: Elenca i webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di webhook.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createOrgWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:org"]
+      summary: Crea un webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo
+        redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422
+        (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`,
+        `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai
+        nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookInput"
+      responses:
+        "201":
+          description: Webhook creato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/hooks/{hookId}:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+    get:
+      operationId: getOrgWebhook
+      tags: [webhooks]
+      x-required-scopes: ["read:org"]
+      summary: Legge un webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
+      responses:
+        "200":
+          description: Il webhook.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateOrgWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:org"]
+      summary: Modifica un webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo
+        toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti
+        (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWebhookInput"
+      responses:
+        "200":
+          description: Webhook aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteOrgWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:org"]
+      summary: Elimina un webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+      responses:
+        "204":
+          description: Webhook eliminato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/hooks/{hookId}/reactivate:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+    post:
+      operationId: reactivateOrgWebhook
+      tags: [webhooks]
+      x-required-scopes: ["write:org"]
+      summary: Riattiva un webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active`
+        torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+      responses:
+        "200":
+          description: Webhook riattivato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/hooks/{hookId}/deliveries:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+    get:
+      operationId: listOrgWebhookDeliveries
+      tags: [webhooks]
+      x-required-scopes: ["read:org"]
+      summary: Log delle consegne di un webhook di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WebhookDeliveryStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di consegne.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+      - $ref: "#/components/parameters/WebhookDeliveryIdParam"
+    get:
+      operationId: getOrgWebhookDelivery
+      tags: [webhooks]
+      x-required-scopes: ["read:org"]
+      summary: Dettaglio di una consegna di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+      responses:
+        "200":
+          description: La consegna.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver:
+    parameters:
+      - $ref: "#/components/parameters/OrgParam"
+      - $ref: "#/components/parameters/WebhookIdParam"
+      - $ref: "#/components/parameters/WebhookDeliveryIdParam"
+    post:
+      operationId: redeliverOrgWebhookDelivery
+      tags: [webhooks]
+      x-required-scopes: ["write:org"]
+      summary: Rinvia una consegna (Redeliver) di un'organizzazione
+      description: >
+        Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf`
+        punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il
+        risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu'
+        vecchia di 30 giorni non esiste piu' (404).
+      responses:
+        "202":
+          description: Consegna in coda.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -4858,6 +5807,52 @@ components:
         type: string
         enum: [open, closed, all]
         default: open
+    NotificationIdParam:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationReasonFilter:
+      name: reason
+      in: query
+      required: false
+      description: >
+        Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo
+        sconosciuto: 400.
+      schema:
+        type: string
+        example: assigned,mentioned
+    NotificationStateFilter:
+      name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [unread, read, archived, all]
+        default: unread
+    NotificationRepoFilter:
+      name: repo
+      in: query
+      required: false
+      description: "Solo le notifiche di un repo, `owner/repo`."
+      schema:
+        type: string
+    WebhookIdParam:
+      name: hookId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WebhookDeliveryIdParam:
+      name: deliveryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     Health:
@@ -7225,6 +8220,9 @@ components:
         - unhidden
         - comment_deleted
         - referenced
+        - referenced_from
+        - commit_linked
+        - closed_by_commit
     IssueEvent:
       type: object
       additionalProperties: false
@@ -7247,7 +8245,13 @@ components:
           description: >
             Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`;
             `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`;
-            `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+            `referenced` (non piu' scritto, sostituito da `commit_linked`) ha `commit`; `comment_deleted` ha `commentId`.
+            Eventi di M-06: `referenced_from` (C1, "referenced from owner/repo#n") ha `source`
+            (`kind` issue|pull_request, `repository` `owner/repo`, `number`, `title`, `commentId` se cita un commento) e compare solo a chi vede entrambi i repo; `commit_linked` (C2, "linked
+            commit") ha `commit`
+            (`sha`, `repository` `owner/repo`, `subject`, `ref`, `authorName`); `closed_by_commit` (C2, "closed by commit <sha>") ha
+            `commit` e `reason` `completed`, senza `actor`, ed e' l'unico evento scritto per una chiusura
+            da `fixes #n` (non c'e' anche un `closed`).
         createdAt:
           type: string
           format: date-time
@@ -7477,6 +8481,466 @@ components:
         state:
           type: string
           enum: [open, closed]
+    NotificationReason:
+      type: string
+      description: >
+        Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5).
+        `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento;
+        `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata;
+        `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`;
+        `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue
+        seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+      enum:
+        - assigned
+        - mentioned
+        - participating
+        - subscribed
+        - commit_linked
+        - state_change
+        - webhook
+    NotificationRepo:
+      type: object
+      additionalProperties: false
+      required: [id, fullName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+          description: "`owner/repo`."
+    NotificationIssue:
+      type: object
+      additionalProperties: false
+      required: [number, title, state]
+      properties:
+        number:
+          type: integer
+          format: int64
+        title:
+          type: string
+        state:
+          type: string
+          enum: [open, closed]
+    NotificationWebhook:
+      type: object
+      description: Il webhook di una notifica `webhook`; assente se e' stato eliminato nel frattempo (la notifica sparisce con lui).
+      additionalProperties: false
+      required: [id, scope, url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        scope:
+          $ref: "#/components/schemas/WebhookScope"
+        url:
+          type: string
+    Notification:
+      type: object
+      additionalProperties: false
+      required: [id, reason, read, archived, event, summary, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reason:
+          $ref: "#/components/schemas/NotificationReason"
+        read:
+          type: boolean
+        archived:
+          type: boolean
+        event:
+          type: string
+          description: Nome dell'evento di dominio da cui nasce (es. `issue.closed`, docs/events.md).
+          example: issue.closed
+        summary:
+          type: string
+          description: Testo breve leggibile da persone, non contrattuale.
+        repository:
+          allOf:
+            - $ref: "#/components/schemas/NotificationRepo"
+          nullable: true
+          type: object
+        issue:
+          allOf:
+            - $ref: "#/components/schemas/NotificationIssue"
+          nullable: true
+          type: object
+        commentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Il commento che ha causato la notifica, se c'e'.
+        webhook:
+          allOf:
+            - $ref: "#/components/schemas/NotificationWebhook"
+          nullable: true
+          type: object
+        actor:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+          description: Chi ha causato la notifica; assente per gli eventi di sistema (es. chiusura da commit).
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+    NotificationList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total, unreadCount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+        unreadCount:
+          type: integer
+          description: Notifiche non lette e non archiviate dell'utente (filtri `reason` e `repo` compresi).
+    UpdateNotificationInput:
+      type: object
+      additionalProperties: false
+      properties:
+        read:
+          type: boolean
+          description: "`true` segna come letta, `false` di nuovo come non letta."
+        archived:
+          type: boolean
+          description: "`true` archivia, `false` ripristina."
+    MarkedNotifications:
+      type: object
+      additionalProperties: false
+      required: [marked]
+      properties:
+        marked:
+          type: integer
+          description: Quante notifiche sono passate da non letta a letta.
+    DeletedNotifications:
+      type: object
+      additionalProperties: false
+      required: [deleted]
+      properties:
+        deleted:
+          type: integer
+    NotificationPreferences:
+      type: object
+      additionalProperties: false
+      required: [emailAvailable, email]
+      properties:
+        emailAvailable:
+          type: boolean
+          description: "`false` senza SMTP configurato o per un agente: le email non partono (C4, C5)."
+        email:
+          type: object
+          description: Per ogni tipo (`NotificationReason`) se arriva anche una email. Sono sempre presenti tutti i tipi.
+          additionalProperties:
+            type: boolean
+          example:
+            assigned: true
+            mentioned: true
+            participating: false
+            subscribed: false
+            commit_linked: false
+            state_change: false
+            webhook: false
+    UpdateNotificationPreferencesInput:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: object
+          description: Tipo (`NotificationReason`) → email si/no. I tipi omessi non cambiano.
+          additionalProperties:
+            type: boolean
+    RepoWatchMode:
+      type: string
+      enum: [participating, all, ignore]
+    RepoWatch:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          $ref: "#/components/schemas/RepoWatchMode"
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Assente finche' l'utente non ha mai scelto (default `participating`).
+    SetRepoWatchInput:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          $ref: "#/components/schemas/RepoWatchMode"
+    IssueSubscription:
+      type: object
+      additionalProperties: false
+      required: [subscribed, reason]
+      properties:
+        subscribed:
+          type: boolean
+        reason:
+          type: string
+          description: >
+            Perche' si segue: `author`, `assignee`, `commenter`, `mentioned` (automatico), `manual` (Subscribe),
+            oppure `none` se non si segue (Unsubscribe esplicito o mai coinvolti).
+          enum: [author, assignee, commenter, mentioned, manual, none]
+    WebhookScope:
+      type: string
+      enum: [repo, org]
+    WebhookEvent:
+      type: string
+      description: >
+        Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette,
+        assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato,
+        eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+      enum: [push, issues, issue_comment, repository]
+    Webhook:
+      type: object
+      additionalProperties: false
+      required: [id, scope, url, events, active, hasSecret, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        scope:
+          $ref: "#/components/schemas/WebhookScope"
+        repository:
+          allOf:
+            - $ref: "#/components/schemas/NotificationRepo"
+          nullable: true
+          type: object
+          description: Il repo, per scope `repo`.
+        organization:
+          type: string
+          nullable: true
+          description: Nome dell'organizzazione, per scope `org`.
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookEvent"
+        active:
+          type: boolean
+        hasSecret:
+          type: boolean
+          description: Il segreto non torna mai nelle risposte; senza segreto la consegna non e' firmata.
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Quando i fallimenti consecutivi lo hanno disattivato (C7); `null` se attivo o messo in pausa a mano.
+        disabledReason:
+          type: string
+          nullable: true
+          enum: [consecutive_failures]
+        failingSince:
+          type: string
+          format: date-time
+          nullable: true
+          description: Inizio dei fallimenti consecutivi in corso; dopo 3 giorni il webhook si disattiva.
+        lastDelivery:
+          allOf:
+            - $ref: "#/components/schemas/WebhookDeliverySummary"
+          nullable: true
+          type: object
+        createdBy:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    WebhookList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Webhook"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    CreateWebhookInput:
+      type: object
+      additionalProperties: false
+      required: [url, events]
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        events:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/WebhookEvent"
+        secret:
+          type: string
+          writeOnly: true
+          maxLength: 256
+          description: Segreto per l'HMAC-SHA256 di `X-GitStack-Signature`. Facoltativo; scritto una volta, mai restituito.
+        active:
+          type: boolean
+          default: true
+    UpdateWebhookInput:
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        events:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/WebhookEvent"
+        secret:
+          type: string
+          writeOnly: true
+          maxLength: 256
+          description: Una stringa sostituisce il segreto; la stringa vuota lo toglie.
+        active:
+          type: boolean
+    WebhookDeliveryStatus:
+      type: string
+      description: >
+        `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti
+        (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna
+        e' ferma (C7).
+      enum: [pending, success, failed, gone]
+    WebhookDeliverySummary:
+      type: object
+      additionalProperties: false
+      required: [id, event, status, attempt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Il valore dell'intestazione `X-GitStack-Delivery`.
+        event:
+          $ref: "#/components/schemas/WebhookEvent"
+        action:
+          type: string
+          description: Azione dell'evento (es. `opened`, `closed`); vuota per `push`.
+        status:
+          $ref: "#/components/schemas/WebhookDeliveryStatus"
+        attempt:
+          type: integer
+          minimum: 0
+          maximum: 8
+          description: Tentativi fatti, al massimo 8 (C7).
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        statusCode:
+          type: integer
+          nullable: true
+          description: Codice HTTP dell'ultimo tentativo; assente per errori di rete o timeout di 10 s.
+        durationMs:
+          type: integer
+          nullable: true
+        error:
+          type: string
+          description: Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
+        redeliveryOf:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+    WebhookDelivery:
+      $ref: "#/components/schemas/WebhookDeliverySummary"
+    WebhookDeliveryList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookDeliverySummary"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    WebhookDeliveryRequest:
+      type: object
+      additionalProperties: false
+      required: [headers, payload]
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Le intestazioni inviate (`X-GitStack-Event`, `X-GitStack-Delivery`, `X-GitStack-Signature` se c'e' un segreto, ...).
+        payload:
+          type: object
+          additionalProperties: true
+          description: Il corpo JSON inviato (formato in docs/webhooks.md).
+    WebhookDeliveryResponse:
+      type: object
+      additionalProperties: false
+      required: [headers, body, truncated]
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: string
+          description: Corpo della risposta, troncato a 4 KB (C8).
+        truncated:
+          type: boolean
+    WebhookDeliveryDetail:
+      allOf:
+        - $ref: "#/components/schemas/WebhookDeliverySummary"
+        - type: object
+          required: [request]
+          properties:
+            request:
+              $ref: "#/components/schemas/WebhookDeliveryRequest"
+            response:
+              allOf:
+                - $ref: "#/components/schemas/WebhookDeliveryResponse"
+              nullable: true
+              type: object
+              description: Assente se non c'e' stata nessuna risposta.
 
   headers:
     ContentTypeOptions:
