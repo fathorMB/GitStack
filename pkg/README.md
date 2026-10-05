@@ -6,5 +6,6 @@ Librerie Go condivise tra i servizi di GitStack, ciascuna un modulo a sé
 | Pacchetto | Ruolo |
 |-----------|-------|
 | `events/` | Publisher/consumer per il bus NATS JetStream, con envelope di evento versionato (nome, versione, id, timestamp, payload JSON). Convenzioni di nomi in `docs/events.md`. |
+| `names/` | Validazione dei nomi: regole R11 dei repo (`ValidateRepoName`) e nomi riservati per utenti e organizzazioni (`IsReservedOwnerName`). |
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
