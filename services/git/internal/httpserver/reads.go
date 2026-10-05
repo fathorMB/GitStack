@@ -26,6 +26,8 @@ func (h *handler) mountReads(api *http.ServeMux) {
 	api.HandleFunc("GET /internal/git/repos/{repoId}/tags", h.tags)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/archive", h.archive)
 	api.HandleFunc("GET /internal/git/repos/{repoId}/languages", h.languages)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/files", h.files)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/search", h.search)
 }
 
 // languages: byte per lingua a ref (gitGetLanguages).
@@ -33,6 +35,27 @@ func (h *handler) languages(w http.ResponseWriter, r *http.Request) {
 	res, err := h.Reads.Languages(r.Context(), r.PathValue("repoId"), r.URL.Query().Get("ref"))
 	if err != nil {
 		h.readErr(w, "lingue", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// files: percorsi dei file a ref (gitListFiles, B5).
+func (h *handler) files(w http.ResponseWriter, r *http.Request) {
+	res, err := h.Reads.Files(r.Context(), r.PathValue("repoId"), r.URL.Query().Get("ref"))
+	if err != nil {
+		h.readErr(w, "elenco dei file", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// search: ricerca testuale a ref (gitSearchCode, B5).
+func (h *handler) search(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	res, err := h.Reads.SearchCode(r.Context(), r.PathValue("repoId"), q.Get("ref"), q.Get("q"))
+	if err != nil {
+		h.readErr(w, "ricerca nel codice", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)

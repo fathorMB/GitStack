@@ -258,3 +258,75 @@ func TestReads_LanguagesContent(t *testing.T) {
 		t.Fatalf("senza firma: %d", rec.Code)
 	}
 }
+
+func TestReads_FilesAndSearch(t *testing.T) {
+	e := setup(t)
+	run, err := gitrun.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.h = NewRouter(Deps{Store: e.store, Content: fakeContent{}, Secret: secret, Reads: gitread.New(run, e.store.Dir)})
+	_, err = e.store.Create(context.Background(), rid, repostore.CreateOptions{
+		Files: []repostore.File{
+			{Path: "README.md", Content: []byte("# demo\n")},
+			{Path: "a.go", Content: []byte("--flag e Ciao\n")},
+		},
+		Author: repostore.Author{Name: "Ada", Email: "ada@example.com"},
+		Now:    time.Unix(1700000000, 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := "/internal/git/repos/" + rid
+
+	rec := e.do("GET", base+"/files?ref=main", "", true)
+	e.expect(rec, 200)
+	var fl struct {
+		Ref       string   `json:"ref"`
+		CommitSHA string   `json:"commitSha"`
+		Paths     []string `json:"paths"`
+		Truncated bool     `json:"truncated"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &fl); err != nil || fl.Ref != "main" || len(fl.CommitSHA) != 40 || fl.Truncated ||
+		strings.Join(fl.Paths, ",") != "README.md,a.go" {
+		t.Fatalf("files: %v %s", err, rec.Body)
+	}
+
+	rec = e.do("GET", base+"/search?ref=main&q=--FLAG", "", true)
+	e.expect(rec, 200)
+	if b := rec.Body.String(); !strings.Contains(b, `"path":"a.go"`) || !strings.Contains(b, `"line":1`) ||
+		!strings.Contains(b, `"limitReached":false`) || !strings.Contains(b, `"timedOut":false`) {
+		t.Fatalf("search: %s", b)
+	}
+	if b := e.do("GET", base+"/search?ref=main&q=nulla", "", true).Body.String(); !strings.Contains(b, `"results":[]`) {
+		t.Fatalf("nessun risultato: %s", b)
+	}
+
+	for _, c := range []struct {
+		path string
+		code int
+		err  string
+	}{
+		{base + "/files", 400, "invalid_ref"},
+		{base + "/files?ref=nonesiste", 404, "ref_not_found"},
+		{base + "/search?ref=main&q=a", 400, "invalid_request"},
+		{base + "/search?ref=main", 400, "invalid_request"},
+		{base + "/search?ref=--all&q=ab", 400, "invalid_ref"},
+		{"/internal/git/repos/0a1b2c3d-1111-4222-8333-000000000000/search?ref=main&q=ab", 404, "not_found"},
+		{"/internal/git/repos/non-un-uuid/files?ref=main", 400, "invalid_request"},
+	} {
+		rec := e.do("GET", c.path, "", true)
+		var body struct {
+			Error struct{ Code string } `json:"error"`
+		}
+		_ = json.Unmarshal(rec.Body.Bytes(), &body)
+		if rec.Code != c.code || body.Error.Code != c.err {
+			t.Errorf("%s: %d %s, voglio %d %s", c.path, rec.Code, rec.Body, c.code, c.err)
+		}
+	}
+	for _, p := range []string{"/files?ref=main", "/search?ref=main&q=ab"} {
+		if rec := e.do("GET", base+p, "", false); rec.Code != http.StatusUnauthorized {
+			t.Fatalf("%s senza firma: %d", p, rec.Code)
+		}
+	}
+}
