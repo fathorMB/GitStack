@@ -191,6 +191,9 @@ func (g *fakeGit) Trash(_ context.Context, _ trust.Identity, id uuid.UUID) error
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.trashed = append(g.trashed, id)
+	if st, ok := g.repos[id]; ok {
+		st.Trashed = true
+	}
 	return nil
 }
 
@@ -202,7 +205,14 @@ func (g *fakeGit) Delete(_ context.Context, _ trust.Identity, id uuid.UUID) erro
 	return nil
 }
 
-func (g *fakeGit) Restore(context.Context, trust.Identity, uuid.UUID) error { return nil }
+func (g *fakeGit) Restore(_ context.Context, _ trust.Identity, id uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if st, ok := g.repos[id]; ok {
+		st.Trashed = false
+	}
+	return nil
+}
 
 var _ gitclient.Git = (*fakeGit)(nil)
 
@@ -563,9 +573,5 @@ func TestRepos_Impostazioni(t *testing.T) {
 			t.Fatalf("repo = %+v", b)
 		}
 		e.want(patch("alice", `{"description":"di nuovo modificabile"}`), http.StatusOK)
-	})
-
-	t.Run("eliminazione_ancora_501", func(t *testing.T) {
-		e.want(e.do(http.MethodDelete, "/repos/alice/cfg", "alice", ""), http.StatusNotImplemented)
 	})
 }

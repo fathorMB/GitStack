@@ -2169,6 +2169,13 @@ type ClientInterface interface {
 	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 	ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PurgeResourceAccess Toglie grant e attributi di una risorsa cancellata (per core)
+	//
+	// Per core (M-03/F): dopo la cancellazione definitiva di un repo (R2) toglie tutti i grant (`resource_grants`) e gli attributi di owner e visibilita' della risorsa. Idempotente: 204 anche se non c'era niente da togliere.
+	//
+	// Corresponds with DELETE /internal/resources/{resourceId} (the `PurgeResourceAccess` operationId).
+	PurgeResourceAccess(ctx context.Context, resourceId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetResourceAttributesWithBody Imposta owner e visibilita' di una risorsa (per core)
 	//
 	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
@@ -3341,6 +3348,23 @@ func (c *Client) ListReadableResourcesWithBody(ctx context.Context, contentType 
 // Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 func (c *Client) ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListReadableResourcesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PurgeResourceAccess Toglie grant e attributi di una risorsa cancellata (per core)
+//
+// Per core (M-03/F): dopo la cancellazione definitiva di un repo (R2) toglie tutti i grant (`resource_grants`) e gli attributi di owner e visibilita' della risorsa. Idempotente: 204 anche se non c'era niente da togliere.
+//
+// Corresponds with DELETE /internal/resources/{resourceId} (the `PurgeResourceAccess` operationId).
+func (c *Client) PurgeResourceAccess(ctx context.Context, resourceId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPurgeResourceAccessRequest(c.Server, resourceId)
 	if err != nil {
 		return nil, err
 	}
@@ -6103,6 +6127,40 @@ func NewListReadableResourcesRequestWithBody(server string, contentType string, 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPurgeResourceAccessRequest constructs an http.Request for the PurgeResourceAccess method
+func NewPurgeResourceAccessRequest(server string, resourceId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/resources/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9806,6 +9864,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 	ListReadableResourcesWithResponse(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error)
 
+	// PurgeResourceAccessWithResponse Toglie grant e attributi di una risorsa cancellata (per core)
+	//
+	// Per core (M-03/F): dopo la cancellazione definitiva di un repo (R2) toglie tutti i grant (`resource_grants`) e gli attributi di owner e visibilita' della risorsa. Idempotente: 204 anche se non c'era niente da togliere.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /internal/resources/{resourceId} (the `PurgeResourceAccess` operationId).
+	PurgeResourceAccessWithResponse(ctx context.Context, resourceId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PurgeResourceAccessResponse, error)
+
 	// SetResourceAttributesWithBodyWithResponse Imposta owner e visibilita' di una risorsa (per core)
 	//
 	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
@@ -12203,6 +12270,61 @@ func (r ListReadableResourcesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListReadableResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PurgeResourceAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PurgeResourceAccessResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PurgeResourceAccessResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r PurgeResourceAccessResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PurgeResourceAccessResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PurgeResourceAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PurgeResourceAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PurgeResourceAccessResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -17502,6 +17624,21 @@ func (c *ClientWithResponses) ListReadableResourcesWithResponse(ctx context.Cont
 	return ParseListReadableResourcesResponse(rsp)
 }
 
+// PurgeResourceAccessWithResponse Toglie grant e attributi di una risorsa cancellata (per core)
+//
+// Per core (M-03/F): dopo la cancellazione definitiva di un repo (R2) toglie tutti i grant (`resource_grants`) e gli attributi di owner e visibilita' della risorsa. Idempotente: 204 anche se non c'era niente da togliere.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /internal/resources/{resourceId} (the `PurgeResourceAccess` operationId).
+func (c *ClientWithResponses) PurgeResourceAccessWithResponse(ctx context.Context, resourceId openapi_types.UUID, reqEditors ...RequestEditorFn) (*PurgeResourceAccessResponse, error) {
+	rsp, err := c.PurgeResourceAccess(ctx, resourceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePurgeResourceAccessResponse(rsp)
+}
+
 // SetResourceAttributesWithBodyWithResponse Imposta owner e visibilita' di una risorsa (per core)
 //
 // Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
@@ -20054,6 +20191,49 @@ func ParseListReadableResourcesResponse(rsp *http.Response) (*ListReadableResour
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePurgeResourceAccessResponse parses an HTTP response from a PurgeResourceAccessWithResponse call
+func ParsePurgeResourceAccessResponse(rsp *http.Response) (*PurgeResourceAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PurgeResourceAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest

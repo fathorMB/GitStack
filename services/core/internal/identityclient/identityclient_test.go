@@ -190,3 +190,21 @@ func TestHasRole(t *testing.T) {
 		t.Fatalf("500: %v", err)
 	}
 }
+
+func TestPurgeResource(t *testing.T) {
+	rid := uuid.New()
+	status := 204
+	c := newIdentity(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/internal/resources/"+rid.String() {
+			t.Errorf("richiesta inattesa: %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(status)
+	})
+	if err := c.PurgeResource(context.Background(), rid); err != nil {
+		t.Fatalf("204: %v", err)
+	}
+	status = 500
+	if err := c.PurgeResource(context.Background(), rid); !errors.Is(err, identityclient.ErrUnavailable) {
+		t.Fatalf("500: %v", err)
+	}
+}

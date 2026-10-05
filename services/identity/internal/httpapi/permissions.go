@@ -298,3 +298,17 @@ func (s *server) ResolveOwner(w http.ResponseWriter, r *http.Request, name strin
 		writeJSON(w, http.StatusOK, openapi.OwnerRef{Id: openapi_types.UUID(o.ID), Name: o.Name, Type: openapi.OwnerType(o.Type)})
 	}
 }
+
+// PurgeResourceAccess è DELETE /internal/resources/{resourceId} (serviceAuth):
+// toglie grant e attributi di una risorsa cancellata da core (M-03/F).
+func (s *server) PurgeResourceAccess(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID) {
+	if s.permissions == nil {
+		unavailable(w)
+		return
+	}
+	if err := s.permissions.PurgeResource(r.Context(), uuid.UUID(resourceId)); err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

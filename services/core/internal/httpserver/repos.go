@@ -26,8 +26,7 @@ import (
 )
 
 // Operazioni del tag `repos` (M-03, GIT-67): creazione, lettura, elenco,
-// impostazioni e archiviazione. Eliminazione e ripristino restano 501 (item
-// successivo). Regole: R1-R12 di repository-git.md; contratto e scelte di
+// impostazioni e archiviazione. Eliminazione e ripristino: repos_trash.go.Regole: R1-R12 di repository-git.md; contratto e scelte di
 // permesso in docs/repos.md.
 
 const (
@@ -574,22 +573,4 @@ func (s *apiServer) UpdateRepository(w http.ResponseWriter, r *http.Request, own
 		return
 	}
 	writeJSON(w, http.StatusOK, s.toAPIRepo(r, updated, s.isEmpty(r.Context(), caller, updated.ID)))
-}
-
-// Eliminazione e ripristino: item successivo, per ora 501.
-
-func repoNotImplemented(w http.ResponseWriter) {
-	writeError(w, http.StatusNotImplemented, "not_implemented", "Operazione sui repo non ancora disponibile.")
-}
-
-func (s *apiServer) ListDeletedRepositories(w http.ResponseWriter, _ *http.Request, _ openapi.ListDeletedRepositoriesParams) {
-	repoNotImplemented(w)
-}
-
-func (s *apiServer) RestoreRepository(w http.ResponseWriter, _ *http.Request, _ openapi_types.UUID) {
-	repoNotImplemented(w)
-}
-
-func (s *apiServer) DeleteRepository(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	repoNotImplemented(w)
 }
