@@ -45,9 +45,9 @@ type RepoAuthorizer interface {
 
 // Handler serve le rotte smart HTTP.
 type Handler struct {
-	Auth   Authorizer
+	Auth Authorizer
 	// Rules sono le regole alla ricezione del push (R6, R9); nil = nessuna.
-	Rules *receiverules.Rules
+	Rules  *receiverules.Rules
 	GitBin string
 	Logger *slog.Logger
 	// Realm è il realm del Basic auth (default "GitStack").

@@ -85,6 +85,8 @@ func TestResolveRepo(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
 		case "/repos/alice/arch":
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","archived":true}`))
+		case "/repos/alice/trunk":
+			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","defaultBranch":"trunk","protectDefaultBranch":true}`))
 		case "/repos/alice/boom":
 			w.WriteHeader(http.StatusBadGateway)
 		default:
@@ -101,6 +103,14 @@ func TestResolveRepo(t *testing.T) {
 	}
 	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "arch"); err != nil || !ref.Archived {
 		t.Fatalf("archiviato: %+v %v", ref, err)
+	}
+	// R9: branch principale e protezione devono arrivare da core, altrimenti la
+	// protezione si spegne senza che nessuno se ne accorga.
+	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "trunk"); err != nil || ref.DefaultBranch != "trunk" || !ref.ProtectDefaultBranch {
+		t.Fatalf("defaultBranch/protectDefaultBranch: %+v %v", ref, err)
+	}
+	if ref, _ := c.ResolveRepo(context.Background(), caller, "alice", "app"); ref.ProtectDefaultBranch || ref.DefaultBranch != "" {
+		t.Errorf("senza i campi la protezione non deve risultare attiva: %+v", ref)
 	}
 	if _, err := c.ResolveRepo(context.Background(), caller, "alice", "altro"); !errors.Is(err, access.ErrNotFound) {
 		t.Errorf("404 deve essere ErrNotFound: %v", err)

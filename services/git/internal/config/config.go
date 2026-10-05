@@ -36,7 +36,7 @@ const (
 	// EnvRepoSizeWarn: oltre questa dimensione del repo il push è accettato con
 	// un avviso (R6). Stesso formato; default 5GB; 0 = nessun avviso.
 	EnvRepoSizeWarn = "GITSTACK_GIT_REPO_SIZE_WARN"
-	EnvCoreURL     = "GITSTACK_CORE_URL"
+	EnvCoreURL      = "GITSTACK_CORE_URL"
 )
 
 // DefaultSSHAddr è la porta SSH di default (R7).

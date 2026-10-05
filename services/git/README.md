@@ -43,6 +43,7 @@ Valgono uguali per HTTPS e SSH, lato server, prima che il push entri nel repo. R
 <DATA_DIR>/repos/<id[0:2]>/<id>.git   repo attivo
 <DATA_DIR>/trash/<id>.git             repo nel cestino (R2)
 <DATA_DIR>/tmp/                       creazioni in corso
+<DATA_DIR>/hooks/                     hook pre-receive di GitStack (R6, R9), riscritto a ogni avvio
 ```
 
 `<id>` è l'UUID del repo (lo stesso di `core.resources`), validato e in minuscolo: il percorso non dipende mai da owner o nome, quindi una rinomina non sposta niente (R3). La creazione avviene in `tmp/` e il repo compare in `repos/` con un rename atomico: un errore a metà non lascia repo parziali. Cestino e ripristino sono `os.Rename`; la cancellazione definitiva rimuove solo ciò che è nel cestino. L'id resta occupato (409 alla creazione) finché il repo non è cancellato davvero.
