@@ -45,7 +45,10 @@ Eccezioni: `.github/security-exceptions.json`.
 
 ## Comportamento
 
-- **main e pull request** (`security.yml` parte da sé): modalità *segnala*. Ogni
+- **pull request, ogni notte su main (schedule 03:17 UTC) e avvio a mano senza
+  `release`**: modalità *segnala*. A ogni push su main non gira più, per il
+  consumo di minuti e di job paralleli (decisione del board del 2026-10-05).
+  Ogni
   scansione scrive un'annotazione `warning` per voce (le prime 50) e un
   riepilogo nel *Summary* del run; il report completo è un artefatto
   (`report-*`). Il job non fallisce per i finding. Fallisce solo se uno
