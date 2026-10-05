@@ -1,9 +1,8 @@
 // Console admin degli agent (mockup 17) via client generato (client di
 // default: niente `client:` nelle options, cosi' l'interceptor 401 vale).
-import { createUser, createUserToken, deleteUser, listUsers, listUserTokens, revokeUserToken, updateUser } from '@gitstack/api-client';
-import type { CreatedToken, CreateTokenInput, Token, User } from '@gitstack/api-client';
+import { createUser, createUserToken, deleteUser, getUserAccess, listUsers, listUserTokens, revokeUserToken, updateUser } from '@gitstack/api-client';
+import type { AccessSource, CreatedToken, CreateTokenInput, ResourceRole, Token, User } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
-import { fetchOrganizations, fetchTeamMembers, fetchTeams } from './orgsApi';
 
 export type { CreatedToken, Token, User };
 
@@ -51,21 +50,39 @@ export async function revokeAgentToken(username: string, tokenId: string): Promi
   unwrapEmpty(await revokeUserToken({ baseUrl: API_BASE_URL, path: { username, tokenId } }));
 }
 
-export interface AgentTeam {
-  org: string;
-  team: string;
+export interface AgentAccess {
+  fullName: string;
+  role: ResourceRole;
+  // Provenienza leggibile del ruolo, es. 'via team acme/agents, direct grant'.
+  from: string;
 }
 
-// Team di cui l'agent fa parte, ricavati da organizzazioni -> team -> membri
-// (non c'e' un endpoint "team di un utente"). Grant diretti e visibilita'
-// per repository non hanno ancora un'API per utente: vedi AgentsPage.
-export async function fetchAgentTeams(username: string): Promise<AgentTeam[]> {
-  const result: AgentTeam[] = [];
-  for (const org of await fetchOrganizations()) {
-    for (const team of await fetchTeams(org.name)) {
-      const members = await fetchTeamMembers(org.name, team.name);
-      if (members.some((m) => m.user.username === username)) result.push({ org: org.name, team: team.name });
+function describeSource(s: AccessSource): string {
+  switch (s.kind) {
+    case 'direct':
+      return 'direct grant';
+    case 'team':
+      return `via team ${s.organization ?? ''}/${s.team ?? ''}`;
+    case 'owner':
+      return s.organization ? `owner of ${s.organization}` : 'owner';
+    case 'internal':
+      return 'internal repository';
+    case 'installation_admin':
+      return 'installation admin';
+  }
+}
+
+// Repository raggiungibili dall'agent con ruolo e provenienza (P1-P6),
+// da GET /users/{username}/access (solo amministratori). Le fonti arrivano
+// dalla piu' forte alla piu' debole.
+export async function fetchAgentAccess(username: string): Promise<AgentAccess[]> {
+  const result: AgentAccess[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const res = unwrap(await getUserAccess({ baseUrl: API_BASE_URL, path: { username }, query: { page, perPage: PER_PAGE } }));
+    for (const it of res.items) {
+      result.push({ fullName: it.fullName, role: it.role, from: it.sources.map(describeSource).join(', ') });
     }
+    if (page * res.perPage >= res.total || res.items.length === 0) break;
   }
   return result;
 }

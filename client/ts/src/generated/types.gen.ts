@@ -451,6 +451,51 @@ export type ReadableResourcesResult = {
 };
 
 /**
+ * Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
+ *
+ */
+export type AccessSource = {
+    kind: 'direct' | 'team' | 'owner' | 'internal' | 'installation_admin';
+    role: ResourceRole;
+    /**
+     * Solo per `team` e per `owner` di un'organizzazione.
+     */
+    organization?: string;
+    /**
+     * Solo per `team`.
+     */
+    team?: string;
+};
+
+export type UserAccessSourcesItem = {
+    resourceId: string;
+    role: ResourceRole;
+    sources: Array<AccessSource>;
+};
+
+export type UserAccessSources = {
+    admin: boolean;
+    items: Array<UserAccessSourcesItem>;
+};
+
+export type UserAccessItem = {
+    repositoryId: string;
+    owner: RepoOwner;
+    name: string;
+    fullName: string;
+    visibility?: RepoVisibility;
+    role: ResourceRole;
+    sources: Array<AccessSource>;
+};
+
+export type UserAccessList = {
+    items: Array<UserAccessItem>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+/**
  * Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
  *
  */
@@ -3574,6 +3619,53 @@ export type CreateRepositoryResponses = {
 
 export type CreateRepositoryResponse = CreateRepositoryResponses[keyof CreateRepositoryResponses];
 
+export type GetUserAccessData = {
+    body?: never;
+    path: {
+        username: Name;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/users/{username}/access';
+};
+
+export type GetUserAccessErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetUserAccessError = GetUserAccessErrors[keyof GetUserAccessErrors];
+
+export type GetUserAccessResponses = {
+    /**
+     * Pagina di repository con ruolo e provenienza.
+     */
+    200: UserAccessList;
+};
+
+export type GetUserAccessResponse = GetUserAccessResponses[keyof GetUserAccessResponses];
+
 export type ListDeletedRepositoriesData = {
     body?: never;
     path?: never;
@@ -4815,6 +4907,43 @@ export type CheckPermissionResponses = {
 };
 
 export type CheckPermissionResponse = CheckPermissionResponses[keyof CheckPermissionResponses];
+
+export type GetUserAccessSourcesData = {
+    body: ReadableResourcesInput;
+    path?: never;
+    query?: never;
+    url: '/internal/permissions/user-access';
+};
+
+export type GetUserAccessSourcesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetUserAccessSourcesError = GetUserAccessSourcesErrors[keyof GetUserAccessSourcesErrors];
+
+export type GetUserAccessSourcesResponses = {
+    /**
+     * Risorse raggiungibili con le fonti.
+     */
+    200: UserAccessSources;
+};
+
+export type GetUserAccessSourcesResponse = GetUserAccessSourcesResponses[keyof GetUserAccessSourcesResponses];
 
 export type ListReadableResourcesData = {
     body: ReadableResourcesInput;

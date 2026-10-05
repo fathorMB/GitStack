@@ -38,3 +38,10 @@ func (s *apiServer) UpdateRepository(w http.ResponseWriter, r *http.Request, _ o
 func (s *apiServer) DeleteRepository(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
 	s.proxy.ServeHTTP(w, r)
 }
+
+// GetUserAccess (GET /v1/users/{username}/access) è servita da core, anche se
+// il percorso sta sotto /users: il servizio lo decide la tabella di sicurezza
+// generata dal contratto (tag `repos`).
+func (s *apiServer) GetUserAccess(w http.ResponseWriter, r *http.Request, _ openapi.UsernameParam, _ openapi.GetUserAccessParams) {
+	s.proxy.ServeHTTP(w, r)
+}

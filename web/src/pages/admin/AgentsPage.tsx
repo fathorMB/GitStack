@@ -20,7 +20,7 @@ import {
   createAgentToken,
   deleteAgent,
   fetchAgents,
-  fetchAgentTeams,
+  fetchAgentAccess,
   fetchAgentTokens,
   revokeAgentToken,
   setAgentActive,
@@ -30,6 +30,8 @@ import { fetchSession } from '../../lib/authApi';
 import { daysFromNow, formatDate, usedText } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import { useLoad } from '../../lib/useLoad';
+
+const ROLE_LABEL = { read: 'Read', write: 'Write', admin: 'Admin' } as const;
 
 const EXPIRATIONS = [
   { value: '30', label: '30 days' },
@@ -236,7 +238,7 @@ function AgentDetail({
   const { toast } = useToast();
   const name = agent.username;
   const tokensLoad = useLoad(() => fetchAgentTokens(name));
-  const teamsLoad = useLoad(() => fetchAgentTeams(name));
+  const accessLoad = useLoad(() => fetchAgentAccess(name));
   const tokens = tokensLoad.data ?? [];
 
   const [creating, setCreating] = useState(false);
@@ -321,7 +323,7 @@ function AgentDetail({
     }
   }
 
-  const teams = teamsLoad.data ?? [];
+  const access = accessLoad.data ?? [];
 
   return (
     <>
@@ -456,22 +458,18 @@ function AgentDetail({
           <span className="small muted">from grants, teams and visibility</span>
         </div>
         <div className="list">
-          {teamsLoad.error ? <ErrorAlert message={teamsLoad.error} /> : null}
-          {teamsLoad.loading && teamsLoad.data === null ? <p className="muted small pad">Loading access…</p> : null}
-          {teams.map((t) => (
-            <div key={`${t.org}/${t.team}`} className="list-row">
-              <span className="mono grow">
-                {t.org}/{t.team}
-              </span>
-              <span className="small muted">team membership</span>
+          {accessLoad.error ? <ErrorAlert message={accessLoad.error} /> : null}
+          {accessLoad.loading && accessLoad.data === null ? <p className="muted small pad">Loading access…</p> : null}
+          {access.map((a) => (
+            <div key={a.fullName} className="list-row">
+              <span className="mono grow">{a.fullName}</span>
+              <span className="small muted">{a.from}</span>
+              <span className={a.role === 'read' ? 'badge' : 'badge badge-accent'}>{ROLE_LABEL[a.role]}</span>
             </div>
           ))}
-          {teamsLoad.data !== null && teams.length === 0 ? <p className="muted small pad">Not a member of any team.</p> : null}
-        </div>
-        <div className="card-b small muted">
-          Direct grants and the repositories reachable through teams or internal visibility are not listed yet: the API
-          has no per-user view of them. Manage them from each repository&apos;s access settings or from
-          Organization · Teams.
+          {accessLoad.data !== null && access.length === 0 ? (
+            <p className="muted small pad">No repository is reachable by this agent yet.</p>
+          ) : null}
         </div>
       </div>
 

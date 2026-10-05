@@ -1565,6 +1565,45 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /users/{username}/access:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    get:
+      operationId: getUserAccess
+      tags: [repos]
+      x-required-scopes: ["read:user"]
+      summary: Accesso effettivo di un utente ai repository
+      description: >
+        Solo l'amministratore dell'installazione (403 agli altri, anche per
+        se stessi), scope `read:user`. Per ogni repository non eliminato che
+        l'utente `username` (persona o agent) puo' raggiungere: il ruolo
+        effettivo, il piu' alto fra le fonti (P1-P6), e l'elenco delle
+        fonti (`sources`): grant diretto, grant di un team di cui e' membro
+        (o di un'organizzazione di cui e' owner), owner del repo
+        (organizzazione o repo personale), visibilita' interna, oppure
+        amministratore dell'installazione. Un utente disattivato non ha
+        accesso. 404 se l'utente non esiste. Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di repository con ruolo e provenienza.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccessList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /repos/deleted:
     get:
       operationId: listDeletedRepositories
@@ -2306,6 +2345,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CheckPermissionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/permissions/user-access:
+    post:
+      operationId: getUserAccessSources
+      tags: [internal]
+      summary: Risorse raggiungibili da un utente, con ruolo e fonti
+      description: >
+        Per core (`getUserAccess`): per ogni risorsa con un grant o un
+        attributo che riguarda l'utente, il ruolo effettivo e le fonti
+        (stesse regole di `checkPermission`). Per l'amministratore di
+        sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i
+        repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadableResourcesInput"
+      responses:
+        "200":
+          description: Risorse raggiungibili con le fonti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccessSources"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4389,6 +4463,101 @@ components:
           items:
             type: string
             format: uuid
+
+    AccessSource:
+      type: object
+      additionalProperties: false
+      required: [kind, role]
+      description: >
+        Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`:
+        grant al team `organization`/`team` (di cui e' membro o la cui
+        organizzazione possiede); `owner`: owner dell'organizzazione
+        proprietaria (`organization`) o proprietario del repo personale
+        (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3),
+        `read`; `installation_admin`: amministratore dell'installazione,
+        `admin`.
+      properties:
+        kind:
+          type: string
+          enum: [direct, team, owner, internal, installation_admin]
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+        organization:
+          type: string
+          description: Solo per `team` e per `owner` di un'organizzazione.
+        team:
+          type: string
+          description: Solo per `team`.
+
+    UserAccessSourcesItem:
+      type: object
+      additionalProperties: false
+      required: [resourceId, role, sources]
+      properties:
+        resourceId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessSource"
+
+    UserAccessSources:
+      type: object
+      additionalProperties: false
+      required: [admin, items]
+      properties:
+        admin:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserAccessSourcesItem"
+
+    UserAccessItem:
+      type: object
+      additionalProperties: false
+      required: [repositoryId, owner, name, fullName, role, sources]
+      properties:
+        repositoryId:
+          type: string
+          format: uuid
+        owner:
+          $ref: "#/components/schemas/RepoOwner"
+        name:
+          type: string
+        fullName:
+          type: string
+          example: acme/api
+        visibility:
+          $ref: "#/components/schemas/RepoVisibility"
+        role:
+          $ref: "#/components/schemas/ResourceRole"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessSource"
+
+    UserAccessList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserAccessItem"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
 
     RepoName:
       type: string

@@ -15,6 +15,33 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccessSourceKind.
+const (
+	AccessSourceKindDirect            AccessSourceKind = "direct"
+	AccessSourceKindInstallationAdmin AccessSourceKind = "installation_admin"
+	AccessSourceKindInternal          AccessSourceKind = "internal"
+	AccessSourceKindOwner             AccessSourceKind = "owner"
+	AccessSourceKindTeam              AccessSourceKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the AccessSourceKind enum.
+func (e AccessSourceKind) Valid() bool {
+	switch e {
+	case AccessSourceKindDirect:
+		return true
+	case AccessSourceKindInstallationAdmin:
+		return true
+	case AccessSourceKindInternal:
+		return true
+	case AccessSourceKindOwner:
+		return true
+	case AccessSourceKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CodeUserKind.
 const (
 	Agent CodeUserKind = "agent"
@@ -263,16 +290,37 @@ func (e OwnerType) Valid() bool {
 
 // Defines values for RepoVisibility.
 const (
-	Internal RepoVisibility = "internal"
-	Private  RepoVisibility = "private"
+	RepoVisibilityInternal RepoVisibility = "internal"
+	RepoVisibilityPrivate  RepoVisibility = "private"
 )
 
 // Valid indicates whether the value is a known member of the RepoVisibility enum.
 func (e RepoVisibility) Valid() bool {
 	switch e {
-	case Internal:
+	case RepoVisibilityInternal:
 		return true
-	case Private:
+	case RepoVisibilityPrivate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResourceRole.
+const (
+	Admin ResourceRole = "admin"
+	Read  ResourceRole = "read"
+	Write ResourceRole = "write"
+)
+
+// Valid indicates whether the value is a known member of the ResourceRole enum.
+func (e ResourceRole) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case Read:
+		return true
+	case Write:
 		return true
 	default:
 		return false
@@ -374,6 +422,23 @@ func (e GetRepositoryCommitPatchParamsFormat) Valid() bool {
 		return false
 	}
 }
+
+// AccessSource Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
+type AccessSource struct {
+	Kind AccessSourceKind `json:"kind"`
+
+	// Organization Solo per `team` e per `owner` di un'organizzazione.
+	Organization *string `json:"organization,omitempty"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role ResourceRole `json:"role"`
+
+	// Team Solo per `team`.
+	Team *string `json:"team,omitempty"`
+}
+
+// AccessSourceKind defines model for AccessSource.Kind.
+type AccessSourceKind string
 
 // Blame defines model for Blame.
 type Blame struct {
@@ -805,6 +870,9 @@ type ResourceList struct {
 	Total   int        `json:"total"`
 }
 
+// ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
+type ResourceRole string
+
 // Tag defines model for Tag.
 type Tag struct {
 	Annotated bool          `json:"annotated"`
@@ -875,6 +943,30 @@ type UpdateRepositoryInput struct {
 type UpdateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
 	Name       *string                 `json:"name,omitempty"`
+}
+
+// UserAccessItem defines model for UserAccessItem.
+type UserAccessItem struct {
+	// FullName Example: acme/api
+	FullName     string             `json:"fullName"`
+	Name         string             `json:"name"`
+	Owner        RepoOwner          `json:"owner"`
+	RepositoryId openapi_types.UUID `json:"repositoryId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role    ResourceRole   `json:"role"`
+	Sources []AccessSource `json:"sources"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
+
+// UserAccessList defines model for UserAccessList.
+type UserAccessList struct {
+	Items   []UserAccessItem `json:"items"`
+	Page    int              `json:"page"`
+	PerPage int              `json:"perPage"`
+	Total   int              `json:"total"`
 }
 
 // ArchiveFormatParam defines model for ArchiveFormatParam.
@@ -1130,6 +1222,12 @@ type ListResourcesParams struct {
 	PerPage *PerPageParam       `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// GetUserAccessParams defines parameters for GetUserAccess.
+type GetUserAccessParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // CreateRepositoryJSONRequestBody defines body for CreateRepository for application/json ContentType.
 type CreateRepositoryJSONRequestBody = CreateRepositoryInput
 
@@ -1228,6 +1326,9 @@ type ServerInterface interface {
 	// UpdateResource Aggiorna una risorsa
 	// (PATCH /resources/{resourceId})
 	UpdateResource(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// GetUserAccess Accesso effettivo di un utente ai repository
+	// (GET /users/{username}/access)
+	GetUserAccess(w http.ResponseWriter, r *http.Request, username UsernameParam, params GetUserAccessParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -2554,6 +2655,61 @@ func (siw *ServerInterfaceWrapper) UpdateResource(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetUserAccess operation middleware
+func (siw *ServerInterfaceWrapper) GetUserAccess(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetUserAccessParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUserAccess(w, r, username, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2682,6 +2838,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/resources/{resourceId}", wrapper.UpdateResource)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos", wrapper.ListRepositories)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos", wrapper.CreateRepository)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/access", wrapper.GetUserAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/deleted", wrapper.ListDeletedRepositories)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/deleted/{repoId}/restore", wrapper.RestoreRepository)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.DeleteRepository)

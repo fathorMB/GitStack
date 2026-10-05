@@ -18,6 +18,33 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccessSourceKind.
+const (
+	AccessSourceKindDirect            AccessSourceKind = "direct"
+	AccessSourceKindInstallationAdmin AccessSourceKind = "installation_admin"
+	AccessSourceKindInternal          AccessSourceKind = "internal"
+	AccessSourceKindOwner             AccessSourceKind = "owner"
+	AccessSourceKindTeam              AccessSourceKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the AccessSourceKind enum.
+func (e AccessSourceKind) Valid() bool {
+	switch e {
+	case AccessSourceKindDirect:
+		return true
+	case AccessSourceKindInstallationAdmin:
+		return true
+	case AccessSourceKindInternal:
+		return true
+	case AccessSourceKindOwner:
+		return true
+	case AccessSourceKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CodeUserKind.
 const (
 	CodeUserKindAgent CodeUserKind = "agent"
@@ -416,16 +443,16 @@ func (e PrincipalKind) Valid() bool {
 
 // Defines values for RepoVisibility.
 const (
-	Internal RepoVisibility = "internal"
-	Private  RepoVisibility = "private"
+	RepoVisibilityInternal RepoVisibility = "internal"
+	RepoVisibilityPrivate  RepoVisibility = "private"
 )
 
 // Valid indicates whether the value is a known member of the RepoVisibility enum.
 func (e RepoVisibility) Valid() bool {
 	switch e {
-	case Internal:
+	case RepoVisibilityInternal:
 		return true
-	case Private:
+	case RepoVisibilityPrivate:
 		return true
 	default:
 		return false
@@ -653,6 +680,23 @@ func (e GetRepositoryCommitPatchParamsFormat) Valid() bool {
 		return false
 	}
 }
+
+// AccessSource Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
+type AccessSource struct {
+	Kind AccessSourceKind `json:"kind"`
+
+	// Organization Solo per `team` e per `owner` di un'organizzazione.
+	Organization *string `json:"organization,omitempty"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role ResourceRole `json:"role"`
+
+	// Team Solo per `team`.
+	Team *string `json:"team,omitempty"`
+}
+
+// AccessSourceKind defines model for AccessSource.Kind.
+type AccessSourceKind string
 
 // AddSshKeyInput defines model for AddSshKeyInput.
 type AddSshKeyInput struct {
@@ -1684,6 +1728,45 @@ type User struct {
 // UserKind defines model for User.Kind.
 type UserKind string
 
+// UserAccessItem defines model for UserAccessItem.
+type UserAccessItem struct {
+	// FullName Example: acme/api
+	FullName     string             `json:"fullName"`
+	Name         string             `json:"name"`
+	Owner        RepoOwner          `json:"owner"`
+	RepositoryId openapi_types.UUID `json:"repositoryId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role    ResourceRole   `json:"role"`
+	Sources []AccessSource `json:"sources"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
+
+// UserAccessList defines model for UserAccessList.
+type UserAccessList struct {
+	Items   []UserAccessItem `json:"items"`
+	Page    int              `json:"page"`
+	PerPage int              `json:"perPage"`
+	Total   int              `json:"total"`
+}
+
+// UserAccessSources defines model for UserAccessSources.
+type UserAccessSources struct {
+	Admin bool                    `json:"admin"`
+	Items []UserAccessSourcesItem `json:"items"`
+}
+
+// UserAccessSourcesItem defines model for UserAccessSourcesItem.
+type UserAccessSourcesItem struct {
+	ResourceId openapi_types.UUID `json:"resourceId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role    ResourceRole   `json:"role"`
+	Sources []AccessSource `json:"sources"`
+}
+
 // UserList defines model for UserList.
 type UserList struct {
 	Items   []User `json:"items"`
@@ -2153,6 +2236,12 @@ type ListUsersParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// GetUserAccessParams defines parameters for GetUserAccess.
+type GetUserAccessParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // ListUserTokensParams defines parameters for ListUserTokens.
 type ListUserTokensParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -2170,6 +2259,9 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 
 // ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
 type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
+
+// GetUserAccessSourcesJSONRequestBody defines body for GetUserAccessSources for application/json ContentType.
+type GetUserAccessSourcesJSONRequestBody = ReadableResourcesInput
 
 // SetResourceAttributesJSONRequestBody defines body for SetResourceAttributes for application/json ContentType.
 type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
@@ -2558,6 +2650,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 	ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetUserAccessSourcesWithBody Risorse raggiungibili da un utente, con ruolo e fonti
+	//
+	// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+	GetUserAccessSourcesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetUserAccessSources Risorse raggiungibili da un utente, con ruolo e fonti
+	//
+	// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+	GetUserAccessSources(ctx context.Context, body GetUserAccessSourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PurgeResourceAccess Toglie grant e attributi di una risorsa cancellata (per core)
 	//
@@ -3205,6 +3315,13 @@ type ClientInterface interface {
 	// Corresponds with PATCH /users/{username} (the `UpdateUser` operationId).
 	UpdateUser(ctx context.Context, username UsernameParam, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetUserAccess Accesso effettivo di un utente ai repository
+	//
+	// Solo l'amministratore dell'installazione (403 agli altri, anche per se stessi), scope `read:user`. Per ogni repository non eliminato che l'utente `username` (persona o agent) puo' raggiungere: il ruolo effettivo, il piu' alto fra le fonti (P1-P6), e l'elenco delle fonti (`sources`): grant diretto, grant di un team di cui e' membro (o di un'organizzazione di cui e' owner), owner del repo (organizzazione o repo personale), visibilita' interna, oppure amministratore dell'installazione. Un utente disattivato non ha accesso. 404 se l'utente non esiste. Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /users/{username}/access (the `GetUserAccess` operationId).
+	GetUserAccess(ctx context.Context, username UsernameParam, params *GetUserAccessParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ChangePasswordWithBody Cambia la password
 	//
 	// Scope `write:user`. L'utente stesso deve fornire `currentPassword`; un amministratore no. Con `currentPassword` sbagliata risponde 403 `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire il client). Revoca le altre sessioni dell'utente.
@@ -3834,6 +3951,44 @@ func (c *Client) ListReadableResourcesWithBody(ctx context.Context, contentType 
 // Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 func (c *Client) ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListReadableResourcesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetUserAccessSourcesWithBody Risorse raggiungibili da un utente, con ruolo e fonti
+//
+// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+func (c *Client) GetUserAccessSourcesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserAccessSourcesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetUserAccessSources Risorse raggiungibili da un utente, con ruolo e fonti
+//
+// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+func (c *Client) GetUserAccessSources(ctx context.Context, body GetUserAccessSourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserAccessSourcesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5340,6 +5495,23 @@ func (c *Client) UpdateUserWithBody(ctx context.Context, username UsernameParam,
 // Corresponds with PATCH /users/{username} (the `UpdateUser` operationId).
 func (c *Client) UpdateUser(ctx context.Context, username UsernameParam, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserRequest(c.Server, username, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetUserAccess Accesso effettivo di un utente ai repository
+//
+// Solo l'amministratore dell'installazione (403 agli altri, anche per se stessi), scope `read:user`. Per ogni repository non eliminato che l'utente `username` (persona o agent) puo' raggiungere: il ruolo effettivo, il piu' alto fra le fonti (P1-P6), e l'elenco delle fonti (`sources`): grant diretto, grant di un team di cui e' membro (o di un'organizzazione di cui e' owner), owner del repo (organizzazione o repo personale), visibilita' interna, oppure amministratore dell'installazione. Un utente disattivato non ha accesso. 404 se l'utente non esiste. Paginazione come `GET /repos`.
+//
+// Corresponds with GET /users/{username}/access (the `GetUserAccess` operationId).
+func (c *Client) GetUserAccess(ctx context.Context, username UsernameParam, params *GetUserAccessParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserAccessRequest(c.Server, username, params)
 	if err != nil {
 		return nil, err
 	}
@@ -6971,6 +7143,46 @@ func NewListReadableResourcesRequestWithBody(server string, contentType string, 
 	}
 
 	operationPath := fmt.Sprintf("/internal/permissions/readable-resources")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetUserAccessSourcesRequest calls the generic GetUserAccessSources builder with application/json body
+func NewGetUserAccessSourcesRequest(server string, body GetUserAccessSourcesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetUserAccessSourcesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGetUserAccessSourcesRequestWithBody constructs an http.Request for the GetUserAccessSources method, with any body, and a specified content type
+func NewGetUserAccessSourcesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/permissions/user-access")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10537,6 +10749,79 @@ func NewUpdateUserRequestWithBody(server string, username UsernameParam, content
 	return req, nil
 }
 
+// NewGetUserAccessRequest constructs an http.Request for the GetUserAccess method
+func NewGetUserAccessRequest(server string, username UsernameParam, params *GetUserAccessParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/access", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewChangePasswordRequest calls the generic ChangePassword builder with application/json body
 func NewChangePasswordRequest(server string, username UsernameParam, body ChangePasswordJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -11088,6 +11373,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 	ListReadableResourcesWithResponse(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error)
+
+	// GetUserAccessSourcesWithBodyWithResponse Risorse raggiungibili da un utente, con ruolo e fonti
+	//
+	// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+	GetUserAccessSourcesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetUserAccessSourcesResponse, error)
+
+	// GetUserAccessSourcesWithResponse Risorse raggiungibili da un utente, con ruolo e fonti
+	//
+	// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+	GetUserAccessSourcesWithResponse(ctx context.Context, body GetUserAccessSourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*GetUserAccessSourcesResponse, error)
 
 	// PurgeResourceAccessWithResponse Toglie grant e attributi di una risorsa cancellata (per core)
 	//
@@ -11826,6 +12129,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /users/{username} (the `UpdateUser` operationId).
 	UpdateUserWithResponse(ctx context.Context, username UsernameParam, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
+
+	// GetUserAccessWithResponse Accesso effettivo di un utente ai repository
+	//
+	// Solo l'amministratore dell'installazione (403 agli altri, anche per se stessi), scope `read:user`. Per ogni repository non eliminato che l'utente `username` (persona o agent) puo' raggiungere: il ruolo effettivo, il piu' alto fra le fonti (P1-P6), e l'elenco delle fonti (`sources`): grant diretto, grant di un team di cui e' membro (o di un'organizzazione di cui e' owner), owner del repo (organizzazione o repo personale), visibilita' interna, oppure amministratore dell'installazione. Un utente disattivato non ha accesso. 404 se l'utente non esiste. Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /users/{username}/access (the `GetUserAccess` operationId).
+	GetUserAccessWithResponse(ctx context.Context, username UsernameParam, params *GetUserAccessParams, reqEditors ...RequestEditorFn) (*GetUserAccessResponse, error)
 
 	// ChangePasswordWithBodyWithResponse Cambia la password
 	//
@@ -13811,6 +14123,75 @@ func (r ListReadableResourcesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListReadableResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetUserAccessSourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserAccessSources
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetUserAccessSourcesResponse) GetJSON200() *UserAccessSources {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetUserAccessSourcesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetUserAccessSourcesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetUserAccessSourcesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetUserAccessSourcesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetUserAccessSourcesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetUserAccessSourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetUserAccessSourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetUserAccessSourcesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -18715,6 +19096,82 @@ func (r UpdateUserResponse) ContentType() string {
 	return ""
 }
 
+type GetUserAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserAccessList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetUserAccessResponse) GetJSON200() *UserAccessList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetUserAccessResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetUserAccessResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetUserAccessResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetUserAccessResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetUserAccessResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetUserAccessResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetUserAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetUserAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetUserAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ChangePasswordResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19549,6 +20006,36 @@ func (c *ClientWithResponses) ListReadableResourcesWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseListReadableResourcesResponse(rsp)
+}
+
+// GetUserAccessSourcesWithBodyWithResponse Risorse raggiungibili da un utente, con ruolo e fonti
+//
+// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+func (c *ClientWithResponses) GetUserAccessSourcesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetUserAccessSourcesResponse, error) {
+	rsp, err := c.GetUserAccessSourcesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetUserAccessSourcesResponse(rsp)
+}
+
+// GetUserAccessSourcesWithResponse Risorse raggiungibili da un utente, con ruolo e fonti
+//
+// Per core (`getUserAccess`): per ogni risorsa con un grant o un attributo che riguarda l'utente, il ruolo effettivo e le fonti (stesse regole di `checkPermission`). Per l'amministratore di sistema `admin` e' vero e `items` e' vuoto (core elenca tutti i repo). Utente disattivato: nessun elemento. Utente inesistente: 404.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/permissions/user-access (the `GetUserAccessSources` operationId).
+func (c *ClientWithResponses) GetUserAccessSourcesWithResponse(ctx context.Context, body GetUserAccessSourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*GetUserAccessSourcesResponse, error) {
+	rsp, err := c.GetUserAccessSources(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetUserAccessSourcesResponse(rsp)
 }
 
 // PurgeResourceAccessWithResponse Toglie grant e attributi di una risorsa cancellata (per core)
@@ -20803,6 +21290,21 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userna
 		return nil, err
 	}
 	return ParseUpdateUserResponse(rsp)
+}
+
+// GetUserAccessWithResponse Accesso effettivo di un utente ai repository
+//
+// Solo l'amministratore dell'installazione (403 agli altri, anche per se stessi), scope `read:user`. Per ogni repository non eliminato che l'utente `username` (persona o agent) puo' raggiungere: il ruolo effettivo, il piu' alto fra le fonti (P1-P6), e l'elenco delle fonti (`sources`): grant diretto, grant di un team di cui e' membro (o di un'organizzazione di cui e' owner), owner del repo (organizzazione o repo personale), visibilita' interna, oppure amministratore dell'installazione. Un utente disattivato non ha accesso. 404 se l'utente non esiste. Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /users/{username}/access (the `GetUserAccess` operationId).
+func (c *ClientWithResponses) GetUserAccessWithResponse(ctx context.Context, username UsernameParam, params *GetUserAccessParams, reqEditors ...RequestEditorFn) (*GetUserAccessResponse, error) {
+	rsp, err := c.GetUserAccess(ctx, username, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetUserAccessResponse(rsp)
 }
 
 // ChangePasswordWithBodyWithResponse Cambia la password
@@ -22448,6 +22950,60 @@ func ParseListReadableResourcesResponse(rsp *http.Response) (*ListReadableResour
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetUserAccessSourcesResponse parses an HTTP response from a GetUserAccessSourcesWithResponse call
+func ParseGetUserAccessSourcesResponse(rsp *http.Response) (*GetUserAccessSourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetUserAccessSourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserAccessSources
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
@@ -26506,6 +27062,67 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetUserAccessResponse parses an HTTP response from a GetUserAccessWithResponse call
+func ParseGetUserAccessResponse(rsp *http.Response) (*GetUserAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetUserAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserAccessList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

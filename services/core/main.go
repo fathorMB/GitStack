@@ -170,7 +170,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 		idc := identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)
 		identityPurger = idc
-		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc), httpserver.WithRepoIdentity(idc))
+		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc), httpserver.WithRepoIdentity(idc), httpserver.WithUserAccess(idc))
 	} else {
 		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources e le operazioni sui repo risponderanno 503")
 	}

@@ -9,6 +9,33 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccessSourceKind.
+const (
+	AccessSourceKindDirect            AccessSourceKind = "direct"
+	AccessSourceKindInstallationAdmin AccessSourceKind = "installation_admin"
+	AccessSourceKindInternal          AccessSourceKind = "internal"
+	AccessSourceKindOwner             AccessSourceKind = "owner"
+	AccessSourceKindTeam              AccessSourceKind = "team"
+)
+
+// Valid indicates whether the value is a known member of the AccessSourceKind enum.
+func (e AccessSourceKind) Valid() bool {
+	switch e {
+	case AccessSourceKindDirect:
+		return true
+	case AccessSourceKindInstallationAdmin:
+		return true
+	case AccessSourceKindInternal:
+		return true
+	case AccessSourceKindOwner:
+		return true
+	case AccessSourceKindTeam:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GrantSubjectType.
 const (
 	GrantSubjectTypeTeam GrantSubjectType = "team"
@@ -104,16 +131,16 @@ func (e PrincipalKind) Valid() bool {
 
 // Defines values for RepoVisibility.
 const (
-	Internal RepoVisibility = "internal"
-	Private  RepoVisibility = "private"
+	RepoVisibilityInternal RepoVisibility = "internal"
+	RepoVisibilityPrivate  RepoVisibility = "private"
 )
 
 // Valid indicates whether the value is a known member of the RepoVisibility enum.
 func (e RepoVisibility) Valid() bool {
 	switch e {
-	case Internal:
+	case RepoVisibilityInternal:
 		return true
-	case Private:
+	case RepoVisibilityPrivate:
 		return true
 	default:
 		return false
@@ -209,6 +236,23 @@ func (e VerifyCredentialInputKind) Valid() bool {
 		return false
 	}
 }
+
+// AccessSource Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
+type AccessSource struct {
+	Kind AccessSourceKind `json:"kind"`
+
+	// Organization Solo per `team` e per `owner` di un'organizzazione.
+	Organization *string `json:"organization,omitempty"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role ResourceRole `json:"role"`
+
+	// Team Solo per `team`.
+	Team *string `json:"team,omitempty"`
+}
+
+// AccessSourceKind defines model for AccessSource.Kind.
+type AccessSourceKind string
 
 // CheckPermissionInput defines model for CheckPermissionInput.
 type CheckPermissionInput struct {
@@ -412,6 +456,21 @@ type User struct {
 // UserKind defines model for User.Kind.
 type UserKind string
 
+// UserAccessSources defines model for UserAccessSources.
+type UserAccessSources struct {
+	Admin bool                    `json:"admin"`
+	Items []UserAccessSourcesItem `json:"items"`
+}
+
+// UserAccessSourcesItem defines model for UserAccessSourcesItem.
+type UserAccessSourcesItem struct {
+	ResourceId openapi_types.UUID `json:"resourceId"`
+
+	// Role Ruolo su una risorsa, in ordine crescente di potere.
+	Role    ResourceRole   `json:"role"`
+	Sources []AccessSource `json:"sources"`
+}
+
 // VerifyCredentialInput defines model for VerifyCredentialInput.
 type VerifyCredentialInput struct {
 	// Credential Valore grezzo della credenziale (cookie `gst_session` o token `gst_...`).
@@ -506,6 +565,9 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 
 // ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
 type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
+
+// GetUserAccessSourcesJSONRequestBody defines body for GetUserAccessSources for application/json ContentType.
+type GetUserAccessSourcesJSONRequestBody = ReadableResourcesInput
 
 // SetResourceAttributesJSONRequestBody defines body for SetResourceAttributes for application/json ContentType.
 type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
