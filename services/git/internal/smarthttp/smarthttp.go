@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 )
 
@@ -46,6 +47,8 @@ type RepoAuthorizer interface {
 // Handler serve le rotte smart HTTP.
 type Handler struct {
 	Auth Authorizer
+	// Events pubblica git.push dopo i push riusciti (nil = nessun evento).
+	Events *pushevent.Notifier
 	// Rules sono le regole alla ricezione del push (R6, R9); nil = nessuna.
 	Rules  *receiverules.Rules
 	GitBin string
@@ -143,7 +146,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		banner := "# service=" + service + "\n"
 		_, _ = io.WriteString(w, pktLine(banner)+"0000")
-		h.run(w, r, sub, dir, ref, nil, true)
+		_ = h.run(w, r, sub, dir, ref, nil, true)
 		return
 	}
 	if ct := r.Header.Get("Content-Type"); ct != "application/x-"+service+"-request" {
@@ -162,7 +165,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/x-"+service+"-result")
 	w.WriteHeader(http.StatusOK)
-	h.run(w, r, sub, dir, ref, body, false)
+	var push *pushevent.Push
+	if write {
+		push = h.Events.Begin(r.Context(), pushevent.TargetOf(dir, owner, name, ref), p)
+	}
+	if h.run(w, r, sub, dir, ref, body, false) {
+		push.Done()
+	}
 }
 
 func (h *Handler) logger() *slog.Logger {
@@ -182,8 +191,9 @@ func (h *Handler) challenge(w http.ResponseWriter) {
 }
 
 // run esegue git upload-pack/receive-pack in modalità stateless-rpc e
-// scrive l'uscita nella risposta (già con gli header inviati).
-func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, ref access.RepoRef, stdin io.Reader, advertise bool) {
+// scrive l'uscita nella risposta (già con gli header inviati). Ritorna true
+// se git è finito con successo.
+func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, ref access.RepoRef, stdin io.Reader, advertise bool) bool {
 	var args []string
 	if sub == "receive-pack" {
 		args = h.Rules.GitArgs()
@@ -214,9 +224,11 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, r
 	cmd.Stdout = &flushWriter{w: w, rc: rc}
 	var stderr strings.Builder
 	cmd.Stderr = &limitedBuilder{b: &stderr, max: 4096}
-	if err := cmd.Run(); err != nil && r.Context().Err() == nil {
+	err := cmd.Run()
+	if err != nil && r.Context().Err() == nil {
 		h.logger().Warn("git ha terminato con errore", "service", sub, "err", err, "stderr", strings.TrimSpace(stderr.String()))
 	}
+	return err == nil
 }
 
 var protoRe = regexp.MustCompile(`^[A-Za-z0-9=:_.,-]{1,128}$`)

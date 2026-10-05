@@ -37,6 +37,10 @@ const (
 	// un avviso (R6). Stesso formato; default 5GB; 0 = nessun avviso.
 	EnvRepoSizeWarn = "GITSTACK_GIT_REPO_SIZE_WARN"
 	EnvCoreURL      = "GITSTACK_CORE_URL"
+	// EnvNatsURL: indirizzo del bus NATS JetStream (es. nats://nats:4222) su
+	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
+	// log all'avvio); NATS non raggiungibile non ferma né i push né l'avvio.
+	EnvNatsURL = "GITSTACK_GIT_NATS_URL"
 )
 
 // DefaultSSHAddr è la porta SSH di default (R7).
@@ -61,6 +65,8 @@ type Config struct {
 	// MaxBlobBytes e RepoWarnBytes sono le soglie di R6 in byte (0 = disattivata).
 	MaxBlobBytes  int64
 	RepoWarnBytes int64
+	// NatsURL: vuoto = git.push non viene pubblicato.
+	NatsURL string
 }
 
 // Load legge la configurazione dall'ambiente di processo.
@@ -115,6 +121,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(EnvCoreURL); ok {
 		cfg.CoreURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(EnvNatsURL); ok {
+		cfg.NatsURL = strings.TrimSpace(v)
 	}
 
 	for _, s := range []struct {

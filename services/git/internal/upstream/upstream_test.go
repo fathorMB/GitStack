@@ -22,7 +22,7 @@ func TestVerifyToken(t *testing.T) {
 		gotBody = string(b[:n])
 		switch {
 		case strings.Contains(gotBody, "gst_ok"):
-			_, _ = w.Write([]byte(`{"active":true,"principal":{"userId":"u1","username":"alice","authMethod":"token","scopes":["read:resource"]}}`))
+			_, _ = w.Write([]byte(`{"active":true,"principal":{"userId":"u1","username":"alice","kind":"agent","authMethod":"token","scopes":["read:resource"]}}`))
 		case strings.Contains(gotBody, "gst_sess"):
 			_, _ = w.Write([]byte(`{"active":true,"principal":{"userId":"u1","username":"alice","authMethod":"password"}}`))
 		case strings.Contains(gotBody, "gst_boom"):
@@ -35,7 +35,7 @@ func TestVerifyToken(t *testing.T) {
 	c := New(idp.URL, "http://unused", "segreto", time.Second)
 
 	p, ok, err := c.VerifyToken(context.Background(), "gst_ok")
-	if err != nil || !ok || p.Username != "alice" || len(p.Scopes) != 1 {
+	if err != nil || !ok || p.Username != "alice" || p.Kind != "agent" || len(p.Scopes) != 1 {
 		t.Fatalf("token valido: %+v %v %v", p, ok, err)
 	}
 	if gotAuth != "Bearer segreto" || !strings.Contains(gotBody, `"kind":"token"`) {
@@ -82,7 +82,7 @@ func TestResolveRepo(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/repos/alice/app":
-			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
+			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","defaultBranch":"trunk"}`))
 		case "/repos/alice/arch":
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","archived":true}`))
 		case "/repos/alice/trunk":
@@ -98,7 +98,7 @@ func TestResolveRepo(t *testing.T) {
 	caller := trust.Identity{UserID: "u1", Username: "alice", Scopes: []string{"read:resource"}}
 
 	ref, err := c.ResolveRepo(context.Background(), caller, "alice", "app")
-	if err != nil || ref.ID != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" || ref.Archived {
+	if err != nil || ref.ID != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" || ref.Archived || ref.DefaultBranch != "trunk" {
 		t.Fatalf("resolve: %+v %v", ref, err)
 	}
 	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "arch"); err != nil || !ref.Archived {
@@ -133,7 +133,7 @@ func TestLookupKey(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/internal/ssh-keys/" + fp:
-			_, _ = w.Write([]byte(`{"key":{},"user":{"id":"u1","username":"alice","isActive":true}}`))
+			_, _ = w.Write([]byte(`{"key":{},"user":{"id":"u1","username":"alice","kind":"agent","isActive":true}}`))
 		case "/internal/ssh-keys/SHA256:off":
 			_, _ = w.Write([]byte(`{"user":{"id":"u2","username":"carol","isActive":false}}`))
 		case "/internal/ssh-keys/SHA256:noflag":
@@ -147,7 +147,7 @@ func TestLookupKey(t *testing.T) {
 	defer idp.Close()
 	c := New(idp.URL, "", "sec", time.Second)
 	ctx := context.Background()
-	if u, err := c.LookupKey(ctx, fp); err != nil || u != (access.KeyOwner{UserID: "u1", Username: "alice", Active: true}) {
+	if u, err := c.LookupKey(ctx, fp); err != nil || u != (access.KeyOwner{UserID: "u1", Username: "alice", Kind: "agent", Active: true}) {
 		t.Fatalf("chiave valida: %+v %v", u, err)
 	}
 	if u, err := c.LookupKey(ctx, "SHA256:off"); err != nil || u.Active {

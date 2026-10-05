@@ -63,6 +63,9 @@ spec:
               value: {{ include "gitstack.identity.url" . | quote }}
             - name: GITSTACK_CORE_URL
               value: {{ include "gitstack.core.url" . | quote }}
+            # git.push su NATS (GIT-73): se NATS non risponde i push restano accettati.
+            - name: GITSTACK_GIT_NATS_URL
+              value: {{ include "gitstack.nats.url" . | quote }}
             - name: GITSTACK_IDENTITY_SERVICE_SECRET
               valueFrom:
                 secretKeyRef:

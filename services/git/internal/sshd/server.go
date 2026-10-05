@@ -22,6 +22,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 )
 
@@ -53,6 +54,8 @@ type Config struct {
 	Logger  *slog.Logger
 	// GitBin è il binario git (vuoto = "git").
 	GitBin string
+	// Events pubblica git.push dopo i push riusciti (nil = nessun evento).
+	Events *pushevent.Notifier
 	// Rules sono le regole alla ricezione del push (R6, R9); nil = nessuna.
 	Rules *receiverules.Rules
 	// HandshakeTimeout limita la fase prima dell'autenticazione (0 = 30s).
@@ -73,6 +76,7 @@ type Server struct {
 const (
 	extUserID   = "gitstack-user-id"
 	extUsername = "gitstack-username"
+	extKind     = "gitstack-kind"
 )
 
 // New prepara il server.
@@ -121,7 +125,7 @@ func (s *Server) authKey(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permission
 		s.cfg.Logger.Info("ssh: utente disattivato", "user", u.Username)
 		return nil, errors.New("chiave non autorizzata")
 	}
-	return &ssh.Permissions{Extensions: map[string]string{extUserID: u.UserID, extUsername: u.Username}}, nil
+	return &ssh.Permissions{Extensions: map[string]string{extUserID: u.UserID, extUsername: u.Username, extKind: u.Kind}}, nil
 }
 
 // Listen apre la porta; Addr restituisce poi l'indirizzo effettivo.
@@ -223,6 +227,7 @@ func (s *Server) handle(nc net.Conn) {
 	user := access.Principal{
 		UserID:   sc.Permissions.Extensions[extUserID],
 		Username: sc.Permissions.Extensions[extUsername],
+		Kind:     sc.Permissions.Extensions[extKind],
 		Scopes:   sshScopes,
 	}
 	var wg sync.WaitGroup
@@ -330,6 +335,10 @@ func (s *Server) run(ctx context.Context, u access.Principal, ch ssh.Channel, sv
 		cmd = exec.CommandContext(ctx, s.cfg.GitBin, gitArgs...)
 		cmd.Env = append(gitEnv(protocol), s.cfg.Rules.Env(receiverules.ProtectedBranch(ref))...)
 	}
+	var push *pushevent.Push
+	if svc == "receive-pack" {
+		push = s.cfg.Events.Begin(ctx, pushevent.TargetOf(path, owner, name, ref), u)
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		s.fail(ch, 1, "servizio temporaneamente non disponibile")
@@ -352,6 +361,9 @@ func (s *Server) run(ctx context.Context, u access.Principal, ch ssh.Channel, sv
 			code = uint32(ee.ExitCode()) //nolint:gosec // exit code non negativo qui
 		}
 		s.cfg.Logger.Info("ssh: git terminato con errore", "user", u.Username, "op", svc, "err", err)
+	}
+	if code == 0 {
+		push.Done()
 	}
 	_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(struct{ Code uint32 }{code}))
 	_ = ch.CloseWrite()

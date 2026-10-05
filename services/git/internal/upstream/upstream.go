@@ -83,6 +83,7 @@ func (c *Client) VerifyToken(ctx context.Context, token string) (access.Principa
 			UserID     string   `json:"userId"`
 			Username   string   `json:"username"`
 			AuthMethod string   `json:"authMethod"`
+			Kind       string   `json:"kind"`
 			Scopes     []string `json:"scopes"`
 		} `json:"principal"`
 	}
@@ -98,7 +99,7 @@ func (c *Client) VerifyToken(ctx context.Context, token string) (access.Principa
 	if out.Principal.AuthMethod != "token" {
 		return access.Principal{}, false, nil
 	}
-	return access.Principal{UserID: out.Principal.UserID, Username: out.Principal.Username, Scopes: out.Principal.Scopes}, true, nil
+	return access.Principal{UserID: out.Principal.UserID, Username: out.Principal.Username, Kind: out.Principal.Kind, Scopes: out.Principal.Scopes}, true, nil
 }
 
 // HasRole implementa access.Identity.
@@ -194,10 +195,11 @@ func (c *Client) LookupKey(ctx context.Context, fingerprint string) (access.KeyO
 			ID       string `json:"id"`
 			Username string `json:"username"`
 			IsActive *bool  `json:"isActive"`
+			Kind     string `json:"kind"`
 		} `json:"user"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || out.User.ID == "" {
 		return access.KeyOwner{}, fmt.Errorf("%w: risposta di ssh-keys non valida", access.ErrUnavailable)
 	}
-	return access.KeyOwner{UserID: out.User.ID, Username: out.User.Username, Active: out.User.IsActive != nil && *out.User.IsActive}, nil
+	return access.KeyOwner{UserID: out.User.ID, Username: out.User.Username, Kind: out.User.Kind, Active: out.User.IsActive != nil && *out.User.IsActive}, nil
 }

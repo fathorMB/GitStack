@@ -47,6 +47,8 @@ var (
 type Principal struct {
 	UserID   string
 	Username string
+	// Kind è human o agent (vuoto se identity non lo dice).
+	Kind string
 	// Scopes sono gli scope del token; vuoti = nessuno.
 	Scopes []string
 }
@@ -64,6 +66,8 @@ type Identity interface {
 type KeyOwner struct {
 	UserID   string
 	Username string
+	// Kind è human o agent.
+	Kind string
 	// Active è false per un utente disattivato: la chiave non apre l'accesso.
 	Active bool
 }

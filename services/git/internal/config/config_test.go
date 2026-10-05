@@ -52,6 +52,13 @@ func TestLoad_SSH(t *testing.T) {
 		cfg.IdentityURL != "http://identity:8080" || cfg.CoreURL != "http://core:8080" {
 		t.Fatalf("cfg = %+v", cfg)
 	}
+	if cfg.NatsURL != "" {
+		t.Fatalf("NATS non configurato di default: %q", cfg.NatsURL)
+	}
+	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvNatsURL: " nats://nats:4222 "}))
+	if err != nil || cfg.NatsURL != "nats://nats:4222" {
+		t.Fatalf("NATS: %+v, %v", cfg, err)
+	}
 	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvSSHAddr: "OFF"}))
 	if err != nil || cfg.SSHAddr != "" {
 		t.Fatalf("off: %+v, %v", cfg, err)
