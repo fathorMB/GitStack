@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "id": "PROP-d0c1f500-707c-4e8f-bd84-7c12e4f46c62",
+  "state": "applied",
+  "created": "2026-10-05T07:51:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Hosting Git: ciclo di vita e regole dei repository\" con le regole R1–R12; nuovo documento Repository Git; scope M-03 aggiornato (orizzonte invariato); porta SSH 2222 in decisioni e installazione; mockup v1 segnati needs_update.",
+    "targets": [
+      "TOP-74180f5f-ae9e-4bbf-b220-4b52950e5038",
+      "DOC-6878277b-230e-448b-a761-215e9d233c54",
+      "OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38",
+      "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+      "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+      "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0"
+    ],
+    "before_digests": {
+      "roadmap/analysis/ciclo-di-vita-repo.md": "213175cc682d20d2a5c065153732c7b101576f0168d4d6efa7f1ea6c7828a705",
+      "roadmap/product/m-03-hosting-git.md": "edd281cf41157051a5b77a927103aaca0dd6c1bd02301eed7f3099ce399431f0",
+      "knowledge/topics/decisioni.md": "0a85517dd1e0fcb4b1d087ffee5b40182a7d24d9ee751eb04a03fcc9aba124d7",
+      "knowledge/topics/installazione-e-deploy.md": "b598c8f57e7b943efb46285f729f476ebc143a33649026e8985d1593e0576f2f",
+      "knowledge/INDEX.md": "e71e36d28afe161c9c6150c16fb37300d0073d41fd6ce1aae3c90c55efa0d992",
+      "design/mockups-v1/manifest.json": "2256d26f12d933e2e4d3e98e964eb2e272affd3fc46739cbac0c651837cd9c80"
+    },
+    "operations": [
+      {
+        "target": "TOP-74180f5f-ae9e-4bbf-b220-4b52950e5038",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (R1–R12)."
+      },
+      {
+        "target": "DOC-6878277b-230e-448b-a761-215e9d233c54",
+        "op": "create",
+        "path": "knowledge/topics/repository-git.md"
+      },
+      {
+        "target": "OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38",
+        "op": "update_scope",
+        "reason": "Regole R1–R12 e fuori-scope v1 (rinomina/trasferimento, LFS, quote, protezione completa)."
+      },
+      {
+        "target": "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+        "op": "update",
+        "reason": "Porta SSH dedicata precisata: 2222 configurabile (R7)."
+      },
+      {
+        "target": "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+        "op": "update",
+        "reason": "Porta 2222 nei requisiti di rete dell'installer (R7)."
+      },
+      {
+        "target": "knowledge/INDEX.md",
+        "op": "update",
+        "reason": "Aggiunto repository-git."
+      },
+      {
+        "target": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
+        "op": "set_status",
+        "status": "needs_update"
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–12 nella sessione di analisi del 2026-10-05",
+      "services/identity/internal/migrate/sql/0001_init_identity_schema.up.sql",
+      "services/identity/internal/migrate/sql/0002_orgs_teams_grants.up.sql"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" dopo il riepilogo della proposta (R1–R12, nuovo documento, scope M-03, porta 2222, mockup da aggiornare)."
+  }
+}

@@ -1,5 +1,5 @@
 ---
-{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":[],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-09-30T21:13:45.439979+00:00"}
+{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-6878277b-230e-448b-a761-215e9d233c54"],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-05T07:52:00+00:00"}
 ---
 
 # Installazione, deploy e operazioni
@@ -17,6 +17,8 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 - Versioni pinnate (k3s con Traefik v3, Helm con checksum); immagini con tag `sha-<commit>`, mai `latest`.
 - Idempotente: rieseguirlo non reinstalla k3s né cambia password.
 - A fine installazione mostra gli URL della UI e dell'API; la password admin si legge dal Secret.
+
+**Porta SSH di Git (R7, 2026-10-05):** il servizio git espone SSH sulla porta **2222** di default, configurabile all'installazione; l'installer la aggiunge ai controlli di preflight e non modifica mai l'SSH della macchina host. Vedi [[knowledge/topics/repository-git]].
 
 **Requisiti ancora da realizzare (M-08):** installer definitivo per Ubuntu, Debian e RHEL; Windows via WSL2 (avvio automatico, rete, riavvio); TLS con CA interna, Let's Encrypt o certificato del cliente (**oggi HTTP in chiaro**); `gitstack upgrade` con backup e rollback (D18); `gitstack backup/restore` coerente e backup giornaliero locale o S3 (D19); aggiornare k3s di un'installazione esistente; air-gapped; test CI di installazione, upgrade e ripristino; documentazione operativa.
 

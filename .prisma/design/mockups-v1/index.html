@@ -374,9 +374,9 @@ p{margin:0}
   <select id="pick">
     <optgroup label="Accesso"><option value="login">01 · Login</option></optgroup>
     <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option></optgroup>
-    <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="repo-webhooks">11 · Settings · Webhooks</option></optgroup>
+    <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
     <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option></optgroup>
-    <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="org">15 · Organization · Teams</option></optgroup>
+    <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
     <optgroup label="Amministrazione"><option value="admin">16 · Admin · System</option><option value="agents">17 · Admin · Agents</option></optgroup>
   </select>
   <button id="prev">←</button><button id="next">→</button>
@@ -497,22 +497,23 @@ p{margin:0}
 </section>
 
 <!-- ============ 03 REPOSITORIES ============ -->
-<section class="screen" data-screen="repos" data-nav="repos" data-crumb="<a>Acme</a><span class='sep'>/</span><b>Repositories</b>" data-desc="Elenco repo dell'organizzazione con filtri per visibilità e ricerca.">
+<section class="screen" data-screen="repos" data-nav="repos" data-crumb="<a>Acme</a><span class='sep'>/</span><b>Repositories</b>" data-desc="Elenco repo dell'organizzazione con filtri per visibilità, repo archiviati (R10) e ricerca.">
   <div class="page">
     <div class="page-h"><h1>Repositories</h1><span class="counter">12</span><span class="sp"></span><button class="btn btn-primary" data-go="new-repo"><svg class="icon"><use href="#i-plus"/></svg>New repository</button></div>
-    <div class="row" style="margin-bottom:14px"><div class="input-icon" style="flex:1;max-width:420px"><svg class="icon"><use href="#i-search"/></svg><input class="input" placeholder="Find a repository…"></div><span class="seg"><span class="active">All</span><span>Private</span><span>Internal</span></span><span class="sp"></span><button class="btn btn-sm">Sort: Last updated <svg class="icon"><use href="#i-chev"/></svg></button></div>
+    <div class="row" style="margin-bottom:14px"><div class="input-icon" style="flex:1;max-width:420px"><svg class="icon"><use href="#i-search"/></svg><input class="input" placeholder="Find a repository…"></div><span class="seg"><span class="active">All</span><span>Private</span><span>Internal</span><span>Archived</span></span><span class="sp"></span><button class="btn btn-sm">Sort: Last updated <svg class="icon"><use href="#i-chev"/></svg></button></div>
     <div class="list">
       <div class="list-row hover" style="padding:14px 16px"><div style="flex:1"><div class="row"><a data-go="repo-code" style="font-weight:600;font-size:15px">api-gateway</a><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div><p class="muted small" style="margin-top:4px">Single entry point for the GitStack API: routing, auth, rate limiting.</p><div class="row small muted" style="margin-top:8px;gap:16px"><span class="row" style="gap:5px"><span class="dot" style="background:#00add8"></span>Go</span><span><svg class="icon"><use href="#i-issue"/></svg> 12 open issues</span><span>Updated 12 min ago</span></div></div><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button></div>
       <div class="list-row hover" style="padding:14px 16px"><div style="flex:1"><div class="row"><a data-go="repo-code" style="font-weight:600;font-size:15px">identity</a><span class="badge"><svg class="icon"><use href="#i-shield"/></svg>Internal</span></div><p class="muted small" style="margin-top:4px">Users, tokens, SSH keys and OIDC login.</p><div class="row small muted" style="margin-top:8px;gap:16px"><span class="row" style="gap:5px"><span class="dot" style="background:#00add8"></span>Go</span><span><svg class="icon"><use href="#i-issue"/></svg> 5 open issues</span><span>Updated 3 h ago</span></div></div><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button></div>
       <div class="list-row hover" style="padding:14px 16px"><div style="flex:1"><div class="row"><a data-go="repo-code" style="font-weight:600;font-size:15px">web-portal</a><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div><p class="muted small" style="margin-top:4px">Customer-facing portal.</p><div class="row small muted" style="margin-top:8px;gap:16px"><span class="row" style="gap:5px"><span class="dot" style="background:#3178c6"></span>TypeScript</span><span><svg class="icon"><use href="#i-issue"/></svg> 21 open issues</span><span>Updated yesterday</span></div></div><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button></div>
       <div class="list-row hover" style="padding:14px 16px"><div style="flex:1"><div class="row"><a data-go="repo-code" style="font-weight:600;font-size:15px">docs</a><span class="badge"><svg class="icon"><use href="#i-shield"/></svg>Internal</span></div><p class="muted small" style="margin-top:4px">Product documentation.</p><div class="row small muted" style="margin-top:8px;gap:16px"><span class="row" style="gap:5px"><span class="dot" style="background:#083fa1"></span>Markdown</span><span><svg class="icon"><use href="#i-issue"/></svg> 2 open issues</span><span>Updated 4 days ago</span></div></div><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button></div>
       <div class="list-row hover" style="padding:14px 16px"><div style="flex:1"><div class="row"><a data-go="repo-empty" style="font-weight:600;font-size:15px">infra-charts</a><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div><p class="muted small" style="margin-top:4px">Empty repository</p><div class="row small muted" style="margin-top:8px;gap:16px"><span>Created 1 day ago</span></div></div><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button></div>
+      <div class="list-row hover" style="padding:14px 16px;opacity:.75"><div style="flex:1"><div class="row"><a data-go="repo-general" style="font-weight:600;font-size:15px">legacy-billing</a><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="badge" style="color:var(--warning);border-color:var(--warning)">Archived</span></div><p class="muted small" style="margin-top:4px">Old billing service, replaced by billing-service. Read-only.</p><div class="row small muted" style="margin-top:8px;gap:16px"><span class="row" style="gap:5px"><span class="dot" style="background:#00add8"></span>Go</span><span>Archived 2 months ago</span></div></div></div>
     </div>
   </div>
 </section>
 
 <!-- ============ 04 NEW REPOSITORY ============ -->
-<section class="screen" data-screen="new-repo" data-nav="repos" data-crumb="<a>Acme</a><span class='sep'>/</span><b>New repository</b>" data-desc="Creazione repo: owner, nome, visibilità, inizializzazione opzionale.">
+<section class="screen" data-screen="new-repo" data-nav="repos" data-crumb="<a>Acme</a><span class='sep'>/</span><b>New repository</b>" data-desc="Creazione repo: owner (non modificabile dopo, R3), nome con le regole R11, visibilità (default privato), contenuto iniziale opzionale tutto spento (R5). Senza opzioni il repo nasce vuoto (schermata 06).">
   <div class="page page-narrow">
     <h1 style="font-size:22px;font-weight:600">Create a new repository</h1>
     <p class="muted" style="margin:4px 0 22px">A repository holds your project's files, history and issues.</p>
@@ -522,7 +523,8 @@ p{margin:0}
         <span style="font-size:20px;color:var(--text-subtle);padding-bottom:4px">/</span>
         <div class="field" style="flex:1"><label>Repository name</label><input class="input" value="billing-service"></div>
       </div>
-      <p class="hint" style="margin-top:-10px"><svg class="icon" style="color:var(--success)"><use href="#i-check"/></svg> <span class="mono">billing-service</span> is available.</p>
+      <p class="hint" style="margin-top:-10px"><svg class="icon" style="color:var(--success)"><use href="#i-check"/></svg> <span class="mono">billing-service</span> is available. Lowercase letters, digits, <span class="mono">-</span> <span class="mono">_</span> <span class="mono">.</span> &mdash; up to 100 characters.</p>
+      <div class="alert alert-info" style="margin-top:-6px"><svg class="icon"><use href="#i-info"/></svg><div><b>Choose the owner carefully.</b> Owner and name can&rsquo;t be changed later: to move a repository, create a new one and push the code there.</div></div>
       <div class="field"><label>Description <span class="subtle" style="font-weight:400">(optional)</span></label><input class="input" placeholder="What is this repository for?"></div>
       <div class="field"><label>Visibility</label>
         <div class="stack" style="gap:8px">
@@ -531,12 +533,13 @@ p{margin:0}
         </div>
       </div>
       <div class="field"><label>Initialize</label>
-        <label class="check"><input type="checkbox" checked><span>Add a README</span></label>
-        <label class="check"><input type="checkbox"><span>Add .gitignore <span class="muted">— template: Go</span></span></label>
+        <p class="hint" style="margin:0 0 6px">Leave these unchecked to push an existing project. Any option creates a first commit on <span class="mono">main</span>.</p>
+        <label class="check"><input type="checkbox"><span>Add a README</span></label>
+        <label class="check"><input type="checkbox"><span>Add .gitignore <span class="muted">— template: none</span></span></label>
         <label class="check"><input type="checkbox"><span>Add a license <span class="muted">— none</span></span></label>
         <label class="check"><input type="checkbox" checked><span>Create default labels <span class="muted">(bug, enhancement, agent-ready…)</span></span></label>
       </div>
-      <div class="row" style="border-top:1px solid var(--border);padding-top:16px"><span class="muted small">Default branch: <span class="mono">main</span></span><span class="sp"></span><button class="btn">Cancel</button><button class="btn btn-primary" data-go="repo-code">Create repository</button></div>
+      <div class="row" style="border-top:1px solid var(--border);padding-top:16px"><span class="muted small">Default branch: <span class="mono">main</span></span><span class="sp"></span><button class="btn">Cancel</button><button class="btn btn-primary" data-go="repo-empty">Create repository</button></div>
     </div>
   </div>
 </section>
@@ -557,16 +560,17 @@ p{margin:0}
 <!-- ============ REPO HEADER helper: repeated in repo screens ============ -->
 
 <!-- ============ 06 EMPTY REPO ============ -->
-<section class="screen" data-screen="repo-empty" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>infra-charts</b>" data-desc="Repo appena creato e vuoto: istruzioni di primo push per umani, CLI gs e agenti.">
+<section class="screen" data-screen="repo-empty" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>infra-charts</b>" data-desc="Repo appena creato e vuoto: istruzioni di primo push per umani, CLI gs e agenti. Indirizzo SSH sulla porta 2222 di default (R7).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / infra-charts</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
-    <div class="tabs"><a class="tab active"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">0</span></a><a class="tab"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="tabs"><a class="tab active"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">0</span></a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page" style="max-width:900px">
     <div class="card">
       <div class="card-h"><svg class="icon" style="color:var(--accent)"><use href="#i-terminal"/></svg>Quick setup<span class="sp"></span><span class="seg"><span class="active">HTTPS</span><span>SSH</span></span></div>
       <div class="quick">
         <div class="row" style="flex-wrap:nowrap"><div class="input-icon" style="flex:1"><svg class="icon"><use href="#i-link"/></svg><input class="input mono" style="font-family:var(--font-mono);font-size:13px" value="https://git.acme.local/acme/infra-charts.git" readonly></div><button class="btn"><svg class="icon"><use href="#i-copy"/></svg>Copy</button></div>
+        <p class="hint" style="margin-top:8px">SSH: <span class="mono">ssh://git@git.acme.local:2222/acme/infra-charts.git</span> &mdash; GitStack&rsquo;s SSH server listens on port 2222 on this installation.</p>
         <h3>Push an existing repository</h3>
 <div class="cmdblock"><span class="p">$ </span>git remote add origin https://git.acme.local/acme/infra-charts.git
 <span class="p">$ </span>git push -u origin main</div>
@@ -585,13 +589,13 @@ p{margin:0}
 </section>
 
 <!-- ============ 07 REPO CODE ============ -->
-<section class="screen" data-screen="repo-code" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Pagina principale di un repo: file, ultimo commit, README, pannello About. Menu Clone aperto.">
+<section class="screen" data-screen="repo-code" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Pagina principale di un repo: file, ultimo commit, README, pannello About. Menu Clone aperto: HTTPS con token, SSH sulla porta 2222 (R7), CLI.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="sp"></span>
       <span class="btn-group"><button class="btn btn-sm"><svg class="icon"><use href="#i-eye"/></svg>Watch</button><button class="btn btn-sm"><span class="counter">6</span></button></span>
       <span class="btn-group"><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button><button class="btn btn-sm"><span class="counter">14</span></button></span>
     </div>
-    <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-webhooks"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page">
     <div class="repo-grid">
@@ -606,6 +610,8 @@ p{margin:0}
             <div class="row" style="margin-bottom:10px"><b style="font-size:13px">Clone</b><span class="sp"></span><span class="seg"><span class="active">HTTPS</span><span>SSH</span><span>CLI</span></span></div>
             <div class="row" style="flex-wrap:nowrap"><input class="input" style="font-family:var(--font-mono);font-size:12px;height:30px" value="https://git.acme.local/acme/api-gateway.git" readonly><button class="btn btn-sm" style="height:30px"><svg class="icon"><use href="#i-copy"/></svg></button></div>
             <p class="hint" style="margin-top:8px">Use an <a data-go="tokens">access token</a> as password.</p>
+            <div class="small muted" style="margin-top:10px">SSH (port 2222)</div>
+            <div class="row" style="flex-wrap:nowrap;margin-top:4px"><input class="input" style="font-family:var(--font-mono);font-size:12px;height:30px" value="ssh://git@git.acme.local:2222/acme/api-gateway.git" readonly><button class="btn btn-sm" style="height:30px"><svg class="icon"><use href="#i-copy"/></svg></button></div>
             <div style="height:1px;background:var(--border);margin:10px -12px"></div>
             <a class="row small" style="color:var(--text)"><svg class="icon"><use href="#i-download"/></svg>Download ZIP</a>
           </div>
@@ -660,7 +666,7 @@ make dev</pre>
 <section class="screen" data-screen="repo-file" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Visualizzazione di un file con evidenziazione della sintassi, numeri di riga, ultimo commit.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
-    <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-webhooks"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page">
     <div class="row" style="margin-bottom:14px"><button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button><span class="mono" style="font-size:15px"><a data-go="repo-code">api-gateway</a> <span class="subtle">/</span> <b>main.go</b></span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-copy"/></svg></button></div>
@@ -702,7 +708,7 @@ make dev</pre>
 <section class="screen" data-screen="repo-commits" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Storico commit raggruppato per giorno, con commit degli agenti riconoscibili e issue collegate.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
-    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab active" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-webhooks"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab active" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page" style="max-width:1040px">
     <div class="row" style="margin-bottom:18px"><button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button><span class="sp"></span><button class="btn btn-sm"><svg class="icon"><use href="#i-user"/></svg>All authors<svg class="icon"><use href="#i-chev"/></svg></button></div>
@@ -773,13 +779,10 @@ make dev</pre>
   <div class="page">
     <div class="settings-grid">
       <nav class="subnav">
-        <a><svg class="icon"><use href="#i-settings"/></svg>General</a>
+        <a data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>General</a>
         <a><svg class="icon"><use href="#i-users"/></svg>Collaborators &amp; teams</a>
-        <a><svg class="icon"><use href="#i-branch"/></svg>Branches</a>
         <a class="active"><svg class="icon"><use href="#i-link"/></svg>Webhooks</a>
         <a><svg class="icon"><use href="#i-tag"/></svg>Labels &amp; milestones</a>
-        <div class="grp">Danger zone</div>
-        <a style="color:var(--danger)"><svg class="icon"><use href="#i-alert"/></svg>Delete or transfer</a>
       </nav>
       <div>
         <div class="sec-h"><h2>Webhooks</h2><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Add webhook</button></div>
@@ -798,7 +801,7 @@ make dev</pre>
                 <label class="check scope"><input type="checkbox" checked><span><b class="mono">push</b><br><span class="small muted">Commits or tags pushed</span></span></label>
                 <label class="check scope"><input type="checkbox" checked><span><b class="mono">issues</b><br><span class="small muted">Opened, edited, closed, labeled</span></span></label>
                 <label class="check scope"><input type="checkbox"><span><b class="mono">issue_comment</b><br><span class="small muted">Comments created or edited</span></span></label>
-                <label class="check scope"><input type="checkbox"><span><b class="mono">repository</b><br><span class="small muted">Created, renamed, deleted</span></span></label>
+                <label class="check scope"><input type="checkbox"><span><b class="mono">repository</b><br><span class="small muted">Created, archived, deleted, restored</span></span></label>
               </div>
             </div>
             <label class="check"><span class="switch on"></span><span>Active</span></label>
@@ -816,11 +819,74 @@ make dev</pre>
   </div>
 </section>
 
+<!-- ============ 18 REPO SETTINGS · GENERAL ============ -->
+<section class="screen" data-screen="repo-general" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni repo, sezione General (solo admin del repo): nome e owner fissi (R3), descrizione, visibilità, branch principale (R4), protezione del branch principale (R9), archiviazione (R10), eliminazione recuperabile per 7 giorni (R2, R12).">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="settings-grid">
+      <nav class="subnav">
+        <a class="active"><svg class="icon"><use href="#i-settings"/></svg>General</a>
+        <a><svg class="icon"><use href="#i-users"/></svg>Collaborators &amp; teams</a>
+        <a data-go="repo-webhooks"><svg class="icon"><use href="#i-link"/></svg>Webhooks</a>
+        <a><svg class="icon"><use href="#i-tag"/></svg>Labels &amp; milestones</a>
+      </nav>
+      <div class="stack" style="gap:24px">
+        <div>
+          <div class="sec-h"><h2>General</h2></div>
+          <div class="card card-b stack" style="gap:16px">
+            <div class="field"><label>Repository</label><input class="input" style="font-family:var(--font-mono);font-size:13px" value="acme/api-gateway" readonly disabled><span class="hint">Owner and name are fixed for the life of the repository.</span></div>
+            <div class="field"><label>Description</label><input class="input" value="Single entry point for the GitStack API: routing, auth, rate limiting."></div>
+            <div class="field"><label>Visibility</label>
+              <div class="stack" style="gap:8px">
+                <label class="check scope" style="border-color:var(--accent);background:var(--accent-soft)"><input type="radio" name="vis2" checked><span><b><svg class="icon"><use href="#i-lock"/></svg> Private</b><br><span class="muted small">Only organization owners and the people and teams you add can see it.</span></span></label>
+                <label class="check scope"><input type="radio" name="vis2"><span><b><svg class="icon"><use href="#i-shield"/></svg> Internal</b><br><span class="muted small">Everyone signed in to this GitStack can see it.</span></span></label>
+              </div>
+            </div>
+            <div class="row"><span class="sp"></span><button class="btn btn-primary">Save changes</button></div>
+          </div>
+        </div>
+        <div>
+          <div class="sec-h"><h2>Default branch</h2></div>
+          <div class="card card-b stack" style="gap:14px">
+            <p class="muted" style="margin:0">The default branch is shown first in the code browser and is where <span class="mono">fixes #12</span> closes issues.</p>
+            <div class="row"><button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button><span class="muted small">Pick another existing branch to make it the default.</span></div>
+            <div style="height:1px;background:var(--border)"></div>
+            <label class="check" style="align-items:flex-start"><span class="switch on" style="margin-top:2px"></span><span><b>Protect the default branch</b><br><span class="muted small">Reject force-pushes and deletion of <span class="mono">main</span>. Recommended, especially when coding agents have write access.</span></span></label>
+          </div>
+        </div>
+        <div>
+          <div class="sec-h"><h2 style="color:var(--danger)">Danger zone</h2></div>
+          <div class="list" style="border-color:var(--danger)">
+            <div class="list-row" style="padding:14px 16px"><div style="flex:1"><b>Archive this repository</b><div class="small muted">Make it read-only: it stays visible and clonable, but pushes and settings changes are rejected. You can unarchive it at any time.</div></div><button class="btn btn-danger">Archive</button></div>
+            <div class="list-row" style="padding:14px 16px"><div style="flex:1"><b>Delete this repository</b><div class="small muted">It disappears immediately for everyone. Admins can restore it for 7 days from <a data-go="deleted-repos">Deleted repositories</a>; after that it is removed permanently. The name stays reserved until then.</div></div><button class="btn btn-danger">Delete</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 19 OWNER SETTINGS · DELETED REPOSITORIES ============ -->
+<section class="screen" data-screen="deleted-repos" data-nav="org" data-crumb="<a>Acme</a><span class='sep'>/</span><a>Settings</a><span class='sep'>/</span><b>Deleted repositories</b>" data-desc="Impostazioni dell'owner (organizzazione o utente): repo eliminati negli ultimi 7 giorni, ripristinabili da chi ha admin sul repo o dall'admin dell'installazione (R2, R12).">
+  <div class="page" style="max-width:980px">
+    <div class="page-h"><h1>Deleted repositories</h1><span class="counter">2</span></div>
+    <p class="muted" style="margin:-6px 0 16px">Repositories deleted in the last 7 days. Restoring brings back code, issues, settings and access exactly as they were.</p>
+    <div class="list">
+      <div class="list-row" style="padding:14px 16px"><svg class="icon muted"><use href="#i-repo"/></svg><div style="flex:1"><div class="mono" style="font-size:13px">acme/experiment-grpc</div><div class="small muted">Deleted by <b>lbianchi</b> yesterday · removed permanently in <b style="color:var(--text)">6 days</b></div></div><button class="btn">Restore</button></div>
+      <div class="list-row" style="padding:14px 16px"><svg class="icon muted"><use href="#i-repo"/></svg><div style="flex:1"><div class="mono" style="font-size:13px">acme/old-docs</div><div class="small muted">Deleted by <b>build-agent</b> <span class="badge badge-agent">agent</span> 6 days ago · removed permanently in <b style="color:var(--danger)">1 day</b></div></div><button class="btn">Restore</button></div>
+    </div>
+    <div class="alert alert-info" style="margin-top:16px"><svg class="icon"><use href="#i-info"/></svg><div>While a repository is here its name stays reserved and its disk space is not freed.</div></div>
+  </div>
+</section>
+
 <!-- ============ 12 ISSUE LIST ============ -->
 <section class="screen" data-screen="issues" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Issues</b>" data-desc="Lista issues del repo: filtri, ricerca con sintassi tipo GitHub, etichette, milestone, assegnatari (anche agenti).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
-    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-webhooks"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page">
     <div class="row" style="margin-bottom:14px;flex-wrap:nowrap">
@@ -848,7 +914,7 @@ make dev</pre>
 <section class="screen" data-screen="issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue: cronologia con commenti umani e dell'agente, commit collegati, chiusura automatica, barra laterale con assegnatari, etichette, milestone.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
-    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-webhooks"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page">
     <div class="row" style="margin-bottom:8px;flex-wrap:nowrap;align-items:flex-start"><h1 class="issue-title" style="flex:1">Push over SSH fails with ed25519 keys <span>#41</span></h1><button class="btn">Edit</button><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New issue</button></div>
@@ -952,7 +1018,7 @@ Unable to negotiate with git.acme.local port 2222: no matching host key type fou
 <!-- ============ 15 ORGANIZATION ============ -->
 <section class="screen" data-screen="org" data-nav="org" data-crumb="<a>Acme</a><span class='sep'>/</span><b>Teams</b>" data-desc="Organizzazione: membri e team, con i permessi che ogni team ha sui repo.">
   <div class="page">
-    <div class="row" style="gap:14px;margin-bottom:20px"><span class="avatar avatar-lg avatar-sq av-org">AC</span><div><h1 style="font-size:22px;font-weight:600">Acme</h1><div class="muted small">12 repositories · 18 members · 4 teams</div></div><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-settings"/></svg>Organization settings</button></div>
+    <div class="row" style="gap:14px;margin-bottom:20px"><span class="avatar avatar-lg avatar-sq av-org">AC</span><div><h1 style="font-size:22px;font-weight:600">Acme</h1><div class="muted small">12 repositories · 18 members · 4 teams</div></div><span class="sp"></span><button class="btn" data-go="deleted-repos"><svg class="icon"><use href="#i-settings"/></svg>Organization settings</button></div>
     <div class="tabs" style="margin-bottom:20px"><a class="tab" data-go="repos"><svg class="icon"><use href="#i-repo"/></svg>Repositories <span class="counter">12</span></a><a class="tab"><svg class="icon"><use href="#i-user"/></svg>Members <span class="counter">18</span></a><a class="tab active"><svg class="icon"><use href="#i-users"/></svg>Teams <span class="counter">4</span></a></div>
     <div class="repo-grid" style="grid-template-columns:1fr 1.3fr">
       <div class="list">

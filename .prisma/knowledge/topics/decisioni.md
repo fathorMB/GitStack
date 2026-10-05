@@ -1,5 +1,5 @@
 ---
-{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Scelte P2 e P3 confermate dall'operatore il 2026-09-30: nessun accesso anonimo, visibilità privato/interno.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-09-30T21:25:44.461509100+00:00"}
+{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-6878277b-230e-448b-a761-215e9d233c54","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Scelte P2 e P3 confermate dall'operatore il 2026-09-30: nessun accesso anonimo, visibilità privato/interno.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-05T07:52:00+00:00"}
 ---
 
 
@@ -34,7 +34,7 @@ Registro delle scelte prese nell'analisi pre-sviluppo (2026-09-27) con l'operato
 | D19 | Backup e ripristino | `gitstack backup` / `restore`: archivio unico coerente (DB + repo + configurazione); backup giornaliero con conservazione ultimi N, locale o S3; ripristino testato in CI a ogni rilascio | DB e repo devono combaciare |
 | D20 | Stile visivo | Layout "console" con palette **Aurora** (vedi [[knowledge/topics/design-system]]) | Pronto per le sezioni future; distinto da LMBrain |
 
-Scelte di default (prese senza domanda, modificabili): monorepo unico; Git lato server con il binario `git` ufficiale (upload-pack/receive-pack), `go-git` solo per letture leggere; ingresso Traefik (incluso in k3s); TLS con CA interna auto-generata, opzione Let's Encrypt o certificato del cliente; server SSH integrato nel servizio git su porta dedicata; UI in inglese con i18n (italiano incluso) dalla v1; codice su GitHub finché GitStack non si ospita da solo.
+Scelte di default (prese senza domanda, modificabili): monorepo unico; Git lato server con il binario `git` ufficiale (upload-pack/receive-pack), `go-git` solo per letture leggere; ingresso Traefik (incluso in k3s); TLS con CA interna auto-generata, opzione Let's Encrypt o certificato del cliente; server SSH integrato nel servizio git su porta dedicata (**2222 di default, configurabile all'installazione**; l'installer non tocca l'SSH dell'host: R7 in [[knowledge/topics/repository-git]]); UI in inglese con i18n (italiano incluso) dalla v1; codice su GitHub finché GitStack non si ospita da solo.
 
 ## Superseded
 

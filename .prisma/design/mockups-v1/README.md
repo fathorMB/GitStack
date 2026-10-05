@@ -11,7 +11,7 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 03 | Repositories | M-03, M-04 |
 | 04 | New repository | M-03 |
 | 05 | Notifications | M-06 |
-| 06 | Empty repository (quick setup) | M-03 |
+| 06 | Empty repository (quick setup, SSH porta 2222) | M-03 |
 | 07 | Code (albero file, README, Clone) | M-04 |
 | 08 | File view | M-04 |
 | 09 | Commits | M-04 |
@@ -22,5 +22,8 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 14 | Access tokens & SSH keys | M-02 |
 | 15 | Organization · Teams | M-02 |
 | 16 | Admin · System (servizi, backup, upgrade) | M-08 |
+| 17 | Admin · Agents (account agent, P4/P5) | M-02 |
+| 18 | Settings · General (branch principale, protezione, archiviazione, eliminazione) | M-03 |
+| 19 | Deleted repositories (ripristino entro 7 giorni) | M-03 |
 
 Dati finti: organizzazione "Acme", utenti mrossi, lbianchi, gverdi, fneri, agente build-agent.
