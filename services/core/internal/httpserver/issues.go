@@ -13,58 +13,6 @@ func issuesNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Issues non ancora disponibili.")
 }
 
-func (s *apiServer) SetIssueAssignees(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) SetIssueLabels(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) SetIssueMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
 func (s *apiServer) ListIssueTemplates(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ListLabels(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListLabelsParams) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) CreateLabel(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) GetLabel(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.LabelNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) UpdateLabel(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.LabelNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) DeleteLabel(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.LabelNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ListMilestones(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListMilestonesParams) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) CreateMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) GetMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.MilestoneNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) UpdateMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.MilestoneNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) DeleteMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.MilestoneNumberParam) {
 	issuesNotImplemented(w)
 }

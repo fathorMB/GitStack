@@ -60,7 +60,11 @@ func (f *issuesIdentity) LookupUsers(_ context.Context, ids []uuid.UUID) (map[uu
 	for name, id := range users {
 		u := uuid.MustParse(id)
 		if slices.Contains(ids, u) {
-			out[u] = identityclient.CodeUser{ID: u, Username: name, Kind: "human"}
+			kind := "human"
+			if strings.HasPrefix(name, "bot") {
+				kind = "agent"
+			}
+			out[u] = identityclient.CodeUser{ID: u, Username: name, Kind: kind}
 		}
 	}
 	if r := uuid.MustParse(roboID); slices.Contains(ids, r) {

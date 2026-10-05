@@ -194,10 +194,19 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 		writeError(w, http.StatusForbidden, "forbidden", "Etichette, assegnatari e milestone richiedono il permesso write.")
 		return
 	}
+	var assignees []assignee
 	if hasAssignees {
-		// Gli assegnatari li gestisce M-05/E (GIT-105).
-		writeError(w, http.StatusNotImplemented, "not_implemented", "Assegnatari alla creazione non ancora disponibili.")
-		return
+		var msg string
+		var aerr error
+		assignees, msg, aerr = s.resolveAssignees(r.Context(), ia.repo.ID, *in.Assignees)
+		if aerr != nil {
+			s.writeAssigneeFailure(w, "verifica degli assegnatari non riuscita", aerr)
+			return
+		}
+		if msg != "" {
+			writeFieldError(w, "assignees", msg)
+			return
+		}
 	}
 
 	ctx := r.Context()
@@ -288,6 +297,10 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 			writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 			return
 		}
+	}
+	if err := s.replaceAssignees(ctx, tx, issueID, ia.userID, assignees); err != nil {
+		s.writeAssigneeFailure(w, "assegnazione non riuscita", err)
+		return
 	}
 	if milestoneID != nil {
 		if err := insertIssueEvent(ctx, tx, issueID, "milestoned", ia.userID, map[string]any{"milestone": map[string]any{"number": milestoneNumber, "title": milestoneTitle}}); err != nil {
