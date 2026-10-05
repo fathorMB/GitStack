@@ -1,9 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-
-// Il test gira da web/ (pnpm test): il template è deploy/nginx.conf.template.
-const conf = readFileSync(resolve(process.cwd(), 'deploy/nginx.conf.template'), 'utf8');
+import conf from '../../deploy/nginx.conf.template?raw';
 
 // Estrae il corpo di un blocco `location <selettore> { ... }`.
 function location(selector: string): string {
