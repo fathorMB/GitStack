@@ -77,6 +77,24 @@ const pages: { screen: string; path: string; expect: (v: ReturnType<typeof withi
       expect((await v.findAllByText(/package-lock\.json/)).length).toBeGreaterThan(0);
     },
   },
+  {
+    screen: '23 tag (annotato col messaggio, leggero senza)',
+    path: `/${repo}/tags`,
+    expect: async (v) => {
+      expect(await v.findByText('v1.0')).toBeInTheDocument();
+      expect(await v.findByText(/release 1\.0 del progetto quarzo/)).toBeInTheDocument();
+      expect(await v.findByText('v0.1')).toBeInTheDocument();
+      expect(await v.findByText(/Lightweight tag/)).toBeInTheDocument();
+    },
+  },
+  {
+    screen: 'risultati di Search code',
+    path: `/${repo}/search?q=${encodeURIComponent(needle)}`,
+    expect: async (v) => {
+      expect(await v.findByRole('region', { name: 'main.go' })).toBeInTheDocument();
+      expect(await v.findByRole('region', { name: 'docs/guida.md' })).toBeInTheDocument();
+    },
+  },
 ];
 
 describe.skipIf(!enabled)('smoke UI del browser del codice (stack vero)', { timeout: 60_000 }, () => {
