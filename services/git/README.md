@@ -86,9 +86,25 @@ Costanti in `internal/gitread/diff.go`:
 - Un patch di un singolo file oltre **1 MB** è troncato a fine riga (`truncated: true`); oltre 32 MB di diff in memoria si ricade nel solo elenco.
 - **Ignora spazi**: `ignoreWhitespace=true` usa `git diff -w`; i file che cambiano solo negli spazi non compaiono. Il download con `-w` non è garantito applicabile.
 
+## Letture del codice (M-04/B)
+
+Nello stesso pacchetto `internal/gitread` (file `tree.go`, `file.go`, `refs.go`), con le stesse regole di `ref`, errori e permessi della sezione precedente. Costanti in `tree.go` (le stesse di `x-code-read-limits` in `api/openapi.yaml`).
+
+| Operazione | Esito |
+|---|---|
+| `GET …/tree?ref&path` | 200 `Tree`: voci della cartella (radice se `path` manca) con modo, dimensione (solo file) e **ultimo commit** per voce (un `git log -1` per voce, 8 in parallelo). Cartelle prima, poi il resto, per nome; al massimo **1 000** voci, oltre `truncated: true`. `path` inesistente o file: 404 `not_found` |
+| `GET …/contents?ref&path` | 200 `FileContent` con la regola **B1**: testo fino a **1 MB** (1 048 576 byte) intero, `display: highlight`; da 1 a **5 MB** (5 242 880) intero, `plain`; oltre 5 MB nessun `content`, `display: download`, `truncated: true`. Immagini PNG, JPEG, GIF, WebP e SVG riconosciute dal **contenuto** (magic number; SVG dal testo): `kind: image`, `mimeType`, `base64` e `display: image` fino a 1 MB, oltre `download`. Binario = un NUL nei primi 8 000 byte o testo non UTF-8: `kind: binary`, `download`. `size` è sempre la dimensione reale |
+| `GET …/readme?ref&path` | 200 `FileContent` del `README.md`, `README` o `README.txt` della cartella (in quest'ordine, senza distinguere maiuscole); 404 se non c'è |
+| `GET …/raw?ref&path` | I byte del file in streaming (`git cat-file blob`), `Content-Length` noto. **Regola B3**: testo non SVG → `text/plain; charset=utf-8` in linea; ogni altro file, SVG compreso → `application/octet-stream` con `Content-Disposition: attachment`. Sempre `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`, scritti qui (non da nginx né da core). Mai `text/html` né `image/svg+xml`. Il tipo si decide prima del primo byte: gli errori escono come JSON |
+| `GET …/branches` | 200 `BranchList`: il branch di `HEAD` per primo (`isDefault`), gli altri dal più recente; `protected` sempre false (lo imposta core); repo vuoto: lista vuota |
+| `GET …/tags` | 200 `TagList` dal più recente. **B7**: per un annotato `annotated: true`, `message` e `taggedAt` del tag; per uno leggero `taggedAt` è la data del commit. `commit` è sempre il commit puntato. I tag che non puntano a un commit sono saltati. Gli indirizzi `zipUrl`/`tarGzUrl` li aggiunge core |
+| `GET …/archive?ref&format&name` | ZIP (default) o `tar.gz` dell'albero di branch, tag o commit con `git archive`, in streaming (timeout di 5 minuti). `name` (nome del repo, obbligatorio) compone il file `<name>-<ref>.zip\|.tar.gz` e la cartella radice `<name>-<ref>/` dentro l'archivio. `format` diverso o `name` non valido: 400 `invalid_request`. `attachment`, `application/zip` o `application/gzip`, stessi header di sicurezza del raw |
+
+Per le letture che scorrono i file di un ref (GIT-83, lingue) c'è `Service.ListTree(ctx, repoID, ref, dir, recursive)`: voci `ls-tree -l` con modo, tipo, sha, dimensione in byte e percorso dalla radice.
+
 ### Sicurezza dei comandi
 
-Ogni comando git passa da `internal/gitrun`: ambiente senza `GIT_*`, niente configurazione di sistema o utente, `--literal-pathspecs`, un timeout (30 s; 5 minuti per lo streaming) e un tetto sull'output tenuto in memoria. `internal/gitref` valida ref (niente `..`, spazi, caratteri di controllo, `~^:?*[\`, `@{`, né un `-` iniziale), percorsi (relativi, senza segmenti `.` o `..`) e sha prima di toccare git, e risolve ref e prefissi di sha in uno sha completo di commit: a git arrivano solo sha esadecimali, i percorsi sempre dopo `--`. `gitref` è il pacchetto da riusare per le altre letture (albero, file, branch, tag).
+Ogni comando git passa da `internal/gitrun`: ambiente senza `GIT_*`, niente configurazione di sistema o utente, `--literal-pathspecs`, un timeout (30 s; 5 minuti per lo streaming) e un tetto sull'output tenuto in memoria. `internal/gitref` valida ref (niente `..`, spazi, caratteri di controllo, `~^:?*[\`, `@{`, né un `-` iniziale), percorsi (relativi, senza segmenti `.` o `..`) e sha prima di toccare git, e risolve ref e prefissi di sha in uno sha completo di commit: a git arrivano solo sha esadecimali, i percorsi sempre dopo `--`. `gitref` è il pacchetto da riusare per le altre letture.
 
 ## Test
 

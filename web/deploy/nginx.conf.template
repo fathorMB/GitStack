@@ -20,7 +20,9 @@ server {
         return 200 "ok";
     }
 
-    location /api/ {
+    # ^~: il prefisso /api/ vince sulla location regex del raw qui sotto, così
+    # /api/<x>/raw/... non viene scambiato per un raw di file.
+    location ^~ /api/ {
         # Risoluzione di GATEWAY_UPSTREAM a ogni richiesta (resolver +
         # variabile in proxy_pass), non una sola volta all'avvio: senza
         # questo nginx non parte se il gateway non è ancora raggiungibile
@@ -38,6 +40,27 @@ server {
         rewrite ^/api/(.*)$ /v1/$1 break;
         proxy_pass $gateway_upstream;
         proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Raw dei file (regola B3, GIT-81): il browser apre
+    # /<owner>/<repo>/raw/<ref>/<percorso> e il container lo riscrive su
+    # /v1/repos/<owner>/<repo>/raw/<resto> verso il gateway
+    # (getRepositoryRawByPath). Va prima del fallback SPA. Stesso schema di
+    # /api/: proxy_pass con variabile non riscrive l'URI, serve rewrite ... break.
+    # Niente buffering: il file passa in streaming. Le intestazioni di sicurezza
+    # (nosniff, CSP sandbox, Content-Type, Content-Disposition) le scrive il
+    # servizio git: nginx non le tocca. Nessun link anonimo: la sessione (cookie)
+    # o il token li verifica il gateway.
+    location ~ ^/[^/]+/[^/]+/raw/ {
+        resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+        set $gateway_upstream "${GATEWAY_UPSTREAM}";
+        rewrite ^/([^/]+)/([^/]+)/raw/(.*)$ /v1/repos/$1/$2/raw/$3 break;
+        proxy_pass $gateway_upstream;
+        proxy_http_version 1.1;
+        proxy_buffering off;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
