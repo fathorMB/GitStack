@@ -1,13 +1,15 @@
-import { Link as LinkIcon, Terminal } from 'lucide-react';
+import { CircleDot, FileCode, Link as LinkIcon, Terminal } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, NavLink, useParams } from 'react-router-dom';
 import { CopyButton, ErrorAlert } from '../../components';
+import { countIssues } from '../../lib/issuesApi';
 import { fetchRepo } from '../../lib/reposApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { CodeBrowser } from './CodeBrowser';
 import { CommitPage } from './CommitPage';
 import { CommitsPage } from './CommitsPage';
+import { IssuesPage } from './IssuesPage';
 import { SearchPage } from './SearchPage';
 import { TagsPage } from './TagsPage';
 import { FileView } from './FileView';
@@ -18,7 +20,7 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | FileMode;
+export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | 'issues' | FileMode;
 
 export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
@@ -46,6 +48,23 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
     };
   }, [data]);
 
+  // Conteggio delle issues aperte per la scheda; un errore lo nasconde.
+  const [openIssues, setOpenIssues] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    countIssues(owner, repo, 'is:open').then(
+      (n) => {
+        if (live) setOpenIssues(n);
+      },
+      () => {
+        if (live) setOpenIssues(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [owner, repo]);
+
   if (loading && data === null) return <p className="muted">Loading repository…</p>;
   if (error || !data) return <ErrorAlert message={error ?? 'Repository not found.'} />;
 
@@ -61,7 +80,21 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
         {admin ? <Link to={`/${data.owner.name}/${data.name}/settings`}>Settings</Link> : null}
       </div>
       {data.description ? <p className="muted">{data.description}</p> : null}
-      {data.empty ? (
+      <nav className="tabs" aria-label="Repository sections">
+        <NavLink className={() => (mode !== 'issues' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}`} end>
+          <FileCode size={16} aria-hidden="true" />
+          Code
+        </NavLink>
+        <NavLink className={() => (mode === 'issues' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}/issues`}>
+          <CircleDot size={16} aria-hidden="true" />
+          Issues {openIssues !== null ? <span className="counter">{openIssues}</span> : null}
+        </NavLink>
+      </nav>
+      {mode === 'issues' ? (
+        <div className="section-gap">
+          <IssuesPage repo={data} />
+        </div>
+      ) : data.empty ? (
         <QuickSetup repo={data} />
       ) : (
         <div className="section-gap">
