@@ -1,17 +1,19 @@
 // Letture del codice (M-04) via client generato (client di default: niente
 // `client:` nelle options, cosi l'interceptor 401 vede le risposte).
 import {
+  getRepositoryBlame,
   getRepositoryBranches,
+  getRepositoryFile,
   getRepositoryLanguages,
   getRepositoryReadme,
   getRepositoryTags,
   getRepositoryTree,
   listRepositoryFiles,
 } from '@gitstack/api-client';
-import type { Branch, CommitSummary, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry } from '@gitstack/api-client';
+import type { Blame, BlameRange, Branch, CommitSummary, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry } from '@gitstack/api-client';
 import { API_BASE_URL, ApiError, unwrap } from './http';
 
-export type { Branch, CommitSummary, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry };
+export type { Blame, BlameRange, Branch, CommitSummary, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry };
 
 export async function fetchTree(owner: string, repo: string, ref: string, path: string): Promise<Tree> {
   return unwrap(await getRepositoryTree({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { ref, ...(path ? { path } : {}) } }));
@@ -145,4 +147,61 @@ export function fuzzyFilter(query: string, paths: readonly string[], limit = 50)
   }
   scored.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
   return scored.slice(0, limit).map((s) => s.path);
+}
+
+export async function fetchFile(owner: string, repo: string, ref: string, path: string): Promise<FileContent> {
+  return unwrap(await getRepositoryFile({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { ref, path } }));
+}
+
+export async function fetchBlame(owner: string, repo: string, ref: string, path: string): Promise<Blame> {
+  return unwrap(await getRepositoryBlame({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { ref, path } }));
+}
+
+/** Indirizzo pubblico del raw (B3): /<owner>/<repo>/raw/<ref>/<percorso>. */
+export function rawHref(owner: string, repo: string, ref: string, path: string): string {
+  return `/${owner}/${repo}/raw/${encodePath(ref)}/${encodePath(path)}`;
+}
+
+export function blameHref(owner: string, repo: string, ref: string, path: string): string {
+  return `/${owner}/${repo}/blame/${encodePath(ref)}/${encodePath(path)}`;
+}
+
+/** Storico filtrato sul file (B4, GIT-88): /<owner>/<repo>/commits/<ref>/<percorso>. */
+export function historyHref(owner: string, repo: string, ref: string, path: string): string {
+  return `/${owner}/${repo}/commits/${encodePath(ref)}/${encodePath(path)}`;
+}
+
+export function commitHref(owner: string, repo: string, sha: string): string {
+  return `/${owner}/${repo}/commit/${sha}`;
+}
+
+/** Contenuto testuale di un file: UTF-8 diretto o base64 decodificato; null se manca o non si decodifica. */
+export function decodeContent(f: FileContent): string | null {
+  if (f.content === undefined) return null;
+  if (f.encoding !== 'base64') return f.content;
+  try {
+    const bin = atob(f.content);
+    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  } catch {
+    return null;
+  }
+}
+
+/** Nome lowlight dal nome del file; undefined se non riconosciuto. */
+const EXT_LANG: Record<string, string> = {
+  go: 'go', ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
+  py: 'python', sh: 'bash', bash: 'bash', json: 'json', yml: 'yaml', yaml: 'yaml', css: 'css', html: 'xml', xml: 'xml',
+  sql: 'sql', md: 'markdown', java: 'java', rs: 'rust', rb: 'ruby', php: 'php', c: 'c', h: 'c', cpp: 'cpp', cc: 'cpp',
+  cs: 'csharp', diff: 'diff', patch: 'diff', ini: 'ini', toml: 'ini', mod: 'go', kt: 'kotlin', swift: 'swift',
+};
+export function languageFor(fileName: string): string | undefined {
+  const lower = fileName.toLowerCase();
+  if (lower === 'makefile') return 'makefile';
+  if (lower === 'dockerfile') return 'dockerfile';
+  const i = lower.lastIndexOf('.');
+  return i < 0 ? undefined : EXT_LANG[lower.slice(i + 1)];
+}
+
+export function isMarkdownName(fileName: string): boolean {
+  return /.(md|markdown)$/i.test(fileName);
 }

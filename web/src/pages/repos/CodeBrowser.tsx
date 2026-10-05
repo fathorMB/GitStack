@@ -7,6 +7,7 @@ import { Button, CopyButton, ErrorAlert, Markdown } from '../../components';
 import {
   archiveUrl,
   blobHref,
+  decodeContent,
   fetchBranches,
   fetchFilePaths,
   fetchLanguages,
@@ -19,7 +20,7 @@ import {
   splitRefPath,
   treeHref,
 } from '../../lib/codeApi';
-import type { Branch, CommitSummary, FileContent, Tag, Tree, TreeEntry } from '../../lib/codeApi';
+import type { Branch, CommitSummary, Tag, Tree, TreeEntry } from '../../lib/codeApi';
 import { timeAgo } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import type { Repository } from '../../lib/reposApi';
@@ -197,17 +198,6 @@ function Breadcrumb({ owner, repo, refName, path, defaultRef }: { owner: string;
       })}
     </nav>
   );
-}
-
-function decodeContent(f: FileContent): string | null {
-  if (f.content === undefined) return null;
-  if (f.encoding !== 'base64') return f.content;
-  try {
-    const bin = atob(f.content);
-    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
-  } catch {
-    return null;
-  }
 }
 
 function ReadmeCard({ owner, repo, refName, path }: { owner: string; repo: string; refName: string; path: string }) {

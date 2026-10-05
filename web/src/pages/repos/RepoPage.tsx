@@ -6,18 +6,20 @@ import { fetchRepo } from '../../lib/reposApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { CodeBrowser } from './CodeBrowser';
+import { FileView } from './FileView';
+import type { FileMode } from './FileView';
 import { VisibilityBadge } from './ReposPage';
 import { isRepoAdmin, loadMe } from './repoAdmin';
 
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export function RepoPage() {
+export function RepoPage({ mode = 'tree' }: { mode?: 'tree' | FileMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
-  return <RepoPageInner key={`${owner}/${repo}`} owner={owner} repo={repo} splat={splat} />;
+  return <RepoPageInner key={`${owner}/${repo}`} owner={owner} repo={repo} splat={splat} mode={mode} />;
 }
 
-function RepoPageInner({ owner, repo, splat }: { owner: string; repo: string; splat: string }) {
+function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: string; splat: string; mode: 'tree' | FileMode }) {
   const { data, loading, error } = useLoad(() => fetchRepo(owner, repo));
 
   // Link alle impostazioni solo a chi ha admin; un errore nel controllo lo nasconde.
@@ -57,7 +59,7 @@ function RepoPageInner({ owner, repo, splat }: { owner: string; repo: string; sp
         <QuickSetup repo={data} />
       ) : (
         <div className="section-gap">
-          <CodeBrowser repo={data} splat={splat} />
+          {mode === 'tree' ? <CodeBrowser repo={data} splat={splat} /> : <FileView repo={data} splat={splat} mode={mode} />}
         </div>
       )}
     </div>
