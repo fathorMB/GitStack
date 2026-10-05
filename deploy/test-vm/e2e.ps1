@@ -42,6 +42,10 @@
          creato via API, push via HTTPS (ingress) e via SSH (porta 2222 della
          VM), clone/pull incrociati e clone anonimo rifiutato. Serve git
          nel PATH dell'host.
+      e6. browser del codice (GIT-116, M-04): sul repo di e5 aggiunge
+         page.html e image.svg (con <script>) e verifica via gateway tree,
+         contents, raw (text/plain o octet-stream+attachment, nosniff, CSP
+         sandbox), commits e dettaglio, e 401/404 senza credenziali.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -690,6 +694,98 @@ function Main {
             foreach ($n in $savedEnv.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv[$n]) }
         }
         Add-StepResult -Name 'e5. git reale: repo via API, clone/push/pull via HTTPS (token) e via SSH (porta 2222), clone anonimo negato' -Ok $e5Ok -Detail ($e5Details -join '; ')
+
+        # --- e6. browser del codice: tree, contents, raw, commits via gateway (GIT-116, M-04) ---
+        # Sul repo privato del passo e5, con il suo token (read:resource): aggiunge
+        # page.html e image.svg (con <script>) via HTTPS e verifica le API di lettura.
+        # Il raw non deve mai uscire come pagina eseguibile (regola B3).
+        Write-Log "==> Passo e6: browser del codice (tree, contents, raw, commits) ..."
+        $e6Ok = $true
+        $e6Details = @()
+        $e6Stage = 'preparazione'
+        $savedEnv6 = @{}
+        foreach ($n in 'GIT_TERMINAL_PROMPT', 'GCM_INTERACTIVE', 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL') {
+            $savedEnv6[$n] = [Environment]::GetEnvironmentVariable($n)
+        }
+        try {
+            if (-not $e5Ok) { throw 'e5 non riuscito' }
+            $repoApi = "$baseUrl/api/v1/repos/$gitUser/$gitRepo"
+
+            $e6Stage = 'push di page.html e image.svg via HTTPS'
+            $env:GIT_TERMINAL_PROMPT = '0'
+            $env:GCM_INTERACTIVE = 'never'
+            $env:GIT_AUTHOR_NAME = 'E2E'; $env:GIT_AUTHOR_EMAIL = 'e2e@example.com'
+            $env:GIT_COMMITTER_NAME = 'E2E'; $env:GIT_COMMITTER_EMAIL = 'e2e@example.com'
+            Set-Content -LiteralPath (Join-Path $w1 'page.html') -Value '<script>alert(1)</script>' -Encoding ascii
+            Set-Content -LiteralPath (Join-Path $w1 'image.svg') -Value '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><script>alert(1)</script><rect width="10" height="10"/></svg>' -Encoding ascii
+            foreach ($g in @(@('-C', $w1, 'add', '-A'), @('-C', $w1, 'commit', '-q', '-m', 'aggiunge page.html e image.svg'), @('-C', $w1, 'push', '-q', 'origin', 'main'))) {
+                $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 120
+                if ($r.ExitCode -ne 0) { throw "git $($g[2]) via HTTPS: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            }
+
+            $e6Stage = '2. tree della radice'
+            $tr = Invoke-HttpRaw -Uri "$repoApi/tree" -Headers $bearer
+            if ($tr.StatusCode -ne 200) { throw "status $($tr.StatusCode), corpo '$($tr.Body)' $($tr.Error)" }
+            $names = @(($tr.Body | ConvertFrom-Json).entries | ForEach-Object { $_.name })
+            foreach ($want in 'https.txt', 'ssh.txt', 'page.html', 'image.svg') {
+                if ($names -notcontains $want) { throw "manca $want nella radice (voci: $($names -join ', '))" }
+            }
+
+            $e6Stage = '3. contents di https.txt'
+            $ct = Invoke-HttpRaw -Uri "$repoApi/contents?path=https.txt" -Headers $bearer
+            if ($ct.StatusCode -ne 200) { throw "status $($ct.StatusCode), corpo '$($ct.Body)' $($ct.Error)" }
+            $fileContent = [string](($ct.Body | ConvertFrom-Json).content)
+            if ($fileContent.Trim() -ne 'da https') { throw "content '$fileContent' diverso da 'da https'" }
+
+            $e6Stage = '4. raw di https.txt'
+            $rw = Invoke-HttpRaw -Uri "$repoApi/raw?path=https.txt" -Headers $bearer
+            if ($rw.StatusCode -ne 200) { throw "status $($rw.StatusCode), corpo '$($rw.Body)' $($rw.Error)" }
+            if ($rw.Headers['Content-Type'] -notmatch '^text/plain') { throw "Content-Type '$($rw.Headers['Content-Type'])', atteso text/plain" }
+            if ($rw.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw "X-Content-Type-Options '$($rw.Headers['X-Content-Type-Options'])', atteso nosniff" }
+            if ($rw.Headers['Content-Security-Policy'] -notmatch 'sandbox') { throw "Content-Security-Policy '$($rw.Headers['Content-Security-Policy'])' senza sandbox" }
+
+            $e6Stage = '5. raw di page.html e image.svg'
+            foreach ($f in 'page.html', 'image.svg') {
+                $rw = Invoke-HttpRaw -Uri "$repoApi/raw?path=$f" -Headers $bearer
+                if ($rw.StatusCode -ne 200) { throw "$f status $($rw.StatusCode), corpo '$($rw.Body)' $($rw.Error)" }
+                $ctype = [string]$rw.Headers['Content-Type']
+                if ($ctype -match 'text/html|image/svg\+xml') { throw "$f servito come '$ctype'" }
+                if ($ctype -notmatch '^application/octet-stream') { throw "$f Content-Type '$ctype', atteso application/octet-stream" }
+                if ([string]$rw.Headers['Content-Disposition'] -notmatch '^attachment') { throw "$f Content-Disposition '$($rw.Headers['Content-Disposition'])', atteso attachment" }
+                if ($rw.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw "$f X-Content-Type-Options '$($rw.Headers['X-Content-Type-Options'])', atteso nosniff" }
+                if ($rw.Headers['Content-Security-Policy'] -notmatch 'sandbox') { throw "$f Content-Security-Policy '$($rw.Headers['Content-Security-Policy'])' senza sandbox" }
+            }
+
+            $e6Stage = '6. commits e dettaglio del commit'
+            $cm = Invoke-HttpRaw -Uri "$repoApi/commits" -Headers $bearer
+            if ($cm.StatusCode -ne 200) { throw "status $($cm.StatusCode), corpo '$($cm.Body)' $($cm.Error)" }
+            $commits = @(($cm.Body | ConvertFrom-Json).items)
+            if ($commits.Count -lt 3) { throw "attesi almeno 3 commit, trovati $($commits.Count)" }
+            $headSha = [string]$commits[0].sha
+            $headFiles = @()
+            $cd = Invoke-HttpRaw -Uri "$repoApi/commits/$headSha" -Headers $bearer
+            if ($cd.StatusCode -ne 200) { throw "dettaglio $headSha status $($cd.StatusCode), corpo '$($cd.Body)' $($cd.Error)" }
+            $detail = $cd.Body | ConvertFrom-Json
+            if ([string]$detail.commit.sha -ne $headSha) { throw "dettaglio con sha '$($detail.commit.sha)', atteso $headSha" }
+            $headFiles = @($detail.files | ForEach-Object { $_.path })
+            if ($headFiles -notcontains 'page.html') { throw "il commit piu recente non contiene page.html (file: $($headFiles -join ', '))" }
+            if ($headFiles -notcontains 'image.svg') { throw "il commit piu recente non contiene image.svg (file: $($headFiles -join ', '))" }
+
+            $e6Stage = '7. senza credenziali'
+            foreach ($u in @("$repoApi/tree", "$repoApi/contents?path=https.txt", "$repoApi/raw?path=https.txt")) {
+                $an = Invoke-HttpRaw -Uri $u
+                if ($an.StatusCode -ne 401 -and $an.StatusCode -ne 404) { throw "$u senza credenziali: status $($an.StatusCode), atteso 401 o 404" }
+                foreach ($leak in 'da https', 'https.txt', 'ssh.txt', 'page.html', 'image.svg') {
+                    if ($an.Body -match [regex]::Escape($leak)) { throw "$u senza credenziali: il corpo contiene '$leak'" }
+                }
+            }
+        } catch {
+            $e6Ok = $false
+            $e6Details += "[$e6Stage] $($_.Exception.Message)"
+        } finally {
+            foreach ($n in $savedEnv6.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv6[$n]) }
+        }
+        Add-StepResult -Name 'e6. browser del codice: tree, contents, raw (text/plain o attachment, nosniff, sandbox), commits, nessun dato senza credenziali' -Ok $e6Ok -Detail ($e6Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."

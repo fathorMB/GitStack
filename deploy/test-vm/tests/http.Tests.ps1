@@ -25,13 +25,15 @@ $null = $ps.AddScript({
         $json = '{"code":"unauthorized","seen":"' + $seen + '"}'
         $bytes = [Text.Encoding]::UTF8.GetBytes($json)
         $ctx.Response.StatusCode = 401
+        if ($ctx.Request.Url.AbsolutePath -eq '/ok') { $ctx.Response.StatusCode = 200 }
         $ctx.Response.ContentType = 'application/json'
+        $ctx.Response.Headers['X-Content-Type-Options'] = 'nosniff'
         $ctx.Response.Headers['X-Seen-Cookie'] = $seen
         $ctx.Response.ContentLength64 = $bytes.Length
         $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
         $ctx.Response.OutputStream.Close()
     }
-}).AddArgument($listener).AddArgument(3)
+}).AddArgument($listener).AddArgument(4)
 $handle = $ps.BeginInvoke()
 
 $failures = 0
@@ -54,8 +56,17 @@ try {
     $r3 = Invoke-HttpRaw -Uri "${prefix}api/x" -Cookie 'gst_session=xyz=1' -TimeoutSec 10
     Assert-That ($r3.Body -match 'gst_session=xyz=1') "cookie con '=' nel valore preservato: '$($r3.Body)'"
 
+    # Headers: presenti sia nel ramo di successo (200) sia in quello d'errore (401),
+    # con nomi senza distinzione di maiuscole; le altre proprieta restano.
+    $r5 = Invoke-HttpRaw -Uri "${prefix}ok" -TimeoutSec 10
+    Assert-That ($r5.StatusCode -eq 200) "ramo di successo: status 200 (ottenuto $($r5.StatusCode))"
+    Assert-That ($r5.Headers['x-content-type-options'] -eq 'nosniff') "successo: Headers contiene X-Content-Type-Options"
+    Assert-That ($r5.Headers['Content-Type'] -match 'application/json') "successo: Headers contiene Content-Type"
+    Assert-That ($r1.Headers['X-Content-Type-Options'] -eq 'nosniff') "errore 401: Headers contiene X-Content-Type-Options"
+
     $r4 = Invoke-HttpRaw -Uri 'http://127.0.0.1:1/' -TimeoutSec 3
     Assert-That ($r4.StatusCode -eq 0 -and $r4.Error) "connessione rifiutata: StatusCode 0 con Error"
+    Assert-That ($null -ne $r4.Headers -and $r4.Headers.Count -eq 0) "connessione rifiutata: Headers vuoto"
 } finally {
     try { $listener.Stop() } catch { }
     $ps.Dispose()
