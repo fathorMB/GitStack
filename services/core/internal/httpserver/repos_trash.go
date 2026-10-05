@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -76,7 +77,8 @@ func (s *apiServer) DeleteRepository(w http.ResponseWriter, r *http.Request, own
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante l'eliminazione del repo.")
 		return
 	}
-	if _, err := tx.MarkDeleted(r.Context(), cur.ID, s.now()); err != nil {
+	deleted, err := tx.MarkDeleted(r.Context(), cur.ID, s.now())
+	if err != nil {
 		slog.Default().Error("eliminazione del repo non riuscita", "repo_id", cur.ID, "err", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante l'eliminazione del repo.")
 		return
@@ -87,6 +89,17 @@ func (s *apiServer) DeleteRepository(w http.ResponseWriter, r *http.Request, own
 		!errors.Is(err, gitclient.ErrConflict) && !errors.Is(err, gitclient.ErrNotFound) {
 		slog.Default().Warn("repo non spostato nel cestino da git: eliminazione annullata", "repo_id", cur.ID, "err", err)
 		writeError(w, http.StatusServiceUnavailable, "git_unavailable", "Servizio git non disponibile: il repo non è stato eliminato.")
+		return
+	}
+	if err := emitRepo(r.Context(), tx.Tx(), domainevents.RepositoryDeleted, deleted, userID, func(p *domainevents.RepositoryPayload) {
+		if deleted.DeletedAt != nil {
+			p.DeletedAt = deleted.DeletedAt.UTC().Format(time.RFC3339)
+			p.PurgeAt = store.PurgeAt(*deleted.DeletedAt).UTC().Format(time.RFC3339)
+		}
+	}); err != nil {
+		slog.Default().Error("scrittura dell'evento di eliminazione non riuscita", "repo_id", cur.ID, "err", err)
+		s.gitBestEffort(func(ctx context.Context) error { return s.git.Restore(ctx, caller, cur.ID) }, "ripristino su disco", cur.ID)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante l'eliminazione del repo.")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
@@ -145,6 +158,12 @@ func (s *apiServer) RestoreRepository(w http.ResponseWriter, r *http.Request, re
 	if err := s.git.Restore(r.Context(), caller, id); err != nil && !errors.Is(err, gitclient.ErrConflict) {
 		slog.Default().Warn("repo non ripristinato da git: ripristino annullato", "repo_id", id, "err", err)
 		writeError(w, http.StatusServiceUnavailable, "git_unavailable", "Servizio git non disponibile: il repo non è stato ripristinato.")
+		return
+	}
+	if err := emitRepo(r.Context(), tx.Tx(), domainevents.RepositoryRestored, repo, userID, nil); err != nil {
+		slog.Default().Error("scrittura dell'evento di ripristino non riuscita", "repo_id", id, "err", err)
+		s.gitBestEffort(func(ctx context.Context) error { return s.git.Trash(ctx, caller, id) }, "cestino su disco", id)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante il ripristino del repo.")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {

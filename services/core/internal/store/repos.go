@@ -82,6 +82,10 @@ func (s *Store) BeginRepo(ctx context.Context) (*RepoTx, error) {
 // Commit conferma la transazione.
 func (t *RepoTx) Commit(ctx context.Context) error { return t.tx.Commit(ctx) }
 
+// Tx è la transazione sottostante: ci si scrive l'evento dell'outbox, così
+// nasce solo se la modifica arriva al commit.
+func (t *RepoTx) Tx() pgx.Tx { return t.tx }
+
 // Rollback annulla la transazione (innocuo dopo Commit).
 func (t *RepoTx) Rollback(ctx context.Context) { _ = t.tx.Rollback(ctx) }
 

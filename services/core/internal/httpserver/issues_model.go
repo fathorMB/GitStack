@@ -337,7 +337,11 @@ func insertIssueEvent(ctx context.Context, q querier, issueID uuid.UUID, typ str
 	_, err = q.Exec(ctx, `INSERT INTO core.issue_events (id, issue_id, type, actor_id, data, created_at)
 		VALUES ($1, $2, $3, $4, $5, clock_timestamp())`,
 		uuid.New(), issueID, typ, actor, b)
-	return err
+	if err != nil {
+		return err
+	}
+	// Evento di dominio (outbox), nella stessa transazione della cronologia.
+	return emitFromHistory(ctx, q, issueID, typ, actor, data)
 }
 
 // lockRepoForWrite blocca in lettura la riga del repo e verifica che non sia
