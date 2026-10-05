@@ -9,13 +9,15 @@
 - [[knowledge/topics/design-system]] — Design system Aurora
 ## requirements
 
-- [[knowledge/topics/cli-gs-skills]] — CLI gs e skills per agenti: regole di prodotto
 - [[knowledge/topics/browser-codice]] — Browser del codice: regole di prodotto
+- [[knowledge/topics/cli-gs-skills]] — CLI gs e skills per agenti: regole di prodotto
 - [[knowledge/topics/collegamenti-notifiche-webhook]] — Collegamenti, notifiche e webhook: regole di prodotto
 - [[knowledge/topics/identita-e-sicurezza]] — Identità, autenticazione e permessi
 - [[knowledge/topics/installazione-e-deploy]] — Installazione, deploy e operazioni
 - [[knowledge/topics/issues]] — Issues: regole di prodotto
+- [[knowledge/topics/pull-request]] — Pull Request (v1.1): regole di prodotto
 - [[knowledge/topics/repository-git]] — Repository Git: regole di prodotto
+- [[knowledge/topics/server-mcp]] — Server MCP (v1.1): regole di prodotto
 ## technical-choices
 
 - [[knowledge/topics/architettura]] — Architettura v1

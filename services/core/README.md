@@ -67,7 +67,7 @@ Con il build tag `integration`:
 go test -tags=integration ./...
 ```
 
-In CI (`.github/workflows/ci.yml`, job `go`) gira dopo `go test ./... -race`: `ubuntu-latest` ha già un demone Docker raggiungibile, che testcontainers-go usa per Postgres; NATS non serve Docker (server in-process). Verificato anche in locale in questa sessione con un demone Docker reale disponibile: tutti i pacchetti verdi (vedi riassunto della revisione).
+In CI (`.github/workflows/ci.yml`, job `go`) gira dopo `go test ./... -race`: `ubuntu-24.04` ha già un demone Docker raggiungibile, che testcontainers-go usa per Postgres; NATS non serve Docker (server in-process). Verificato anche in locale in questa sessione con un demone Docker reale disponibile: tutti i pacchetti verdi (vedi riassunto della revisione).
 
 ### Immagine Docker
 

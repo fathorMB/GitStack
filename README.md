@@ -91,7 +91,7 @@ non solo quelli del modulo toccato. Dettagli: `api/README.md`,
 
 ## CI
 
-`.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-latest`) gira su
+`.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-24.04`) gira su
 ogni pull request sempre, e sui push solo verso `main` e sui tag (non su
 ogni push di ramo, per non far girare la pipeline due volte sulle PR dello
 stesso repo):
@@ -99,6 +99,8 @@ stesso repo):
 - **go**: `go work sync`, build, `golangci-lint` e `go test ./... -race` per ciascun modulo Go, incluso `client/go` (`scripts/go-each.sh`).
 - **ts**: `pnpm install`, lint, typecheck e test di `web/`.
 - **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Gira solo dopo che `go` e `ts` sono verdi, solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
+
+Il runner è fissato a `ubuntu-24.04` su tutti i job: il passaggio a una versione nuova (Ubuntu 26) si fa con un item dedicato, con una prova controllata.
 
 Riepilogo di quando gira ogni workflow e perché:
 

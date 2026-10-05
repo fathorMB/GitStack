@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "PROP-83de56c6-95a4-4f79-8f76-d8d31421146e",
+  "state": "applied",
+  "created": "2026-10-05T20:23:08.685666500+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Obiettivo v1.1 aggiornato con lo scope delle Pull Request (PR1–PR11). Orizzonte invariato (later), titolo invariato; il server MCP resta da dettagliare.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-33ee21a1-e5f1-4a4e-8668-4dfb162d8446",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358"
+          ],
+          "reopen_reason": "Scope delle PR definito dalle regole PR1–PR11 (2026-10-05); orizzonte invariato.",
+          "schema_version": 1,
+          "title": "v1.1 — Collaborazione: Pull Request e server MCP",
+          "updated": "2026-10-05T20:32:09.985599100+00:00"
+        },
+        "body": "\n# v1.1 — Collaborazione: Pull Request e server MCP\n\n## Outcome\n\nPull Request con diff, review e merge; server MCP generato dalla stessa API pubblica.\n\n## Rationale\n\nD8 e D9: le PR sono il flusso chiave di collaborazione con gli agenti; il modello dati le prevede già dalla v1.\n\n## Scope\n\n**Pull Request** — regole in [[knowledge/topics/pull-request]] (PR1–PR11): PR tra branch dello stesso repo; review con commenti sulle righe e conversazioni risolte; approvazione valida solo da persone con `write`; merge commit o squash; impostazione \"Richiedi una Pull Request\" sul branch principale con approvazioni minime e stati obbligatori; bozze; conflitti mostrati e risolti in locale; chiusura delle issues al merge; API degli stati dei commit per CI esterne; comandi `gs pr` e flusso degli agenti nelle skills; notifiche ed eventi webhook delle PR.\n\n**Server MCP** — da dettagliare in un tema di analisi separato.\n\nFuori dalla v1.1: fork, rebase, suggerimenti applicabili e risoluzione dei conflitti dal browser.\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v1.1 — Pull Request: regole di prodotto\" (PR1–PR11)\n",
+        "expected_digest": "34c90d1db7b3d17a481b0f13da779164a4e98d936f98b585dda82c06d2a87063",
+        "slug": null,
+        "reason": "Scope delle PR definito dalle regole PR1–PR11 (2026-10-05); orizzonte invariato."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"approvo\" alla richiesta di approvare entrambe le proposte (consolidamento del tema PR e obiettivo v1.1), il 2026-10-05."
+  }
+}

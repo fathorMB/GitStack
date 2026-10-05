@@ -18,7 +18,7 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 10 | Commit diff | M-04 |
 | 11 | Settings · Webhooks | M-06 |
 | 12 | Issue list | M-05 |
-| 13 | Issue detail | M-05, M-06 |
+| 13 | Issue detail (varianti: normale, chiusura con motivo, bloccata vista da read, nascosta, repo archiviato; etichette M-06/M-07 sugli elementi successivi) | M-05, M-06 |
 | 14 | Access tokens & SSH keys | M-02 |
 | 15 | Organization · Teams | M-02 |
 | 16 | Admin · System (servizi, backup, upgrade) | M-08 |
@@ -29,6 +29,10 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 21 | Notification settings (email per tipo, Watch, conservazione) | M-06 |
 | 22 | Blame (autore per riga, badge agent) | M-04 |
 | 23 | Tags (download ZIP e tar.gz) | M-04 |
-| 24 | CLI & skills (download di gs e skills dall'istanza) | M-07 |
+| 24 | CLI & skills (download di gs e skills dall'istanza; dalla v1.1 riquadro MCP con configurazione pronta) | M-07, v1.1 |
+| 25 | Pull requests (lista, bozze, review, stati, conflitti) | v1.1 |
+| 26 | Pull request · Conversation (varianti del riquadro di merge: pronta, serve approvazione, stato rosso, conflitti, bozza, unita) | v1.1 |
+| 27 | Pull request · Files changed (commenti sulle righe, suggerimenti, outdated, Review changes) | v1.1 |
+| 28 | Settings · Branches & merge (Require a pull request, approvazioni, stati obbligatori, metodi di merge) | v1.1 |
 
 Dati finti: organizzazione "Acme", utenti mrossi, lbianchi, gverdi, fneri, agente build-agent.

@@ -1,6 +1,7 @@
 ---
-{"area":"requirements","id":"DOC-1565db4b-4108-490d-aca1-28d30c36ad99","related":["TOP-5dd4b056-b64a-4878-9266-6dc2e134dd00","DOC-d1718775-770d-4065-8b27-3dc7a400dad6","DOC-6878277b-230e-448b-a761-215e9d233c54","OBJ-43ae9cfe-b093-4063-a4d8-90e6cf6827e2"],"schema_version":1,"sources":[],"tags":["issues","m-05","agenti","ricerca"],"title":"Issues: regole di prodotto","updated":"2026-10-05T08:42:00+00:00"}
+{"area":"requirements","id":"DOC-1565db4b-4108-490d-aca1-28d30c36ad99","related":["TOP-5dd4b056-b64a-4878-9266-6dc2e134dd00","DOC-d1718775-770d-4065-8b27-3dc7a400dad6","DOC-6878277b-230e-448b-a761-215e9d233c54","OBJ-43ae9cfe-b093-4063-a4d8-90e6cf6827e2","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"],"reopen_reason":"Indicazioni per i coding agent sul mockup 13 aggiornato e sui confini di M-05, confermate dall'operatore il 2026-10-05.","schema_version":1,"sources":[],"tags":["issues","m-05","agenti","ricerca","mockup"],"title":"Issues: regole di prodotto","updated":"2026-10-05T19:57:33.120740800+00:00"}
 ---
+
 
 # Issues: regole di prodotto
 
@@ -24,6 +25,15 @@ Regole per le issues (M-05) confermate dall'operatore il 2026-10-05 nel tema di 
 | I10 | **Ricerca con sintassi GitHub:** `is:`, `reason:`, `label:`, `assignee:` (`@me`, `@agents`), `author:`, `milestone:`, `no:`, `repo:`, `org:` e testo libero (ricerca testuale PostgreSQL). Nel repo e su tutta l'installazione, solo su repo visibili; stessa sintassi in UI, API e `gs`; la Home la usa. |
 | I11 | **Blocco e modelli sì, trasferimento no:** chi ha `admin` blocca la discussione (poi commenta solo `write`); modelli Markdown versionati in `.gitstack/ISSUE_TEMPLATE/`, proposti da UI, API e `gs`. Nessun trasferimento tra repo. |
 
+## Mockup e confini di M-05
+
+Confermato dall'operatore il 2026-10-05, per chi realizza le UI mancanti di M-05:
+
+- **Schermata 13 "Issue detail"** di `design/mockups-v1/index.html#issue` ha una barra scura di varianti (non fa parte del prodotto). Ogni variante è un caso da realizzare: *Normale* (con traccia "comment deleted", I4); *Chiusura con motivo* (pulsante diviso "Close as completed" con menu completata / non pianificata / duplicata di #n, I2); *Bloccata vista da read* (avviso al posto dell'editor, niente comandi di gestione, I11 e I3); *Nascosta vista admin* (avviso, anteprima di cosa vedono gli altri, "Unhide issue", I4); *Repo archiviato* (etichetta Archived, avviso, nessun editor né chiusura/riapertura, R10).
+- **Chi ha solo `read`** non vede le rotelline di assegnatari, etichette e milestone né la sezione Admin (I3).
+- **Fuori da M-05:** gli elementi con l'etichetta tratteggiata **M-06** (riferimento da altro repo, commit collegati, chiusura da commit, Unsubscribe/notifiche) e **M-07** (comando `gs`) arrivano con quelle milestone. In M-05 la chiusura è solo manuale con motivo.
+- **Schermata 20 "New issue"** invariata.
+
 ## Fuori dalla v1
 
 Stati personalizzati e Kanban (I2, D10), etichette e milestone di organizzazione (I5, I7), trasferimento di issues (I11), comportamenti automatici legati alle etichette (I5).
@@ -33,3 +43,5 @@ Stati personalizzati e Kanban (I2, D10), etichette e milestone di organizzazione
 - [[knowledge/topics/decisioni]]
 - [[knowledge/topics/identita-e-sicurezza]]
 - [[knowledge/topics/repository-git]]
+- [[knowledge/topics/stato-di-realizzazione]]
+

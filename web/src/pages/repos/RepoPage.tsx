@@ -9,6 +9,7 @@ import { useLoad } from '../../lib/useLoad';
 import { CodeBrowser } from './CodeBrowser';
 import { CommitPage } from './CommitPage';
 import { CommitsPage } from './CommitsPage';
+import { IssueDetailPage } from './IssueDetailPage';
 import { IssuesPage } from './IssuesPage';
 import { SearchPage } from './SearchPage';
 import { TagsPage } from './TagsPage';
@@ -20,7 +21,7 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | 'issues' | FileMode;
+export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | 'issues' | 'issue' | FileMode;
 
 export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
@@ -81,16 +82,20 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
       </div>
       {data.description ? <p className="muted">{data.description}</p> : null}
       <nav className="tabs" aria-label="Repository sections">
-        <NavLink className={() => (mode !== 'issues' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}`} end>
+        <NavLink className={() => (mode !== 'issues' && mode !== 'issue' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}`} end>
           <FileCode size={16} aria-hidden="true" />
           Code
         </NavLink>
-        <NavLink className={() => (mode === 'issues' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}/issues`}>
+        <NavLink className={() => (mode === 'issues' || mode === 'issue' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}/issues`}>
           <CircleDot size={16} aria-hidden="true" />
           Issues {openIssues !== null ? <span className="counter">{openIssues}</span> : null}
         </NavLink>
       </nav>
-      {mode === 'issues' ? (
+      {mode === 'issue' ? (
+        <div className="section-gap">
+          <IssueDetailPage repo={data} />
+        </div>
+      ) : mode === 'issues' ? (
         <div className="section-gap">
           <IssuesPage repo={data} />
         </div>

@@ -68,7 +68,7 @@ jobs:
   # e 0 in segnalazione) e validazione del file delle eccezioni.
   gate-selftest:
     name: Gate — test e file delle eccezioni
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -86,7 +86,7 @@ jobs:
 
   govulncheck:
     name: Dipendenze Go — govulncheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -134,7 +134,7 @@ jobs:
 
   pnpm-audit:
     name: Dipendenze web — pnpm audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -172,7 +172,7 @@ jobs:
 
   gosec:
     name: Codice Go — gosec
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -219,7 +219,7 @@ jobs:
 
   eslint-security:
     name: Codice TypeScript — eslint-plugin-security
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -268,7 +268,7 @@ jobs:
   # (sha-<sha completo>).
   images:
     name: Immagini — Trivy (${{ matrix.service }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
