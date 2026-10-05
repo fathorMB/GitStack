@@ -10,7 +10,6 @@
 package users
 
 import (
-	"github.com/fathorMB/GitStack/pkg/names"
 	"context"
 	"errors"
 	"fmt"
@@ -21,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/fathorMB/GitStack/pkg/names"
 	"github.com/fathorMB/GitStack/services/identity/internal/password"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/google/uuid"

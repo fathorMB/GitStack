@@ -3,12 +3,13 @@
 package orgs
 
 import (
-	"github.com/fathorMB/GitStack/pkg/names"
 	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"time"
+
+	"github.com/fathorMB/GitStack/pkg/names"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

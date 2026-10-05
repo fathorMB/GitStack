@@ -76,7 +76,7 @@ func TestOwnerAndVisibilityRules(t *testing.T) {
 	}
 	e.mk("root", true)
 	aliceCk := e.mustLogin("alice")
-	status(t, e.do("POST", "/orgs", map[string]string{"name": "acme"}, aliceCk), 201)    // alice owner di acme
+	status(t, e.do("POST", "/orgs", map[string]string{"name": "acme"}, aliceCk), 201)               // alice owner di acme
 	status(t, e.do("POST", "/orgs", map[string]string{"name": "other"}, e.mustLogin("carol")), 201) // carol owner di other
 	status(t, e.do("PUT", "/orgs/acme/members/bob", map[string]string{"role": "member"}, aliceCk), 200)
 	acme := e.orgID("acme").String()
