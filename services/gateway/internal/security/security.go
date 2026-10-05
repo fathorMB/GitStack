@@ -148,12 +148,23 @@ func (t *Table) Lookup(method, path string) (Match, bool) {
 	var bestParams map[string]string
 	for i := range t.routes {
 		c := &t.routes[i]
-		if c.route.Method != method || len(c.segments) != len(segs) {
+		if c.route.Method != method {
+			continue
+		}
+		tail := hasTail(c.segments)
+		if len(c.segments) != len(segs) && (!tail || len(segs) <= len(c.segments)) {
 			continue
 		}
 		params := map[string]string{}
 		ok := true
 		for j, s := range c.segments {
+			if tail && j == len(c.segments)-1 {
+				params[s[1:len(s)-1]] = strings.Join(segs[j:], "/")
+				if segs[j] == "" {
+					ok = false
+				}
+				break
+			}
 			if isParam(s) {
 				if segs[j] == "" {
 					ok = false
@@ -191,6 +202,14 @@ func (t *Table) Routes() []Route {
 
 func splitPath(p string) []string {
 	return strings.Split(strings.TrimPrefix(p, "/"), "/")
+}
+
+// tailParams sono i parametri di percorso che occupano più segmenti
+// (`x-path-tail` nel contratto): l'ultimo segmento della rotta li prende tutti.
+var tailParams = map[string]bool{"{refAndPath}": true}
+
+func hasTail(segs []string) bool {
+	return len(segs) > 0 && tailParams[segs[len(segs)-1]]
 }
 
 func isParam(s string) bool {

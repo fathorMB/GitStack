@@ -87,6 +87,10 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 		mountIdentity(mux, proxy.ToIdentity(cfg.IdentityURL, cfg.IdentityTimeout, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithClock(o.now)), apiMiddlewares)
 	}
 
+	// x-path-tail: il raw per indirizzo ha il ref (con `/`) e il percorso su più
+	// segmenti; il codice generato li vede come uno solo.
+	mountTail(mux, toCore, apiMiddlewares)
+
 	return openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
 		BaseURL:     proxy.PrefixV1,
 		BaseRouter:  mux,
@@ -130,6 +134,15 @@ func mountIdentity(mux *http.ServeMux, h http.Handler, mws []openapi.MiddlewareF
 	for _, p := range identityPatterns {
 		mux.Handle(p, h)
 	}
+}
+
+// mountTail registra, sotto la stessa catena di middleware, la coda
+// multi-segmento di getRepositoryRawByPath verso core.
+func mountTail(mux *http.ServeMux, h http.Handler, mws []openapi.MiddlewareFunc) {
+	for _, mw := range mws {
+		h = mw(h)
+	}
+	mux.Handle("GET "+proxy.PrefixV1+"/repos/{owner}/{repo}/raw/{refAndPath...}", h)
 }
 
 // Option personalizza NewRouter (usata dai test).

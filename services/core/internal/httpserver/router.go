@@ -56,6 +56,11 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{
 		BaseRouter: mux,
 	})
+	// x-path-tail di getRepositoryRawByPath: il ref può avere `/`, quindi la
+	// coda occupa più segmenti (il codice generato la vede come uno solo).
+	mux.HandleFunc("GET /repos/{owner}/{repo}/raw/{refAndPath...}", func(w http.ResponseWriter, r *http.Request) {
+		server.GetRepositoryRawByPath(w, r, r.PathValue("owner"), r.PathValue("repo"), r.PathValue("refAndPath"))
+	})
 	return trust.Require(serviceSecret, publicPath, o.now)(mux)
 }
 
