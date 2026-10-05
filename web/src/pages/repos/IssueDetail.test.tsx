@@ -139,7 +139,7 @@ beforeEach(() => {
 });
 
 describe('cronologia', () => {
-  it('mostra testo, commenti, eventi, badge agent, comment deleted e la riga For agents', async () => {
+  it('mostra testo, commenti, eventi, badge agent e comment deleted; niente For agents', async () => {
     setup({
       comments: [comment('c1', user('build-agent', 'agent')), comment('c2', user('mrossi'), { deleted: true, body: '' })],
       events: [
@@ -161,7 +161,8 @@ describe('cronologia', () => {
     expect(screen.queryByTestId('event-referenced')).not.toBeInTheDocument();
     expect(screen.queryByText(/Unsubscribe/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Linked commits/)).not.toBeInTheDocument();
-    expect(screen.getByText('gs issue view acme/api#41 --json')).toBeInTheDocument();
+    expect(screen.queryByText(/For agents/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/gs issue view/)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /New issue/ })).toHaveAttribute('href', '/acme/api/issues/new');
   });
 
@@ -198,7 +199,7 @@ describe('permessi: read (non autore)', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Edit comment/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Delete comment/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Close issue|Reopen issue/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Close as|Reopen issue/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Edit (assignees|labels|milestone)$/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Lock conversation')).not.toBeInTheDocument();
     expect(screen.queryByText('Hide issue')).not.toBeInTheDocument();
@@ -230,7 +231,7 @@ describe('permessi: autore con solo read', () => {
     await u.click(screen.getByRole('button', { name: 'Update comment' }));
     await waitFor(() => expect(api.editComment).toHaveBeenCalledWith(ref, 'c1', 'Fixed text'));
 
-    await u.click(screen.getByRole('button', { name: 'Close issue' }));
+    await u.click(screen.getByRole('button', { name: 'Close as completed' }));
     await waitFor(() => expect(api.closeIssueWith).toHaveBeenCalledWith(ref, 'completed', undefined));
     // niente sidebar modificabile e niente eliminazione del commento altrui
     expect(screen.queryByRole('button', { name: /^Edit labels$/ })).not.toBeInTheDocument();
@@ -254,11 +255,15 @@ describe('permessi: write', () => {
     const u = userEvent.setup();
     setup({ role: 'write' });
     await screen.findByText('Pushing fails for ed25519 keys');
-    await u.selectOptions(screen.getByLabelText('Close reason'), 'duplicate');
-    const close = screen.getByRole('button', { name: 'Close issue' });
+    await u.click(screen.getByRole('button', { name: 'Other close reasons' }));
+    await u.click(screen.getByRole('menuitemradio', { name: /Close as duplicate of/ }));
+    const close = screen.getByRole('button', { name: 'Close as duplicate of…' });
     expect(close).toBeDisabled();
+    await u.type(screen.getByLabelText('Duplicate of issue number'), '41');
+    expect(close).toBeDisabled();
+    await u.clear(screen.getByLabelText('Duplicate of issue number'));
     await u.type(screen.getByLabelText('Duplicate of issue number'), '12');
-    await u.click(close);
+    await u.click(screen.getByRole('button', { name: 'Close as duplicate of #12' }));
     await waitFor(() => expect(api.closeIssueWith).toHaveBeenCalledWith(ref, 'duplicate', 12));
   });
 
@@ -266,9 +271,10 @@ describe('permessi: write', () => {
     const u = userEvent.setup();
     setup({ role: 'write' });
     await screen.findByText('Pushing fails for ed25519 keys');
-    await u.selectOptions(screen.getByLabelText('Close reason'), 'not_planned');
+    await u.click(screen.getByRole('button', { name: 'Other close reasons' }));
+    await u.click(screen.getByRole('menuitemradio', { name: /Close as not planned/ }));
     await u.type(screen.getByLabelText('Leave a comment'), 'Out of scope');
-    await u.click(screen.getByRole('button', { name: 'Close issue' }));
+    await u.click(screen.getByRole('button', { name: 'Close as not planned' }));
     await waitFor(() => expect(api.postComment).toHaveBeenCalledWith(ref, 'Out of scope', []));
     expect(api.closeIssueWith).toHaveBeenCalledWith(ref, 'not_planned', undefined);
   });
@@ -329,7 +335,7 @@ describe('permessi: admin', () => {
     expect(await screen.findByText(/This issue is hidden/)).toBeInTheDocument();
     await u.click(screen.getByRole('button', { name: /Unlock conversation/ }));
     await waitFor(() => expect(api.setLocked).toHaveBeenCalledWith(ref, false));
-    await u.click(screen.getByRole('button', { name: /Unhide issue/ }));
+    await u.click(within(sidebar()).getByRole('button', { name: /Unhide issue/ }));
     await waitFor(() => expect(api.setHidden).toHaveBeenCalledWith(ref, false));
   });
 
@@ -361,13 +367,13 @@ describe('permessi: admin', () => {
 describe('issue bloccata', () => {
   it('chi ha solo read non commenta; chi ha write si', async () => {
     setup({ role: 'read', issue: baseIssue({ locked: true }) });
-    expect(await screen.findByText(/This conversation is locked/)).toBeInTheDocument();
+    expect(await screen.findByText(/This conversation has been locked/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Leave a comment')).not.toBeInTheDocument();
   });
 
   it("l'autore con read non puo' modificare il testo di una issue bloccata", async () => {
     setup({ role: 'read', me: 'gverdi', issue: baseIssue({ locked: true }), comments: [comment('c1', user('gverdi'))] });
-    await screen.findByText(/This conversation is locked/);
+    await screen.findByText(/This conversation has been locked/);
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit comment by gverdi' })).not.toBeInTheDocument();
   });
@@ -382,12 +388,12 @@ describe('issue bloccata', () => {
 describe('repo archiviato', () => {
   it('tutto in sola lettura, anche per admin', async () => {
     setup({ role: 'admin', me: 'gverdi', archived: true, comments: [comment('c1', user('gverdi'))] });
-    expect(await screen.findByText(/This repository is archived: the issue is read-only/)).toBeInTheDocument();
-    expect(screen.getByText(/comments are disabled/)).toBeInTheDocument();
+    expect(await screen.findByText(/This repository has been archived/)).toBeInTheDocument();
+    expect(screen.getByText(/commenting, closing and reopening are disabled/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Leave a comment')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Edit comment|Delete comment/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Close issue|Reopen issue/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Close as|Reopen issue/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Edit (assignees|labels|milestone)$/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Lock conversation|Hide issue/ })).not.toBeInTheDocument();
   });
@@ -397,7 +403,7 @@ describe('issue nascosta', () => {
   it('per admin mostra il contenuto con l\'avviso', async () => {
     setup({ role: 'admin', issue: baseIssue({ hidden: true }) });
     expect(await screen.findByText('Pushing fails for ed25519 keys')).toBeInTheDocument();
-    expect(screen.getByText(/only admins can see its content/)).toBeInTheDocument();
+    expect(screen.getByText(/Only repository admins can see its content/)).toBeInTheDocument();
   });
 
   it('per chi non e\' admin l\'API risponde 404 e la pagina non mostra nulla', async () => {
@@ -443,5 +449,92 @@ describe('editor e allegati', () => {
     await u.upload(screen.getByLabelText('Attach files'), big);
     expect(await screen.findByText(/limited to 10 MB/)).toBeInTheDocument();
     expect(api.uploadAttachment).not.toHaveBeenCalled();
+  });
+});
+
+describe('varianti del mockup 13', () => {
+  it('normal: owner, issue chiusa, comment deleted, riapertura e nessun For agents', async () => {
+    setup({ role: 'admin', me: 'mrossi', issue: baseIssue({ state: 'closed', closeReason: 'completed' }), comments: [comment('c1', user('mrossi'), { deleted: true, body: '' })] });
+    expect(await screen.findByText('Closed as completed')).toBeInTheDocument();
+    expect(screen.getByText(/comment deleted/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reopen issue' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /New issue/ })).toBeInTheDocument();
+    expect(screen.queryByText(/For agents/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/access: you can open issues/)).not.toBeInTheDocument();
+  });
+
+  it('close: pulsante diviso con le tre voci e le descrizioni', async () => {
+    const u = userEvent.setup();
+    setup({ role: 'write', me: 'mrossi' });
+    await screen.findByText('Pushing fails for ed25519 keys');
+    expect(screen.getByRole('button', { name: 'Close as completed' })).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Other close reasons' }));
+    const menu = screen.getByRole('menu', { name: 'Close reasons' });
+    expect(within(menu).getByText('Done, fixed, shipped. Counts toward milestone progress.')).toBeInTheDocument();
+    expect(within(menu).getByText("Won't fix, can't reproduce, stale. Not counted in milestone progress.")).toBeInTheDocument();
+    expect(within(menu).getByText('Close as duplicate of…')).toBeInTheDocument();
+    await u.click(within(menu).getByRole('menuitemradio', { name: /Close as not planned/ }));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Close as not planned' }));
+    await waitFor(() => expect(api.closeIssueWith).toHaveBeenCalledWith(ref, 'not_planned', undefined));
+  });
+
+  it("close: lo stesso controllo c'e' anche senza editor (commento vietato, chiusura permessa)", async () => {
+    const u = userEvent.setup();
+    setup({ role: 'read', me: 'gverdi', issue: baseIssue({ locked: true }) });
+    await screen.findByText(/This conversation has been locked/);
+    expect(screen.queryByLabelText('Leave a comment')).not.toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Other close reasons' }));
+    await u.click(screen.getByRole('menuitemradio', { name: /Close as duplicate of/ }));
+    await u.type(screen.getByLabelText('Duplicate of issue number'), '7');
+    await u.click(screen.getByRole('button', { name: 'Close as duplicate of #7' }));
+    await waitFor(() => expect(api.closeIssueWith).toHaveBeenCalledWith(ref, 'duplicate', 7));
+  });
+
+  it('locked: vista read con alert-info, nota Read access, niente ingranaggi ne Admin', async () => {
+    setup({ role: 'read', issue: baseIssue({ locked: true }), events: [event('e1', 'locked')] });
+    const b = await screen.findByText('This conversation has been locked.');
+    expect(b.closest('.alert')).toHaveClass('alert-info');
+    expect(screen.getByText(/Only people with Write access to this repository can comment/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Leave a comment')).not.toBeInTheDocument();
+    expect(within(sidebar()).getByText(/access: you can open issues and comment/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Edit (assignees|labels|milestone)$/ })).not.toBeInTheDocument();
+    expect(within(sidebar()).queryByText('Admin')).not.toBeInTheDocument();
+    expect(screen.queryByText(/For agents/)).not.toBeInTheDocument();
+  });
+
+  it("hidden: vista admin con alert-warning, chi l'ha nascosta, anteprima e Unhide issue", async () => {
+    const u = userEvent.setup();
+    setup({ role: 'admin', issue: baseIssue({ hidden: true }), events: [event('e1', 'hidden', {}, user('mrossi'))] });
+    const b = await screen.findByText('This issue is hidden.');
+    const alert = b.closest('.alert') as HTMLElement;
+    expect(alert).toHaveClass('alert-warning');
+    expect(alert).toHaveTextContent(/Hidden by mrossi/);
+    expect(alert).toHaveTextContent('What everyone else sees at this address:');
+    expect(alert).toHaveTextContent('#41 · This issue has been hidden by a repository admin.');
+    expect(alert).toHaveTextContent('the number #41 is kept and never reused');
+    await u.click(within(alert).getByRole('button', { name: 'Unhide issue' }));
+    await waitFor(() => expect(api.setHidden).toHaveBeenCalledWith(ref, false));
+  });
+
+  it("hidden: senza evento la frase non ha Hidden by; chi non e' admin non ha il pulsante", async () => {
+    setup({ role: 'write', issue: baseIssue({ hidden: true }) });
+    const b = await screen.findByText('This issue is hidden.');
+    const alert = b.closest('.alert') as HTMLElement;
+    expect(alert).not.toHaveTextContent(/Hidden by/);
+    expect(within(alert).queryByRole('button', { name: 'Unhide issue' })).not.toBeInTheDocument();
+  });
+
+  it('archived: avvisi in testata e in fondo, nessun editor, chiusura, Edit ne New issue; nota Read access', async () => {
+    setup({ role: 'read', me: 'gverdi', archived: true, issue: baseIssue({ state: 'closed', closeReason: 'completed' }) });
+    const head = await screen.findByText('This repository has been archived.');
+    expect(head.closest('.alert')).toHaveClass('alert-warning');
+    expect(head.closest('.alert')).toHaveTextContent('An admin can unarchive it from Settings.');
+    const foot = screen.getByText('The repository is archived: commenting, closing and reopening are disabled.');
+    expect(foot.closest('.alert')).toHaveClass('alert-warning');
+    expect(screen.queryByLabelText('Leave a comment')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Close as|Other close reasons|Reopen issue|^Edit$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /New issue/ })).not.toBeInTheDocument();
+    expect(within(sidebar()).getByText(/access: you can open issues and comment/)).toBeInTheDocument();
   });
 });
