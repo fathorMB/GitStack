@@ -55,3 +55,9 @@ Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice e la motivaz
   con `import()` dinamico: `corepack pnpm build` con il componente importato
   mostra lowlight in un chunk separato dal bundle principale. I colori dei
   token usano `--tk-*` di tokens.css (classi `.hljs-*` in components.css).
+
+Id dei titoli: rehype-slug gira **prima** di rehype-sanitize, che li prefissa con
+`user-content-` (anti DOM clobbering: `# root` non collide con `<div id="root">`).
+Le ancore interne `[x](#sez)` sono riscritte dal renderer di `a` in
+`#user-content-sez`, quindi continuano a funzionare. Un `<pre>` HTML grezzo resta
+un `<pre>` (spaziatura conservata); solo `<pre><code>` diventa un blocco evidenziato.

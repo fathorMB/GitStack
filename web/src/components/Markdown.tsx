@@ -65,11 +65,31 @@ function CodeBlock({ lang, code }: { lang?: string; code: string }) {
 
 type WithNode<T> = T & { node?: unknown };
 
+interface HastLike {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: { className?: unknown };
+  children?: HastLike[];
+}
+
+function hastText(n: HastLike): string {
+  return n.type === 'text' ? (n.value ?? '') : (n.children ?? []).map(hastText).join('');
+}
+
+const CLOBBER = 'user-content-';
+
+/** #sez -> #user-content-sez (gli id dei titoli hanno il prefisso). */
+function anchorHref(href: string): string {
+  return href.startsWith('#') && href.length > 1 && !href.startsWith('#' + CLOBBER) ? '#' + CLOBBER + href.slice(1) : href;
+}
+
 /**
  * Markdown in stile GitHub (GFM). L'HTML grezzo passa da rehype-raw e poi da
  * rehype-sanitize (allowlist di default, stile GitHub): niente script, on*,
- * iframe, form, style, svg, URL javascript:/data:. Gli id dei titoli si
- * aggiungono dopo la sanificazione.
+ * iframe, form, style, svg, URL javascript:/data:. Gli id dei titoli (rehype-slug)
+ * sono generati prima della sanificazione, che li prefissa con `user-content-`
+ * (anti DOM clobbering); le ancore `#sez` sono riscritte di conseguenza.
  */
 export function Markdown({ source, basePath = '', resolveLink, resolveImage, className }: MarkdownProps) {
   const components: Components = {
@@ -83,7 +103,7 @@ export function Markdown({ source, basePath = '', resolveLink, resolveImage, cla
         );
       }
       return (
-        <a {...rest} href={href ? resolveRelative(href, basePath, resolveLink) : href}>
+        <a {...rest} href={href ? anchorHref(resolveRelative(href, basePath, resolveLink)) : href}>
           {children}
         </a>
       );
@@ -93,15 +113,23 @@ export function Markdown({ source, basePath = '', resolveLink, resolveImage, cla
       const s = typeof src === 'string' ? src : undefined;
       return <img {...rest} alt={alt ?? ''} src={s ? resolveRelative(s, basePath, resolveImage) : s} loading="lazy" />;
     },
-    pre({ children }) {
-      return <>{children}</>;
+    pre({ children, node, ...rest }: WithNode<ComponentPropsWithoutRef<'pre'>>) {
+      // <pre><code> = blocco di codice (CodeBlock, evidenziato); un <pre> HTML
+      // senza code resta un pre, così la spaziatura (ASCII art) si conserva.
+      const first = (node as HastLike | undefined)?.children?.[0];
+      if (first?.type === 'element' && first.tagName === 'code') {
+        const cn = first.properties?.className;
+        const lang = (Array.isArray(cn) ? cn.join(' ') : String(cn ?? '')).match(/language-([\w+#.-]+)/)?.[1];
+        return <CodeBlock lang={lang} code={hastText(first).replace(/\n$/, '')} />;
+      }
+      return (
+        <pre {...rest} className="md-pre">
+          {children}
+        </pre>
+      );
     },
     code({ className: cn, children, node, ...rest }: WithNode<ComponentPropsWithoutRef<'code'>>) {
       void node;
-      const lang = /language-([\w+#.-]+)/.exec(cn ?? '')?.[1];
-      const text = String(children ?? '');
-      // Blocco: ha una lingua o termina con a capo (react-markdown non passa più `inline`).
-      if (lang || text.endsWith('\n')) return <CodeBlock lang={lang} code={text.replace(/\n$/, '')} />;
       return (
         <code {...rest} className={cn}>
           {children}
@@ -114,7 +142,7 @@ export function Markdown({ source, basePath = '', resolveLink, resolveImage, cla
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         remarkRehypeOptions={{ allowDangerousHtml: true }}
-        rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeSlug]}
+        rehypePlugins={[rehypeRaw, rehypeSlug, rehypeSanitize]}
         components={components}
       >
         {source}

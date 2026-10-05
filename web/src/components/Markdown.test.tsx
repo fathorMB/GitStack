@@ -54,7 +54,7 @@ describe('Markdown: GFM', () => {
     expect((boxes[0] as HTMLInputElement).checked).toBe(true);
     expect((boxes[1] as HTMLInputElement).checked).toBe(false);
     expect(screen.getByRole('link', { name: 'https://example.org/x' })).toBeInTheDocument();
-    expect(container.querySelector('h2')).toHaveAttribute('id', 'titolo-uno');
+    expect(container.querySelector('h2')).toHaveAttribute('id', 'user-content-titolo-uno');
   });
 
   it('codice delimitato con lingua, evidenziato', async () => {
@@ -72,6 +72,22 @@ describe('Markdown: GFM', () => {
   });
 });
 
+describe('Markdown: id e pre', () => {
+  it('gli id dei titoli hanno il prefisso e non collidono con la pagina', () => {
+    const { container } = renderMd('# root\n\n[vai](#root)');
+    expect(container.querySelector('[id="root"]')).toBeNull();
+    expect(container.querySelector('h1')).toHaveAttribute('id', 'user-content-root');
+    expect(screen.getByRole('link', { name: 'vai' })).toHaveAttribute('href', '#user-content-root');
+  });
+
+  it('un <pre> HTML grezzo resta un pre con la spaziatura', () => {
+    const { container } = renderMd('<pre>a\n  b</pre>');
+    const pre = container.querySelector('pre');
+    expect(pre).not.toBeNull();
+    expect(pre?.textContent).toBe('a\n  b');
+  });
+});
+
 describe('Markdown: percorsi relativi', () => {
   it('risolve link e immagini nel repo e nel ref', () => {
     const { container } = renderMd(
@@ -82,7 +98,7 @@ describe('Markdown: percorsi relativi', () => {
     expect(href('a')).toBe('/o/r/blob/main/docs/guide/x.md');
     expect(href('b')).toBe('/o/r/blob/main/docs/y.md#sez');
     expect(href('c')).toBe('/o/r/blob/main/z/w.md');
-    expect(href('d')).toBe('#top');
+    expect(href('d')).toBe('#user-content-top');
     const srcs = Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src'));
     expect(srcs).toEqual(['/raw/o/r/main/docs/guide/img/p.png', '/raw/o/r/main/img/q.png', 'https://e.com/i.png']);
   });
