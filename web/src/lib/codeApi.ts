@@ -3,6 +3,8 @@
 import {
   getRepositoryBlame,
   getRepositoryBranches,
+  getRepositoryCommit,
+  getRepositoryCommits,
   getRepositoryFile,
   getRepositoryLanguages,
   getRepositoryReadme,
@@ -10,10 +12,10 @@ import {
   getRepositoryTree,
   listRepositoryFiles,
 } from '@gitstack/api-client';
-import type { Blame, BlameRange, Branch, CommitSummary, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry } from '@gitstack/api-client';
+import type { Blame, BlameRange, Branch, CommitDetail, CommitList, CommitSummary, FileDiff, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry } from '@gitstack/api-client';
 import { API_BASE_URL, ApiError, unwrap } from './http';
 
-export type { Blame, BlameRange, Branch, CommitSummary, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry };
+export type { Blame, BlameRange, Branch, CommitDetail, CommitList, CommitSummary, FileDiff, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry };
 
 export async function fetchTree(owner: string, repo: string, ref: string, path: string): Promise<Tree> {
   return unwrap(await getRepositoryTree({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { ref, ...(path ? { path } : {}) } }));
@@ -204,4 +206,30 @@ export function languageFor(fileName: string): string | undefined {
 
 export function isMarkdownName(fileName: string): boolean {
   return /\.(md|markdown)$/i.test(fileName);
+}
+
+export const COMMITS_PER_PAGE = 30;
+
+export async function fetchCommits(owner: string, repo: string, q: { ref: string; author?: string; path?: string; page?: number }): Promise<CommitList> {
+  return unwrap(
+    await getRepositoryCommits({
+      baseUrl: API_BASE_URL,
+      path: { owner, repo },
+      query: { ref: q.ref, perPage: COMMITS_PER_PAGE, ...(q.author ? { author: q.author } : {}), ...(q.path ? { path: q.path } : {}), ...(q.page && q.page > 1 ? { page: q.page } : {}) },
+    }),
+  );
+}
+
+export async function fetchCommit(owner: string, repo: string, sha: string, ignoreWhitespace: boolean): Promise<CommitDetail> {
+  return unwrap(await getRepositoryCommit({ baseUrl: API_BASE_URL, path: { owner, repo, sha }, query: ignoreWhitespace ? { ignoreWhitespace: true } : {} }));
+}
+
+/** Download del diff intero (B6): .diff o .patch, senza limiti. */
+export function commitDownloadUrl(owner: string, repo: string, sha: string, format: "diff" | "patch", ignoreWhitespace = false): string {
+  return `${API_BASE_URL}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(sha)}/patch?format=${format}${ignoreWhitespace ? "&ignoreWhitespace=true" : ""}`;
+}
+
+/** Storico dalla radice (tab Commits): /<owner>/<repo>/commits/<ref>. */
+export function commitsHref(owner: string, repo: string, ref: string, path = ""): string {
+  return `/${owner}/${repo}/commits/${encodePath(ref)}${path ? `/${encodePath(path)}` : ""}`;
 }

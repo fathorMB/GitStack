@@ -17,3 +17,5 @@ export { ErrorAlert } from './ErrorAlert';
 export { Logo } from './Logo';
 export { Markdown } from './Markdown';
 export type { MarkdownProps } from './Markdown';
+export { DiffView } from './DiffView';
+export type { DiffViewMode, DiffViewProps } from './DiffView';
