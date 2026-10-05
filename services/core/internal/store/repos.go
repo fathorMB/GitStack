@@ -112,6 +112,13 @@ func (t *RepoTx) Insert(ctx context.Context, in NewRepo) (Repo, error) {
 	return repo, nil
 }
 
+// SeedDefaultLabels crea le etichette predefinite del repo (I5), nella stessa
+// transazione della creazione. Idempotente.
+func (t *RepoTx) SeedDefaultLabels(ctx context.Context, repoID uuid.UUID) error {
+	_, err := t.tx.Exec(ctx, `SELECT core.seed_default_labels($1)`, repoID)
+	return err
+}
+
 // Lock legge il repo con un blocco di riga (FOR UPDATE): le modifiche alle
 // impostazioni dello stesso repo si serializzano. ErrNotFound se non esiste o
 // è eliminato.

@@ -581,6 +581,11 @@ export type CreateRepositoryInput = {
      */
     readme?: boolean;
     gitignoreTemplate?: GitignoreTemplate;
+    /**
+     * Crea le etichette predefinite (I5): `bug`, `enhancement`, `documentation`, `question`, `duplicate`, `good first issue`, `agent-ready`, `needs-human`. Attiva di default; `false` crea il repo senza etichette.
+     *
+     */
+    defaultLabels?: boolean;
     licenseTemplate?: LicenseTemplate;
 };
 
@@ -973,6 +978,368 @@ export type LookupEmailsResult = {
     }>;
 };
 
+export type IssueState = 'open' | 'closed';
+
+/**
+ * Motivo di chiusura (I2). `completed` e' anche quello di `fixes
+ */
+export type IssueCloseReason = 'completed' | 'not_planned' | 'duplicate';
+
+export type IssueUser = {
+    id: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    displayName?: string;
+};
+
+export type IssueLabelRef = {
+    id: string;
+    name: string;
+    color: LabelColor;
+};
+
+export type IssueMilestoneRef = {
+    number: number;
+    title: string;
+    state: 'open' | 'closed';
+};
+
+/**
+ * Colore esadecimale a sei cifre, senza `#`.
+ */
+export type LabelColor = string;
+
+export type Issue = {
+    id: string;
+    /**
+     * `#n`, dal contatore del repo condiviso con le PR (I1); non si riusa mai.
+     *
+     */
+    number: number;
+    title: string;
+    /**
+     * Markdown (D10).
+     */
+    body: string;
+    state: IssueState;
+    /**
+     * Presente solo se `state` e' `closed`; azzerato dalla riapertura (I2).
+     */
+    closeReason?: IssueCloseReason | null;
+    /**
+     * Numero della issue di cui questa e' un duplicato (solo con `closeReason=duplicate`).
+     */
+    duplicateOf?: number | null;
+    author: IssueUser;
+    labels: Array<IssueLabelRef>;
+    assignees: Array<IssueUser>;
+    milestone?: IssueMilestoneRef | null;
+    /**
+     * Discussione bloccata (I11).
+     */
+    locked: boolean;
+    /**
+     * Nascosta (I4). Chi non e' `admin` non la riceve mai: e' 404.
+     */
+    hidden: boolean;
+    /**
+     * Il testo e' stato modificato (I4); le versioni precedenti sono per `admin`.
+     */
+    edited: boolean;
+    /**
+     * Commenti non eliminati.
+     */
+    commentCount: number;
+    attachments?: Array<IssueAttachment>;
+    closedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+/**
+ * Issue negli elenchi: senza testo.
+ */
+export type IssueSummary = {
+    number: number;
+    title: string;
+    state: IssueState;
+    closeReason?: IssueCloseReason | null;
+    author: IssueUser;
+    labels: Array<IssueLabelRef>;
+    assignees: Array<IssueUser>;
+    milestone?: IssueMilestoneRef | null;
+    locked?: boolean;
+    commentCount: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type IssueList = {
+    items: Array<IssueSummary>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type IssueSearchResult = {
+    /**
+     * `owner/nome` del repo.
+     */
+    repo: string;
+    issue: IssueSummary;
+};
+
+export type IssueSearchResultList = {
+    items: Array<IssueSearchResult>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreateIssueInput = {
+    title: string;
+    body?: string;
+    /**
+     * Nomi di etichette del repo. Richiede `write`.
+     */
+    labels?: Array<string>;
+    /**
+     * Nomi utente con `write`. Richiede `write`.
+     */
+    assignees?: Array<Name>;
+    /**
+     * Numero di una milestone del repo. Richiede `write`.
+     */
+    milestone?: number;
+    attachmentIds?: Array<string>;
+};
+
+export type UpdateIssueInput = {
+    title?: string;
+    body?: string;
+};
+
+export type CloseIssueInput = {
+    reason?: IssueCloseReason;
+    /**
+     * Obbligatorio con `reason=duplicate`, vietato altrimenti.
+     */
+    duplicateOf?: number;
+};
+
+export type SetIssueHiddenInput = {
+    hidden: boolean;
+};
+
+export type LockIssueInput = {
+    /**
+     * Motivo facoltativo, mostrato nella cronologia.
+     */
+    reason?: string;
+};
+
+export type SetIssueAssigneesInput = {
+    assignees: Array<Name>;
+};
+
+export type SetIssueLabelsInput = {
+    labels: Array<string>;
+};
+
+export type SetIssueMilestoneInput = {
+    /**
+     * Numero della milestone, o `null` per toglierla.
+     */
+    milestone: number | null;
+};
+
+export type IssueComment = {
+    id: string;
+    issueNumber: number;
+    /**
+     * Markdown; vuoto se `deleted`.
+     */
+    body: string;
+    author: IssueUser;
+    edited: boolean;
+    /**
+     * Eliminato (comment deleted, I4): resta la traccia, senza testo.
+     */
+    deleted: boolean;
+    attachments?: Array<IssueAttachment>;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type IssueCommentList = {
+    items: Array<IssueComment>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreateIssueCommentInput = {
+    body: string;
+    attachmentIds?: Array<string>;
+};
+
+export type UpdateIssueCommentInput = {
+    body: string;
+};
+
+export type TextVersion = {
+    /**
+     * 1 e' il testo originale.
+     */
+    version: number;
+    /**
+     * Solo per le versioni della issue.
+     */
+    title?: string;
+    body: string;
+    editor: IssueUser;
+    /**
+     * Quando questa versione e' stata sostituita.
+     */
+    createdAt: string;
+};
+
+export type TextVersionList = {
+    items: Array<TextVersion>;
+};
+
+export type IssueEventType = 'opened' | 'closed' | 'reopened' | 'renamed' | 'edited' | 'labeled' | 'unlabeled' | 'assigned' | 'unassigned' | 'milestoned' | 'demilestoned' | 'locked' | 'unlocked' | 'hidden' | 'unhidden' | 'comment_deleted' | 'referenced';
+
+export type IssueEvent = {
+    id: string;
+    type: IssueEventType;
+    /**
+     * Assente per gli eventi di sistema (es. chiusura da `fixes
+     */
+    actor?: IssueUser | null;
+    /**
+     * Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+     *
+     */
+    data?: {
+        [key: string]: unknown;
+    };
+    createdAt: string;
+};
+
+export type IssueEventList = {
+    items: Array<IssueEvent>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type UploadIssueAttachmentInput = {
+    file: Blob | File;
+};
+
+export type IssueAttachment = {
+    id: string;
+    /**
+     * Nome originale, solo metadato (mai nel percorso su disco).
+     */
+    filename: string;
+    contentType: string;
+    size: number;
+    /**
+     * Percorso di `getIssueAttachment`; richiede autenticazione.
+     */
+    url?: string;
+    createdAt: string;
+};
+
+export type IssueTemplate = {
+    /**
+     * Nome del file senza estensione.
+     */
+    name: string;
+    /**
+     * Titolo proposto (front matter `title`).
+     */
+    title?: string;
+    about?: string;
+    labels?: Array<string>;
+    /**
+     * Testo Markdown iniziale, senza front matter.
+     */
+    body: string;
+};
+
+export type IssueTemplateList = {
+    items: Array<IssueTemplate>;
+};
+
+export type Label = {
+    id: string;
+    name: string;
+    color: LabelColor;
+    description: string;
+    openIssues: number;
+};
+
+export type LabelList = {
+    items: Array<Label>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreateLabelInput = {
+    name: string;
+    color: LabelColor;
+    description?: string;
+};
+
+export type UpdateLabelInput = {
+    name?: string;
+    color?: LabelColor;
+    description?: string;
+};
+
+export type Milestone = {
+    number: number;
+    title: string;
+    description: string;
+    dueOn?: string | null;
+    state: 'open' | 'closed';
+    /**
+     * Issues aperte.
+     */
+    openIssues: number;
+    /**
+     * Issues chiuse come `completed` (I2); le altre chiusure non contano.
+     */
+    closedIssues: number;
+    closedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type MilestoneList = {
+    items: Array<Milestone>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreateMilestoneInput = {
+    title: string;
+    description?: string;
+    dueOn?: string | null;
+};
+
+export type UpdateMilestoneInput = {
+    title?: string;
+    description?: string;
+    dueOn?: string | null;
+    state?: 'open' | 'closed';
+};
+
 /**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
@@ -1349,6 +1716,67 @@ export type CodeSearchQueryParam = string;
  * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
  */
 export type CommitShaParam = string;
+
+/**
+ * Numero `#n` della issue nel repo (I1).
+ */
+export type IssueNumberParam = number;
+
+/**
+ * Id del commento.
+ */
+export type IssueCommentIdParam = string;
+
+/**
+ * Id dell'allegato.
+ */
+export type IssueAttachmentIdParam = string;
+
+/**
+ * Nome dell'etichetta, codificato come componente di percorso (puo' contenere spazi, es. `good first issue`).
+ *
+ */
+export type LabelNameParam = string;
+
+/**
+ * Numero della milestone nel repo (indipendente da quello delle issues).
+ */
+export type MilestoneNumberParam = number;
+
+/**
+ * Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+ *
+ */
+export type IssueQueryParam = string;
+
+export type IssueStateFilter = 'open' | 'closed' | 'all';
+
+export type IssueReasonFilter = IssueCloseReason;
+
+/**
+ * Nomi di etichette separati da virgola; la issue le ha tutte.
+ */
+export type IssueLabelsFilter = string;
+
+/**
+ * Nome utente, `@me`, `@agents` (assegnata a un agente) o `none`.
+ */
+export type IssueAssigneeFilter = string;
+
+export type IssueAuthorFilter = string;
+
+/**
+ * Numero della milestone, o `none`.
+ */
+export type IssueMilestoneFilter = string;
+
+/**
+ * Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+ *
+ */
+export type IssueSortParam = 'created' | 'updated' | 'comments' | 'relevance';
+
+export type MilestoneStateFilter = 'open' | 'closed' | 'all';
 
 export type GetHealthData = {
     body?: never;
@@ -4841,6 +5269,2031 @@ export type GetRepositoryCommitPatchResponses = {
 };
 
 export type GetRepositoryCommitPatchResponse = GetRepositoryCommitPatchResponses[keyof GetRepositoryCommitPatchResponses];
+
+export type SearchIssuesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+         *
+         */
+        q?: string;
+        /**
+         * Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+         *
+         */
+        sort?: 'created' | 'updated' | 'comments' | 'relevance';
+        page?: number;
+        perPage?: number;
+    };
+    url: '/search/issues';
+};
+
+export type SearchIssuesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SearchIssuesError = SearchIssuesErrors[keyof SearchIssuesErrors];
+
+export type SearchIssuesResponses = {
+    /**
+     * Pagina di risultati.
+     */
+    200: IssueSearchResultList;
+};
+
+export type SearchIssuesResponse = SearchIssuesResponses[keyof SearchIssuesResponses];
+
+export type ListIssuesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+         *
+         */
+        q?: string;
+        state?: 'open' | 'closed' | 'all';
+        reason?: IssueCloseReason;
+        /**
+         * Nomi di etichette separati da virgola; la issue le ha tutte.
+         */
+        labels?: string;
+        /**
+         * Nome utente, `@me`, `@agents` (assegnata a un agente) o `none`.
+         */
+        assignee?: string;
+        author?: string;
+        /**
+         * Numero della milestone, o `none`.
+         */
+        milestone?: string;
+        /**
+         * Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+         *
+         */
+        sort?: 'created' | 'updated' | 'comments' | 'relevance';
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/issues';
+};
+
+export type ListIssuesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListIssuesError = ListIssuesErrors[keyof ListIssuesErrors];
+
+export type ListIssuesResponses = {
+    /**
+     * Pagina di issues.
+     */
+    200: IssueList;
+};
+
+export type ListIssuesResponse = ListIssuesResponses[keyof ListIssuesResponses];
+
+export type CreateIssueData = {
+    body: CreateIssueInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues';
+};
+
+export type CreateIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateIssueError = CreateIssueErrors[keyof CreateIssueErrors];
+
+export type CreateIssueResponses = {
+    /**
+     * Issue creata.
+     */
+    201: Issue;
+};
+
+export type CreateIssueResponse = CreateIssueResponses[keyof CreateIssueResponses];
+
+export type GetIssueData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}';
+};
+
+export type GetIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetIssueError = GetIssueErrors[keyof GetIssueErrors];
+
+export type GetIssueResponses = {
+    /**
+     * La issue.
+     */
+    200: Issue;
+};
+
+export type GetIssueResponse = GetIssueResponses[keyof GetIssueResponses];
+
+export type UpdateIssueData = {
+    body: UpdateIssueInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}';
+};
+
+export type UpdateIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateIssueError = UpdateIssueErrors[keyof UpdateIssueErrors];
+
+export type UpdateIssueResponses = {
+    /**
+     * Issue aggiornata.
+     */
+    200: Issue;
+};
+
+export type UpdateIssueResponse = UpdateIssueResponses[keyof UpdateIssueResponses];
+
+export type CloseIssueData = {
+    body: CloseIssueInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/close';
+};
+
+export type CloseIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CloseIssueError = CloseIssueErrors[keyof CloseIssueErrors];
+
+export type CloseIssueResponses = {
+    /**
+     * Issue chiusa.
+     */
+    200: Issue;
+};
+
+export type CloseIssueResponse = CloseIssueResponses[keyof CloseIssueResponses];
+
+export type ReopenIssueData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/reopen';
+};
+
+export type ReopenIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ReopenIssueError = ReopenIssueErrors[keyof ReopenIssueErrors];
+
+export type ReopenIssueResponses = {
+    /**
+     * Issue riaperta.
+     */
+    200: Issue;
+};
+
+export type ReopenIssueResponse = ReopenIssueResponses[keyof ReopenIssueResponses];
+
+export type SetIssueHiddenData = {
+    body: SetIssueHiddenInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/hidden';
+};
+
+export type SetIssueHiddenErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetIssueHiddenError = SetIssueHiddenErrors[keyof SetIssueHiddenErrors];
+
+export type SetIssueHiddenResponses = {
+    /**
+     * Issue aggiornata.
+     */
+    200: Issue;
+};
+
+export type SetIssueHiddenResponse = SetIssueHiddenResponses[keyof SetIssueHiddenResponses];
+
+export type UnlockIssueData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/lock';
+};
+
+export type UnlockIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UnlockIssueError = UnlockIssueErrors[keyof UnlockIssueErrors];
+
+export type UnlockIssueResponses = {
+    /**
+     * Issue sbloccata.
+     */
+    200: Issue;
+};
+
+export type UnlockIssueResponse = UnlockIssueResponses[keyof UnlockIssueResponses];
+
+export type LockIssueData = {
+    body: LockIssueInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/lock';
+};
+
+export type LockIssueErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LockIssueError = LockIssueErrors[keyof LockIssueErrors];
+
+export type LockIssueResponses = {
+    /**
+     * Issue bloccata.
+     */
+    200: Issue;
+};
+
+export type LockIssueResponse = LockIssueResponses[keyof LockIssueResponses];
+
+export type SetIssueAssigneesData = {
+    body: SetIssueAssigneesInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/assignees';
+};
+
+export type SetIssueAssigneesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetIssueAssigneesError = SetIssueAssigneesErrors[keyof SetIssueAssigneesErrors];
+
+export type SetIssueAssigneesResponses = {
+    /**
+     * Issue aggiornata.
+     */
+    200: Issue;
+};
+
+export type SetIssueAssigneesResponse = SetIssueAssigneesResponses[keyof SetIssueAssigneesResponses];
+
+export type SetIssueLabelsData = {
+    body: SetIssueLabelsInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/labels';
+};
+
+export type SetIssueLabelsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetIssueLabelsError = SetIssueLabelsErrors[keyof SetIssueLabelsErrors];
+
+export type SetIssueLabelsResponses = {
+    /**
+     * Issue aggiornata.
+     */
+    200: Issue;
+};
+
+export type SetIssueLabelsResponse = SetIssueLabelsResponses[keyof SetIssueLabelsResponses];
+
+export type SetIssueMilestoneData = {
+    body: SetIssueMilestoneInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/milestone';
+};
+
+export type SetIssueMilestoneErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetIssueMilestoneError = SetIssueMilestoneErrors[keyof SetIssueMilestoneErrors];
+
+export type SetIssueMilestoneResponses = {
+    /**
+     * Issue aggiornata.
+     */
+    200: Issue;
+};
+
+export type SetIssueMilestoneResponse = SetIssueMilestoneResponses[keyof SetIssueMilestoneResponses];
+
+export type ListIssueEventsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/issues/{number}/events';
+};
+
+export type ListIssueEventsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListIssueEventsError = ListIssueEventsErrors[keyof ListIssueEventsErrors];
+
+export type ListIssueEventsResponses = {
+    /**
+     * Pagina di eventi.
+     */
+    200: IssueEventList;
+};
+
+export type ListIssueEventsResponse = ListIssueEventsResponses[keyof ListIssueEventsResponses];
+
+export type ListIssueVersionsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/versions';
+};
+
+export type ListIssueVersionsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListIssueVersionsError = ListIssueVersionsErrors[keyof ListIssueVersionsErrors];
+
+export type ListIssueVersionsResponses = {
+    /**
+     * Versioni precedenti.
+     */
+    200: TextVersionList;
+};
+
+export type ListIssueVersionsResponse = ListIssueVersionsResponses[keyof ListIssueVersionsResponses];
+
+export type ListIssueCommentsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/issues/{number}/comments';
+};
+
+export type ListIssueCommentsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListIssueCommentsError = ListIssueCommentsErrors[keyof ListIssueCommentsErrors];
+
+export type ListIssueCommentsResponses = {
+    /**
+     * Pagina di commenti.
+     */
+    200: IssueCommentList;
+};
+
+export type ListIssueCommentsResponse = ListIssueCommentsResponses[keyof ListIssueCommentsResponses];
+
+export type CreateIssueCommentData = {
+    body: CreateIssueCommentInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/comments';
+};
+
+export type CreateIssueCommentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateIssueCommentError = CreateIssueCommentErrors[keyof CreateIssueCommentErrors];
+
+export type CreateIssueCommentResponses = {
+    /**
+     * Commento creato.
+     */
+    201: IssueComment;
+};
+
+export type CreateIssueCommentResponse = CreateIssueCommentResponses[keyof CreateIssueCommentResponses];
+
+export type DeleteIssueCommentData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+        /**
+         * Id del commento.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/comments/{commentId}';
+};
+
+export type DeleteIssueCommentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteIssueCommentError = DeleteIssueCommentErrors[keyof DeleteIssueCommentErrors];
+
+export type DeleteIssueCommentResponses = {
+    /**
+     * Commento eliminato.
+     */
+    204: void;
+};
+
+export type DeleteIssueCommentResponse = DeleteIssueCommentResponses[keyof DeleteIssueCommentResponses];
+
+export type UpdateIssueCommentData = {
+    body: UpdateIssueCommentInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+        /**
+         * Id del commento.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/comments/{commentId}';
+};
+
+export type UpdateIssueCommentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateIssueCommentError = UpdateIssueCommentErrors[keyof UpdateIssueCommentErrors];
+
+export type UpdateIssueCommentResponses = {
+    /**
+     * Commento aggiornato.
+     */
+    200: IssueComment;
+};
+
+export type UpdateIssueCommentResponse = UpdateIssueCommentResponses[keyof UpdateIssueCommentResponses];
+
+export type ListIssueCommentVersionsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+        /**
+         * Id del commento.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions';
+};
+
+export type ListIssueCommentVersionsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListIssueCommentVersionsError = ListIssueCommentVersionsErrors[keyof ListIssueCommentVersionsErrors];
+
+export type ListIssueCommentVersionsResponses = {
+    /**
+     * Versioni precedenti.
+     */
+    200: TextVersionList;
+};
+
+export type ListIssueCommentVersionsResponse = ListIssueCommentVersionsResponses[keyof ListIssueCommentVersionsResponses];
+
+export type UploadIssueAttachmentData = {
+    body: UploadIssueAttachmentInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issue-attachments';
+};
+
+export type UploadIssueAttachmentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UploadIssueAttachmentError = UploadIssueAttachmentErrors[keyof UploadIssueAttachmentErrors];
+
+export type UploadIssueAttachmentResponses = {
+    /**
+     * Allegato caricato.
+     */
+    201: IssueAttachment;
+};
+
+export type UploadIssueAttachmentResponse = UploadIssueAttachmentResponses[keyof UploadIssueAttachmentResponses];
+
+export type GetIssueAttachmentData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Id dell'allegato.
+         */
+        attachmentId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issue-attachments/{attachmentId}';
+};
+
+export type GetIssueAttachmentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetIssueAttachmentError = GetIssueAttachmentErrors[keyof GetIssueAttachmentErrors];
+
+export type GetIssueAttachmentResponses = {
+    /**
+     * Byte dell'allegato.
+     */
+    200: Blob | File;
+};
+
+export type GetIssueAttachmentResponse = GetIssueAttachmentResponses[keyof GetIssueAttachmentResponses];
+
+export type ListIssueTemplatesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issue-templates';
+};
+
+export type ListIssueTemplatesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListIssueTemplatesError = ListIssueTemplatesErrors[keyof ListIssueTemplatesErrors];
+
+export type ListIssueTemplatesResponses = {
+    /**
+     * Modelli.
+     */
+    200: IssueTemplateList;
+};
+
+export type ListIssueTemplatesResponse = ListIssueTemplatesResponses[keyof ListIssueTemplatesResponses];
+
+export type ListLabelsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/labels';
+};
+
+export type ListLabelsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListLabelsError = ListLabelsErrors[keyof ListLabelsErrors];
+
+export type ListLabelsResponses = {
+    /**
+     * Pagina di etichette.
+     */
+    200: LabelList;
+};
+
+export type ListLabelsResponse = ListLabelsResponses[keyof ListLabelsResponses];
+
+export type CreateLabelData = {
+    body: CreateLabelInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/labels';
+};
+
+export type CreateLabelErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateLabelError = CreateLabelErrors[keyof CreateLabelErrors];
+
+export type CreateLabelResponses = {
+    /**
+     * Etichetta creata.
+     */
+    201: Label;
+};
+
+export type CreateLabelResponse = CreateLabelResponses[keyof CreateLabelResponses];
+
+export type DeleteLabelData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'etichetta, codificato come componente di percorso (puo' contenere spazi, es. `good first issue`).
+         *
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/labels/{name}';
+};
+
+export type DeleteLabelErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteLabelError = DeleteLabelErrors[keyof DeleteLabelErrors];
+
+export type DeleteLabelResponses = {
+    /**
+     * Etichetta eliminata.
+     */
+    204: void;
+};
+
+export type DeleteLabelResponse = DeleteLabelResponses[keyof DeleteLabelResponses];
+
+export type GetLabelData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'etichetta, codificato come componente di percorso (puo' contenere spazi, es. `good first issue`).
+         *
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/labels/{name}';
+};
+
+export type GetLabelErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetLabelError = GetLabelErrors[keyof GetLabelErrors];
+
+export type GetLabelResponses = {
+    /**
+     * L'etichetta.
+     */
+    200: Label;
+};
+
+export type GetLabelResponse = GetLabelResponses[keyof GetLabelResponses];
+
+export type UpdateLabelData = {
+    body: UpdateLabelInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Nome dell'etichetta, codificato come componente di percorso (puo' contenere spazi, es. `good first issue`).
+         *
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/labels/{name}';
+};
+
+export type UpdateLabelErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateLabelError = UpdateLabelErrors[keyof UpdateLabelErrors];
+
+export type UpdateLabelResponses = {
+    /**
+     * Etichetta aggiornata.
+     */
+    200: Label;
+};
+
+export type UpdateLabelResponse = UpdateLabelResponses[keyof UpdateLabelResponses];
+
+export type ListMilestonesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        state?: 'open' | 'closed' | 'all';
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/milestones';
+};
+
+export type ListMilestonesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListMilestonesError = ListMilestonesErrors[keyof ListMilestonesErrors];
+
+export type ListMilestonesResponses = {
+    /**
+     * Pagina di milestone.
+     */
+    200: MilestoneList;
+};
+
+export type ListMilestonesResponse = ListMilestonesResponses[keyof ListMilestonesResponses];
+
+export type CreateMilestoneData = {
+    body: CreateMilestoneInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/milestones';
+};
+
+export type CreateMilestoneErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateMilestoneError = CreateMilestoneErrors[keyof CreateMilestoneErrors];
+
+export type CreateMilestoneResponses = {
+    /**
+     * Milestone creata.
+     */
+    201: Milestone;
+};
+
+export type CreateMilestoneResponse = CreateMilestoneResponses[keyof CreateMilestoneResponses];
+
+export type DeleteMilestoneData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero della milestone nel repo (indipendente da quello delle issues).
+         */
+        milestoneNumber: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/milestones/{milestoneNumber}';
+};
+
+export type DeleteMilestoneErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteMilestoneError = DeleteMilestoneErrors[keyof DeleteMilestoneErrors];
+
+export type DeleteMilestoneResponses = {
+    /**
+     * Milestone eliminata.
+     */
+    204: void;
+};
+
+export type DeleteMilestoneResponse = DeleteMilestoneResponses[keyof DeleteMilestoneResponses];
+
+export type GetMilestoneData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero della milestone nel repo (indipendente da quello delle issues).
+         */
+        milestoneNumber: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/milestones/{milestoneNumber}';
+};
+
+export type GetMilestoneErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetMilestoneError = GetMilestoneErrors[keyof GetMilestoneErrors];
+
+export type GetMilestoneResponses = {
+    /**
+     * La milestone.
+     */
+    200: Milestone;
+};
+
+export type GetMilestoneResponse = GetMilestoneResponses[keyof GetMilestoneResponses];
+
+export type UpdateMilestoneData = {
+    body: UpdateMilestoneInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero della milestone nel repo (indipendente da quello delle issues).
+         */
+        milestoneNumber: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/milestones/{milestoneNumber}';
+};
+
+export type UpdateMilestoneErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateMilestoneError = UpdateMilestoneErrors[keyof UpdateMilestoneErrors];
+
+export type UpdateMilestoneResponses = {
+    /**
+     * Milestone aggiornata.
+     */
+    200: Milestone;
+};
+
+export type UpdateMilestoneResponse = UpdateMilestoneResponses[keyof UpdateMilestoneResponses];
 
 export type VerifyCredentialData = {
     body: VerifyCredentialInputWritable;

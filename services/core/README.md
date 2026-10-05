@@ -147,3 +147,51 @@ Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTIT
 ## Letture del codice (M-04)
 
 Le letture di un repo (albero, file, raw, branch, tag, storico, commit con diff, blame, ZIP, lingue, README) passano da core: risolve owner/nome → repoId, applica `read` e `read:resource`, poi chiama l'API interna del servizio git per repoId, con raw e ZIP in streaming; il gateway non parla mai col servizio git. Gli handler (`internal/httpserver/repos_code.go`) rispondono 501 fino a GIT-84. Motivo, errori, autore→utente e limiti: [docs/repos.md](../../docs/repos.md#letture-del-codice-m-04-git-80).
+
+## Issues (M-05/A, GIT-101): contratto e schema
+
+Il contratto è in `api/openapi.yaml` (tag `issues`, regole I1–I11 in `.prisma/knowledge/topics/issues.md`); lo schema è la migrazione `0004_issues`. In questo item gli handler (`internal/httpserver/issues.go`) rispondono **501** `not_implemented`; il gateway li instrada a core come le letture di M-04 (dichiarazioni di sicurezza generate dal contratto). Fa eccezione la creazione del repo, che riceve `defaultLabels` e crea le etichette predefinite (I5).
+
+**Operazioni** (sotto `/repos/{owner}/{repo}`): `issues` (elenco/ricerca, creazione), `issues/{number}` (lettura, modifica di titolo e testo), `close` (motivo `completed|not_planned|duplicate` con `duplicateOf`) e `reopen`, `hidden` (admin), `lock` (PUT/DELETE, admin), `assignees`, `labels`, `milestone` (PUT che sostituiscono), `events`, `versions` (admin), `comments` e `comments/{commentId}` (+ `versions`), `issue-attachments` (upload multipart e download), `issue-templates`, `labels` e `milestones` come risorse del repo; in più `GET /search/issues` per la ricerca su tutta l'installazione (I10).
+
+**Permessi (I3).** `read` apre issues e commenta; `write` assegna, mette etichette e milestone, chiude e riapre anche le issues altrui; l'autore chiude e riapre la propria e ne modifica il testo; `admin` blocca (I11), nasconde, vede le versioni precedenti (I4) ed elimina i commenti altrui. Un repo non leggibile, eliminato o inesistente dà **404** (mai 403); un repo archiviato rifiuta ogni modifica con **409** `archived` (R10). Una issue nascosta è **404** per chi non ha `admin` (scelta: un 404 e non un 200 svuotato, per non rivelare cosa è stato nascosto; il numero resta occupato).
+
+**Errori.** 400 richiesta malformata, 401 senza credenziali, 403 permesso mancante (anche `locked`), 404, 409 (`archived`, `already_closed`, `already_open`, `already_exists`), 413 (`body_too_large` oltre 1 MiB, `attachment_too_large`), 422 `validation_failed` con `details.fields` (titolo vuoto, assegnatari oltre 10 o senza `write`, etichetta o milestone inesistente, `duplicateOf` non valido, tipo di allegato non ammesso).
+
+### Numerazione (I1)
+
+Un solo contatore per repo, `core.repo_counters.next_number`, condiviso da issues e PR (`core.pull_requests`). Il numero si prende **nella stessa transazione dell'INSERT**:
+
+```sql
+UPDATE core.repo_counters SET next_number = next_number + 1
+ WHERE repo_id = $1 RETURNING next_number - 1;
+INSERT INTO core.issues (id, repo_id, number, ...) VALUES (..., $n, ...);
+```
+
+L'UPDATE blocca la riga del contatore fino al commit: due transazioni concorrenti ricevono numeri diversi, e se una annulla il contatore torna indietro con lei (nessun buco). Un numero committato non si riusa mai: le issues non si eliminano (I4), nascondere conserva il numero. Garanzie in DB: `UNIQUE (repo_id, number)` su `issues` e su `pull_requests`, più un trigger `BEFORE INSERT` su entrambe (`core.check_number_not_taken`) che rifiuta con `23505` un numero già usato **dall'altra** tabella, cioè un INSERT che non è passato dal contatore (lo `UNIQUE` non vede l'altra tabella: è il controllo documentato contro la collisione). La riga del contatore la crea sempre la creazione del repo; la migrazione la crea per i repo preesistenti (`ON CONFLICT DO NOTHING`) e porta `next_number` oltre l'eventuale massimo delle PR. Le milestone hanno un numero per repo indipendente, da `next_milestone_number` (stesso schema `UPDATE … RETURNING`).
+
+Test: `internal/migrate/issues_integration_test.go` (60 transazioni in parallelo fra issue e PR dallo stesso contatore: numeri consecutivi e senza duplicati; collisione fra le tabelle; rollback; salita e discesa pulite di `0004` su Postgres reale).
+
+### Altre scelte dello schema
+
+- **Chiusura (I2):** `close_reason` e `closed_at` ci sono se e solo se `state = 'closed'` (CHECK); `duplicate_of` (con FK composita `(repo_id, duplicate_of)` → `issues(repo_id, number)`: stesso repo) c'è se e solo se il motivo è `duplicate`. Riaprire azzera i tre campi. `closedIssues` di una milestone conta solo `completed`.
+- **Testi e cronologia (I4):** la versione corrente sta in `issues`/`issue_comments`; ogni modifica copia quella sostituita in `issue_text_versions` (numerate per issue o per commento). Un commento eliminato resta con `deleted_at` e testo vuoto; gli eventi stanno in `issue_events` (`type` in un elenco chiuso, dettagli in `data` JSONB, `actor_id` NULL per gli eventi di sistema come `fixes #n`).
+- **Assegnatari (I6):** `issue_assignees`, massimo 10 imposto da un trigger che blocca la riga della issue (`23514`); che abbiano `write` lo verifica l'handler con identity.
+- **Etichette (I5):** per repo, nome unico senza distinguere maiuscole (`lower(name)`), senza `/`, virgole e caratteri di controllo; `core.seed_default_labels(repo_id)` crea le otto predefinite (`bug`, `enhancement`, `documentation`, `question`, `duplicate`, `good first issue`, `agent-ready`, `needs-human`), idempotente, chiamata dalla creazione del repo se `defaultLabels` non è `false`. I repo già esistenti non le ricevono.
+- **Ricerca (I10):** colonna `search tsvector` generata (`to_tsvector('simple', title || ' ' || body)`) con indice GIN, su `issues` e su `issue_comments`; configurazione `simple` perché i testi sono misti italiano/inglese. Il traduttore di `q` (`is:`, `label:`, …) spetta all'item di ricerca.
+- **Utenti:** gli `*_id` utente sono UUID senza FK (identity è un altro schema), come `owner_id`.
+
+### Allegati (I9, decisione del CTO)
+
+- I file vivono su un PVC dedicato `attachments-data`, montato da core in `/var/lib/gitstack/attachments` (configurabile con `GITSTACK_CORE_ATTACHMENTS_DIR`), con percorso `<repo_id>/<attachment_id>` **senza il nome originale**, che sta solo nei metadati in DB (`core.issue_attachments`: `filename`, `content_type`, `size_bytes`; nessun file nel database).
+- Limite `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`, default `10485760` (10 MB, I9): oltre, 413 `attachment_too_large`. Tipi ammessi: immagini, PDF, testo/log, ZIP (il tipo si verifica sui byte, 422 se non ammesso). Si scaricano solo con `getIssueAttachment`, autenticati e con `read` sul repo, sempre come allegato (`nosniff`, `Content-Security-Policy: sandbox`): nessun URL pubblico.
+- L'upload crea un allegato non collegato (`issue_id` NULL), che si collega con `attachmentIds` alla creazione di una issue o di un commento; i non collegati da più di 24 ore sono da eliminare (compito dell'item che implementa gli allegati).
+- Il volume fa parte del set di backup di D19 insieme a Postgres e `git-data` (lo realizza M-08; qui è solo scritto).
+- Con il volume RWO, core con gli allegati attivi richiede `replicaCount: 1` e `strategy: Recreate`: lo applica il chart in GIT-107, non questo item. Le variabili d'ambiente sopra non sono ancora lette dal codice: le leggerà l'item che implementa gli allegati.
+
+### Decisioni di contratto da conoscere
+
+- Etichette per **nome** nel percorso (`/labels/{name}`, spazi codificati) e nelle operazioni sulle issue; milestone per **numero**.
+- Gli elenchi hanno `{items, page, perPage, total}` come `GET /repos`; `listIssues` restituisce `IssueSummary` (senza testo).
+- `PUT .../assignees|labels|milestone` sostituiscono l'insieme: un agente che «prende» il lavoro si autoassegna con `PUT` mantenendo gli altri assegnatari (I6).
+- Modelli (I11): `listIssueTemplates` leggerà `.gitstack/ISSUE_TEMPLATE/` dal branch principale tramite il servizio git (API interne `gitGetTree` e `gitGetFile` già esistenti).
