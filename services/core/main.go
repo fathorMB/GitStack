@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/attachments"
 	"github.com/fathorMB/GitStack/services/core/internal/config"
 	"github.com/fathorMB/GitStack/services/core/internal/db"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
@@ -28,6 +29,9 @@ import (
 
 // repoPurgeInterval: ogni quanto il job cancella i repo eliminati scaduti.
 const repoPurgeInterval = time.Hour
+
+// attachmentCleanupInterval: ogni quanto si cercano gli allegati orfani scaduti.
+const attachmentCleanupInterval = 15 * time.Minute
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -182,6 +186,13 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	routerOpts = append(routerOpts,
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort, SSHOff: !cfg.SSHEnabled}),
 	)
+	var disk *attachments.Disk
+	if cfg.AttachmentsDir != "" {
+		disk = &attachments.Disk{Dir: cfg.AttachmentsDir}
+		routerOpts = append(routerOpts, httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: disk, MaxBytes: cfg.AttachmentMaxBytes}))
+	} else {
+		logger.Warn("GITSTACK_CORE_ATTACHMENTS_DIR non impostata: gli allegati rispondono 503")
+	}
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
 
 	srv := &http.Server{
@@ -194,9 +205,18 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// più repliche (FOR UPDATE SKIP LOCKED); parte solo con git e identity.
 	if gitAPI != nil && identityPurger != nil {
 		job := &repopurge.Job{Store: store.New(pool), Git: gitAPI, Identity: identityPurger, Log: logger}
+		if disk != nil {
+			job.Attachments = disk
+		}
 		go job.Run(ctx, repoPurgeInterval)
 	} else {
 		logger.Warn("git o identity non configurati: la pulizia dei repo eliminati non parte")
+	}
+
+	// Allegati orfani (mai collegati) dopo il TTL documentato (24 ore).
+	if disk != nil {
+		cleaner := &attachments.Cleaner{Store: store.New(pool), Disk: disk, TTL: cfg.AttachmentOrphanTTL, Log: logger}
+		go cleaner.Run(ctx, attachmentCleanupInterval)
 	}
 
 	serveErr := make(chan error, 1)

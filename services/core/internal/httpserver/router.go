@@ -51,6 +51,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		userAccess:   o.userAccess,
 		git:          o.git,
 		clone:        o.clone,
+		attachments:  o.attachments,
 		now:          now,
 	}
 
@@ -86,6 +87,7 @@ type routerOptions struct {
 	userAccess   identityclient.UserAccessReader
 	git          gitclient.Git
 	clone        CloneConfig
+	attachments  AttachmentsConfig
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il
@@ -140,6 +142,12 @@ func WithGit(g gitclient.Git) Option {
 // WithCloneConfig imposta la configurazione degli indirizzi di clone (R7).
 func WithCloneConfig(c CloneConfig) Option {
 	return func(o *routerOptions) { o.clone = c }
+}
+
+// WithAttachments imposta il volume e il limite degli allegati (I9). Senza,
+// upload e download di allegati rispondono 503.
+func WithAttachments(c AttachmentsConfig) Option {
+	return func(o *routerOptions) { o.attachments = c }
 }
 
 // WithClock sostituisce l'orologio con cui si controlla il timestamp della

@@ -59,7 +59,9 @@ gateway:
   # templates/gateway/deployment.yaml): non serve impostarle qui.
   env:
     logLevel: info
-    coreTimeout: 5s
+    # Timeout complessivo di una richiesta verso core, upload e download di allegati
+    # compresi (I9: fino a 10 MB): 30s bastano da ~3 Mbit/s in su.
+    coreTimeout: 30s
     identityTimeout: 5s
     # CIDR dei proxy davanti al gateway di cui ci si fida per
     # X-Forwarded-For (GITSTACK_GATEWAY_TRUSTED_PROXIES). Default: rete dei
@@ -117,6 +119,23 @@ core:
     # con cui i client raggiungono GitStack e host mostrato negli URL di clone SSH.
     publicUrl: ""
     sshHost: ""
+  # Allegati di issue e commenti (M-05/G, I9). I file stanno su un PVC dedicato,
+  # montato su `mountPath` (GITSTACK_CORE_ATTACHMENTS_DIR): va incluso nel backup (D19).
+  # Il volume è ReadWriteOnce: con `enabled: true` core gira a UNA replica con
+  # strategia Recreate (il chart rifiuta replicaCount > 1). Con `enabled: false`
+  # upload e download di allegati rispondono 503.
+  attachments:
+    enabled: true
+    mountPath: /var/lib/gitstack/attachments
+    # Limite per file in byte (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES), default 10 MiB.
+    maxBytes: 10485760
+    # Un allegato mai collegato a una issue o a un commento si elimina dopo questo
+    # tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL).
+    orphanTtl: 24h
+    persistence:
+      size: 5Gi
+      storageClassName: ""
+      accessMode: ReadWriteOnce
   resources:
     requests:
       cpu: 25m

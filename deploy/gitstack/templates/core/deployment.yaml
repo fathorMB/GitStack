@@ -1,4 +1,7 @@
 {{- if .Values.core.enabled -}}
+{{- if and .Values.core.attachments.enabled (gt (.Values.core.replicaCount | int) 1) -}}
+{{- fail "core.attachments.enabled=true richiede core.replicaCount=1: il volume degli allegati è ReadWriteOnce (core gira a una replica con strategia Recreate)." -}}
+{{- end -}}
 {{- if not .Values.postgres.enabled -}}
 {{- if or (not .Values.postgres.external.host) (not .Values.postgres.external.database) (not .Values.postgres.external.username) (not .Values.postgres.external.existingSecret) -}}
 {{- fail "postgres.enabled=false (Postgres esterno del cliente, D6): compila postgres.external.host, .database, .username e .existingSecret (Secret con chiave 'password')." -}}
@@ -19,6 +22,12 @@ metadata:
     {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
 spec:
   replicas: {{ .Values.core.replicaCount }}
+  {{- if .Values.core.attachments.enabled }}
+  # Il PVC degli allegati è ReadWriteOnce: il nuovo pod non può montarlo finché
+  # il vecchio non è fermo, quindi niente RollingUpdate (limite noto, README).
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "core") | nindent 6 }}
@@ -35,6 +44,11 @@ spec:
       # li trova raggiungibili (vedi values.yaml, core.waitFor). Questi
       # initContainer attendono la porta TCP prima di avviare "core",
       # invece di affidarsi al CrashLoopBackOff (più lento).
+      {{- if .Values.core.attachments.enabled }}
+      securityContext:
+        # L'immagine gira come nonroot (uid 65532): il volume deve essere scrivibile.
+        fsGroup: 65532
+      {{- end }}
       initContainers:
         - name: wait-for-postgres
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
@@ -104,6 +118,14 @@ spec:
             {{- end }}
             - name: GITSTACK_CORE_SSH_PORT
               value: {{ if .Values.git.ssh.enabled }}{{ .Values.git.ssh.port | quote }}{{ else }}"off"{{ end }}
+            {{- if .Values.core.attachments.enabled }}
+            - name: GITSTACK_CORE_ATTACHMENTS_DIR
+              value: {{ .Values.core.attachments.mountPath | quote }}
+            - name: GITSTACK_CORE_ATTACHMENTS_MAX_BYTES
+              value: {{ .Values.core.attachments.maxBytes | int64 | quote }}
+            - name: GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL
+              value: {{ .Values.core.attachments.orphanTtl | quote }}
+            {{- end }}
             - name: GITSTACK_CORE_LOG_LEVEL
               value: {{ .Values.core.env.logLevel | quote }}
           livenessProbe:
@@ -118,6 +140,17 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+          {{- if .Values.core.attachments.enabled }}
+          volumeMounts:
+            - name: attachments
+              mountPath: {{ .Values.core.attachments.mountPath | quote }}
+          {{- end }}
           resources:
             {{- toYaml .Values.core.resources | nindent 12 }}
+      {{- if .Values.core.attachments.enabled }}
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: {{ include "gitstack.fullname" . }}-attachments-data
+      {{- end }}
 {{- end }}
