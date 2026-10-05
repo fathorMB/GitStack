@@ -9,11 +9,13 @@
     "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
     "DOC-6db23bbe-fbf2-4913-a207-711865af66f6",
     "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
-    "DOC-84811cef-6f8e-4028-97d6-d47381172907"
+    "DOC-84811cef-6f8e-4028-97d6-d47381172907",
+    "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358",
+    "DOC-b18abc32-db2c-4b14-8800-d37f5443dbad"
   ],
   "schema_version": 1,
   "status": "ready",
   "title": "GitStack Mockups v1",
-  "update_reason": null,
-  "updated": "2026-10-05T13:10:00+00:00"
+  "update_reason": "Schermata 24: nota di versione del riquadro MCP allineata a G6/M5 (rifiuto solo su versione maggiore diversa), 2026-10-05.",
+  "updated": "2026-10-05T20:47:27.425051800+00:00"
 }

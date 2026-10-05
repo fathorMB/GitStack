@@ -316,6 +316,46 @@ p{margin:0}
 .hide-sm{}
 @media (max-width:1100px){.repo-grid,.home-grid,.issue-grid{grid-template-columns:1fr}.svc-grid{grid-template-columns:1fr 1fr}.stat-row{grid-template-columns:1fr 1fr}.topsearch{display:none}}
 @media (max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.login{grid-template-columns:1fr}.login-l{display:none}.settings-grid{grid-template-columns:1fr}.page{padding:16px}.repo-h{padding:14px 16px 0}.ftable .fmsg,.ftable .fwhen{display:none}.scope-grid{grid-template-columns:1fr}.svc-grid{grid-template-columns:1fr}.mbar .desc{display:none}}
+
+/* ============ VARIANTI E ANNOTAZIONI DEL MOCKUP (non fanno parte del prodotto) ============ */
+.mvar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 12px;background:#262626;color:#f5f5f5;font-size:12px;border-bottom:1px solid #3a3a3a}
+.mvar b{font-weight:600}.mvar-note{color:#a3a3a3;margin-right:6px}
+.mvar button{height:24px;padding:0 9px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#e5e5e5;font:12px var(--font-sans);cursor:pointer}
+.mvar button.on{background:#7c5cff;border-color:#7c5cff;color:#fff}
+.mtag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border:1px dashed var(--border-strong);border-radius:4px;font:10px var(--font-mono);color:var(--text-subtle);vertical-align:middle;margin-left:4px;letter-spacing:.03em}
+/* prodotto: chiusura con motivo, anteprima della issue nascosta */
+.splitbtn{display:inline-flex}.splitbtn .btn:first-child{border-top-right-radius:0;border-bottom-right-radius:0}.splitbtn .btn+.btn{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:-1px;padding:0 8px}
+.close-menu{position:absolute;right:96px;bottom:46px;width:330px;z-index:5}
+.close-menu .mi{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:var(--r);font-size:13px}
+.close-menu .mi .icon{margin-top:2px;flex:none}.close-menu .mi.on{background:var(--surface-2)}
+.hidden-peek{margin-top:10px;padding:8px 10px;border:1px dashed var(--border-strong);border-radius:var(--r);background:var(--surface)}
+
+/* ============ PULL REQUEST (v1.1) ============ */
+.pr-open{color:var(--success)}.pr-draft{color:var(--text-subtle)}
+.pr-ok{color:var(--success);font-weight:600}.pr-ko{color:var(--danger);font-weight:600}.pr-warn{color:var(--warning);font-weight:600}
+.badge-merged{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.branch-chip{font:12px var(--font-mono);padding:1px 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent-text)}
+.ev .evi.ok{background:var(--success);color:#fff}.ev .evi.merged{background:var(--accent);color:var(--accent-fg)}
+.mergebox{border:1px solid var(--border);border-left:4px solid var(--border-strong);border-radius:var(--r-lg);background:var(--surface);margin:0 0 0 52px}
+.mergebox.ok{border-left-color:var(--success)}.mergebox.warn{border-left-color:var(--warning)}.mergebox.bad{border-left-color:var(--danger)}.mergebox.merged{border-left-color:var(--accent)}
+.mb-row{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-top:1px solid var(--border);font-size:13px}.mb-row:first-child{border-top:0}
+.mb-i{width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--text-muted)}
+.mb-i .icon{width:14px;height:14px}.mb-i.ok{background:var(--success);color:#fff}.mb-i.warn{background:var(--warning);color:#fff}.mb-i.bad{background:var(--danger);color:#fff}.mb-i.merged{background:var(--accent);color:var(--accent-fg)}
+.mb-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.checks{display:flex;flex-direction:column;gap:4px;margin-top:6px}.checks>div{display:flex;align-items:center;gap:8px}.checks a{margin-left:auto}
+.review-pop{position:absolute;right:0;top:38px;width:340px;z-index:5;padding:12px}
+.dl.sel .n{box-shadow:inset 3px 0 0 var(--accent)}
+.thread{margin:6px 12px 10px 108px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);font:13px var(--font-sans);white-space:normal}
+.thread.outdated{margin-left:12px;opacity:.85}
+.th-h{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0}
+.thread.outdated .th-h{border-bottom:0;border-radius:var(--r-lg)}
+.th-c{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)}.th-c p{margin:4px 0 0}
+.th-c code{background:var(--surface-3);padding:1px 5px;border-radius:4px;font:12.5px var(--font-mono)}
+.th-r{padding:8px 12px}
+.suggest{margin-top:8px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sg-h{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:12px;font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12px}.chip .icon{width:12px;height:12px;color:var(--text-subtle)}
+.sub-rules{margin-left:42px;padding-left:14px;border-left:2px solid var(--border)}
 </style>
 </head>
 <body>
@@ -377,6 +417,7 @@ p{margin:0}
     <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="blame">22 · Blame</option><option value="tags">23 · Tags</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
     <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option><option value="new-issue">20 · New issue</option></optgroup>
     <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="notif-settings">21 · Notification settings</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
+    <optgroup label="Pull Request (v1.1)"><option value="pulls">25 · Pull requests</option><option value="pull">26 · Pull request · Conversation</option><option value="pull-files">27 · Pull request · Files changed</option><option value="pr-settings">28 · Settings · Branches &amp; merge</option></optgroup>
     <optgroup label="Amministrazione"><option value="admin">16 · Admin · System</option><option value="agents">17 · Admin · Agents</option></optgroup>
   </select>
   <button id="prev">←</button><button id="next">→</button>
@@ -967,14 +1008,29 @@ make dev</pre>
 </section>
 
 <!-- ============ 13 ISSUE DETAIL ============ -->
-<section class="screen" data-screen="issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue: cronologia con commenti umani e dell'agente, riferimento da un altro repo (C1), testo modificato (edited, I4), allegato (I9), commit collegati, chiusura come completata (I2), barra laterale con assegnatari, etichette, milestone e, per gli admin, blocco della discussione (I11) e nascondi issue (I4).">
+<section class="screen" data-screen="issue" data-variant="normal" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue con varianti (barra scura in alto, non fa parte del prodotto): Normale (owner, chiusa come completata, commento eliminato I4); Chiusura con motivo (menu completata / non pianificata / duplicata di #n, I2); Bloccata vista da chi ha read (I11); Nascosta vista da admin (I4); Repo archiviato, issues in sola lettura (R10). Chi ha solo read non vede i comandi di gestione (I3). Le etichette tratteggiate M-06 / M-07 segnano elementi che arrivano con quelle milestone, non in M-05.">
+  <div class="mvar"><b>Variante del mockup</b><span class="mvar-note">(non fa parte del prodotto)</span>
+    <button data-var="normal" class="on">Normale · owner</button>
+    <button data-var="close">Chiusura con motivo</button>
+    <button data-var="locked">Bloccata · vista read</button>
+    <button data-var="hidden">Nascosta · vista admin</button>
+    <button data-var="archived">Repo archiviato</button>
+  </div>
   <div class="repo-h"><div class="inner">
-    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
-    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="badge" data-v="archived" style="border-color:var(--warning);color:var(--warning)"><svg class="icon"><use href="#i-box"/></svg>Archived</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general" data-v="normal close hidden"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page">
-    <div class="row" style="margin-bottom:8px;flex-wrap:nowrap;align-items:flex-start"><h1 class="issue-title" style="flex:1">Push over SSH fails with ed25519 keys <span>#41</span></h1><button class="btn">Edit</button><button class="btn btn-primary" data-go="new-issue"><svg class="icon"><use href="#i-plus"/></svg>New issue</button></div>
-    <div class="row" style="padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:22px"><span class="badge badge-closed"><svg class="icon"><use href="#i-issue-closed"/></svg>Closed as completed</span><span class="muted"><b style="color:var(--text)">gverdi</b> opened this issue yesterday · 4 comments</span></div>
+    <div class="alert alert-warning" data-v="archived" style="margin-bottom:16px"><svg class="icon"><use href="#i-box"/></svg><div><b>This repository has been archived.</b> It is read-only: issues can be read and searched, but not opened, edited, commented on, closed or reopened. An admin can unarchive it from Settings.</div></div>
+    <div class="alert alert-warning" data-v="hidden" style="margin-bottom:16px"><svg class="icon"><use href="#i-eye"/></svg><div style="flex:1"><b>This issue is hidden.</b> Hidden by <b>mrossi</b> 10 min ago. Only repository admins can see its content; the number #41 is kept and never reused.<div class="hidden-peek"><span class="small muted">What everyone else sees at this address:</span><div class="row small" style="gap:8px;margin-top:6px"><svg class="icon muted"><use href="#i-eye"/></svg><span><b>#41</b> · This issue has been hidden by a repository admin.</span></div></div></div><button class="btn btn-sm">Unhide issue</button></div>
+    <div class="row" style="margin-bottom:8px;flex-wrap:nowrap;align-items:flex-start"><h1 class="issue-title" style="flex:1">Push over SSH fails with ed25519 keys <span>#41</span></h1><button class="btn" data-v="normal close hidden">Edit</button><button class="btn btn-primary" data-go="new-issue" data-v="normal close hidden locked"><svg class="icon"><use href="#i-plus"/></svg>New issue</button></div>
+    <div class="row" style="padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:22px">
+      <span class="badge badge-closed" data-v="normal locked hidden archived"><svg class="icon"><use href="#i-issue-closed"/></svg>Closed as completed</span>
+      <span class="badge badge-open" data-v="close"><svg class="icon"><use href="#i-issue"/></svg>Open</span>
+      <span class="badge" data-v="locked"><svg class="icon"><use href="#i-lock"/></svg>Locked</span>
+      <span class="badge" data-v="hidden" style="border-color:var(--danger);color:var(--danger)"><svg class="icon"><use href="#i-eye"/></svg>Hidden</span>
+      <span class="muted"><b style="color:var(--text)">gverdi</b> opened this issue yesterday · 4 comments</span>
+    </div>
     <div class="issue-grid">
       <div class="timeline">
         <div class="cmt"><span class="avatar avatar-lg av-c">GV</span><div class="cmt-box"><div class="cmt-h"><b>gverdi</b><span class="muted">commented yesterday · <a class="muted" title="Admins can view previous versions">edited</a></span><span class="sp"></span><span class="badge">Author</span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-dots"/></svg></button></div><div class="cmt-b"><p>Pushing over SSH fails for everyone using an ed25519 key:</p><pre class="cmdblock" style="margin:0 0 8px">$ git push
@@ -982,30 +1038,53 @@ Unable to negotiate with git.acme.local port 2222: no matching host key type fou
         <div class="ev"><span class="evi"><svg class="icon"><use href="#i-tag"/></svg></span><span><b style="color:var(--text)">mrossi</b> added <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span> and milestone <b style="color:var(--text)">v0.5</b> · yesterday</span></div>
         <div class="ev"><span class="evi"><svg class="icon"><use href="#i-user"/></svg></span><span><b style="color:var(--text)">mrossi</b> assigned <b style="color:var(--text)">build-agent</b> <span class="badge badge-agent">agent</span> · 40 min ago</span></div>
         <div class="cmt"><span class="avatar avatar-lg av-bot"><svg class="icon" style="width:20px;height:20px"><use href="#i-bot"/></svg></span><div class="cmt-box"><div class="cmt-h"><b>build-agent</b><span class="badge badge-agent">agent</span><span class="muted">via token <span class="mono">ci-runner</span> · 12 min ago</span><span class="sp"></span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-dots"/></svg></button></div><div class="cmt-b"><p>Root cause: the SSH server only registers an RSA host key (<code>internal/ssh/server.go:43</code>).</p><p>Plan:</p><ul><li>generate and advertise an ed25519 host key on first start</li><li>keep RSA for older clients</li><li>add tests for both key types</li></ul><p>Working on branch <code>fix/ssh-ed25519</code>.</p></div></div></div>
-        <div class="ev"><span class="evi"><svg class="icon"><use href="#i-link"/></svg></span><span><b style="color:var(--text)">lbianchi</b> referenced this issue from <a class="mono">acme/identity#44</a> · 30 min ago</span></div>
-        <div class="ev"><span class="evi commit"><svg class="icon"><use href="#i-commit"/></svg></span><span><b style="color:var(--text)">build-agent</b> pushed 2 commits referencing this issue · 5 min ago</span></div>
-        <div style="margin:-8px 0 18px 48px" class="list">
+        <div class="ev"><span class="evi"><svg class="icon"><use href="#i-x"/></svg></span><span><b style="color:var(--text)">lbianchi</b> deleted a comment · 32 min ago <span class="small" title="The author or an admin can delete a comment; the trace stays in the timeline (I4)">(comment deleted)</span></span></div>
+        <div class="ev"><span class="evi"><svg class="icon"><use href="#i-link"/></svg></span><span><b style="color:var(--text)">lbianchi</b> referenced this issue from <a class="mono">acme/identity#44</a> · 30 min ago <span class="mtag" title="Arriva con M-06 (C1)">M-06</span></span></div>
+        <div class="ev" data-v="normal locked hidden archived"><span class="evi commit"><svg class="icon"><use href="#i-commit"/></svg></span><span><b style="color:var(--text)">build-agent</b> pushed 2 commits referencing this issue · 5 min ago <span class="mtag" title="Arriva con M-06 (C2)">M-06</span></span></div>
+        <div style="margin:-8px 0 18px 48px" class="list" data-v="normal locked hidden archived">
           <div class="list-row small" style="padding:8px 12px"><svg class="icon muted"><use href="#i-commit"/></svg><span>test(ssh): cover ed25519 and rsa-sha2-512</span><span class="sp"></span><a class="sha">c81f3e2</a></div>
           <div class="list-row small" style="padding:8px 12px"><svg class="icon muted"><use href="#i-commit"/></svg><span>fix(ssh): accept ed25519 host keys (fixes #41)</span><span class="sp"></span><a class="sha" data-go="commit">4e1a9c0</a></div>
         </div>
-        <div class="ev"><span class="evi closed"><svg class="icon"><use href="#i-issue-closed"/></svg></span><span>Closed as completed by commit <a class="mono" data-go="commit">4e1a9c0</a> on <span class="mono">main</span> · 5 min ago</span></div>
-        <div class="cmt"><span class="avatar avatar-lg av-a">MR</span><div class="cmt-box"><div class="cmt-h own"><b>mrossi</b><span class="muted">commented 2 min ago</span><span class="sp"></span><span class="badge">Owner</span></div><div class="cmt-b"><p>Verified on staging, pushes with ed25519 work. Thanks @build-agent 👍</p></div></div></div>
-        <div class="cmt"><span class="avatar avatar-lg av-a">MR</span>
+        <div class="ev" data-v="normal locked hidden archived"><span class="evi closed"><svg class="icon"><use href="#i-issue-closed"/></svg></span><span>Closed as completed by commit <a class="mono" data-go="commit">4e1a9c0</a> on <span class="mono">main</span> · 5 min ago <span class="mtag" title="La chiusura da commit arriva con M-06 (C2); in M-05 si chiude a mano con il motivo">M-06</span></span></div>
+        <div class="cmt" data-v="normal locked hidden archived"><span class="avatar avatar-lg av-a">MR</span><div class="cmt-box"><div class="cmt-h own"><b>mrossi</b><span class="muted">commented 2 min ago</span><span class="sp"></span><span class="badge">Owner</span></div><div class="cmt-b"><p>Verified on staging, pushes with ed25519 work. Thanks @build-agent 👍</p></div></div></div>
+        <div class="ev" data-v="locked"><span class="evi"><svg class="icon"><use href="#i-lock"/></svg></span><span><b style="color:var(--text)">mrossi</b> locked the conversation · 1 min ago</span></div>
+        <div class="ev" data-v="hidden"><span class="evi"><svg class="icon"><use href="#i-eye"/></svg></span><span><b style="color:var(--text)">mrossi</b> hid this issue · 10 min ago</span></div>
+
+        <!-- editor: owner, chiusa -->
+        <div class="cmt" data-v="normal hidden"><span class="avatar avatar-lg av-a">MR</span>
           <div class="editor" style="flex:1">
             <div class="tabs"><a class="tab active">Write</a><a class="tab">Preview</a></div>
             <textarea class="textarea" placeholder="Leave a comment. Markdown, @mentions and #references supported."></textarea>
-            <div class="editor-f"><svg class="icon"><use href="#i-info"/></svg>Markdown supported · paste or drop images, PDF, logs, ZIP (max 10 MB)<span class="sp"></span><button class="btn">Reopen issue</button><button class="btn btn-primary">Comment</button></div>
+            <div class="editor-f"><svg class="icon"><use href="#i-info"/></svg>Markdown supported · paste or drop images, PDF, logs, ZIP (max 10 MB)<span class="sp"></span><button class="btn" title="Reopening clears the close reason (I2)">Reopen issue</button><button class="btn btn-primary">Comment</button></div>
           </div>
         </div>
+        <!-- editor: owner, aperta, menu di chiusura con motivo -->
+        <div class="cmt" data-v="close"><span class="avatar avatar-lg av-a">MR</span>
+          <div class="editor" style="flex:1;position:relative">
+            <div class="tabs"><a class="tab active">Write</a><a class="tab">Preview</a></div>
+            <textarea class="textarea" placeholder="Leave a comment. Markdown, @mentions and #references supported."></textarea>
+            <div class="editor-f"><svg class="icon"><use href="#i-info"/></svg>Markdown supported · max 10 MB per file<span class="sp"></span><span class="splitbtn"><button class="btn"><svg class="icon" style="color:var(--closed)"><use href="#i-issue-closed"/></svg>Close as completed</button><button class="btn" aria-label="Other close reasons"><svg class="icon"><use href="#i-chev"/></svg></button></span><button class="btn btn-primary">Comment</button></div>
+            <div class="menu close-menu">
+              <div class="mi on"><svg class="icon" style="color:var(--closed)"><use href="#i-issue-closed"/></svg><div><b>Close as completed</b><div class="small muted">Done, fixed, shipped. Counts toward milestone progress.</div></div><svg class="icon" style="margin-left:auto;color:var(--accent)"><use href="#i-check"/></svg></div>
+              <div class="mi"><svg class="icon muted"><use href="#i-x"/></svg><div><b>Close as not planned</b><div class="small muted">Won't fix, can't reproduce, stale. Not counted in milestone progress.</div></div></div>
+              <div class="mi"><svg class="icon muted"><use href="#i-copy"/></svg><div style="flex:1"><b>Close as duplicate of…</b><div class="small muted">Not counted in milestone progress.</div><div class="row" style="margin-top:6px;gap:6px"><input class="input mono" style="height:28px;width:110px;font-size:12px" value="#36"><span class="small muted">Rate limiter ignores X-Forwarded-For…</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- read: discussione bloccata -->
+        <div class="alert alert-info" data-v="locked" style="margin-left:52px"><svg class="icon"><use href="#i-lock"/></svg><div><b>This conversation has been locked.</b> Only people with Write access to this repository can comment. You can still read the issue, follow it and open a new one.</div></div>
+        <!-- archiviato: nessun editor -->
+        <div class="alert alert-warning" data-v="archived" style="margin-left:52px"><svg class="icon"><use href="#i-box"/></svg><div>The repository is archived: commenting, closing and reopening are disabled.</div></div>
       </div>
       <aside>
-        <div class="side-sec"><h4>Assignees<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><b>build-agent</b><span class="badge badge-agent">agent</span></div></div>
-        <div class="side-sec"><h4>Labels<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row" style="gap:6px"><span class="label" style="--lc:#d73a4a">bug</span><span class="label" style="--lc:#ff8a3d">agent-ready</span></div></div>
-        <div class="side-sec"><h4>Milestone<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row" style="margin-bottom:6px"><svg class="icon muted"><use href="#i-flag"/></svg><b>v0.5</b><span class="sp"></span><span class="small muted">due Oct 15</span></div><div class="progress"><i style="width:64%"></i></div><div class="small muted" style="margin-top:4px">64% complete · 9 of 14 closed</div></div>
-        <div class="side-sec"><h4>Linked commits</h4><div class="stack" style="gap:6px"><a class="mono small" data-go="commit">4e1a9c0 fix(ssh): accept…</a><a class="mono small">c81f3e2 test(ssh): cover…</a></div></div>
-        <div class="side-sec"><h4>Notifications</h4><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-bell"/></svg>Unsubscribe</button><p class="small muted" style="margin-top:6px">You're receiving notifications because you're the owner.</p></div>
-        <div class="side-sec"><h4>Admin</h4><div class="stack" style="gap:6px"><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-lock"/></svg>Lock conversation</button><button class="btn btn-sm btn-danger" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-eye"/></svg>Hide issue</button></div><p class="small muted" style="margin-top:6px">Locked: only people with Write can comment. Hidden: content visible to admins only; the number is kept.</p></div>
-        <div class="side-sec" style="border:0"><h4>For agents</h4><div class="cmdblock" style="font-size:11.5px;padding:8px 10px">gs issue view acme/api-gateway#41 --json</div></div>
+        <div class="side-sec"><h4>Assignees<svg class="icon" data-v="normal close hidden"><use href="#i-settings"/></svg></h4><div class="row"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><b>build-agent</b><span class="badge badge-agent">agent</span></div></div>
+        <div class="side-sec"><h4>Labels<svg class="icon" data-v="normal close hidden"><use href="#i-settings"/></svg></h4><div class="row" style="gap:6px"><span class="label" style="--lc:#d73a4a">bug</span><span class="label" style="--lc:#ff8a3d">agent-ready</span></div></div>
+        <div class="side-sec"><h4>Milestone<svg class="icon" data-v="normal close hidden"><use href="#i-settings"/></svg></h4><div class="row" style="margin-bottom:6px"><svg class="icon muted"><use href="#i-flag"/></svg><b>v0.5</b><span class="sp"></span><span class="small muted">due Oct 15</span></div><div class="progress"><i style="width:64%"></i></div><div class="small muted" style="margin-top:4px">64% complete · 9 of 14 closed</div><div class="small muted" style="margin-top:2px">Not planned and duplicates are not counted.</div></div>
+        <div class="side-sec" data-v="locked archived"><p class="small muted" style="margin:0">You have <b>Read</b> access: you can open issues and comment. Assignees, labels, milestone and closing issues of others need <b>Write</b>.</p></div>
+        <div class="side-sec"><h4>Linked commits <span class="mtag" title="Arriva con M-06 (C2)">M-06</span></h4><div class="stack" style="gap:6px"><a class="mono small" data-go="commit">4e1a9c0 fix(ssh): accept…</a><a class="mono small">c81f3e2 test(ssh): cover…</a></div></div>
+        <div class="side-sec"><h4>Notifications <span class="mtag" title="Arriva con M-06 (C3)">M-06</span></h4><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-bell"/></svg>Unsubscribe</button><p class="small muted" style="margin-top:6px">You're receiving notifications because you're the owner.</p></div>
+        <div class="side-sec" data-v="normal close hidden"><h4>Admin</h4><div class="stack" style="gap:6px"><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-lock"/></svg>Lock conversation</button><button class="btn btn-sm btn-danger" style="width:100%;justify-content:center" data-v="normal close"><svg class="icon"><use href="#i-eye"/></svg>Hide issue</button><button class="btn btn-sm" style="width:100%;justify-content:center" data-v="hidden"><svg class="icon"><use href="#i-eye"/></svg>Unhide issue</button></div><p class="small muted" style="margin-top:6px">Locked: only people with Write can comment. Hidden: content visible to admins only; the number is kept.</p></div>
+        <div class="side-sec" style="border:0"><h4>For agents <span class="mtag" title="Arriva con M-07 (G4)">M-07</span></h4><div class="cmdblock" style="font-size:11.5px;padding:8px 10px">gs issue view acme/api-gateway#41 --json</div></div>
       </aside>
     </div>
   </div>
@@ -1057,8 +1136,242 @@ GitStack version: v0.5.0</textarea>
   </div>
 </section>
 
+<!-- ============ 25 PULL REQUESTS (v1.1) ============ -->
+<section class="screen" data-screen="pulls" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Pull requests</b>" data-desc="v1.1 · Lista delle Pull Request: stessa ricerca delle issues con is:pr (I10, PR10); bozze riconoscibili (PR6); stato della review con approvazioni di persone e di agenti distinte (PR2); stati dei commit da CI esterna (PR9); conflitti (PR7); issue che la PR chiuderà (PR8).">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="mtag" title="Schermata della v1.1">v1.1</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab active" data-go="pulls"><svg class="icon"><use href="#i-branch"/></svg>Pull requests <span class="counter">4</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="pr-settings"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="row" style="margin-bottom:14px;flex-wrap:nowrap">
+      <div class="input-icon" style="flex:1"><svg class="icon"><use href="#i-search"/></svg><input class="input mono" style="font-family:var(--font-mono);font-size:13px" value="is:pr is:open "></div>
+      <button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New pull request</button>
+    </div>
+    <div class="list ilist">
+      <div class="list-row list-head" style="align-items:center">
+        <span class="seg"><span class="active"><svg class="icon"><use href="#i-branch"/></svg>Open 4</span><span><svg class="icon"><use href="#i-check"/></svg>Closed 31</span></span>
+        <span class="sp"></span>
+        <span class="row" style="gap:16px;font-weight:500">Author <svg class="icon"><use href="#i-chev"/></svg> Label <svg class="icon"><use href="#i-chev"/></svg> Reviews <svg class="icon"><use href="#i-chev"/></svg> Assignee <svg class="icon"><use href="#i-chev"/></svg> Sort <svg class="icon"><use href="#i-chev"/></svg></span>
+      </div>
+      <div class="list-row hover"><svg class="icon pr-open" style="margin-top:3px"><use href="#i-branch"/></svg><div style="flex:1"><a class="ititle" data-go="pull">fix(webhooks): stop retrying deliveries on 410 Gone</a> <span class="label" style="--lc:#d73a4a">bug</span><div class="imeta">#58 opened 1 hour ago by build-agent <span class="badge badge-agent">agent</span> · <span class="pr-ok">✓ Approved</span> · <span class="pr-ok">✓ 2/2 checks</span> · closes <a data-go="issues">#57</a></div></div><span class="iright"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><span style="width:34px"><svg class="icon"><use href="#i-msg"/></svg> 5</span></span></div>
+      <div class="list-row hover"><svg class="icon pr-open" style="margin-top:3px"><use href="#i-branch"/></svg><div style="flex:1"><a class="ititle" data-go="pull">Rate limiter: trust X-Forwarded-For only from Traefik</a> <span class="label" style="--lc:#d73a4a">bug</span><div class="imeta">#55 opened 3 hours ago by fneri · <span class="muted">Review required</span> · <span class="pr-ko">✗ 1/2 checks</span> · closes #36</div></div><span class="iright"><span class="avatar av-d">FN</span><span style="width:34px"><svg class="icon"><use href="#i-msg"/></svg> 2</span></span></div>
+      <div class="list-row hover"><svg class="icon pr-open" style="margin-top:3px"><use href="#i-branch"/></svg><div style="flex:1"><a class="ititle" data-go="pull">Return 404 instead of 403 for private repos</a> <span class="label" style="--lc:#1a8f4c">good first issue</span> <span class="label" style="--lc:#7c3aed">needs-human</span><div class="imeta">#53 opened yesterday by build-agent <span class="badge badge-agent">agent</span> · <span class="pr-ko">Changes requested</span> · <span class="pr-warn">⚠ Conflicts</span> · closes #29</div></div><span class="iright"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><span style="width:34px"><svg class="icon"><use href="#i-msg"/></svg> 7</span></span></div>
+      <div class="list-row hover"><svg class="icon pr-draft" style="margin-top:3px"><use href="#i-branch"/></svg><div style="flex:1"><a class="ititle" data-go="pull">feat(api): paginate /repos with cursors</a> <span class="badge">Draft</span><div class="imeta">#52 opened 2 days ago by lbianchi · <span class="muted">◌ checks running</span></div></div><span class="iright"><span class="avatar av-b">LB</span><span style="width:34px"></span></span></div>
+    </div>
+    <p class="small muted" style="margin-top:12px;text-align:center"><svg class="icon"><use href="#i-info"/></svg> Same search syntax as issues: <span class="mono">is:pr is:draft</span>, <span class="mono">review:required</span>, <span class="mono">author:@agents</span>. Agents use <span class="mono">gs pr list --json</span>.</p>
+  </div>
+</section>
+
+<!-- ============ 26 PULL REQUEST · CONVERSATION (v1.1) ============ -->
+<section class="screen" data-screen="pull" data-variant="ready" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#58</b>" data-desc="v1.1 · Dettaglio PR, scheda Conversation, con varianti del riquadro di merge (barra scura, non fa parte del prodotto): Pronta (approvazione di una persona e stati obbligatori verdi, squash o merge commit, PR3); Serve approvazione (l'approvazione dell'agente non conta, PR2; approvazione annullata da nuovi commit, PR4); Stato rosso (contesto obbligatorio fallito, PR9); Conflitti (file elencati, istruzioni git e gs, PR7); Bozza (PR6); Unita (issue chiusa al merge, PR8, Delete branch).">
+  <div class="mvar"><b>Variante del mockup</b><span class="mvar-note">(non fa parte del prodotto)</span>
+    <button data-var="ready" class="on">Pronta per il merge</button>
+    <button data-var="approval">Serve approvazione</button>
+    <button data-var="failing">Stato obbligatorio rosso</button>
+    <button data-var="conflicts">Conflitti</button>
+    <button data-var="draft">Bozza</button>
+    <button data-var="merged">Unita</button>
+  </div>
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="mtag" title="Schermata della v1.1">v1.1</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab active" data-go="pulls"><svg class="icon"><use href="#i-branch"/></svg>Pull requests <span class="counter">4</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="pr-settings"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="row" style="margin-bottom:8px;flex-wrap:nowrap;align-items:flex-start"><h1 class="issue-title" style="flex:1">fix(webhooks): stop retrying deliveries on 410 Gone <span>#58</span></h1><button class="btn">Edit</button><button class="btn" data-v="ready approval failing conflicts draft"><svg class="icon"><use href="#i-terminal"/></svg>Code<svg class="icon"><use href="#i-chev"/></svg></button></div>
+    <div class="row" style="padding-bottom:14px;margin-bottom:0">
+      <span class="badge badge-open" data-v="ready approval failing conflicts"><svg class="icon"><use href="#i-branch"/></svg>Open</span>
+      <span class="badge" data-v="draft"><svg class="icon"><use href="#i-branch"/></svg>Draft</span>
+      <span class="badge badge-merged" data-v="merged"><svg class="icon"><use href="#i-branch"/></svg>Merged</span>
+      <span class="muted"><b style="color:var(--text)">build-agent</b> <span class="badge badge-agent">agent</span> <span data-v="ready approval failing conflicts draft">wants to merge 3 commits into</span><span data-v="merged">merged 1 commit into</span> <span class="branch-chip">main</span> from <span class="branch-chip">agent/57-webhook-410</span></span>
+    </div>
+    <div class="tabs" style="margin-bottom:22px"><a class="tab active"><svg class="icon"><use href="#i-msg"/></svg>Conversation <span class="counter">5</span></a><a class="tab"><svg class="icon"><use href="#i-commit"/></svg>Commits <span class="counter">3</span></a><a class="tab" data-go="pull-files"><svg class="icon"><use href="#i-file"/></svg>Files changed <span class="counter">2</span></a></div>
+    <div class="issue-grid">
+      <div class="timeline">
+        <div class="cmt"><span class="avatar avatar-lg av-bot"><svg class="icon" style="width:20px;height:20px"><use href="#i-bot"/></svg></span><div class="cmt-box"><div class="cmt-h"><b>build-agent</b><span class="badge badge-agent">agent</span><span class="muted">opened 1 hour ago via token <span class="mono">ci-runner</span></span><span class="sp"></span><span class="badge">Author</span></div><div class="cmt-b"><p>Webhook deliveries kept retrying after the receiver answered <code>410 Gone</code>. C7 says 410 must stop the delivery.</p><ul><li>stop the retry loop on 410 and mark the webhook delivery as final</li><li>add a test for 410 and keep 5xx retries unchanged</li></ul><p>Fixes #57</p></div></div></div>
+        <div class="ev"><span class="evi"><svg class="icon"><use href="#i-eye"/></svg></span><span><b style="color:var(--text)">build-agent</b> marked this pull request as ready for review and requested a review from <b style="color:var(--text)">lbianchi</b> · 40 min ago</span></div>
+        <div class="cmt"><span class="avatar avatar-lg av-bot"><svg class="icon" style="width:20px;height:20px"><use href="#i-bot"/></svg></span><div class="cmt-box"><div class="cmt-h"><b>review-bot</b><span class="badge badge-agent">agent</span><span class="muted">approved these changes · 35 min ago</span><span class="sp"></span><span class="badge" title="Agent approvals are shown but never count (PR2)">Doesn't count</span></div><div class="cmt-b"><p>Looks correct. 410 now ends the delivery; 5xx path unchanged.</p></div></div></div>
+        <div class="ev" data-v="ready failing conflicts merged"><span class="evi ok"><svg class="icon"><use href="#i-check"/></svg></span><span><b style="color:var(--text)">lbianchi</b> approved these changes · 20 min ago</span></div>
+        <div class="ev" data-v="approval"><span class="evi"><svg class="icon"><use href="#i-x"/></svg></span><span><b style="color:var(--text)">lbianchi</b>'s approval was dismissed because <b style="color:var(--text)">build-agent</b> pushed 1 new commit · 4 min ago</span></div>
+        <div class="ev" data-v="merged"><span class="evi merged"><svg class="icon"><use href="#i-branch"/></svg></span><span><b style="color:var(--text)">lbianchi</b> squashed and merged commit <a class="mono" data-go="commit">9a1c3e7</a> into <span class="mono">main</span> · 2 min ago</span></div>
+        <div class="ev" data-v="merged"><span class="evi closed"><svg class="icon"><use href="#i-issue-closed"/></svg></span><span>Closed <a data-go="issue">#57</a> as completed with this pull request · 2 min ago</span></div>
+
+        <!-- merge box: pronta -->
+        <div class="mergebox ok" data-v="ready">
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>Approved</b><div class="small muted">1 of 1 required approval from a person (lbianchi). Agent approvals are shown but don't count.</div></div></div>
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>All required checks passed</b><div class="checks"><div><span class="pr-ok">✓</span> <b>test</b> <span class="badge">Required</span> <span class="muted">Jenkins · 212 tests passed</span><a class="small">Details</a></div><div><span class="pr-ok">✓</span> <b>lint</b> <span class="muted">Woodpecker · no issues</span><a class="small">Details</a></div></div></div></div>
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>No conflicts with the base branch</b><div class="small muted">Merging can be performed automatically.</div></div></div>
+          <div class="mb-foot"><span class="splitbtn"><button class="btn btn-primary">Squash and merge</button><button class="btn btn-primary" aria-label="Merge method"><svg class="icon"><use href="#i-chev"/></svg></button></span><span class="small muted">or <a>Create a merge commit</a></span><span class="sp"></span><label class="check small" style="margin:0"><input type="checkbox"><span>Delete branch after merge</span></label></div>
+        </div>
+        <!-- merge box: serve approvazione -->
+        <div class="mergebox warn" data-v="approval">
+          <div class="mb-row"><span class="mb-i warn"><svg class="icon"><use href="#i-eye"/></svg></span><div><b>Review required</b><div class="small muted">At least 1 approval from a person with Write is required. <b>review-bot</b> <span class="badge badge-agent">agent</span> approved, but agent approvals don't count. lbianchi's approval was dismissed by new commits.</div></div><span class="sp"></span><button class="btn btn-sm">Re-request review</button></div>
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>All required checks passed</b></div></div>
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>No conflicts with the base branch</b></div></div>
+          <div class="mb-foot"><button class="btn btn-primary" disabled>Squash and merge</button><span class="small muted">Merging is blocked by the rules of <span class="mono">main</span>. They apply to everyone, admins included.</span></div>
+        </div>
+        <!-- merge box: stato rosso -->
+        <div class="mergebox bad" data-v="failing">
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>Approved</b><div class="small muted">1 of 1 required approval from a person.</div></div></div>
+          <div class="mb-row"><span class="mb-i bad"><svg class="icon"><use href="#i-x"/></svg></span><div style="flex:1"><b>Some required checks failed</b><div class="checks"><div><span class="pr-ko">✗</span> <b>test</b> <span class="badge">Required</span> <span class="muted">Jenkins · 2 of 212 tests failed</span><a class="small">Details</a></div><div><span class="pr-ok">✓</span> <b>lint</b> <span class="muted">Woodpecker · no issues</span><a class="small">Details</a></div></div></div></div>
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>No conflicts with the base branch</b></div></div>
+          <div class="mb-foot"><button class="btn btn-primary" disabled>Squash and merge</button><span class="small muted">Required check <span class="mono">test</span> must succeed on the latest commit. The author has been notified.</span></div>
+        </div>
+        <!-- merge box: conflitti -->
+        <div class="mergebox bad" data-v="conflicts">
+          <div class="mb-row"><span class="mb-i ok"><svg class="icon"><use href="#i-check"/></svg></span><div><b>Approved</b></div></div>
+          <div class="mb-row"><span class="mb-i bad"><svg class="icon"><use href="#i-alert"/></svg></span><div style="flex:1"><b>This branch has conflicts that must be resolved</b><div class="small muted" style="margin:4px 0 6px">Conflicting files:</div><div class="mono small">internal/webhooks/deliver.go<br>internal/webhooks/deliver_test.go</div>
+            <div class="small muted" style="margin:10px 0 4px">Resolve them on your machine, then push to <span class="mono">agent/57-webhook-410</span>:</div>
+            <pre class="cmdblock" style="margin:0">gs pr checkout 58
+git merge origin/main
+# fix the conflicts, then
+git commit &amp;&amp; git push</pre><div class="small muted" style="margin-top:6px">Agents read the same list with <span class="mono">gs pr view 58 --json mergeable,conflicts</span>.</div></div></div>
+          <div class="mb-foot"><button class="btn btn-primary" disabled>Squash and merge</button><span class="small muted">The browser does not edit conflicts.</span></div>
+        </div>
+        <!-- merge box: bozza -->
+        <div class="mergebox" data-v="draft">
+          <div class="mb-row"><span class="mb-i"><svg class="icon"><use href="#i-edit"/></svg></span><div style="flex:1"><b>This pull request is still a draft</b><div class="small muted">It can't be merged and no review has been requested yet. When the work is done, mark it ready: the requested reviewers will be notified.</div></div><button class="btn">Ready for review</button></div>
+        </div>
+        <!-- merge box: unita -->
+        <div class="mergebox merged" data-v="merged">
+          <div class="mb-row"><span class="mb-i merged"><svg class="icon"><use href="#i-branch"/></svg></span><div style="flex:1"><b>Pull request successfully merged and closed</b><div class="small muted">The <span class="mono">agent/57-webhook-410</span> branch can be safely deleted. A merged pull request can't be reopened.</div></div><button class="btn">Delete branch</button></div>
+        </div>
+
+        <div class="cmt" style="margin-top:18px" data-v="ready approval failing conflicts draft"><span class="avatar avatar-lg av-b">LB</span>
+          <div class="editor" style="flex:1">
+            <div class="tabs"><a class="tab active">Write</a><a class="tab">Preview</a></div>
+            <textarea class="textarea" placeholder="Leave a comment. Markdown, @mentions and #references supported."></textarea>
+            <div class="editor-f"><svg class="icon"><use href="#i-info"/></svg>Markdown supported<span class="sp"></span><button class="btn">Close pull request</button><button class="btn btn-primary">Comment</button></div>
+          </div>
+        </div>
+      </div>
+      <aside>
+        <div class="side-sec"><h4>Reviewers<svg class="icon"><use href="#i-settings"/></svg></h4>
+          <div class="stack" style="gap:6px">
+            <div class="row"><span class="avatar av-b">LB</span><b>lbianchi</b><span class="sp"></span><span class="pr-ok" data-v="ready failing conflicts merged" title="Approved">✓</span><span class="muted small" data-v="approval draft" title="Review requested">◌</span></div>
+            <div class="row"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><b>review-bot</b><span class="badge badge-agent">agent</span><span class="sp"></span><span class="muted" title="Agent approval: shown, doesn't count">✓</span></div>
+          </div>
+        </div>
+        <div class="side-sec"><h4>Assignees<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><b>build-agent</b><span class="badge badge-agent">agent</span></div></div>
+        <div class="side-sec"><h4>Labels<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row" style="gap:6px"><span class="label" style="--lc:#d73a4a">bug</span></div></div>
+        <div class="side-sec"><h4>Linked issues</h4><div class="row small"><svg class="icon" style="color:var(--success)" data-v="ready approval failing conflicts draft"><use href="#i-issue"/></svg><svg class="icon" style="color:var(--closed)" data-v="merged"><use href="#i-issue-closed"/></svg><a data-go="issue">#57 Webhook deliveries retry forever on 410</a></div><p class="small muted" style="margin-top:6px" data-v="ready approval failing conflicts draft">Will be closed when this pull request is merged into <span class="mono">main</span>.</p></div>
+        <div class="side-sec"><h4>Notifications</h4><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-bell"/></svg>Unsubscribe</button><p class="small muted" style="margin-top:6px">You're receiving notifications because your review was requested.</p></div>
+        <div class="side-sec" style="border:0"><h4>For agents</h4><div class="cmdblock" style="font-size:11.5px;padding:8px 10px">gs pr view acme/api-gateway#58 --json</div></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 27 PULL REQUEST · FILES CHANGED (v1.1) ============ -->
+<section class="screen" data-screen="pull-files" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><a>#58</a><span class='sep'>/</span><b>Files changed</b>" data-desc="v1.1 · Review sul diff (stesso diff di B6): commento su un gruppo di righe con risposta e Resolve conversation (PR5); blocco suggestion mostrato come diff senza pulsante Applica; conversazione su righe cambiate marcata Outdated; pannello Review changes con Comment / Approve / Request changes (PR2).">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="mtag" title="Schermata della v1.1">v1.1</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab active" data-go="pulls"><svg class="icon"><use href="#i-branch"/></svg>Pull requests <span class="counter">4</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="pr-settings"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page" style="max-width:1100px">
+    <div class="row" style="margin-bottom:8px"><h1 class="issue-title" style="flex:1;font-size:20px">fix(webhooks): stop retrying deliveries on 410 Gone <span>#58</span></h1></div>
+    <div class="tabs" style="margin-bottom:14px"><a class="tab" data-go="pull"><svg class="icon"><use href="#i-msg"/></svg>Conversation <span class="counter">5</span></a><a class="tab"><svg class="icon"><use href="#i-commit"/></svg>Commits <span class="counter">3</span></a><a class="tab active"><svg class="icon"><use href="#i-file"/></svg>Files changed <span class="counter">2</span></a></div>
+    <div class="row" style="margin-bottom:12px;position:relative"><span class="muted"><b style="color:var(--text)">2 files</b> · <b style="color:var(--success)">+24</b> <b style="color:var(--danger)">−6</b> · 1 of 2 conversations resolved</span><span class="sp"></span><label class="check small" style="margin:0"><input type="checkbox"><span>Ignore whitespace</span></label><span class="seg"><span class="active">Unified</span><span>Split</span></span><button class="btn btn-primary btn-sm">Review changes<svg class="icon"><use href="#i-chev"/></svg></button>
+      <div class="menu review-pop">
+        <div class="small" style="font-weight:600;margin-bottom:6px">Finish your review</div>
+        <textarea class="textarea" style="min-height:70px" placeholder="Leave a summary (optional)">Good fix. One question on 404 below; not blocking.</textarea>
+        <label class="check small" style="margin-top:8px"><input type="radio" name="rv"><span><b>Comment</b><br><span class="muted">General feedback without explicit approval.</span></span></label>
+        <label class="check small" style="margin-top:6px"><input type="radio" name="rv" checked><span><b>Approve</b><br><span class="muted">Give your approval to merge. Counts only for people with Write, not for the author.</span></span></label>
+        <label class="check small" style="margin-top:6px"><input type="radio" name="rv"><span><b>Request changes</b><br><span class="muted">Feedback that must be addressed before merging.</span></span></label>
+        <div class="row" style="margin-top:10px"><span class="sp"></span><button class="btn btn-primary btn-sm">Submit review</button></div>
+      </div>
+    </div>
+    <div class="diff">
+      <div class="diff-h"><svg class="icon"><use href="#i-chev"/></svg><span class="mono"><b>internal/webhooks/deliver.go</b></span><span class="small muted">+9 −4</span><span class="sp"></span><label class="check small" style="margin:0"><input type="checkbox"><span>Viewed</span></label></div>
+      <div class="dl hunk"><div class="n"></div><div class="n"></div><div>@@ -88,10 +88,15 @@ func (d *Deliverer) attempt(ctx context.Context, w Webhook) error {</div></div>
+      <div class="dl ctx"><div class="n">88</div><div class="n">88</div><div>    resp, err := d.client.Do(req)</div></div>
+      <div class="dl ctx"><div class="n">89</div><div class="n">89</div><div>    if err != nil { return retryable(err) }</div></div>
+      <div class="dl del"><div class="n">90</div><div class="n"></div><div>-   if resp.StatusCode &gt;= 400 { return retryable(statusErr(resp)) }</div></div>
+      <div class="dl add sel"><div class="n"></div><div class="n">90</div><div>+   switch {</div></div>
+      <div class="dl add sel"><div class="n"></div><div class="n">91</div><div>+   case resp.StatusCode == http.StatusGone:</div></div>
+      <div class="dl add sel"><div class="n"></div><div class="n">92</div><div>+       return final(statusErr(resp)) // C7: 410 stops delivery</div></div>
+      <div class="thread">
+        <div class="th-h"><span class="small muted">Comment on lines <b>+90 to +92</b></span><span class="sp"></span><button class="btn btn-sm">Resolve conversation</button></div>
+        <div class="th-c"><span class="avatar av-b">LB</span><div><b>lbianchi</b> <span class="muted small">12 min ago</span><p>Should <code>404</code> also stop retrying? A deleted endpoint usually answers 404, not 410.</p></div></div>
+        <div class="th-c"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><div><b>build-agent</b> <span class="badge badge-agent">agent</span> <span class="muted small">9 min ago</span><p>C7 only names 410. Stopping on 404 would change the rule, so I left it out. Suggest opening an issue if we want it.</p></div></div>
+        <div class="th-r"><input class="input" placeholder="Reply…"></div>
+      </div>
+      <div class="dl add"><div class="n"></div><div class="n">93</div><div>+   case resp.StatusCode &gt;= 500:</div></div>
+      <div class="dl add"><div class="n"></div><div class="n">94</div><div>+       return retryable(statusErr(resp))</div></div>
+      <div class="dl add"><div class="n"></div><div class="n">95</div><div>+   }</div></div>
+      <div class="thread">
+        <div class="th-h"><span class="small muted">Comment on line <b>+95</b></span><span class="sp"></span><button class="btn btn-sm">Resolve conversation</button></div>
+        <div class="th-c"><span class="avatar av-a">MR</span><div><b>mrossi</b> <span class="muted small">6 min ago</span><p>4xx other than 410 currently fall through silently. Make it explicit:</p>
+          <div class="suggest"><div class="sg-h"><svg class="icon"><use href="#i-edit"/></svg>Suggested change <span class="sp"></span><span class="small muted" title="Applying suggestions from the browser comes after v1.1">Apply it with a commit</span></div>
+            <div class="dl del"><div class="n">95</div><div class="n"></div><div>-   }</div></div>
+            <div class="dl add"><div class="n"></div><div class="n">95</div><div>+   case resp.StatusCode &gt;= 400:</div></div>
+            <div class="dl add"><div class="n"></div><div class="n">96</div><div>+       return final(statusErr(resp))</div></div>
+            <div class="dl add"><div class="n"></div><div class="n">97</div><div>+   }</div></div>
+          </div></div></div>
+        <div class="th-r"><input class="input" placeholder="Reply…"></div>
+      </div>
+      <div class="dl ctx"><div class="n">91</div><div class="n">96</div><div>    return nil</div></div>
+    </div>
+    <div class="diff">
+      <div class="diff-h"><svg class="icon"><use href="#i-chev"/></svg><span class="mono"><b>internal/webhooks/deliver_test.go</b></span><span class="small muted">+15 −2</span><span class="sp"></span><label class="check small" style="margin:0"><input type="checkbox" checked><span>Viewed</span></label></div>
+      <div class="thread outdated">
+        <div class="th-h"><span class="badge">Outdated</span><span class="badge" style="border-color:var(--success);color:var(--success)">Resolved</span><span class="small muted">lbianchi on a line that changed in a later commit</span><span class="sp"></span><a class="small">Show conversation</a></div>
+      </div>
+      <div class="small muted" style="padding:10px 14px">File marked as viewed. <a>Show diff</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 28 SETTINGS · BRANCHES & MERGE (v1.1) ============ -->
+<section class="screen" data-screen="pr-settings" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Settings</b>" data-desc="v1.1 · Impostazioni del repo, sezione Branches &amp; merge (solo admin): protezione minima (R9) e nuova regola Require a pull request (PR4) con approvazioni minime di persone, approvazioni annullate da nuovi commit, stati obbligatori (PR9), valida per tutti, admin compresi; metodi di merge consentiti ed eliminazione automatica del branch (PR3).">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="mtag" title="Schermata della v1.1">v1.1</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="pulls"><svg class="icon"><use href="#i-branch"/></svg>Pull requests <span class="counter">4</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="settings-grid">
+      <nav class="subnav">
+        <a data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>General</a>
+        <a class="active"><svg class="icon"><use href="#i-branch"/></svg>Branches &amp; merge</a>
+        <a><svg class="icon"><use href="#i-users"/></svg>Collaborators &amp; teams</a>
+        <a data-go="repo-webhooks"><svg class="icon"><use href="#i-link"/></svg>Webhooks</a>
+        <a><svg class="icon"><use href="#i-tag"/></svg>Labels &amp; milestones</a>
+      </nav>
+      <div class="stack" style="gap:24px">
+        <div>
+          <div class="sec-h"><h2>Rules for <span class="mono">main</span></h2></div>
+          <div class="card card-b stack" style="gap:16px">
+            <label class="check" style="align-items:flex-start"><span class="switch on" style="margin-top:2px"></span><span><b>Protect the default branch</b><br><span class="muted small">Reject force-pushes and deletion of <span class="mono">main</span>.</span></span></label>
+            <div style="height:1px;background:var(--border)"></div>
+            <label class="check" style="align-items:flex-start"><span class="switch on" style="margin-top:2px"></span><span><b>Require a pull request before merging</b><br><span class="muted small">Direct pushes to <span class="mono">main</span> are rejected for everyone, <b>admins included</b>. Changes arrive only through pull requests.</span></span></label>
+            <div class="stack sub-rules" style="gap:14px">
+              <div class="field"><label>Required approvals from people</label><div class="row"><select class="select" style="width:90px"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select><span class="muted small">Approvals from agent accounts are shown but never count. Authors can't approve their own pull request.</span></div></div>
+              <div class="row small" style="gap:8px"><svg class="icon" style="color:var(--info)"><use href="#i-info"/></svg><span>New commits pushed after an approval dismiss it: the changes must be reviewed again.</span></div>
+              <div class="field"><label>Required status checks</label>
+                <div class="row" style="gap:6px;flex-wrap:wrap"><span class="chip mono">test<svg class="icon"><use href="#i-x"/></svg></span><input class="input" style="width:220px;height:30px" placeholder="Add a context, e.g. lint"></div>
+                <span class="hint">Each context must report <b>success</b> on the latest commit of the pull request. External CI systems report statuses with a token that has Write on this repository.</span>
+              </div>
+            </div>
+            <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>Turning this on doesn't affect an empty repository's first push: enable it after <span class="mono">main</span> exists. Off by default.</div></div>
+            <div class="row"><span class="sp"></span><button class="btn btn-primary">Save rules</button></div>
+          </div>
+        </div>
+        <div>
+          <div class="sec-h"><h2>Merging pull requests</h2></div>
+          <div class="card card-b stack" style="gap:14px">
+            <label class="check"><input type="checkbox" checked><span><b>Allow squash merging</b><br><span class="muted small">Combine all commits into one on the base branch. Proposed by default.</span></span></label>
+            <label class="check"><input type="checkbox" checked><span><b>Allow merge commits</b><br><span class="muted small">Keep all commits and add a merge commit. At least one method stays enabled.</span></span></label>
+            <div style="height:1px;background:var(--border)"></div>
+            <label class="check" style="align-items:flex-start"><span class="switch" style="margin-top:2px"></span><span><b>Automatically delete head branches</b><br><span class="muted small">Delete the pull request's branch after it is merged. The default branch is never deleted.</span></span></label>
+            <div class="row"><span class="sp"></span><button class="btn btn-primary">Save</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ 24 DOWNLOADS: CLI & SKILLS ============ -->
-<section class="screen" data-screen="downloads" data-nav="downloads" data-crumb="<b>CLI &amp; skills</b>" data-desc="Pagina /downloads servita dall'istanza (G6): binari gs della stessa versione del server per Linux, macOS e Windows (amd64, arm64), script di installazione in un comando, skills Agent Skills (G5), primi passi con token (G2). Funziona anche senza internet.">
+<section class="screen" data-screen="downloads" data-nav="downloads" data-crumb="<b>CLI &amp; skills</b>" data-desc="Pagina /downloads servita dall'istanza (G6): binari gs della stessa versione del server per Linux, macOS e Windows (amd64, arm64), script di installazione in un comando, skills Agent Skills (G5), primi passi con token (G2). Funziona anche senza internet. Dalla v1.1: riquadro MCP con configurazione pronta per gli assistenti (gs mcp, M1–M5).">
   <div class="page" style="max-width:980px">
     <div class="page-h"><h1>CLI &amp; skills</h1><span class="badge badge-accent">GitStack v0.5.0</span></div>
     <p class="muted" style="margin:-6px 0 18px">Download <span class="mono">gs</span> and the agent skills from this GitStack. They always match the server version, and work without internet access.</p>
@@ -1099,6 +1412,24 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
           <div class="small"><b>Included:</b> <span class="muted">install &amp; sign in · work on an issue until the commit · triage issues · manage repositories · notifications loop</span></div>
           <button class="btn btn-sm" style="align-self:flex-start"><svg class="icon"><use href="#i-download"/></svg>Download skills (.zip)</button>
         </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="card-h"><svg class="icon" style="color:var(--accent)"><use href="#i-link"/></svg>Use GitStack from AI assistants (MCP)<span class="mtag" title="Arriva con la v1.1 (M1–M5)">v1.1</span><span class="sp"></span><span class="seg"><span class="active">Claude Code</span><span>Claude Desktop</span><span>VS Code</span><span>Cursor</span></span></div>
+      <div class="card-b stack" style="gap:10px">
+        <p class="small muted" style="margin:0">The MCP server is built into <span class="mono">gs</span>: nothing else to install. It uses the same sign-in and token as <span class="mono">gs</span> and runs on your machine, next to the assistant.</p>
+        <div class="row" style="align-items:flex-start;gap:8px"><div class="cmdblock" style="font-size:12px;flex:1"><span class="p">$ </span>claude mcp add gitstack -- gs mcp --host git.acme.local</div><button class="btn btn-sm"><svg class="icon"><use href="#i-copy"/></svg>Copy</button></div>
+        <p class="small muted" style="margin:0">Other assistants: add this to their MCP configuration.</p>
+        <div class="row" style="align-items:flex-start;gap:8px"><div class="cmdblock" style="font-size:12px;flex:1">{ "mcpServers": { "gitstack": {
+    "command": "gs",
+    "args": ["mcp", "--host", "git.acme.local"]
+} } }</div><button class="btn btn-sm"><svg class="icon"><use href="#i-copy"/></svg>Copy</button></div>
+        <div class="repo-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">
+          <div class="small"><b>Tools</b><div class="muted">About 35 tools for repositories, code, issues, pull requests, reviews, labels, milestones, search, notifications and commit statuses, plus <span class="mono">api_request</span> for the rest of the API.</div></div>
+          <div class="small"><b>Prompts</b><div class="muted">Work on an issue until the pull request · Triage issues · Review a pull request. Same flows as the agent skills.</div></div>
+          <div class="small"><b>Safety</b><div class="muted">Add <span class="mono">--read-only</span> for agents that only read. Merges, closes and deletions are marked destructive, so assistants ask before using them. Deleting repositories, settings, webhooks and tokens have no dedicated tool.</div></div>
+        </div>
+        <div class="alert alert-info" style="margin-top:4px"><svg class="icon"><use href="#i-info"/></svg><div>If your <span class="mono">gs</span> is older than this GitStack, the MCP server still starts with the tools it knows and tells you to update from this page. With a different major version it doesn't start and asks you to update.</div></div>
       </div>
     </div>
   </div>
@@ -1376,6 +1707,14 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
   document.getElementById('prev').onclick=function(){var i=ids.indexOf(pick.value);show(ids[(i-1+ids.length)%ids.length])};
   document.getElementById('next').onclick=function(){var i=ids.indexOf(pick.value);show(ids[(i+1)%ids.length])};
   window.addEventListener('hashchange',function(){show(location.hash.slice(1))});
+  // varianti del mockup 13
+  document.querySelectorAll('.screen[data-variant]').forEach(function(sec){
+    function setv(v){sec.dataset.variant=v;
+      sec.querySelectorAll('[data-v]').forEach(function(el){el.style.display=el.dataset.v.split(' ').indexOf(v)<0?'none':''});
+      sec.querySelectorAll('[data-var]').forEach(function(b){b.classList.toggle('on',b.dataset.var===v)})}
+    sec.addEventListener('click',function(e){var b=e.target.closest('[data-var]');if(b)setv(b.dataset.var)});
+    setv(sec.dataset.variant);
+  });
   // tema
   var root=document.documentElement,tb=document.getElementById('themeBtn');
   function cur(){return root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}

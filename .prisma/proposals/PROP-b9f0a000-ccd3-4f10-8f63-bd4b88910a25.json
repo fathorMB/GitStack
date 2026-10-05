@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "id": "PROP-b9f0a000-ccd3-4f10-8f63-bd4b88910a25",
+  "state": "applied",
+  "created": "2026-10-05T19:52:25.283134500+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Allineamento della roadmap prodotto al codice di main (commit 1587133, 2026-10-05). M-02, M-03 e M-04 sono segnate come completate nel titolo e nel testo (la roadmap non ha un orizzonte \"completato\" né la rimozione: restano nel loro orizzonte attuale). M-05 Issues passa da \"next\" a \"now\" con lo scope diviso tra realizzato e mancante. Nessuna priorità, regola o obiettivo nuovo; M-06…M-09, v1.1, v2 e v3 invariati.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-c79ed133-8339-4a82-9f91-6b100a636da1",
+          "knowledge": [
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-02 completata secondo il codice di main (GIT-78, GIT-79, GIT-95).",
+          "schema_version": 1,
+          "title": "Identità, organizzazioni e permessi (completata)",
+          "updated": "2026-10-05T19:53:06.224643300+00:00"
+        },
+        "body": "\n# Identità, organizzazioni e permessi (completata)\n\n## Outcome\n\nUtenti e agenti si autenticano (password, token con scope, chiavi SSH, OIDC esterno) e i permessi su organizzazioni, team e risorse generiche sono applicati ovunque.\n\n**Stato: completata** secondo il codice di `main` al commit `1587133` (2026-10-05). Dettagli in [[knowledge/topics/stato-di-realizzazione]]. Resta in roadmap solo perché la roadmap non ha un orizzonte per il lavoro concluso.\n\n## Rationale\n\nD5 e D15: identità pronta all'uso dopo l'installazione, token con permessi limitati per gli agenti, permessi modellati su risorse generiche così che repo, app e database futuri si aggancino senza riscritture. È la base di tutte le milestone successive.\n\n## Scope\n\nRealizzato: utenti locali e password, admin al primo avvio con cambio password obbligatorio, sessioni, token con scope e scadenza, chiavi SSH, login OIDC (Entra ID, Google, Keycloak), organizzazioni e team, autenticazione centralizzata nel gateway, modello dei permessi P1–P7 con verifica tramite identity, grant admin a chi crea una risorsa, utenti agent senza password, test di sicurezza di accesso negato, UI di login, profilo, token, chiavi e organizzazioni; token degli utenti agent gestiti dall'amministratore (P5, GIT-78); schermata Admin · Agents (mockup 17, GIT-79); API dell'accesso effettivo di un utente (GIT-95).\n\nRegola P7 coperta da test tranne la parte `gs repo create`, che arriva con M-07.\n\nPriorità 2 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-02.md`\n- `services/identity/README.md`, `services/gateway/README.md`, commit GIT-29…GIT-62, GIT-78, GIT-79, GIT-95\n- `docs/rules-coverage.md` (famiglia P)\n- Tema di analisi \"Permessi fini sulle risorse e visibilità dei repo\" (P1–P7)\n",
+        "expected_digest": "de88419dc69f12d066dc46599bfbe74007f18503404ff4e8b756c0bf15e5552d",
+        "slug": null,
+        "reason": "M-02 completata secondo il codice di main (GIT-78, GIT-79, GIT-95)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38",
+          "knowledge": [
+            "DOC-8d539b83-ec08-41ca-a680-1529555fc42a",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+            "DOC-6878277b-230e-448b-a761-215e9d233c54",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-03 completata secondo il codice di main (GIT-65…GIT-77, GIT-99, GIT-100).",
+          "schema_version": 1,
+          "title": "Hosting dei repository Git (completata)",
+          "updated": "2026-10-05T19:53:06.225602900+00:00"
+        },
+        "body": "\n\n# Hosting dei repository Git (completata)\n\n## Outcome\n\nSi crea un repo da UI o API e ci si fa clone, push e pull via HTTPS (token) e SSH, con permessi e visibilità rispettati; ogni push pubblica un evento.\n\n**Stato: completata** secondo il codice di `main` al commit `1587133` (2026-10-05): API pubblica dei repo, push/pull HTTPS e SSH sulla 2222, regole al push R6/R9/R10, eliminazione recuperabile, evento `git.push`, test end-to-end con client git reale in CI e su VM. Dettagli in [[knowledge/topics/stato-di-realizzazione]].\n\n## Rationale\n\nD9: è il cuore di un mini GitHub. Usa il binario `git` ufficiale lato server e un server SSH integrato; l'evento `git.push` è la base per collegamenti, notifiche e, più avanti, CI.\n\n## Scope\n\nStorage dei repo su volume persistente; repo con owner utente o organizzazione e visibilità **privato/interno** (default privato, nessun accesso anonimo, anche per clone e pull; P2, P3, P7); push/pull HTTPS con token e SSH con chiavi utente; controllo permessi su ogni operazione Git secondo le regole di [[knowledge/topics/identita-e-sicurezza]]; hook post-receive → `git.push`; modello dati predisposto per le Pull Request (v1.1).\n\nRegole di ciclo di vita in [[knowledge/topics/repository-git]] (R1–R12). Restano parziali solo le parti che dipendono da altre milestone: `gs repo create` (M-07), apertura della porta 2222 da parte dell'installer (M-08), issues in sola lettura sui repo archiviati (M-05).\n\nFuori dalla v1: rinomina e trasferimento, Git LFS, quote per organizzazione, regole di protezione complete.\n\nPriorità 3 di 9 nella v1. Mockup 03, 04, 06, 07, 18, 19.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-03.md`\n- `docs/rules-coverage.md` (famiglia R)\n- Tema di analisi \"Permessi fini sulle risorse e visibilità dei repo\" (P2, P3, P7)\n- Tema di analisi \"Hosting Git: ciclo di vita e regole dei repository\" (R1–R12)\n",
+        "expected_digest": "6fc3b0bc8d554b535b0e4cb19265bb5a896ca02c53ae584e681fe871ff64be30",
+        "slug": null,
+        "reason": "M-03 completata secondo il codice di main (GIT-65…GIT-77, GIT-99, GIT-100)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-affcf73c-61dd-4152-b847-5ca7d47d0db2",
+          "knowledge": [
+            "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-04 completata secondo il codice di main (GIT-80…GIT-94, GIT-116, GIT-117, GIT-120, GIT-121).",
+          "schema_version": 1,
+          "title": "Browser del codice (completata)",
+          "updated": "2026-10-05T19:53:06.226519600+00:00"
+        },
+        "body": "\n# Browser del codice (completata)\n\n## Outcome\n\nDal browser si naviga un repo come su GitHub: file, README, branch, tag, storico commit e diff.\n\n**Stato: completata** secondo il codice di `main` al commit `1587133` (2026-10-05): pagine Code, file, History, Blame, Raw, commit e diff, Tags e Search code, con test end-to-end sullo stack e sulla VM. Dettagli in [[knowledge/topics/stato-di-realizzazione]].\n\n## Rationale\n\nD9: il browser web del codice fa parte del minimo per un prodotto venduto a team; le stesse letture sono disponibili via API agli agenti (D7).\n\n## Scope\n\nAPI di lettura (albero, contenuto, branch, tag, storico, dettaglio commit con diff); UI con README renderizzato, evidenziazione della sintassi, selettore branch/tag, storico, diff, lista e creazione repo per utente e organizzazione.\n\nRegole in [[knowledge/topics/browser-codice]] (B1–B7): B1, B2, B3, B6, B7 coperte da test; B4 e B5 parziali solo per la parte `gs` (storico, blame e ricerca da CLI arrivano con M-07).\n\nFuori dalla v1: Mermaid e formule, link temporanei senza login, ricerca indicizzata su tutta l'installazione, release (in v2).\n\nPriorità 4 di 9 nella v1. Mockup 07–10, 22 (Blame) e 23 (Tags).\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-04.md`\n- `docs/rules-coverage.md` (famiglia B)\n- Tema di analisi \"Browser del codice: regole di prodotto\" (B1–B7)\n",
+        "expected_digest": "18d7bfd03f42fe7c6fdfabf04cc30933caf942ec584e9add77f66bf5f930438a",
+        "slug": null,
+        "reason": "M-04 completata secondo il codice di main (GIT-80…GIT-94, GIT-116, GIT-117, GIT-120, GIT-121)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-43ae9cfe-b093-4063-a4d8-90e6cf6827e2",
+          "knowledge": [
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-05 è il lavoro in corso (GIT-101…GIT-109 su main): passa da next a now.",
+          "schema_version": 1,
+          "title": "Issues",
+          "updated": "2026-10-05T19:53:06.227459100+00:00"
+        },
+        "body": "\n# Issues\n\n## Outcome\n\nOgni repo ha le sue issues con commenti, assegnatari, etichette, milestone e ricerca, usabili da UI e API.\n\n## Rationale\n\nD10: le issues legano il lavoro al codice e servono agli agenti per filtrare e chiudere lavoro.\n\n## Scope\n\nIssues numerate per repo, apertura/chiusura, commenti Markdown con cronologia, assegnatari, etichette colorate, milestone con avanzamento, ricerca e filtri (stato, etichetta, assegnatario, milestone, testo), UI di lista, dettaglio ed editor. Bacheca Kanban esclusa dalla v1.\n\nRegole in [[knowledge/topics/issues]] (I1–I11): numerazione condivisa con le PR; chiusura con motivo; `read` apre e commenta, `write` gestisce; modifiche tracciate, issues nascondibili ma non eliminabili; etichette predefinite con `agent-ready` e `needs-human`; fino a 10 assegnatari con `write`; milestone per repo; menzioni di utenti e team nel rispetto della visibilità; allegati fino a 10 MB protetti dai permessi; ricerca con sintassi GitHub su repo e installazione; blocco della discussione; modelli di issue in `.gitstack/ISSUE_TEMPLATE/`.\n\nAvanzamento al commit `1587133` (2026-10-05):\n- realizzato: contratto API e schema, sintassi di ricerca, issues in core con numerazione, stato e permessi, commenti e cronologia, blocco ed eliminazione tracciata, etichette, milestone e assegnatari, ricerca nel repo e globale, allegati, UI lista issues con filtri (mockup 12);\n- resta: UI di dettaglio (mockup 13) e di nuova issue, issues in sola lettura sui repo archiviati (R10), tabella regole→test I1–I11.\n\nFuori dalla v1: stati personalizzati, etichette e milestone di organizzazione, trasferimento di issues tra repo.\n\nPriorità 5 di 9 nella v1. Mockup 12, 13 e una nuova schermata \"New issue\".\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-05.md`\n- Commit GIT-101…GIT-109 su `main`\n- Tema di analisi \"Issues: regole di prodotto\" (I1–I11)\n",
+        "expected_digest": "5467d79abd16cea9ee8b393dd098864f65139933385e528a002f016b0afd3e4c",
+        "slug": null,
+        "reason": "M-05 è il lavoro in corso (GIT-101…GIT-109 su main): passa da next a now."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"1\" (Sì, applicala) alla domanda di approvazione della proposta di allineamento della roadmap, il 2026-10-05."
+  }
+}
