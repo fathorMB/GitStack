@@ -135,8 +135,7 @@ func TestCodeReads_Permessi(t *testing.T) {
 		"tree": "/tree", "contents": "/contents?path=a", "readme": "/readme", "raw": "/raw?path=a",
 		"raw_per_indirizzo": "/raw/main/a", "raw_ref_con_slash": "/raw/feat/x/dir/a.txt",
 		"branches": "/branches", "tags": "/tags", "commits": "/commits", "commit": "/commits/" + sha,
-		"files": "/files", "files_ref": "/files?ref=feat/x", "search": "/search?q=hello",
-		"languages": "/languages",
+		"files": "/files", "files_ref": "/files?ref=feat/x", "search": "/search?q=hello", "languages": "/languages",
 		"blame": "/blame?path=a", "archive_zip": "/archive?ref=main", "archive_targz": "/archive?ref=main&format=tar.gz",
 		"diff": "/commits/" + sha + "/patch?format=diff", "patch": "/commits/" + sha + "/patch?format=patch",
 	}
