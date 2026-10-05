@@ -79,3 +79,39 @@ docker build -f services/core/Dockerfile services/core
 Il tag e il push nel registry interno sono compito del job `registry` (GIT-2), non di questo Dockerfile. Il comando di default del container (`ENTRYPOINT ["/usr/local/bin/core"]`, nessun argomento) applica le migrazioni e avvia il server; per un job dedicato che applichi solo le migrazioni, sovrascrivere il comando con `["core", "migrate", "up"]`.
 
 Build verificata end-to-end (entrambi gli stage) con un demone Docker reale disponibile in questa sessione: `docker build -f services/core/Dockerfile services/core` produce l'immagine; avviarla senza configurazione (`docker run --rm <immagine>`) fallisce in modo pulito con un log JSON strutturato che segnala `GITSTACK_CORE_DB_URL` mancante, come atteso.
+
+## M-03/A (GIT-63): schema dei repo e modello dati per le PR
+
+Migrazione `0002_repositories` (up/down in `internal/migrate/sql`).
+
+- **Un repo è una risorsa (D-A).** Una riga di `core.resources` con
+  `type='repo'` più una riga di dettaglio in `core.repositories`
+  (`resource_id` PK, FK verso `core.resources` `ON DELETE CASCADE`). Motivo:
+  grant, `permissions/check` e `readable-resources` di M-02 lavorano già su
+  `core.resources` e funzionano senza modifiche.
+- **Unicità.** `resources_type_name_key UNIQUE(type, name)` diventa un indice
+  unico parziale `WHERE type <> 'repo'`: il nome di una *risorsa* repo non è
+  globale, l'unicità vera è `UNIQUE(owner_type, owner_id, name)` su
+  `core.repositories`, **senza** filtro su `deleted_at`, perché dopo
+  l'eliminazione il nome resta occupato finché il repo non è cancellato
+  davvero (R2). Gli altri tipi di risorsa mantengono l'unicità di prima. La
+  down riporta il vincolo originale (e, per poterlo ricreare, elimina prima le
+  righe `type='repo'`).
+- **Vincoli in tabella.** `owner_type IN ('user','organization')`; `owner_id`
+  è l'id in identity, senza FK fra schemi (sono database/schema separati);
+  `name ~ '^[a-z0-9_-][a-z0-9._-]{0,99}$' AND name NOT LIKE '%.git'` (R11);
+  `visibility IN ('private','internal')` default `private` (P7);
+  `default_branch` default `main` (R4); `protect_default_branch` default
+  `true` (R9); `archived_at` (R10) e `deleted_at` (R2) NULL.
+- **Predisposizione PR (D-F, T-07 v1.1).** `core.repo_counters(repo_id PK,
+  next_number)`: contatore per repo, condiviso con le future issues;
+  `core.pull_requests` con `UNIQUE(repo_id, number)`,
+  `CHECK(source_branch <> target_branch)` e `state IN ('open','closed','merged')`.
+  Nessuna API: solo tabelle e vincoli minimi.
+- **Handler.** Le operazioni `repos` rispondono 501 (`not_implemented`) fino
+  a GIT-67. Scope, owner/visibilità in identity e API interna del servizio
+  git: vedi [docs/repos.md](../../docs/repos.md).
+- **Test.** `go test -tags=integration -count=1 ./internal/migrate/...`
+  (Postgres reale con testcontainers): su/giù, stesso nome con owner diversi,
+  stesso nome con lo stesso owner anche con `deleted_at`, `Repo` e `x.git`,
+  unicità degli altri tipi.

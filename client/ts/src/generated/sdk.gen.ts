@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -883,6 +883,154 @@ export const getMyResourcePermission = <ThrowOnError extends boolean = false>(op
 });
 
 /**
+ * Elenca i repo leggibili dall'utente
+ *
+ * Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
+ *
+ */
+export const listRepositories = <ThrowOnError extends boolean = false>(options?: Options<ListRepositoriesData, ThrowOnError>): RequestResult<ListRepositoriesResponses, ListRepositoriesErrors, ThrowOnError> => (options?.client ?? client).get<ListRepositoriesResponses, ListRepositoriesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos',
+    ...options
+});
+
+/**
+ * Crea un repo
+ *
+ * `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+ *
+ */
+export const createRepository = <ThrowOnError extends boolean = false>(options: Options<CreateRepositoryData, ThrowOnError>): RequestResult<CreateRepositoryResponses, CreateRepositoryErrors, ThrowOnError> => (options.client ?? client).post<CreateRepositoryResponses, CreateRepositoryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i repo eliminati e ancora ripristinabili
+ *
+ * Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+ *
+ */
+export const listDeletedRepositories = <ThrowOnError extends boolean = false>(options?: Options<ListDeletedRepositoriesData, ThrowOnError>): RequestResult<ListDeletedRepositoriesResponses, ListDeletedRepositoriesErrors, ThrowOnError> => (options?.client ?? client).get<ListDeletedRepositoriesResponses, ListDeletedRepositoriesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/deleted',
+    ...options
+});
+
+/**
+ * Ripristina un repo eliminato
+ *
+ * Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non esiste, non e' eliminato o il periodo di 7 giorni e' scaduto.
+ *
+ */
+export const restoreRepository = <ThrowOnError extends boolean = false>(options: Options<RestoreRepositoryData, ThrowOnError>): RequestResult<RestoreRepositoryResponses, RestoreRepositoryErrors, ThrowOnError> => (options.client ?? client).post<RestoreRepositoryResponses, RestoreRepositoryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/deleted/{repoId}/restore',
+    ...options
+});
+
+/**
+ * Elimina un repo (recuperabile per 7 giorni)
+ *
+ * Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e resta ripristinabile per 7 giorni (R2); il nome resta occupato.
+ *
+ */
+export const deleteRepository = <ThrowOnError extends boolean = false>(options: Options<DeleteRepositoryData, ThrowOnError>): RequestResult<DeleteRepositoryResponses, DeleteRepositoryErrors, ThrowOnError> => (options.client ?? client).delete<DeleteRepositoryResponses, DeleteRepositoryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}',
+    ...options
+});
+
+/**
+ * Legge un repo per owner/nome
+ *
+ * Un repo che l'utente non puo' leggere risponde 404, non 403, per non rivelarne l'esistenza.
+ *
+ */
+export const getRepository = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryData, ThrowOnError>): RequestResult<GetRepositoryResponses, GetRepositoryErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryResponses, GetRepositoryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}',
+    ...options
+});
+
+/**
+ * Modifica le impostazioni di un repo
+ *
+ * Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+ *
+ */
+export const updateRepository = <ThrowOnError extends boolean = false>(options: Options<UpdateRepositoryData, ThrowOnError>): RequestResult<UpdateRepositoryResponses, UpdateRepositoryErrors, ThrowOnError> => (options.client ?? client).patch<UpdateRepositoryResponses, UpdateRepositoryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Verifica una credenziale (per il gateway)
  *
  * Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
@@ -974,5 +1122,115 @@ export const lookupSshKey = <ThrowOnError extends boolean = false>(options: Opti
             type: 'http'
         }],
     url: '/internal/ssh-keys/{fingerprint}',
+    ...options
+});
+
+/**
+ * Imposta owner e visibilita' di una risorsa (per core)
+ *
+ * Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+ *
+ */
+export const setResourceAttributes = <ThrowOnError extends boolean = false>(options: Options<SetResourceAttributesData, ThrowOnError>): RequestResult<SetResourceAttributesResponses, SetResourceAttributesErrors, ThrowOnError> => (options.client ?? client).put<SetResourceAttributesResponses, SetResourceAttributesErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/resources/{resourceId}/attributes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Risolve il nome di un utente o di un'organizzazione
+ *
+ * Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+ *
+ */
+export const resolveOwner = <ThrowOnError extends boolean = false>(options: Options<ResolveOwnerData, ThrowOnError>): RequestResult<ResolveOwnerResponses, ResolveOwnerErrors, ThrowOnError> => (options.client ?? client).get<ResolveOwnerResponses, ResolveOwnerErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/owners/{name}',
+    ...options
+});
+
+/**
+ * Crea il repo su disco (per core)
+ *
+ * Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+ *
+ */
+export const gitCreateRepo = <ThrowOnError extends boolean = false>(options: Options<GitCreateRepoData, ThrowOnError>): RequestResult<GitCreateRepoResponses, GitCreateRepoErrors, ThrowOnError> => (options.client ?? client).post<GitCreateRepoResponses, GitCreateRepoErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Cancella definitivamente un repo (solo dal cestino)
+ *
+ * Risponde 409 se il repo non e' nel cestino.
+ */
+export const gitDeleteRepo = <ThrowOnError extends boolean = false>(options: Options<GitDeleteRepoData, ThrowOnError>): RequestResult<GitDeleteRepoResponses, GitDeleteRepoErrors, ThrowOnError> => (options.client ?? client).delete<GitDeleteRepoResponses, GitDeleteRepoErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}',
+    ...options
+});
+
+/**
+ * Stato di un repo su disco
+ */
+export const gitGetRepo = <ThrowOnError extends boolean = false>(options: Options<GitGetRepoData, ThrowOnError>): RequestResult<GitGetRepoResponses, GitGetRepoErrors, ThrowOnError> => (options.client ?? client).get<GitGetRepoResponses, GitGetRepoErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}',
+    ...options
+});
+
+/**
+ * Sposta un repo nel cestino (R2)
+ */
+export const gitTrashRepo = <ThrowOnError extends boolean = false>(options: Options<GitTrashRepoData, ThrowOnError>): RequestResult<GitTrashRepoResponses, GitTrashRepoErrors, ThrowOnError> => (options.client ?? client).post<GitTrashRepoResponses, GitTrashRepoErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/trash',
+    ...options
+});
+
+/**
+ * Ripristina un repo dal cestino (R2)
+ */
+export const gitRestoreRepo = <ThrowOnError extends boolean = false>(options: Options<GitRestoreRepoData, ThrowOnError>): RequestResult<GitRestoreRepoResponses, GitRestoreRepoErrors, ThrowOnError> => (options.client ?? client).post<GitRestoreRepoResponses, GitRestoreRepoErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/restore',
     ...options
 });

@@ -16,3 +16,4 @@ output-options:
     - teams
     - permissions
     - internal
+    - git-internal

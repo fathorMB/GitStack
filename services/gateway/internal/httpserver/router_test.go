@@ -152,3 +152,43 @@ func TestRouter_ResourcesInstradato(t *testing.T) {
 		t.Errorf("query vista da core = %q, voluta type=repo", gotQuery)
 	}
 }
+
+// TestRouter_ReposInstradatiVersoCore verifica le rotte del tag `repos`
+// (M-03): tutte a core, e GET /v1/repos/deleted (2 segmenti) non finisce su
+// GET /v1/repos/{owner}/{repo} (3 segmenti). Le rotte /v1/internal/git/*
+// non sono esposte.
+func TestRouter_ReposInstradatiVersoCore(t *testing.T) {
+	var gotMethod, gotPath string
+	fakeCore := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer fakeCore.Close()
+	router := NewRouter(newTestConfig(t, fakeCore.URL), discardLogger(), WithVerifier(allowAll()))
+
+	id := "22222222-2222-2222-2222-222222222222"
+	cases := []struct{ method, target, wantPath string }{
+		{http.MethodGet, "/v1/repos?owner=alice&page=2", "/repos"},
+		{http.MethodPost, "/v1/repos", "/repos"},
+		{http.MethodGet, "/v1/repos/deleted?owner=alice", "/repos/deleted"},
+		{http.MethodPost, "/v1/repos/deleted/" + id + "/restore", "/repos/deleted/" + id + "/restore"},
+		{http.MethodGet, "/v1/repos/alice/my-app", "/repos/alice/my-app"},
+		{http.MethodPatch, "/v1/repos/alice/my-app", "/repos/alice/my-app"},
+		{http.MethodDelete, "/v1/repos/alice/my-app", "/repos/alice/my-app"},
+	}
+	for _, c := range cases {
+		gotMethod, gotPath = "", ""
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, authedRequest(c.method, c.target))
+		if gotMethod != c.method || gotPath != c.wantPath {
+			t.Errorf("%s %s: core ha visto %s %s, atteso %s %s (status %d)", c.method, c.target, gotMethod, gotPath, c.method, c.wantPath, rec.Code)
+		}
+	}
+
+	gotPath = ""
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, authedRequest(http.MethodPost, "/v1/internal/git/repos"))
+	if rec.Code != http.StatusNotFound || gotPath != "" {
+		t.Errorf("/v1/internal/git/repos: status %d, core %q; atteso 404 senza inoltro", rec.Code, gotPath)
+	}
+}

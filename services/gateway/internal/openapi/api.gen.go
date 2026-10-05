@@ -15,6 +15,48 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for GitignoreTemplate.
+const (
+	Cpp       GitignoreTemplate = "cpp"
+	Dotnet    GitignoreTemplate = "dotnet"
+	Go        GitignoreTemplate = "go"
+	Java      GitignoreTemplate = "java"
+	Node      GitignoreTemplate = "node"
+	Php       GitignoreTemplate = "php"
+	Python    GitignoreTemplate = "python"
+	Ruby      GitignoreTemplate = "ruby"
+	Rust      GitignoreTemplate = "rust"
+	Terraform GitignoreTemplate = "terraform"
+)
+
+// Valid indicates whether the value is a known member of the GitignoreTemplate enum.
+func (e GitignoreTemplate) Valid() bool {
+	switch e {
+	case Cpp:
+		return true
+	case Dotnet:
+		return true
+	case Go:
+		return true
+	case Java:
+		return true
+	case Node:
+		return true
+	case Php:
+		return true
+	case Python:
+		return true
+	case Ruby:
+		return true
+	case Rust:
+		return true
+	case Terraform:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	Degraded HealthStatus = "degraded"
@@ -33,6 +75,110 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for LicenseTemplate.
+const (
+	Agpl30     LicenseTemplate = "agpl-3.0"
+	Apache20   LicenseTemplate = "apache-2.0"
+	Bsd2Clause LicenseTemplate = "bsd-2-clause"
+	Bsd3Clause LicenseTemplate = "bsd-3-clause"
+	Gpl30      LicenseTemplate = "gpl-3.0"
+	Lgpl30     LicenseTemplate = "lgpl-3.0"
+	Mit        LicenseTemplate = "mit"
+	Mpl20      LicenseTemplate = "mpl-2.0"
+	Unlicense  LicenseTemplate = "unlicense"
+)
+
+// Valid indicates whether the value is a known member of the LicenseTemplate enum.
+func (e LicenseTemplate) Valid() bool {
+	switch e {
+	case Agpl30:
+		return true
+	case Apache20:
+		return true
+	case Bsd2Clause:
+		return true
+	case Bsd3Clause:
+		return true
+	case Gpl30:
+		return true
+	case Lgpl30:
+		return true
+	case Mit:
+		return true
+	case Mpl20:
+		return true
+	case Unlicense:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OwnerType.
+const (
+	Organization OwnerType = "organization"
+	User         OwnerType = "user"
+)
+
+// Valid indicates whether the value is a known member of the OwnerType enum.
+func (e OwnerType) Valid() bool {
+	switch e {
+	case Organization:
+		return true
+	case User:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoVisibility.
+const (
+	Internal RepoVisibility = "internal"
+	Private  RepoVisibility = "private"
+)
+
+// Valid indicates whether the value is a known member of the RepoVisibility enum.
+func (e RepoVisibility) Valid() bool {
+	switch e {
+	case Internal:
+		return true
+	case Private:
+		return true
+	default:
+		return false
+	}
+}
+
+// CreateRepositoryInput defines model for CreateRepositoryInput.
+type CreateRepositoryInput struct {
+	Description *string `json:"description,omitempty"`
+
+	// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
+	GitignoreTemplate *GitignoreTemplate `json:"gitignoreTemplate,omitempty"`
+
+	// LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
+	LicenseTemplate *LicenseTemplate `json:"licenseTemplate,omitempty"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name RepoName `json:"name"`
+
+	// Owner Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Owner Name `json:"owner"`
+
+	// Readme Crea un `README.md` iniziale (R5).
+	Readme *bool `json:"readme,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
+
 // CreateResourceInput defines model for CreateResourceInput.
 type CreateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
@@ -40,6 +186,27 @@ type CreateResourceInput struct {
 
 	// Type Example: repo
 	Type string `json:"type"`
+}
+
+// DeletedRepository defines model for DeletedRepository.
+type DeletedRepository struct {
+	DeletedAt time.Time          `json:"deletedAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name  RepoName  `json:"name"`
+	Owner RepoOwner `json:"owner"`
+
+	// PurgeAt Dopo questo istante il repo e' cancellato definitivamente (7 giorni, R2).
+	PurgeAt time.Time `json:"purgeAt"`
+}
+
+// DeletedRepositoryList defines model for DeletedRepositoryList.
+type DeletedRepositoryList struct {
+	Items []DeletedRepository `json:"items"`
 }
 
 // Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
@@ -58,6 +225,9 @@ type Error struct {
 	} `json:"error"`
 }
 
+// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
+type GitignoreTemplate string
+
 // Health defines model for Health.
 type Health struct {
 	Status HealthStatus `json:"status"`
@@ -69,10 +239,90 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
+type LicenseTemplate string
+
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
 type Name = string
+
+// OwnerType defines model for OwnerType.
+type OwnerType string
+
+// RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
+type RepoCloneUrls struct {
+	// Https Example: https://git.example.com/alice/my-app.git
+	Https string `json:"https"`
+
+	// Ssh Example: ssh://git@git.example.com:2222/alice/my-app.git
+	Ssh string `json:"ssh"`
+}
+
+// RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoName = string
+
+// RepoOwner defines model for RepoOwner.
+type RepoOwner struct {
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name      `json:"name"`
+	Type OwnerType `json:"type"`
+}
+
+// RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+type RepoVisibility string
+
+// Repository defines model for Repository.
+type Repository struct {
+	Archived   bool       `json:"archived"`
+	ArchivedAt *time.Time `json:"archivedAt,omitempty"`
+
+	// CloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
+	CloneUrls RepoCloneUrls `json:"cloneUrls"`
+	CreatedAt *time.Time    `json:"createdAt,omitempty"`
+
+	// DefaultBranch Example: main
+	DefaultBranch string `json:"defaultBranch"`
+	Description   string `json:"description"`
+
+	// Empty Il repo non ha ancora nessun commit.
+	Empty bool `json:"empty"`
+
+	// FullName `owner/name`.
+	//
+	// Example: alice/my-app
+	FullName string `json:"fullName"`
+
+	// Id Id della risorsa (`type=repo`) in core.
+	Id *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name  RepoName  `json:"name"`
+	Owner RepoOwner `json:"owner"`
+
+	// ProtectDefaultBranch Force-push ed eliminazione del branch principale rifiutati (R9).
+	ProtectDefaultBranch bool       `json:"protectDefaultBranch"`
+	UpdatedAt            *time.Time `json:"updatedAt,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
+}
+
+// RepositoryList defines model for RepositoryList.
+type RepositoryList struct {
+	Items   []Repository `json:"items"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+	Total   int          `json:"total"`
+}
 
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
 type Resource struct {
@@ -97,11 +347,25 @@ type ResourceList struct {
 	Total   int        `json:"total"`
 }
 
+// UpdateRepositoryInput defines model for UpdateRepositoryInput.
+type UpdateRepositoryInput struct {
+	Archived             *bool   `json:"archived,omitempty"`
+	DefaultBranch        *string `json:"defaultBranch,omitempty"`
+	Description          *string `json:"description,omitempty"`
+	ProtectDefaultBranch *bool   `json:"protectDefaultBranch,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
+
 // UpdateResourceInput defines model for UpdateResourceInput.
 type UpdateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
 	Name       *string                 `json:"name,omitempty"`
 }
+
+// GitRepoIdParam defines model for GitRepoIdParam.
+type GitRepoIdParam = openapi_types.UUID
 
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
@@ -121,6 +385,21 @@ type PageParam = int
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoNameParam = RepoName
+
+// RepoOwnerFilter Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type RepoOwnerFilter = Name
+
+// RepoOwnerParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type RepoOwnerParam = Name
 
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
@@ -162,6 +441,20 @@ type Unauthorized = Error
 // UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
 
+// ListRepositoriesParams defines parameters for ListRepositories.
+type ListRepositoriesParams struct {
+	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
+	Owner   *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+	Page    *PageParam       `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam    `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListDeletedRepositoriesParams defines parameters for ListDeletedRepositories.
+type ListDeletedRepositoriesParams struct {
+	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
+	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+}
+
 // ListResourcesParams defines parameters for ListResources.
 type ListResourcesParams struct {
 	// Type Filtra per tipo di risorsa (es. `repo`).
@@ -169,6 +462,12 @@ type ListResourcesParams struct {
 	Page    *PageParam          `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam       `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
+
+// CreateRepositoryJSONRequestBody defines body for CreateRepository for application/json ContentType.
+type CreateRepositoryJSONRequestBody = CreateRepositoryInput
+
+// UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
+type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
@@ -181,6 +480,27 @@ type ServerInterface interface {
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// ListRepositories Elenca i repo leggibili dall'utente
+	// (GET /repos)
+	ListRepositories(w http.ResponseWriter, r *http.Request, params ListRepositoriesParams)
+	// CreateRepository Crea un repo
+	// (POST /repos)
+	CreateRepository(w http.ResponseWriter, r *http.Request)
+	// ListDeletedRepositories Elenca i repo eliminati e ancora ripristinabili
+	// (GET /repos/deleted)
+	ListDeletedRepositories(w http.ResponseWriter, r *http.Request, params ListDeletedRepositoriesParams)
+	// RestoreRepository Ripristina un repo eliminato
+	// (POST /repos/deleted/{repoId}/restore)
+	RestoreRepository(w http.ResponseWriter, r *http.Request, repoId openapi_types.UUID)
+	// DeleteRepository Elimina un repo (recuperabile per 7 giorni)
+	// (DELETE /repos/{owner}/{repo})
+	DeleteRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepository Legge un repo per owner/nome
+	// (GET /repos/{owner}/{repo})
+	GetRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// UpdateRepository Modifica le impostazioni di un repo
+	// (PATCH /repos/{owner}/{repo})
+	UpdateRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// ListResources Elenca le risorse
 	// (GET /resources)
 	ListResources(w http.ResponseWriter, r *http.Request, params ListResourcesParams)
@@ -212,6 +532,243 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepositories operation middleware
+func (siw *ServerInterfaceWrapper) ListRepositories(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListRepositoriesParams
+
+	// ------------- Optional query parameter "owner" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "owner", r.URL.Query(), &params.Owner, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "owner"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepositories(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateRepository operation middleware
+func (siw *ServerInterfaceWrapper) CreateRepository(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateRepository(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDeletedRepositories operation middleware
+func (siw *ServerInterfaceWrapper) ListDeletedRepositories(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListDeletedRepositoriesParams
+
+	// ------------- Optional query parameter "owner" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "owner", r.URL.Query(), &params.Owner, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "owner"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDeletedRepositories(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RestoreRepository operation middleware
+func (siw *ServerInterfaceWrapper) RestoreRepository(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "repoId" -------------
+	var repoId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repoId", r.PathValue("repoId"), &repoId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repoId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RestoreRepository(w, r, repoId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteRepository operation middleware
+func (siw *ServerInterfaceWrapper) DeleteRepository(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteRepository(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepository operation middleware
+func (siw *ServerInterfaceWrapper) GetRepository(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepository(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateRepository operation middleware
+func (siw *ServerInterfaceWrapper) UpdateRepository(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateRepository(w, r, owner, repo)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -498,6 +1055,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/resources/{resourceId}", wrapper.DeleteResource)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources/{resourceId}", wrapper.GetResource)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/resources/{resourceId}", wrapper.UpdateResource)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos", wrapper.ListRepositories)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos", wrapper.CreateRepository)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/deleted", wrapper.ListDeletedRepositories)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/deleted/{repoId}/restore", wrapper.RestoreRepository)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.DeleteRepository)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.GetRepository)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.UpdateRepository)
 
 	return m
 }

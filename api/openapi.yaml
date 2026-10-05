@@ -50,6 +50,15 @@ tags:
     description: >
       Interfaccia interna fra servizi (verifica credenziali, permessi, chiavi
       SSH). Non esposta dal gateway.
+  - name: repos
+    description: >
+      Repository Git (M-03): creazione, impostazioni, eliminazione e
+      ripristino. Un repo e' una risorsa generica `type=repo` (D15); servita
+      da core.
+  - name: git-internal
+    description: >
+      Interfaccia interna del servizio git verso core (creazione su disco,
+      cestino, cancellazione). Non esposta dal gateway, implementata a mano.
 
 paths:
   /health:
@@ -1352,6 +1361,242 @@ paths:
   # cluster e protetta da un segreto condiviso di servizio (`serviceAuth`).
   # ---------------------------------------------------------------------
 
+  /repos:
+    get:
+      operationId: listRepositories
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Elenca i repo leggibili dall'utente
+      description: >
+        Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli
+        eliminati; con `owner` solo quelli di quell'utente o organizzazione.
+        Paginazione come `GET /resources`.
+      parameters:
+        - $ref: "#/components/parameters/RepoOwnerFilter"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di repo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositoryList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createRepository
+      tags: [repos]
+      x-required-scopes: ["write:resource"]
+      summary: Crea un repo
+      description: >
+        `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi
+        unico, R1). Serve poter creare repo per quell'owner: se stesso, o un
+        owner dell'organizzazione. Il creatore riceve il ruolo `admin`.
+        Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto.
+        Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2);
+        404 se `owner` non esiste.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRepositoryInput"
+      responses:
+        "201":
+          description: Repo creato.
+          headers:
+            Location:
+              description: URL del repo creato.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/deleted:
+    get:
+      operationId: listDeletedRepositories
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Elenca i repo eliminati e ancora ripristinabili
+      description: >
+        Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo
+        `admin` (R12). Con `owner` solo quelli di quell'owner.
+      parameters:
+        - $ref: "#/components/parameters/RepoOwnerFilter"
+      responses:
+        "200":
+          description: Repo eliminati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedRepositoryList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/deleted/{repoId}/restore:
+    parameters:
+      - name: repoId
+        in: path
+        required: true
+        description: Identificatore del repo eliminato (`DeletedRepository.id`).
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: restoreRepository
+      tags: [repos]
+      x-required-scopes: ["write:resource"]
+      summary: Ripristina un repo eliminato
+      description: >
+        Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non
+        esiste, non e' eliminato o il periodo di 7 giorni e' scaduto.
+      responses:
+        "200":
+          description: Repo ripristinato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepository
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Legge un repo per owner/nome
+      description: >
+        Un repo che l'utente non puo' leggere risponde 404, non 403, per non
+        rivelarne l'esistenza.
+      responses:
+        "200":
+          description: Il repo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateRepository
+      tags: [repos]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica le impostazioni di un repo
+      description: >
+        Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo).
+        Il branch principale (R4) deve essere un branch esistente;
+        `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10).
+        Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni
+        modifica con 409, tranne `archived: false` da solo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRepositoryInput"
+      responses:
+        "200":
+          description: Repo aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteRepository
+      tags: [repos]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina un repo (recuperabile per 7 giorni)
+      description: >
+        Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e
+        resta ripristinabile per 7 giorni (R2); il nome resta occupato.
+      responses:
+        "204":
+          description: Repo eliminato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/verify:
     post:
       operationId: verifyCredential
@@ -1528,6 +1773,190 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/resources/{resourceId}/attributes:
+    parameters:
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      operationId: setResourceAttributes
+      tags: [internal]
+      summary: Imposta owner e visibilita' di una risorsa (per core)
+      description: >
+        Servita da identity (D-C, M-03). Core la chiama alla creazione di un
+        repo, prima di `grantResourceCreator`, e a ogni cambio di
+        visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa
+        senza attributi si comporta come prima di M-03. Finche' non e'
+        implementata (GIT-65) risponde 501.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceAttributesInput"
+      responses:
+        "204":
+          description: Attributi impostati.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/owners/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 39
+    get:
+      operationId: resolveOwner
+      tags: [internal]
+      summary: Risolve il nome di un utente o di un'organizzazione
+      description: >
+        Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama
+        cosi', 404 se il nome non esiste. Finche' non e' implementata
+        (GIT-65) risponde 501.
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Owner trovato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerRef"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos:
+    post:
+      operationId: gitCreateRepo
+      tags: [git-internal]
+      summary: Crea il repo su disco (per core)
+      description: >
+        Implementata a mano dal servizio git (non generata). Crea il bare
+        repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GitCreateRepoInput"
+      responses:
+        "201":
+          description: Repo creato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitRepoCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetRepo
+      tags: [git-internal]
+      summary: Stato di un repo su disco
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Stato del repo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitRepoState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: gitDeleteRepo
+      tags: [git-internal]
+      summary: Cancella definitivamente un repo (solo dal cestino)
+      description: Risponde 409 se il repo non e' nel cestino.
+      security:
+        - serviceAuth: []
+      responses:
+        "204":
+          description: Repo cancellato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/trash:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    post:
+      operationId: gitTrashRepo
+      tags: [git-internal]
+      summary: Sposta un repo nel cestino (R2)
+      security:
+        - serviceAuth: []
+      responses:
+        "204":
+          description: Repo nel cestino.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/restore:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    post:
+      operationId: gitRestoreRepo
+      tags: [git-internal]
+      summary: Ripristina un repo dal cestino (R2)
+      security:
+        - serviceAuth: []
+      responses:
+        "204":
+          description: Repo ripristinato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1562,6 +1991,35 @@ components:
         type: string
         format: uuid
       description: Identificatore della risorsa.
+    RepoOwnerFilter:
+      name: owner
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/Name"
+      description: Filtra per nome dell'utente o dell'organizzazione proprietaria.
+    RepoOwnerParam:
+      name: owner
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Name"
+      description: Nome dell'utente o dell'organizzazione proprietaria (R1).
+    RepoNameParam:
+      name: repo
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/RepoName"
+      description: Nome del repo.
+    GitRepoIdParam:
+      name: repoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Id del repo (la risorsa `type=repo` in core).
     ResourceTypeFilter:
       name: type
       in: query
@@ -2579,6 +3037,313 @@ components:
           items:
             type: string
             format: uuid
+
+    RepoName:
+      type: string
+      description: >
+        Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100
+        caratteri; non inizia con `.`; non finisce con `.git` (regola
+        applicata dal servizio, non esprimibile nel pattern). Le maiuscole
+        sono rifiutate. Unico per owner.
+      pattern: "^[a-z0-9_-][a-z0-9._-]{0,99}$"
+      minLength: 1
+      maxLength: 100
+      example: my-app
+
+    RepoVisibility:
+      type: string
+      description: >
+        Visibilita' (P7): `private` (solo chi ha un grant) o `internal`
+        (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+      enum: [private, internal]
+      default: private
+
+    GitignoreTemplate:
+      type: string
+      description: Modello di `.gitignore` per il contenuto iniziale (R5).
+      enum: [go, node, python, java, dotnet, rust, cpp, terraform, ruby, php]
+
+    LicenseTemplate:
+      type: string
+      description: Modello di licenza per il contenuto iniziale (R5).
+      enum:
+        - mit
+        - apache-2.0
+        - gpl-3.0
+        - agpl-3.0
+        - lgpl-3.0
+        - mpl-2.0
+        - bsd-2-clause
+        - bsd-3-clause
+        - unlicense
+
+    OwnerType:
+      type: string
+      enum: [user, organization]
+
+    RepoOwner:
+      type: object
+      additionalProperties: false
+      required: [type, name]
+      properties:
+        type:
+          $ref: "#/components/schemas/OwnerType"
+        name:
+          $ref: "#/components/schemas/Name"
+
+    RepoCloneUrls:
+      type: object
+      description: >
+        Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e'
+        sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
+      additionalProperties: false
+      required: [https, ssh]
+      properties:
+        https:
+          type: string
+          example: https://git.example.com/alice/my-app.git
+        ssh:
+          type: string
+          example: ssh://git@git.example.com:2222/alice/my-app.git
+
+    Repository:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - owner
+        - name
+        - fullName
+        - description
+        - visibility
+        - defaultBranch
+        - protectDefaultBranch
+        - archived
+        - empty
+        - cloneUrls
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Id della risorsa (`type=repo`) in core.
+        owner:
+          $ref: "#/components/schemas/RepoOwner"
+        name:
+          $ref: "#/components/schemas/RepoName"
+        fullName:
+          type: string
+          description: "`owner/name`."
+          example: alice/my-app
+        description:
+          type: string
+          maxLength: 1024
+        visibility:
+          $ref: "#/components/schemas/RepoVisibility"
+        defaultBranch:
+          type: string
+          example: main
+        protectDefaultBranch:
+          type: boolean
+          description: Force-push ed eliminazione del branch principale rifiutati (R9).
+        archived:
+          type: boolean
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        empty:
+          type: boolean
+          description: Il repo non ha ancora nessun commit.
+        cloneUrls:
+          $ref: "#/components/schemas/RepoCloneUrls"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateRepositoryInput:
+      type: object
+      additionalProperties: false
+      required: [owner, name]
+      properties:
+        owner:
+          $ref: "#/components/schemas/Name"
+        name:
+          $ref: "#/components/schemas/RepoName"
+        description:
+          type: string
+          maxLength: 1024
+        visibility:
+          $ref: "#/components/schemas/RepoVisibility"
+        readme:
+          type: boolean
+          default: false
+          description: Crea un `README.md` iniziale (R5).
+        gitignoreTemplate:
+          $ref: "#/components/schemas/GitignoreTemplate"
+        licenseTemplate:
+          $ref: "#/components/schemas/LicenseTemplate"
+
+    UpdateRepositoryInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        description:
+          type: string
+          maxLength: 1024
+        visibility:
+          $ref: "#/components/schemas/RepoVisibility"
+        defaultBranch:
+          type: string
+          minLength: 1
+          maxLength: 255
+        protectDefaultBranch:
+          type: boolean
+        archived:
+          type: boolean
+
+    RepositoryList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Repository"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    DeletedRepository:
+      type: object
+      additionalProperties: false
+      required: [id, owner, name, deletedAt, purgeAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner:
+          $ref: "#/components/schemas/RepoOwner"
+        name:
+          $ref: "#/components/schemas/RepoName"
+        deletedAt:
+          type: string
+          format: date-time
+        purgeAt:
+          type: string
+          format: date-time
+          description: Dopo questo istante il repo e' cancellato definitivamente (7 giorni, R2).
+
+    DeletedRepositoryList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeletedRepository"
+
+    ResourceAttributesInput:
+      type: object
+      additionalProperties: false
+      required: [ownerType, ownerId, visibility]
+      properties:
+        ownerType:
+          $ref: "#/components/schemas/OwnerType"
+        ownerId:
+          type: string
+          format: uuid
+        visibility:
+          $ref: "#/components/schemas/RepoVisibility"
+
+    OwnerRef:
+      type: object
+      additionalProperties: false
+      required: [type, id, name]
+      properties:
+        type:
+          $ref: "#/components/schemas/OwnerType"
+        id:
+          type: string
+          format: uuid
+        name:
+          $ref: "#/components/schemas/Name"
+
+    GitCreateRepoInput:
+      type: object
+      additionalProperties: false
+      required: [repoId, name, author]
+      properties:
+        repoId:
+          type: string
+          format: uuid
+        name:
+          $ref: "#/components/schemas/RepoName"
+        description:
+          type: string
+          maxLength: 1024
+        defaultBranch:
+          type: string
+          default: main
+        readme:
+          type: boolean
+          default: false
+        gitignoreTemplate:
+          $ref: "#/components/schemas/GitignoreTemplate"
+        licenseTemplate:
+          $ref: "#/components/schemas/LicenseTemplate"
+        licenseHolder:
+          type: string
+          maxLength: 255
+        author:
+          type: object
+          additionalProperties: false
+          required: [name, email]
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+
+    GitRepoCreated:
+      type: object
+      additionalProperties: false
+      required: [repoId, empty]
+      properties:
+        repoId:
+          type: string
+          format: uuid
+        empty:
+          type: boolean
+
+    GitRepoState:
+      type: object
+      additionalProperties: false
+      required: [repoId, trashed, empty]
+      properties:
+        repoId:
+          type: string
+          format: uuid
+        trashed:
+          type: boolean
+        empty:
+          type: boolean
 
   responses:
     TooManyRequests:

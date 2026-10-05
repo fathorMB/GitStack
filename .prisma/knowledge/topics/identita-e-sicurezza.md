@@ -19,6 +19,7 @@ Requisiti di M-02 (D5) e comportamento realizzato. Fonti nel repo: `services/ide
 - Token personali `gst_...`: opachi e revocabili, nome, scope, **scadenza obbligatoria** (massimo 365 giorni, configurabile), mostrati una sola volta; nel database solo lo SHA-256.
 - Chiavi SSH per utente, fingerprint unico in tutto il sistema.
 - Catalogo scope (deciso dal CTO, non si allarga senza di lui): `read:user`, `write:user`, `read:org`, `write:org`, `admin:org`, `read:resource`, `write:resource`. `write:*` include `read:*`; `admin:org` include `write:org`. Le sessioni non hanno scope: valgono i permessi dell'utente.
+- I repo usano `read:resource`/`write:resource` (M-03, D-B): nessuno scope nuovo.
 
 **Permessi sulle risorse (P1–P7).**
 - Ruoli su una risorsa: `read` < `write` < `admin`. Ruoli nell'organizzazione: `owner`, `member`. Ruoli nel team: `member`, `maintainer`.

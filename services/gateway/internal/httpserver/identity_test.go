@@ -114,7 +114,7 @@ func TestIdentityRoutes_SecondoIlContratto(t *testing.T) {
 					t.Errorf("%s /v1%s: identity ha visto %v, core %v; atteso identity [%s]", m, concrete, identityPaths, corePaths, concrete)
 				}
 			}
-		case hasAny(tags, map[string]bool{"internal": true}):
+		case hasAny(tags, map[string]bool{"internal": true, "git-internal": true}):
 			for _, m := range methods {
 				identityPaths, corePaths = nil, nil
 				rec := httptest.NewRecorder()

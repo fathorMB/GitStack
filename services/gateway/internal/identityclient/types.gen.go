@@ -27,6 +27,24 @@ func (e GrantSubjectType) Valid() bool {
 	}
 }
 
+// Defines values for OwnerType.
+const (
+	OwnerTypeOrganization OwnerType = "organization"
+	OwnerTypeUser         OwnerType = "user"
+)
+
+// Valid indicates whether the value is a known member of the OwnerType enum.
+func (e OwnerType) Valid() bool {
+	switch e {
+	case OwnerTypeOrganization:
+		return true
+	case OwnerTypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PrincipalAuthMethod.
 const (
 	PrincipalAuthMethodOidc     PrincipalAuthMethod = "oidc"
@@ -60,6 +78,24 @@ func (e PrincipalKind) Valid() bool {
 	case PrincipalKindAgent:
 		return true
 	case PrincipalKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoVisibility.
+const (
+	Internal RepoVisibility = "internal"
+	Private  RepoVisibility = "private"
+)
+
+// Valid indicates whether the value is a known member of the RepoVisibility enum.
+func (e RepoVisibility) Valid() bool {
+	switch e {
+	case Internal:
+		return true
+	case Private:
 		return true
 	default:
 		return false
@@ -212,6 +248,21 @@ type GrantResourceCreatorInput struct {
 // Example: alice
 type Name = string
 
+// OwnerRef defines model for OwnerRef.
+type OwnerRef struct {
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name      `json:"name"`
+	Type OwnerType `json:"type"`
+}
+
+// OwnerType defines model for OwnerType.
+type OwnerType string
+
 // Principal Chi ha presentato la credenziale.
 type Principal struct {
 	AuthMethod PrincipalAuthMethod `json:"authMethod"`
@@ -251,6 +302,23 @@ type ReadableResourcesInput struct {
 type ReadableResourcesResult struct {
 	All         bool                 `json:"all"`
 	ResourceIds []openapi_types.UUID `json:"resourceIds"`
+}
+
+// RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoName = string
+
+// RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+type RepoVisibility string
+
+// ResourceAttributesInput defines model for ResourceAttributesInput.
+type ResourceAttributesInput struct {
+	OwnerId   openapi_types.UUID `json:"ownerId"`
+	OwnerType OwnerType          `json:"ownerType"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
 }
 
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
@@ -324,6 +392,9 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// GitRepoIdParam defines model for GitRepoIdParam.
+type GitRepoIdParam = openapi_types.UUID
+
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
 
@@ -336,6 +407,16 @@ type OidcProviderParam = Name
 //
 // Example: alice
 type OrgParam = Name
+
+// RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoNameParam = RepoName
+
+// RepoOwnerParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type RepoOwnerParam = Name
 
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
@@ -359,6 +440,9 @@ type UsernameParam = Name
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
 
+// Conflict Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+type Conflict = Error
+
 // NotFound Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type NotFound = Error
 
@@ -373,6 +457,9 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 
 // ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
 type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
+
+// SetResourceAttributesJSONRequestBody defines body for SetResourceAttributes for application/json ContentType.
+type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
 
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
