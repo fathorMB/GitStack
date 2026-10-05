@@ -30,7 +30,7 @@ permissions:
 jobs:
   check-generated:
     name: Codice generato allineato al contratto OpenAPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -53,7 +53,7 @@ jobs:
 
   workspace-sync:
     name: Workspace Go sincronizzato
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
