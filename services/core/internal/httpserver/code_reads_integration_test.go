@@ -64,6 +64,8 @@ func (g *readerGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID, p
 		return json.RawMessage(`{"commit":` + commitJSON + `,"files":[],"filesChanged":0,"additions":0,"deletions":0,"truncated":false}`), nil
 	case path == "files":
 		return json.RawMessage(`{"ref":"main","commitSha":"x","paths":["a","src/b.go"],"truncated":false}`), nil
+	case path == "languages":
+		return json.RawMessage(`{"languages":[{"name":"Go","bytes":90,"percent":90},{"name":"Shell","bytes":10,"percent":10}],"totalBytes":100}`), nil
 	case path == "search":
 		return json.RawMessage(`{"ref":"main","query":"q","results":[{"path":"a","line":1,"fragment":"x"}],"limitReached":false,"timedOut":false}`), nil
 	case path == "blame":
@@ -134,6 +136,7 @@ func TestCodeReads_Permessi(t *testing.T) {
 		"raw_per_indirizzo": "/raw/main/a", "raw_ref_con_slash": "/raw/feat/x/dir/a.txt",
 		"branches": "/branches", "tags": "/tags", "commits": "/commits", "commit": "/commits/" + sha,
 		"files": "/files", "files_ref": "/files?ref=feat/x", "search": "/search?q=hello",
+		"languages": "/languages",
 		"blame": "/blame?path=a", "archive_zip": "/archive?ref=main", "archive_targz": "/archive?ref=main&format=tar.gz",
 		"diff": "/commits/" + sha + "/patch?format=diff", "patch": "/commits/" + sha + "/patch?format=patch",
 	}
@@ -194,6 +197,36 @@ func TestCodeReads_Permessi(t *testing.T) {
 		}
 		if search == nil || search.Get("q") != "--help a.*b&ref=x" {
 			t.Errorf("search: il testo deve arrivare intatto, ho %v", search)
+		}
+	})
+
+	t.Run("languages_ref_di_default", func(t *testing.T) {
+		rec := e.do("GET", "/repos/alice/aperto-interno/languages", "bob", "")
+		e.want(rec, 200)
+		var out struct {
+			Languages []struct {
+				Name  string  `json:"name"`
+				Bytes int     `json:"bytes"`
+				Pct   float64 `json:"percent"`
+			} `json:"languages"`
+			TotalBytes int `json:"totalBytes"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatalf("corpo non decodificabile: %v: %s", err, rec.Body.String())
+		}
+		if len(out.Languages) != 2 || out.Languages[0].Name != "Go" || out.Languages[0].Bytes != 90 || out.TotalBytes != 100 {
+			t.Errorf("languages inattese: %+v", out)
+		}
+		git.rmu.Lock()
+		defer git.rmu.Unlock()
+		found := false
+		for _, c := range git.reads {
+			if c.path == "languages" && c.q.Get("ref") == "main" {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("languages senza ref: atteso il branch principale (main) verso git")
 		}
 	})
 

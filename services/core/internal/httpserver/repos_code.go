@@ -406,13 +406,17 @@ func splitRefAndPath(s string, names []string) (string, string) {
 	return ref, path
 }
 
-func (s *apiServer) GetRepositoryLanguages(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.GetRepositoryLanguagesParams) {
-	// Arriva con GIT-83 (handler interno gitGetLanguages).
-	codeNotImplemented(w)
-}
-
-func codeNotImplemented(w http.ResponseWriter) {
-	writeError(w, http.StatusNotImplemented, "not_implemented", "Lettura del codice non ancora disponibile.")
+func (s *apiServer) GetRepositoryLanguages(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, params openapi.GetRepositoryLanguagesParams) {
+	a, ok := s.codeAccess(w, r, owner, name)
+	if !ok {
+		return
+	}
+	q := url.Values{"ref": {a.refOrDefault(params.Ref)}}
+	var out openapi.Languages
+	if !a.readJSON(w, r, "languages", q, &out) {
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // ListRepositoryFiles: percorsi di tutti i file del ref per "Go to file" (B5).
