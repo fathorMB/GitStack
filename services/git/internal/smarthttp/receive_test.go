@@ -146,7 +146,7 @@ func TestBranchPrincipaleProtetto(t *testing.T) {
 
 func TestBranchPrincipaleSenzaProtezione(t *testing.T) {
 	e := setup(t)
-	e.core.unprotected[repoPriv] = true
+	e.core.setUnprotected(repoPriv)
 	w := cloneAlice(t, e)
 	mustGit(t, w, "commit", "--amend", "--allow-empty", "-m", "riscritto")
 	mustGit(t, w, "push", "--force", "origin", "HEAD:refs/heads/main")

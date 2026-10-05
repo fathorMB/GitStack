@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
@@ -60,6 +61,15 @@ type fakeCore struct {
 	archived map[string]bool
 	// unprotected: repo con la protezione del branch principale spenta (R9).
 	unprotected map[string]bool
+	// mu protegge archived e unprotected: il server li legge da un'altra goroutine.
+	mu sync.RWMutex
+}
+
+// setUnprotected spegne la protezione del branch principale per un repo.
+func (c *fakeCore) setUnprotected(repo string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.unprotected[repo] = true
 }
 
 func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (access.RepoRef, error) {
@@ -70,6 +80,8 @@ func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner
 	if ok, _ := c.id.HasRole(ctx, caller.UserID, rid, "read"); !ok {
 		return access.RepoRef{}, access.ErrNotFound
 	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return access.RepoRef{ID: rid, Archived: c.archived[rid], DefaultBranch: "main", ProtectDefaultBranch: !c.unprotected[rid]}, nil
 }
 
