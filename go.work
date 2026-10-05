@@ -5,6 +5,7 @@ use (
 	./cli
 	./client/go
 	./pkg/events
+	./pkg/issuequery
 	./pkg/names
 	./services/core
 	./services/gateway
