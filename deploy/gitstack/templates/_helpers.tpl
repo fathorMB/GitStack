@@ -131,3 +131,17 @@ darebbe NXDOMAIN. Riprodotto e verificato su k3d durante GIT-10.
 {{- define "gitstack.gateway.url" -}}
 {{- printf "http://%s-gateway.%s.svc.cluster.local:%d" (include "gitstack.fullname" .) .Release.Namespace (.Values.gateway.service.port | int) -}}
 {{- end -}}
+
+{{/*
+URL interno del servizio git usato da core (GITSTACK_GIT_URL).
+*/}}
+{{- define "gitstack.git.url" -}}
+{{- printf "http://%s-git:%d" (include "gitstack.fullname" .) (.Values.git.service.port | int) -}}
+{{- end -}}
+
+{{/*
+Nome del Secret con la chiave host SSH (chiave ssh_host_ed25519_key).
+*/}}
+{{- define "gitstack.git.sshHostKeySecret" -}}
+{{- .Values.git.ssh.hostKey.existingSecret | default (printf "%s-git-ssh-host-key" (include "gitstack.fullname" .)) -}}
+{{- end -}}
