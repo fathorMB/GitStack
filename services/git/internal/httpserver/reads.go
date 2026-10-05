@@ -18,6 +18,13 @@ func (h *handler) mountReads(api *http.ServeMux) {
 	api.HandleFunc("GET /internal/git/repos/{repoId}/commits/{sha}/diff", h.download(gitread.FormatDiff))
 	api.HandleFunc("GET /internal/git/repos/{repoId}/commits/{sha}/patch", h.download(gitread.FormatPatch))
 	api.HandleFunc("GET /internal/git/repos/{repoId}/blame", h.blame)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/tree", h.tree)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/contents", h.contents)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/readme", h.readme)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/raw", h.raw)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/branches", h.branches)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/tags", h.tags)
+	api.HandleFunc("GET /internal/git/repos/{repoId}/archive", h.archive)
 }
 
 func (h *handler) commits(w http.ResponseWriter, r *http.Request) {
