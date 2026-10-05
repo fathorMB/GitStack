@@ -3,9 +3,13 @@
 // Nessun file fuori da lib/ importa '@gitstack/api-client'.
 import type { Error as ApiErrorBody } from '@gitstack/api-client';
 
-// Relativa apposta: in produzione il container web/ (vedi web/Dockerfile)
-// inoltra /api/* al gateway; in sviluppo lo fa il proxy di Vite (vite.config.ts).
-export const API_BASE_URL = '/api';
+// Contratto pubblico unico (GIT-151): la UI chiama /api/v1/<percorso>, la stessa
+// forma di docs, e2e e CLI. Chi sta davanti al gateway toglie SOLO /api e gli
+// passa /v1/<percorso>: l'Ingress Traefik (Middleware strip-api, chart),
+// il nginx del container web (rewrite ^/api/(.*)$ /$1) e il proxy di Vite.
+// I percorsi del client generato sono relativi a /v1 e NON vanno ripetuti.
+// Relativa apposta. Il job CI del chart e e2e.ps1 (e7) leggono questa riga.
+export const API_BASE_URL = '/api/v1';
 
 export class ApiError extends Error {
   readonly code: string;

@@ -9,7 +9,7 @@ import { AuthProvider } from '../routes/auth';
 vi.mock('../lib/authApi', () => ({
   fetchOidcProviders: vi.fn(),
   loginWithPassword: vi.fn(),
-  oidcStartUrl: (slug: string) => `/api/auth/oidc/${slug}/start`,
+  oidcStartUrl: (slug: string) => `/api/v1/auth/oidc/${slug}/start`,
 }));
 
 import { fetchOidcProviders, loginWithPassword } from '../lib/authApi';

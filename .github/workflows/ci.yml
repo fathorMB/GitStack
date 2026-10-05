@@ -629,6 +629,60 @@ jobs:
           fi
           echo "OK: identity raggiungibile via gateway, /internal non esposto"
 
+      # GIT-151: il percorso che usa la UI. Il prefisso si legge da
+      # web/src/lib/http.ts (API_BASE_URL), non si ricopia: con '/api' (senza
+      # /v1) l'Ingress toglie /api e il gateway riceve /auth/session -> 404
+      # text/plain, e questo passo fallisce. La password iniziale dell'admin
+      # viene dal Secret (come il passo e3 di deploy/test-vm/e2e.ps1) e non
+      # viene mai stampata.
+      - name: Verifica il prefisso API della UI tramite l'Ingress (sessione, login admin, sessione col cookie)
+        run: |
+          set -euo pipefail
+          prefix=$(sed -n "s/^export const API_BASE_URL = '\([^']*\)';.*$/\1/p" web/src/lib/http.ts)
+          if [ -z "$prefix" ]; then
+            echo "FALLITO: API_BASE_URL non trovato in web/src/lib/http.ts" >&2
+            exit 1
+          fi
+          echo "Prefisso della UI (API_BASE_URL): $prefix"
+          base="http://localhost:8080${prefix}"
+          jar=$(mktemp)
+          trap 'rm -f "$jar"' EXIT
+
+          # 1. senza cookie: 401 JSON unauthenticated (con il prefisso sbagliato: 404 text/plain)
+          out=$(curl -s -o /tmp/ui-session.body -w '%{http_code} %{content_type}' "${base}/auth/session" || true)
+          if [ "${out%% *}" != "401" ] || ! grep -q 'unauthenticated' /tmp/ui-session.body; then
+            echo "FALLITO: GET ${prefix}/auth/session senza cookie: atteso 401 JSON unauthenticated, ricevuto '${out}' corpo '$(head -c 200 /tmp/ui-session.body)'" >&2
+            kubectl logs deployment/gitstack-gateway --tail=50 || true
+            exit 1
+          fi
+          case "${out#* }" in
+            application/json*) ;;
+            *) echo "FALLITO: GET ${prefix}/auth/session: content-type '${out#* }', atteso application/json" >&2; exit 1 ;;
+          esac
+
+          # 2. login dell'admin con la password iniziale del Secret
+          pw=$(kubectl get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d)
+          if [ -z "$pw" ]; then
+            echo "FALLITO: password iniziale vuota nel Secret gitstack-identity-admin" >&2
+            exit 1
+          fi
+          code=$(jq -n --arg p "$pw" '{username: "admin", password: $p}' \
+            | curl -s -o /tmp/ui-login.body -w '%{http_code}' -c "$jar" -X POST -H 'content-type: application/json' -d @- "${base}/auth/login" || true)
+          if [ "$code" != "200" ] || ! grep -q '"mustChangePassword"' /tmp/ui-login.body; then
+            echo "FALLITO: POST ${prefix}/auth/login: status ${code} (atteso 200 con mustChangePassword), corpo '$(head -c 200 /tmp/ui-login.body)'" >&2
+            kubectl logs deployment/gitstack-gateway --tail=50 || true
+            kubectl logs deployment/gitstack-identity --tail=50 || true
+            exit 1
+          fi
+
+          # 3. sessione col cookie: 200 (GET /auth/session è esente dal 403 password_change_required)
+          code=$(curl -s -o /tmp/ui-session2.body -w '%{http_code}' -b "$jar" "${base}/auth/session" || true)
+          if [ "$code" != "200" ] || ! grep -q '"username"' /tmp/ui-session2.body; then
+            echo "FALLITO: GET ${prefix}/auth/session col cookie: status ${code} (atteso 200), corpo '$(head -c 200 /tmp/ui-session2.body)'" >&2
+            exit 1
+          fi
+          echo "OK: ${prefix}/auth/session 401 -> login admin 200 -> sessione 200 (via Ingress)"
+
       # GIT-21: ogni comando ha "|| true" perché questo step deve restare
       # utile anche quando l'API server del cluster è irraggiungibile (il
       # guasto intermittente osservato dopo MR-14, run 36442771214): in quel

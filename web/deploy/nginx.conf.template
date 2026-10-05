@@ -6,7 +6,7 @@
 #
 # GATEWAY_UPSTREAM è l'unico posto in cui questa immagine sa dove trovare il
 # gateway: il chart Helm di GIT-8 lo sovrascrive con il nome del Service
-# k3s. La SPA non lo conosce, chiama solo l'URL relativo /api/... (D7,
+# k3s. La SPA non lo conosce, chiama solo l'URL relativo /api/v1/... (D7,
 # API-first) — vedi web/src/lib/resourcesApi.ts.
 server {
     listen 8080;
@@ -35,9 +35,10 @@ server {
         set $gateway_upstream "${GATEWAY_UPSTREAM}";
         # proxy_pass con variabile non fa il riscrittura automatica dell'URI
         # (regola di nginx per i proxy_pass "dinamici"): la si fa a mano con
-        # rewrite ... break, così /api/resources arriva al gateway come
-        # /v1/resources.
-        rewrite ^/api/(.*)$ /v1/$1 break;
+        # rewrite ... break. Contratto /api/v1 (GIT-151): si toglie solo /api,
+        # come il Middleware strip-api dell'Ingress, così /api/v1/resources
+        # arriva al gateway come /v1/resources.
+        rewrite ^/api/(.*)$ /$1 break;
         proxy_pass $gateway_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;

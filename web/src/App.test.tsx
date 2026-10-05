@@ -8,6 +8,7 @@ import { ToastProvider } from './components';
 import { AuthProvider } from './routes/auth';
 
 vi.mock('./lib/authApi', () => ({
+  fetchSession: vi.fn().mockResolvedValue({ user: { username: 'nobody', isAdmin: false } }),
   fetchOidcProviders: vi.fn().mockResolvedValue([]),
   loginWithPassword: vi.fn().mockResolvedValue({}),
   oidcStartUrl: vi.fn(),

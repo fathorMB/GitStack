@@ -43,4 +43,12 @@ describe('nginx.conf.template: raw dei file (GIT-81, regola B3)', () => {
   it('/api/ resta davanti alla regex (^~), così /api/x/raw/y non finisce nel raw', () => {
     expect(conf).toContain('location ^~ /api/ {');
   });
+
+  it('/api/ toglie solo /api (come strip-api dell\'Ingress): /api/v1/x arriva come /v1/x, mai /v1/v1', () => {
+    const api = location('^~ /api/');
+    const m = api.match(/rewrite (\S+) (\S+) break;/);
+    expect(m).not.toBeNull();
+    const out = '/api/v1/auth/session'.replace(new RegExp(m![1]), m![2].replace(/\$(\d)/g, '$$$1'));
+    expect(out).toBe('/v1/auth/session');
+  });
 });

@@ -176,7 +176,7 @@ describe('CodeBrowser', () => {
     const { unmount } = renderAt('/acme/api-gateway');
     const card = await screen.findByLabelText('README');
     expect(within(card).getByRole('heading', { name: 'Hello' })).toBeInTheDocument();
-    expect(within(card).getByRole('img', { name: 'logo' })).toHaveAttribute('src', '/api/repos/acme/api-gateway/raw/main/img/logo.png');
+    expect(within(card).getByRole('img', { name: 'logo' })).toHaveAttribute('src', '/api/v1/repos/acme/api-gateway/raw/main/img/logo.png');
     expect(within(card).getByRole('link', { name: 'doc' })).toHaveAttribute('href', '/acme/api-gateway/blob/main/docs/a.md');
     unmount();
     vi.mocked(fetchReadme).mockResolvedValue(null);
@@ -198,8 +198,8 @@ describe('CodeBrowser', () => {
     expect(within(menu).getByLabelText('Clone URL')).toHaveValue('ssh://git@git.acme.local:2222/acme/api-gateway.git');
     await user.click(within(menu).getByRole('button', { name: 'CLI' }));
     expect(within(menu).getByLabelText('Clone URL')).toHaveValue('gs repo clone acme/api-gateway');
-    expect(within(menu).getByRole('link', { name: /Download ZIP/ })).toHaveAttribute('href', '/api/repos/acme/api-gateway/archive?ref=main&format=zip');
-    expect(within(menu).getByRole('link', { name: /Download tar.gz/ })).toHaveAttribute('href', '/api/repos/acme/api-gateway/archive?ref=main&format=tar.gz');
+    expect(within(menu).getByRole('link', { name: /Download ZIP/ })).toHaveAttribute('href', '/api/v1/repos/acme/api-gateway/archive?ref=main&format=zip');
+    expect(within(menu).getByRole('link', { name: /Download tar.gz/ })).toHaveAttribute('href', '/api/v1/repos/acme/api-gateway/archive?ref=main&format=tar.gz');
   });
 
   it('menu Clone con porta 22 usa la forma corta', async () => {
