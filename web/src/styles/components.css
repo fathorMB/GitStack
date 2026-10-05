@@ -277,3 +277,27 @@ ul.list{margin:0;padding:0;list-style:none}
 .av-bot{background:var(--agent-soft);color:var(--agent)}
 .list .pad{padding:10px 16px;margin:0}
 @media (max-width:860px){.agents-grid{grid-template-columns:1fr}}
+
+/* Browser del codice (mockup 07, GIT-86) */
+.repo-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start}
+.code-bar{position:relative;flex-wrap:wrap}
+.pop{position:absolute;top:100%;margin-top:6px;z-index:20;min-width:300px;padding:10px;max-height:380px;overflow:auto}
+.pop-right{right:0}
+.pop-item{all:unset;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);cursor:pointer;width:calc(100% - 16px)}
+.pop-item:hover,.pop-item:focus-visible{background:var(--surface-2)}
+.ftable .list-row{padding:8px 16px}
+.ftable .fname{width:240px;display:flex;align-items:center;gap:8px;flex:none}
+.ftable .fname svg{color:var(--text-subtle);flex:none}
+.ftable .fname svg.dir{color:var(--accent)}
+.ftable .fmsg{flex:1;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftable .fwhen{color:var(--text-subtle);white-space:nowrap;font-size:12px}
+.lastcommit{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.lastcommit .msg{flex:1;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.readme{padding:16px 24px}
+.about h3{font-size:14px;font-weight:600;margin-bottom:8px}
+.lang-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px;background:var(--surface-2)}
+.lang-bar i{display:block;height:100%}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.goto-list{list-style:none;margin:8px 0 0;padding:0;max-height:320px;overflow:auto}
+@media (max-width:1100px){.repo-grid{grid-template-columns:1fr}}

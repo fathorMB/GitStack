@@ -196,10 +196,10 @@ describe('RepoPage', () => {
     expect(box.textContent).toContain('gs repo clone acme/api-gateway');
   });
 
-  it('repo non vuoto: segnaposto per M-04', async () => {
+  it('repo non vuoto: niente quick setup, parte il browser del codice', async () => {
     vi.mocked(fetchRepo).mockResolvedValue(repo());
     renderAt('/acme/api-gateway');
-    expect(await screen.findByText(/arrives with M-04/)).toBeInTheDocument();
+    expect(await screen.findByText(/Loading code|Unexpected response|Could not reach/)).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Quick setup' })).not.toBeInTheDocument();
   });
 });
