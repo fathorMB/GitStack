@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,23 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
 )
+
+// SSH spento: né ssh né sshShort, nemmeno con la porta 22.
+func TestCloneConfig_SSHSpento(t *testing.T) {
+	for _, port := range []int{0, 22, 2222} {
+		u := CloneConfig{PublicURL: "https://git.example.com", SSHPort: port, SSHOff: true}.urls(nil, "alice", "app")
+		if u.Https != "https://git.example.com/alice/app.git" || u.Ssh != nil || u.SshShort != nil {
+			t.Fatalf("porta %d: cloneUrls con SSH spento = %+v", port, u)
+		}
+		b, err := json.Marshal(u)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "ssh") {
+			t.Fatalf("JSON con SSH spento: %s", b)
+		}
+	}
+}
 
 // R7: porta 2222 di default, indirizzo completo; la forma corta vale solo con 22.
 func TestCloneConfig_R7(t *testing.T) {
@@ -35,8 +53,8 @@ func TestCloneConfig_R7(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			u := c.cfg.urls(nil, "alice", "app")
-			if u.Https != c.https || u.Ssh != c.ssh {
-				t.Fatalf("https=%q ssh=%q, voluti %q %q", u.Https, u.Ssh, c.https, c.ssh)
+			if u.Https != c.https || u.Ssh == nil || *u.Ssh != c.ssh {
+				t.Fatalf("https=%q ssh=%v, voluti %q %q", u.Https, u.Ssh, c.https, c.ssh)
 			}
 			if c.shortNull != (u.SshShort == nil) || (u.SshShort != nil && *u.SshShort != c.sshShort) {
 				t.Fatalf("sshShort = %v, voluto %q", u.SshShort, c.sshShort)
@@ -100,8 +118,8 @@ func TestCloneConfig_SenzaPublicURL(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			u := c.cfg.urls(c.r, "alice", "app")
-			if u.Https != c.https || u.Ssh != c.ssh {
-				t.Fatalf("https=%q ssh=%q, voluti %q %q", u.Https, u.Ssh, c.https, c.ssh)
+			if u.Https != c.https || u.Ssh == nil || *u.Ssh != c.ssh {
+				t.Fatalf("https=%q ssh=%v, voluti %q %q", u.Https, u.Ssh, c.https, c.ssh)
 			}
 		})
 	}

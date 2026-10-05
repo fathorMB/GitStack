@@ -772,8 +772,11 @@ type RepoCloneUrls struct {
 	// Https Example: https://git.example.com/alice/my-app.git
 	Https string `json:"https"`
 
-	// Ssh Example: ssh://git@git.example.com:2222/alice/my-app.git
-	Ssh string `json:"ssh"`
+	// Ssh Assente quando il server SSH dell'installazione e' spento.
+	//
+	//
+	// Example: ssh://git@git.example.com:2222/alice/my-app.git
+	Ssh *string `json:"ssh,omitempty"`
 
 	// SshShort Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo quando la porta SSH dell'installazione e' 22.
 	//

@@ -530,7 +530,11 @@ export type RepoOwner = {
  */
 export type RepoCloneUrls = {
     https: string;
-    ssh: string;
+    /**
+     * Assente quando il server SSH dell'installazione e' spento.
+     *
+     */
+    ssh?: string;
     /**
      * Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo quando la porta SSH dell'installazione e' 22.
      *

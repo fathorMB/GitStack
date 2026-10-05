@@ -290,9 +290,12 @@ function CloneMenu({ repo, refName }: { repo: Repository; refName: string }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'https' | 'ssh' | 'cli'>('https');
   const { owner, name } = { owner: repo.owner.name, name: repo.name };
-  const sshUrl = repo.cloneUrls.sshShort ?? repo.cloneUrls.ssh;
-  const sshPort = sshPortOf(repo.cloneUrls.ssh, repo.cloneUrls.sshShort);
-  const value = tab === 'https' ? repo.cloneUrls.https : tab === 'ssh' ? sshUrl : `gs repo clone ${repo.fullName}`;
+  const sshAvailable = Boolean(repo.cloneUrls.ssh);
+  const sshUrl = repo.cloneUrls.sshShort ?? repo.cloneUrls.ssh ?? '';
+  const sshPort = repo.cloneUrls.ssh ? sshPortOf(repo.cloneUrls.ssh, repo.cloneUrls.sshShort) : '';
+  const methods = (sshAvailable ? ['https', 'ssh', 'cli'] : ['https', 'cli']) as readonly ('https' | 'ssh' | 'cli')[];
+  const activeTab = tab === 'ssh' && !sshAvailable ? 'https' : tab;
+  const value = activeTab === 'https' ? repo.cloneUrls.https : activeTab === 'ssh' ? sshUrl : `gs repo clone ${repo.fullName}`;
   return (
     <div style={{ position: 'relative' }}>
       <Button variant="primary" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
@@ -306,19 +309,19 @@ function CloneMenu({ repo, refName }: { repo: Repository; refName: string }) {
             <b>Clone</b>
             <span className="sp" />
             <span className="seg" role="group" aria-label="Clone method">
-              {(['https', 'ssh', 'cli'] as const).map((t) => (
-                <button key={t} type="button" className={tab === t ? 'active' : undefined} aria-pressed={tab === t} onClick={() => setTab(t)}>
+              {methods.map((t) => (
+                <button key={t} type="button" className={activeTab === t ? 'active' : undefined} aria-pressed={activeTab === t} onClick={() => setTab(t)}>
                   {t === 'cli' ? 'CLI' : t.toUpperCase()}
                 </button>
               ))}
             </span>
           </div>
-          {tab === 'ssh' ? <div className="small muted">SSH (port {sshPort})</div> : null}
+          {activeTab === 'ssh' ? <div className="small muted">SSH (port {sshPort})</div> : null}
           <div className="row" style={{ flexWrap: 'nowrap', marginTop: 4 }}>
             <input className="input mono" aria-label="Clone URL" value={value} readOnly />
             <CopyButton value={value} />
           </div>
-          {tab === 'https' ? (
+          {activeTab === 'https' ? (
             <p className="hint small muted" style={{ marginTop: 8 }}>
               Use an <Link to="/settings/tokens">access token</Link> as password.
             </p>

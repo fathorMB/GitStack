@@ -215,6 +215,17 @@ describe('CodeBrowser', () => {
     expect(screen.getByLabelText('Clone URL')).toHaveValue('git@git.acme.local:acme/api-gateway.git');
   });
 
+  it('menu Clone senza cloneUrls.ssh (SSH spento): niente scheda SSH', async () => {
+    vi.mocked(fetchRepo).mockResolvedValue(repo({ cloneUrls: { https: 'https://git.acme.local/acme/api-gateway.git' } }));
+    const user = userEvent.setup();
+    renderAt('/acme/api-gateway');
+    await screen.findByLabelText('Files');
+    await user.click(screen.getByRole('button', { name: /Clone/ }));
+    expect(screen.queryByRole('button', { name: 'SSH' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Clone URL')).toHaveValue('https://git.acme.local/acme/api-gateway.git');
+    expect(screen.queryByText(/SSH \(port/)).not.toBeInTheDocument();
+  });
+
   it('Go to file: corrispondenza approssimata', async () => {
     vi.mocked(fetchFilePaths).mockResolvedValue({ ref: 'main', commitSha: 's', truncated: false, paths: ['README.md', 'cmd/gateway/main.go', 'internal/ssh/hostkeys.go', 'go.mod'] });
     const user = userEvent.setup();

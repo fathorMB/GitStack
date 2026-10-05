@@ -9,7 +9,7 @@ func TestLoad_RepoEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.SSHPort != 2222 || cfg.GitURL != "" || cfg.PublicURL != "" || cfg.SSHHost != "" {
+	if !cfg.SSHEnabled || cfg.SSHPort != 2222 || cfg.GitURL != "" || cfg.PublicURL != "" || cfg.SSHHost != "" {
 		t.Fatalf("default inattesi: %+v", cfg)
 	}
 
@@ -27,6 +27,17 @@ func TestLoad_RepoEnv(t *testing.T) {
 	}
 	if cfg.GitURL != "http://git:8080" || cfg.PublicURL != "https://git.example.com" || cfg.SSHHost != "ssh.example.com" || cfg.SSHPort != 22 {
 		t.Fatalf("configurazione: %+v", cfg)
+	}
+
+	for _, off := range []string{"off", " OFF "} {
+		base[envSSHPort] = off
+		cfg, err = load(lookupFrom(base))
+		if err != nil {
+			t.Fatalf("%q: %v", off, err)
+		}
+		if cfg.SSHEnabled || cfg.SSHPort != 0 {
+			t.Fatalf("%q: SSH non spento: %+v", off, cfg)
+		}
 	}
 
 	for _, bad := range []string{"0", "70000", "abc", "-1"} {

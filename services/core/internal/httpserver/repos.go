@@ -48,6 +48,9 @@ type CloneConfig struct {
 	SSHHost string
 	// SSHPort è la porta SSH; 0 = 2222 (R7).
 	SSHPort int
+	// SSHOff: il server SSH dell'installazione è spento; non si pubblica
+	// nessun indirizzo SSH.
+	SSHOff bool
 }
 
 func (c CloneConfig) sshPort() int {
@@ -99,10 +102,12 @@ func (c CloneConfig) sshHost(r *http.Request) string {
 func (c CloneConfig) urls(r *http.Request, owner, name string) openapi.RepoCloneUrls {
 	path := owner + "/" + name + ".git"
 	host, port := c.sshHost(r), c.sshPort()
-	out := openapi.RepoCloneUrls{
-		Https: c.publicBase(r) + "/" + path,
-		Ssh:   fmt.Sprintf("ssh://git@%s:%d/%s", hostForURL(host), port, path),
+	out := openapi.RepoCloneUrls{Https: c.publicBase(r) + "/" + path}
+	if c.SSHOff {
+		return out
 	}
+	ssh := fmt.Sprintf("ssh://git@%s:%d/%s", hostForURL(host), port, path)
+	out.Ssh = &ssh
 	if port == 22 {
 		short := "git@" + host + ":" + path
 		out.SshShort = &short
