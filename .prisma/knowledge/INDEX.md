@@ -8,6 +8,7 @@
 - [[knowledge/topics/design-system]] — Design system Aurora
 ## requirements
 
+- [[knowledge/topics/browser-codice]] — Browser del codice: regole di prodotto
 - [[knowledge/topics/collegamenti-notifiche-webhook]] — Collegamenti, notifiche e webhook: regole di prodotto
 - [[knowledge/topics/identita-e-sicurezza]] — Identità, autenticazione e permessi
 - [[knowledge/topics/installazione-e-deploy]] — Installazione, deploy e operazioni

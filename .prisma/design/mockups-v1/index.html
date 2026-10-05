@@ -374,7 +374,7 @@ p{margin:0}
   <select id="pick">
     <optgroup label="Accesso"><option value="login">01 · Login</option></optgroup>
     <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option></optgroup>
-    <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
+    <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="blame">22 · Blame</option><option value="tags">23 · Tags</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
     <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option><option value="new-issue">20 · New issue</option></optgroup>
     <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="notif-settings">21 · Notification settings</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
     <optgroup label="Amministrazione"><option value="admin">16 · Admin · System</option><option value="agents">17 · Admin · Agents</option></optgroup>
@@ -590,7 +590,7 @@ p{margin:0}
 </section>
 
 <!-- ============ 07 REPO CODE ============ -->
-<section class="screen" data-screen="repo-code" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Pagina principale di un repo: file, ultimo commit, README, pannello About. Menu Clone aperto: HTTPS con token, SSH sulla porta 2222 (R7), CLI.">
+<section class="screen" data-screen="repo-code" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Pagina principale di un repo: file, ultimo commit, README, pannello About, Go to file e Search code nel repo (B5), link ai Tags (B7). Menu Clone aperto: HTTPS con token, SSH sulla porta 2222 (R7), CLI, Download ZIP (B3).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="sp"></span>
       <span class="btn-group"><button class="btn btn-sm" data-go="notif-settings" title="Participating · All activity · Ignore"><svg class="icon"><use href="#i-eye"/></svg>Watch: Participating<svg class="icon"><use href="#i-chev"/></svg></button><button class="btn btn-sm"><span class="counter">6</span></button></span>
@@ -603,9 +603,10 @@ p{margin:0}
       <div class="stack" style="gap:16px">
         <div class="row" style="position:relative">
           <button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button>
-          <span class="muted small"><svg class="icon"><use href="#i-branch"/></svg> <b style="color:var(--text)">4</b> branches · <svg class="icon"><use href="#i-tag"/></svg> <b style="color:var(--text)">7</b> tags</span>
+          <span class="muted small"><svg class="icon"><use href="#i-branch"/></svg> <b style="color:var(--text)">4</b> branches · <svg class="icon"><use href="#i-tag"/></svg> <a data-go="tags" style="color:inherit"><b style="color:var(--text)">7</b> tags</a></span>
           <span class="sp"></span>
           <button class="btn">Go to file</button>
+          <button class="btn"><svg class="icon"><use href="#i-search"/></svg>Search code</button>
           <button class="btn btn-primary"><svg class="icon"><use href="#i-terminal"/></svg>Clone<svg class="icon"><use href="#i-chev"/></svg></button>
           <div class="menu clone-pop">
             <div class="row" style="margin-bottom:10px"><b style="font-size:13px">Clone</b><span class="sp"></span><span class="seg"><span class="active">HTTPS</span><span>SSH</span><span>CLI</span></span></div>
@@ -664,7 +665,7 @@ make dev</pre>
 </section>
 
 <!-- ============ 08 FILE VIEW ============ -->
-<section class="screen" data-screen="repo-file" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Visualizzazione di un file con evidenziazione della sintassi, numeri di riga, ultimo commit.">
+<section class="screen" data-screen="repo-file" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Visualizzazione di un file con evidenziazione della sintassi fino a 1 MB (B1), numeri di riga, ultimo commit; History, Blame (B4), Raw e Download con login o token (B3).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -673,7 +674,7 @@ make dev</pre>
     <div class="row" style="margin-bottom:14px"><button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button><span class="mono" style="font-size:15px"><a data-go="repo-code">api-gateway</a> <span class="subtle">/</span> <b>main.go</b></span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-copy"/></svg></button></div>
     <div class="codeview">
       <div class="lastcommit" style="border-bottom:1px solid var(--border)"><span class="avatar av-b">LB</span><b>lbianchi</b><span class="muted">feat: graceful shutdown</span><span class="sp"></span><a class="mono small" data-go="commit">9b27d11</a><span class="small subtle">2 weeks ago</span></div>
-      <div class="codeview-h"><span class="mono">38 lines · 1.1 KB</span><span class="sp"></span><span class="seg"><span class="active">Code</span><span>Blame</span></span><button class="btn btn-sm">Raw</button><button class="btn btn-sm"><svg class="icon"><use href="#i-copy"/></svg></button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg></button></div>
+      <div class="codeview-h"><span class="mono">38 lines · 1.1 KB</span><span class="sp"></span><span class="seg"><span class="active">Code</span><span data-go="blame">Blame</span></span><button class="btn btn-sm" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>History</button><button class="btn btn-sm">Raw</button><button class="btn btn-sm"><svg class="icon"><use href="#i-copy"/></svg></button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg></button></div>
       <div class="lines">
 <div class="ln"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div><div>24</div></div>
 <pre class="code"><span class="tk-k">package</span> main
@@ -729,7 +730,7 @@ make dev</pre>
 </section>
 
 <!-- ============ 10 COMMIT DIFF ============ -->
-<section class="screen" data-screen="commit" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>4e1a9c0</b>" data-desc="Dettaglio commit: messaggio, autore (agente), issue chiusa, diff per file.">
+<section class="screen" data-screen="commit" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>4e1a9c0</b>" data-desc="Dettaglio commit: messaggio, autore (agente), issue chiusa, diff per file con vista unificata o affiancata, ignora spazi, file generati chiusi di default e download .diff/.patch (B6).">
   <div class="page" style="max-width:1100px">
     <div class="card" style="margin-bottom:18px">
       <div class="card-b">
@@ -740,7 +741,7 @@ make dev</pre>
       <div class="lastcommit" style="border-top:1px solid var(--border);border-radius:0 0 var(--r-lg) var(--r-lg)"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><b>build-agent</b><span class="badge badge-agent">agent</span><span class="muted">committed 5 min ago</span><span class="sp"></span><span class="muted small">parent <a class="mono">c81f3e2</a></span><span class="sha" style="color:var(--text)">4e1a9c0b7d2e</span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-copy"/></svg></button></div>
     </div>
     <div class="alert alert-success" style="margin-bottom:18px"><svg class="icon"><use href="#i-issue-closed"/></svg><div>This commit closed <a data-go="issue"><b>#41 Push over SSH fails with ed25519 keys</b></a> when it reached <span class="mono">main</span>.</div></div>
-    <div class="row" style="margin-bottom:12px"><span class="muted">Showing <b style="color:var(--text)">2 changed files</b> with <b style="color:var(--success)">14 additions</b> and <b style="color:var(--danger)">3 deletions</b></span><span class="sp"></span><span class="seg"><span class="active">Unified</span><span>Split</span></span></div>
+    <div class="row" style="margin-bottom:12px"><span class="muted">Showing <b style="color:var(--text)">3 changed files</b> with <b style="color:var(--success)">16 additions</b> and <b style="color:var(--danger)">3 deletions</b></span><span class="sp"></span><label class="check small" style="margin:0"><input type="checkbox"><span>Ignore whitespace</span></label><span class="seg"><span class="active">Unified</span><span>Split</span></span><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>.diff<svg class="icon"><use href="#i-chev"/></svg></button></div>
     <div class="diff">
       <div class="diff-h"><svg class="icon"><use href="#i-chev"/></svg><span class="mono"><b>internal/ssh/server.go</b></span><span class="diffstat"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span><span class="small muted">+11 −3</span><span class="sp"></span><button class="btn btn-sm">View file</button></div>
       <div class="dl hunk"><div class="n"></div><div class="n"></div><div>@@ -41,9 +41,17 @@ func NewServer(cfg Config) (*Server, error) {</div></div>
@@ -768,6 +769,57 @@ make dev</pre>
       <div class="dl add"><div class="n"></div><div class="n">12</div><div>+</div></div>
       <div class="dl ctx"><div class="n">10</div><div class="n">13</div><div>)</div></div>
     </div>
+    <div class="diff">
+      <div class="diff-h"><svg class="icon" style="transform:rotate(-90deg)"><use href="#i-chev"/></svg><span class="mono"><b>go.sum</b></span><span class="small muted">+2 −0</span><span class="badge">Generated</span><span class="sp"></span><button class="btn btn-sm">Load diff</button></div>
+      <div class="small muted" style="padding:10px 14px">Lock and generated files are collapsed by default.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 22 BLAME ============ -->
+<section class="screen" data-screen="blame" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>main.go</b>" data-desc="Blame di un file (B4): per ogni blocco di righe l'ultimo commit, l'autore (badge agent per gli agenti) e la data. Disponibile per file fino a 1 MB (B1), anche via API e gs.">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
+    <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="row" style="margin-bottom:14px"><button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button><span class="mono" style="font-size:15px"><a data-go="repo-code">api-gateway</a> <span class="subtle">/</span> <b>main.go</b></span></div>
+    <div class="codeview">
+      <div class="codeview-h"><span class="mono">38 lines · 1.1 KB</span><span class="sp"></span><span class="seg"><span data-go="repo-file">Code</span><span class="active">Blame</span></span><button class="btn btn-sm" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>History</button><button class="btn btn-sm">Raw</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg></button></div>
+      <div class="list" style="border:0;border-radius:0">
+        <div class="list-row" style="align-items:flex-start;padding:8px 12px;gap:14px"><div style="width:260px;flex:none"><div class="row small" style="gap:6px"><span class="avatar av-bot" style="width:18px;height:18px"><svg class="icon" style="width:11px;height:11px"><use href="#i-bot"/></svg></span><b>build-agent</b><span class="badge badge-agent">agent</span><span class="subtle">3 months ago</span></div><a class="mono small muted" data-go="commit">a1f0c3e initial commit</a></div><pre class="code" style="margin:0;flex:1"><span class="tk-k">package</span> main
+
+<span class="tk-k">import</span> (
+    <span class="tk-s">"context"</span>
+    <span class="tk-s">"log/slog"</span></pre></div>
+        <div class="list-row" style="align-items:flex-start;padding:8px 12px;gap:14px"><div style="width:260px;flex:none"><div class="row small" style="gap:6px"><span class="avatar av-b" style="width:18px;height:18px;font-size:8px">LB</span><b>lbianchi</b><span class="subtle">2 weeks ago</span></div><a class="mono small muted" data-go="commit">9b27d11 feat: graceful shutdown</a></div><pre class="code" style="margin:0;flex:1">    <span class="tk-s">"os/signal"</span>
+    <span class="tk-s">"syscall"</span>
+)
+
+<span class="tk-k">func</span> main() {
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+    <span class="tk-k">defer</span> stop()</pre></div>
+        <div class="list-row" style="align-items:flex-start;padding:8px 12px;gap:14px"><div style="width:260px;flex:none"><div class="row small" style="gap:6px"><span class="avatar av-a" style="width:18px;height:18px;font-size:8px">MR</span><b>mrossi</b><span class="subtle">last week</span></div><a class="mono small muted" data-go="commit">e5c2d90 feat: structured logging with slog</a></div><pre class="code" style="margin:0;flex:1">    log := slog.New(slog.NewJSONHandler(os.Stdout, <span class="tk-k">nil</span>))
+    log.Info(<span class="tk-s">"gateway starting"</span>)</pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 23 TAGS ============ -->
+<section class="screen" data-screen="tags" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Tags</b>" data-desc="Tag del repo (B7): data, commit, messaggio dei tag annotati, download ZIP e tar.gz con login o token (B3). Le release con note e file allegati arrivano in v2 con la CI.">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
+    <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page" style="max-width:980px">
+    <div class="page-h"><h1>Tags</h1><span class="counter">7</span><span class="sp"></span><div class="input-icon" style="width:240px"><svg class="icon"><use href="#i-search"/></svg><input class="input" placeholder="Find a tag…"></div></div>
+    <div class="list">
+      <div class="list-row" style="padding:14px 16px;align-items:flex-start"><svg class="icon" style="color:var(--success);margin-top:3px"><use href="#i-tag"/></svg><div style="flex:1"><div class="row"><b class="mono">v0.4.2</b><span class="badge badge-accent">Latest</span></div><p class="small muted" style="margin-top:4px">Fix SSH host keys for ed25519 clients; rate limit headers.</p><div class="row small muted" style="margin-top:6px;gap:14px"><span>3 days ago</span><a class="mono" data-go="commit">4e1a9c0</a><span>tagged by <b style="color:var(--text)">mrossi</b></span></div></div><div class="row" style="gap:6px"><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>ZIP</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>tar.gz</button></div></div>
+      <div class="list-row" style="padding:14px 16px;align-items:flex-start"><svg class="icon muted" style="margin-top:3px"><use href="#i-tag"/></svg><div style="flex:1"><b class="mono">v0.4.1</b><p class="small muted" style="margin-top:4px">Graceful shutdown and structured logging.</p><div class="row small muted" style="margin-top:6px;gap:14px"><span>2 weeks ago</span><a class="mono" data-go="commit">9b27d11</a><span>tagged by <b style="color:var(--text)">lbianchi</b></span></div></div><div class="row" style="gap:6px"><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>ZIP</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>tar.gz</button></div></div>
+      <div class="list-row" style="padding:14px 16px;align-items:flex-start"><svg class="icon muted" style="margin-top:3px"><use href="#i-tag"/></svg><div style="flex:1"><b class="mono">v0.4.0</b><p class="small subtle" style="margin-top:4px">Lightweight tag (no message)</p><div class="row small muted" style="margin-top:6px;gap:14px"><span>last month</span><a class="mono" data-go="commit">77ad0e1</a></div></div><div class="row" style="gap:6px"><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>ZIP</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>tar.gz</button></div></div>
+    </div>
+    <div class="alert alert-info" style="margin-top:16px"><svg class="icon"><use href="#i-info"/></svg><div>Downloads need you to be signed in, or an access token with read access: <span class="mono">curl -H "Authorization: Bearer $TOKEN" -LO https://git.acme.local/acme/api-gateway/archive/v0.4.2.tar.gz</span></div></div>
   </div>
 </section>
 

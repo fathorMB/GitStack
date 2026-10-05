@@ -1,5 +1,5 @@
 ---
-{"horizon":"later","id":"OBJ-397d65b0-f4a8-4a4c-b965-08d5e41c8be0","knowledge":["DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7"],"schema_version":1,"title":"v2 — Build: CI e registry container","updated":"2026-09-30T21:15:06.331745600+00:00"}
+{"horizon":"later","id":"OBJ-397d65b0-f4a8-4a4c-b965-08d5e41c8be0","knowledge":["DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7","DOC-04fbc589-a144-403b-99e0-13e541fac16a"],"reopen_reason":"Le release (note di versione e file allegati) sono assegnate alla v2 dalla regola B7 (2026-10-05).","schema_version":1,"title":"v2 — Build: CI e registry container","updated":"2026-10-05T09:30:00+00:00"}
 ---
 
 # v2 — Build: CI e registry container
@@ -14,7 +14,7 @@ Primo passo verso il "piccolo cloud privato"; si aggancia agli eventi e alle ris
 
 ## Scope
 
-Da dettagliare.
+Da dettagliare. Già assegnato: **release** (note di versione e file allegati prodotti dalla CI) sui tag del repo, rimandate qui dalla v1 (B7 in [[knowledge/topics/browser-codice]]).
 
 ## Source references
 

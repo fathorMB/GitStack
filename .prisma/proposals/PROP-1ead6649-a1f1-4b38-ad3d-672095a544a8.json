@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "PROP-1ead6649-a1f1-4b38-ad3d-672095a544a8",
+  "state": "applied",
+  "created": "2026-10-05T09:29:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Browser del codice\" con le regole B1–B7; nuovo documento; scope M-04 aggiornato; release assegnate allo scope v2 (orizzonti invariati); mockup v1 needs_update.",
+    "targets": [
+      "TOP-f4845d97-2a90-48c2-9a81-93e78e48c537",
+      "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
+      "OBJ-affcf73c-61dd-4152-b847-5ca7d47d0db2",
+      "OBJ-397d65b0-f4a8-4a4c-b965-08d5e41c8be0",
+      "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0"
+    ],
+    "before_digests": {
+      "roadmap/analysis/browser-codice.md": "0626e9cb4a3c9eb36dd94e243f37a64b1e0da5d5c780bad73af205e8a1cd3d4e",
+      "roadmap/product/m-04-browser-codice.md": "d4d6dbc58622fd6d928d098afade208f03b355b75dddab1d461e27c9a5389a8f",
+      "roadmap/product/v2-build.md": "fb2eb61e5995ecc5176fc93b119f230eed04965a8735e4bc7e4e51c2c9123914",
+      "knowledge/INDEX.md": "67cdd454f2f9734304fd82eca0e415c7b655ad0c3bed2b4049dcf09fb5be6dd8",
+      "design/mockups-v1/manifest.json": "0a415719dea10a05fcdbbb62bf25bfbdf2bbfe62e77ead0ced673b9324f68a92"
+    },
+    "operations": [
+      {
+        "target": "TOP-f4845d97-2a90-48c2-9a81-93e78e48c537",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (B1–B7)."
+      },
+      {
+        "target": "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
+        "op": "create",
+        "path": "knowledge/topics/browser-codice.md"
+      },
+      {
+        "target": "OBJ-affcf73c-61dd-4152-b847-5ca7d47d0db2",
+        "op": "update_scope",
+        "reason": "Regole B1–B7 e fuori-scope v1."
+      },
+      {
+        "target": "OBJ-397d65b0-f4a8-4a4c-b965-08d5e41c8be0",
+        "op": "update_scope",
+        "reason": "Release assegnate alla v2 (B7)."
+      },
+      {
+        "target": "knowledge/INDEX.md",
+        "op": "update",
+        "reason": "Aggiunto browser-codice."
+      },
+      {
+        "target": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
+        "op": "set_status",
+        "status": "needs_update"
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–7 nella sessione di analisi del 2026-10-05",
+      "design/mockups-v1/index.html (schermate 07–10)"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" dopo il riepilogo della proposta (B1–B7, nuovo documento, scope M-04, release in v2, mockup da aggiornare)."
+  }
+}
