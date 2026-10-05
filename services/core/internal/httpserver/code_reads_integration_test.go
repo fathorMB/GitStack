@@ -193,8 +193,12 @@ func TestCodeReads_Permessi(t *testing.T) {
 		e.want(rec, 200)
 		var out struct {
 			Items []struct {
-				Author    struct{ User struct{ Username, Kind string } }
-				Committer struct{ User struct{ Username, Kind string } }
+				Author struct {
+					User struct{ Username, Kind string }
+				}
+				Committer struct {
+					User struct{ Username, Kind string }
+				}
 			}
 		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || len(out.Items) != 1 {

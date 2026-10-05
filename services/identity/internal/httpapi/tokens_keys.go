@@ -396,4 +396,3 @@ func (s *server) LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprin
 	}
 	writeJSON(w, http.StatusOK, openapi.SshKeyLookup{Key: toSSHKey(k), User: toUser(u, true)})
 }
-
