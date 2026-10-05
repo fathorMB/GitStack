@@ -13,6 +13,11 @@ altre guide utente dedicate, il riferimento è
 `.lmbrain-lite/knowledge/vision.md`.
 
 `repos.md` (M-03/A) documenta scope, owner/visibilità e API interna dei repo.
+`issue-templates.md` (M-05/H, GIT-108) documenta i modelli di issue in
+`.gitstack/ISSUE_TEMPLATE/`: formato, front matter, comportamento e
+contratto API.
+
+`webhooks.md` (M-06/A, GIT-129) è il formato dei payload webhook GitStack v1 (push, issues, issue_comment, repository), con intestazioni, firma HMAC-SHA256, tentativi ed esempi; gli eventi di dominio `issue.*`, `issue_comment.*` e `repository.*` che li alimentano sono in `events.md`.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
 

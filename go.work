@@ -5,6 +5,7 @@ use (
 	./api
 	./cli
 	./client/go
+	./pkg/egress
 	./pkg/events
 	./pkg/issuequery
 	./pkg/names

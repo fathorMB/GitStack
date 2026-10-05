@@ -1224,7 +1224,7 @@ export type TextVersionList = {
     items: Array<TextVersion>;
 };
 
-export type IssueEventType = 'opened' | 'closed' | 'reopened' | 'renamed' | 'edited' | 'labeled' | 'unlabeled' | 'assigned' | 'unassigned' | 'milestoned' | 'demilestoned' | 'locked' | 'unlocked' | 'hidden' | 'unhidden' | 'comment_deleted' | 'referenced';
+export type IssueEventType = 'opened' | 'closed' | 'reopened' | 'renamed' | 'edited' | 'labeled' | 'unlabeled' | 'assigned' | 'unassigned' | 'milestoned' | 'demilestoned' | 'locked' | 'unlocked' | 'hidden' | 'unhidden' | 'comment_deleted' | 'referenced' | 'referenced_from' | 'commit_linked' | 'closed_by_commit';
 
 export type IssueEvent = {
     id: string;
@@ -1234,7 +1234,7 @@ export type IssueEvent = {
      */
     actor?: IssueUser | null;
     /**
-     * Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+     * Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` (non piu' scritto, sostituito da `commit_linked`) ha `commit`; `comment_deleted` ha `commentId`. Eventi di M-06: `referenced_from` (C1, "referenced from owner/repo#n") ha `source` (`kind` issue|pull_request, `repository` `owner/repo`, `number`, `title`, `commentId` se cita un commento) e compare solo a chi vede entrambi i repo; `commit_linked` (C2, "linked commit") ha `commit` (`sha`, `repository` `owner/repo`, `subject`, `ref`, `authorName`); `closed_by_commit` (C2, "closed by commit <sha>") ha `commit` e `reason` `completed`, senza `actor`, ed e' l'unico evento scritto per una chiusura da `fixes #n` (non c'e' anche un `closed`).
      *
      */
     data?: {
@@ -1354,6 +1354,280 @@ export type UpdateMilestoneInput = {
     description?: string;
     dueOn?: string | null;
     state?: 'open' | 'closed';
+};
+
+/**
+ * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+ *
+ */
+export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook';
+
+export type NotificationRepo = {
+    id: string;
+    /**
+     * `owner/repo`.
+     */
+    fullName: string;
+};
+
+export type NotificationIssue = {
+    number: number;
+    title: string;
+    state: 'open' | 'closed';
+};
+
+/**
+ * Il webhook di una notifica `webhook`; assente se e' stato eliminato nel frattempo (la notifica sparisce con lui).
+ */
+export type NotificationWebhook = {
+    id: string;
+    scope: WebhookScope;
+    url: string;
+};
+
+export type Notification = {
+    id: string;
+    reason: NotificationReason;
+    read: boolean;
+    archived: boolean;
+    /**
+     * Nome dell'evento di dominio da cui nasce (es. `issue.closed`, docs/events.md).
+     */
+    event: string;
+    /**
+     * Testo breve leggibile da persone, non contrattuale.
+     */
+    summary: string;
+    repository?: NotificationRepo | null;
+    issue?: NotificationIssue | null;
+    /**
+     * Il commento che ha causato la notifica, se c'e'.
+     */
+    commentId?: string | null;
+    webhook?: NotificationWebhook | null;
+    /**
+     * Chi ha causato la notifica; assente per gli eventi di sistema (es. chiusura da commit).
+     */
+    actor?: IssueUser | null;
+    createdAt: string;
+    readAt?: string | null;
+};
+
+export type NotificationList = {
+    items: Array<Notification>;
+    page: number;
+    perPage: number;
+    total: number;
+    /**
+     * Notifiche non lette e non archiviate dell'utente (filtri `reason` e `repo` compresi).
+     */
+    unreadCount: number;
+};
+
+export type UpdateNotificationInput = {
+    /**
+     * `true` segna come letta, `false` di nuovo come non letta.
+     */
+    read?: boolean;
+    /**
+     * `true` archivia, `false` ripristina.
+     */
+    archived?: boolean;
+};
+
+export type MarkedNotifications = {
+    /**
+     * Quante notifiche sono passate da non letta a letta.
+     */
+    marked: number;
+};
+
+export type DeletedNotifications = {
+    deleted: number;
+};
+
+export type NotificationPreferences = {
+    /**
+     * `false` senza SMTP configurato o per un agente: le email non partono (C4, C5).
+     */
+    emailAvailable: boolean;
+    /**
+     * Per ogni tipo (`NotificationReason`) se arriva anche una email. Sono sempre presenti tutti i tipi.
+     */
+    email: {
+        [key: string]: boolean;
+    };
+};
+
+export type UpdateNotificationPreferencesInput = {
+    /**
+     * Tipo (`NotificationReason`) → email si/no. I tipi omessi non cambiano.
+     */
+    email: {
+        [key: string]: boolean;
+    };
+};
+
+export type RepoWatchMode = 'participating' | 'all' | 'ignore';
+
+export type RepoWatch = {
+    mode: RepoWatchMode;
+    /**
+     * Assente finche' l'utente non ha mai scelto (default `participating`).
+     */
+    updatedAt?: string | null;
+};
+
+export type SetRepoWatchInput = {
+    mode: RepoWatchMode;
+};
+
+export type IssueSubscription = {
+    subscribed: boolean;
+    /**
+     * Perche' si segue: `author`, `assignee`, `commenter`, `mentioned` (automatico), `manual` (Subscribe), oppure `none` se non si segue (Unsubscribe esplicito o mai coinvolti).
+     *
+     */
+    reason: 'author' | 'assignee' | 'commenter' | 'mentioned' | 'manual' | 'none';
+};
+
+export type WebhookScope = 'repo' | 'org';
+
+/**
+ * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+ *
+ */
+export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository';
+
+export type Webhook = {
+    id: string;
+    scope: WebhookScope;
+    /**
+     * Il repo, per scope `repo`.
+     */
+    repository?: NotificationRepo | null;
+    /**
+     * Nome dell'organizzazione, per scope `org`.
+     */
+    organization?: string | null;
+    url: string;
+    events: Array<WebhookEvent>;
+    active: boolean;
+    /**
+     * Il segreto non torna mai nelle risposte; senza segreto la consegna non e' firmata.
+     */
+    hasSecret: boolean;
+    /**
+     * Quando i fallimenti consecutivi lo hanno disattivato (C7); `null` se attivo o messo in pausa a mano.
+     */
+    disabledAt?: string | null;
+    disabledReason?: 'consecutive_failures';
+    /**
+     * Inizio dei fallimenti consecutivi in corso; dopo 3 giorni il webhook si disattiva.
+     */
+    failingSince?: string | null;
+    lastDelivery?: WebhookDeliverySummary | null;
+    createdBy?: IssueUser | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type WebhookList = {
+    items: Array<Webhook>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreateWebhookInput = {
+    url: string;
+    events: Array<WebhookEvent>;
+    active?: boolean;
+};
+
+export type UpdateWebhookInput = {
+    url?: string;
+    events?: Array<WebhookEvent>;
+    active?: boolean;
+};
+
+/**
+ * `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+ *
+ */
+export type WebhookDeliveryStatus = 'pending' | 'success' | 'failed' | 'gone';
+
+export type WebhookDeliverySummary = {
+    /**
+     * Il valore dell'intestazione `X-GitStack-Delivery`.
+     */
+    id: string;
+    event: WebhookEvent;
+    /**
+     * Azione dell'evento (es. `opened`, `closed`); vuota per `push`.
+     */
+    action?: string;
+    status: WebhookDeliveryStatus;
+    /**
+     * Tentativi fatti, al massimo 8 (C7).
+     */
+    attempt: number;
+    nextAttemptAt?: string | null;
+    /**
+     * Codice HTTP dell'ultimo tentativo; assente per errori di rete o timeout di 10 s.
+     */
+    statusCode?: number | null;
+    durationMs?: number | null;
+    /**
+     * Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
+     */
+    error?: string;
+    redeliveryOf?: string | null;
+    createdAt: string;
+    deliveredAt?: string | null;
+};
+
+export type WebhookDelivery = WebhookDeliverySummary;
+
+export type WebhookDeliveryList = {
+    items: Array<WebhookDeliverySummary>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type WebhookDeliveryRequest = {
+    /**
+     * Le intestazioni inviate (`X-GitStack-Event`, `X-GitStack-Delivery`, `X-GitStack-Signature` se c'e' un segreto, ...).
+     */
+    headers: {
+        [key: string]: string;
+    };
+    /**
+     * Il corpo JSON inviato (formato in docs/webhooks.md).
+     */
+    payload: {
+        [key: string]: unknown;
+    };
+};
+
+export type WebhookDeliveryResponse = {
+    headers: {
+        [key: string]: string;
+    };
+    /**
+     * Corpo della risposta, troncato a 4 KB (C8).
+     */
+    body: string;
+    truncated: boolean;
+};
+
+export type WebhookDeliveryDetail = WebhookDeliverySummary & {
+    request: WebhookDeliveryRequest;
+    /**
+     * Assente se non c'e' stata nessuna risposta.
+     */
+    response?: WebhookDeliveryResponse | null;
 };
 
 /**
@@ -1603,6 +1877,26 @@ export type RepositoryListWritable = {
     total: number;
 };
 
+export type CreateWebhookInputWritable = {
+    url: string;
+    events: Array<WebhookEvent>;
+    /**
+     * Segreto per l'HMAC-SHA256 di `X-GitStack-Signature`. Facoltativo; scritto una volta, mai restituito.
+     */
+    secret?: string;
+    active?: boolean;
+};
+
+export type UpdateWebhookInputWritable = {
+    url?: string;
+    events?: Array<WebhookEvent>;
+    /**
+     * Una stringa sostituisce il segreto; la stringa vuota lo toglie.
+     */
+    secret?: string;
+    active?: boolean;
+};
+
 /**
  * Identificatore della risorsa.
  */
@@ -1793,6 +2087,25 @@ export type IssueMilestoneFilter = string;
 export type IssueSortParam = 'created' | 'updated' | 'comments' | 'relevance';
 
 export type MilestoneStateFilter = 'open' | 'closed' | 'all';
+
+export type NotificationIdParam = string;
+
+/**
+ * Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+ *
+ */
+export type NotificationReasonFilter = string;
+
+export type NotificationStateFilter = 'unread' | 'read' | 'archived' | 'all';
+
+/**
+ * Solo le notifiche di un repo, `owner/repo`.
+ */
+export type NotificationRepoFilter = string;
+
+export type WebhookIdParam = string;
+
+export type WebhookDeliveryIdParam = string;
 
 export type GetHealthData = {
     body?: never;
@@ -7310,6 +7623,1576 @@ export type UpdateMilestoneResponses = {
 };
 
 export type UpdateMilestoneResponse = UpdateMilestoneResponses[keyof UpdateMilestoneResponses];
+
+export type DeleteNotificationsData = {
+    body?: never;
+    path?: never;
+    query: {
+        state: 'read' | 'archived';
+        /**
+         * Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+         *
+         */
+        reason?: string;
+        /**
+         * Solo le notifiche di un repo, `owner/repo`.
+         */
+        repo?: string;
+    };
+    url: '/notifications';
+};
+
+export type DeleteNotificationsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteNotificationsError = DeleteNotificationsErrors[keyof DeleteNotificationsErrors];
+
+export type DeleteNotificationsResponses = {
+    /**
+     * Notifiche eliminate.
+     */
+    200: DeletedNotifications;
+};
+
+export type DeleteNotificationsResponse = DeleteNotificationsResponses[keyof DeleteNotificationsResponses];
+
+export type ListNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+         *
+         */
+        reason?: string;
+        state?: 'unread' | 'read' | 'archived' | 'all';
+        /**
+         * Solo le notifiche di un repo, `owner/repo`.
+         */
+        repo?: string;
+        page?: number;
+        perPage?: number;
+    };
+    url: '/notifications';
+};
+
+export type ListNotificationsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListNotificationsError = ListNotificationsErrors[keyof ListNotificationsErrors];
+
+export type ListNotificationsResponses = {
+    /**
+     * Pagina di notifiche.
+     */
+    200: NotificationList;
+};
+
+export type ListNotificationsResponse = ListNotificationsResponses[keyof ListNotificationsResponses];
+
+export type MarkAllNotificationsReadData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+         *
+         */
+        reason?: string;
+        /**
+         * Solo le notifiche di un repo, `owner/repo`.
+         */
+        repo?: string;
+    };
+    url: '/notifications/read-all';
+};
+
+export type MarkAllNotificationsReadErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type MarkAllNotificationsReadError = MarkAllNotificationsReadErrors[keyof MarkAllNotificationsReadErrors];
+
+export type MarkAllNotificationsReadResponses = {
+    /**
+     * Notifiche segnate come lette.
+     */
+    200: MarkedNotifications;
+};
+
+export type MarkAllNotificationsReadResponse = MarkAllNotificationsReadResponses[keyof MarkAllNotificationsReadResponses];
+
+export type DeleteNotificationData = {
+    body?: never;
+    path: {
+        notificationId: string;
+    };
+    query?: never;
+    url: '/notifications/{notificationId}';
+};
+
+export type DeleteNotificationErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteNotificationError = DeleteNotificationErrors[keyof DeleteNotificationErrors];
+
+export type DeleteNotificationResponses = {
+    /**
+     * Notifica eliminata.
+     */
+    204: void;
+};
+
+export type DeleteNotificationResponse = DeleteNotificationResponses[keyof DeleteNotificationResponses];
+
+export type GetNotificationData = {
+    body?: never;
+    path: {
+        notificationId: string;
+    };
+    query?: never;
+    url: '/notifications/{notificationId}';
+};
+
+export type GetNotificationErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetNotificationError = GetNotificationErrors[keyof GetNotificationErrors];
+
+export type GetNotificationResponses = {
+    /**
+     * La notifica.
+     */
+    200: Notification;
+};
+
+export type GetNotificationResponse = GetNotificationResponses[keyof GetNotificationResponses];
+
+export type UpdateNotificationData = {
+    body: UpdateNotificationInput;
+    path: {
+        notificationId: string;
+    };
+    query?: never;
+    url: '/notifications/{notificationId}';
+};
+
+export type UpdateNotificationErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateNotificationError = UpdateNotificationErrors[keyof UpdateNotificationErrors];
+
+export type UpdateNotificationResponses = {
+    /**
+     * Notifica aggiornata.
+     */
+    200: Notification;
+};
+
+export type UpdateNotificationResponse = UpdateNotificationResponses[keyof UpdateNotificationResponses];
+
+export type GetNotificationPreferencesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/notification-preferences';
+};
+
+export type GetNotificationPreferencesErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetNotificationPreferencesError = GetNotificationPreferencesErrors[keyof GetNotificationPreferencesErrors];
+
+export type GetNotificationPreferencesResponses = {
+    /**
+     * Le preferenze.
+     */
+    200: NotificationPreferences;
+};
+
+export type GetNotificationPreferencesResponse = GetNotificationPreferencesResponses[keyof GetNotificationPreferencesResponses];
+
+export type UpdateNotificationPreferencesData = {
+    body: UpdateNotificationPreferencesInput;
+    path?: never;
+    query?: never;
+    url: '/user/notification-preferences';
+};
+
+export type UpdateNotificationPreferencesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateNotificationPreferencesError = UpdateNotificationPreferencesErrors[keyof UpdateNotificationPreferencesErrors];
+
+export type UpdateNotificationPreferencesResponses = {
+    /**
+     * Preferenze aggiornate.
+     */
+    200: NotificationPreferences;
+};
+
+export type UpdateNotificationPreferencesResponse = UpdateNotificationPreferencesResponses[keyof UpdateNotificationPreferencesResponses];
+
+export type ResetRepoWatchData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/watch';
+};
+
+export type ResetRepoWatchErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ResetRepoWatchError = ResetRepoWatchErrors[keyof ResetRepoWatchErrors];
+
+export type ResetRepoWatchResponses = {
+    /**
+     * Watch riportato al default.
+     */
+    204: void;
+};
+
+export type ResetRepoWatchResponse = ResetRepoWatchResponses[keyof ResetRepoWatchResponses];
+
+export type GetRepoWatchData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/watch';
+};
+
+export type GetRepoWatchErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepoWatchError = GetRepoWatchErrors[keyof GetRepoWatchErrors];
+
+export type GetRepoWatchResponses = {
+    /**
+     * Il Watch corrente.
+     */
+    200: RepoWatch;
+};
+
+export type GetRepoWatchResponse = GetRepoWatchResponses[keyof GetRepoWatchResponses];
+
+export type SetRepoWatchData = {
+    body: SetRepoWatchInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/watch';
+};
+
+export type SetRepoWatchErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetRepoWatchError = SetRepoWatchErrors[keyof SetRepoWatchErrors];
+
+export type SetRepoWatchResponses = {
+    /**
+     * Watch aggiornato.
+     */
+    200: RepoWatch;
+};
+
+export type SetRepoWatchResponse = SetRepoWatchResponses[keyof SetRepoWatchResponses];
+
+export type UnsubscribeIssueData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/subscription';
+};
+
+export type UnsubscribeIssueErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UnsubscribeIssueError = UnsubscribeIssueErrors[keyof UnsubscribeIssueErrors];
+
+export type UnsubscribeIssueResponses = {
+    /**
+     * Iscrizione disattivata.
+     */
+    200: IssueSubscription;
+};
+
+export type UnsubscribeIssueResponse = UnsubscribeIssueResponses[keyof UnsubscribeIssueResponses];
+
+export type GetIssueSubscriptionData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/subscription';
+};
+
+export type GetIssueSubscriptionErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetIssueSubscriptionError = GetIssueSubscriptionErrors[keyof GetIssueSubscriptionErrors];
+
+export type GetIssueSubscriptionResponses = {
+    /**
+     * Lo stato dell'iscrizione.
+     */
+    200: IssueSubscription;
+};
+
+export type GetIssueSubscriptionResponse = GetIssueSubscriptionResponses[keyof GetIssueSubscriptionResponses];
+
+export type SubscribeIssueData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della issue nel repo (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/issues/{number}/subscription';
+};
+
+export type SubscribeIssueErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SubscribeIssueError = SubscribeIssueErrors[keyof SubscribeIssueErrors];
+
+export type SubscribeIssueResponses = {
+    /**
+     * Iscrizione attiva.
+     */
+    200: IssueSubscription;
+};
+
+export type SubscribeIssueResponse = SubscribeIssueResponses[keyof SubscribeIssueResponses];
+
+export type ListRepoWebhooksData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/hooks';
+};
+
+export type ListRepoWebhooksErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListRepoWebhooksError = ListRepoWebhooksErrors[keyof ListRepoWebhooksErrors];
+
+export type ListRepoWebhooksResponses = {
+    /**
+     * Pagina di webhook.
+     */
+    200: WebhookList;
+};
+
+export type ListRepoWebhooksResponse = ListRepoWebhooksResponses[keyof ListRepoWebhooksResponses];
+
+export type CreateRepoWebhookData = {
+    body: CreateWebhookInputWritable;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks';
+};
+
+export type CreateRepoWebhookErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateRepoWebhookError = CreateRepoWebhookErrors[keyof CreateRepoWebhookErrors];
+
+export type CreateRepoWebhookResponses = {
+    /**
+     * Webhook creato.
+     */
+    201: Webhook;
+};
+
+export type CreateRepoWebhookResponse = CreateRepoWebhookResponses[keyof CreateRepoWebhookResponses];
+
+export type DeleteRepoWebhookData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks/{hookId}';
+};
+
+export type DeleteRepoWebhookErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteRepoWebhookError = DeleteRepoWebhookErrors[keyof DeleteRepoWebhookErrors];
+
+export type DeleteRepoWebhookResponses = {
+    /**
+     * Webhook eliminato.
+     */
+    204: void;
+};
+
+export type DeleteRepoWebhookResponse = DeleteRepoWebhookResponses[keyof DeleteRepoWebhookResponses];
+
+export type GetRepoWebhookData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks/{hookId}';
+};
+
+export type GetRepoWebhookErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepoWebhookError = GetRepoWebhookErrors[keyof GetRepoWebhookErrors];
+
+export type GetRepoWebhookResponses = {
+    /**
+     * Il webhook.
+     */
+    200: Webhook;
+};
+
+export type GetRepoWebhookResponse = GetRepoWebhookResponses[keyof GetRepoWebhookResponses];
+
+export type UpdateRepoWebhookData = {
+    body: UpdateWebhookInputWritable;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks/{hookId}';
+};
+
+export type UpdateRepoWebhookErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateRepoWebhookError = UpdateRepoWebhookErrors[keyof UpdateRepoWebhookErrors];
+
+export type UpdateRepoWebhookResponses = {
+    /**
+     * Webhook aggiornato.
+     */
+    200: Webhook;
+};
+
+export type UpdateRepoWebhookResponse = UpdateRepoWebhookResponses[keyof UpdateRepoWebhookResponses];
+
+export type ReactivateRepoWebhookData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/reactivate';
+};
+
+export type ReactivateRepoWebhookErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ReactivateRepoWebhookError = ReactivateRepoWebhookErrors[keyof ReactivateRepoWebhookErrors];
+
+export type ReactivateRepoWebhookResponses = {
+    /**
+     * Webhook riattivato.
+     */
+    200: Webhook;
+};
+
+export type ReactivateRepoWebhookResponse = ReactivateRepoWebhookResponses[keyof ReactivateRepoWebhookResponses];
+
+export type ListRepoWebhookDeliveriesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+    };
+    query?: {
+        status?: WebhookDeliveryStatus;
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/deliveries';
+};
+
+export type ListRepoWebhookDeliveriesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListRepoWebhookDeliveriesError = ListRepoWebhookDeliveriesErrors[keyof ListRepoWebhookDeliveriesErrors];
+
+export type ListRepoWebhookDeliveriesResponses = {
+    /**
+     * Pagina di consegne.
+     */
+    200: WebhookDeliveryList;
+};
+
+export type ListRepoWebhookDeliveriesResponse = ListRepoWebhookDeliveriesResponses[keyof ListRepoWebhookDeliveriesResponses];
+
+export type GetRepoWebhookDeliveryData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+        deliveryId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}';
+};
+
+export type GetRepoWebhookDeliveryErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepoWebhookDeliveryError = GetRepoWebhookDeliveryErrors[keyof GetRepoWebhookDeliveryErrors];
+
+export type GetRepoWebhookDeliveryResponses = {
+    /**
+     * La consegna.
+     */
+    200: WebhookDeliveryDetail;
+};
+
+export type GetRepoWebhookDeliveryResponse = GetRepoWebhookDeliveryResponses[keyof GetRepoWebhookDeliveryResponses];
+
+export type RedeliverRepoWebhookDeliveryData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        hookId: string;
+        deliveryId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver';
+};
+
+export type RedeliverRepoWebhookDeliveryErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RedeliverRepoWebhookDeliveryError = RedeliverRepoWebhookDeliveryErrors[keyof RedeliverRepoWebhookDeliveryErrors];
+
+export type RedeliverRepoWebhookDeliveryResponses = {
+    /**
+     * Consegna in coda.
+     */
+    202: WebhookDeliverySummary;
+};
+
+export type RedeliverRepoWebhookDeliveryResponse = RedeliverRepoWebhookDeliveryResponses[keyof RedeliverRepoWebhookDeliveryResponses];
+
+export type ListOrgWebhooksData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/orgs/{org}/hooks';
+};
+
+export type ListOrgWebhooksErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOrgWebhooksError = ListOrgWebhooksErrors[keyof ListOrgWebhooksErrors];
+
+export type ListOrgWebhooksResponses = {
+    /**
+     * Pagina di webhook.
+     */
+    200: WebhookList;
+};
+
+export type ListOrgWebhooksResponse = ListOrgWebhooksResponses[keyof ListOrgWebhooksResponses];
+
+export type CreateOrgWebhookData = {
+    body: CreateWebhookInputWritable;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks';
+};
+
+export type CreateOrgWebhookErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateOrgWebhookError = CreateOrgWebhookErrors[keyof CreateOrgWebhookErrors];
+
+export type CreateOrgWebhookResponses = {
+    /**
+     * Webhook creato.
+     */
+    201: Webhook;
+};
+
+export type CreateOrgWebhookResponse = CreateOrgWebhookResponses[keyof CreateOrgWebhookResponses];
+
+export type DeleteOrgWebhookData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks/{hookId}';
+};
+
+export type DeleteOrgWebhookErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteOrgWebhookError = DeleteOrgWebhookErrors[keyof DeleteOrgWebhookErrors];
+
+export type DeleteOrgWebhookResponses = {
+    /**
+     * Webhook eliminato.
+     */
+    204: void;
+};
+
+export type DeleteOrgWebhookResponse = DeleteOrgWebhookResponses[keyof DeleteOrgWebhookResponses];
+
+export type GetOrgWebhookData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks/{hookId}';
+};
+
+export type GetOrgWebhookErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetOrgWebhookError = GetOrgWebhookErrors[keyof GetOrgWebhookErrors];
+
+export type GetOrgWebhookResponses = {
+    /**
+     * Il webhook.
+     */
+    200: Webhook;
+};
+
+export type GetOrgWebhookResponse = GetOrgWebhookResponses[keyof GetOrgWebhookResponses];
+
+export type UpdateOrgWebhookData = {
+    body: UpdateWebhookInputWritable;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks/{hookId}';
+};
+
+export type UpdateOrgWebhookErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateOrgWebhookError = UpdateOrgWebhookErrors[keyof UpdateOrgWebhookErrors];
+
+export type UpdateOrgWebhookResponses = {
+    /**
+     * Webhook aggiornato.
+     */
+    200: Webhook;
+};
+
+export type UpdateOrgWebhookResponse = UpdateOrgWebhookResponses[keyof UpdateOrgWebhookResponses];
+
+export type ReactivateOrgWebhookData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks/{hookId}/reactivate';
+};
+
+export type ReactivateOrgWebhookErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ReactivateOrgWebhookError = ReactivateOrgWebhookErrors[keyof ReactivateOrgWebhookErrors];
+
+export type ReactivateOrgWebhookResponses = {
+    /**
+     * Webhook riattivato.
+     */
+    200: Webhook;
+};
+
+export type ReactivateOrgWebhookResponse = ReactivateOrgWebhookResponses[keyof ReactivateOrgWebhookResponses];
+
+export type ListOrgWebhookDeliveriesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+    };
+    query?: {
+        status?: WebhookDeliveryStatus;
+        page?: number;
+        perPage?: number;
+    };
+    url: '/orgs/{org}/hooks/{hookId}/deliveries';
+};
+
+export type ListOrgWebhookDeliveriesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOrgWebhookDeliveriesError = ListOrgWebhookDeliveriesErrors[keyof ListOrgWebhookDeliveriesErrors];
+
+export type ListOrgWebhookDeliveriesResponses = {
+    /**
+     * Pagina di consegne.
+     */
+    200: WebhookDeliveryList;
+};
+
+export type ListOrgWebhookDeliveriesResponse = ListOrgWebhookDeliveriesResponses[keyof ListOrgWebhookDeliveriesResponses];
+
+export type GetOrgWebhookDeliveryData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+        deliveryId: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}';
+};
+
+export type GetOrgWebhookDeliveryErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetOrgWebhookDeliveryError = GetOrgWebhookDeliveryErrors[keyof GetOrgWebhookDeliveryErrors];
+
+export type GetOrgWebhookDeliveryResponses = {
+    /**
+     * La consegna.
+     */
+    200: WebhookDeliveryDetail;
+};
+
+export type GetOrgWebhookDeliveryResponse = GetOrgWebhookDeliveryResponses[keyof GetOrgWebhookDeliveryResponses];
+
+export type RedeliverOrgWebhookDeliveryData = {
+    body?: never;
+    path: {
+        /**
+         * Nome (slug) dell'organizzazione.
+         */
+        org: Name;
+        hookId: string;
+        deliveryId: string;
+    };
+    query?: never;
+    url: '/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver';
+};
+
+export type RedeliverOrgWebhookDeliveryErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RedeliverOrgWebhookDeliveryError = RedeliverOrgWebhookDeliveryErrors[keyof RedeliverOrgWebhookDeliveryErrors];
+
+export type RedeliverOrgWebhookDeliveryResponses = {
+    /**
+     * Consegna in coda.
+     */
+    202: WebhookDeliverySummary;
+};
+
+export type RedeliverOrgWebhookDeliveryResponse = RedeliverOrgWebhookDeliveryResponses[keyof RedeliverOrgWebhookDeliveryResponses];
 
 export type VerifyCredentialData = {
     body: VerifyCredentialInputWritable;

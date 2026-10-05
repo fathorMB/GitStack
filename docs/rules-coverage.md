@@ -69,7 +69,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 | I8 | Menzioni rispettose della visibilità | | da compilare | |
 | I9 | Allegati protetti | | da compilare | |
 | I10 | Ricerca con sintassi GitHub | | da compilare | |
-| I11 | Blocco e modelli sì, trasferimento no | | da compilare | |
+| I11 | Blocco e modelli sì, trasferimento no | `services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_SenzaCartella`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_UnModello`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_PiuModelliOrdinati`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_ModelloMalformatoSaltato`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_ModelloSenzaFrontMatter`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_SoloMarkdownNonSaltati`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_Permessi` | coperta | |
 
 ## C — Collegamenti, notifiche, webhook (`collegamenti-notifiche-webhook.md`)
 
