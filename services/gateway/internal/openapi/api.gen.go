@@ -44,16 +44,16 @@ func (e AccessSourceKind) Valid() bool {
 
 // Defines values for CodeUserKind.
 const (
-	Agent CodeUserKind = "agent"
-	Human CodeUserKind = "human"
+	CodeUserKindAgent CodeUserKind = "agent"
+	CodeUserKindHuman CodeUserKind = "human"
 )
 
 // Valid indicates whether the value is a known member of the CodeUserKind enum.
 func (e CodeUserKind) Valid() bool {
 	switch e {
-	case Agent:
+	case CodeUserKindAgent:
 		return true
-	case Human:
+	case CodeUserKindHuman:
 		return true
 	default:
 		return false
@@ -146,25 +146,25 @@ func (e FileDiffCollapseReason) Valid() bool {
 
 // Defines values for FileDiffStatus.
 const (
-	Added    FileDiffStatus = "added"
-	Copied   FileDiffStatus = "copied"
-	Deleted  FileDiffStatus = "deleted"
-	Modified FileDiffStatus = "modified"
-	Renamed  FileDiffStatus = "renamed"
+	FileDiffStatusAdded    FileDiffStatus = "added"
+	FileDiffStatusCopied   FileDiffStatus = "copied"
+	FileDiffStatusDeleted  FileDiffStatus = "deleted"
+	FileDiffStatusModified FileDiffStatus = "modified"
+	FileDiffStatusRenamed  FileDiffStatus = "renamed"
 )
 
 // Valid indicates whether the value is a known member of the FileDiffStatus enum.
 func (e FileDiffStatus) Valid() bool {
 	switch e {
-	case Added:
+	case FileDiffStatusAdded:
 		return true
-	case Copied:
+	case FileDiffStatusCopied:
 		return true
-	case Deleted:
+	case FileDiffStatusDeleted:
 		return true
-	case Modified:
+	case FileDiffStatusModified:
 		return true
-	case Renamed:
+	case FileDiffStatusRenamed:
 		return true
 	default:
 		return false
@@ -231,6 +231,144 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for IssueCloseReason.
+const (
+	Completed  IssueCloseReason = "completed"
+	Duplicate  IssueCloseReason = "duplicate"
+	NotPlanned IssueCloseReason = "not_planned"
+)
+
+// Valid indicates whether the value is a known member of the IssueCloseReason enum.
+func (e IssueCloseReason) Valid() bool {
+	switch e {
+	case Completed:
+		return true
+	case Duplicate:
+		return true
+	case NotPlanned:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueEventType.
+const (
+	IssueEventTypeAssigned       IssueEventType = "assigned"
+	IssueEventTypeClosed         IssueEventType = "closed"
+	IssueEventTypeCommentDeleted IssueEventType = "comment_deleted"
+	IssueEventTypeDemilestoned   IssueEventType = "demilestoned"
+	IssueEventTypeEdited         IssueEventType = "edited"
+	IssueEventTypeHidden         IssueEventType = "hidden"
+	IssueEventTypeLabeled        IssueEventType = "labeled"
+	IssueEventTypeLocked         IssueEventType = "locked"
+	IssueEventTypeMilestoned     IssueEventType = "milestoned"
+	IssueEventTypeOpened         IssueEventType = "opened"
+	IssueEventTypeReferenced     IssueEventType = "referenced"
+	IssueEventTypeRenamed        IssueEventType = "renamed"
+	IssueEventTypeReopened       IssueEventType = "reopened"
+	IssueEventTypeUnassigned     IssueEventType = "unassigned"
+	IssueEventTypeUnhidden       IssueEventType = "unhidden"
+	IssueEventTypeUnlabeled      IssueEventType = "unlabeled"
+	IssueEventTypeUnlocked       IssueEventType = "unlocked"
+)
+
+// Valid indicates whether the value is a known member of the IssueEventType enum.
+func (e IssueEventType) Valid() bool {
+	switch e {
+	case IssueEventTypeAssigned:
+		return true
+	case IssueEventTypeClosed:
+		return true
+	case IssueEventTypeCommentDeleted:
+		return true
+	case IssueEventTypeDemilestoned:
+		return true
+	case IssueEventTypeEdited:
+		return true
+	case IssueEventTypeHidden:
+		return true
+	case IssueEventTypeLabeled:
+		return true
+	case IssueEventTypeLocked:
+		return true
+	case IssueEventTypeMilestoned:
+		return true
+	case IssueEventTypeOpened:
+		return true
+	case IssueEventTypeReferenced:
+		return true
+	case IssueEventTypeRenamed:
+		return true
+	case IssueEventTypeReopened:
+		return true
+	case IssueEventTypeUnassigned:
+		return true
+	case IssueEventTypeUnhidden:
+		return true
+	case IssueEventTypeUnlabeled:
+		return true
+	case IssueEventTypeUnlocked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueMilestoneRefState.
+const (
+	IssueMilestoneRefStateClosed IssueMilestoneRefState = "closed"
+	IssueMilestoneRefStateOpen   IssueMilestoneRefState = "open"
+)
+
+// Valid indicates whether the value is a known member of the IssueMilestoneRefState enum.
+func (e IssueMilestoneRefState) Valid() bool {
+	switch e {
+	case IssueMilestoneRefStateClosed:
+		return true
+	case IssueMilestoneRefStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueState.
+const (
+	IssueStateClosed IssueState = "closed"
+	IssueStateOpen   IssueState = "open"
+)
+
+// Valid indicates whether the value is a known member of the IssueState enum.
+func (e IssueState) Valid() bool {
+	switch e {
+	case IssueStateClosed:
+		return true
+	case IssueStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueUserKind.
+const (
+	IssueUserKindAgent IssueUserKind = "agent"
+	IssueUserKindHuman IssueUserKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the IssueUserKind enum.
+func (e IssueUserKind) Valid() bool {
+	switch e {
+	case IssueUserKindAgent:
+		return true
+	case IssueUserKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LicenseTemplate.
 const (
 	Agpl30     LicenseTemplate = "agpl-3.0"
@@ -264,6 +402,24 @@ func (e LicenseTemplate) Valid() bool {
 	case Mpl20:
 		return true
 	case Unlicense:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MilestoneState.
+const (
+	MilestoneStateClosed MilestoneState = "closed"
+	MilestoneStateOpen   MilestoneState = "open"
+)
+
+// Valid indicates whether the value is a known member of the MilestoneState enum.
+func (e MilestoneState) Valid() bool {
+	switch e {
+	case MilestoneStateClosed:
+		return true
+	case MilestoneStateOpen:
 		return true
 	default:
 		return false
@@ -351,6 +507,24 @@ func (e TreeEntryType) Valid() bool {
 	}
 }
 
+// Defines values for UpdateMilestoneInputState.
+const (
+	UpdateMilestoneInputStateClosed UpdateMilestoneInputState = "closed"
+	UpdateMilestoneInputStateOpen   UpdateMilestoneInputState = "open"
+)
+
+// Valid indicates whether the value is a known member of the UpdateMilestoneInputState enum.
+func (e UpdateMilestoneInputState) Valid() bool {
+	switch e {
+	case UpdateMilestoneInputStateClosed:
+		return true
+	case UpdateMilestoneInputStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ArchiveFormatParam.
 const (
 	ArchiveFormatParamTarGz ArchiveFormatParam = "tar.gz"
@@ -363,6 +537,72 @@ func (e ArchiveFormatParam) Valid() bool {
 	case ArchiveFormatParamTarGz:
 		return true
 	case ArchiveFormatParamZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueSortParam.
+const (
+	IssueSortParamComments  IssueSortParam = "comments"
+	IssueSortParamCreated   IssueSortParam = "created"
+	IssueSortParamRelevance IssueSortParam = "relevance"
+	IssueSortParamUpdated   IssueSortParam = "updated"
+)
+
+// Valid indicates whether the value is a known member of the IssueSortParam enum.
+func (e IssueSortParam) Valid() bool {
+	switch e {
+	case IssueSortParamComments:
+		return true
+	case IssueSortParamCreated:
+		return true
+	case IssueSortParamRelevance:
+		return true
+	case IssueSortParamUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueStateFilter.
+const (
+	IssueStateFilterAll    IssueStateFilter = "all"
+	IssueStateFilterClosed IssueStateFilter = "closed"
+	IssueStateFilterOpen   IssueStateFilter = "open"
+)
+
+// Valid indicates whether the value is a known member of the IssueStateFilter enum.
+func (e IssueStateFilter) Valid() bool {
+	switch e {
+	case IssueStateFilterAll:
+		return true
+	case IssueStateFilterClosed:
+		return true
+	case IssueStateFilterOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MilestoneStateFilter.
+const (
+	MilestoneStateFilterAll    MilestoneStateFilter = "all"
+	MilestoneStateFilterClosed MilestoneStateFilter = "closed"
+	MilestoneStateFilterOpen   MilestoneStateFilter = "open"
+)
+
+// Valid indicates whether the value is a known member of the MilestoneStateFilter enum.
+func (e MilestoneStateFilter) Valid() bool {
+	switch e {
+	case MilestoneStateFilterAll:
+		return true
+	case MilestoneStateFilterClosed:
+		return true
+	case MilestoneStateFilterOpen:
 		return true
 	default:
 		return false
@@ -423,6 +663,96 @@ func (e GetRepositoryCommitPatchParamsFormat) Valid() bool {
 	}
 }
 
+// Defines values for ListIssuesParamsState.
+const (
+	ListIssuesParamsStateAll    ListIssuesParamsState = "all"
+	ListIssuesParamsStateClosed ListIssuesParamsState = "closed"
+	ListIssuesParamsStateOpen   ListIssuesParamsState = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListIssuesParamsState enum.
+func (e ListIssuesParamsState) Valid() bool {
+	switch e {
+	case ListIssuesParamsStateAll:
+		return true
+	case ListIssuesParamsStateClosed:
+		return true
+	case ListIssuesParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListIssuesParamsSort.
+const (
+	ListIssuesParamsSortComments  ListIssuesParamsSort = "comments"
+	ListIssuesParamsSortCreated   ListIssuesParamsSort = "created"
+	ListIssuesParamsSortRelevance ListIssuesParamsSort = "relevance"
+	ListIssuesParamsSortUpdated   ListIssuesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListIssuesParamsSort enum.
+func (e ListIssuesParamsSort) Valid() bool {
+	switch e {
+	case ListIssuesParamsSortComments:
+		return true
+	case ListIssuesParamsSortCreated:
+		return true
+	case ListIssuesParamsSortRelevance:
+		return true
+	case ListIssuesParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMilestonesParamsState.
+const (
+	ListMilestonesParamsStateAll    ListMilestonesParamsState = "all"
+	ListMilestonesParamsStateClosed ListMilestonesParamsState = "closed"
+	ListMilestonesParamsStateOpen   ListMilestonesParamsState = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListMilestonesParamsState enum.
+func (e ListMilestonesParamsState) Valid() bool {
+	switch e {
+	case ListMilestonesParamsStateAll:
+		return true
+	case ListMilestonesParamsStateClosed:
+		return true
+	case ListMilestonesParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchIssuesParamsSort.
+const (
+	SearchIssuesParamsSortComments  SearchIssuesParamsSort = "comments"
+	SearchIssuesParamsSortCreated   SearchIssuesParamsSort = "created"
+	SearchIssuesParamsSortRelevance SearchIssuesParamsSort = "relevance"
+	SearchIssuesParamsSortUpdated   SearchIssuesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the SearchIssuesParamsSort enum.
+func (e SearchIssuesParamsSort) Valid() bool {
+	switch e {
+	case SearchIssuesParamsSortComments:
+		return true
+	case SearchIssuesParamsSortCreated:
+		return true
+	case SearchIssuesParamsSortRelevance:
+		return true
+	case SearchIssuesParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
 // AccessSource Una fonte del ruolo su un repo. `direct`: grant all'utente; `team`: grant al team `organization`/`team` (di cui e' membro o la cui organizzazione possiede); `owner`: owner dell'organizzazione proprietaria (`organization`) o proprietario del repo personale (P1, P6), sempre `admin`; `internal`: visibilita' interna (P3), `read`; `installation_admin`: amministratore dell'installazione, `admin`.
 type AccessSource struct {
 	Kind AccessSourceKind `json:"kind"`
@@ -468,6 +798,13 @@ type Branch struct {
 type BranchList struct {
 	Items []Branch `json:"items"`
 	Total int      `json:"total"`
+}
+
+// CloseIssueInput defines model for CloseIssueInput.
+type CloseIssueInput struct {
+	// DuplicateOf Obbligatorio con `reason=duplicate`, vietato altrimenti.
+	DuplicateOf *int64            `json:"duplicateOf,omitempty"`
+	Reason      *IssueCloseReason `json:"reason,omitempty"`
 }
 
 // CodeSearchHit defines model for CodeSearchHit.
@@ -567,9 +904,49 @@ type CommitSummary struct {
 	Subject string `json:"subject"`
 }
 
+// CreateIssueCommentInput defines model for CreateIssueCommentInput.
+type CreateIssueCommentInput struct {
+	AttachmentIds *[]openapi_types.UUID `json:"attachmentIds,omitempty"`
+	Body          string                `json:"body"`
+}
+
+// CreateIssueInput defines model for CreateIssueInput.
+type CreateIssueInput struct {
+	// Assignees Nomi utente con `write`. Richiede `write`.
+	Assignees     *[]Name               `json:"assignees,omitempty"`
+	AttachmentIds *[]openapi_types.UUID `json:"attachmentIds,omitempty"`
+	Body          *string               `json:"body,omitempty"`
+
+	// Labels Nomi di etichette del repo. Richiede `write`.
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Milestone Numero di una milestone del repo. Richiede `write`.
+	Milestone *int64 `json:"milestone,omitempty"`
+	Title     string `json:"title"`
+}
+
+// CreateLabelInput defines model for CreateLabelInput.
+type CreateLabelInput struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color       LabelColor `json:"color"`
+	Description *string    `json:"description,omitempty"`
+	Name        string     `json:"name"`
+}
+
+// CreateMilestoneInput defines model for CreateMilestoneInput.
+type CreateMilestoneInput struct {
+	Description *string             `json:"description,omitempty"`
+	DueOn       *openapi_types.Date `json:"dueOn,omitempty"`
+	Title       string              `json:"title"`
+}
+
 // CreateRepositoryInput defines model for CreateRepositoryInput.
 type CreateRepositoryInput struct {
-	Description *string `json:"description,omitempty"`
+	// DefaultLabels Crea le etichette predefinite (I5): `bug`, `enhancement`, `documentation`, `question`, `duplicate`, `good first issue`, `agent-ready`, `needs-human`. Attiva di default; `false` crea il repo senza etichette.
+	DefaultLabels *bool   `json:"defaultLabels,omitempty"`
+	Description   *string `json:"description,omitempty"`
 
 	// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
 	GitignoreTemplate *GitignoreTemplate `json:"gitignoreTemplate,omitempty"`
@@ -743,6 +1120,235 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// Issue defines model for Issue.
+type Issue struct {
+	Assignees   []IssueUser        `json:"assignees"`
+	Attachments *[]IssueAttachment `json:"attachments,omitempty"`
+	Author      IssueUser          `json:"author"`
+
+	// Body Markdown (D10).
+	Body string `json:"body"`
+
+	// CloseReason Presente solo se `state` e' `closed`; azzerato dalla riapertura (I2).
+	CloseReason *IssueCloseReason `json:"closeReason,omitempty"`
+	ClosedAt    *time.Time        `json:"closedAt,omitempty"`
+
+	// CommentCount Commenti non eliminati.
+	CommentCount int       `json:"commentCount"`
+	CreatedAt    time.Time `json:"createdAt"`
+
+	// DuplicateOf Numero della issue di cui questa e' un duplicato (solo con `closeReason=duplicate`).
+	DuplicateOf *int64 `json:"duplicateOf,omitempty"`
+
+	// Edited Il testo e' stato modificato (I4); le versioni precedenti sono per `admin`.
+	Edited bool `json:"edited"`
+
+	// Hidden Nascosta (I4). Chi non e' `admin` non la riceve mai: e' 404.
+	Hidden bool               `json:"hidden"`
+	Id     openapi_types.UUID `json:"id"`
+	Labels []IssueLabelRef    `json:"labels"`
+
+	// Locked Discussione bloccata (I11).
+	Locked    bool               `json:"locked"`
+	Milestone *IssueMilestoneRef `json:"milestone,omitempty"`
+
+	// Number `#n`, dal contatore del repo condiviso con le PR (I1); non si riusa mai.
+	Number    int64      `json:"number"`
+	State     IssueState `json:"state"`
+	Title     string     `json:"title"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+}
+
+// IssueAttachment defines model for IssueAttachment.
+type IssueAttachment struct {
+	ContentType string    `json:"contentType"`
+	CreatedAt   time.Time `json:"createdAt"`
+
+	// Filename Nome originale, solo metadato (mai nel percorso su disco).
+	Filename string             `json:"filename"`
+	Id       openapi_types.UUID `json:"id"`
+	Size     int64              `json:"size"`
+
+	// Url Percorso di `getIssueAttachment`; richiede autenticazione.
+	Url *string `json:"url,omitempty"`
+}
+
+// IssueCloseReason Motivo di chiusura (I2). `completed` e' anche quello di `fixes
+type IssueCloseReason string
+
+// IssueComment defines model for IssueComment.
+type IssueComment struct {
+	Attachments *[]IssueAttachment `json:"attachments,omitempty"`
+	Author      IssueUser          `json:"author"`
+
+	// Body Markdown; vuoto se `deleted`.
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Deleted Eliminato (comment deleted, I4): resta la traccia, senza testo.
+	Deleted     bool               `json:"deleted"`
+	Edited      bool               `json:"edited"`
+	Id          openapi_types.UUID `json:"id"`
+	IssueNumber int64              `json:"issueNumber"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+}
+
+// IssueCommentList defines model for IssueCommentList.
+type IssueCommentList struct {
+	Items   []IssueComment `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
+// IssueEvent defines model for IssueEvent.
+type IssueEvent struct {
+	// Actor Assente per gli eventi di sistema (es. chiusura da `fixes
+	Actor     *IssueUser `json:"actor,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+
+	// Data Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+	Data *map[string]interface{} `json:"data,omitempty"`
+	Id   openapi_types.UUID      `json:"id"`
+	Type IssueEventType          `json:"type"`
+}
+
+// IssueEventList defines model for IssueEventList.
+type IssueEventList struct {
+	Items   []IssueEvent `json:"items"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+	Total   int          `json:"total"`
+}
+
+// IssueEventType defines model for IssueEventType.
+type IssueEventType string
+
+// IssueLabelRef defines model for IssueLabelRef.
+type IssueLabelRef struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color LabelColor         `json:"color"`
+	Id    openapi_types.UUID `json:"id"`
+	Name  string             `json:"name"`
+}
+
+// IssueList defines model for IssueList.
+type IssueList struct {
+	Items   []IssueSummary `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
+// IssueMilestoneRef defines model for IssueMilestoneRef.
+type IssueMilestoneRef struct {
+	Number int64                  `json:"number"`
+	State  IssueMilestoneRefState `json:"state"`
+	Title  string                 `json:"title"`
+}
+
+// IssueMilestoneRefState defines model for IssueMilestoneRef.State.
+type IssueMilestoneRefState string
+
+// IssueSearchResult defines model for IssueSearchResult.
+type IssueSearchResult struct {
+	// Issue Issue negli elenchi: senza testo.
+	Issue IssueSummary `json:"issue"`
+
+	// Repo `owner/nome` del repo.
+	Repo string `json:"repo"`
+}
+
+// IssueSearchResultList defines model for IssueSearchResultList.
+type IssueSearchResultList struct {
+	Items   []IssueSearchResult `json:"items"`
+	Page    int                 `json:"page"`
+	PerPage int                 `json:"perPage"`
+	Total   int                 `json:"total"`
+}
+
+// IssueState defines model for IssueState.
+type IssueState string
+
+// IssueSummary Issue negli elenchi: senza testo.
+type IssueSummary struct {
+	Assignees    []IssueUser        `json:"assignees"`
+	Author       IssueUser          `json:"author"`
+	CloseReason  *IssueCloseReason  `json:"closeReason,omitempty"`
+	CommentCount int                `json:"commentCount"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Labels       []IssueLabelRef    `json:"labels"`
+	Locked       *bool              `json:"locked,omitempty"`
+	Milestone    *IssueMilestoneRef `json:"milestone,omitempty"`
+	Number       int64              `json:"number"`
+	State        IssueState         `json:"state"`
+	Title        string             `json:"title"`
+	UpdatedAt    time.Time          `json:"updatedAt"`
+}
+
+// IssueTemplate defines model for IssueTemplate.
+type IssueTemplate struct {
+	About *string `json:"about,omitempty"`
+
+	// Body Testo Markdown iniziale, senza front matter.
+	Body   string    `json:"body"`
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Name Nome del file senza estensione.
+	Name string `json:"name"`
+
+	// Title Titolo proposto (front matter `title`).
+	Title *string `json:"title,omitempty"`
+}
+
+// IssueTemplateList defines model for IssueTemplateList.
+type IssueTemplateList struct {
+	Items []IssueTemplate `json:"items"`
+}
+
+// IssueUser defines model for IssueUser.
+type IssueUser struct {
+	DisplayName *string            `json:"displayName,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Kind        IssueUserKind      `json:"kind"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// IssueUserKind defines model for IssueUser.Kind.
+type IssueUserKind string
+
+// Label defines model for Label.
+type Label struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color       LabelColor         `json:"color"`
+	Description string             `json:"description"`
+	Id          openapi_types.UUID `json:"id"`
+	Name        string             `json:"name"`
+	OpenIssues  int                `json:"openIssues"`
+}
+
+// LabelColor Colore esadecimale a sei cifre, senza `#`.
+//
+// Example: d73a4a
+type LabelColor = string
+
+// LabelList defines model for LabelList.
+type LabelList struct {
+	Items   []Label `json:"items"`
+	Page    int     `json:"page"`
+	PerPage int     `json:"perPage"`
+	Total   int     `json:"total"`
+}
+
 // LanguageShare defines model for LanguageShare.
 type LanguageShare struct {
 	Bytes   int64   `json:"bytes"`
@@ -758,6 +1364,41 @@ type Languages struct {
 
 // LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
 type LicenseTemplate string
+
+// LockIssueInput defines model for LockIssueInput.
+type LockIssueInput struct {
+	// Reason Motivo facoltativo, mostrato nella cronologia.
+	Reason *string `json:"reason,omitempty"`
+}
+
+// Milestone defines model for Milestone.
+type Milestone struct {
+	ClosedAt *time.Time `json:"closedAt,omitempty"`
+
+	// ClosedIssues Issues chiuse come `completed` (I2); le altre chiusure non contano.
+	ClosedIssues int                 `json:"closedIssues"`
+	CreatedAt    time.Time           `json:"createdAt"`
+	Description  string              `json:"description"`
+	DueOn        *openapi_types.Date `json:"dueOn,omitempty"`
+	Number       int64               `json:"number"`
+
+	// OpenIssues Issues aperte.
+	OpenIssues int            `json:"openIssues"`
+	State      MilestoneState `json:"state"`
+	Title      string         `json:"title"`
+	UpdatedAt  time.Time      `json:"updatedAt"`
+}
+
+// MilestoneState defines model for Milestone.State.
+type MilestoneState string
+
+// MilestoneList defines model for MilestoneList.
+type MilestoneList struct {
+	Items   []Milestone `json:"items"`
+	Page    int         `json:"page"`
+	PerPage int         `json:"perPage"`
+	Total   int         `json:"total"`
+}
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -876,6 +1517,27 @@ type ResourceList struct {
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
+// SetIssueAssigneesInput defines model for SetIssueAssigneesInput.
+type SetIssueAssigneesInput struct {
+	Assignees []Name `json:"assignees"`
+}
+
+// SetIssueHiddenInput defines model for SetIssueHiddenInput.
+type SetIssueHiddenInput struct {
+	Hidden bool `json:"hidden"`
+}
+
+// SetIssueLabelsInput defines model for SetIssueLabelsInput.
+type SetIssueLabelsInput struct {
+	Labels []string `json:"labels"`
+}
+
+// SetIssueMilestoneInput defines model for SetIssueMilestoneInput.
+type SetIssueMilestoneInput struct {
+	// Milestone Numero della milestone, o `null` per toglierla.
+	Milestone *int64 `json:"milestone"`
+}
+
 // Tag defines model for Tag.
 type Tag struct {
 	Annotated bool          `json:"annotated"`
@@ -899,6 +1561,26 @@ type Tag struct {
 type TagList struct {
 	Items []Tag `json:"items"`
 	Total int   `json:"total"`
+}
+
+// TextVersion defines model for TextVersion.
+type TextVersion struct {
+	Body string `json:"body"`
+
+	// CreatedAt Quando questa versione e' stata sostituita.
+	CreatedAt time.Time `json:"createdAt"`
+	Editor    IssueUser `json:"editor"`
+
+	// Title Solo per le versioni della issue.
+	Title *string `json:"title,omitempty"`
+
+	// Version 1 e' il testo originale.
+	Version int `json:"version"`
+}
+
+// TextVersionList defines model for TextVersionList.
+type TextVersionList struct {
+	Items []TextVersion `json:"items"`
 }
 
 // Tree defines model for Tree.
@@ -931,6 +1613,38 @@ type TreeEntry struct {
 // TreeEntryType defines model for TreeEntry.Type.
 type TreeEntryType string
 
+// UpdateIssueCommentInput defines model for UpdateIssueCommentInput.
+type UpdateIssueCommentInput struct {
+	Body string `json:"body"`
+}
+
+// UpdateIssueInput defines model for UpdateIssueInput.
+type UpdateIssueInput struct {
+	Body  *string `json:"body,omitempty"`
+	Title *string `json:"title,omitempty"`
+}
+
+// UpdateLabelInput defines model for UpdateLabelInput.
+type UpdateLabelInput struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color       *LabelColor `json:"color,omitempty"`
+	Description *string     `json:"description,omitempty"`
+	Name        *string     `json:"name,omitempty"`
+}
+
+// UpdateMilestoneInput defines model for UpdateMilestoneInput.
+type UpdateMilestoneInput struct {
+	Description *string                    `json:"description,omitempty"`
+	DueOn       *openapi_types.Date        `json:"dueOn,omitempty"`
+	State       *UpdateMilestoneInputState `json:"state,omitempty"`
+	Title       *string                    `json:"title,omitempty"`
+}
+
+// UpdateMilestoneInputState defines model for UpdateMilestoneInput.State.
+type UpdateMilestoneInputState string
+
 // UpdateRepositoryInput defines model for UpdateRepositoryInput.
 type UpdateRepositoryInput struct {
 	Archived             *bool   `json:"archived,omitempty"`
@@ -946,6 +1660,11 @@ type UpdateRepositoryInput struct {
 type UpdateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
 	Name       *string                 `json:"name,omitempty"`
+}
+
+// UploadIssueAttachmentInput defines model for UploadIssueAttachmentInput.
+type UploadIssueAttachmentInput struct {
+	File openapi_types.File `json:"file"`
 }
 
 // UserAccessItem defines model for UserAccessItem.
@@ -1004,6 +1723,48 @@ type GrantIdParam = openapi_types.UUID
 
 // IgnoreWhitespaceParam defines model for IgnoreWhitespaceParam.
 type IgnoreWhitespaceParam = bool
+
+// IssueAssigneeFilter defines model for IssueAssigneeFilter.
+type IssueAssigneeFilter = string
+
+// IssueAttachmentIdParam defines model for IssueAttachmentIdParam.
+type IssueAttachmentIdParam = openapi_types.UUID
+
+// IssueAuthorFilter defines model for IssueAuthorFilter.
+type IssueAuthorFilter = string
+
+// IssueCommentIdParam defines model for IssueCommentIdParam.
+type IssueCommentIdParam = openapi_types.UUID
+
+// IssueLabelsFilter defines model for IssueLabelsFilter.
+type IssueLabelsFilter = string
+
+// IssueMilestoneFilter defines model for IssueMilestoneFilter.
+type IssueMilestoneFilter = string
+
+// IssueNumberParam defines model for IssueNumberParam.
+type IssueNumberParam = int64
+
+// IssueQueryParam defines model for IssueQueryParam.
+type IssueQueryParam = string
+
+// IssueReasonFilter Motivo di chiusura (I2). `completed` e' anche quello di `fixes
+type IssueReasonFilter = IssueCloseReason
+
+// IssueSortParam defines model for IssueSortParam.
+type IssueSortParam string
+
+// IssueStateFilter defines model for IssueStateFilter.
+type IssueStateFilter string
+
+// LabelNameParam defines model for LabelNameParam.
+type LabelNameParam = string
+
+// MilestoneNumberParam defines model for MilestoneNumberParam.
+type MilestoneNumberParam = int64
+
+// MilestoneStateFilter defines model for MilestoneStateFilter.
+type MilestoneStateFilter string
 
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -1082,11 +1843,17 @@ type Forbidden = Error
 // NotFound Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type NotFound = Error
 
+// PayloadTooLarge Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+type PayloadTooLarge = Error
+
 // Unauthorized Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Unauthorized = Error
 
 // UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
+
+// UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+type UnprocessableEntity = Error
 
 // ListRepositoriesParams defines parameters for ListRepositories.
 type ListRepositoriesParams struct {
@@ -1175,11 +1942,68 @@ type ListRepositoryFilesParams struct {
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
 
+// ListIssuesParams defines parameters for ListIssues.
+type ListIssuesParams struct {
+	// Q Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+	Q      *IssueQueryParam       `form:"q,omitempty" json:"q,omitempty"`
+	State  *ListIssuesParamsState `form:"state,omitempty" json:"state,omitempty"`
+	Reason *IssueReasonFilter     `form:"reason,omitempty" json:"reason,omitempty"`
+
+	// Labels Nomi di etichette separati da virgola; la issue le ha tutte.
+	Labels *IssueLabelsFilter `form:"labels,omitempty" json:"labels,omitempty"`
+
+	// Assignee Nome utente, `@me`, `@agents` (assegnata a un agente) o `none`.
+	Assignee *IssueAssigneeFilter `form:"assignee,omitempty" json:"assignee,omitempty"`
+	Author   *IssueAuthorFilter   `form:"author,omitempty" json:"author,omitempty"`
+
+	// Milestone Numero della milestone, o `none`.
+	Milestone *IssueMilestoneFilter `form:"milestone,omitempty" json:"milestone,omitempty"`
+
+	// Sort Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+	Sort    *ListIssuesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam            `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam         `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListIssuesParamsState defines parameters for ListIssues.
+type ListIssuesParamsState string
+
+// ListIssuesParamsSort defines parameters for ListIssues.
+type ListIssuesParamsSort string
+
+// ListIssueCommentsParams defines parameters for ListIssueComments.
+type ListIssueCommentsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListIssueEventsParams defines parameters for ListIssueEvents.
+type ListIssueEventsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListLabelsParams defines parameters for ListLabels.
+type ListLabelsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryLanguagesParams defines parameters for GetRepositoryLanguages.
 type GetRepositoryLanguagesParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
+
+// ListMilestonesParams defines parameters for ListMilestones.
+type ListMilestonesParams struct {
+	State   *ListMilestonesParamsState `form:"state,omitempty" json:"state,omitempty"`
+	Page    *PageParam                 `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam              `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListMilestonesParamsState defines parameters for ListMilestones.
+type ListMilestonesParamsState string
 
 // GetRepositoryRawParams defines parameters for GetRepositoryRaw.
 type GetRepositoryRawParams struct {
@@ -1225,6 +2049,20 @@ type ListResourcesParams struct {
 	PerPage *PerPageParam       `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// SearchIssuesParams defines parameters for SearchIssues.
+type SearchIssuesParams struct {
+	// Q Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+	Q *IssueQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// Sort Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+	Sort    *SearchIssuesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam              `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam           `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// SearchIssuesParamsSort defines parameters for SearchIssues.
+type SearchIssuesParamsSort string
+
 // GetUserAccessParams defines parameters for GetUserAccess.
 type GetUserAccessParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -1236,6 +2074,51 @@ type CreateRepositoryJSONRequestBody = CreateRepositoryInput
 
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
+
+// UploadIssueAttachmentMultipartRequestBody defines body for UploadIssueAttachment for multipart/form-data ContentType.
+type UploadIssueAttachmentMultipartRequestBody = UploadIssueAttachmentInput
+
+// CreateIssueJSONRequestBody defines body for CreateIssue for application/json ContentType.
+type CreateIssueJSONRequestBody = CreateIssueInput
+
+// UpdateIssueJSONRequestBody defines body for UpdateIssue for application/json ContentType.
+type UpdateIssueJSONRequestBody = UpdateIssueInput
+
+// SetIssueAssigneesJSONRequestBody defines body for SetIssueAssignees for application/json ContentType.
+type SetIssueAssigneesJSONRequestBody = SetIssueAssigneesInput
+
+// CloseIssueJSONRequestBody defines body for CloseIssue for application/json ContentType.
+type CloseIssueJSONRequestBody = CloseIssueInput
+
+// CreateIssueCommentJSONRequestBody defines body for CreateIssueComment for application/json ContentType.
+type CreateIssueCommentJSONRequestBody = CreateIssueCommentInput
+
+// UpdateIssueCommentJSONRequestBody defines body for UpdateIssueComment for application/json ContentType.
+type UpdateIssueCommentJSONRequestBody = UpdateIssueCommentInput
+
+// SetIssueHiddenJSONRequestBody defines body for SetIssueHidden for application/json ContentType.
+type SetIssueHiddenJSONRequestBody = SetIssueHiddenInput
+
+// SetIssueLabelsJSONRequestBody defines body for SetIssueLabels for application/json ContentType.
+type SetIssueLabelsJSONRequestBody = SetIssueLabelsInput
+
+// LockIssueJSONRequestBody defines body for LockIssue for application/json ContentType.
+type LockIssueJSONRequestBody = LockIssueInput
+
+// SetIssueMilestoneJSONRequestBody defines body for SetIssueMilestone for application/json ContentType.
+type SetIssueMilestoneJSONRequestBody = SetIssueMilestoneInput
+
+// CreateLabelJSONRequestBody defines body for CreateLabel for application/json ContentType.
+type CreateLabelJSONRequestBody = CreateLabelInput
+
+// UpdateLabelJSONRequestBody defines body for UpdateLabel for application/json ContentType.
+type UpdateLabelJSONRequestBody = UpdateLabelInput
+
+// CreateMilestoneJSONRequestBody defines body for CreateMilestone for application/json ContentType.
+type CreateMilestoneJSONRequestBody = CreateMilestoneInput
+
+// UpdateMilestoneJSONRequestBody defines body for UpdateMilestone for application/json ContentType.
+type UpdateMilestoneJSONRequestBody = UpdateMilestoneInput
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
@@ -1293,9 +2176,105 @@ type ServerInterface interface {
 	// ListRepositoryFiles Percorsi di tutti i file di un ref ("Go to file")
 	// (GET /repos/{owner}/{repo}/files)
 	ListRepositoryFiles(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListRepositoryFilesParams)
+	// UploadIssueAttachment Carica un allegato
+	// (POST /repos/{owner}/{repo}/issue-attachments)
+	UploadIssueAttachment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetIssueAttachment Scarica un allegato
+	// (GET /repos/{owner}/{repo}/issue-attachments/{attachmentId})
+	GetIssueAttachment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, attachmentId IssueAttachmentIdParam)
+	// ListIssueTemplates Modelli di issue del repo
+	// (GET /repos/{owner}/{repo}/issue-templates)
+	ListIssueTemplates(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// ListIssues Elenca e cerca le issues del repo
+	// (GET /repos/{owner}/{repo}/issues)
+	ListIssues(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListIssuesParams)
+	// CreateIssue Apre una issue
+	// (POST /repos/{owner}/{repo}/issues)
+	CreateIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetIssue Legge una issue per numero
+	// (GET /repos/{owner}/{repo}/issues/{number})
+	GetIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// UpdateIssue Modifica titolo e testo
+	// (PATCH /repos/{owner}/{repo}/issues/{number})
+	UpdateIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// SetIssueAssignees Imposta gli assegnatari
+	// (PUT /repos/{owner}/{repo}/issues/{number}/assignees)
+	SetIssueAssignees(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// CloseIssue Chiude una issue con un motivo
+	// (POST /repos/{owner}/{repo}/issues/{number}/close)
+	CloseIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// ListIssueComments Commenti della issue
+	// (GET /repos/{owner}/{repo}/issues/{number}/comments)
+	ListIssueComments(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params ListIssueCommentsParams)
+	// CreateIssueComment Commenta la issue
+	// (POST /repos/{owner}/{repo}/issues/{number}/comments)
+	CreateIssueComment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// DeleteIssueComment Elimina un commento
+	// (DELETE /repos/{owner}/{repo}/issues/{number}/comments/{commentId})
+	DeleteIssueComment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam)
+	// UpdateIssueComment Modifica un commento
+	// (PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId})
+	UpdateIssueComment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam)
+	// ListIssueCommentVersions Versioni precedenti del testo di un commento
+	// (GET /repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions)
+	ListIssueCommentVersions(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam)
+	// ListIssueEvents Cronologia degli eventi
+	// (GET /repos/{owner}/{repo}/issues/{number}/events)
+	ListIssueEvents(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params ListIssueEventsParams)
+	// SetIssueHidden Nasconde o mostra una issue
+	// (PUT /repos/{owner}/{repo}/issues/{number}/hidden)
+	SetIssueHidden(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// SetIssueLabels Imposta le etichette
+	// (PUT /repos/{owner}/{repo}/issues/{number}/labels)
+	SetIssueLabels(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// UnlockIssue Sblocca la discussione
+	// (DELETE /repos/{owner}/{repo}/issues/{number}/lock)
+	UnlockIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// LockIssue Blocca la discussione
+	// (PUT /repos/{owner}/{repo}/issues/{number}/lock)
+	LockIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// SetIssueMilestone Imposta o toglie la milestone
+	// (PUT /repos/{owner}/{repo}/issues/{number}/milestone)
+	SetIssueMilestone(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// ReopenIssue Riapre una issue
+	// (POST /repos/{owner}/{repo}/issues/{number}/reopen)
+	ReopenIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// ListIssueVersions Versioni precedenti del testo della issue
+	// (GET /repos/{owner}/{repo}/issues/{number}/versions)
+	ListIssueVersions(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// ListLabels Etichette del repo
+	// (GET /repos/{owner}/{repo}/labels)
+	ListLabels(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListLabelsParams)
+	// CreateLabel Crea un'etichetta
+	// (POST /repos/{owner}/{repo}/labels)
+	CreateLabel(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DeleteLabel Elimina un'etichetta
+	// (DELETE /repos/{owner}/{repo}/labels/{name})
+	DeleteLabel(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam)
+	// GetLabel Legge un'etichetta
+	// (GET /repos/{owner}/{repo}/labels/{name})
+	GetLabel(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam)
+	// UpdateLabel Modifica un'etichetta
+	// (PATCH /repos/{owner}/{repo}/labels/{name})
+	UpdateLabel(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam)
 	// GetRepositoryLanguages Lingue del repo
 	// (GET /repos/{owner}/{repo}/languages)
 	GetRepositoryLanguages(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryLanguagesParams)
+	// ListMilestones Milestone del repo
+	// (GET /repos/{owner}/{repo}/milestones)
+	ListMilestones(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListMilestonesParams)
+	// CreateMilestone Crea una milestone
+	// (POST /repos/{owner}/{repo}/milestones)
+	CreateMilestone(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DeleteMilestone Elimina una milestone
+	// (DELETE /repos/{owner}/{repo}/milestones/{milestoneNumber})
+	DeleteMilestone(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam)
+	// GetMilestone Legge una milestone
+	// (GET /repos/{owner}/{repo}/milestones/{milestoneNumber})
+	GetMilestone(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam)
+	// UpdateMilestone Modifica o chiude una milestone
+	// (PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber})
+	UpdateMilestone(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam)
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	// (GET /repos/{owner}/{repo}/raw)
 	GetRepositoryRaw(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryRawParams)
@@ -1329,6 +2308,9 @@ type ServerInterface interface {
 	// UpdateResource Aggiorna una risorsa
 	// (PATCH /resources/{resourceId})
 	UpdateResource(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// SearchIssues Cerca issues su tutta l'installazione
+	// (GET /search/issues)
+	SearchIssues(w http.ResponseWriter, r *http.Request, params SearchIssuesParams)
 	// GetUserAccess Accesso effettivo di un utente ai repository
 	// (GET /users/{username}/access)
 	GetUserAccess(w http.ResponseWriter, r *http.Request, username UsernameParam, params GetUserAccessParams)
@@ -2121,6 +3103,1387 @@ func (siw *ServerInterfaceWrapper) ListRepositoryFiles(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// UploadIssueAttachment operation middleware
+func (siw *ServerInterfaceWrapper) UploadIssueAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadIssueAttachment(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetIssueAttachment operation middleware
+func (siw *ServerInterfaceWrapper) GetIssueAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId IssueAttachmentIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetIssueAttachment(w, r, owner, repo, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListIssueTemplates operation middleware
+func (siw *ServerInterfaceWrapper) ListIssueTemplates(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListIssueTemplates(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListIssues operation middleware
+func (siw *ServerInterfaceWrapper) ListIssues(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListIssuesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "reason" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "reason", r.URL.Query(), &params.Reason, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "reason"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "reason", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "labels" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "labels", r.URL.Query(), &params.Labels, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "labels"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "labels", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "assignee" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "assignee", r.URL.Query(), &params.Assignee, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "assignee"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "assignee", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "author" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "author", r.URL.Query(), &params.Author, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "author"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "author", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "milestone" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "milestone", r.URL.Query(), &params.Milestone, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "milestone"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "milestone", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListIssues(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateIssue operation middleware
+func (siw *ServerInterfaceWrapper) CreateIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateIssue(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetIssue operation middleware
+func (siw *ServerInterfaceWrapper) GetIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateIssue operation middleware
+func (siw *ServerInterfaceWrapper) UpdateIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetIssueAssignees operation middleware
+func (siw *ServerInterfaceWrapper) SetIssueAssignees(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetIssueAssignees(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CloseIssue operation middleware
+func (siw *ServerInterfaceWrapper) CloseIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CloseIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListIssueComments operation middleware
+func (siw *ServerInterfaceWrapper) ListIssueComments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListIssueCommentsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListIssueComments(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateIssueComment operation middleware
+func (siw *ServerInterfaceWrapper) CreateIssueComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateIssueComment(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteIssueComment operation middleware
+func (siw *ServerInterfaceWrapper) DeleteIssueComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "commentId" -------------
+	var commentId IssueCommentIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "commentId", r.PathValue("commentId"), &commentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "commentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteIssueComment(w, r, owner, repo, number, commentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateIssueComment operation middleware
+func (siw *ServerInterfaceWrapper) UpdateIssueComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "commentId" -------------
+	var commentId IssueCommentIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "commentId", r.PathValue("commentId"), &commentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "commentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateIssueComment(w, r, owner, repo, number, commentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListIssueCommentVersions operation middleware
+func (siw *ServerInterfaceWrapper) ListIssueCommentVersions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "commentId" -------------
+	var commentId IssueCommentIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "commentId", r.PathValue("commentId"), &commentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "commentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListIssueCommentVersions(w, r, owner, repo, number, commentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListIssueEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListIssueEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListIssueEventsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListIssueEvents(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetIssueHidden operation middleware
+func (siw *ServerInterfaceWrapper) SetIssueHidden(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetIssueHidden(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetIssueLabels operation middleware
+func (siw *ServerInterfaceWrapper) SetIssueLabels(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetIssueLabels(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UnlockIssue operation middleware
+func (siw *ServerInterfaceWrapper) UnlockIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnlockIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LockIssue operation middleware
+func (siw *ServerInterfaceWrapper) LockIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LockIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetIssueMilestone operation middleware
+func (siw *ServerInterfaceWrapper) SetIssueMilestone(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetIssueMilestone(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReopenIssue operation middleware
+func (siw *ServerInterfaceWrapper) ReopenIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReopenIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListIssueVersions operation middleware
+func (siw *ServerInterfaceWrapper) ListIssueVersions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListIssueVersions(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLabels operation middleware
+func (siw *ServerInterfaceWrapper) ListLabels(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLabelsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLabels(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLabel operation middleware
+func (siw *ServerInterfaceWrapper) CreateLabel(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLabel(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteLabel operation middleware
+func (siw *ServerInterfaceWrapper) DeleteLabel(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name LabelNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteLabel(w, r, owner, repo, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLabel operation middleware
+func (siw *ServerInterfaceWrapper) GetLabel(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name LabelNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLabel(w, r, owner, repo, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLabel operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLabel(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name LabelNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLabel(w, r, owner, repo, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetRepositoryLanguages operation middleware
 func (siw *ServerInterfaceWrapper) GetRepositoryLanguages(w http.ResponseWriter, r *http.Request) {
 
@@ -2163,6 +4526,250 @@ func (siw *ServerInterfaceWrapper) GetRepositoryLanguages(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRepositoryLanguages(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMilestones operation middleware
+func (siw *ServerInterfaceWrapper) ListMilestones(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMilestonesParams
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMilestones(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMilestone operation middleware
+func (siw *ServerInterfaceWrapper) CreateMilestone(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMilestone(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteMilestone operation middleware
+func (siw *ServerInterfaceWrapper) DeleteMilestone(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "milestoneNumber" -------------
+	var milestoneNumber MilestoneNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "milestoneNumber", r.PathValue("milestoneNumber"), &milestoneNumber, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "milestoneNumber", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteMilestone(w, r, owner, repo, milestoneNumber)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMilestone operation middleware
+func (siw *ServerInterfaceWrapper) GetMilestone(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "milestoneNumber" -------------
+	var milestoneNumber MilestoneNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "milestoneNumber", r.PathValue("milestoneNumber"), &milestoneNumber, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "milestoneNumber", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMilestone(w, r, owner, repo, milestoneNumber)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMilestone operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMilestone(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "milestoneNumber" -------------
+	var milestoneNumber MilestoneNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "milestoneNumber", r.PathValue("milestoneNumber"), &milestoneNumber, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "milestoneNumber", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMilestone(w, r, owner, repo, milestoneNumber)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2658,6 +5265,78 @@ func (siw *ServerInterfaceWrapper) UpdateResource(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// SearchIssues operation middleware
+func (siw *ServerInterfaceWrapper) SearchIssues(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchIssuesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchIssues(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetUserAccess operation middleware
 func (siw *ServerInterfaceWrapper) GetUserAccess(w http.ResponseWriter, r *http.Request) {
 
@@ -2862,6 +5541,39 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/files", wrapper.ListRepositoryFiles)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/search", wrapper.SearchRepositoryCode)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/patch", wrapper.GetRepositoryCommitPatch)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/search/issues", wrapper.SearchIssues)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues", wrapper.ListIssues)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issues", wrapper.CreateIssue)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}", wrapper.GetIssue)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}", wrapper.UpdateIssue)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/close", wrapper.CloseIssue)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/reopen", wrapper.ReopenIssue)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/hidden", wrapper.SetIssueHidden)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/lock", wrapper.UnlockIssue)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/lock", wrapper.LockIssue)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/assignees", wrapper.SetIssueAssignees)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/labels", wrapper.SetIssueLabels)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/milestone", wrapper.SetIssueMilestone)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/events", wrapper.ListIssueEvents)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/versions", wrapper.ListIssueVersions)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/comments", wrapper.ListIssueComments)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/comments", wrapper.CreateIssueComment)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/comments/{commentId}", wrapper.DeleteIssueComment)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/comments/{commentId}", wrapper.UpdateIssueComment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions", wrapper.ListIssueCommentVersions)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/issue-attachments", wrapper.UploadIssueAttachment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issue-attachments/{attachmentId}", wrapper.GetIssueAttachment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issue-templates", wrapper.ListIssueTemplates)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/labels", wrapper.ListLabels)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/labels", wrapper.CreateLabel)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/labels/{name}", wrapper.DeleteLabel)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/labels/{name}", wrapper.GetLabel)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/labels/{name}", wrapper.UpdateLabel)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones", wrapper.ListMilestones)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones", wrapper.CreateMilestone)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.DeleteMilestone)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.GetMilestone)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.UpdateMilestone)
 
 	return m
 }

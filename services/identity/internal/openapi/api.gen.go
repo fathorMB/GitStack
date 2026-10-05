@@ -928,6 +928,21 @@ type GitRepoIdParam = openapi_types.UUID
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
 
+// IssueAttachmentIdParam defines model for IssueAttachmentIdParam.
+type IssueAttachmentIdParam = openapi_types.UUID
+
+// IssueCommentIdParam defines model for IssueCommentIdParam.
+type IssueCommentIdParam = openapi_types.UUID
+
+// IssueNumberParam defines model for IssueNumberParam.
+type IssueNumberParam = int64
+
+// LabelNameParam defines model for LabelNameParam.
+type LabelNameParam = string
+
+// MilestoneNumberParam defines model for MilestoneNumberParam.
+type MilestoneNumberParam = int64
+
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice

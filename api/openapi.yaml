@@ -76,6 +76,10 @@ tags:
       ripristino; letture del codice (M-04): albero, file, branch, tag,
       commit, diff, blame, archivio, lingue, README. Un repo e' una risorsa generica `type=repo` (D15); servita
       da core.
+  - name: issues
+    description: >
+      Issues di un repo (M-05): commenti, cronologia, etichette, milestone,
+      assegnatari, allegati, modelli e ricerca. Regole I1-I11. Servite da core.
   - name: git-internal
     description: >
       Interfaccia interna del servizio git verso core (creazione su disco,
@@ -2287,6 +2291,1193 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /search/issues:
+    get:
+      operationId: searchIssues
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Cerca issues su tutta l'installazione
+      description: >
+        Ricerca con la sintassi di I10 (`is:`, `reason:`, `label:`, `assignee:` con
+        `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:` e testo libero con
+        ricerca testuale PostgreSQL) sui soli repo che l'utente puo' leggere. Stessa sintassi di
+        `listIssues`, che e' la ricerca nel singolo repo. Le issues nascoste compaiono solo a chi ha
+        `admin` sul loro repo. Un `q` che non si puo' interpretare risponde 422.
+      parameters:
+        - $ref: "#/components/parameters/IssueQueryParam"
+        - $ref: "#/components/parameters/IssueSortParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di risultati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueSearchResultList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listIssues
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Elenca e cerca le issues del repo
+      description: >
+        Issues del repo con filtri (stato, etichette, assegnatario, autore, milestone) e ricerca nel testo.
+        `q` usa la sintassi di I10 e i filtri espliciti si sommano a quelli di `q`. Le issues nascoste (I4)
+        compaiono solo a chi ha `admin`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+      parameters:
+        - $ref: "#/components/parameters/IssueQueryParam"
+        - $ref: "#/components/parameters/IssueStateFilter"
+        - $ref: "#/components/parameters/IssueReasonFilter"
+        - $ref: "#/components/parameters/IssueLabelsFilter"
+        - $ref: "#/components/parameters/IssueAssigneeFilter"
+        - $ref: "#/components/parameters/IssueAuthorFilter"
+        - $ref: "#/components/parameters/IssueMilestoneFilter"
+        - $ref: "#/components/parameters/IssueSortParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di issues.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createIssue
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Apre una issue
+      description: >
+        Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal
+        contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone
+        nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere
+        `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9).
+        Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIssueInput"
+      responses:
+        "201":
+          description: Issue creata.
+          headers:
+            Location:
+              description: URL della risorsa creata.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    get:
+      operationId: getIssue
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Legge una issue per numero
+      description: >
+        Una issue che non esiste nel repo risponde 404. Se e' nascosta (I4) chi non ha `admin` riceve
+        404, come se non esistesse, per non rivelare ne' il contenuto ne' l'esistenza di cio' che e' stato
+        nascosto. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+      responses:
+        "200":
+          description: La issue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateIssue
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica titolo e testo
+      description: >
+        Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo
+        salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire
+        `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+        Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIssueInput"
+      responses:
+        "200":
+          description: Issue aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/close:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    post:
+      operationId: closeIssue
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Chiude una issue con un motivo
+      description: >
+        Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`,
+        il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason`
+        non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue
+        (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseIssueInput"
+      responses:
+        "200":
+          description: Issue chiusa.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/reopen:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    post:
+      operationId: reopenIssue
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Riapre una issue
+      description: >
+        Come `closeIssue`: chi ha `write` o l'autore (I3). Riaprire azzera motivo e duplicato (I2).
+        Una issue gia' aperta risponde 409 `already_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      responses:
+        "200":
+          description: Issue riaperta.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/hidden:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    put:
+      operationId: setIssueHidden
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Nasconde o mostra una issue
+      description: >
+        Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a
+        `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetIssueHiddenInput"
+      responses:
+        "200":
+          description: Issue aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/lock:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    put:
+      operationId: lockIssue
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Blocca la discussione
+      description: >
+        Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403
+        `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LockIssueInput"
+      responses:
+        "200":
+          description: Issue bloccata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: unlockIssue
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Sblocca la discussione
+      description: >
+        Serve `admin` (I11). Sbloccare una issue non bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      responses:
+        "200":
+          description: Issue sbloccata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/assignees:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    put:
+      operationId: setIssueAssignees
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Imposta gli assegnatari
+      description: >
+        Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write`
+        puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422
+        (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetIssueAssigneesInput"
+      responses:
+        "200":
+          description: Issue aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/labels:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    put:
+      operationId: setIssueLabels
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Imposta le etichette
+      description: >
+        Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non
+        esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetIssueLabelsInput"
+      responses:
+        "200":
+          description: Issue aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/milestone:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    put:
+      operationId: setIssueMilestone
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Imposta o toglie la milestone
+      description: >
+        Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone
+        che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetIssueMilestoneInput"
+      responses:
+        "200":
+          description: Issue aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/events:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    get:
+      operationId: listIssueEvents
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Cronologia degli eventi
+      description: >
+        Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette,
+        assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di
+        commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di eventi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueEventList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/versions:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    get:
+      operationId: listIssueVersions
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Versioni precedenti del testo della issue
+      description: >
+        Solo con `admin` (I4): 403 per chi legge soltanto. Dalla piu' recente alla piu' vecchia; la versione
+        corrente non e' nell'elenco, e' il testo della issue. Vuoto se non e' mai stata modificata.
+      responses:
+        "200":
+          description: Versioni precedenti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextVersionList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/comments:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+    get:
+      operationId: listIssueComments
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Commenti della issue
+      description: >
+        Dal piu' vecchio al piu' recente. Un commento eliminato resta con `deleted: true` e testo vuoto
+        (traccia "comment deleted", I4). Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di commenti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueCommentList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createIssueComment
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Commenta la issue
+      description: >
+        Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha
+        `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB);
+        `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIssueCommentInput"
+      responses:
+        "201":
+          description: Commento creato.
+          headers:
+            Location:
+              description: URL della risorsa creata.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueComment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/comments/{commentId}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+      - $ref: "#/components/parameters/IssueCommentIdParam"
+    patch:
+      operationId: updateIssueComment
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica un commento
+      description: >
+        Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde
+        404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIssueCommentInput"
+      responses:
+        "200":
+          description: Commento aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueComment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteIssueComment
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina un commento
+      description: >
+        L'autore o chi ha `admin` (I4). Il testo viene svuotato e si registra l'evento `comment_deleted`
+        ("comment deleted"); le versioni precedenti restano visibili a `admin`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      responses:
+        "204":
+          description: Commento eliminato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueNumberParam"
+      - $ref: "#/components/parameters/IssueCommentIdParam"
+    get:
+      operationId: listIssueCommentVersions
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Versioni precedenti del testo di un commento
+      description: >
+        Solo con `admin` (I4), come `listIssueVersions`. Anche per i commenti eliminati.
+      responses:
+        "200":
+          description: Versioni precedenti.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextVersionList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issue-attachments:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    post:
+      operationId: uploadIssueAttachment
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Carica un allegato
+      description: >
+        `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini
+        (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413
+        `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`.
+        L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non
+        collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel
+        percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UploadIssueAttachmentInput"
+      responses:
+        "201":
+          description: Allegato caricato.
+          headers:
+            Location:
+              description: URL della risorsa creata.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueAttachment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issue-attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/IssueAttachmentIdParam"
+    get:
+      operationId: getIssueAttachment
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Scarica un allegato
+      description: >
+        Solo chi vede il repo (I9): nessun URL pubblico, la richiesta e' sempre autenticata. Sempre
+        `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`
+        (come B3). Un allegato di una issue nascosta e' 404 per chi non ha `admin`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+      responses:
+        "200":
+          description: Byte dell'allegato.
+          headers:
+            X-Content-Type-Options:
+              $ref: "#/components/headers/ContentTypeOptions"
+            Content-Security-Policy:
+              $ref: "#/components/headers/ContentSecurityPolicy"
+            Content-Disposition:
+              $ref: "#/components/headers/ContentDispositionAttachment"
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/issue-templates:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listIssueTemplates
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Modelli di issue del repo
+      description: >
+        Modelli Markdown in `.gitstack/ISSUE_TEMPLATE/` sul branch principale (I11), letti da core tramite il
+        servizio git. Vuoto se la cartella non c'e' o il repo e' vuoto. Il nome e' il file senza estensione.
+        Un modello propone titolo, etichette e testo iniziale: la UI, l'API e `gs` li usano per precompilare
+        `createIssue`, che non li impone.
+      responses:
+        "200":
+          description: Modelli.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueTemplateList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/labels:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listLabels
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Etichette del repo
+      description: >
+        Con il numero di issues aperte che le usano. Ordinate per nome. Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di etichette.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabelList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createLabel
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Crea un'etichetta
+      description: >
+        Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409
+        `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre.
+        Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLabelInput"
+      responses:
+        "201":
+          description: Etichetta creata.
+          headers:
+            Location:
+              description: URL della risorsa creata.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/labels/{name}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/LabelNameParam"
+    get:
+      operationId: getLabel
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Legge un'etichetta
+      description: >
+        Per nome, senza distinguere maiuscole/minuscole.
+      responses:
+        "200":
+          description: L'etichetta.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateLabel
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica un'etichetta
+      description: >
+        Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id).
+        409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLabelInput"
+      responses:
+        "200":
+          description: Etichetta aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteLabel
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina un'etichetta
+      description: >
+        Serve `write`. Toglie l'etichetta da tutte le issues (evento `unlabeled` nella cronologia). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      responses:
+        "204":
+          description: Etichetta eliminata.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/milestones:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listMilestones
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Milestone del repo
+      description: >
+        Con l'avanzamento: `closedIssues` conta solo le chiuse come `completed`; le `not_planned` e `duplicate`
+        non contano ne' fra le chiuse ne' fra le aperte (I2). Per scadenza crescente, poi per numero.
+      parameters:
+        - $ref: "#/components/parameters/MilestoneStateFilter"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di milestone.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createMilestone
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Crea una milestone
+      description: >
+        Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`),
+        descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMilestoneInput"
+      responses:
+        "201":
+          description: Milestone creata.
+          headers:
+            Location:
+              description: URL della risorsa creata.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Milestone"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/milestones/{milestoneNumber}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/MilestoneNumberParam"
+    get:
+      operationId: getMilestone
+      tags: [issues]
+      x-required-scopes: ["read:resource"]
+      summary: Legge una milestone
+      description: >
+        Per numero della milestone nel repo.
+      responses:
+        "200":
+          description: La milestone.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Milestone"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateMilestone
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica o chiude una milestone
+      description: >
+        Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMilestoneInput"
+      responses:
+        "200":
+          description: Milestone aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Milestone"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteMilestone
+      tags: [issues]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina una milestone
+      description: >
+        Serve `write`. Le issues collegate restano, senza milestone (evento `demilestoned`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+      responses:
+        "204":
+          description: Milestone eliminata.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/verify:
     post:
       operationId: verifyCredential
@@ -3519,6 +4710,122 @@ components:
         pattern: "^[0-9a-f]{7,64}$"
         minLength: 7
         maxLength: 64
+    IssueNumberParam:
+      name: number
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      description: Numero `#n` della issue nel repo (I1).
+    IssueCommentIdParam:
+      name: commentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Id del commento.
+    IssueAttachmentIdParam:
+      name: attachmentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Id dell'allegato.
+    LabelNameParam:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+      description: >
+        Nome dell'etichetta, codificato come componente di percorso (puo'
+        contenere spazi, es. `good first issue`).
+    MilestoneNumberParam:
+      name: milestoneNumber
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      description: Numero della milestone nel repo (indipendente da quello delle issues).
+    IssueQueryParam:
+      name: q
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 512
+      description: >
+        Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`,
+        `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`,
+        `repo:owner/nome`, `org:`, piu' testo libero.
+    IssueStateFilter:
+      name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [open, closed, all]
+        default: open
+    IssueReasonFilter:
+      name: reason
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/IssueCloseReason"
+    IssueLabelsFilter:
+      name: labels
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Nomi di etichette separati da virgola; la issue le ha tutte.
+    IssueAssigneeFilter:
+      name: assignee
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Nome utente, `@me`, `@agents` (assegnata a un agente) o `none`.
+    IssueAuthorFilter:
+      name: author
+      in: query
+      required: false
+      schema:
+        type: string
+    IssueMilestoneFilter:
+      name: milestone
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Numero della milestone, o `none`.
+    IssueSortParam:
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [created, updated, comments, relevance]
+        default: created
+      description: >
+        Ordinamento decrescente; `relevance` solo con testo libero in `q`
+        (altrimenti 422).
+    MilestoneStateFilter:
+      name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [open, closed, all]
+        default: open
 
   schemas:
     Health:
@@ -4717,6 +6024,13 @@ components:
           description: Crea un `README.md` iniziale (R5).
         gitignoreTemplate:
           $ref: "#/components/schemas/GitignoreTemplate"
+        defaultLabels:
+          type: boolean
+          default: true
+          description: >
+            Crea le etichette predefinite (I5): `bug`, `enhancement`, `documentation`,
+            `question`, `duplicate`, `good first issue`, `agent-ready`, `needs-human`.
+            Attiva di default; `false` crea il repo senza etichette.
         licenseTemplate:
           $ref: "#/components/schemas/LicenseTemplate"
 
@@ -5386,6 +6700,711 @@ components:
                 type: string
                 format: uri
                 nullable: true
+    IssueState:
+      type: string
+      enum: [open, closed]
+    IssueCloseReason:
+      type: string
+      enum: [completed, not_planned, duplicate]
+      description: Motivo di chiusura (I2). `completed` e' anche quello di `fixes #n`.
+    IssueUser:
+      type: object
+      additionalProperties: false
+      required: [id, username, kind]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+        displayName:
+          type: string
+    IssueLabelRef:
+      type: object
+      additionalProperties: false
+      required: [id, name, color]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          $ref: "#/components/schemas/LabelColor"
+    IssueMilestoneRef:
+      type: object
+      additionalProperties: false
+      required: [number, title, state]
+      properties:
+        number:
+          type: integer
+          format: int64
+        title:
+          type: string
+        state:
+          type: string
+          enum: [open, closed]
+    LabelColor:
+      type: string
+      pattern: '^[0-9a-fA-F]{6}$'
+      description: Colore esadecimale a sei cifre, senza `#`.
+      example: d73a4a
+    Issue:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - number
+        - title
+        - body
+        - state
+        - author
+        - labels
+        - assignees
+        - locked
+        - hidden
+        - edited
+        - commentCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          format: int64
+          description: >
+            `#n`, dal contatore del repo condiviso con le PR (I1); non si riusa mai.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        body:
+          type: string
+          maxLength: 65536
+          description: Markdown (D10).
+        state:
+          $ref: "#/components/schemas/IssueState"
+        closeReason:
+          allOf:
+            - $ref: "#/components/schemas/IssueCloseReason"
+          nullable: true
+          type: object
+          description: Presente solo se `state` e' `closed`; azzerato dalla riapertura (I2).
+        duplicateOf:
+          type: integer
+          format: int64
+          nullable: true
+          description: Numero della issue di cui questa e' un duplicato (solo con `closeReason=duplicate`).
+        author:
+          $ref: "#/components/schemas/IssueUser"
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueLabelRef"
+        assignees:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/IssueUser"
+        milestone:
+          allOf:
+            - $ref: "#/components/schemas/IssueMilestoneRef"
+          nullable: true
+          type: object
+        locked:
+          type: boolean
+          description: Discussione bloccata (I11).
+        hidden:
+          type: boolean
+          description: "Nascosta (I4). Chi non e' `admin` non la riceve mai: e' 404."
+        edited:
+          type: boolean
+          description: Il testo e' stato modificato (I4); le versioni precedenti sono per `admin`.
+        commentCount:
+          type: integer
+          minimum: 0
+          description: Commenti non eliminati.
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueAttachment"
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    IssueSummary:
+      type: object
+      description: "Issue negli elenchi: senza testo."
+      additionalProperties: false
+      required: [number, title, state, author, labels, assignees, commentCount, createdAt, updatedAt]
+      properties:
+        number:
+          type: integer
+          format: int64
+        title:
+          type: string
+        state:
+          $ref: "#/components/schemas/IssueState"
+        closeReason:
+          allOf:
+            - $ref: "#/components/schemas/IssueCloseReason"
+          nullable: true
+          type: object
+        author:
+          $ref: "#/components/schemas/IssueUser"
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueLabelRef"
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueUser"
+        milestone:
+          allOf:
+            - $ref: "#/components/schemas/IssueMilestoneRef"
+          nullable: true
+          type: object
+        locked:
+          type: boolean
+        commentCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    IssueList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueSummary"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    IssueSearchResult:
+      type: object
+      additionalProperties: false
+      required: [repo, issue]
+      properties:
+        repo:
+          type: string
+          description: "`owner/nome` del repo."
+        issue:
+          $ref: "#/components/schemas/IssueSummary"
+    IssueSearchResultList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueSearchResult"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    CreateIssueInput:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        body:
+          type: string
+          maxLength: 65536
+          default: ""
+        labels:
+          type: array
+          description: Nomi di etichette del repo. Richiede `write`.
+          items:
+            type: string
+        assignees:
+          type: array
+          maxItems: 10
+          description: Nomi utente con `write`. Richiede `write`.
+          items:
+            $ref: "#/components/schemas/Name"
+        milestone:
+          type: integer
+          format: int64
+          description: Numero di una milestone del repo. Richiede `write`.
+        attachmentIds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uuid
+    UpdateIssueInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        body:
+          type: string
+          maxLength: 65536
+    CloseIssueInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          allOf:
+            - $ref: "#/components/schemas/IssueCloseReason"
+          default: completed
+          type: object
+        duplicateOf:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Obbligatorio con `reason=duplicate`, vietato altrimenti.
+    SetIssueHiddenInput:
+      type: object
+      additionalProperties: false
+      required: [hidden]
+      properties:
+        hidden:
+          type: boolean
+    LockIssueInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 256
+          description: Motivo facoltativo, mostrato nella cronologia.
+    SetIssueAssigneesInput:
+      type: object
+      additionalProperties: false
+      required: [assignees]
+      properties:
+        assignees:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/Name"
+    SetIssueLabelsInput:
+      type: object
+      additionalProperties: false
+      required: [labels]
+      properties:
+        labels:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+    SetIssueMilestoneInput:
+      type: object
+      additionalProperties: false
+      required: [milestone]
+      properties:
+        milestone:
+          type: integer
+          format: int64
+          nullable: true
+          minimum: 1
+          description: Numero della milestone, o `null` per toglierla.
+    IssueComment:
+      type: object
+      additionalProperties: false
+      required: [id, issueNumber, body, author, edited, deleted, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        issueNumber:
+          type: integer
+          format: int64
+        body:
+          type: string
+          maxLength: 65536
+          description: Markdown; vuoto se `deleted`.
+        author:
+          $ref: "#/components/schemas/IssueUser"
+        edited:
+          type: boolean
+        deleted:
+          type: boolean
+          description: "Eliminato (comment deleted, I4): resta la traccia, senza testo."
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueAttachment"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    IssueCommentList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueComment"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    CreateIssueCommentInput:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 65536
+        attachmentIds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uuid
+    UpdateIssueCommentInput:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 65536
+    TextVersion:
+      type: object
+      additionalProperties: false
+      required: [version, body, editor, createdAt]
+      properties:
+        version:
+          type: integer
+          minimum: 1
+          description: 1 e' il testo originale.
+        title:
+          type: string
+          description: Solo per le versioni della issue.
+        body:
+          type: string
+        editor:
+          $ref: "#/components/schemas/IssueUser"
+        createdAt:
+          type: string
+          format: date-time
+          description: Quando questa versione e' stata sostituita.
+    TextVersionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TextVersion"
+    IssueEventType:
+      type: string
+      enum:
+        - opened
+        - closed
+        - reopened
+        - renamed
+        - edited
+        - labeled
+        - unlabeled
+        - assigned
+        - unassigned
+        - milestoned
+        - demilestoned
+        - locked
+        - unlocked
+        - hidden
+        - unhidden
+        - comment_deleted
+        - referenced
+    IssueEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/IssueEventType"
+        actor:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+          description: Assente per gli eventi di sistema (es. chiusura da `fixes #n`).
+        data:
+          type: object
+          additionalProperties: true
+          description: >
+            Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`;
+            `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`;
+            `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+        createdAt:
+          type: string
+          format: date-time
+    IssueEventList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueEvent"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    UploadIssueAttachmentInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+    IssueAttachment:
+      type: object
+      additionalProperties: false
+      required: [id, filename, contentType, size, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+          description: Nome originale, solo metadato (mai nel percorso su disco).
+        contentType:
+          type: string
+        size:
+          type: integer
+          format: int64
+        url:
+          type: string
+          description: Percorso di `getIssueAttachment`; richiede autenticazione.
+        createdAt:
+          type: string
+          format: date-time
+    IssueTemplate:
+      type: object
+      additionalProperties: false
+      required: [name, body]
+      properties:
+        name:
+          type: string
+          description: Nome del file senza estensione.
+        title:
+          type: string
+          description: Titolo proposto (front matter `title`).
+        about:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        body:
+          type: string
+          description: Testo Markdown iniziale, senza front matter.
+    IssueTemplateList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IssueTemplate"
+    Label:
+      type: object
+      additionalProperties: false
+      required: [id, name, color, description, openIssues]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        color:
+          $ref: "#/components/schemas/LabelColor"
+        description:
+          type: string
+          maxLength: 256
+        openIssues:
+          type: integer
+          minimum: 0
+    LabelList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Label"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    CreateLabelInput:
+      type: object
+      additionalProperties: false
+      required: [name, color]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        color:
+          $ref: "#/components/schemas/LabelColor"
+        description:
+          type: string
+          maxLength: 256
+    UpdateLabelInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        color:
+          $ref: "#/components/schemas/LabelColor"
+        description:
+          type: string
+          maxLength: 256
+    Milestone:
+      type: object
+      additionalProperties: false
+      required: [number, title, description, state, openIssues, closedIssues, createdAt, updatedAt]
+      properties:
+        number:
+          type: integer
+          format: int64
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+          maxLength: 4096
+        dueOn:
+          type: string
+          format: date
+          nullable: true
+        state:
+          type: string
+          enum: [open, closed]
+        openIssues:
+          type: integer
+          minimum: 0
+          description: Issues aperte.
+        closedIssues:
+          type: integer
+          minimum: 0
+          description: Issues chiuse come `completed` (I2); le altre chiusure non contano.
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    MilestoneList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Milestone"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    CreateMilestoneInput:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+          maxLength: 4096
+        dueOn:
+          type: string
+          format: date
+          nullable: true
+    UpdateMilestoneInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+          maxLength: 4096
+        dueOn:
+          type: string
+          format: date
+          nullable: true
+        state:
+          type: string
+          enum: [open, closed]
 
   headers:
     ContentTypeOptions:
@@ -5511,6 +7530,13 @@ components:
         (`insufficient_scope`, con `details.required`) o permesso mancante
         (`forbidden`), oppure password iniziale ancora da cambiare
         (`password_change_required`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    PayloadTooLarge:
+      description: >
+        Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
       content:
         application/json:
           schema:

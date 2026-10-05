@@ -384,6 +384,15 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// I5: etichette predefinite, attive di default.
+	if body.DefaultLabels == nil || *body.DefaultLabels {
+		if err := tx.SeedDefaultLabels(r.Context(), repoID); err != nil {
+			slog.Default().Error("etichette predefinite del repo non riuscite", "repo_id", repoID, "err", err)
+			writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la creazione del repo.")
+			return
+		}
+	}
+
 	in := gitclient.CreateInput{
 		RepoID:        repoID,
 		Name:          body.Name,

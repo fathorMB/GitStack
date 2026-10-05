@@ -206,25 +206,25 @@ func (e FileDiffCollapseReason) Valid() bool {
 
 // Defines values for FileDiffStatus.
 const (
-	Added    FileDiffStatus = "added"
-	Copied   FileDiffStatus = "copied"
-	Deleted  FileDiffStatus = "deleted"
-	Modified FileDiffStatus = "modified"
-	Renamed  FileDiffStatus = "renamed"
+	FileDiffStatusAdded    FileDiffStatus = "added"
+	FileDiffStatusCopied   FileDiffStatus = "copied"
+	FileDiffStatusDeleted  FileDiffStatus = "deleted"
+	FileDiffStatusModified FileDiffStatus = "modified"
+	FileDiffStatusRenamed  FileDiffStatus = "renamed"
 )
 
 // Valid indicates whether the value is a known member of the FileDiffStatus enum.
 func (e FileDiffStatus) Valid() bool {
 	switch e {
-	case Added:
+	case FileDiffStatusAdded:
 		return true
-	case Copied:
+	case FileDiffStatusCopied:
 		return true
-	case Deleted:
+	case FileDiffStatusDeleted:
 		return true
-	case Modified:
+	case FileDiffStatusModified:
 		return true
-	case Renamed:
+	case FileDiffStatusRenamed:
 		return true
 	default:
 		return false
@@ -309,6 +309,144 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for IssueCloseReason.
+const (
+	Completed  IssueCloseReason = "completed"
+	Duplicate  IssueCloseReason = "duplicate"
+	NotPlanned IssueCloseReason = "not_planned"
+)
+
+// Valid indicates whether the value is a known member of the IssueCloseReason enum.
+func (e IssueCloseReason) Valid() bool {
+	switch e {
+	case Completed:
+		return true
+	case Duplicate:
+		return true
+	case NotPlanned:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueEventType.
+const (
+	IssueEventTypeAssigned       IssueEventType = "assigned"
+	IssueEventTypeClosed         IssueEventType = "closed"
+	IssueEventTypeCommentDeleted IssueEventType = "comment_deleted"
+	IssueEventTypeDemilestoned   IssueEventType = "demilestoned"
+	IssueEventTypeEdited         IssueEventType = "edited"
+	IssueEventTypeHidden         IssueEventType = "hidden"
+	IssueEventTypeLabeled        IssueEventType = "labeled"
+	IssueEventTypeLocked         IssueEventType = "locked"
+	IssueEventTypeMilestoned     IssueEventType = "milestoned"
+	IssueEventTypeOpened         IssueEventType = "opened"
+	IssueEventTypeReferenced     IssueEventType = "referenced"
+	IssueEventTypeRenamed        IssueEventType = "renamed"
+	IssueEventTypeReopened       IssueEventType = "reopened"
+	IssueEventTypeUnassigned     IssueEventType = "unassigned"
+	IssueEventTypeUnhidden       IssueEventType = "unhidden"
+	IssueEventTypeUnlabeled      IssueEventType = "unlabeled"
+	IssueEventTypeUnlocked       IssueEventType = "unlocked"
+)
+
+// Valid indicates whether the value is a known member of the IssueEventType enum.
+func (e IssueEventType) Valid() bool {
+	switch e {
+	case IssueEventTypeAssigned:
+		return true
+	case IssueEventTypeClosed:
+		return true
+	case IssueEventTypeCommentDeleted:
+		return true
+	case IssueEventTypeDemilestoned:
+		return true
+	case IssueEventTypeEdited:
+		return true
+	case IssueEventTypeHidden:
+		return true
+	case IssueEventTypeLabeled:
+		return true
+	case IssueEventTypeLocked:
+		return true
+	case IssueEventTypeMilestoned:
+		return true
+	case IssueEventTypeOpened:
+		return true
+	case IssueEventTypeReferenced:
+		return true
+	case IssueEventTypeRenamed:
+		return true
+	case IssueEventTypeReopened:
+		return true
+	case IssueEventTypeUnassigned:
+		return true
+	case IssueEventTypeUnhidden:
+		return true
+	case IssueEventTypeUnlabeled:
+		return true
+	case IssueEventTypeUnlocked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueMilestoneRefState.
+const (
+	IssueMilestoneRefStateClosed IssueMilestoneRefState = "closed"
+	IssueMilestoneRefStateOpen   IssueMilestoneRefState = "open"
+)
+
+// Valid indicates whether the value is a known member of the IssueMilestoneRefState enum.
+func (e IssueMilestoneRefState) Valid() bool {
+	switch e {
+	case IssueMilestoneRefStateClosed:
+		return true
+	case IssueMilestoneRefStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueState.
+const (
+	IssueStateClosed IssueState = "closed"
+	IssueStateOpen   IssueState = "open"
+)
+
+// Valid indicates whether the value is a known member of the IssueState enum.
+func (e IssueState) Valid() bool {
+	switch e {
+	case IssueStateClosed:
+		return true
+	case IssueStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueUserKind.
+const (
+	IssueUserKindAgent IssueUserKind = "agent"
+	IssueUserKindHuman IssueUserKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the IssueUserKind enum.
+func (e IssueUserKind) Valid() bool {
+	switch e {
+	case IssueUserKindAgent:
+		return true
+	case IssueUserKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LicenseTemplate.
 const (
 	Agpl30     LicenseTemplate = "agpl-3.0"
@@ -360,6 +498,24 @@ func (e LookupEmailsResultUsersKind) Valid() bool {
 	case LookupEmailsResultUsersKindAgent:
 		return true
 	case LookupEmailsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MilestoneState.
+const (
+	MilestoneStateClosed MilestoneState = "closed"
+	MilestoneStateOpen   MilestoneState = "open"
+)
+
+// Valid indicates whether the value is a known member of the MilestoneState enum.
+func (e MilestoneState) Valid() bool {
+	switch e {
+	case MilestoneStateClosed:
+		return true
+	case MilestoneStateOpen:
 		return true
 	default:
 		return false
@@ -555,6 +711,24 @@ func (e TreeEntryType) Valid() bool {
 	}
 }
 
+// Defines values for UpdateMilestoneInputState.
+const (
+	UpdateMilestoneInputStateClosed UpdateMilestoneInputState = "closed"
+	UpdateMilestoneInputStateOpen   UpdateMilestoneInputState = "open"
+)
+
+// Valid indicates whether the value is a known member of the UpdateMilestoneInputState enum.
+func (e UpdateMilestoneInputState) Valid() bool {
+	switch e {
+	case UpdateMilestoneInputStateClosed:
+		return true
+	case UpdateMilestoneInputStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserKind.
 const (
 	UserKindAgent UserKind = "agent"
@@ -603,6 +777,72 @@ func (e ArchiveFormatParam) Valid() bool {
 	case ArchiveFormatParamTarGz:
 		return true
 	case ArchiveFormatParamZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueSortParam.
+const (
+	IssueSortParamComments  IssueSortParam = "comments"
+	IssueSortParamCreated   IssueSortParam = "created"
+	IssueSortParamRelevance IssueSortParam = "relevance"
+	IssueSortParamUpdated   IssueSortParam = "updated"
+)
+
+// Valid indicates whether the value is a known member of the IssueSortParam enum.
+func (e IssueSortParam) Valid() bool {
+	switch e {
+	case IssueSortParamComments:
+		return true
+	case IssueSortParamCreated:
+		return true
+	case IssueSortParamRelevance:
+		return true
+	case IssueSortParamUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueStateFilter.
+const (
+	IssueStateFilterAll    IssueStateFilter = "all"
+	IssueStateFilterClosed IssueStateFilter = "closed"
+	IssueStateFilterOpen   IssueStateFilter = "open"
+)
+
+// Valid indicates whether the value is a known member of the IssueStateFilter enum.
+func (e IssueStateFilter) Valid() bool {
+	switch e {
+	case IssueStateFilterAll:
+		return true
+	case IssueStateFilterClosed:
+		return true
+	case IssueStateFilterOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MilestoneStateFilter.
+const (
+	MilestoneStateFilterAll    MilestoneStateFilter = "all"
+	MilestoneStateFilterClosed MilestoneStateFilter = "closed"
+	MilestoneStateFilterOpen   MilestoneStateFilter = "open"
+)
+
+// Valid indicates whether the value is a known member of the MilestoneStateFilter enum.
+func (e MilestoneStateFilter) Valid() bool {
+	switch e {
+	case MilestoneStateFilterAll:
+		return true
+	case MilestoneStateFilterClosed:
+		return true
+	case MilestoneStateFilterOpen:
 		return true
 	default:
 		return false
@@ -675,6 +915,96 @@ func (e GetRepositoryCommitPatchParamsFormat) Valid() bool {
 	case GetRepositoryCommitPatchParamsFormatDiff:
 		return true
 	case GetRepositoryCommitPatchParamsFormatPatch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListIssuesParamsState.
+const (
+	ListIssuesParamsStateAll    ListIssuesParamsState = "all"
+	ListIssuesParamsStateClosed ListIssuesParamsState = "closed"
+	ListIssuesParamsStateOpen   ListIssuesParamsState = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListIssuesParamsState enum.
+func (e ListIssuesParamsState) Valid() bool {
+	switch e {
+	case ListIssuesParamsStateAll:
+		return true
+	case ListIssuesParamsStateClosed:
+		return true
+	case ListIssuesParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListIssuesParamsSort.
+const (
+	ListIssuesParamsSortComments  ListIssuesParamsSort = "comments"
+	ListIssuesParamsSortCreated   ListIssuesParamsSort = "created"
+	ListIssuesParamsSortRelevance ListIssuesParamsSort = "relevance"
+	ListIssuesParamsSortUpdated   ListIssuesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListIssuesParamsSort enum.
+func (e ListIssuesParamsSort) Valid() bool {
+	switch e {
+	case ListIssuesParamsSortComments:
+		return true
+	case ListIssuesParamsSortCreated:
+		return true
+	case ListIssuesParamsSortRelevance:
+		return true
+	case ListIssuesParamsSortUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMilestonesParamsState.
+const (
+	ListMilestonesParamsStateAll    ListMilestonesParamsState = "all"
+	ListMilestonesParamsStateClosed ListMilestonesParamsState = "closed"
+	ListMilestonesParamsStateOpen   ListMilestonesParamsState = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListMilestonesParamsState enum.
+func (e ListMilestonesParamsState) Valid() bool {
+	switch e {
+	case ListMilestonesParamsStateAll:
+		return true
+	case ListMilestonesParamsStateClosed:
+		return true
+	case ListMilestonesParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchIssuesParamsSort.
+const (
+	SearchIssuesParamsSortComments  SearchIssuesParamsSort = "comments"
+	SearchIssuesParamsSortCreated   SearchIssuesParamsSort = "created"
+	SearchIssuesParamsSortRelevance SearchIssuesParamsSort = "relevance"
+	SearchIssuesParamsSortUpdated   SearchIssuesParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the SearchIssuesParamsSort enum.
+func (e SearchIssuesParamsSort) Valid() bool {
+	switch e {
+	case SearchIssuesParamsSortComments:
+		return true
+	case SearchIssuesParamsSortCreated:
+		return true
+	case SearchIssuesParamsSortRelevance:
+		return true
+	case SearchIssuesParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -756,6 +1086,13 @@ type CheckPermissionInput struct {
 type CheckPermissionResult struct {
 	Allowed       bool          `json:"allowed"`
 	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
+}
+
+// CloseIssueInput defines model for CloseIssueInput.
+type CloseIssueInput struct {
+	// DuplicateOf Obbligatorio con `reason=duplicate`, vietato altrimenti.
+	DuplicateOf *int64            `json:"duplicateOf,omitempty"`
+	Reason      *IssueCloseReason `json:"reason,omitempty"`
 }
 
 // CodeSearchHit defines model for CodeSearchHit.
@@ -866,6 +1203,44 @@ type CreateGrantInput struct {
 // CreateGrantInputSubjectType defines model for CreateGrantInput.SubjectType.
 type CreateGrantInputSubjectType string
 
+// CreateIssueCommentInput defines model for CreateIssueCommentInput.
+type CreateIssueCommentInput struct {
+	AttachmentIds *[]openapi_types.UUID `json:"attachmentIds,omitempty"`
+	Body          string                `json:"body"`
+}
+
+// CreateIssueInput defines model for CreateIssueInput.
+type CreateIssueInput struct {
+	// Assignees Nomi utente con `write`. Richiede `write`.
+	Assignees     *[]Name               `json:"assignees,omitempty"`
+	AttachmentIds *[]openapi_types.UUID `json:"attachmentIds,omitempty"`
+	Body          *string               `json:"body,omitempty"`
+
+	// Labels Nomi di etichette del repo. Richiede `write`.
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Milestone Numero di una milestone del repo. Richiede `write`.
+	Milestone *int64 `json:"milestone,omitempty"`
+	Title     string `json:"title"`
+}
+
+// CreateLabelInput defines model for CreateLabelInput.
+type CreateLabelInput struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color       LabelColor `json:"color"`
+	Description *string    `json:"description,omitempty"`
+	Name        string     `json:"name"`
+}
+
+// CreateMilestoneInput defines model for CreateMilestoneInput.
+type CreateMilestoneInput struct {
+	Description *string             `json:"description,omitempty"`
+	DueOn       *openapi_types.Date `json:"dueOn,omitempty"`
+	Title       string              `json:"title"`
+}
+
 // CreateOrganizationInput defines model for CreateOrganizationInput.
 type CreateOrganizationInput struct {
 	Description *string `json:"description,omitempty"`
@@ -880,7 +1255,9 @@ type CreateOrganizationInput struct {
 
 // CreateRepositoryInput defines model for CreateRepositoryInput.
 type CreateRepositoryInput struct {
-	Description *string `json:"description,omitempty"`
+	// DefaultLabels Crea le etichette predefinite (I5): `bug`, `enhancement`, `documentation`, `question`, `duplicate`, `good first issue`, `agent-ready`, `needs-human`. Attiva di default; `false` crea il repo senza etichette.
+	DefaultLabels *bool   `json:"defaultLabels,omitempty"`
+	Description   *string `json:"description,omitempty"`
 
 	// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
 	GitignoreTemplate *GitignoreTemplate `json:"gitignoreTemplate,omitempty"`
@@ -1204,6 +1581,235 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// Issue defines model for Issue.
+type Issue struct {
+	Assignees   []IssueUser        `json:"assignees"`
+	Attachments *[]IssueAttachment `json:"attachments,omitempty"`
+	Author      IssueUser          `json:"author"`
+
+	// Body Markdown (D10).
+	Body string `json:"body"`
+
+	// CloseReason Presente solo se `state` e' `closed`; azzerato dalla riapertura (I2).
+	CloseReason *IssueCloseReason `json:"closeReason,omitempty"`
+	ClosedAt    *time.Time        `json:"closedAt,omitempty"`
+
+	// CommentCount Commenti non eliminati.
+	CommentCount int       `json:"commentCount"`
+	CreatedAt    time.Time `json:"createdAt"`
+
+	// DuplicateOf Numero della issue di cui questa e' un duplicato (solo con `closeReason=duplicate`).
+	DuplicateOf *int64 `json:"duplicateOf,omitempty"`
+
+	// Edited Il testo e' stato modificato (I4); le versioni precedenti sono per `admin`.
+	Edited bool `json:"edited"`
+
+	// Hidden Nascosta (I4). Chi non e' `admin` non la riceve mai: e' 404.
+	Hidden bool               `json:"hidden"`
+	Id     openapi_types.UUID `json:"id"`
+	Labels []IssueLabelRef    `json:"labels"`
+
+	// Locked Discussione bloccata (I11).
+	Locked    bool               `json:"locked"`
+	Milestone *IssueMilestoneRef `json:"milestone,omitempty"`
+
+	// Number `#n`, dal contatore del repo condiviso con le PR (I1); non si riusa mai.
+	Number    int64      `json:"number"`
+	State     IssueState `json:"state"`
+	Title     string     `json:"title"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+}
+
+// IssueAttachment defines model for IssueAttachment.
+type IssueAttachment struct {
+	ContentType string    `json:"contentType"`
+	CreatedAt   time.Time `json:"createdAt"`
+
+	// Filename Nome originale, solo metadato (mai nel percorso su disco).
+	Filename string             `json:"filename"`
+	Id       openapi_types.UUID `json:"id"`
+	Size     int64              `json:"size"`
+
+	// Url Percorso di `getIssueAttachment`; richiede autenticazione.
+	Url *string `json:"url,omitempty"`
+}
+
+// IssueCloseReason Motivo di chiusura (I2). `completed` e' anche quello di `fixes
+type IssueCloseReason string
+
+// IssueComment defines model for IssueComment.
+type IssueComment struct {
+	Attachments *[]IssueAttachment `json:"attachments,omitempty"`
+	Author      IssueUser          `json:"author"`
+
+	// Body Markdown; vuoto se `deleted`.
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Deleted Eliminato (comment deleted, I4): resta la traccia, senza testo.
+	Deleted     bool               `json:"deleted"`
+	Edited      bool               `json:"edited"`
+	Id          openapi_types.UUID `json:"id"`
+	IssueNumber int64              `json:"issueNumber"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+}
+
+// IssueCommentList defines model for IssueCommentList.
+type IssueCommentList struct {
+	Items   []IssueComment `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
+// IssueEvent defines model for IssueEvent.
+type IssueEvent struct {
+	// Actor Assente per gli eventi di sistema (es. chiusura da `fixes
+	Actor     *IssueUser `json:"actor,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+
+	// Data Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+	Data *map[string]interface{} `json:"data,omitempty"`
+	Id   openapi_types.UUID      `json:"id"`
+	Type IssueEventType          `json:"type"`
+}
+
+// IssueEventList defines model for IssueEventList.
+type IssueEventList struct {
+	Items   []IssueEvent `json:"items"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+	Total   int          `json:"total"`
+}
+
+// IssueEventType defines model for IssueEventType.
+type IssueEventType string
+
+// IssueLabelRef defines model for IssueLabelRef.
+type IssueLabelRef struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color LabelColor         `json:"color"`
+	Id    openapi_types.UUID `json:"id"`
+	Name  string             `json:"name"`
+}
+
+// IssueList defines model for IssueList.
+type IssueList struct {
+	Items   []IssueSummary `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
+// IssueMilestoneRef defines model for IssueMilestoneRef.
+type IssueMilestoneRef struct {
+	Number int64                  `json:"number"`
+	State  IssueMilestoneRefState `json:"state"`
+	Title  string                 `json:"title"`
+}
+
+// IssueMilestoneRefState defines model for IssueMilestoneRef.State.
+type IssueMilestoneRefState string
+
+// IssueSearchResult defines model for IssueSearchResult.
+type IssueSearchResult struct {
+	// Issue Issue negli elenchi: senza testo.
+	Issue IssueSummary `json:"issue"`
+
+	// Repo `owner/nome` del repo.
+	Repo string `json:"repo"`
+}
+
+// IssueSearchResultList defines model for IssueSearchResultList.
+type IssueSearchResultList struct {
+	Items   []IssueSearchResult `json:"items"`
+	Page    int                 `json:"page"`
+	PerPage int                 `json:"perPage"`
+	Total   int                 `json:"total"`
+}
+
+// IssueState defines model for IssueState.
+type IssueState string
+
+// IssueSummary Issue negli elenchi: senza testo.
+type IssueSummary struct {
+	Assignees    []IssueUser        `json:"assignees"`
+	Author       IssueUser          `json:"author"`
+	CloseReason  *IssueCloseReason  `json:"closeReason,omitempty"`
+	CommentCount int                `json:"commentCount"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Labels       []IssueLabelRef    `json:"labels"`
+	Locked       *bool              `json:"locked,omitempty"`
+	Milestone    *IssueMilestoneRef `json:"milestone,omitempty"`
+	Number       int64              `json:"number"`
+	State        IssueState         `json:"state"`
+	Title        string             `json:"title"`
+	UpdatedAt    time.Time          `json:"updatedAt"`
+}
+
+// IssueTemplate defines model for IssueTemplate.
+type IssueTemplate struct {
+	About *string `json:"about,omitempty"`
+
+	// Body Testo Markdown iniziale, senza front matter.
+	Body   string    `json:"body"`
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Name Nome del file senza estensione.
+	Name string `json:"name"`
+
+	// Title Titolo proposto (front matter `title`).
+	Title *string `json:"title,omitempty"`
+}
+
+// IssueTemplateList defines model for IssueTemplateList.
+type IssueTemplateList struct {
+	Items []IssueTemplate `json:"items"`
+}
+
+// IssueUser defines model for IssueUser.
+type IssueUser struct {
+	DisplayName *string            `json:"displayName,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Kind        IssueUserKind      `json:"kind"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// IssueUserKind defines model for IssueUser.Kind.
+type IssueUserKind string
+
+// Label defines model for Label.
+type Label struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color       LabelColor         `json:"color"`
+	Description string             `json:"description"`
+	Id          openapi_types.UUID `json:"id"`
+	Name        string             `json:"name"`
+	OpenIssues  int                `json:"openIssues"`
+}
+
+// LabelColor Colore esadecimale a sei cifre, senza `#`.
+//
+// Example: d73a4a
+type LabelColor = string
+
+// LabelList defines model for LabelList.
+type LabelList struct {
+	Items   []Label `json:"items"`
+	Page    int     `json:"page"`
+	PerPage int     `json:"perPage"`
+	Total   int     `json:"total"`
+}
+
 // LanguageShare defines model for LanguageShare.
 type LanguageShare struct {
 	Bytes   int64   `json:"bytes"`
@@ -1219,6 +1825,12 @@ type Languages struct {
 
 // LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
 type LicenseTemplate string
+
+// LockIssueInput defines model for LockIssueInput.
+type LockIssueInput struct {
+	// Reason Motivo facoltativo, mostrato nella cronologia.
+	Reason *string `json:"reason,omitempty"`
+}
 
 // LoginInput defines model for LoginInput.
 type LoginInput struct {
@@ -1252,6 +1864,35 @@ type LookupEmailsResult struct {
 
 // LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
 type LookupEmailsResultUsersKind string
+
+// Milestone defines model for Milestone.
+type Milestone struct {
+	ClosedAt *time.Time `json:"closedAt,omitempty"`
+
+	// ClosedIssues Issues chiuse come `completed` (I2); le altre chiusure non contano.
+	ClosedIssues int                 `json:"closedIssues"`
+	CreatedAt    time.Time           `json:"createdAt"`
+	Description  string              `json:"description"`
+	DueOn        *openapi_types.Date `json:"dueOn,omitempty"`
+	Number       int64               `json:"number"`
+
+	// OpenIssues Issues aperte.
+	OpenIssues int            `json:"openIssues"`
+	State      MilestoneState `json:"state"`
+	Title      string         `json:"title"`
+	UpdatedAt  time.Time      `json:"updatedAt"`
+}
+
+// MilestoneState defines model for Milestone.State.
+type MilestoneState string
+
+// MilestoneList defines model for MilestoneList.
+type MilestoneList struct {
+	Items   []Milestone `json:"items"`
+	Page    int         `json:"page"`
+	PerPage int         `json:"perPage"`
+	Total   int         `json:"total"`
+}
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -1492,6 +2133,27 @@ type ResourceList struct {
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
+// SetIssueAssigneesInput defines model for SetIssueAssigneesInput.
+type SetIssueAssigneesInput struct {
+	Assignees []Name `json:"assignees"`
+}
+
+// SetIssueHiddenInput defines model for SetIssueHiddenInput.
+type SetIssueHiddenInput struct {
+	Hidden bool `json:"hidden"`
+}
+
+// SetIssueLabelsInput defines model for SetIssueLabelsInput.
+type SetIssueLabelsInput struct {
+	Labels []string `json:"labels"`
+}
+
+// SetIssueMilestoneInput defines model for SetIssueMilestoneInput.
+type SetIssueMilestoneInput struct {
+	// Milestone Numero della milestone, o `null` per toglierla.
+	Milestone *int64 `json:"milestone"`
+}
+
 // SetOrgMemberInput defines model for SetOrgMemberInput.
 type SetOrgMemberInput struct {
 	// Role `owner` gestisce organizzazione, team e membri; `member` no.
@@ -1601,6 +2263,26 @@ type TeamMemberList struct {
 // TeamRole `maintainer` gestisce i membri del team.
 type TeamRole string
 
+// TextVersion defines model for TextVersion.
+type TextVersion struct {
+	Body string `json:"body"`
+
+	// CreatedAt Quando questa versione e' stata sostituita.
+	CreatedAt time.Time `json:"createdAt"`
+	Editor    IssueUser `json:"editor"`
+
+	// Title Solo per le versioni della issue.
+	Title *string `json:"title,omitempty"`
+
+	// Version 1 e' il testo originale.
+	Version int `json:"version"`
+}
+
+// TextVersionList defines model for TextVersionList.
+type TextVersionList struct {
+	Items []TextVersion `json:"items"`
+}
+
 // Token Token personale, senza il valore (che non e' recuperabile).
 type Token struct {
 	CreatedAt time.Time  `json:"createdAt"`
@@ -1661,6 +2343,38 @@ type UpdateGrantInput struct {
 	Role ResourceRole `json:"role"`
 }
 
+// UpdateIssueCommentInput defines model for UpdateIssueCommentInput.
+type UpdateIssueCommentInput struct {
+	Body string `json:"body"`
+}
+
+// UpdateIssueInput defines model for UpdateIssueInput.
+type UpdateIssueInput struct {
+	Body  *string `json:"body,omitempty"`
+	Title *string `json:"title,omitempty"`
+}
+
+// UpdateLabelInput defines model for UpdateLabelInput.
+type UpdateLabelInput struct {
+	// Color Colore esadecimale a sei cifre, senza `#`.
+	//
+	// Example: d73a4a
+	Color       *LabelColor `json:"color,omitempty"`
+	Description *string     `json:"description,omitempty"`
+	Name        *string     `json:"name,omitempty"`
+}
+
+// UpdateMilestoneInput defines model for UpdateMilestoneInput.
+type UpdateMilestoneInput struct {
+	Description *string                    `json:"description,omitempty"`
+	DueOn       *openapi_types.Date        `json:"dueOn,omitempty"`
+	State       *UpdateMilestoneInputState `json:"state,omitempty"`
+	Title       *string                    `json:"title,omitempty"`
+}
+
+// UpdateMilestoneInputState defines model for UpdateMilestoneInput.State.
+type UpdateMilestoneInputState string
+
 // UpdateOrganizationInput defines model for UpdateOrganizationInput.
 type UpdateOrganizationInput struct {
 	Description *string `json:"description,omitempty"`
@@ -1707,6 +2421,11 @@ type UpdateUserInput struct {
 
 	// IsAdmin Solo amministratori.
 	IsAdmin *bool `json:"isAdmin,omitempty"`
+}
+
+// UploadIssueAttachmentInput defines model for UploadIssueAttachmentInput.
+type UploadIssueAttachmentInput struct {
+	File openapi_types.File `json:"file"`
 }
 
 // User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
@@ -1837,6 +2556,48 @@ type GrantIdParam = openapi_types.UUID
 // IgnoreWhitespaceParam defines model for IgnoreWhitespaceParam.
 type IgnoreWhitespaceParam = bool
 
+// IssueAssigneeFilter defines model for IssueAssigneeFilter.
+type IssueAssigneeFilter = string
+
+// IssueAttachmentIdParam defines model for IssueAttachmentIdParam.
+type IssueAttachmentIdParam = openapi_types.UUID
+
+// IssueAuthorFilter defines model for IssueAuthorFilter.
+type IssueAuthorFilter = string
+
+// IssueCommentIdParam defines model for IssueCommentIdParam.
+type IssueCommentIdParam = openapi_types.UUID
+
+// IssueLabelsFilter defines model for IssueLabelsFilter.
+type IssueLabelsFilter = string
+
+// IssueMilestoneFilter defines model for IssueMilestoneFilter.
+type IssueMilestoneFilter = string
+
+// IssueNumberParam defines model for IssueNumberParam.
+type IssueNumberParam = int64
+
+// IssueQueryParam defines model for IssueQueryParam.
+type IssueQueryParam = string
+
+// IssueReasonFilter Motivo di chiusura (I2). `completed` e' anche quello di `fixes
+type IssueReasonFilter = IssueCloseReason
+
+// IssueSortParam defines model for IssueSortParam.
+type IssueSortParam string
+
+// IssueStateFilter defines model for IssueStateFilter.
+type IssueStateFilter string
+
+// LabelNameParam defines model for LabelNameParam.
+type LabelNameParam = string
+
+// MilestoneNumberParam defines model for MilestoneNumberParam.
+type MilestoneNumberParam = int64
+
+// MilestoneStateFilter defines model for MilestoneStateFilter.
+type MilestoneStateFilter string
+
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
@@ -1913,6 +2674,9 @@ type Forbidden = Error
 
 // NotFound Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type NotFound = Error
+
+// PayloadTooLarge Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
+type PayloadTooLarge = Error
 
 // TooManyRequests Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type TooManyRequests = Error
@@ -2163,11 +2927,68 @@ type ListRepositoryFilesParams struct {
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
 
+// ListIssuesParams defines parameters for ListIssues.
+type ListIssuesParams struct {
+	// Q Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+	Q      *IssueQueryParam       `form:"q,omitempty" json:"q,omitempty"`
+	State  *ListIssuesParamsState `form:"state,omitempty" json:"state,omitempty"`
+	Reason *IssueReasonFilter     `form:"reason,omitempty" json:"reason,omitempty"`
+
+	// Labels Nomi di etichette separati da virgola; la issue le ha tutte.
+	Labels *IssueLabelsFilter `form:"labels,omitempty" json:"labels,omitempty"`
+
+	// Assignee Nome utente, `@me`, `@agents` (assegnata a un agente) o `none`.
+	Assignee *IssueAssigneeFilter `form:"assignee,omitempty" json:"assignee,omitempty"`
+	Author   *IssueAuthorFilter   `form:"author,omitempty" json:"author,omitempty"`
+
+	// Milestone Numero della milestone, o `none`.
+	Milestone *IssueMilestoneFilter `form:"milestone,omitempty" json:"milestone,omitempty"`
+
+	// Sort Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+	Sort    *ListIssuesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam            `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam         `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListIssuesParamsState defines parameters for ListIssues.
+type ListIssuesParamsState string
+
+// ListIssuesParamsSort defines parameters for ListIssues.
+type ListIssuesParamsSort string
+
+// ListIssueCommentsParams defines parameters for ListIssueComments.
+type ListIssueCommentsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListIssueEventsParams defines parameters for ListIssueEvents.
+type ListIssueEventsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListLabelsParams defines parameters for ListLabels.
+type ListLabelsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryLanguagesParams defines parameters for GetRepositoryLanguages.
 type GetRepositoryLanguagesParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
+
+// ListMilestonesParams defines parameters for ListMilestones.
+type ListMilestonesParams struct {
+	State   *ListMilestonesParamsState `form:"state,omitempty" json:"state,omitempty"`
+	Page    *PageParam                 `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam              `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListMilestonesParamsState defines parameters for ListMilestones.
+type ListMilestonesParamsState string
 
 // GetRepositoryRawParams defines parameters for GetRepositoryRaw.
 type GetRepositoryRawParams struct {
@@ -2218,6 +3039,20 @@ type ListResourceGrantsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
+
+// SearchIssuesParams defines parameters for SearchIssues.
+type SearchIssuesParams struct {
+	// Q Ricerca con la sintassi di I10: `is:open|closed`, `reason:completed|not_planned|duplicate`, `label:"nome"`, `assignee:utente|@me|@agents`, `author:`, `milestone:`, `no:label|assignee|milestone`, `repo:owner/nome`, `org:`, piu' testo libero.
+	Q *IssueQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// Sort Ordinamento decrescente; `relevance` solo con testo libero in `q` (altrimenti 422).
+	Sort    *SearchIssuesParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam              `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam           `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// SearchIssuesParamsSort defines parameters for SearchIssues.
+type SearchIssuesParamsSort string
 
 // ListSshKeysParams defines parameters for ListSshKeys.
 type ListSshKeysParams struct {
@@ -2301,6 +3136,51 @@ type CreateRepositoryJSONRequestBody = CreateRepositoryInput
 
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
+
+// UploadIssueAttachmentMultipartRequestBody defines body for UploadIssueAttachment for multipart/form-data ContentType.
+type UploadIssueAttachmentMultipartRequestBody = UploadIssueAttachmentInput
+
+// CreateIssueJSONRequestBody defines body for CreateIssue for application/json ContentType.
+type CreateIssueJSONRequestBody = CreateIssueInput
+
+// UpdateIssueJSONRequestBody defines body for UpdateIssue for application/json ContentType.
+type UpdateIssueJSONRequestBody = UpdateIssueInput
+
+// SetIssueAssigneesJSONRequestBody defines body for SetIssueAssignees for application/json ContentType.
+type SetIssueAssigneesJSONRequestBody = SetIssueAssigneesInput
+
+// CloseIssueJSONRequestBody defines body for CloseIssue for application/json ContentType.
+type CloseIssueJSONRequestBody = CloseIssueInput
+
+// CreateIssueCommentJSONRequestBody defines body for CreateIssueComment for application/json ContentType.
+type CreateIssueCommentJSONRequestBody = CreateIssueCommentInput
+
+// UpdateIssueCommentJSONRequestBody defines body for UpdateIssueComment for application/json ContentType.
+type UpdateIssueCommentJSONRequestBody = UpdateIssueCommentInput
+
+// SetIssueHiddenJSONRequestBody defines body for SetIssueHidden for application/json ContentType.
+type SetIssueHiddenJSONRequestBody = SetIssueHiddenInput
+
+// SetIssueLabelsJSONRequestBody defines body for SetIssueLabels for application/json ContentType.
+type SetIssueLabelsJSONRequestBody = SetIssueLabelsInput
+
+// LockIssueJSONRequestBody defines body for LockIssue for application/json ContentType.
+type LockIssueJSONRequestBody = LockIssueInput
+
+// SetIssueMilestoneJSONRequestBody defines body for SetIssueMilestone for application/json ContentType.
+type SetIssueMilestoneJSONRequestBody = SetIssueMilestoneInput
+
+// CreateLabelJSONRequestBody defines body for CreateLabel for application/json ContentType.
+type CreateLabelJSONRequestBody = CreateLabelInput
+
+// UpdateLabelJSONRequestBody defines body for UpdateLabel for application/json ContentType.
+type UpdateLabelJSONRequestBody = UpdateLabelInput
+
+// CreateMilestoneJSONRequestBody defines body for CreateMilestone for application/json ContentType.
+type CreateMilestoneJSONRequestBody = CreateMilestoneInput
+
+// UpdateMilestoneJSONRequestBody defines body for UpdateMilestone for application/json ContentType.
+type UpdateMilestoneJSONRequestBody = UpdateMilestoneInput
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
@@ -3047,12 +3927,392 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
 	ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UploadIssueAttachmentWithBody Carica un allegato
+	//
+	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issue-attachments (the `UploadIssueAttachment` operationId).
+	UploadIssueAttachmentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetIssueAttachment Scarica un allegato
+	//
+	// Solo chi vede il repo (I9): nessun URL pubblico, la richiesta e' sempre autenticata. Sempre `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox` (come B3). Un allegato di una issue nascosta e' 404 per chi non ha `admin`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issue-attachments/{attachmentId} (the `GetIssueAttachment` operationId).
+	GetIssueAttachment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, attachmentId IssueAttachmentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListIssueTemplates Modelli di issue del repo
+	//
+	// Modelli Markdown in `.gitstack/ISSUE_TEMPLATE/` sul branch principale (I11), letti da core tramite il servizio git. Vuoto se la cartella non c'e' o il repo e' vuoto. Il nome e' il file senza estensione. Un modello propone titolo, etichette e testo iniziale: la UI, l'API e `gs` li usano per precompilare `createIssue`, che non li impone.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issue-templates (the `ListIssueTemplates` operationId).
+	ListIssueTemplates(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListIssues Elenca e cerca le issues del repo
+	//
+	// Issues del repo con filtri (stato, etichette, assegnatario, autore, milestone) e ricerca nel testo. `q` usa la sintassi di I10 e i filtri espliciti si sommano a quelli di `q`. Le issues nascoste (I4) compaiono solo a chi ha `admin`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues (the `ListIssues` operationId).
+	ListIssues(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateIssueWithBody Apre una issue
+	//
+	// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+	CreateIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateIssue Apre una issue
+	//
+	// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+	CreateIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetIssue Legge una issue per numero
+	//
+	// Una issue che non esiste nel repo risponde 404. Se e' nascosta (I4) chi non ha `admin` riceve 404, come se non esistesse, per non rivelare ne' il contenuto ne' l'esistenza di cio' che e' stato nascosto. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number} (the `GetIssue` operationId).
+	GetIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateIssueWithBody Modifica titolo e testo
+	//
+	// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+	UpdateIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateIssue Modifica titolo e testo
+	//
+	// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+	UpdateIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body UpdateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueAssigneesWithBody Imposta gli assegnatari
+	//
+	// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+	SetIssueAssigneesWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueAssignees Imposta gli assegnatari
+	//
+	// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+	SetIssueAssignees(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueAssigneesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CloseIssueWithBody Chiude una issue con un motivo
+	//
+	// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+	CloseIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CloseIssue Chiude una issue con un motivo
+	//
+	// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+	CloseIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CloseIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListIssueComments Commenti della issue
+	//
+	// Dal piu' vecchio al piu' recente. Un commento eliminato resta con `deleted: true` e testo vuoto (traccia "comment deleted", I4). Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments (the `ListIssueComments` operationId).
+	ListIssueComments(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateIssueCommentWithBody Commenta la issue
+	//
+	// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+	CreateIssueCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateIssueComment Commenta la issue
+	//
+	// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+	CreateIssueComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CreateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteIssueComment Elimina un commento
+	//
+	// L'autore o chi ha `admin` (I4). Il testo viene svuotato e si registra l'evento `comment_deleted` ("comment deleted"); le versioni precedenti restano visibili a `admin`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `DeleteIssueComment` operationId).
+	DeleteIssueComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateIssueCommentWithBody Modifica un commento
+	//
+	// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+	UpdateIssueCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateIssueComment Modifica un commento
+	//
+	// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+	UpdateIssueComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, body UpdateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListIssueCommentVersions Versioni precedenti del testo di un commento
+	//
+	// Solo con `admin` (I4), come `listIssueVersions`. Anche per i commenti eliminati.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions (the `ListIssueCommentVersions` operationId).
+	ListIssueCommentVersions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListIssueEvents Cronologia degli eventi
+	//
+	// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/events (the `ListIssueEvents` operationId).
+	ListIssueEvents(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueHiddenWithBody Nasconde o mostra una issue
+	//
+	// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+	SetIssueHiddenWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueHidden Nasconde o mostra una issue
+	//
+	// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+	SetIssueHidden(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueHiddenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueLabelsWithBody Imposta le etichette
+	//
+	// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+	SetIssueLabelsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueLabels Imposta le etichette
+	//
+	// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+	SetIssueLabels(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueLabelsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnlockIssue Sblocca la discussione
+	//
+	// Serve `admin` (I11). Sbloccare una issue non bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/lock (the `UnlockIssue` operationId).
+	UnlockIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LockIssueWithBody Blocca la discussione
+	//
+	// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+	LockIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LockIssue Blocca la discussione
+	//
+	// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+	LockIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body LockIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueMilestoneWithBody Imposta o toglie la milestone
+	//
+	// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+	SetIssueMilestoneWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetIssueMilestone Imposta o toglie la milestone
+	//
+	// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+	SetIssueMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReopenIssue Riapre una issue
+	//
+	// Come `closeIssue`: chi ha `write` o l'autore (I3). Riaprire azzera motivo e duplicato (I2). Una issue gia' aperta risponde 409 `already_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
+	ReopenIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListIssueVersions Versioni precedenti del testo della issue
+	//
+	// Solo con `admin` (I4): 403 per chi legge soltanto. Dalla piu' recente alla piu' vecchia; la versione corrente non e' nell'elenco, e' il testo della issue. Vuoto se non e' mai stata modificata.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/versions (the `ListIssueVersions` operationId).
+	ListIssueVersions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListLabels Etichette del repo
+	//
+	// Con il numero di issues aperte che le usano. Ordinate per nome. Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/labels (the `ListLabels` operationId).
+	ListLabels(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListLabelsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLabelWithBody Crea un'etichetta
+	//
+	// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+	CreateLabelWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLabel Crea un'etichetta
+	//
+	// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+	CreateLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLabel Elimina un'etichetta
+	//
+	// Serve `write`. Toglie l'etichetta da tutte le issues (evento `unlabeled` nella cronologia). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/labels/{name} (the `DeleteLabel` operationId).
+	DeleteLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLabel Legge un'etichetta
+	//
+	// Per nome, senza distinguere maiuscole/minuscole.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/labels/{name} (the `GetLabel` operationId).
+	GetLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLabelWithBody Modifica un'etichetta
+	//
+	// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+	UpdateLabelWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLabel Modifica un'etichetta
+	//
+	// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+	UpdateLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, body UpdateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRepositoryLanguages Lingue del repo
 	//
 	// Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
 	GetRepositoryLanguages(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMilestones Milestone del repo
+	//
+	// Con l'avanzamento: `closedIssues` conta solo le chiuse come `completed`; le `not_planned` e `duplicate` non contano ne' fra le chiuse ne' fra le aperte (I2). Per scadenza crescente, poi per numero.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/milestones (the `ListMilestones` operationId).
+	ListMilestones(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListMilestonesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateMilestoneWithBody Crea una milestone
+	//
+	// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+	CreateMilestoneWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateMilestone Crea una milestone
+	//
+	// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+	CreateMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteMilestone Elimina una milestone
+	//
+	// Serve `write`. Le issues collegate restano, senza milestone (evento `demilestoned`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `DeleteMilestone` operationId).
+	DeleteMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMilestone Legge una milestone
+	//
+	// Per numero della milestone nel repo.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `GetMilestone` operationId).
+	GetMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMilestoneWithBody Modifica o chiude una milestone
+	//
+	// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+	UpdateMilestoneWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMilestone Modifica o chiude una milestone
+	//
+	// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+	UpdateMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	//
@@ -3195,6 +4455,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /resources/{resourceId}/permissions (the `GetMyResourcePermission` operationId).
 	GetMyResourcePermission(ctx context.Context, resourceId ResourceIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchIssues Cerca issues su tutta l'installazione
+	//
+	// Ricerca con la sintassi di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:` e testo libero con ricerca testuale PostgreSQL) sui soli repo che l'utente puo' leggere. Stessa sintassi di `listIssues`, che e' la ricerca nel singolo repo. Le issues nascoste compaiono solo a chi ha `admin` sul loro repo. Un `q` che non si puo' interpretare risponde 422.
+	//
+	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
+	SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
 	//
@@ -4867,6 +6134,719 @@ func (c *Client) ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, 
 	return c.Client.Do(req)
 }
 
+// UploadIssueAttachmentWithBody Carica un allegato
+//
+// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issue-attachments (the `UploadIssueAttachment` operationId).
+func (c *Client) UploadIssueAttachmentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadIssueAttachmentRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetIssueAttachment Scarica un allegato
+//
+// Solo chi vede il repo (I9): nessun URL pubblico, la richiesta e' sempre autenticata. Sempre `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox` (come B3). Un allegato di una issue nascosta e' 404 per chi non ha `admin`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issue-attachments/{attachmentId} (the `GetIssueAttachment` operationId).
+func (c *Client) GetIssueAttachment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, attachmentId IssueAttachmentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetIssueAttachmentRequest(c.Server, owner, repo, attachmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListIssueTemplates Modelli di issue del repo
+//
+// Modelli Markdown in `.gitstack/ISSUE_TEMPLATE/` sul branch principale (I11), letti da core tramite il servizio git. Vuoto se la cartella non c'e' o il repo e' vuoto. Il nome e' il file senza estensione. Un modello propone titolo, etichette e testo iniziale: la UI, l'API e `gs` li usano per precompilare `createIssue`, che non li impone.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issue-templates (the `ListIssueTemplates` operationId).
+func (c *Client) ListIssueTemplates(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssueTemplatesRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListIssues Elenca e cerca le issues del repo
+//
+// Issues del repo con filtri (stato, etichette, assegnatario, autore, milestone) e ricerca nel testo. `q` usa la sintassi di I10 e i filtri espliciti si sommano a quelli di `q`. Le issues nascoste (I4) compaiono solo a chi ha `admin`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues (the `ListIssues` operationId).
+func (c *Client) ListIssues(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssuesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateIssueWithBody Apre una issue
+//
+// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+func (c *Client) CreateIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateIssueRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateIssue Apre una issue
+//
+// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+func (c *Client) CreateIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateIssueRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetIssue Legge una issue per numero
+//
+// Una issue che non esiste nel repo risponde 404. Se e' nascosta (I4) chi non ha `admin` riceve 404, come se non esistesse, per non rivelare ne' il contenuto ne' l'esistenza di cio' che e' stato nascosto. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number} (the `GetIssue` operationId).
+func (c *Client) GetIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetIssueRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateIssueWithBody Modifica titolo e testo
+//
+// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+func (c *Client) UpdateIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateIssueRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateIssue Modifica titolo e testo
+//
+// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+func (c *Client) UpdateIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body UpdateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateIssueRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueAssigneesWithBody Imposta gli assegnatari
+//
+// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+func (c *Client) SetIssueAssigneesWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueAssigneesRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueAssignees Imposta gli assegnatari
+//
+// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+func (c *Client) SetIssueAssignees(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueAssigneesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueAssigneesRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CloseIssueWithBody Chiude una issue con un motivo
+//
+// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+func (c *Client) CloseIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCloseIssueRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CloseIssue Chiude una issue con un motivo
+//
+// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+func (c *Client) CloseIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CloseIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCloseIssueRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListIssueComments Commenti della issue
+//
+// Dal piu' vecchio al piu' recente. Un commento eliminato resta con `deleted: true` e testo vuoto (traccia "comment deleted", I4). Paginazione come `GET /repos`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments (the `ListIssueComments` operationId).
+func (c *Client) ListIssueComments(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssueCommentsRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateIssueCommentWithBody Commenta la issue
+//
+// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+func (c *Client) CreateIssueCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateIssueCommentRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateIssueComment Commenta la issue
+//
+// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+func (c *Client) CreateIssueComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CreateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateIssueCommentRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteIssueComment Elimina un commento
+//
+// L'autore o chi ha `admin` (I4). Il testo viene svuotato e si registra l'evento `comment_deleted` ("comment deleted"); le versioni precedenti restano visibili a `admin`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `DeleteIssueComment` operationId).
+func (c *Client) DeleteIssueComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteIssueCommentRequest(c.Server, owner, repo, number, commentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateIssueCommentWithBody Modifica un commento
+//
+// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+func (c *Client) UpdateIssueCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateIssueCommentRequestWithBody(c.Server, owner, repo, number, commentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateIssueComment Modifica un commento
+//
+// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+func (c *Client) UpdateIssueComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, body UpdateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateIssueCommentRequest(c.Server, owner, repo, number, commentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListIssueCommentVersions Versioni precedenti del testo di un commento
+//
+// Solo con `admin` (I4), come `listIssueVersions`. Anche per i commenti eliminati.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions (the `ListIssueCommentVersions` operationId).
+func (c *Client) ListIssueCommentVersions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssueCommentVersionsRequest(c.Server, owner, repo, number, commentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListIssueEvents Cronologia degli eventi
+//
+// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/events (the `ListIssueEvents` operationId).
+func (c *Client) ListIssueEvents(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssueEventsRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueHiddenWithBody Nasconde o mostra una issue
+//
+// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+func (c *Client) SetIssueHiddenWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueHiddenRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueHidden Nasconde o mostra una issue
+//
+// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+func (c *Client) SetIssueHidden(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueHiddenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueHiddenRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueLabelsWithBody Imposta le etichette
+//
+// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+func (c *Client) SetIssueLabelsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueLabelsRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueLabels Imposta le etichette
+//
+// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+func (c *Client) SetIssueLabels(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueLabelsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueLabelsRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UnlockIssue Sblocca la discussione
+//
+// Serve `admin` (I11). Sbloccare una issue non bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/lock (the `UnlockIssue` operationId).
+func (c *Client) UnlockIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnlockIssueRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LockIssueWithBody Blocca la discussione
+//
+// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+func (c *Client) LockIssueWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLockIssueRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LockIssue Blocca la discussione
+//
+// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+func (c *Client) LockIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body LockIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLockIssueRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueMilestoneWithBody Imposta o toglie la milestone
+//
+// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+func (c *Client) SetIssueMilestoneWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueMilestoneRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetIssueMilestone Imposta o toglie la milestone
+//
+// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+func (c *Client) SetIssueMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetIssueMilestoneRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReopenIssue Riapre una issue
+//
+// Come `closeIssue`: chi ha `write` o l'autore (I3). Riaprire azzera motivo e duplicato (I2). Una issue gia' aperta risponde 409 `already_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
+func (c *Client) ReopenIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReopenIssueRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListIssueVersions Versioni precedenti del testo della issue
+//
+// Solo con `admin` (I4): 403 per chi legge soltanto. Dalla piu' recente alla piu' vecchia; la versione corrente non e' nell'elenco, e' il testo della issue. Vuoto se non e' mai stata modificata.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/versions (the `ListIssueVersions` operationId).
+func (c *Client) ListIssueVersions(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssueVersionsRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListLabels Etichette del repo
+//
+// Con il numero di issues aperte che le usano. Ordinate per nome. Paginazione come `GET /repos`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/labels (the `ListLabels` operationId).
+func (c *Client) ListLabels(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListLabelsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLabelsRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLabelWithBody Crea un'etichetta
+//
+// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+func (c *Client) CreateLabelWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLabelRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLabel Crea un'etichetta
+//
+// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+func (c *Client) CreateLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLabelRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLabel Elimina un'etichetta
+//
+// Serve `write`. Toglie l'etichetta da tutte le issues (evento `unlabeled` nella cronologia). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/labels/{name} (the `DeleteLabel` operationId).
+func (c *Client) DeleteLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLabelRequest(c.Server, owner, repo, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLabel Legge un'etichetta
+//
+// Per nome, senza distinguere maiuscole/minuscole.
+//
+// Corresponds with GET /repos/{owner}/{repo}/labels/{name} (the `GetLabel` operationId).
+func (c *Client) GetLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLabelRequest(c.Server, owner, repo, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLabelWithBody Modifica un'etichetta
+//
+// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+func (c *Client) UpdateLabelWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLabelRequestWithBody(c.Server, owner, repo, name, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLabel Modifica un'etichetta
+//
+// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+func (c *Client) UpdateLabel(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, body UpdateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLabelRequest(c.Server, owner, repo, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetRepositoryLanguages Lingue del repo
 //
 // Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -4874,6 +6854,133 @@ func (c *Client) ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, 
 // Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
 func (c *Client) GetRepositoryLanguages(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRepositoryLanguagesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListMilestones Milestone del repo
+//
+// Con l'avanzamento: `closedIssues` conta solo le chiuse come `completed`; le `not_planned` e `duplicate` non contano ne' fra le chiuse ne' fra le aperte (I2). Per scadenza crescente, poi per numero.
+//
+// Corresponds with GET /repos/{owner}/{repo}/milestones (the `ListMilestones` operationId).
+func (c *Client) ListMilestones(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListMilestonesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMilestonesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateMilestoneWithBody Crea una milestone
+//
+// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+func (c *Client) CreateMilestoneWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateMilestoneRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateMilestone Crea una milestone
+//
+// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+func (c *Client) CreateMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateMilestoneRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteMilestone Elimina una milestone
+//
+// Serve `write`. Le issues collegate restano, senza milestone (evento `demilestoned`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `DeleteMilestone` operationId).
+func (c *Client) DeleteMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteMilestoneRequest(c.Server, owner, repo, milestoneNumber)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMilestone Legge una milestone
+//
+// Per numero della milestone nel repo.
+//
+// Corresponds with GET /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `GetMilestone` operationId).
+func (c *Client) GetMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMilestoneRequest(c.Server, owner, repo, milestoneNumber)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateMilestoneWithBody Modifica o chiude una milestone
+//
+// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+func (c *Client) UpdateMilestoneWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateMilestoneRequestWithBody(c.Server, owner, repo, milestoneNumber, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateMilestone Modifica o chiude una milestone
+//
+// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+func (c *Client) UpdateMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateMilestoneRequest(c.Server, owner, repo, milestoneNumber, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5216,6 +7323,23 @@ func (c *Client) UpdateResourceGrant(ctx context.Context, resourceId ResourceIdP
 // Corresponds with GET /resources/{resourceId}/permissions (the `GetMyResourcePermission` operationId).
 func (c *Client) GetMyResourcePermission(ctx context.Context, resourceId ResourceIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetMyResourcePermissionRequest(c.Server, resourceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchIssues Cerca issues su tutta l'installazione
+//
+// Ricerca con la sintassi di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:` e testo libero con ricerca testuale PostgreSQL) sui soli repo che l'utente puo' leggere. Stessa sintassi di `listIssues`, che e' la ricerca nel singolo repo. Le issues nascoste compaiono solo a chi ha `admin` sul loro repo. Un `q` che non si puo' interpretare risponde 422.
+//
+// Corresponds with GET /search/issues (the `SearchIssues` operationId).
+func (c *Client) SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchIssuesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -9254,6 +11378,1691 @@ func NewListRepositoryFilesRequest(server string, owner RepoOwnerParam, repo Rep
 	return req, nil
 }
 
+// NewUploadIssueAttachmentRequestWithBody constructs an http.Request for the UploadIssueAttachment method, with any body, and a specified content type
+func NewUploadIssueAttachmentRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issue-attachments", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetIssueAttachmentRequest constructs an http.Request for the GetIssueAttachment method
+func NewGetIssueAttachmentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, attachmentId IssueAttachmentIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issue-attachments/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListIssueTemplatesRequest constructs an http.Request for the ListIssueTemplates method
+func NewListIssueTemplatesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issue-templates", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListIssuesRequest constructs an http.Request for the ListIssues method
+func NewListIssuesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListIssuesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Reason != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "reason", *params.Reason, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Labels != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "labels", *params.Labels, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Assignee != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "assignee", *params.Assignee, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Author != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "author", *params.Author, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Milestone != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "milestone", *params.Milestone, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sort", *params.Sort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateIssueRequest calls the generic CreateIssue builder with application/json body
+func NewCreateIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateIssueJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateIssueRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateIssueRequestWithBody constructs an http.Request for the CreateIssue method, with any body, and a specified content type
+func NewCreateIssueRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetIssueRequest constructs an http.Request for the GetIssue method
+func NewGetIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateIssueRequest calls the generic UpdateIssue builder with application/json body
+func NewUpdateIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body UpdateIssueJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateIssueRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewUpdateIssueRequestWithBody constructs an http.Request for the UpdateIssue method, with any body, and a specified content type
+func NewUpdateIssueRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSetIssueAssigneesRequest calls the generic SetIssueAssignees builder with application/json body
+func NewSetIssueAssigneesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueAssigneesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetIssueAssigneesRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewSetIssueAssigneesRequestWithBody constructs an http.Request for the SetIssueAssignees method, with any body, and a specified content type
+func NewSetIssueAssigneesRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/assignees", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCloseIssueRequest calls the generic CloseIssue builder with application/json body
+func NewCloseIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CloseIssueJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCloseIssueRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewCloseIssueRequestWithBody constructs an http.Request for the CloseIssue method, with any body, and a specified content type
+func NewCloseIssueRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/close", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListIssueCommentsRequest constructs an http.Request for the ListIssueComments method
+func NewListIssueCommentsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueCommentsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/comments", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateIssueCommentRequest calls the generic CreateIssueComment builder with application/json body
+func NewCreateIssueCommentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CreateIssueCommentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateIssueCommentRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewCreateIssueCommentRequestWithBody constructs an http.Request for the CreateIssueComment method, with any body, and a specified content type
+func NewCreateIssueCommentRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/comments", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteIssueCommentRequest constructs an http.Request for the DeleteIssueComment method
+func NewDeleteIssueCommentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "commentId", commentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/comments/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateIssueCommentRequest calls the generic UpdateIssueComment builder with application/json body
+func NewUpdateIssueCommentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, body UpdateIssueCommentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateIssueCommentRequestWithBody(server, owner, repo, number, commentId, "application/json", bodyReader)
+}
+
+// NewUpdateIssueCommentRequestWithBody constructs an http.Request for the UpdateIssueComment method, with any body, and a specified content type
+func NewUpdateIssueCommentRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "commentId", commentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/comments/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListIssueCommentVersionsRequest constructs an http.Request for the ListIssueCommentVersions method
+func NewListIssueCommentVersionsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "commentId", commentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/comments/%s/versions", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListIssueEventsRequest constructs an http.Request for the ListIssueEvents method
+func NewListIssueEventsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/events", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetIssueHiddenRequest calls the generic SetIssueHidden builder with application/json body
+func NewSetIssueHiddenRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueHiddenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetIssueHiddenRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewSetIssueHiddenRequestWithBody constructs an http.Request for the SetIssueHidden method, with any body, and a specified content type
+func NewSetIssueHiddenRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/hidden", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSetIssueLabelsRequest calls the generic SetIssueLabels builder with application/json body
+func NewSetIssueLabelsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueLabelsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetIssueLabelsRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewSetIssueLabelsRequestWithBody constructs an http.Request for the SetIssueLabels method, with any body, and a specified content type
+func NewSetIssueLabelsRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/labels", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUnlockIssueRequest constructs an http.Request for the UnlockIssue method
+func NewUnlockIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/lock", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewLockIssueRequest calls the generic LockIssue builder with application/json body
+func NewLockIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body LockIssueJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLockIssueRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewLockIssueRequestWithBody constructs an http.Request for the LockIssue method, with any body, and a specified content type
+func NewLockIssueRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/lock", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSetIssueMilestoneRequest calls the generic SetIssueMilestone builder with application/json body
+func NewSetIssueMilestoneRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueMilestoneJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetIssueMilestoneRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewSetIssueMilestoneRequestWithBody constructs an http.Request for the SetIssueMilestone method, with any body, and a specified content type
+func NewSetIssueMilestoneRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/milestone", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReopenIssueRequest constructs an http.Request for the ReopenIssue method
+func NewReopenIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/reopen", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListIssueVersionsRequest constructs an http.Request for the ListIssueVersions method
+func NewListIssueVersionsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/versions", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListLabelsRequest constructs an http.Request for the ListLabels method
+func NewListLabelsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListLabelsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/labels", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLabelRequest calls the generic CreateLabel builder with application/json body
+func NewCreateLabelRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateLabelJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLabelRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateLabelRequestWithBody constructs an http.Request for the CreateLabel method, with any body, and a specified content type
+func NewCreateLabelRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/labels", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteLabelRequest constructs an http.Request for the DeleteLabel method
+func NewDeleteLabelRequest(server string, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/labels/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetLabelRequest constructs an http.Request for the GetLabel method
+func NewGetLabelRequest(server string, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/labels/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLabelRequest calls the generic UpdateLabel builder with application/json body
+func NewUpdateLabelRequest(server string, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, body UpdateLabelJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLabelRequestWithBody(server, owner, repo, name, "application/json", bodyReader)
+}
+
+// NewUpdateLabelRequestWithBody constructs an http.Request for the UpdateLabel method, with any body, and a specified content type
+func NewUpdateLabelRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/labels/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetRepositoryLanguagesRequest constructs an http.Request for the GetRepositoryLanguages method
 func NewGetRepositoryLanguagesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams) (*http.Request, error) {
 	var err error
@@ -9318,6 +13127,309 @@ func NewGetRepositoryLanguagesRequest(server string, owner RepoOwnerParam, repo 
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListMilestonesRequest constructs an http.Request for the ListMilestones method
+func NewListMilestonesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListMilestonesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/milestones", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateMilestoneRequest calls the generic CreateMilestone builder with application/json body
+func NewCreateMilestoneRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateMilestoneJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateMilestoneRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateMilestoneRequestWithBody constructs an http.Request for the CreateMilestone method, with any body, and a specified content type
+func NewCreateMilestoneRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/milestones", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteMilestoneRequest constructs an http.Request for the DeleteMilestone method
+func NewDeleteMilestoneRequest(server string, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "milestoneNumber", milestoneNumber, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/milestones/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMilestoneRequest constructs an http.Request for the GetMilestone method
+func NewGetMilestoneRequest(server string, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "milestoneNumber", milestoneNumber, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/milestones/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateMilestoneRequest calls the generic UpdateMilestone builder with application/json body
+func NewUpdateMilestoneRequest(server string, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateMilestoneRequestWithBody(server, owner, repo, milestoneNumber, "application/json", bodyReader)
+}
+
+// NewUpdateMilestoneRequestWithBody constructs an http.Request for the UpdateMilestone method, with any body, and a specified content type
+func NewUpdateMilestoneRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "milestoneNumber", milestoneNumber, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/milestones/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10195,6 +14307,96 @@ func NewGetMyResourcePermissionRequest(server string, resourceId ResourceIdParam
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSearchIssuesRequest constructs an http.Request for the SearchIssues method
+func NewSearchIssuesRequest(server string, params *SearchIssuesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/search/issues")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sort", *params.Sort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -11820,6 +16022,357 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
 	ListRepositoryFilesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*ListRepositoryFilesResponse, error)
 
+	// UploadIssueAttachmentWithBodyWithResponse Carica un allegato
+	//
+	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issue-attachments (the `UploadIssueAttachment` operationId).
+	UploadIssueAttachmentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadIssueAttachmentResponse, error)
+
+	// GetIssueAttachmentWithResponse Scarica un allegato
+	//
+	// Solo chi vede il repo (I9): nessun URL pubblico, la richiesta e' sempre autenticata. Sempre `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox` (come B3). Un allegato di una issue nascosta e' 404 per chi non ha `admin`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issue-attachments/{attachmentId} (the `GetIssueAttachment` operationId).
+	GetIssueAttachmentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, attachmentId IssueAttachmentIdParam, reqEditors ...RequestEditorFn) (*GetIssueAttachmentResponse, error)
+
+	// ListIssueTemplatesWithResponse Modelli di issue del repo
+	//
+	// Modelli Markdown in `.gitstack/ISSUE_TEMPLATE/` sul branch principale (I11), letti da core tramite il servizio git. Vuoto se la cartella non c'e' o il repo e' vuoto. Il nome e' il file senza estensione. Un modello propone titolo, etichette e testo iniziale: la UI, l'API e `gs` li usano per precompilare `createIssue`, che non li impone.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issue-templates (the `ListIssueTemplates` operationId).
+	ListIssueTemplatesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListIssueTemplatesResponse, error)
+
+	// ListIssuesWithResponse Elenca e cerca le issues del repo
+	//
+	// Issues del repo con filtri (stato, etichette, assegnatario, autore, milestone) e ricerca nel testo. `q` usa la sintassi di I10 e i filtri espliciti si sommano a quelli di `q`. Le issues nascoste (I4) compaiono solo a chi ha `admin`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues (the `ListIssues` operationId).
+	ListIssuesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListIssuesParams, reqEditors ...RequestEditorFn) (*ListIssuesResponse, error)
+
+	// CreateIssueWithBodyWithResponse Apre una issue
+	//
+	// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+	CreateIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateIssueResponse, error)
+
+	// CreateIssueWithResponse Apre una issue
+	//
+	// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+	CreateIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateIssueResponse, error)
+
+	// GetIssueWithResponse Legge una issue per numero
+	//
+	// Una issue che non esiste nel repo risponde 404. Se e' nascosta (I4) chi non ha `admin` riceve 404, come se non esistesse, per non rivelare ne' il contenuto ne' l'esistenza di cio' che e' stato nascosto. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number} (the `GetIssue` operationId).
+	GetIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*GetIssueResponse, error)
+
+	// UpdateIssueWithBodyWithResponse Modifica titolo e testo
+	//
+	// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+	UpdateIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateIssueResponse, error)
+
+	// UpdateIssueWithResponse Modifica titolo e testo
+	//
+	// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+	UpdateIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body UpdateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateIssueResponse, error)
+
+	// SetIssueAssigneesWithBodyWithResponse Imposta gli assegnatari
+	//
+	// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+	SetIssueAssigneesWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueAssigneesResponse, error)
+
+	// SetIssueAssigneesWithResponse Imposta gli assegnatari
+	//
+	// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+	SetIssueAssigneesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueAssigneesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueAssigneesResponse, error)
+
+	// CloseIssueWithBodyWithResponse Chiude una issue con un motivo
+	//
+	// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+	CloseIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloseIssueResponse, error)
+
+	// CloseIssueWithResponse Chiude una issue con un motivo
+	//
+	// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+	CloseIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CloseIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*CloseIssueResponse, error)
+
+	// ListIssueCommentsWithResponse Commenti della issue
+	//
+	// Dal piu' vecchio al piu' recente. Un commento eliminato resta con `deleted: true` e testo vuoto (traccia "comment deleted", I4). Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments (the `ListIssueComments` operationId).
+	ListIssueCommentsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueCommentsParams, reqEditors ...RequestEditorFn) (*ListIssueCommentsResponse, error)
+
+	// CreateIssueCommentWithBodyWithResponse Commenta la issue
+	//
+	// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+	CreateIssueCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateIssueCommentResponse, error)
+
+	// CreateIssueCommentWithResponse Commenta la issue
+	//
+	// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+	CreateIssueCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CreateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateIssueCommentResponse, error)
+
+	// DeleteIssueCommentWithResponse Elimina un commento
+	//
+	// L'autore o chi ha `admin` (I4). Il testo viene svuotato e si registra l'evento `comment_deleted` ("comment deleted"); le versioni precedenti restano visibili a `admin`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `DeleteIssueComment` operationId).
+	DeleteIssueCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*DeleteIssueCommentResponse, error)
+
+	// UpdateIssueCommentWithBodyWithResponse Modifica un commento
+	//
+	// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+	UpdateIssueCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateIssueCommentResponse, error)
+
+	// UpdateIssueCommentWithResponse Modifica un commento
+	//
+	// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+	UpdateIssueCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, body UpdateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateIssueCommentResponse, error)
+
+	// ListIssueCommentVersionsWithResponse Versioni precedenti del testo di un commento
+	//
+	// Solo con `admin` (I4), come `listIssueVersions`. Anche per i commenti eliminati.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions (the `ListIssueCommentVersions` operationId).
+	ListIssueCommentVersionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*ListIssueCommentVersionsResponse, error)
+
+	// ListIssueEventsWithResponse Cronologia degli eventi
+	//
+	// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/events (the `ListIssueEvents` operationId).
+	ListIssueEventsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams, reqEditors ...RequestEditorFn) (*ListIssueEventsResponse, error)
+
+	// SetIssueHiddenWithBodyWithResponse Nasconde o mostra una issue
+	//
+	// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+	SetIssueHiddenWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueHiddenResponse, error)
+
+	// SetIssueHiddenWithResponse Nasconde o mostra una issue
+	//
+	// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+	SetIssueHiddenWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueHiddenJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueHiddenResponse, error)
+
+	// SetIssueLabelsWithBodyWithResponse Imposta le etichette
+	//
+	// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+	SetIssueLabelsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueLabelsResponse, error)
+
+	// SetIssueLabelsWithResponse Imposta le etichette
+	//
+	// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+	SetIssueLabelsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueLabelsJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueLabelsResponse, error)
+
+	// UnlockIssueWithResponse Sblocca la discussione
+	//
+	// Serve `admin` (I11). Sbloccare una issue non bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/lock (the `UnlockIssue` operationId).
+	UnlockIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*UnlockIssueResponse, error)
+
+	// LockIssueWithBodyWithResponse Blocca la discussione
+	//
+	// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+	LockIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LockIssueResponse, error)
+
+	// LockIssueWithResponse Blocca la discussione
+	//
+	// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+	LockIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body LockIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*LockIssueResponse, error)
+
+	// SetIssueMilestoneWithBodyWithResponse Imposta o toglie la milestone
+	//
+	// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+	SetIssueMilestoneWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueMilestoneResponse, error)
+
+	// SetIssueMilestoneWithResponse Imposta o toglie la milestone
+	//
+	// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+	SetIssueMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueMilestoneResponse, error)
+
+	// ReopenIssueWithResponse Riapre una issue
+	//
+	// Come `closeIssue`: chi ha `write` o l'autore (I3). Riaprire azzera motivo e duplicato (I2). Una issue gia' aperta risponde 409 `already_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
+	ReopenIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*ReopenIssueResponse, error)
+
+	// ListIssueVersionsWithResponse Versioni precedenti del testo della issue
+	//
+	// Solo con `admin` (I4): 403 per chi legge soltanto. Dalla piu' recente alla piu' vecchia; la versione corrente non e' nell'elenco, e' il testo della issue. Vuoto se non e' mai stata modificata.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/versions (the `ListIssueVersions` operationId).
+	ListIssueVersionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*ListIssueVersionsResponse, error)
+
+	// ListLabelsWithResponse Etichette del repo
+	//
+	// Con il numero di issues aperte che le usano. Ordinate per nome. Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/labels (the `ListLabels` operationId).
+	ListLabelsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListLabelsParams, reqEditors ...RequestEditorFn) (*ListLabelsResponse, error)
+
+	// CreateLabelWithBodyWithResponse Crea un'etichetta
+	//
+	// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+	CreateLabelWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLabelResponse, error)
+
+	// CreateLabelWithResponse Crea un'etichetta
+	//
+	// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+	CreateLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLabelResponse, error)
+
+	// DeleteLabelWithResponse Elimina un'etichetta
+	//
+	// Serve `write`. Toglie l'etichetta da tutte le issues (evento `unlabeled` nella cronologia). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/labels/{name} (the `DeleteLabel` operationId).
+	DeleteLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*DeleteLabelResponse, error)
+
+	// GetLabelWithResponse Legge un'etichetta
+	//
+	// Per nome, senza distinguere maiuscole/minuscole.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/labels/{name} (the `GetLabel` operationId).
+	GetLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*GetLabelResponse, error)
+
+	// UpdateLabelWithBodyWithResponse Modifica un'etichetta
+	//
+	// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+	UpdateLabelWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLabelResponse, error)
+
+	// UpdateLabelWithResponse Modifica un'etichetta
+	//
+	// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+	UpdateLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, body UpdateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLabelResponse, error)
+
 	// GetRepositoryLanguagesWithResponse Lingue del repo
 	//
 	// Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -11828,6 +16381,69 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
 	GetRepositoryLanguagesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*GetRepositoryLanguagesResponse, error)
+
+	// ListMilestonesWithResponse Milestone del repo
+	//
+	// Con l'avanzamento: `closedIssues` conta solo le chiuse come `completed`; le `not_planned` e `duplicate` non contano ne' fra le chiuse ne' fra le aperte (I2). Per scadenza crescente, poi per numero.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/milestones (the `ListMilestones` operationId).
+	ListMilestonesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListMilestonesParams, reqEditors ...RequestEditorFn) (*ListMilestonesResponse, error)
+
+	// CreateMilestoneWithBodyWithResponse Crea una milestone
+	//
+	// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+	CreateMilestoneWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMilestoneResponse, error)
+
+	// CreateMilestoneWithResponse Crea una milestone
+	//
+	// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+	CreateMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMilestoneResponse, error)
+
+	// DeleteMilestoneWithResponse Elimina una milestone
+	//
+	// Serve `write`. Le issues collegate restano, senza milestone (evento `demilestoned`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `DeleteMilestone` operationId).
+	DeleteMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*DeleteMilestoneResponse, error)
+
+	// GetMilestoneWithResponse Legge una milestone
+	//
+	// Per numero della milestone nel repo.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `GetMilestone` operationId).
+	GetMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*GetMilestoneResponse, error)
+
+	// UpdateMilestoneWithBodyWithResponse Modifica o chiude una milestone
+	//
+	// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+	UpdateMilestoneWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMilestoneResponse, error)
+
+	// UpdateMilestoneWithResponse Modifica o chiude una milestone
+	//
+	// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+	UpdateMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMilestoneResponse, error)
 
 	// GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
 	//
@@ -11994,6 +16610,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /resources/{resourceId}/permissions (the `GetMyResourcePermission` operationId).
 	GetMyResourcePermissionWithResponse(ctx context.Context, resourceId ResourceIdParam, reqEditors ...RequestEditorFn) (*GetMyResourcePermissionResponse, error)
+
+	// SearchIssuesWithResponse Cerca issues su tutta l'installazione
+	//
+	// Ricerca con la sintassi di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:` e testo libero con ricerca testuale PostgreSQL) sui soli repo che l'utente puo' leggere. Stessa sintassi di `listIssues`, che e' la ricerca nel singolo repo. Le issues nascoste compaiono solo a chi ha `admin` sul loro repo. Un `q` che non si puo' interpretare risponde 422.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
+	SearchIssuesWithResponse(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*SearchIssuesResponse, error)
 
 	// ListSshKeysWithResponse Elenca le chiavi SSH dell'utente corrente
 	//
@@ -16975,6 +21600,2326 @@ func (r ListRepositoryFilesResponse) ContentType() string {
 	return ""
 }
 
+// UploadIssueAttachmentResponse201Headers the declared response headers of an HTTP 201 response for UploadIssueAttachment
+type UploadIssueAttachmentResponse201Headers struct {
+	Location *string
+}
+
+type UploadIssueAttachmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *IssueAttachment
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *UploadIssueAttachmentResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON201() *IssueAttachment {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UploadIssueAttachmentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UploadIssueAttachmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UploadIssueAttachmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UploadIssueAttachmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UploadIssueAttachmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetIssueAttachmentResponse200Headers the declared response headers of an HTTP 200 response for GetIssueAttachment
+type GetIssueAttachmentResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
+type GetIssueAttachmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetIssueAttachmentResponse200Headers
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetIssueAttachmentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetIssueAttachmentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetIssueAttachmentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetIssueAttachmentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetIssueAttachmentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetIssueAttachmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetIssueAttachmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetIssueAttachmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetIssueAttachmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListIssueTemplatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueTemplateList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListIssueTemplatesResponse) GetJSON200() *IssueTemplateList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListIssueTemplatesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListIssueTemplatesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListIssueTemplatesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListIssueTemplatesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListIssueTemplatesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListIssueTemplatesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssueTemplatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssueTemplatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListIssueTemplatesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListIssuesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListIssuesResponse) GetJSON200() *IssueList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListIssuesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListIssuesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListIssuesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListIssuesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListIssuesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListIssuesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListIssuesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssuesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssuesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListIssuesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateIssueResponse201Headers the declared response headers of an HTTP 201 response for CreateIssue
+type CreateIssueResponse201Headers struct {
+	Location *string
+}
+
+type CreateIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateIssueResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateIssueResponse) GetJSON201() *Issue {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateIssueResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r CreateIssueResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateIssueResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetIssueResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateIssueResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateIssueResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UpdateIssueResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateIssueResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetIssueAssigneesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetIssueAssigneesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetIssueAssigneesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetIssueAssigneesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetIssueAssigneesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetIssueAssigneesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetIssueAssigneesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CloseIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CloseIssueResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CloseIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CloseIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CloseIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CloseIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CloseIssueResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CloseIssueResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CloseIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CloseIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CloseIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CloseIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CloseIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListIssueCommentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueCommentList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListIssueCommentsResponse) GetJSON200() *IssueCommentList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListIssueCommentsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListIssueCommentsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListIssueCommentsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListIssueCommentsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListIssueCommentsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListIssueCommentsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssueCommentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssueCommentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListIssueCommentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateIssueCommentResponse201Headers the declared response headers of an HTTP 201 response for CreateIssueComment
+type CreateIssueCommentResponse201Headers struct {
+	Location *string
+}
+
+type CreateIssueCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *IssueComment
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateIssueCommentResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON201() *IssueComment {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateIssueCommentResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateIssueCommentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateIssueCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateIssueCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateIssueCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateIssueCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteIssueCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteIssueCommentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteIssueCommentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteIssueCommentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteIssueCommentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteIssueCommentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteIssueCommentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteIssueCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteIssueCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteIssueCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteIssueCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateIssueCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueComment
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON200() *IssueComment {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateIssueCommentResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateIssueCommentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateIssueCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateIssueCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateIssueCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateIssueCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListIssueCommentVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TextVersionList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListIssueCommentVersionsResponse) GetJSON200() *TextVersionList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListIssueCommentVersionsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListIssueCommentVersionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListIssueCommentVersionsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListIssueCommentVersionsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListIssueCommentVersionsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListIssueCommentVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssueCommentVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssueCommentVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListIssueCommentVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListIssueEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueEventList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListIssueEventsResponse) GetJSON200() *IssueEventList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListIssueEventsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListIssueEventsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListIssueEventsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListIssueEventsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListIssueEventsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListIssueEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssueEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssueEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListIssueEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetIssueHiddenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetIssueHiddenResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetIssueHiddenResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetIssueHiddenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetIssueHiddenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetIssueHiddenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetIssueHiddenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetIssueLabelsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetIssueLabelsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetIssueLabelsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetIssueLabelsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetIssueLabelsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetIssueLabelsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetIssueLabelsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UnlockIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UnlockIssueResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UnlockIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UnlockIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UnlockIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UnlockIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UnlockIssueResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UnlockIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UnlockIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UnlockIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnlockIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnlockIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LockIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r LockIssueResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LockIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r LockIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r LockIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r LockIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r LockIssueResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r LockIssueResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r LockIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r LockIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LockIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LockIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LockIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetIssueMilestoneResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetIssueMilestoneResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetIssueMilestoneResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetIssueMilestoneResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetIssueMilestoneResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetIssueMilestoneResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetIssueMilestoneResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReopenIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Issue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReopenIssueResponse) GetJSON200() *Issue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReopenIssueResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReopenIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReopenIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReopenIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReopenIssueResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ReopenIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ReopenIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReopenIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReopenIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReopenIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListIssueVersionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TextVersionList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListIssueVersionsResponse) GetJSON200() *TextVersionList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListIssueVersionsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListIssueVersionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListIssueVersionsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListIssueVersionsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListIssueVersionsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListIssueVersionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssueVersionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssueVersionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListIssueVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListLabelsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LabelList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListLabelsResponse) GetJSON200() *LabelList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListLabelsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListLabelsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListLabelsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListLabelsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListLabelsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListLabelsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLabelsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLabelsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLabelsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateLabelResponse201Headers the declared response headers of an HTTP 201 response for CreateLabel
+type CreateLabelResponse201Headers struct {
+	Location *string
+}
+
+type CreateLabelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Label
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateLabelResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateLabelResponse) GetJSON201() *Label {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLabelResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateLabelResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateLabelResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateLabelResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateLabelResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateLabelResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateLabelResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLabelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLabelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLabelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLabelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLabelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteLabelResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteLabelResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteLabelResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteLabelResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteLabelResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteLabelResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLabelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLabelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLabelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLabelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLabelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Label
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLabelResponse) GetJSON200() *Label {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetLabelResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetLabelResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetLabelResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetLabelResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetLabelResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLabelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLabelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLabelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLabelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLabelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Label
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLabelResponse) GetJSON200() *Label {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateLabelResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateLabelResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateLabelResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateLabelResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateLabelResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateLabelResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateLabelResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLabelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLabelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLabelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLabelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRepositoryLanguagesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17045,6 +23990,421 @@ func (r GetRepositoryLanguagesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRepositoryLanguagesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListMilestonesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *MilestoneList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListMilestonesResponse) GetJSON200() *MilestoneList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListMilestonesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListMilestonesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListMilestonesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListMilestonesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListMilestonesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListMilestonesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMilestonesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMilestonesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMilestonesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateMilestoneResponse201Headers the declared response headers of an HTTP 201 response for CreateMilestone
+type CreateMilestoneResponse201Headers struct {
+	Location *string
+}
+
+type CreateMilestoneResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Milestone
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateMilestoneResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateMilestoneResponse) GetJSON201() *Milestone {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateMilestoneResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateMilestoneResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateMilestoneResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateMilestoneResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateMilestoneResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateMilestoneResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateMilestoneResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateMilestoneResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateMilestoneResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateMilestoneResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateMilestoneResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteMilestoneResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteMilestoneResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteMilestoneResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteMilestoneResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteMilestoneResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteMilestoneResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteMilestoneResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteMilestoneResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteMilestoneResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteMilestoneResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteMilestoneResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetMilestoneResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Milestone
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMilestoneResponse) GetJSON200() *Milestone {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetMilestoneResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetMilestoneResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetMilestoneResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetMilestoneResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetMilestoneResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMilestoneResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMilestoneResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMilestoneResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMilestoneResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateMilestoneResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Milestone
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON200() *Milestone {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateMilestoneResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateMilestoneResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateMilestoneResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMilestoneResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMilestoneResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMilestoneResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -18216,6 +25576,82 @@ func (r GetMyResourcePermissionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetMyResourcePermissionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchIssuesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueSearchResultList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchIssuesResponse) GetJSON200() *IssueSearchResultList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchIssuesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchIssuesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchIssuesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SearchIssuesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SearchIssuesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchIssuesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchIssuesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchIssuesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchIssuesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -20760,6 +28196,591 @@ func (c *ClientWithResponses) ListRepositoryFilesWithResponse(ctx context.Contex
 	return ParseListRepositoryFilesResponse(rsp)
 }
 
+// UploadIssueAttachmentWithBodyWithResponse Carica un allegato
+//
+// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issue-attachments (the `UploadIssueAttachment` operationId).
+func (c *ClientWithResponses) UploadIssueAttachmentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadIssueAttachmentResponse, error) {
+	rsp, err := c.UploadIssueAttachmentWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadIssueAttachmentResponse(rsp)
+}
+
+// GetIssueAttachmentWithResponse Scarica un allegato
+//
+// Solo chi vede il repo (I9): nessun URL pubblico, la richiesta e' sempre autenticata. Sempre `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox` (come B3). Un allegato di una issue nascosta e' 404 per chi non ha `admin`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issue-attachments/{attachmentId} (the `GetIssueAttachment` operationId).
+func (c *ClientWithResponses) GetIssueAttachmentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, attachmentId IssueAttachmentIdParam, reqEditors ...RequestEditorFn) (*GetIssueAttachmentResponse, error) {
+	rsp, err := c.GetIssueAttachment(ctx, owner, repo, attachmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetIssueAttachmentResponse(rsp)
+}
+
+// ListIssueTemplatesWithResponse Modelli di issue del repo
+//
+// Modelli Markdown in `.gitstack/ISSUE_TEMPLATE/` sul branch principale (I11), letti da core tramite il servizio git. Vuoto se la cartella non c'e' o il repo e' vuoto. Il nome e' il file senza estensione. Un modello propone titolo, etichette e testo iniziale: la UI, l'API e `gs` li usano per precompilare `createIssue`, che non li impone.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issue-templates (the `ListIssueTemplates` operationId).
+func (c *ClientWithResponses) ListIssueTemplatesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ListIssueTemplatesResponse, error) {
+	rsp, err := c.ListIssueTemplates(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssueTemplatesResponse(rsp)
+}
+
+// ListIssuesWithResponse Elenca e cerca le issues del repo
+//
+// Issues del repo con filtri (stato, etichette, assegnatario, autore, milestone) e ricerca nel testo. `q` usa la sintassi di I10 e i filtri espliciti si sommano a quelli di `q`. Le issues nascoste (I4) compaiono solo a chi ha `admin`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues (the `ListIssues` operationId).
+func (c *ClientWithResponses) ListIssuesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListIssuesParams, reqEditors ...RequestEditorFn) (*ListIssuesResponse, error) {
+	rsp, err := c.ListIssues(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssuesResponse(rsp)
+}
+
+// CreateIssueWithBodyWithResponse Apre una issue
+//
+// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+func (c *ClientWithResponses) CreateIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateIssueResponse, error) {
+	rsp, err := c.CreateIssueWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateIssueResponse(rsp)
+}
+
+// CreateIssueWithResponse Apre una issue
+//
+// Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal contatore del repo condiviso con le PR (I1) e non si riusa mai. Etichette, assegnatari e milestone nel corpo richiedono `write` (403 altrimenti); gli assegnatari sono al massimo 10 e devono avere `write` (I6, 422). `attachmentIds` sono allegati gia' caricati da chi crea (I9). Testo oltre il limite: 413 (`body_too_large`, 1 MiB). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues (the `CreateIssue` operationId).
+func (c *ClientWithResponses) CreateIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateIssueResponse, error) {
+	rsp, err := c.CreateIssue(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateIssueResponse(rsp)
+}
+
+// GetIssueWithResponse Legge una issue per numero
+//
+// Una issue che non esiste nel repo risponde 404. Se e' nascosta (I4) chi non ha `admin` riceve 404, come se non esistesse, per non rivelare ne' il contenuto ne' l'esistenza di cio' che e' stato nascosto. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number} (the `GetIssue` operationId).
+func (c *ClientWithResponses) GetIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*GetIssueResponse, error) {
+	rsp, err := c.GetIssue(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetIssueResponse(rsp)
+}
+
+// UpdateIssueWithBodyWithResponse Modifica titolo e testo
+//
+// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+func (c *ClientWithResponses) UpdateIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateIssueResponse, error) {
+	rsp, err := c.UpdateIssueWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateIssueResponse(rsp)
+}
+
+// UpdateIssueWithResponse Modifica titolo e testo
+//
+// Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo salva la versione precedente (visibile con `admin`, `listIssueVersions`) e fa comparire `edited`. Stato, etichette, assegnatari e milestone hanno le loro operazioni. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Su una discussione bloccata (I11) l'autore con soli permessi `read` riceve 403 `locked`. Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number} (the `UpdateIssue` operationId).
+func (c *ClientWithResponses) UpdateIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body UpdateIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateIssueResponse, error) {
+	rsp, err := c.UpdateIssue(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateIssueResponse(rsp)
+}
+
+// SetIssueAssigneesWithBodyWithResponse Imposta gli assegnatari
+//
+// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+func (c *ClientWithResponses) SetIssueAssigneesWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueAssigneesResponse, error) {
+	rsp, err := c.SetIssueAssigneesWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueAssigneesResponse(rsp)
+}
+
+// SetIssueAssigneesWithResponse Imposta gli assegnatari
+//
+// Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write` puo' anche autoassegnarsi (I6). Al massimo 10, persone o agenti, tutti con `write` sul repo: altrimenti 422 (`details.fields.assignees`). Ogni aggiunta o rimozione e' un evento della cronologia. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/assignees (the `SetIssueAssignees` operationId).
+func (c *ClientWithResponses) SetIssueAssigneesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueAssigneesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueAssigneesResponse, error) {
+	rsp, err := c.SetIssueAssignees(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueAssigneesResponse(rsp)
+}
+
+// CloseIssueWithBodyWithResponse Chiude una issue con un motivo
+//
+// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+func (c *ClientWithResponses) CloseIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloseIssueResponse, error) {
+	rsp, err := c.CloseIssueWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloseIssueResponse(rsp)
+}
+
+// CloseIssueWithResponse Chiude una issue con un motivo
+//
+// Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`, il numero di un'altra issue dello stesso repo diversa da questa (422 altrimenti, e anche se `reason` non e' `duplicate` e `duplicateOf` c'e'). Possono chiudere chi ha `write` e l'autore della issue (I3). Una issue gia' chiusa risponde 409 `already_closed`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/close (the `CloseIssue` operationId).
+func (c *ClientWithResponses) CloseIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CloseIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*CloseIssueResponse, error) {
+	rsp, err := c.CloseIssue(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloseIssueResponse(rsp)
+}
+
+// ListIssueCommentsWithResponse Commenti della issue
+//
+// Dal piu' vecchio al piu' recente. Un commento eliminato resta con `deleted: true` e testo vuoto (traccia "comment deleted", I4). Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments (the `ListIssueComments` operationId).
+func (c *ClientWithResponses) ListIssueCommentsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueCommentsParams, reqEditors ...RequestEditorFn) (*ListIssueCommentsResponse, error) {
+	rsp, err := c.ListIssueComments(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssueCommentsResponse(rsp)
+}
+
+// CreateIssueCommentWithBodyWithResponse Commenta la issue
+//
+// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+func (c *ClientWithResponses) CreateIssueCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateIssueCommentResponse, error) {
+	rsp, err := c.CreateIssueCommentWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateIssueCommentResponse(rsp)
+}
+
+// CreateIssueCommentWithResponse Commenta la issue
+//
+// Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha `write` (403 `locked`). Testo Markdown, al massimo 65536 caratteri (413 `body_too_large` oltre 1 MiB); `attachmentIds` come in `createIssue`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/comments (the `CreateIssueComment` operationId).
+func (c *ClientWithResponses) CreateIssueCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body CreateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateIssueCommentResponse, error) {
+	rsp, err := c.CreateIssueComment(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateIssueCommentResponse(rsp)
+}
+
+// DeleteIssueCommentWithResponse Elimina un commento
+//
+// L'autore o chi ha `admin` (I4). Il testo viene svuotato e si registra l'evento `comment_deleted` ("comment deleted"); le versioni precedenti restano visibili a `admin`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `DeleteIssueComment` operationId).
+func (c *ClientWithResponses) DeleteIssueCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*DeleteIssueCommentResponse, error) {
+	rsp, err := c.DeleteIssueComment(ctx, owner, repo, number, commentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteIssueCommentResponse(rsp)
+}
+
+// UpdateIssueCommentWithBodyWithResponse Modifica un commento
+//
+// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+func (c *ClientWithResponses) UpdateIssueCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateIssueCommentResponse, error) {
+	rsp, err := c.UpdateIssueCommentWithBody(ctx, owner, repo, number, commentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateIssueCommentResponse(rsp)
+}
+
+// UpdateIssueCommentWithResponse Modifica un commento
+//
+// Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde 404. Con la discussione bloccata solo chi ha `write`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/issues/{number}/comments/{commentId} (the `UpdateIssueComment` operationId).
+func (c *ClientWithResponses) UpdateIssueCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, body UpdateIssueCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateIssueCommentResponse, error) {
+	rsp, err := c.UpdateIssueComment(ctx, owner, repo, number, commentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateIssueCommentResponse(rsp)
+}
+
+// ListIssueCommentVersionsWithResponse Versioni precedenti del testo di un commento
+//
+// Solo con `admin` (I4), come `listIssueVersions`. Anche per i commenti eliminati.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/comments/{commentId}/versions (the `ListIssueCommentVersions` operationId).
+func (c *ClientWithResponses) ListIssueCommentVersionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, commentId IssueCommentIdParam, reqEditors ...RequestEditorFn) (*ListIssueCommentVersionsResponse, error) {
+	rsp, err := c.ListIssueCommentVersions(ctx, owner, repo, number, commentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssueCommentVersionsResponse(rsp)
+}
+
+// ListIssueEventsWithResponse Cronologia degli eventi
+//
+// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/events (the `ListIssueEvents` operationId).
+func (c *ClientWithResponses) ListIssueEventsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams, reqEditors ...RequestEditorFn) (*ListIssueEventsResponse, error) {
+	rsp, err := c.ListIssueEvents(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssueEventsResponse(rsp)
+}
+
+// SetIssueHiddenWithBodyWithResponse Nasconde o mostra una issue
+//
+// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+func (c *ClientWithResponses) SetIssueHiddenWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueHiddenResponse, error) {
+	rsp, err := c.SetIssueHiddenWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueHiddenResponse(rsp)
+}
+
+// SetIssueHiddenWithResponse Nasconde o mostra una issue
+//
+// Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a `admin`; le altre persone la ricevono come inesistente (404). Le issues non si eliminano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/hidden (the `SetIssueHidden` operationId).
+func (c *ClientWithResponses) SetIssueHiddenWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueHiddenJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueHiddenResponse, error) {
+	rsp, err := c.SetIssueHidden(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueHiddenResponse(rsp)
+}
+
+// SetIssueLabelsWithBodyWithResponse Imposta le etichette
+//
+// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+func (c *ClientWithResponses) SetIssueLabelsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueLabelsResponse, error) {
+	rsp, err := c.SetIssueLabelsWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueLabelsResponse(rsp)
+}
+
+// SetIssueLabelsWithResponse Imposta le etichette
+//
+// Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non esiste nel repo e' 422 (`details.fields.labels`): non si crea al volo. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/labels (the `SetIssueLabels` operationId).
+func (c *ClientWithResponses) SetIssueLabelsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueLabelsJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueLabelsResponse, error) {
+	rsp, err := c.SetIssueLabels(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueLabelsResponse(rsp)
+}
+
+// UnlockIssueWithResponse Sblocca la discussione
+//
+// Serve `admin` (I11). Sbloccare una issue non bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/lock (the `UnlockIssue` operationId).
+func (c *ClientWithResponses) UnlockIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*UnlockIssueResponse, error) {
+	rsp, err := c.UnlockIssue(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnlockIssueResponse(rsp)
+}
+
+// LockIssueWithBodyWithResponse Blocca la discussione
+//
+// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+func (c *ClientWithResponses) LockIssueWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LockIssueResponse, error) {
+	rsp, err := c.LockIssueWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLockIssueResponse(rsp)
+}
+
+// LockIssueWithResponse Blocca la discussione
+//
+// Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403 `locked`). Bloccare una issue gia' bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Una issue nascosta (I4) risponde 404 a chi non ha `admin`, tranne dove indicato.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/lock (the `LockIssue` operationId).
+func (c *ClientWithResponses) LockIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body LockIssueJSONRequestBody, reqEditors ...RequestEditorFn) (*LockIssueResponse, error) {
+	rsp, err := c.LockIssue(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLockIssueResponse(rsp)
+}
+
+// SetIssueMilestoneWithBodyWithResponse Imposta o toglie la milestone
+//
+// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+func (c *ClientWithResponses) SetIssueMilestoneWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIssueMilestoneResponse, error) {
+	rsp, err := c.SetIssueMilestoneWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueMilestoneResponse(rsp)
+}
+
+// SetIssueMilestoneWithResponse Imposta o toglie la milestone
+//
+// Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone che non esiste nel repo e' 422. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/milestone (the `SetIssueMilestone` operationId).
+func (c *ClientWithResponses) SetIssueMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, body SetIssueMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*SetIssueMilestoneResponse, error) {
+	rsp, err := c.SetIssueMilestone(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetIssueMilestoneResponse(rsp)
+}
+
+// ReopenIssueWithResponse Riapre una issue
+//
+// Come `closeIssue`: chi ha `write` o l'autore (I3). Riaprire azzera motivo e duplicato (I2). Una issue gia' aperta risponde 409 `already_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
+func (c *ClientWithResponses) ReopenIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*ReopenIssueResponse, error) {
+	rsp, err := c.ReopenIssue(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReopenIssueResponse(rsp)
+}
+
+// ListIssueVersionsWithResponse Versioni precedenti del testo della issue
+//
+// Solo con `admin` (I4): 403 per chi legge soltanto. Dalla piu' recente alla piu' vecchia; la versione corrente non e' nell'elenco, e' il testo della issue. Vuoto se non e' mai stata modificata.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/versions (the `ListIssueVersions` operationId).
+func (c *ClientWithResponses) ListIssueVersionsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*ListIssueVersionsResponse, error) {
+	rsp, err := c.ListIssueVersions(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssueVersionsResponse(rsp)
+}
+
+// ListLabelsWithResponse Etichette del repo
+//
+// Con il numero di issues aperte che le usano. Ordinate per nome. Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/labels (the `ListLabels` operationId).
+func (c *ClientWithResponses) ListLabelsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListLabelsParams, reqEditors ...RequestEditorFn) (*ListLabelsResponse, error) {
+	rsp, err := c.ListLabels(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLabelsResponse(rsp)
+}
+
+// CreateLabelWithBodyWithResponse Crea un'etichetta
+//
+// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+func (c *ClientWithResponses) CreateLabelWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLabelResponse, error) {
+	rsp, err := c.CreateLabelWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLabelResponse(rsp)
+}
+
+// CreateLabelWithResponse Crea un'etichetta
+//
+// Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole ne' caratteri di controllo. Il colore e' esadecimale a sei cifre. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/labels (the `CreateLabel` operationId).
+func (c *ClientWithResponses) CreateLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLabelResponse, error) {
+	rsp, err := c.CreateLabel(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLabelResponse(rsp)
+}
+
+// DeleteLabelWithResponse Elimina un'etichetta
+//
+// Serve `write`. Toglie l'etichetta da tutte le issues (evento `unlabeled` nella cronologia). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/labels/{name} (the `DeleteLabel` operationId).
+func (c *ClientWithResponses) DeleteLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*DeleteLabelResponse, error) {
+	rsp, err := c.DeleteLabel(ctx, owner, repo, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLabelResponse(rsp)
+}
+
+// GetLabelWithResponse Legge un'etichetta
+//
+// Per nome, senza distinguere maiuscole/minuscole.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/labels/{name} (the `GetLabel` operationId).
+func (c *ClientWithResponses) GetLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, reqEditors ...RequestEditorFn) (*GetLabelResponse, error) {
+	rsp, err := c.GetLabel(ctx, owner, repo, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLabelResponse(rsp)
+}
+
+// UpdateLabelWithBodyWithResponse Modifica un'etichetta
+//
+// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+func (c *ClientWithResponses) UpdateLabelWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLabelResponse, error) {
+	rsp, err := c.UpdateLabelWithBody(ctx, owner, repo, name, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLabelResponse(rsp)
+}
+
+// UpdateLabelWithResponse Modifica un'etichetta
+//
+// Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id). 409 `already_exists` se il nuovo nome e' occupato. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/labels/{name} (the `UpdateLabel` operationId).
+func (c *ClientWithResponses) UpdateLabelWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, name LabelNameParam, body UpdateLabelJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLabelResponse, error) {
+	rsp, err := c.UpdateLabel(ctx, owner, repo, name, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLabelResponse(rsp)
+}
+
 // GetRepositoryLanguagesWithResponse Lingue del repo
 //
 // Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
@@ -20773,6 +28794,111 @@ func (c *ClientWithResponses) GetRepositoryLanguagesWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetRepositoryLanguagesResponse(rsp)
+}
+
+// ListMilestonesWithResponse Milestone del repo
+//
+// Con l'avanzamento: `closedIssues` conta solo le chiuse come `completed`; le `not_planned` e `duplicate` non contano ne' fra le chiuse ne' fra le aperte (I2). Per scadenza crescente, poi per numero.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/milestones (the `ListMilestones` operationId).
+func (c *ClientWithResponses) ListMilestonesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListMilestonesParams, reqEditors ...RequestEditorFn) (*ListMilestonesResponse, error) {
+	rsp, err := c.ListMilestones(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMilestonesResponse(rsp)
+}
+
+// CreateMilestoneWithBodyWithResponse Crea una milestone
+//
+// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+func (c *ClientWithResponses) CreateMilestoneWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMilestoneResponse, error) {
+	rsp, err := c.CreateMilestoneWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateMilestoneResponse(rsp)
+}
+
+// CreateMilestoneWithResponse Crea una milestone
+//
+// Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), descrizione e data (`dueOn`) facoltative. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/milestones (the `CreateMilestone` operationId).
+func (c *ClientWithResponses) CreateMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMilestoneResponse, error) {
+	rsp, err := c.CreateMilestone(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateMilestoneResponse(rsp)
+}
+
+// DeleteMilestoneWithResponse Elimina una milestone
+//
+// Serve `write`. Le issues collegate restano, senza milestone (evento `demilestoned`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `DeleteMilestone` operationId).
+func (c *ClientWithResponses) DeleteMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*DeleteMilestoneResponse, error) {
+	rsp, err := c.DeleteMilestone(ctx, owner, repo, milestoneNumber, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteMilestoneResponse(rsp)
+}
+
+// GetMilestoneWithResponse Legge una milestone
+//
+// Per numero della milestone nel repo.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `GetMilestone` operationId).
+func (c *ClientWithResponses) GetMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, reqEditors ...RequestEditorFn) (*GetMilestoneResponse, error) {
+	rsp, err := c.GetMilestone(ctx, owner, repo, milestoneNumber, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMilestoneResponse(rsp)
+}
+
+// UpdateMilestoneWithBodyWithResponse Modifica o chiude una milestone
+//
+// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+func (c *ClientWithResponses) UpdateMilestoneWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMilestoneResponse, error) {
+	rsp, err := c.UpdateMilestoneWithBody(ctx, owner, repo, milestoneNumber, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMilestoneResponse(rsp)
+}
+
+// UpdateMilestoneWithResponse Modifica o chiude una milestone
+//
+// Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
+func (c *ClientWithResponses) UpdateMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMilestoneResponse, error) {
+	rsp, err := c.UpdateMilestone(ctx, owner, repo, milestoneNumber, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMilestoneResponse(rsp)
 }
 
 // GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
@@ -21059,6 +29185,21 @@ func (c *ClientWithResponses) GetMyResourcePermissionWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseGetMyResourcePermissionResponse(rsp)
+}
+
+// SearchIssuesWithResponse Cerca issues su tutta l'installazione
+//
+// Ricerca con la sintassi di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:` e testo libero con ricerca testuale PostgreSQL) sui soli repo che l'utente puo' leggere. Stessa sintassi di `listIssues`, che e' la ricerca nel singolo repo. Le issues nascoste compaiono solo a chi ha `admin` sul loro repo. Un `q` che non si puo' interpretare risponde 422.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /search/issues (the `SearchIssues` operationId).
+func (c *ClientWithResponses) SearchIssuesWithResponse(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*SearchIssuesResponse, error) {
+	rsp, err := c.SearchIssues(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchIssuesResponse(rsp)
 }
 
 // ListSshKeysWithResponse Elenca le chiavi SSH dell'utente corrente
@@ -25314,6 +33455,1969 @@ func ParseListRepositoryFilesResponse(rsp *http.Response) (*ListRepositoryFilesR
 	return response, nil
 }
 
+// ParseUploadIssueAttachmentResponse parses an HTTP response from a UploadIssueAttachmentWithResponse call
+func ParseUploadIssueAttachmentResponse(rsp *http.Response) (*UploadIssueAttachmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UploadIssueAttachmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest IssueAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers UploadIssueAttachmentResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetIssueAttachmentResponse parses an HTTP response from a GetIssueAttachmentWithResponse call
+func ParseGetIssueAttachmentResponse(rsp *http.Response) (*GetIssueAttachmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetIssueAttachmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetIssueAttachmentResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListIssueTemplatesResponse parses an HTTP response from a ListIssueTemplatesWithResponse call
+func ParseListIssueTemplatesResponse(rsp *http.Response) (*ListIssueTemplatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssueTemplatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueTemplateList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListIssuesResponse parses an HTTP response from a ListIssuesWithResponse call
+func ParseListIssuesResponse(rsp *http.Response) (*ListIssuesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssuesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateIssueResponse parses an HTTP response from a CreateIssueWithResponse call
+func ParseCreateIssueResponse(rsp *http.Response) (*CreateIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateIssueResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetIssueResponse parses an HTTP response from a GetIssueWithResponse call
+func ParseGetIssueResponse(rsp *http.Response) (*GetIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateIssueResponse parses an HTTP response from a UpdateIssueWithResponse call
+func ParseUpdateIssueResponse(rsp *http.Response) (*UpdateIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetIssueAssigneesResponse parses an HTTP response from a SetIssueAssigneesWithResponse call
+func ParseSetIssueAssigneesResponse(rsp *http.Response) (*SetIssueAssigneesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetIssueAssigneesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCloseIssueResponse parses an HTTP response from a CloseIssueWithResponse call
+func ParseCloseIssueResponse(rsp *http.Response) (*CloseIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CloseIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListIssueCommentsResponse parses an HTTP response from a ListIssueCommentsWithResponse call
+func ParseListIssueCommentsResponse(rsp *http.Response) (*ListIssueCommentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssueCommentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueCommentList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateIssueCommentResponse parses an HTTP response from a CreateIssueCommentWithResponse call
+func ParseCreateIssueCommentResponse(rsp *http.Response) (*CreateIssueCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateIssueCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest IssueComment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateIssueCommentResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseDeleteIssueCommentResponse parses an HTTP response from a DeleteIssueCommentWithResponse call
+func ParseDeleteIssueCommentResponse(rsp *http.Response) (*DeleteIssueCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteIssueCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateIssueCommentResponse parses an HTTP response from a UpdateIssueCommentWithResponse call
+func ParseUpdateIssueCommentResponse(rsp *http.Response) (*UpdateIssueCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateIssueCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueComment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListIssueCommentVersionsResponse parses an HTTP response from a ListIssueCommentVersionsWithResponse call
+func ParseListIssueCommentVersionsResponse(rsp *http.Response) (*ListIssueCommentVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssueCommentVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TextVersionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListIssueEventsResponse parses an HTTP response from a ListIssueEventsWithResponse call
+func ParseListIssueEventsResponse(rsp *http.Response) (*ListIssueEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssueEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueEventList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetIssueHiddenResponse parses an HTTP response from a SetIssueHiddenWithResponse call
+func ParseSetIssueHiddenResponse(rsp *http.Response) (*SetIssueHiddenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetIssueHiddenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetIssueLabelsResponse parses an HTTP response from a SetIssueLabelsWithResponse call
+func ParseSetIssueLabelsResponse(rsp *http.Response) (*SetIssueLabelsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetIssueLabelsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnlockIssueResponse parses an HTTP response from a UnlockIssueWithResponse call
+func ParseUnlockIssueResponse(rsp *http.Response) (*UnlockIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnlockIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLockIssueResponse parses an HTTP response from a LockIssueWithResponse call
+func ParseLockIssueResponse(rsp *http.Response) (*LockIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LockIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetIssueMilestoneResponse parses an HTTP response from a SetIssueMilestoneWithResponse call
+func ParseSetIssueMilestoneResponse(rsp *http.Response) (*SetIssueMilestoneResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetIssueMilestoneResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReopenIssueResponse parses an HTTP response from a ReopenIssueWithResponse call
+func ParseReopenIssueResponse(rsp *http.Response) (*ReopenIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReopenIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Issue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListIssueVersionsResponse parses an HTTP response from a ListIssueVersionsWithResponse call
+func ParseListIssueVersionsResponse(rsp *http.Response) (*ListIssueVersionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssueVersionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TextVersionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListLabelsResponse parses an HTTP response from a ListLabelsWithResponse call
+func ParseListLabelsResponse(rsp *http.Response) (*ListLabelsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLabelsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LabelList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLabelResponse parses an HTTP response from a CreateLabelWithResponse call
+func ParseCreateLabelResponse(rsp *http.Response) (*CreateLabelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLabelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Label
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateLabelResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLabelResponse parses an HTTP response from a DeleteLabelWithResponse call
+func ParseDeleteLabelResponse(rsp *http.Response) (*DeleteLabelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLabelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetLabelResponse parses an HTTP response from a GetLabelWithResponse call
+func ParseGetLabelResponse(rsp *http.Response) (*GetLabelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLabelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Label
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLabelResponse parses an HTTP response from a UpdateLabelWithResponse call
+func ParseUpdateLabelResponse(rsp *http.Response) (*UpdateLabelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLabelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Label
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetRepositoryLanguagesResponse parses an HTTP response from a GetRepositoryLanguagesWithResponse call
 func ParseGetRepositoryLanguagesResponse(rsp *http.Response) (*GetRepositoryLanguagesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -25362,6 +35466,355 @@ func ParseGetRepositoryLanguagesResponse(rsp *http.Response) (*GetRepositoryLang
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMilestonesResponse parses an HTTP response from a ListMilestonesWithResponse call
+func ParseListMilestonesResponse(rsp *http.Response) (*ListMilestonesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMilestonesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MilestoneList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateMilestoneResponse parses an HTTP response from a CreateMilestoneWithResponse call
+func ParseCreateMilestoneResponse(rsp *http.Response) (*CreateMilestoneResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateMilestoneResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Milestone
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateMilestoneResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseDeleteMilestoneResponse parses an HTTP response from a DeleteMilestoneWithResponse call
+func ParseDeleteMilestoneResponse(rsp *http.Response) (*DeleteMilestoneResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteMilestoneResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMilestoneResponse parses an HTTP response from a GetMilestoneWithResponse call
+func ParseGetMilestoneResponse(rsp *http.Response) (*GetMilestoneResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMilestoneResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Milestone
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMilestoneResponse parses an HTTP response from a UpdateMilestoneWithResponse call
+func ParseUpdateMilestoneResponse(rsp *http.Response) (*UpdateMilestoneResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMilestoneResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Milestone
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
@@ -26341,6 +36794,67 @@ func ParseGetMyResourcePermissionResponse(rsp *http.Response) (*GetMyResourcePer
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchIssuesResponse parses an HTTP response from a SearchIssuesWithResponse call
+func ParseSearchIssuesResponse(rsp *http.Response) (*SearchIssuesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchIssuesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueSearchResultList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

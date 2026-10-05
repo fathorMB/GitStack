@@ -322,6 +322,21 @@ func TestRepos_Creazione(t *testing.T) {
 		}
 	})
 
+	t.Run("etichette_predefinite_di_default_e_opzione_spenta", func(t *testing.T) {
+		on := e.create("alice", `{"owner":"alice","name":"labels-on"}`)
+		off := e.create("alice", `{"owner":"alice","name":"labels-off","defaultLabels":false}`)
+		const q = `SELECT count(*) FROM core.labels WHERE repo_id = $1`
+		if n := e.count(q, uuid.UUID(*on.Id)); n != 8 {
+			t.Fatalf("etichette predefinite = %d, volute 8 (I5)", n)
+		}
+		if n := e.count(`SELECT count(*) FROM core.labels WHERE repo_id = $1 AND name IN ('bug','agent-ready','good first issue')`, uuid.UUID(*on.Id)); n != 3 {
+			t.Fatalf("mancano etichette attese: %d", n)
+		}
+		if n := e.count(q, uuid.UUID(*off.Id)); n != 0 {
+			t.Fatalf("con defaultLabels=false: %d etichette, volute 0", n)
+		}
+	})
+
 	t.Run("owner_organizzazione", func(t *testing.T) {
 		r := e.create("alice", `{"owner":"acme","name":"site"}`)
 		if r.Owner.Type != "organization" || r.FullName != "acme/site" {
