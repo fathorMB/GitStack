@@ -147,7 +147,9 @@ describe('storico dei commit (mockup 09)', () => {
     vi.mocked(fetchCommits).mockResolvedValue({ items: list, page: 1, perPage: 30, hasMore: false });
     renderAt('/acme/api/commits/feature/x/cmd/main.go');
     expect(await screen.findByLabelText('History of')).toHaveTextContent('cmd/main.go');
-    expect(fetchCommits).toHaveBeenCalledWith('acme', 'api', { ref: 'feature/x', path: 'cmd/main.go', author: '', page: 1 });
+    await waitFor(() =>
+      expect(fetchCommits).toHaveBeenCalledWith('acme', 'api', { ref: 'feature/x', path: 'cmd/main.go', author: '', page: 1 }),
+    );
     expect(screen.getByRole('link', { name: 'Show all commits' })).toHaveAttribute('href', '/acme/api/commits/feature/x');
   });
 
