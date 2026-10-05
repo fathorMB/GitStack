@@ -152,3 +152,9 @@ run = "golangci-lint run ./... --timeout=5m"
 cwd = "api"
 timeout_s = 600
 paths = ["api/**", ".golangci.yml", "go.work", "go.work.sum"]
+
+[[check]]
+name = "rules-coverage"
+run = "go run scripts/check-rules-coverage.go"
+timeout_s = 120
+paths = ["docs/rules-coverage.md", "scripts/check-rules-coverage.go", "services/**", "web/src/**"]

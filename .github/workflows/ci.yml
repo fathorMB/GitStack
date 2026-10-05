@@ -64,6 +64,11 @@ jobs:
         working-directory: services/core
         run: go test -tags=integration ./... -race
 
+      # Tabella regole→test (GIT-115): ogni test citato in docs/rules-coverage.md
+      # deve esistere ancora nel codice.
+      - name: Copertura regole di prodotto (docs/rules-coverage.md)
+        run: go run scripts/check-rules-coverage.go
+
   # Login esterno OIDC di identity (GIT-39, M-02/K): test d'integrazione contro
   # un Keycloak vero (realm importato da testdata) e un Postgres di servizio.
   # Il test Keycloak si salta senza GITSTACK_TEST_KEYCLOAK_URL; qui la
