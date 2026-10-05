@@ -1,0 +1,4 @@
+{
+  "$comment": "Eccezioni alle scansioni di sicurezza (GIT-114). Ogni voce: id (GO-... per govulncheck, GHSA-... per pnpm-audit, CVE-... per trivy, regola per gosec/eslint-security), tool (govulncheck | gosec | eslint-security | pnpm-audit | trivy), reason (perche' e' un falso positivo o accettato), expires (AAAA-MM-GG: dal giorno indicato la voce non vale piu'), path facoltativo (sottostringa del luogo del finding, per gosec/eslint/govulncheck-modulo/trivy-immagine). Documentazione: docs/security-scans.md.",
+  "exceptions": []
+}

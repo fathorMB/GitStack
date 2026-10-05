@@ -187,6 +187,18 @@ jobs:
       - name: shellcheck
         run: shellcheck deploy/install.sh deploy/test-vm/e2e/remote.sh scripts/*.sh
 
+  # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
+  # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
+  # Su main e sulle pull request security.yml parte da sé e segnala senza
+  # bloccare. "registry" dipende da questo job: un tag con un CRITICAL/HIGH
+  # senza eccezione valida non pubblica immagini.
+  security:
+    name: Sicurezza — scansioni bloccanti (release)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/security.yml
+    with:
+      release: true
+
   # Costruisce e pubblica le immagini dei servizi su un registry parametrico
   # (ghcr.io di default). Richiede che build/lint/test (go, ts) siano verdi
   # (needs), altrimenti un push rosso pubblicherebbe comunque un'immagine.
@@ -196,13 +208,17 @@ jobs:
   # il job resta pronto, senza fallire la pipeline.
   registry:
     name: Registry — build & push immagini
-    needs: [go, ts]
-    # success() qui è ridondante ma esplicito per chiarezza: quando un `if:`
-    # non usa nessuna funzione di stato, GitHub Actions vi antepone
-    # automaticamente `success() &&`, quindi il comportamento sarebbe lo
-    # stesso anche senza scriverlo. Lo lasciamo a scanso di equivoci, visto
-    # che questo job dipende da `needs` per non pubblicare immagini rotte.
-    if: success() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    needs: [go, ts, security]
+    # "security" è saltato fuori dai tag (vedi sopra): con un `if:` che usa una
+    # funzione di stato GitHub non antepone più il controllo di successo sui
+    # needs, e un need saltato farebbe saltare anche questo job. Quindi
+    # i risultati si controllano a mano: go e ts devono essere riusciti,
+    # security riuscito oppure saltato (mai fallito o cancellato).
+    if: >-
+      !cancelled() && needs.go.result == 'success' && needs.ts.result == 'success'
+      && (needs.security.result == 'success' || needs.security.result == 'skipped')
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
