@@ -61,3 +61,12 @@ Id dei titoli: rehype-slug gira **prima** di rehype-sanitize, che li prefissa co
 Le ancore interne `[x](#sez)` sono riscritte dal renderer di `a` in
 `#user-content-sez`, quindi continuano a funzionare. Un `<pre>` HTML grezzo resta
 un `<pre>` (spaziatura conservata); solo `<pre><code>` diventa un blocco evidenziato.
+
+## Regola B2: riferimenti e HTML ammesso
+
+Un solo motore (`Markdown.tsx`) per README, file `.md`, issues e commenti.
+
+- Riferimenti: `#n` (repo corrente, prop `repo`) → `/<owner>/<repo>/issues/<n>`, `owner/repo#n` → stesso formato per l'altro repo, `@utente` → `/<utente>`, `@org/team` → `/orgs/<org>/teams/<team>`. Solo rendering: nessuna verifica di esistenza né di visibilità (C1 e notifiche sono di M-06). Mai dentro codice inline, blocchi, `<pre>`, link esistenti; né in email e URL.
+- **Allowlist HTML** (rehype-sanitize, schema di default stile GitHub), tra gli altri: `details`, `summary`, `sub`, `sup`, `kbd`, `br`, `img`, `a`, `p`, `div`, `span`, `pre`, `code`, tabelle, liste, titoli, `blockquote`, `hr`, `em`, `strong`, `del`, `ins`, `picture`/`source`. Sempre rimossi: `script`, `iframe`, `style`, `form`, `svg`, attributi `on*` e `style`, URL `javascript:`/`data:`.
+- Link esterni: `target="_blank"`, `rel="noopener noreferrer"`, `referrerpolicy="no-referrer"` (anche sulle immagini). Link e immagini relativi sono risolti nel repo da `resolveLink`/`resolveImage` (il raw di B3, con il login).
+- Mermaid e formule non sono interpretati (v1): il blocco resta codice.

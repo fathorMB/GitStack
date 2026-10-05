@@ -14,6 +14,8 @@ export interface MarkdownProps {
   resolveLink?: (repoPath: string) => string;
   /** Percorso relativo alla radice del repo -> URL dell'immagine (raw). */
   resolveImage?: (repoPath: string) => string;
+  /** Repo corrente: abilita #n; senza, #n resta testo (owner/repo#n funziona comunque). */
+  repo?: { owner: string; name: string };
   className?: string;
 }
 
@@ -40,6 +42,58 @@ function resolveRelative(href: string, basePath: string, fn?: (p: string) => str
   if (!fn || href === '' || href.startsWith('#') || SCHEME.test(href) || href.startsWith('//')) return href;
   const { path, suffix } = repoPathFor(href, basePath);
   return fn(path) + suffix;
+}
+
+interface HastNode {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+}
+
+const REF_SKIP = new Set(['code', 'pre', 'a', 'script', 'style']);
+// owner/repo#n | #n | @utente | @org/team (non dentro parole, URL o email).
+const REF_RE =
+  /(?<![\w/&.@#-])(?:([A-Za-z0-9][\w.-]*)\/([\w.-]+))?#(\d+)(?![\w-])|(?<![\w@/.+-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?:\/([A-Za-z0-9](?:[\w.-]*[A-Za-z0-9_-])?))?(?![\w@-])/g;
+
+function refLink(href: string, text: string): HastNode {
+  return { type: 'element', tagName: 'a', properties: { href, dataRef: 'true' }, children: [{ type: 'text', value: text }] };
+}
+
+/** Dopo la sanificazione: trasforma i riferimenti nei nodi di testo (mai in code/pre/a). */
+function linkRefs(node: HastNode, repo?: { owner: string; name: string }): void {
+  if (!node.children) return;
+  const out: HastNode[] = [];
+  for (const child of node.children) {
+    if (child.type === 'element' && child.tagName && REF_SKIP.has(child.tagName)) {
+      out.push(child);
+      continue;
+    }
+    if (child.type !== 'text' || !child.value) {
+      linkRefs(child, repo);
+      out.push(child);
+      continue;
+    }
+    const text = child.value;
+    let last = 0;
+    for (const m of text.matchAll(REF_RE)) {
+      let a: HastNode | null = null;
+      if (m[3]) {
+        if (m[1] && m[2]) a = refLink(`/${m[1]}/${m[2]}/issues/${m[3]}`, m[0]);
+        else if (repo) a = refLink(`/${repo.owner}/${repo.name}/issues/${m[3]}`, m[0]);
+      } else if (m[4]) {
+        a = refLink(m[5] ? `/orgs/${m[4]}/teams/${m[5]}` : `/${m[4]}`, m[0]);
+      }
+      if (!a) continue;
+      if (m.index > last) out.push({ type: 'text', value: text.slice(last, m.index) });
+      out.push(a);
+      last = m.index + m[0].length;
+    }
+    if (last === 0) out.push(child);
+    else if (last < text.length) out.push({ type: 'text', value: text.slice(last) });
+  }
+  node.children = out;
 }
 
 function CodeBlock({ lang, code }: { lang?: string; code: string }) {
@@ -91,13 +145,20 @@ function anchorHref(href: string): string {
  * sono generati prima della sanificazione, che li prefissa con `user-content-`
  * (anti DOM clobbering); le ancore `#sez` sono riscritte di conseguenza.
  */
-export function Markdown({ source, basePath = '', resolveLink, resolveImage, className }: MarkdownProps) {
+export function Markdown({ source, basePath = '', resolveLink, resolveImage, repo, className }: MarkdownProps) {
   const components: Components = {
     a({ href, children, node, ...rest }: WithNode<ComponentPropsWithoutRef<'a'>>) {
       void node;
+      if ((rest as Record<string, unknown>)['data-ref']) {
+        return (
+          <a href={href} className="md-ref">
+            {children}
+          </a>
+        );
+      }
       if (href && isExternal(href)) {
         return (
-          <a {...rest} href={href} target="_blank" rel="noopener noreferrer">
+          <a {...rest} href={href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
             {children}
           </a>
         );
@@ -111,7 +172,7 @@ export function Markdown({ source, basePath = '', resolveLink, resolveImage, cla
     img({ src, alt, node, ...rest }: WithNode<ComponentPropsWithoutRef<'img'>>) {
       void node;
       const s = typeof src === 'string' ? src : undefined;
-      return <img {...rest} alt={alt ?? ''} src={s ? resolveRelative(s, basePath, resolveImage) : s} loading="lazy" />;
+      return <img {...rest} alt={alt ?? ''} src={s ? resolveRelative(s, basePath, resolveImage) : s} loading="lazy" referrerPolicy="no-referrer" />;
     },
     pre({ children, node, ...rest }: WithNode<ComponentPropsWithoutRef<'pre'>>) {
       // <pre><code> = blocco di codice (CodeBlock, evidenziato); un <pre> HTML
@@ -142,7 +203,7 @@ export function Markdown({ source, basePath = '', resolveLink, resolveImage, cla
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         remarkRehypeOptions={{ allowDangerousHtml: true, clobberPrefix: '' }}
-        rehypePlugins={[rehypeRaw, rehypeSlug, rehypeSanitize]}
+        rehypePlugins={[rehypeRaw, rehypeSlug, rehypeSanitize, () => (tree: HastNode) => linkRefs(tree, repo)]}
         components={components}
       >
         {source}

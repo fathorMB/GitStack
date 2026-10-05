@@ -225,6 +225,7 @@ function ReadmeCard({ owner, repo, refName, path }: { owner: string; repo: strin
         <Markdown
           source={source}
           basePath={parentPath(data.path)}
+          repo={{ owner, name: repo }}
           resolveLink={(p) => blobHref(owner, repo, refName, p)}
           resolveImage={(p) => rawUrl(owner, repo, refName, p)}
         />

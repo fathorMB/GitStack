@@ -121,3 +121,59 @@ describe('Markdown: note a piè di pagina', () => {
     expect(container.innerHTML).not.toContain('user-content-user-content-');
   });
 });
+
+describe('Markdown: riferimenti e @menzioni (B2)', () => {
+  const repo = { owner: 'acme', name: 'app' };
+  const hrefs = (c: HTMLElement) => Array.from(c.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+
+  it('#n, owner/repo#n e @utente diventano link', () => {
+    const { container } = renderMd('Vedi #12, other/lib#7 e @mario, @acme/devs.', { repo });
+    expect(hrefs(container)).toEqual(['/acme/app/issues/12', '/other/lib/issues/7', '/mario', '/orgs/acme/teams/devs']);
+    expect(container.querySelector('a')).toHaveTextContent('#12');
+    expect(container.textContent).toBe('Vedi #12, other/lib#7 e @mario, @acme/devs.');
+  });
+
+  it('senza repo corrente #n resta testo', () => {
+    const { container } = renderMd('Vedi #12 e x/y#3');
+    expect(hrefs(container)).toEqual(['/x/y/issues/3']);
+  });
+
+  it('niente riferimenti in codice inline e blocchi', () => {
+    const { container } = renderMd('`#1 @a o/r#2`\n\n```\n#3 @b o/r#4\n```\n\n<pre>#5 @c</pre>', { repo });
+    expect(container.querySelectorAll('a')).toHaveLength(0);
+  });
+
+  it('niente link dentro link, email o URL', () => {
+    const { container } = renderMd('[#1](https://x.example) a@b.com https://x.example/a#2', { repo });
+    expect(container.querySelectorAll('a a')).toHaveLength(0);
+    expect(hrefs(container)).toEqual(['https://x.example', 'mailto:a@b.com', 'https://x.example/a#2']);
+  });
+});
+
+describe('Markdown: allowlist HTML', () => {
+  it('ammette details, summary, sub, sup, kbd, br, img; rimuove script, iframe, style, on*', () => {
+    const { container } = renderMd(
+      '<details><summary>S</summary>x<sub>1</sub><sup>2</sup><kbd>K</kbd><br><img src="https://e.example/i.png" onerror="alert(1)"></details>\n\n' +
+        '<script>alert(1)</script><iframe src="https://e.example"></iframe><style>a{}</style><p onclick="x()">p</p>',
+    );
+    for (const t of ['details', 'summary', 'sub', 'sup', 'kbd', 'br', 'img']) {
+      expect(container.querySelector(t)).not.toBeNull();
+    }
+    expect(container.querySelector('script, iframe, style')).toBeNull();
+    expect(container.innerHTML).not.toMatch(/\son\w+=/i);
+    expect(container.querySelector('img')).toHaveAttribute('referrerpolicy', 'no-referrer');
+  });
+
+  it('link esterni: _blank, noopener noreferrer, no-referrer', () => {
+    const { container } = renderMd('[e](https://example.com)');
+    const a = container.querySelector('a');
+    expect(a).toHaveAttribute('target', '_blank');
+    expect(a).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(a).toHaveAttribute('referrerpolicy', 'no-referrer');
+  });
+
+  it('mermaid resta un blocco di codice', () => {
+    const { container } = renderMd('```mermaid\ngraph TD; A-->B\n```');
+    expect(container.querySelector('pre code.language-mermaid')).not.toBeNull();
+  });
+});
