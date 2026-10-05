@@ -7038,6 +7038,13 @@ components:
         body:
           type: string
           maxLength: 65536
+        attachmentIds:
+          type: array
+          maxItems: 20
+          description: Allegati gia' caricati dall'autore, da collegare alla issue (I9). Anche da soli, senza `title` o `body`.
+          items:
+            type: string
+            format: uuid
     CloseIssueInput:
       type: object
       additionalProperties: false
