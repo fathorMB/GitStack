@@ -554,6 +554,112 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /users/{username}/tokens:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    get:
+      operationId: listUserTokens
+      tags: [users]
+      summary: Elenca i token di un utente agent
+      description: >
+        Solo amministratori, scope `write:user` (regola P5). Solo per utenti
+        di tipo `agent`: sui token di una persona decide solo lei (409
+        `not_an_agent`). Mai il valore del token, solo `hint`.
+      x-required-scopes: ["write:user"]
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createUserToken
+      tags: [users]
+      summary: Crea un token per un utente agent
+      description: >
+        Solo amministratori, scope `write:user` (regola P5). Solo per utenti
+        di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei
+        token personali: scope dal catalogo, scadenza obbligatoria con lo
+        stesso massimo, valore (`gst_...`) mostrato una sola volta, nel
+        database solo lo SHA-256.
+      x-required-scopes: ["write:user"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTokenInput"
+      responses:
+        "201":
+          description: Token creato.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedToken"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /users/{username}/tokens/{tokenId}:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+      - $ref: "#/components/parameters/TokenIdParam"
+    delete:
+      operationId: revokeUserToken
+      tags: [users]
+      summary: Revoca un token di un utente agent
+      description: >
+        Solo amministratori, scope `write:user` (regola P5). Un token che non
+        appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Token revocato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /users/{username}/password:
     parameters:
       - $ref: "#/components/parameters/UsernameParam"
