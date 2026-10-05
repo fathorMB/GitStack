@@ -1,4 +1,4 @@
-import { Boxes, Database, Grid2x2, Home, Server, Users } from 'lucide-react';
+import { Boxes, Database, GitBranch, Grid2x2, Home, Server, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../components';
@@ -55,6 +55,7 @@ export function Sidebar() {
       <div className="sb-grp">Workspace</div>
       <SidebarItem icon={<Home size={18} strokeWidth={1.8} />} label="Home" disabled soon />
       <SidebarItem icon={<Boxes size={18} strokeWidth={1.8} />} label="Resources" to="/" />
+      <SidebarItem icon={<GitBranch size={18} strokeWidth={1.8} />} label="Repositories" to="/repos" />
 
       <div className="sb-grp">Platform</div>
       <SidebarItem icon={<Grid2x2 size={18} strokeWidth={1.8} />} label="Apps" disabled soon />
