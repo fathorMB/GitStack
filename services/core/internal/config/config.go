@@ -108,9 +108,9 @@ const (
 	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
 	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
 
-	envAttachmentsDir    = "GITSTACK_CORE_ATTACHMENTS_DIR"
-	envAttachmentMax     = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
-	envAttachmentOrphan  = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
+	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
+	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
+	envAttachmentOrphan = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
 
 	defaultAttachmentMaxBytes  = int64(10 << 20)
 	defaultAttachmentOrphanTTL = 24 * time.Hour
