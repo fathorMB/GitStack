@@ -185,6 +185,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/:owner/:repo/issues"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="issues" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/:owner/:repo/tags"
         element={
           <RequireAuth>
