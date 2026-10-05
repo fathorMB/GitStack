@@ -1,11 +1,13 @@
-import { Info, Paperclip, X } from 'lucide-react';
-import { useRef, useState } from 'react';
-import type { ChangeEvent, ClipboardEvent, DragEvent, ReactNode } from 'react';
+import { Bot, Info, Paperclip, Users, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent, ReactNode } from 'react';
 import { Button, ErrorAlert, Markdown } from '../../components';
 import { formatBytes } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import { MAX_ATTACHMENT_BYTES, uploadAttachment } from '../../lib/issuesApi';
 import type { IssueAttachment } from '../../lib/issuesApi';
+import { applyMention, mentionAt } from '../../lib/mentions';
+import type { MentionCandidate, MentionSource } from '../../lib/mentions';
 
 export interface IssueEditorProps {
   owner: string;
@@ -15,6 +17,10 @@ export interface IssueEditorProps {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  /** Con una sorgente, dopo «@» compaiono i suggerimenti di menzione (I8); senza prefisso nessuna chiamata. */
+  mentions?: MentionSource;
+  /** Altezza minima della textarea (mockup 20: 220px). */
+  minHeight?: number;
   /** Con false niente allegati (es. modifica di un commento: il contratto non li accetta). */
   attachments?: boolean;
   /** Pulsanti a destra del footer; ricevono gli id degli allegati caricati. */
@@ -25,12 +31,71 @@ export interface IssueEditorProps {
  * Editor Write/Preview (mockup 13): anteprima con il componente Markdown,
  * allegati fino a 10 MB (I9) caricati a parte e collegati con attachmentIds.
  */
-export function IssueEditor({ owner, repo, label, value, onChange, placeholder, attachments = true, actions }: IssueEditorProps) {
+export function IssueEditor({ owner, repo, label, value, onChange, placeholder, mentions, minHeight, attachments = true, actions }: IssueEditorProps) {
   const [tab, setTab] = useState<'write' | 'preview'>('write');
   const [files, setFiles] = useState<IssueAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
+  const listId = useId();
+  const [token, setToken] = useState<{ start: number; prefix: string; caret: number } | null>(null);
+  const [cands, setCands] = useState<MentionCandidate[]>([]);
+  const [active, setActive] = useState(0);
+
+  const prefix = token?.prefix ?? '';
+  useEffect(() => {
+    if (!mentions || !prefix) {
+      setCands([]);
+      return;
+    }
+    let live = true;
+    mentions(prefix).then(
+      (list) => {
+        if (!live) return;
+        setCands(list);
+        setActive(0);
+      },
+      () => live && setCands([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [mentions, prefix]);
+
+  const track = (text: string, caret: number) => {
+    const m = mentions ? mentionAt(text, caret) : null;
+    setToken(m ? { ...m, caret } : null);
+  };
+  const pick = (c: MentionCandidate) => {
+    if (!token) return;
+    const next = applyMention(value, token.caret, token.start, c.handle);
+    onChange(next.text);
+    setToken(null);
+    setCands([]);
+    requestAnimationFrame(() => {
+      area.current?.focus();
+      area.current?.setSelectionRange(next.caret, next.caret);
+    });
+  };
+  const open = cands.length > 0 && token !== null && token.prefix !== '';
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!open) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive((i) => (i + 1) % cands.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((i) => (i - 1 + cands.length) % cands.length);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      pick(cands[active]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setToken(null);
+      setCands([]);
+    }
+  };
 
   const add = async (list: File[]) => {
     setError(null);
@@ -78,7 +143,49 @@ export function IssueEditor({ owner, repo, label, value, onChange, placeholder, 
         </button>
       </div>
       {tab === 'write' ? (
-        <textarea className="textarea" aria-label={label} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} onPaste={onPaste} />
+        <div className="mention-wrap">
+          <textarea
+            ref={area}
+            className="textarea"
+            aria-label={label}
+            placeholder={placeholder}
+            value={value}
+            style={minHeight ? { minHeight, fontFamily: 'var(--font-mono)', fontSize: 13 } : undefined}
+            onChange={(e) => {
+              onChange(e.target.value);
+              track(e.target.value, e.target.selectionStart);
+            }}
+            onKeyDown={onKeyDown}
+            onClick={(e) => track(e.currentTarget.value, e.currentTarget.selectionStart)}
+            onPaste={onPaste}
+            aria-autocomplete={mentions ? 'list' : undefined}
+            aria-controls={open ? listId : undefined}
+            aria-activedescendant={open ? `${listId}-${active}` : undefined}
+          />
+          {open ? (
+            <ul id={listId} role="listbox" aria-label="Mention suggestions" className="menu mention-list">
+              {cands.map((c, i) => (
+                <li
+                  key={c.handle}
+                  id={`${listId}-${i}`}
+                  role="option"
+                  aria-selected={i === active}
+                  className="mention-item"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    pick(c);
+                  }}
+                >
+                  {c.kind === 'agent' ? <Bot size={14} aria-hidden="true" /> : c.kind === 'team' ? <Users size={14} aria-hidden="true" /> : null}
+                  <b>@{c.handle}</b>
+                  {c.kind === 'agent' ? <span className="badge badge-agent">agent</span> : null}
+                  {c.kind === 'team' ? <span className="badge">team</span> : null}
+                  {c.label && c.label !== c.handle ? <span className="muted small">{c.label}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : (
         <div className="editor-preview" aria-label={`${label} preview`}>
           {value.trim() ? <Markdown source={value} repo={{ owner, name: repo }} /> : <span className="muted">Nothing to preview</span>}
