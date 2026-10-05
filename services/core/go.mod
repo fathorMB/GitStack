@@ -3,7 +3,7 @@ module github.com/fathorMB/GitStack/services/core
 go 1.26.2
 
 require (
-	github.com/fathorMB/GitStack/pkg/events v0.0.0-20260928132205-2c4b9a62a011
+	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6

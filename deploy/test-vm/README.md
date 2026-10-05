@@ -358,6 +358,7 @@ esegue e incolla l'output nell'item.
   passata a `new-vm.ps1` (utente `-VmUser`, default `gitstack`) e la privata
   in `$env:USERPROFILE\.ssh\gitstack_vm`. Mai nel repository; `reset-vm.ps1`
   non la tocca.
+- Dal passo e5 (GIT-77) servono sull'host anche `ssh` e `ssh-keygen` (OpenSSH di Windows) e la porta 2222 della VM raggiungibile; il passo crea un utente `e2egitHHMMSS` con token e chiave in `<OutDir>\git-e5`.
 - Il client `git` nel PATH (per risolvere lo SHA corrente di `origin/main`
   quando `-Ref` non è passato) e connessione a Internet (GitHub, ghcr.io).
 
@@ -377,6 +378,7 @@ Parametri principali (tutti con un default sensato):
 | `-GitStackRepo` | `fathorMB/GitStack` | `owner/repo` su GitHub e ghcr.io. |
 | `-Ref` | SHA corrente di `origin/main`, risolto con `git ls-remote` e stampato | Commit da provare. |
 | `-OutDir` | `%LOCALAPPDATA%\GitStack\e2e-runs\<timestamp>` | Log, diagnostica della VM e `known_hosts` isolato; a fine esecuzione anche `<OutDir>.zip`. |
+| `-GitSshPort` | `2222` | Passo (e5): porta SSH del servizio git sulla VM. |
 | `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
 | `-JetStreamPollAttempts` / `-JetStreamPollIntervalSeconds` | `6` / `5` | Passo (e): letture del conteggio JetStream dopo la create, ogni N secondi, finché supera la baseline (fino a 30s in totale di default). |
 
