@@ -3,10 +3,22 @@
 # Invoke-HttpRaw: chiamata HTTP per e2e.ps1 (dot-sourced) e per tests/http.Tests.ps1.
 # Solo ASCII: Windows PowerShell 5.1 legge in ANSI i .ps1 senza BOM.
 
+# Header di risposta (dizionario o WebHeaderCollection) in una hashtable di stringhe.
+function ConvertTo-HeaderTable {
+    param($Source)
+    $t = @{}
+    if ($null -eq $Source) { return $t }
+    foreach ($k in @($Source.Keys)) {
+        $t[[string]$k] = (@($Source[$k]) | ForEach-Object { [string]$_ }) -join ','
+    }
+    return $t
+}
+
 # Chiamata HTTP che non solleva eccezioni sugli status 4xx/5xx (Windows
 # PowerShell 5.1 lancia una WebException): ritorna StatusCode, Body (testo),
-# Cookie (gst_session=<valore> dal Set-Cookie, se presente) oppure StatusCode 0
-# con Error se la connessione fallisce.
+# Cookie (gst_session=<valore> dal Set-Cookie, se presente), Headers (hashtable
+# degli header di risposta, nomi senza distinzione di maiuscole, valori stringa)
+# oppure StatusCode 0 con Error se la connessione fallisce.
 #
 # -Cookie 'nome=valore': su Windows PowerShell 5.1 Invoke-WebRequest ignora un
 # header Cookie passato in -Headers (usa il proprio CookieContainer), quindi il
@@ -41,7 +53,7 @@ function Invoke-HttpRaw {
         $sessionCookie = $null
         $setCookie = @($r.Headers['Set-Cookie']) -join ','
         if ($setCookie -match 'gst_session=([^;,\s]+)') { $sessionCookie = "gst_session=$($Matches[1])" }
-        return [pscustomobject]@{ StatusCode = [int]$r.StatusCode; Body = $text; Error = $null; Cookie = $sessionCookie }
+        return [pscustomobject]@{ StatusCode = [int]$r.StatusCode; Body = $text; Error = $null; Cookie = $sessionCookie; Headers = (ConvertTo-HeaderTable $r.Headers) }
     } catch {
         $resp = $_.Exception.Response
         if ($null -ne $resp) {
@@ -64,8 +76,8 @@ function Invoke-HttpRaw {
             try { $setCookie = [string]$resp.Headers['Set-Cookie'] } catch { $setCookie = '' }
             $sessionCookie = $null
             if ($setCookie -match 'gst_session=([^;,\s]+)') { $sessionCookie = "gst_session=$($Matches[1])" }
-            return [pscustomobject]@{ StatusCode = [int]$resp.StatusCode; Body = $text; Error = $null; Cookie = $sessionCookie }
+            return [pscustomobject]@{ StatusCode = [int]$resp.StatusCode; Body = $text; Error = $null; Cookie = $sessionCookie; Headers = (ConvertTo-HeaderTable $resp.Headers) }
         }
-        return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.Message; Cookie = $null }
+        return [pscustomobject]@{ StatusCode = 0; Body = ''; Error = $_.Exception.Message; Cookie = $null; Headers = @{} }
     }
 }
