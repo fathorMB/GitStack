@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

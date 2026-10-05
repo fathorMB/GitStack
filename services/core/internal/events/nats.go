@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	pkgevents "github.com/fathorMB/GitStack/pkg/events"
-	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/pkg/events/testevent"
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )

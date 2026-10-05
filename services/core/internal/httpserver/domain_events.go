@@ -167,9 +167,6 @@ func emitFromHistory(ctx context.Context, q querier, issueID uuid.UUID, typ stri
 	return emitIssue(ctx, q, name, issueID, actor, mod)
 }
 
-// purgeAfter: dopo quanto un repo eliminato è cancellato per sempre (R2).
-
-
 // emitRepoUpdate accoda gli eventi di una modifica del repo: archiviazione o
 // riattivazione, cambio di visibilità (con quella precedente).
 func (s *apiServer) emitRepoUpdate(ctx context.Context, q outbox.Execer, cur, updated store.Repo, actor uuid.UUID) error {
