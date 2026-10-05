@@ -165,3 +165,11 @@ name = "rules-coverage"
 run = "go run scripts/check-rules-coverage.go"
 timeout_s = 120
 paths = ["docs/rules-coverage.md", "scripts/check-rules-coverage.go", "services/**", "web/src/**"]
+
+[[check]]
+name = "go-gofmt"
+# gofmt sui blob committati (HEAD, LF), non sul worktree CRLF di Windows:
+# golangci-lint dei check go-lint-* non controlla il formato (GIT-119).
+run = "go run scripts/check-gofmt.go"
+timeout_s = 120
+paths = ["**/*.go", "scripts/check-gofmt.go"]
