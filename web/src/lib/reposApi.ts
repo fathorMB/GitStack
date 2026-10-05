@@ -1,16 +1,31 @@
-// Repository (M-03, decisione D-D di GIT-63). Finche il client generato non
-// ha le operazioni `repos`, i tipi sono locali e le chiamate passano dal
-// client di default dell'SDK (stessa forma { data, error, response }): cosi
-// l'interceptor 401 di unauthorized.ts le vede. Da sostituire con l'SDK
-// quando GIT-63 e' su main.
-import { client } from '@gitstack/api-client/src/generated/client.gen';
+// Repository (M-03) via client generato (client di default: niente `client:`
+// nelle options, cosi l'interceptor 401 vede le risposte).
+import { createRepository, getRepository, listRepositories } from '@gitstack/api-client';
+import type {
+  CreateRepositoryInput,
+  GitignoreTemplate,
+  LicenseTemplate,
+  OwnerType,
+  RepoVisibility,
+  Repository,
+} from '@gitstack/api-client';
 import { API_BASE_URL, unwrap } from './http';
 
-export type RepoVisibility = 'private' | 'internal';
-export type OwnerType = 'user' | 'organization';
+export type { CreateRepositoryInput, GitignoreTemplate, LicenseTemplate, OwnerType, RepoVisibility, Repository };
 
 // Id stabili dei modelli (D-D, uguali a GIT-69).
-export const GITIGNORE_TEMPLATES = ['go', 'node', 'python', 'java', 'dotnet', 'rust', 'cpp', 'terraform', 'ruby', 'php'] as const;
+export const GITIGNORE_TEMPLATES = [
+  'go',
+  'node',
+  'python',
+  'java',
+  'dotnet',
+  'rust',
+  'cpp',
+  'terraform',
+  'ruby',
+  'php',
+] as const satisfies readonly GitignoreTemplate[];
 export const LICENSE_TEMPLATES = [
   'mit',
   'apache-2.0',
@@ -21,72 +36,20 @@ export const LICENSE_TEMPLATES = [
   'bsd-2-clause',
   'bsd-3-clause',
   'unlicense',
-] as const;
-export type GitignoreTemplate = (typeof GITIGNORE_TEMPLATES)[number];
-export type LicenseTemplate = (typeof LICENSE_TEMPLATES)[number];
-
-export interface Repository {
-  id: string;
-  owner: { type: OwnerType; name: string };
-  name: string;
-  fullName: string;
-  description?: string;
-  visibility: RepoVisibility;
-  defaultBranch: string;
-  protectDefaultBranch: boolean;
-  archived: boolean;
-  archivedAt?: string | null;
-  empty: boolean;
-  cloneUrls: { https: string; ssh: string };
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface RepositoryList {
-  items: Repository[];
-  page?: number;
-  perPage?: number;
-  total?: number;
-}
-
-export interface CreateRepositoryInput {
-  owner: string;
-  name: string;
-  description?: string;
-  visibility?: RepoVisibility;
-  readme?: boolean;
-  gitignoreTemplate?: GitignoreTemplate;
-  licenseTemplate?: LicenseTemplate;
-}
+] as const satisfies readonly LicenseTemplate[];
 
 const PER_PAGE = 100;
 
 export async function fetchRepos(owner?: string): Promise<Repository[]> {
-  const result = await client.get<RepositoryList, never>({
-    baseUrl: API_BASE_URL,
-    url: '/repos',
-    query: { perPage: PER_PAGE, ...(owner ? { owner } : {}) },
-  });
-  return unwrap(result as { data?: RepositoryList }).items;
+  return unwrap(await listRepositories({ baseUrl: API_BASE_URL, query: { perPage: PER_PAGE, ...(owner ? { owner } : {}) } })).items;
 }
 
 export async function fetchRepo(owner: string, repo: string): Promise<Repository> {
-  const result = await client.get<Repository, never>({
-    baseUrl: API_BASE_URL,
-    url: '/repos/{owner}/{repo}',
-    path: { owner, repo },
-  });
-  return unwrap(result as { data?: Repository });
+  return unwrap(await getRepository({ baseUrl: API_BASE_URL, path: { owner, repo } }));
 }
 
 export async function createRepo(input: CreateRepositoryInput): Promise<Repository> {
-  const result = await client.post<Repository, never>({
-    baseUrl: API_BASE_URL,
-    url: '/repos',
-    body: input,
-    headers: { 'Content-Type': 'application/json' },
-  });
-  return unwrap(result as { data?: Repository });
+  return unwrap(await createRepository({ baseUrl: API_BASE_URL, body: input }));
 }
 
 // R11: stessa regola del backend (D-A) piu «non finisce con .git».
