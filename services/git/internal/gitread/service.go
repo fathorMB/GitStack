@@ -3,6 +3,7 @@ package gitread
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/languages"
@@ -16,6 +17,8 @@ type Service struct {
 	dir func(repoID string) (string, error)
 
 	langs *languages.Cache // lingue per sha del commit
+
+	searchTimeout time.Duration // 0 = SearchTimeout
 }
 
 // New crea il servizio.

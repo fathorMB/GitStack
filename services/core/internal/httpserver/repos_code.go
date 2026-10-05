@@ -415,11 +415,31 @@ func codeNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Lettura del codice non ancora disponibile.")
 }
 
-// ListRepositoryFiles e SearchRepositoryCode sono di GIT-93.
-func (s *apiServer) ListRepositoryFiles(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListRepositoryFilesParams) {
-	codeNotImplemented(w)
+// ListRepositoryFiles: percorsi di tutti i file del ref per "Go to file" (B5).
+func (s *apiServer) ListRepositoryFiles(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, params openapi.ListRepositoryFilesParams) {
+	a, ok := s.codeAccess(w, r, owner, name)
+	if !ok {
+		return
+	}
+	q := url.Values{"ref": {a.refOrDefault(params.Ref)}}
+	var out openapi.FileList
+	if !a.readJSON(w, r, "files", q, &out) {
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
-func (s *apiServer) SearchRepositoryCode(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.SearchRepositoryCodeParams) {
-	codeNotImplemented(w)
+// SearchRepositoryCode: ricerca testuale nel ref, senza indice (B5). Il testo
+// cercato passa a git come parametro di query: lì è sempre una stringa fissa.
+func (s *apiServer) SearchRepositoryCode(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, params openapi.SearchRepositoryCodeParams) {
+	a, ok := s.codeAccess(w, r, owner, name)
+	if !ok {
+		return
+	}
+	q := url.Values{"ref": {a.refOrDefault(params.Ref)}, "q": {params.Q}}
+	var out openapi.CodeSearchResult
+	if !a.readJSON(w, r, "search", q, &out) {
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }

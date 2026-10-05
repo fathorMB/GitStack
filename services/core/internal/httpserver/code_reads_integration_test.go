@@ -35,11 +35,20 @@ type readerGit struct {
 	rmu     sync.Mutex
 	streams []url.Values
 	paths   []string
+	reads   []readCall
+}
+
+type readCall struct {
+	path string
+	q    url.Values
 }
 
 const commitJSON = `{"sha":"` + "0123456789abcdef0123456789abcdef01234567" + `","subject":"s","author":{"name":"Botty","email":"Botty@Agents.Example.com","date":"2026-10-05T10:00:00Z"},"committer":{"name":"Alice","email":"alice@example.com","date":"2026-10-05T10:00:00Z"},"parents":[]}`
 
-func (g *readerGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID, path string, _ url.Values) (json.RawMessage, error) {
+func (g *readerGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID, path string, q url.Values) (json.RawMessage, error) {
+	g.rmu.Lock()
+	g.reads = append(g.reads, readCall{path: path, q: q})
+	g.rmu.Unlock()
 	switch {
 	case path == "tree":
 		return json.RawMessage(`{"ref":"main","commitSha":"x","path":"","entries":[{"name":"a","path":"a","type":"file","mode":"100644","size":1,"lastCommit":` + commitJSON + `}],"truncated":false}`), nil
@@ -53,6 +62,10 @@ func (g *readerGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID, p
 		return json.RawMessage(`{"items":[` + commitJSON + `],"page":1,"perPage":30,"hasMore":false}`), nil
 	case strings.HasPrefix(path, "commits/"):
 		return json.RawMessage(`{"commit":` + commitJSON + `,"files":[],"filesChanged":0,"additions":0,"deletions":0,"truncated":false}`), nil
+	case path == "files":
+		return json.RawMessage(`{"ref":"main","commitSha":"x","paths":["a","src/b.go"],"truncated":false}`), nil
+	case path == "search":
+		return json.RawMessage(`{"ref":"main","query":"q","results":[{"path":"a","line":1,"fragment":"x"}],"limitReached":false,"timedOut":false}`), nil
 	case path == "blame":
 		return json.RawMessage(`{"ref":"main","path":"a","ranges":[{"startLine":1,"endLine":1,"commit":` + commitJSON + `}]}`), nil
 	}
@@ -120,6 +133,7 @@ func TestCodeReads_Permessi(t *testing.T) {
 		"tree": "/tree", "contents": "/contents?path=a", "readme": "/readme", "raw": "/raw?path=a",
 		"raw_per_indirizzo": "/raw/main/a", "raw_ref_con_slash": "/raw/feat/x/dir/a.txt",
 		"branches": "/branches", "tags": "/tags", "commits": "/commits", "commit": "/commits/" + sha,
+		"files": "/files", "files_ref": "/files?ref=feat/x", "search": "/search?q=hello",
 		"blame": "/blame?path=a", "archive_zip": "/archive?ref=main", "archive_targz": "/archive?ref=main&format=tar.gz",
 		"diff": "/commits/" + sha + "/patch?format=diff", "patch": "/commits/" + sha + "/patch?format=patch",
 	}
@@ -156,6 +170,32 @@ func TestCodeReads_Permessi(t *testing.T) {
 			e.want(e.do("GET", "/repos/alice/aperto-interno"+p, "bob", ""), 200)
 		})
 	}
+
+	t.Run("files_e_search_instradamento", func(t *testing.T) {
+		e.want(e.do("GET", "/repos/alice/aperto-interno/files", "bob", ""), 200)
+		e.want(e.do("GET", "/repos/alice/aperto-interno/search?q=--help%20a.*b%26ref%3Dx&ref=feat/x", "bob", ""), 200)
+		git.rmu.Lock()
+		defer git.rmu.Unlock()
+		var files, search url.Values
+		for _, c := range git.reads {
+			switch c.path {
+			case "files":
+				if c.q.Get("ref") == "main" {
+					files = c.q
+				}
+			case "search":
+				if c.q.Get("ref") == "feat/x" {
+					search = c.q
+				}
+			}
+		}
+		if files == nil {
+			t.Error("files senza ref: atteso il branch principale (main)")
+		}
+		if search == nil || search.Get("q") != "--help a.*b&ref=x" {
+			t.Errorf("search: il testo deve arrivare intatto, ho %v", search)
+		}
+	})
 
 	t.Run("ref_con_slash_e_sha", func(t *testing.T) {
 		git.rmu.Lock()
