@@ -141,7 +141,7 @@ export function Markdown({ source, basePath = '', resolveLink, resolveImage, cla
     <div className={`md${className ? ` ${className}` : ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        remarkRehypeOptions={{ allowDangerousHtml: true }}
+        remarkRehypeOptions={{ allowDangerousHtml: true, clobberPrefix: '' }}
         rehypePlugins={[rehypeRaw, rehypeSlug, rehypeSanitize]}
         components={components}
       >
