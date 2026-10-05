@@ -3939,6 +3939,38 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/users/lookup-ids:
+    post:
+      operationId: lookupUsersByIds
+      tags: [internal]
+      summary: Risolve gli id utente in nome e tipo
+      description: >
+        Per core (M-05): le issues conservano solo gli id degli utenti e la
+        risposta li mostra con nome utente e tipo (persona o agente). Massimo
+        100 id per chiamata; gli id senza utente non compaiono nella risposta.
+        Gli utenti disattivati restano.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupIdsInput"
+      responses:
+        "200":
+          description: Gli utenti trovati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LookupIdsResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/git/repos/{repoId}/tree:
     parameters:
       - $ref: "#/components/parameters/GitRepoIdParam"
@@ -6700,6 +6732,39 @@ components:
                 type: string
                 format: uri
                 nullable: true
+    LookupIdsInput:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+
+    LookupIdsResult:
+      type: object
+      additionalProperties: false
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, username, kind]
+            properties:
+              id:
+                type: string
+                format: uuid
+              username:
+                $ref: "#/components/schemas/Name"
+              kind:
+                type: string
+                enum: [human, agent]
     IssueState:
       type: string
       enum: [open, closed]

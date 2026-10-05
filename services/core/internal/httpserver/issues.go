@@ -17,34 +17,6 @@ func (s *apiServer) SearchIssues(w http.ResponseWriter, _ *http.Request, _ opena
 	issuesNotImplemented(w)
 }
 
-func (s *apiServer) ListIssues(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListIssuesParams) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) CreateIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) GetIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) UpdateIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) CloseIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ReopenIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) SetIssueHidden(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
 func (s *apiServer) LockIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
 	issuesNotImplemented(w)
 }
@@ -62,14 +34,6 @@ func (s *apiServer) SetIssueLabels(w http.ResponseWriter, _ *http.Request, _ ope
 }
 
 func (s *apiServer) SetIssueMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ListIssueEvents(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam, _ openapi.ListIssueEventsParams) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ListIssueVersions(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
 	issuesNotImplemented(w)
 }
 

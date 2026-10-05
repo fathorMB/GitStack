@@ -135,6 +135,24 @@ func (e LookupEmailsResultUsersKind) Valid() bool {
 	}
 }
 
+// Defines values for LookupIdsResultUsersKind.
+const (
+	LookupIdsResultUsersKindAgent LookupIdsResultUsersKind = "agent"
+	LookupIdsResultUsersKindHuman LookupIdsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the LookupIdsResultUsersKind enum.
+func (e LookupIdsResultUsersKind) Valid() bool {
+	switch e {
+	case LookupIdsResultUsersKindAgent:
+		return true
+	case LookupIdsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrgRole.
 const (
 	OrgRoleMember OrgRole = "member"
@@ -564,6 +582,28 @@ type LookupEmailsResult struct {
 
 // LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
 type LookupEmailsResultUsersKind string
+
+// LookupIdsInput defines model for LookupIdsInput.
+type LookupIdsInput struct {
+	Ids []openapi_types.UUID `json:"ids"`
+}
+
+// LookupIdsResult defines model for LookupIdsResult.
+type LookupIdsResult struct {
+	Users []struct {
+		Id   openapi_types.UUID       `json:"id"`
+		Kind LookupIdsResultUsersKind `json:"kind"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// LookupIdsResultUsersKind defines model for LookupIdsResult.Users.Kind.
+type LookupIdsResultUsersKind string
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -1103,6 +1143,9 @@ type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 // LookupUsersByEmailJSONRequestBody defines body for LookupUsersByEmail for application/json ContentType.
 type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
 
+// LookupUsersByIdsJSONRequestBody defines body for LookupUsersByIds for application/json ContentType.
+type LookupUsersByIdsJSONRequestBody = LookupIdsInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -1195,6 +1238,9 @@ type ServerInterface interface {
 	// LookupUsersByEmail Trova gli utenti GitStack dalle email dei commit
 	// (POST /internal/users/lookup-emails)
 	LookupUsersByEmail(w http.ResponseWriter, r *http.Request)
+	// LookupUsersByIds Risolve gli id utente in nome e tipo
+	// (POST /internal/users/lookup-ids)
+	LookupUsersByIds(w http.ResponseWriter, r *http.Request)
 	// VerifyCredential Verifica una credenziale (per il gateway)
 	// (POST /internal/verify)
 	VerifyCredential(w http.ResponseWriter, r *http.Request)
@@ -1650,6 +1696,20 @@ func (siw *ServerInterfaceWrapper) LookupUsersByEmail(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LookupUsersByEmail(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LookupUsersByIds operation middleware
+func (siw *ServerInterfaceWrapper) LookupUsersByIds(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LookupUsersByIds(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3115,6 +3175,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/internal/resources/{resourceId}", wrapper.PurgeResourceAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-ids", wrapper.LookupUsersByIds)
 
 	return m
 }

@@ -504,6 +504,24 @@ func (e LookupEmailsResultUsersKind) Valid() bool {
 	}
 }
 
+// Defines values for LookupIdsResultUsersKind.
+const (
+	LookupIdsResultUsersKindAgent LookupIdsResultUsersKind = "agent"
+	LookupIdsResultUsersKindHuman LookupIdsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the LookupIdsResultUsersKind enum.
+func (e LookupIdsResultUsersKind) Valid() bool {
+	switch e {
+	case LookupIdsResultUsersKindAgent:
+		return true
+	case LookupIdsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MilestoneState.
 const (
 	MilestoneStateClosed MilestoneState = "closed"
@@ -1865,6 +1883,28 @@ type LookupEmailsResult struct {
 // LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
 type LookupEmailsResultUsersKind string
 
+// LookupIdsInput defines model for LookupIdsInput.
+type LookupIdsInput struct {
+	Ids []openapi_types.UUID `json:"ids"`
+}
+
+// LookupIdsResult defines model for LookupIdsResult.
+type LookupIdsResult struct {
+	Users []struct {
+		Id   openapi_types.UUID       `json:"id"`
+		Kind LookupIdsResultUsersKind `json:"kind"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// LookupIdsResultUsersKind defines model for LookupIdsResult.Users.Kind.
+type LookupIdsResultUsersKind string
+
 // Milestone defines model for Milestone.
 type Milestone struct {
 	ClosedAt *time.Time `json:"closedAt,omitempty"`
@@ -3110,6 +3150,9 @@ type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 // LookupUsersByEmailJSONRequestBody defines body for LookupUsersByEmail for application/json ContentType.
 type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
 
+// LookupUsersByIdsJSONRequestBody defines body for LookupUsersByIds for application/json ContentType.
+type LookupUsersByIdsJSONRequestBody = LookupIdsInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -3619,6 +3662,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
 	LookupUsersByEmail(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupUsersByIdsWithBody Risolve gli id utente in nome e tipo
+	//
+	// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+	LookupUsersByIdsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupUsersByIds Risolve gli id utente in nome e tipo
+	//
+	// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+	LookupUsersByIds(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// VerifyCredentialWithBody Verifica una credenziale (per il gateway)
 	//
@@ -5407,6 +5468,44 @@ func (c *Client) LookupUsersByEmailWithBody(ctx context.Context, contentType str
 // Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
 func (c *Client) LookupUsersByEmail(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLookupUsersByEmailRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupUsersByIdsWithBody Risolve gli id utente in nome e tipo
+//
+// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+func (c *Client) LookupUsersByIdsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupUsersByIdsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupUsersByIds Risolve gli id utente in nome e tipo
+//
+// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+func (c *Client) LookupUsersByIds(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupUsersByIdsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9512,6 +9611,46 @@ func NewLookupUsersByEmailRequestWithBody(server string, contentType string, bod
 	}
 
 	operationPath := fmt.Sprintf("/internal/users/lookup-emails")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewLookupUsersByIdsRequest calls the generic LookupUsersByIds builder with application/json body
+func NewLookupUsersByIdsRequest(server string, body LookupUsersByIdsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLookupUsersByIdsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLookupUsersByIdsRequestWithBody constructs an http.Request for the LookupUsersByIds method, with any body, and a specified content type
+func NewLookupUsersByIdsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/users/lookup-ids")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -15669,6 +15808,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
 	LookupUsersByEmailWithResponse(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUsersByEmailResponse, error)
 
+	// LookupUsersByIdsWithBodyWithResponse Risolve gli id utente in nome e tipo
+	//
+	// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+	LookupUsersByIdsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupUsersByIdsResponse, error)
+
+	// LookupUsersByIdsWithResponse Risolve gli id utente in nome e tipo
+	//
+	// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+	LookupUsersByIdsWithResponse(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUsersByIdsResponse, error)
+
 	// VerifyCredentialWithBodyWithResponse Verifica una credenziale (per il gateway)
 	//
 	// Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
@@ -19144,6 +19301,68 @@ func (r LookupUsersByEmailResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LookupUsersByEmailResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LookupUsersByIdsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LookupIdsResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r LookupUsersByIdsResponse) GetJSON200() *LookupIdsResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LookupUsersByIdsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r LookupUsersByIdsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r LookupUsersByIdsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r LookupUsersByIdsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LookupUsersByIdsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LookupUsersByIdsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LookupUsersByIdsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -27597,6 +27816,36 @@ func (c *ClientWithResponses) LookupUsersByEmailWithResponse(ctx context.Context
 	return ParseLookupUsersByEmailResponse(rsp)
 }
 
+// LookupUsersByIdsWithBodyWithResponse Risolve gli id utente in nome e tipo
+//
+// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+func (c *ClientWithResponses) LookupUsersByIdsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupUsersByIdsResponse, error) {
+	rsp, err := c.LookupUsersByIdsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupUsersByIdsResponse(rsp)
+}
+
+// LookupUsersByIdsWithResponse Risolve gli id utente in nome e tipo
+//
+// Per core (M-05): le issues conservano solo gli id degli utenti e la risposta li mostra con nome utente e tipo (persona o agente). Massimo 100 id per chiamata; gli id senza utente non compaiono nella risposta. Gli utenti disattivati restano.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/users/lookup-ids (the `LookupUsersByIds` operationId).
+func (c *ClientWithResponses) LookupUsersByIdsWithResponse(ctx context.Context, body LookupUsersByIdsJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUsersByIdsResponse, error) {
+	rsp, err := c.LookupUsersByIds(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupUsersByIdsResponse(rsp)
+}
+
 // VerifyCredentialWithBodyWithResponse Verifica una credenziale (per il gateway)
 //
 // Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
@@ -31385,6 +31634,53 @@ func ParseLookupUsersByEmailResponse(rsp *http.Response) (*LookupUsersByEmailRes
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest LookupEmailsResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLookupUsersByIdsResponse parses an HTTP response from a LookupUsersByIdsWithResponse call
+func ParseLookupUsersByIdsResponse(rsp *http.Response) (*LookupUsersByIdsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LookupUsersByIdsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LookupIdsResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

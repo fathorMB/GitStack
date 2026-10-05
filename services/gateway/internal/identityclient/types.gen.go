@@ -72,6 +72,24 @@ func (e LookupEmailsResultUsersKind) Valid() bool {
 	}
 }
 
+// Defines values for LookupIdsResultUsersKind.
+const (
+	LookupIdsResultUsersKindAgent LookupIdsResultUsersKind = "agent"
+	LookupIdsResultUsersKindHuman LookupIdsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the LookupIdsResultUsersKind enum.
+func (e LookupIdsResultUsersKind) Valid() bool {
+	switch e {
+	case LookupIdsResultUsersKindAgent:
+		return true
+	case LookupIdsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OwnerType.
 const (
 	OwnerTypeOrganization OwnerType = "organization"
@@ -329,6 +347,28 @@ type LookupEmailsResult struct {
 
 // LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
 type LookupEmailsResultUsersKind string
+
+// LookupIdsInput defines model for LookupIdsInput.
+type LookupIdsInput struct {
+	Ids []openapi_types.UUID `json:"ids"`
+}
+
+// LookupIdsResult defines model for LookupIdsResult.
+type LookupIdsResult struct {
+	Users []struct {
+		Id   openapi_types.UUID       `json:"id"`
+		Kind LookupIdsResultUsersKind `json:"kind"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// LookupIdsResultUsersKind defines model for LookupIdsResult.Users.Kind.
+type LookupIdsResultUsersKind string
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -592,6 +632,9 @@ type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 
 // LookupUsersByEmailJSONRequestBody defines body for LookupUsersByEmail for application/json ContentType.
 type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
+
+// LookupUsersByIdsJSONRequestBody defines body for LookupUsersByIds for application/json ContentType.
+type LookupUsersByIdsJSONRequestBody = LookupIdsInput
 
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
