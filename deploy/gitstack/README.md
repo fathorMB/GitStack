@@ -126,6 +126,22 @@ Core riceve `GITSTACK_GIT_URL` (Service interno di git, se `git.enabled`) e `GIT
 
 Preflight di `install.sh`: la porta SSH (`git.ssh.port`, letta da `--set git.ssh.port=N`, altrimenti 2222) si aggiunge a 80/443/6443; se è occupata l'installer si ferma con un messaggio che dice di liberarla o di sceglierne un'altra con `--set git.ssh.port=N`. Come per le altre porte il controllo è saltato se k3s è già installato.
 
+## Allegati di issue e commenti (GIT-107, I9)
+
+Core tiene i file degli allegati su un PVC dedicato `<release>-attachments-data`, montato su `core.attachments.mountPath` (default `/var/lib/gitstack/attachments`, `GITSTACK_CORE_ATTACHMENTS_DIR`), con `fsGroup: 65532` per l'utente `nonroot` dell'immagine. Il volume va incluso nel backup insieme a Postgres e a `git-data` (D19).
+
+**Limite noto (decisione del CEO): con il volume `ReadWriteOnce` degli allegati, core gira a una sola replica con strategia `Recreate`.** Il chart rifiuta `core.replicaCount > 1` con gli allegati attivi e imposta `strategy: Recreate` sul Deployment di core. Conseguenza: ogni aggiornamento o riavvio di core ha una breve interruzione (il nuovo pod parte solo quando il vecchio ha rilasciato il volume), e core non scala in orizzontale finché gli allegati stanno su un volume RWO. Con `core.attachments.enabled=false` il volume non esiste, core torna a `RollingUpdate`, e upload e download di allegati rispondono 503.
+
+| Value | Default | Significato |
+|---|---|---|
+| `core.attachments.enabled` | `true` | PVC, montaggio, `Recreate` e variabili d'ambiente degli allegati. |
+| `core.attachments.mountPath` | `/var/lib/gitstack/attachments` | `GITSTACK_CORE_ATTACHMENTS_DIR`. |
+| `core.attachments.maxBytes` | `10485760` | Limite per file (10 MiB), `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`: oltre, 413 `attachment_too_large`. |
+| `core.attachments.orphanTtl` | `24h` | Un allegato mai collegato a una issue o a un commento si elimina dopo questo tempo (`GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL`). |
+| `core.attachments.persistence.size`, `.storageClassName`, `.accessMode` | `5Gi`, vuoto, `ReadWriteOnce` | Il PVC. |
+
+Il gateway applica `gateway.env.coreTimeout` (default `30s`, prima `5s`) all'intera richiesta verso core, upload compreso: 10 MB in 30 secondi richiedono circa 3 Mbit/s. Se alzi `core.attachments.maxBytes` alza anche il timeout, e `client_max_body_size`-simili di un proxy davanti a Traefik, se ce n'è uno.
+
 ## Probe di liveness/readiness
 
 Tutti i servizi Go (`gateway`, `identity`, `core`, `git`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).

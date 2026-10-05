@@ -93,14 +93,6 @@ func (s *apiServer) ListIssueCommentVersions(w http.ResponseWriter, _ *http.Requ
 	issuesNotImplemented(w)
 }
 
-func (s *apiServer) UploadIssueAttachment(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) GetIssueAttachment(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueAttachmentIdParam) {
-	issuesNotImplemented(w)
-}
-
 func (s *apiServer) ListIssueTemplates(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
 	issuesNotImplemented(w)
 }

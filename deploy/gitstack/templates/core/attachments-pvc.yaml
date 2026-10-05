@@ -1,0 +1,22 @@
+{{- if and .Values.core.enabled .Values.core.attachments.enabled -}}
+# Volume degli allegati di issue e commenti (M-05/G, I9): <repo_id>/<id> senza
+# il nome originale. ReadWriteOnce: core resta a una replica (strategia
+# Recreate nel Deployment). Va incluso nel backup (D19). Il consumer è il
+# Deployment di core, sempre attivo insieme a questo PVC (WaitForFirstConsumer
+# di local-path non lascia il PVC Pending per sempre).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gitstack.fullname" . }}-attachments-data
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.core.attachments.persistence.accessMode }}
+  {{- if .Values.core.attachments.persistence.storageClassName }}
+  storageClassName: {{ .Values.core.attachments.persistence.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.core.attachments.persistence.size | quote }}
+{{- end }}

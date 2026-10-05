@@ -76,6 +76,19 @@ type Config struct {
 	// dell'installazione spento): core non pubblica gli indirizzi di clone SSH.
 	SSHEnabled bool
 
+	// AttachmentsDir è il volume degli allegati di issue e commenti
+	// (GITSTACK_CORE_ATTACHMENTS_DIR, I9). Vuoto: upload e download di allegati
+	// rispondono 503. Il volume è coperto dal backup (D19).
+	AttachmentsDir string
+
+	// AttachmentMaxBytes è il limite per allegato (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES,
+	// default 10 MiB).
+	AttachmentMaxBytes int64
+
+	// AttachmentOrphanTTL: un allegato mai collegato si elimina dopo questo
+	// tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL, default 24h).
+	AttachmentOrphanTTL time.Duration
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -94,6 +107,13 @@ const (
 	envPublicURL         = "GITSTACK_CORE_PUBLIC_URL"
 	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
 	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
+
+	envAttachmentsDir    = "GITSTACK_CORE_ATTACHMENTS_DIR"
+	envAttachmentMax     = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
+	envAttachmentOrphan  = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
+
+	defaultAttachmentMaxBytes  = int64(10 << 20)
+	defaultAttachmentOrphanTTL = 24 * time.Hour
 
 	defaultSSHPort = 2222
 
@@ -124,6 +144,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		DBMaxConns:        defaultDBMaxConns,
 		MigrationsTimeout: defaultMigrationsTimeout,
 		LogLevel:          defaultLogLevel,
+
+		AttachmentMaxBytes:  defaultAttachmentMaxBytes,
+		AttachmentOrphanTTL: defaultAttachmentOrphanTTL,
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
@@ -186,6 +209,26 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è una porta valida (1-65535) né \"off\": %q", envSSHPort, v))
 		} else {
 			cfg.SSHPort = n
+		}
+	}
+
+	if v, ok := lookup(envAttachmentsDir); ok {
+		cfg.AttachmentsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envAttachmentMax); ok && strings.TrimSpace(v) != "" {
+		n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+		if err != nil || n <= 0 {
+			errs = append(errs, fmt.Sprintf("%s non è un intero positivo di byte: %q", envAttachmentMax, v))
+		} else {
+			cfg.AttachmentMaxBytes = n
+		}
+	}
+	if v, ok := lookup(envAttachmentOrphan); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil || d <= 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", envAttachmentOrphan, v))
+		} else {
+			cfg.AttachmentOrphanTTL = d
 		}
 	}
 

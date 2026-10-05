@@ -35,6 +35,8 @@ type apiServer struct {
 	userAccess identityclient.UserAccessReader
 	git          gitclient.Git
 	clone        CloneConfig
+	// attachments: volume e limite degli allegati (I9); Disk nil = 503.
+	attachments AttachmentsConfig
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
 	now func() time.Time
 }

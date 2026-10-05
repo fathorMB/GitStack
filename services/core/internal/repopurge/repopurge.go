@@ -38,6 +38,8 @@ type Job struct {
 	Store    *store.Store
 	Git      gitclient.Git
 	Identity Access
+	// Attachments, se presente, toglie i file degli allegati del repo (I9).
+	Attachments interface{ RemoveRepo(repoID uuid.UUID) error }
 	// Now è l'orologio (iniettabile nei test); nil = time.Now.
 	Now func() time.Time
 	// Log; nil = slog.Default().
@@ -83,6 +85,11 @@ func (j *Job) cleanup(ctx context.Context, r store.Repo) error {
 	}
 	if err := j.Git.Delete(ctx, systemCaller, r.ID); err != nil && !errors.Is(err, gitclient.ErrNotFound) {
 		return fmt.Errorf("repo %s: cancellazione su disco: %w", r.ID, err)
+	}
+	if j.Attachments != nil {
+		if err := j.Attachments.RemoveRepo(r.ID); err != nil {
+			return fmt.Errorf("repo %s: allegati su disco: %w", r.ID, err)
+		}
 	}
 	if err := j.Identity.PurgeResource(ctx, r.ID); err != nil {
 		return fmt.Errorf("repo %s: grant in identity: %w", r.ID, err)

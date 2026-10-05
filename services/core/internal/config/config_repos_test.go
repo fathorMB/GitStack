@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // Nomi e default delle variabili di GIT-67 (le usa anche il chart, GIT-74).
 func TestLoad_RepoEnv(t *testing.T) {
@@ -44,6 +47,38 @@ func TestLoad_RepoEnv(t *testing.T) {
 		base[envSSHPort] = bad
 		if _, err := load(lookupFrom(base)); err == nil {
 			t.Fatalf("porta %q accettata", bad)
+		}
+	}
+}
+
+// Allegati (I9, GIT-107): default e nomi delle variabili (le usa anche il chart).
+func TestLoad_AttachmentsEnv(t *testing.T) {
+	base := map[string]string{envDatabaseURL: "postgres://x"}
+	cfg, err := load(lookupFrom(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AttachmentsDir != "" || cfg.AttachmentMaxBytes != 10<<20 || cfg.AttachmentOrphanTTL != 24*time.Hour {
+		t.Fatalf("default inattesi: %+v", cfg)
+	}
+	if envAttachmentsDir != "GITSTACK_CORE_ATTACHMENTS_DIR" || envAttachmentMax != "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES" ||
+		envAttachmentOrphan != "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL" {
+		t.Fatal("nomi delle variabili cambiati: li usa il chart")
+	}
+	base[envAttachmentsDir] = " /var/lib/gitstack/attachments "
+	base[envAttachmentMax] = "1048576"
+	base[envAttachmentOrphan] = "2h"
+	cfg, err = load(lookupFrom(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AttachmentsDir != "/var/lib/gitstack/attachments" || cfg.AttachmentMaxBytes != 1<<20 || cfg.AttachmentOrphanTTL != 2*time.Hour {
+		t.Fatalf("configurazione: %+v", cfg)
+	}
+	for _, bad := range []struct{ k, v string }{{envAttachmentMax, "0"}, {envAttachmentMax, "10MB"}, {envAttachmentOrphan, "-1h"}, {envAttachmentOrphan, "un giorno"}} {
+		b := map[string]string{envDatabaseURL: "postgres://x", bad.k: bad.v}
+		if _, err := load(lookupFrom(b)); err == nil {
+			t.Errorf("%s=%q accettato", bad.k, bad.v)
 		}
 	}
 }
