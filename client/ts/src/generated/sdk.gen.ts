@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -302,6 +302,70 @@ export const updateUser = <ThrowOnError extends boolean = false>(options: Option
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Elenca i token di un utente agent
+ *
+ * Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent`: sui token di una persona decide solo lei (409 `not_an_agent`). Mai il valore del token, solo `hint`.
+ *
+ */
+export const listUserTokens = <ThrowOnError extends boolean = false>(options: Options<ListUserTokensData, ThrowOnError>): RequestResult<ListUserTokensResponses, ListUserTokensErrors, ThrowOnError> => (options.client ?? client).get<ListUserTokensResponses, ListUserTokensErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/tokens',
+    ...options
+});
+
+/**
+ * Crea un token per un utente agent
+ *
+ * Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+ *
+ */
+export const createUserToken = <ThrowOnError extends boolean = false>(options: Options<CreateUserTokenData, ThrowOnError>): RequestResult<CreateUserTokenResponses, CreateUserTokenErrors, ThrowOnError> => (options.client ?? client).post<CreateUserTokenResponses, CreateUserTokenErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/tokens',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoca un token di un utente agent
+ *
+ * Solo amministratori, scope `write:user` (regola P5). Un token che non appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
+ *
+ */
+export const revokeUserToken = <ThrowOnError extends boolean = false>(options: Options<RevokeUserTokenData, ThrowOnError>): RequestResult<RevokeUserTokenResponses, RevokeUserTokenErrors, ThrowOnError> => (options.client ?? client).delete<RevokeUserTokenResponses, RevokeUserTokenErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/users/{username}/tokens/{tokenId}',
+    ...options
 });
 
 /**

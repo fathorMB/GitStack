@@ -201,6 +201,7 @@ Pacchetti: `internal/apitokens` (token `gst_...`), `internal/userkeys` (chiavi S
 - **`POST /internal/verify`**: accetta cookie di sessione o `gst_...` (o `kind`); sconosciuto, scaduto, revocato, utente disattivato → `active: false` senza distinzione (cache 5 s; 30 s se attivo). `last_used_at` si aggiorna al più una volta al minuto. **`GET /internal/ssh-keys/{fingerprint}`** (URL-encoded) risolve l'utente per il servizio git. `POST /internal/permissions/check` è descritto nella sezione "Permessi su risorse".
 - **serviceAuth**: middleware su `/internal/*`, `Authorization: Bearer <segreto>` confrontato in tempo costante; segreto vuoto = tutto 401.
 - Le operazioni `/user/*` accettano il cookie di sessione o l'identità firmata dal gateway (vedi sopra); il controllo degli scope è del gateway.
+- **Token degli agent (P5)**: `GET/POST /users/{username}/tokens` e `DELETE /users/{username}/tokens/{tokenId}` (tag `users`, handler in `internal/httpapi/user_tokens.go`) riusano `apitokens.Service` con `UserID` dell'agent: nessuna logica duplicata. Solo admin; ordine: non admin 403, utente inesistente 404, utente `human` 409 `not_an_agent` (anche l'admin su se stesso), poi corpo 422. DELETE di un token non dell'agent: 404. Agent disattivato o eliminato: la verifica del token risulta non attiva (`u.is_active`, cascata).
 - Test: `go test -tags integration ./internal/apitokens ./internal/userkeys ./internal/httpapi` con `GITSTACK_TEST_DATABASE_URL`.
 
 ## Login esterno OIDC (GIT-39, M-02/K)
