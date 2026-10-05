@@ -301,3 +301,24 @@ ul.list{margin:0;padding:0;list-style:none}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%}
 .goto-list{list-style:none;margin:8px 0 0;padding:0;max-height:320px;overflow:auto}
 @media (max-width:1100px){.repo-grid{grid-template-columns:1fr}}
+
+/* Vista file e blame (mockup 08, 22, GIT-87) */
+.codeview{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.codeview-h{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.codeview-h .seg a{padding:5px 12px;font-size:13px;font-weight:500;color:var(--text-muted);text-decoration:none}
+.codeview-h .seg a.active{background:var(--accent-soft);color:var(--accent-text)}
+.codeview-empty{padding:32px 16px;text-align:center;color:var(--text-muted)}
+.codeview-img{padding:16px;text-align:center;background:var(--code-bg)}
+.codeview-img img{max-width:100%;height:auto}
+.codelines{overflow:auto;background:var(--code-bg);font:13px/1.7 var(--font-mono)}
+.codeline{display:flex;min-width:max-content}
+.codeline .lno{flex:none;width:56px;padding-right:12px;text-align:right;color:var(--text-subtle);text-decoration:none;user-select:none}
+.codeline .lno:hover{color:var(--accent-text)}
+.codeline .lsrc{margin:0;flex:1;white-space:pre;font:inherit;padding-right:16px}
+.codeline.sel{background:var(--accent-soft)}
+.blame-row{display:flex;align-items:flex-start;gap:14px;padding:8px 12px;border-top:1px solid var(--border)}
+.blame-row:first-child{border-top:0}
+.blame-meta{width:260px;flex:none}
+.blame-meta .row{gap:6px}
+.blame-meta .avatar{width:18px;height:18px;font-size:8px}
+.blame-code{flex:1;min-width:0;overflow:auto}
