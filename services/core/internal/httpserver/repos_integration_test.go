@@ -229,7 +229,7 @@ func newReposEnv(t *testing.T, clone httpserver.CloneConfig) *reposEnv {
 	pool, _ := dbtest.NewPool(t)
 	e := &reposEnv{t: t, pool: pool, id: newFakeIdentity(), git: newFakeGit()}
 	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
-		httpserver.WithRepoIdentity(e.id), httpserver.WithGit(e.git), httpserver.WithCloneConfig(clone))
+		httpserver.WithRepoIdentity(e.id), httpserver.WithReadableLister(e.id), httpserver.WithGit(e.git), httpserver.WithCloneConfig(clone))
 	return e
 }
 

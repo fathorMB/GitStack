@@ -216,6 +216,10 @@ func (s *apiServer) UpdateResource(w http.ResponseWriter, r *http.Request, resou
 		return
 	}
 
+	if !s.notRepo(w, r, uuid.UUID(resourceId)) {
+		return
+	}
+
 	res, err := s.resources.Update(r.Context(), uuid.UUID(resourceId), store.UpdateInput{
 		Name:       body.Name,
 		Attributes: body.Attributes,
@@ -237,6 +241,9 @@ func (s *apiServer) UpdateResource(w http.ResponseWriter, r *http.Request, resou
 
 // DeleteResource implementa DELETE /resources/{resourceId}.
 func (s *apiServer) DeleteResource(w http.ResponseWriter, r *http.Request, resourceId openapi.ResourceIdParam) {
+	if !s.notRepo(w, r, uuid.UUID(resourceId)) {
+		return
+	}
 	err := s.resources.Delete(r.Context(), uuid.UUID(resourceId))
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -247,6 +254,34 @@ func (s *apiServer) DeleteResource(w http.ResponseWriter, r *http.Request, resou
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// notRepo rifiuta con 409 `use_repos_api` la modifica o l'eliminazione, dalle
+// API generiche, di un repo vero (una risorsa con la riga di dettaglio in
+// core.repositories; una risorsa generica che ha solo type='repo' resta una
+// risorsa generica): i repo si gestiscono da /repos,
+// altrimenti si aggirerebbero il cestino di 7 giorni, i dati su disco, i
+// grant e l'occupazione del nome (R2). Una risorsa inesistente o un repo già
+// eliminato danno 404. Ritorna false dopo aver risposto.
+func (s *apiServer) notRepo(w http.ResponseWriter, r *http.Request, id uuid.UUID) bool {
+	if _, err := s.resources.Get(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "Risorsa non trovata.")
+			return false
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la lettura della risorsa.")
+		return false
+	}
+	isRepo, err := s.resources.IsRepo(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la lettura della risorsa.")
+		return false
+	}
+	if isRepo {
+		writeError(w, http.StatusConflict, "use_repos_api", "I repo si gestiscono da /repos.")
+		return false
+	}
+	return true
 }
 
 func toAPIResource(r store.Resource) openapi.Resource {

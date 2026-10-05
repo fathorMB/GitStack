@@ -12,6 +12,14 @@ import (
 // Retention è il periodo in cui un repo eliminato resta ripristinabile (R2).
 const Retention = 7 * 24 * time.Hour
 
+// IsRepo dice se la risorsa è un repo vero: ha la riga di dettaglio in
+// core.repositories (anche se eliminato).
+func (s *Store) IsRepo(ctx context.Context, id uuid.UUID) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM core.repositories WHERE resource_id = $1)`, id).Scan(&ok)
+	return ok, err
+}
+
 // PurgeAt è l'istante dopo il quale un repo eliminato in deletedAt viene
 // cancellato definitivamente.
 func PurgeAt(deletedAt time.Time) time.Time { return deletedAt.Add(Retention) }

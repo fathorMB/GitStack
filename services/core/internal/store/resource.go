@@ -65,6 +65,12 @@ func New(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
+// notDeletedRepo esclude i repo eliminati (R2): un repo è una riga di
+// core.resources con type='repo' e, finché è nel cestino, le API generiche
+// non devono vederlo.
+const notDeletedRepo = ` AND NOT EXISTS (SELECT 1 FROM core.repositories rp
+	WHERE rp.resource_id = core.resources.id AND rp.deleted_at IS NOT NULL)`
+
 // List elenca le risorse, filtrate opzionalmente per tipo e per id, in ordine
 // di creazione, paginate. page e perPage sono già validati (>=1) dal
 // chiamante. visible nil = nessun filtro sugli id (amministratore di
@@ -87,9 +93,8 @@ func (s *Store) List(ctx context.Context, resourceType *string, visible []uuid.U
 		args = append(args, visible)
 		where += fmt.Sprintf(" AND id = ANY($%d::uuid[])", len(args))
 	}
-	if where != "" {
-		where = " WHERE " + where[len(" AND "):]
-	}
+	where += notDeletedRepo
+	where = " WHERE " + where[len(" AND "):]
 
 	if err = s.pool.QueryRow(ctx, "SELECT count(*) FROM core.resources"+where, args...).Scan(&total); err != nil {
 		return nil, 0, err
@@ -137,10 +142,11 @@ func (s *Store) Create(ctx context.Context, in NewInput) (Resource, error) {
 	return res, nil
 }
 
-// Get legge una risorsa per id. Ritorna ErrNotFound se non esiste.
+// Get legge una risorsa per id. Ritorna ErrNotFound se non esiste o se è un
+// repo eliminato.
 func (s *Store) Get(ctx context.Context, id uuid.UUID) (Resource, error) {
 	const q = `SELECT id, type, name, attributes, created_at, updated_at
-		FROM core.resources WHERE id = $1`
+		FROM core.resources WHERE id = $1` + notDeletedRepo
 
 	row := s.pool.QueryRow(ctx, q, id)
 	res, err := scanResource(row)

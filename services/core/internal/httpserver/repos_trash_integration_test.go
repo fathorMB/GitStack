@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -139,5 +140,74 @@ func TestRepos_EliminazioneERipristino(t *testing.T) {
 		r2 := e.create("bob", `{"owner":"bob","name":"b1"}`)
 		e.want(e.do(http.MethodDelete, "/repos/bob/b1", "carol", ""), http.StatusNoContent)
 		e.want(e.do(http.MethodPost, "/repos/deleted/"+uuid.UUID(*r2.Id).String()+"/restore", "carol", ""), http.StatusOK)
+	})
+}
+
+// Le API generiche /resources non devono vedere un repo eliminato, né
+// permettere di aggirare R2 eliminando o rinominando un repo.
+func TestRepos_EliminatoNelleApiGeneriche(t *testing.T) {
+	e := newReposEnv(t, httpserver.CloneConfig{PublicURL: "https://git.example.com", SSHPort: 2222})
+	r := e.create("alice", `{"owner":"alice","name":"hidden"}`)
+	id := uuid.UUID(*r.Id).String()
+
+	listed := func() bool {
+		rec := e.do(http.MethodGet, "/resources?type=repo", "alice", "")
+		e.want(rec, http.StatusOK)
+		var l struct {
+			Items []struct {
+				Id string `json:"id"`
+			} `json:"items"`
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, it := range l.Items {
+			found = found || it.Id == id
+		}
+		if found != (l.Total == 1) || (!found && l.Total != 0) {
+			t.Fatalf("total = %d incoerente con l'elenco (trovato: %v)", l.Total, found)
+		}
+		return found
+	}
+
+	t.Run("repo_vivo_non_modificabile_da_resources", func(t *testing.T) {
+		if !listed() {
+			t.Fatal("il repo vivo deve comparire in GET /resources?type=repo")
+		}
+		e.want(e.do(http.MethodGet, "/resources/"+id, "alice", ""), http.StatusOK)
+		rec := e.do(http.MethodDelete, "/resources/"+id, "alice", "")
+		e.want(rec, http.StatusConflict)
+		if !strings.Contains(rec.Body.String(), "use_repos_api") {
+			t.Fatalf("codice atteso use_repos_api: %s", rec.Body.String())
+		}
+		e.want(e.do(http.MethodPatch, "/resources/"+id, "alice", `{"name":"alice/other"}`), http.StatusConflict)
+		// Il repo è intatto.
+		got := decodeRepo(t, e.do(http.MethodGet, "/repos/alice/hidden", "alice", ""))
+		if got.FullName != "alice/hidden" {
+			t.Fatalf("repo = %+v", got)
+		}
+		if e.count(`SELECT count(*) FROM core.resources WHERE id = $1 AND name = 'alice/hidden'`, uuid.UUID(*r.Id)) != 1 {
+			t.Fatal("la risorsa è stata modificata o cancellata")
+		}
+	})
+
+	t.Run("eliminato_sparisce_dalle_api_generiche", func(t *testing.T) {
+		e.want(e.do(http.MethodDelete, "/repos/alice/hidden", "alice", ""), http.StatusNoContent)
+		if listed() {
+			t.Fatal("il repo eliminato compare in GET /resources?type=repo")
+		}
+		e.want(e.do(http.MethodGet, "/resources/"+id, "alice", ""), http.StatusNotFound)
+		e.want(e.do(http.MethodDelete, "/resources/"+id, "alice", ""), http.StatusNotFound)
+		e.want(e.do(http.MethodPatch, "/resources/"+id, "alice", `{"name":"x"}`), http.StatusNotFound)
+	})
+
+	t.Run("ripristinato_torna_visibile", func(t *testing.T) {
+		e.want(e.do(http.MethodPost, "/repos/deleted/"+id+"/restore", "alice", ""), http.StatusOK)
+		if !listed() {
+			t.Fatal("il repo ripristinato non compare in GET /resources?type=repo")
+		}
+		e.want(e.do(http.MethodGet, "/resources/"+id, "alice", ""), http.StatusOK)
 	})
 }
