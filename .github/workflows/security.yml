@@ -1,0 +1,324 @@
+name: security
+
+# Scansioni di sicurezza (GIT-114, regola V2 di rilascio-v1): dipendenze,
+# codice, immagini. Documentazione e scelte in README, sezione "Scansioni di
+# sicurezza".
+#
+# Due modalità, decise da `inputs.release`:
+# - segnalazione (main e pull request): annotazioni e riepilogo nel run, il
+#   job non fallisce per i finding. Fallisce solo se uno strumento non gira o
+#   il file delle eccezioni non è valido (un'assenza di report non deve
+#   sembrare "nessun finding").
+# - release (tag v*, comprese le -rc.N): CRITICAL e HIGH senza eccezione valida
+#   fanno fallire il job. I tag non partono da qui: li lancia ci.yml, che
+#   richiama questo workflow con release: true e fa dipendere dal risultato il
+#   job che pubblica le immagini. Per provarlo senza un tag: Actions →
+#   security → Run workflow, con "release" spuntato (dry-run).
+#
+# Le eccezioni stanno in .github/security-exceptions.json (id, motivo,
+# scadenza); le legge scripts/security/gate.mjs per tutti gli strumenti.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Dry-run di release: CRITICAL/HIGH senza eccezione fanno fallire i job'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      release:
+        description: 'Modalità release (bloccante su CRITICAL/HIGH)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Gruppo diverso da quello di ci.yml (ci-<workflow>-<ref>): quando questo
+# workflow è richiamato da ci.yml, `github.workflow` è quello del chiamante e
+# un gruppo uguale lo cancellerebbe.
+concurrency:
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  # Strumenti pinnati a versione esatta. Aggiornarli a mano: una versione
+  # che cambia da sola cambierebbe i finding fra due run dello stesso commit.
+  GOVULNCHECK_VERSION: v1.1.4
+  GOSEC_VERSION: v2.22.8
+  TRIVY_VERSION: v0.70.0
+  # Vuoto in segnalazione, "--release" in modalità bloccante.
+  GATE_FLAGS: ${{ inputs.release && '--release' || '' }}
+
+jobs:
+  # Il gate stesso: test del parser e delle eccezioni (inclusa la prova che
+  # un HIGH fuori dalle eccezioni fa uscire il gate con codice 1 in release
+  # e 0 in segnalazione) e validazione del file delle eccezioni.
+  gate-selftest:
+    name: Gate — test e file delle eccezioni
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Test del gate
+        run: node --test "scripts/security/*.test.mjs"
+
+      - name: Valida security-exceptions.json
+        run: node scripts/security/gate.mjs validate
+
+  govulncheck:
+    name: Dipendenze Go — govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Installa govulncheck ${{ env.GOVULNCHECK_VERSION }}
+        run: go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
+
+      # Un report per modulo, con i moduli ricavati da go.work (go list -m),
+      # mai elencati a mano. `-format json` esce sempre 0: il verdetto lo dà
+      # il gate. Il nome del file è il percorso del modulo con "/" → "_".
+      - name: govulncheck (per modulo)
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          root="$(pwd)"
+          while IFS= read -r dir; do
+            rel="${dir#"${root}"/}"
+            name="${rel//\//_}"
+            echo "==> ${rel}"
+            (cd "${dir}" && govulncheck -format json ./... > "${root}/reports/vuln-${name}.json")
+          done < <(go list -m -f '{{.Dir}}')
+
+      - name: Gate
+        run: node scripts/security/gate.mjs govulncheck --name "govulncheck (Go)" ${GATE_FLAGS} reports/vuln-*.json
+
+      - name: Report completo
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: report-govulncheck
+          path: reports/
+          if-no-files-found: ignore
+
+  pnpm-audit:
+    name: Dipendenze web — pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          package_json_file: web/package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # Interroga i dati di sicurezza del registry sul lockfile, senza
+      # installare nulla. Esce 1 quando trova qualcosa: il verdetto lo dà il
+      # gate, quindi il codice di uscita qui non conta; conta che il report
+      # sia JSON valido (altrimenti il gate fallisce, anche in segnalazione).
+      - name: pnpm audit
+        working-directory: web
+        run: |
+          mkdir -p ../reports
+          pnpm audit --json > ../reports/pnpm-audit.json || true
+
+      - name: Gate
+        run: node scripts/security/gate.mjs pnpm-audit --name "pnpm audit (web)" ${GATE_FLAGS} reports/pnpm-audit.json
+
+      - name: Report completo
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: report-pnpm-audit
+          path: reports/
+          if-no-files-found: ignore
+
+  gosec:
+    name: Codice Go — gosec
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Installa gosec ${{ env.GOSEC_VERSION }}
+        run: go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
+
+      # -no-fail: il verdetto lo dà il gate. Un report per modulo, anche
+      # vuoto (senza -quiet gosec scrive sempre il JSON).
+      - name: gosec (per modulo)
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          root="$(pwd)"
+          while IFS= read -r dir; do
+            rel="${dir#"${root}"/}"
+            name="${rel//\//_}"
+            echo "==> ${rel}"
+            (cd "${dir}" && gosec -no-fail -fmt json -out "${root}/reports/gosec-${name}.json" ./...)
+          done < <(go list -m -f '{{.Dir}}')
+
+      - name: Gate
+        run: node scripts/security/gate.mjs gosec --name "gosec (Go)" ${GATE_FLAGS} reports/gosec-*.json
+
+      - name: Report completo
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: report-gosec
+          path: reports/
+          if-no-files-found: ignore
+
+  eslint-security:
+    name: Codice TypeScript — eslint-plugin-security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          package_json_file: web/package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: pnpm install
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      # Config separata (web/eslint.security.config.js): `pnpm run lint` della
+      # CI "ts" non cambia. eslint esce 1 se ci sono errori di regola: il
+      # verdetto lo dà il gate, e un JSON mancante lo fa fallire comunque.
+      - name: eslint (regole di sicurezza)
+        working-directory: web
+        run: |
+          mkdir -p ../reports
+          pnpm exec eslint -c eslint.security.config.js src -f json -o ../reports/eslint-security.json || true
+
+      - name: Gate
+        run: node scripts/security/gate.mjs eslint --name "eslint-plugin-security (web)" ${GATE_FLAGS} reports/eslint-security.json
+
+      - name: Report completo
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: report-eslint-security
+          path: reports/
+          if-no-files-found: ignore
+
+  # Costruisce le cinque immagini con gli stessi Dockerfile e contesti del job
+  # "registry" di ci.yml, allo stesso sha, e le scansiona dal demone locale.
+  # Non si scarica da ghcr.io: sulle pull request l'immagine non viene
+  # pubblicata, e così non servono credenziali né un'attesa del job che
+  # pubblica. Il riferimento è lo stesso tag che userebbe il registry
+  # (sha-<sha completo>).
+  images:
+    name: Immagini — Trivy (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            context: services/gateway
+            dockerfile: services/gateway/Dockerfile
+          - service: identity
+            context: services/identity
+            dockerfile: services/identity/Dockerfile
+          - service: core
+            context: services/core
+            dockerfile: services/core/Dockerfile
+          - service: git
+            context: services/git
+            dockerfile: services/git/Dockerfile
+          - service: web
+            context: .
+            dockerfile: web/Dockerfile
+    env:
+      IMAGE: gitstack-${{ matrix.service }}:sha-${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Build ${{ env.IMAGE }}
+        run: docker build -f "${{ matrix.dockerfile }}" -t "${IMAGE}" "${{ matrix.context }}"
+
+      # exit-code 0 e tutte le gravità nel report: la soglia e le eccezioni le
+      # applica il gate. ignore-unfixed: una vulnerabilità senza correzione
+      # disponibile non è azionabile e bloccherebbe un rilascio senza rimedio.
+      - name: Cartella dei report
+        run: mkdir -p reports
+
+      - name: Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          version: ${{ env.TRIVY_VERSION }}
+          scanners: vuln
+          ignore-unfixed: true
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          format: json
+          output: reports/trivy-${{ matrix.service }}.json
+          exit-code: '0'
+          hide-progress: true
+
+      - name: Gate
+        run: node scripts/security/gate.mjs trivy --name "Trivy (immagine ${{ matrix.service }})" ${GATE_FLAGS} reports/trivy-${{ matrix.service }}.json
+
+      - name: Report completo
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: report-trivy-${{ matrix.service }}
+          path: reports/
+          if-no-files-found: ignore

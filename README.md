@@ -105,3 +105,7 @@ Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.ym
 Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
 
 Oltre alla CI su GitHub Actions, il motore GalaxyLab legge `.galaxylab/checks.toml` (solo dal ramo `main`) ed esegue i controlli lì dichiarati a ogni `integrate`. Per ora c'è un solo controllo, `go-build`, con i pattern espliciti dei moduli del workspace (niente bash/pnpm/golangci-lint: prerequisiti e motivazioni sono commentati in testa al file).
+
+## Scansioni di sicurezza
+
+`.github/workflows/security.yml` (GIT-114, regola V2 di rilascio v1.0) scansiona dipendenze (`govulncheck` su tutti i moduli di `go.work`, `pnpm audit` su web), codice (`gosec` per Go, `eslint-plugin-security` per TypeScript) e le cinque immagini (Trivy, stesso sha del job `registry`). Su `main` e sulle pull request segnala (annotazioni e riepilogo nel run) senza bloccare; sui tag `v*`, comprese le `-rc.N`, un CRITICAL o HIGH senza eccezione fa fallire il job e il job `registry` non pubblica. Le eccezioni stanno in `.github/security-exceptions.json` (motivo e scadenza obbligatori). Scelte (gosec/ESLint invece di CodeQL), uso, dry-run e risultati del primo giro: [`docs/security-scans.md`](docs/security-scans.md).
