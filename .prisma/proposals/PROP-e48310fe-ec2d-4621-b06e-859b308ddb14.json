@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "id": "PROP-e48310fe-ec2d-4621-b06e-859b308ddb14",
+  "state": "applied",
+  "created": "2026-10-05T14:09:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Rilascio v1.0\" con V1–V8; nuovo documento; scope M-09 aggiornato (orizzonte invariato); GitHub come mirror permanente nelle scelte di default; passaggio graduale delle issues a GitStack e controlli di rilascio in sviluppo e qualità; capacità N1 indicative e verifica firme in installazione.",
+    "targets": [
+      "TOP-7b3e077e-45ff-4aee-8aba-f41d636f7fe9",
+      "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+      "OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d",
+      "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+      "DOC-bcd6d2f7-d45a-4d19-8714-66a45a9c484b",
+      "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+    ],
+    "before_digests": {
+      "roadmap/analysis/rilascio-v1.md": "7f44a4f40e9c01e198cef7b089d661da09c174c9e822857ce07b989b8f907784",
+      "roadmap/product/m-09-rilascio-v1.md": "df8db666212c69ad77a908071a31643594e9f7bcea98a837c8e17116c524ddc5",
+      "knowledge/topics/decisioni.md": "1abb13b395451c0feff5b7249f0c515c95c7d2fab1730ae82f87569b49fe43d4",
+      "knowledge/topics/sviluppo-e-qualita.md": "f971c96c3822efe2e84232cfe3dfb061fc075f7d9e274dd46a75882ad4476534",
+      "knowledge/topics/installazione-e-deploy.md": "033066d2d3bfe6646a8a219c96f7226360b6e6828ca2df3ff92beca10bdfe4e1",
+      "knowledge/INDEX.md": "d62e3331a02fda8279fc6bf4b350562f3b18c211d6215dfd3b4bdee583e413e0"
+    },
+    "operations": [
+      {
+        "target": "TOP-7b3e077e-45ff-4aee-8aba-f41d636f7fe9",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (V1–V8)."
+      },
+      {
+        "target": "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+        "op": "create",
+        "path": "knowledge/topics/rilascio-v1.md"
+      },
+      {
+        "target": "OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d",
+        "op": "update_scope",
+        "reason": "Regole V1–V8 e fuori-scope v1."
+      },
+      {
+        "target": "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+        "op": "update",
+        "reason": "Conflitto risolto: GitHub mirror permanente (V8); versione precedente tra le superate."
+      },
+      {
+        "target": "DOC-bcd6d2f7-d45a-4d19-8714-66a45a9c484b",
+        "op": "update",
+        "reason": "Conflitto risolto: issues verso GitStack (V7); controlli di rilascio in CI."
+      },
+      {
+        "target": "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+        "op": "update",
+        "reason": "Capacità N1 indicative (V3); verifica firme (V5)."
+      },
+      {
+        "target": "knowledge/INDEX.md",
+        "op": "update",
+        "reason": "Aggiunto rilascio-v1."
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–8 nella sessione di analisi del 2026-10-05",
+      "Due conflitti segnalati prima della conferma (GitHub temporaneo, tracciamento in GalaxyLab)"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" alla domanda \"Confermi il consolidamento così, compresi i due conflitti?\"."
+  }
+}

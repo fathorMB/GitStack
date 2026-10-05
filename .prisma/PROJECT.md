@@ -23,7 +23,7 @@ Team e aziende che vogliono ospitare codice e issues sui propri server, senza cl
 
 ## Current state (2026-10-05)
 
-M-01 "Scheletro che cammina" completata; M-02 "Identità, organizzazioni e permessi" quasi completata (manca la gestione admin dei token degli agent); M-03 "Hosting Git" in corso (storage, nomi, modelli e UI fatti; API pubblica e protocolli Git da fare); M-04…M-09 da fare. Regole di prodotto per M-03 e M-05 consolidate. Dettagli in [[knowledge/topics/stato-di-realizzazione]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n).
+M-01 "Scheletro che cammina" completata; M-02 "Identità, organizzazioni e permessi" quasi completata (manca la gestione admin dei token degli agent); M-03 "Hosting Git" in corso (storage, nomi, modelli e UI fatti; API pubblica e protocolli Git da fare); M-04…M-09 da fare. Regole di prodotto consolidate per M-03…M-09 (repo, browser, issues, collegamenti e notifiche, CLI e skills, installer, Windows di prova, rilascio). Dettagli in [[knowledge/topics/stato-di-realizzazione]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n); con il dogfooding passano gradualmente a GitStack (V7).
 
 ## Constraints
 

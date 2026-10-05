@@ -2,6 +2,7 @@
 
 ## delivery
 
+- [[knowledge/topics/rilascio-v1]] — Rilascio v1.0: regole di prodotto
 - [[knowledge/topics/stato-di-realizzazione]] — Stato di realizzazione della v1
 ## design
 
