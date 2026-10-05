@@ -304,6 +304,26 @@ web:
     limits:
       memory: 64Mi
 
+# --- egress (protezione SSRF, C8) ---------------------------------------
+# Impostazioni per le chiamate in uscita verso indirizzi dati dagli utenti
+# (webhook, pkg/egress). Solo dichiarate qui: il collegamento alle variabili
+# d'ambiente del servizio che le usa arriva con M-06/G. Voci: IP, CIDR,
+# nomi host ("hooks.example.com") o suffissi ("*.example.com").
+# Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster e le reti
+# speciali sono bloccati sempre: allow non sblocca mai loopback, link-local
+# e cluster (vedi pkg/egress/README.md).
+egress:
+  # Se non vuota, sono ammesse solo queste destinazioni (restringe); le voci
+  # IP/CIDR sbloccano anche reti speciali come 100.64.0.0/10 (CGNAT).
+  allow: []
+  # Destinazioni vietate; vince su allow.
+  deny: []
+  # Reti di pod e servizi del cluster, sempre bloccate. Default di k3s;
+  # cambiale solo se il cluster usa altri CIDR.
+  clusterCIDRs:
+    - 10.42.0.0/16
+    - 10.43.0.0/16
+
 # --- postgres -----------------------------------------------------------
 # PostgreSQL incluso di default (D6 [c_4df04d65b3ac4910]). Per un Postgres
 # esterno del cliente, metti `postgres.enabled: false` e compila
