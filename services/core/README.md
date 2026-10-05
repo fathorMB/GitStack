@@ -143,3 +143,7 @@ Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTIT
 ### Test
 
 `internal/httpserver/repos_integration_test.go` (Postgres reale con testcontainers; identity e git sono fake in memoria che riproducono P1/P3/P6 e l'API interna): creazione (default private, riga `repo_counters` a 1, 403, nome non valido, 409, owner inesistente, git/grant che falliscono senza righe a metà), lettura (404 per il repo privato di altri), elenco filtrato e paginato, impostazioni (branch, protezione, visibilità, archiviazione e riattivazione). Unit: `repos_clone_test.go` (R7), `internal/gitclient`, `internal/identityclient`, `internal/config`.
+
+## Letture del codice (M-04)
+
+Le letture di un repo (albero, file, raw, branch, tag, storico, commit con diff, blame, ZIP, lingue, README) passano da core: risolve owner/nome → repoId, applica `read` e `read:resource`, poi chiama l'API interna del servizio git per repoId, con raw e ZIP in streaming; il gateway non parla mai col servizio git. Gli handler (`internal/httpserver/repos_code.go`) rispondono 501 fino a GIT-84. Motivo, errori, autore→utente e limiti: [docs/repos.md](../../docs/repos.md#letture-del-codice-m-04-git-80).

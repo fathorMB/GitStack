@@ -608,6 +608,212 @@ export type GitRepoState = {
 };
 
 /**
+ * Utente GitStack che corrisponde all'email di un commit (confronto senza distinguere maiuscole con l'email di identity). `kind` da' il badge umano/agente.
+ *
+ */
+export type CodeUser = {
+    id: string;
+    username: Name;
+    kind: 'human' | 'agent';
+    avatarUrl: string | null;
+};
+
+/**
+ * Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+ *
+ */
+export type CommitPerson = {
+    name: string;
+    email: string;
+    date: string;
+    user?: CodeUser | null;
+};
+
+export type CommitSummary = {
+    sha: string;
+    /**
+     * Prima riga del messaggio.
+     */
+    subject: string;
+    /**
+     * Messaggio completo (omesso nell'ultimo commit di una voce d'albero).
+     */
+    message?: string;
+    author: CommitPerson;
+    committer: CommitPerson;
+    parents: Array<string>;
+};
+
+export type TreeEntry = {
+    name: string;
+    path: string;
+    type: 'file' | 'dir' | 'symlink' | 'submodule';
+    /**
+     * Modo Git in ottale, es. `100644`.
+     */
+    mode: string;
+    /**
+     * Byte, solo per i file.
+     */
+    size?: number;
+    lastCommit: CommitSummary;
+};
+
+export type Tree = {
+    /**
+     * Il `ref` risolto (il branch principale se non indicato).
+     */
+    ref: string;
+    commitSha: string;
+    path: string;
+    entries: Array<TreeEntry>;
+    /**
+     * True se la cartella ha piu' di 1 000 voci e queste sono le prime 1 000.
+     */
+    truncated: boolean;
+};
+
+export type FileContent = {
+    ref: string;
+    path: string;
+    name: string;
+    /**
+     * Sha del blob.
+     */
+    sha: string;
+    /**
+     * Dimensione reale in byte, anche se troncato.
+     */
+    size: number;
+    binary: boolean;
+    /**
+     * True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+     */
+    truncated: boolean;
+    /**
+     * Testo UTF-8; assente se `binary` (usare `raw`).
+     */
+    content?: string;
+    lastCommit: CommitSummary;
+};
+
+export type Branch = {
+    name: string;
+    isDefault: boolean;
+    /**
+     * Protezione del branch principale (R9). Per il servizio git e' sempre false, la imposta core.
+     */
+    protected: boolean;
+    commit: CommitSummary;
+};
+
+export type BranchList = {
+    items: Array<Branch>;
+    total: number;
+};
+
+export type Tag = {
+    name: string;
+    annotated: boolean;
+    /**
+     * Messaggio del tag annotato.
+     */
+    message?: string;
+    taggedAt?: string;
+    commit: CommitSummary;
+};
+
+export type TagList = {
+    items: Array<Tag>;
+    total: number;
+};
+
+export type CommitList = {
+    items: Array<CommitSummary>;
+    page: number;
+    perPage: number;
+    /**
+     * Non c'e' un totale, contarlo costa un giro completo della storia.
+     */
+    hasMore: boolean;
+};
+
+export type FileDiff = {
+    path: string;
+    /**
+     * Percorso precedente, per rinomine e copie.
+     */
+    oldPath?: string;
+    status: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied';
+    additions: number;
+    deletions: number;
+    binary: boolean;
+    /**
+     * True se il patch supera 1 MB o il limite totale di 20 000 righe e' gia' esaurito; `patch` e' parziale o assente.
+     */
+    truncated: boolean;
+    /**
+     * Diff unificato (hunk), assente per i binari.
+     */
+    patch?: string;
+};
+
+export type CommitDetail = {
+    commit: CommitSummary;
+    files: Array<FileDiff>;
+    /**
+     * Numero reale di file toccati, anche oltre i 300 elencati.
+     */
+    filesChanged: number;
+    additions: number;
+    deletions: number;
+    /**
+     * True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
+     */
+    truncated: boolean;
+};
+
+export type BlameRange = {
+    startLine: number;
+    endLine: number;
+    commit: CommitSummary;
+};
+
+export type Blame = {
+    ref: string;
+    path: string;
+    ranges: Array<BlameRange>;
+};
+
+export type LanguageShare = {
+    name: string;
+    bytes: number;
+    percent: number;
+};
+
+export type Languages = {
+    languages: Array<LanguageShare>;
+    totalBytes: number;
+};
+
+export type LookupEmailsInput = {
+    emails: Array<string>;
+};
+
+export type LookupEmailsResult = {
+    /**
+     * Solo le email che corrispondono a un utente; le altre mancano.
+     */
+    users: Array<{
+        email: string;
+        id: string;
+        username: Name;
+        kind: 'human' | 'agent';
+        avatarUrl: string | null;
+    }>;
+};
+
+/**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
  */
@@ -910,6 +1116,46 @@ export type GrantIdParam = string;
  * Slug del provider OIDC.
  */
 export type OidcProviderParam = Name;
+
+/**
+ * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+ *
+ */
+export type RefParam = string;
+
+/**
+ * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+ *
+ */
+export type GitRefParam = string;
+
+/**
+ * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+ *
+ */
+export type PathParam = string;
+
+/**
+ * Percorso del file (stesse regole di `PathParam`, non vuoto).
+ */
+export type FilePathParam = string;
+
+/**
+ * Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+ */
+export type CommitAuthorFilter = string;
+
+export type CommitPageParam = number;
+
+/**
+ * Commit per pagina (default 30, massimo 100).
+ */
+export type CommitPerPageParam = number;
+
+/**
+ * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+ */
+export type CommitShaParam = string;
 
 export type GetHealthData = {
     body?: never;
@@ -3451,6 +3697,655 @@ export type UpdateRepositoryResponses = {
 
 export type UpdateRepositoryResponse = UpdateRepositoryResponses[keyof UpdateRepositoryResponses];
 
+export type GetRepositoryTreeData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+        /**
+         * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+         *
+         */
+        path?: string;
+    };
+    url: '/repos/{owner}/{repo}/tree';
+};
+
+export type GetRepositoryTreeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryTreeError = GetRepositoryTreeErrors[keyof GetRepositoryTreeErrors];
+
+export type GetRepositoryTreeResponses = {
+    /**
+     * Contenuto della cartella.
+     */
+    200: Tree;
+};
+
+export type GetRepositoryTreeResponse = GetRepositoryTreeResponses[keyof GetRepositoryTreeResponses];
+
+export type GetRepositoryFileData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+        /**
+         * Percorso del file (stesse regole di `PathParam`, non vuoto).
+         */
+        path: string;
+    };
+    url: '/repos/{owner}/{repo}/contents';
+};
+
+export type GetRepositoryFileErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryFileError = GetRepositoryFileErrors[keyof GetRepositoryFileErrors];
+
+export type GetRepositoryFileResponses = {
+    /**
+     * Il file.
+     */
+    200: FileContent;
+};
+
+export type GetRepositoryFileResponse = GetRepositoryFileResponses[keyof GetRepositoryFileResponses];
+
+export type GetRepositoryRawData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+        /**
+         * Percorso del file (stesse regole di `PathParam`, non vuoto).
+         */
+        path: string;
+    };
+    url: '/repos/{owner}/{repo}/raw';
+};
+
+export type GetRepositoryRawErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryRawError = GetRepositoryRawErrors[keyof GetRepositoryRawErrors];
+
+export type GetRepositoryRawResponses = {
+    /**
+     * Byte del file.
+     */
+    200: Blob | File;
+};
+
+export type GetRepositoryRawResponse = GetRepositoryRawResponses[keyof GetRepositoryRawResponses];
+
+export type GetRepositoryBranchesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/branches';
+};
+
+export type GetRepositoryBranchesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryBranchesError = GetRepositoryBranchesErrors[keyof GetRepositoryBranchesErrors];
+
+export type GetRepositoryBranchesResponses = {
+    /**
+     * Branch.
+     */
+    200: BranchList;
+};
+
+export type GetRepositoryBranchesResponse = GetRepositoryBranchesResponses[keyof GetRepositoryBranchesResponses];
+
+export type GetRepositoryTagsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/tags';
+};
+
+export type GetRepositoryTagsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryTagsError = GetRepositoryTagsErrors[keyof GetRepositoryTagsErrors];
+
+export type GetRepositoryTagsResponses = {
+    /**
+     * Tag.
+     */
+    200: TagList;
+};
+
+export type GetRepositoryTagsResponse = GetRepositoryTagsResponses[keyof GetRepositoryTagsResponses];
+
+export type GetRepositoryCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+        /**
+         * Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+         */
+        author?: string;
+        /**
+         * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+         *
+         */
+        path?: string;
+        page?: number;
+        /**
+         * Commit per pagina (default 30, massimo 100).
+         */
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/commits';
+};
+
+export type GetRepositoryCommitsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryCommitsError = GetRepositoryCommitsErrors[keyof GetRepositoryCommitsErrors];
+
+export type GetRepositoryCommitsResponses = {
+    /**
+     * Pagina di commit.
+     */
+    200: CommitList;
+};
+
+export type GetRepositoryCommitsResponse = GetRepositoryCommitsResponses[keyof GetRepositoryCommitsResponses];
+
+export type GetRepositoryCommitData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/commits/{sha}';
+};
+
+export type GetRepositoryCommitErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryCommitError = GetRepositoryCommitErrors[keyof GetRepositoryCommitErrors];
+
+export type GetRepositoryCommitResponses = {
+    /**
+     * Il commit.
+     */
+    200: CommitDetail;
+};
+
+export type GetRepositoryCommitResponse = GetRepositoryCommitResponses[keyof GetRepositoryCommitResponses];
+
+export type GetRepositoryBlameData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+        /**
+         * Percorso del file (stesse regole di `PathParam`, non vuoto).
+         */
+        path: string;
+    };
+    url: '/repos/{owner}/{repo}/blame';
+};
+
+export type GetRepositoryBlameErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryBlameError = GetRepositoryBlameErrors[keyof GetRepositoryBlameErrors];
+
+export type GetRepositoryBlameResponses = {
+    /**
+     * Blame del file.
+     */
+    200: Blame;
+};
+
+export type GetRepositoryBlameResponse = GetRepositoryBlameResponses[keyof GetRepositoryBlameResponses];
+
+export type GetRepositoryArchiveData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+    };
+    url: '/repos/{owner}/{repo}/archive';
+};
+
+export type GetRepositoryArchiveErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryArchiveError = GetRepositoryArchiveErrors[keyof GetRepositoryArchiveErrors];
+
+export type GetRepositoryArchiveResponses = {
+    /**
+     * L'archivio.
+     */
+    200: Blob | File;
+};
+
+export type GetRepositoryArchiveResponse = GetRepositoryArchiveResponses[keyof GetRepositoryArchiveResponses];
+
+export type GetRepositoryLanguagesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+    };
+    url: '/repos/{owner}/{repo}/languages';
+};
+
+export type GetRepositoryLanguagesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryLanguagesError = GetRepositoryLanguagesErrors[keyof GetRepositoryLanguagesErrors];
+
+export type GetRepositoryLanguagesResponses = {
+    /**
+     * Lingue.
+     */
+    200: Languages;
+};
+
+export type GetRepositoryLanguagesResponse = GetRepositoryLanguagesResponses[keyof GetRepositoryLanguagesResponses];
+
+export type GetRepositoryReadmeData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+         *
+         */
+        ref?: string;
+        /**
+         * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+         *
+         */
+        path?: string;
+    };
+    url: '/repos/{owner}/{repo}/readme';
+};
+
+export type GetRepositoryReadmeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryReadmeError = GetRepositoryReadmeErrors[keyof GetRepositoryReadmeErrors];
+
+export type GetRepositoryReadmeResponses = {
+    /**
+     * Il README.
+     */
+    200: FileContent;
+};
+
+export type GetRepositoryReadmeResponse = GetRepositoryReadmeResponses[keyof GetRepositoryReadmeResponses];
+
 export type VerifyCredentialData = {
     body: VerifyCredentialInputWritable;
     path?: never;
@@ -3905,3 +4800,586 @@ export type GitRestoreRepoResponses = {
 };
 
 export type GitRestoreRepoResponse = GitRestoreRepoResponses[keyof GitRestoreRepoResponses];
+
+export type LookupUsersByEmailData = {
+    body: LookupEmailsInput;
+    path?: never;
+    query?: never;
+    url: '/internal/users/lookup-emails';
+};
+
+export type LookupUsersByEmailErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type LookupUsersByEmailError = LookupUsersByEmailErrors[keyof LookupUsersByEmailErrors];
+
+export type LookupUsersByEmailResponses = {
+    /**
+     * Gli utenti trovati.
+     */
+    200: LookupEmailsResult;
+};
+
+export type LookupUsersByEmailResponse = LookupUsersByEmailResponses[keyof LookupUsersByEmailResponses];
+
+export type GitGetTreeData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+        /**
+         * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+         *
+         */
+        path?: string;
+    };
+    url: '/internal/git/repos/{repoId}/tree';
+};
+
+export type GitGetTreeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetTreeError = GitGetTreeErrors[keyof GitGetTreeErrors];
+
+export type GitGetTreeResponses = {
+    /**
+     * Contenuto della cartella.
+     */
+    200: Tree;
+};
+
+export type GitGetTreeResponse = GitGetTreeResponses[keyof GitGetTreeResponses];
+
+export type GitGetFileData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+        /**
+         * Percorso del file (stesse regole di `PathParam`, non vuoto).
+         */
+        path: string;
+    };
+    url: '/internal/git/repos/{repoId}/contents';
+};
+
+export type GitGetFileErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetFileError = GitGetFileErrors[keyof GitGetFileErrors];
+
+export type GitGetFileResponses = {
+    /**
+     * Il file.
+     */
+    200: FileContent;
+};
+
+export type GitGetFileResponse = GitGetFileResponses[keyof GitGetFileResponses];
+
+export type GitGetRawData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+        /**
+         * Percorso del file (stesse regole di `PathParam`, non vuoto).
+         */
+        path: string;
+    };
+    url: '/internal/git/repos/{repoId}/raw';
+};
+
+export type GitGetRawErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetRawError = GitGetRawErrors[keyof GitGetRawErrors];
+
+export type GitGetRawResponses = {
+    /**
+     * Byte del file.
+     */
+    200: Blob | File;
+};
+
+export type GitGetRawResponse = GitGetRawResponses[keyof GitGetRawResponses];
+
+export type GitGetBranchesData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}/branches';
+};
+
+export type GitGetBranchesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetBranchesError = GitGetBranchesErrors[keyof GitGetBranchesErrors];
+
+export type GitGetBranchesResponses = {
+    /**
+     * Branch.
+     */
+    200: BranchList;
+};
+
+export type GitGetBranchesResponse = GitGetBranchesResponses[keyof GitGetBranchesResponses];
+
+export type GitGetTagsData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}/tags';
+};
+
+export type GitGetTagsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetTagsError = GitGetTagsErrors[keyof GitGetTagsErrors];
+
+export type GitGetTagsResponses = {
+    /**
+     * Tag.
+     */
+    200: TagList;
+};
+
+export type GitGetTagsResponse = GitGetTagsResponses[keyof GitGetTagsResponses];
+
+export type GitGetCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+        /**
+         * Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+         */
+        author?: string;
+        /**
+         * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+         *
+         */
+        path?: string;
+        page?: number;
+        /**
+         * Commit per pagina (default 30, massimo 100).
+         */
+        perPage?: number;
+    };
+    url: '/internal/git/repos/{repoId}/commits';
+};
+
+export type GitGetCommitsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetCommitsError = GitGetCommitsErrors[keyof GitGetCommitsErrors];
+
+export type GitGetCommitsResponses = {
+    /**
+     * Pagina di commit.
+     */
+    200: CommitList;
+};
+
+export type GitGetCommitsResponse = GitGetCommitsResponses[keyof GitGetCommitsResponses];
+
+export type GitGetCommitData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}/commits/{sha}';
+};
+
+export type GitGetCommitErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetCommitError = GitGetCommitErrors[keyof GitGetCommitErrors];
+
+export type GitGetCommitResponses = {
+    /**
+     * Il commit.
+     */
+    200: CommitDetail;
+};
+
+export type GitGetCommitResponse = GitGetCommitResponses[keyof GitGetCommitResponses];
+
+export type GitGetBlameData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+        /**
+         * Percorso del file (stesse regole di `PathParam`, non vuoto).
+         */
+        path: string;
+    };
+    url: '/internal/git/repos/{repoId}/blame';
+};
+
+export type GitGetBlameErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetBlameError = GitGetBlameErrors[keyof GitGetBlameErrors];
+
+export type GitGetBlameResponses = {
+    /**
+     * Blame del file.
+     */
+    200: Blame;
+};
+
+export type GitGetBlameResponse = GitGetBlameResponses[keyof GitGetBlameResponses];
+
+export type GitGetArchiveData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+    };
+    url: '/internal/git/repos/{repoId}/archive';
+};
+
+export type GitGetArchiveErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetArchiveError = GitGetArchiveErrors[keyof GitGetArchiveErrors];
+
+export type GitGetArchiveResponses = {
+    /**
+     * L'archivio.
+     */
+    200: Blob | File;
+};
+
+export type GitGetArchiveResponse = GitGetArchiveResponses[keyof GitGetArchiveResponses];
+
+export type GitGetLanguagesData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+    };
+    url: '/internal/git/repos/{repoId}/languages';
+};
+
+export type GitGetLanguagesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetLanguagesError = GitGetLanguagesErrors[keyof GitGetLanguagesErrors];
+
+export type GitGetLanguagesResponses = {
+    /**
+     * Lingue.
+     */
+    200: Languages;
+};
+
+export type GitGetLanguagesResponse = GitGetLanguagesResponses[keyof GitGetLanguagesResponses];
+
+export type GitGetReadmeData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query: {
+        /**
+         * Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+         *
+         */
+        ref: string;
+        /**
+         * Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+         *
+         */
+        path?: string;
+    };
+    url: '/internal/git/repos/{repoId}/readme';
+};
+
+export type GitGetReadmeErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetReadmeError = GitGetReadmeErrors[keyof GitGetReadmeErrors];
+
+export type GitGetReadmeResponses = {
+    /**
+     * Il README.
+     */
+    200: FileContent;
+};
+
+export type GitGetReadmeResponse = GitGetReadmeResponses[keyof GitGetReadmeResponses];

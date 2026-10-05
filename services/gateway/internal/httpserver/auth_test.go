@@ -221,7 +221,8 @@ func TestSicurezza_RotteDiCoreServite(t *testing.T) {
 			continue
 		}
 		e := newEnv(t, allowAll())
-		rec := e.do(authedRequestFor(table, r.Method, "/v1"+param.ReplaceAllString(r.Path, "00000000-0000-0000-0000-000000000000")))
+		// ?path=x: le letture di file hanno `path` obbligatorio nel contratto.
+		rec := e.do(authedRequestFor(table, r.Method, "/v1"+param.ReplaceAllString(r.Path, "00000000-0000-0000-0000-000000000000")+"?path=x"))
 		if rec.Code != http.StatusNoContent || e.core.count() != 1 {
 			t.Errorf("%s %s: status %d, richieste a core %d", r.Method, r.Path, rec.Code, e.core.count())
 		}

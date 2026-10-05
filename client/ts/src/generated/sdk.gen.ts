@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitErrors, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -1095,6 +1095,226 @@ export const updateRepository = <ThrowOnError extends boolean = false>(options: 
 });
 
 /**
+ * Albero di una cartella con l'ultimo commit per voce
+ *
+ * Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryTree = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryTreeData, ThrowOnError>): RequestResult<GetRepositoryTreeResponses, GetRepositoryTreeErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryTreeResponses, GetRepositoryTreeErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/tree',
+    ...options
+});
+
+/**
+ * Contenuto di un file
+ *
+ * Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryFile = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryFileData, ThrowOnError>): RequestResult<GetRepositoryFileResponses, GetRepositoryFileErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryFileResponses, GetRepositoryFileErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/contents',
+    ...options
+});
+
+/**
+ * Contenuto grezzo di un file (streaming)
+ *
+ * Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryRaw = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryRawData, ThrowOnError>): RequestResult<GetRepositoryRawResponses, GetRepositoryRawErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryRawResponses, GetRepositoryRawErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/raw',
+    ...options
+});
+
+/**
+ * Branch del repo, con conteggi
+ *
+ * Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
+ *
+ */
+export const getRepositoryBranches = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryBranchesData, ThrowOnError>): RequestResult<GetRepositoryBranchesResponses, GetRepositoryBranchesErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryBranchesResponses, GetRepositoryBranchesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/branches',
+    ...options
+});
+
+/**
+ * Tag del repo, con conteggi
+ *
+ * Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
+ *
+ */
+export const getRepositoryTags = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryTagsData, ThrowOnError>): RequestResult<GetRepositoryTagsResponses, GetRepositoryTagsErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryTagsResponses, GetRepositoryTagsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/tags',
+    ...options
+});
+
+/**
+ * Storico dei commit, paginato
+ *
+ * Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryCommits = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryCommitsData, ThrowOnError>): RequestResult<GetRepositoryCommitsResponses, GetRepositoryCommitsErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryCommitsResponses, GetRepositoryCommitsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/commits',
+    ...options
+});
+
+/**
+ * Dettaglio di un commit con diff per file
+ *
+ * Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryCommit = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryCommitData, ThrowOnError>): RequestResult<GetRepositoryCommitResponses, GetRepositoryCommitErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryCommitResponses, GetRepositoryCommitErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/commits/{sha}',
+    ...options
+});
+
+/**
+ * Blame di un file
+ *
+ * Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryBlame = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryBlameData, ThrowOnError>): RequestResult<GetRepositoryBlameResponses, GetRepositoryBlameErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryBlameResponses, GetRepositoryBlameErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/blame',
+    ...options
+});
+
+/**
+ * Archivio ZIP di un ref (streaming)
+ *
+ * ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryArchive = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryArchiveData, ThrowOnError>): RequestResult<GetRepositoryArchiveResponses, GetRepositoryArchiveErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryArchiveResponses, GetRepositoryArchiveErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/archive',
+    ...options
+});
+
+/**
+ * Lingue del repo
+ *
+ * Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryLanguages = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryLanguagesData, ThrowOnError>): RequestResult<GetRepositoryLanguagesResponses, GetRepositoryLanguagesErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryLanguagesResponses, GetRepositoryLanguagesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/languages',
+    ...options
+});
+
+/**
+ * README di una cartella
+ *
+ * Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+ *
+ */
+export const getRepositoryReadme = <ThrowOnError extends boolean = false>(options: Options<GetRepositoryReadmeData, ThrowOnError>): RequestResult<GetRepositoryReadmeResponses, GetRepositoryReadmeErrors, ThrowOnError> => (options.client ?? client).get<GetRepositoryReadmeResponses, GetRepositoryReadmeErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/readme',
+    ...options
+});
+
+/**
  * Verifica una credenziale (per il gateway)
  *
  * Il gateway invia il valore grezzo della credenziale (cookie di sessione oppure token `gst_...`) e riceve il principal. Non c'e' distinzione fra "sconosciuta", "scaduta" e "revocata": `active` false. Aggiorna `last_used_at` (al piu' una volta al minuto per credenziale).
@@ -1296,5 +1516,201 @@ export const gitRestoreRepo = <ThrowOnError extends boolean = false>(options: Op
             type: 'http'
         }],
     url: '/internal/git/repos/{repoId}/restore',
+    ...options
+});
+
+/**
+ * Trova gli utenti GitStack dalle email dei commit
+ *
+ * Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+ *
+ */
+export const lookupUsersByEmail = <ThrowOnError extends boolean = false>(options: Options<LookupUsersByEmailData, ThrowOnError>): RequestResult<LookupUsersByEmailResponses, LookupUsersByEmailErrors, ThrowOnError> => (options.client ?? client).post<LookupUsersByEmailResponses, LookupUsersByEmailErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/users/lookup-emails',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Albero di una cartella con l'ultimo commit per voce (per core)
+ *
+ * Corrispondente interno di `getRepositoryTree`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella.
+ *
+ */
+export const gitGetTree = <ThrowOnError extends boolean = false>(options: Options<GitGetTreeData, ThrowOnError>): RequestResult<GitGetTreeResponses, GitGetTreeErrors, ThrowOnError> => (options.client ?? client).get<GitGetTreeResponses, GitGetTreeErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/tree',
+    ...options
+});
+
+/**
+ * Contenuto di un file (per core)
+ *
+ * Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+ *
+ */
+export const gitGetFile = <ThrowOnError extends boolean = false>(options: Options<GitGetFileData, ThrowOnError>): RequestResult<GitGetFileResponses, GitGetFileErrors, ThrowOnError> => (options.client ?? client).get<GitGetFileResponses, GitGetFileErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/contents',
+    ...options
+});
+
+/**
+ * Contenuto grezzo di un file (streaming) (per core)
+ *
+ * Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+ *
+ */
+export const gitGetRaw = <ThrowOnError extends boolean = false>(options: Options<GitGetRawData, ThrowOnError>): RequestResult<GitGetRawResponses, GitGetRawErrors, ThrowOnError> => (options.client ?? client).get<GitGetRawResponses, GitGetRawErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/raw',
+    ...options
+});
+
+/**
+ * Branch del repo, con conteggi (per core)
+ *
+ * Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+ *
+ */
+export const gitGetBranches = <ThrowOnError extends boolean = false>(options: Options<GitGetBranchesData, ThrowOnError>): RequestResult<GitGetBranchesResponses, GitGetBranchesErrors, ThrowOnError> => (options.client ?? client).get<GitGetBranchesResponses, GitGetBranchesErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/branches',
+    ...options
+});
+
+/**
+ * Tag del repo, con conteggi (per core)
+ *
+ * Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+ *
+ */
+export const gitGetTags = <ThrowOnError extends boolean = false>(options: Options<GitGetTagsData, ThrowOnError>): RequestResult<GitGetTagsResponses, GitGetTagsErrors, ThrowOnError> => (options.client ?? client).get<GitGetTagsResponses, GitGetTagsErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/tags',
+    ...options
+});
+
+/**
+ * Storico dei commit, paginato (per core)
+ *
+ * Corrispondente interno di `getRepositoryCommits`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null.
+ *
+ */
+export const gitGetCommits = <ThrowOnError extends boolean = false>(options: Options<GitGetCommitsData, ThrowOnError>): RequestResult<GitGetCommitsResponses, GitGetCommitsErrors, ThrowOnError> => (options.client ?? client).get<GitGetCommitsResponses, GitGetCommitsErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/commits',
+    ...options
+});
+
+/**
+ * Dettaglio di un commit con diff per file (per core)
+ *
+ * Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
+ *
+ */
+export const gitGetCommit = <ThrowOnError extends boolean = false>(options: Options<GitGetCommitData, ThrowOnError>): RequestResult<GitGetCommitResponses, GitGetCommitErrors, ThrowOnError> => (options.client ?? client).get<GitGetCommitResponses, GitGetCommitErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/commits/{sha}',
+    ...options
+});
+
+/**
+ * Blame di un file (per core)
+ *
+ * Corrispondente interno di `getRepositoryBlame`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`.
+ *
+ */
+export const gitGetBlame = <ThrowOnError extends boolean = false>(options: Options<GitGetBlameData, ThrowOnError>): RequestResult<GitGetBlameResponses, GitGetBlameErrors, ThrowOnError> => (options.client ?? client).get<GitGetBlameResponses, GitGetBlameErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/blame',
+    ...options
+});
+
+/**
+ * Archivio ZIP di un ref (streaming) (per core)
+ *
+ * Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+ *
+ */
+export const gitGetArchive = <ThrowOnError extends boolean = false>(options: Options<GitGetArchiveData, ThrowOnError>): RequestResult<GitGetArchiveResponses, GitGetArchiveErrors, ThrowOnError> => (options.client ?? client).get<GitGetArchiveResponses, GitGetArchiveErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/archive',
+    ...options
+});
+
+/**
+ * Lingue del repo (per core)
+ *
+ * Corrispondente interno di `getRepositoryLanguages`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota.
+ *
+ */
+export const gitGetLanguages = <ThrowOnError extends boolean = false>(options: Options<GitGetLanguagesData, ThrowOnError>): RequestResult<GitGetLanguagesResponses, GitGetLanguagesErrors, ThrowOnError> => (options.client ?? client).get<GitGetLanguagesResponses, GitGetLanguagesErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/languages',
+    ...options
+});
+
+/**
+ * README di una cartella (per core)
+ *
+ * Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+ *
+ */
+export const gitGetReadme = <ThrowOnError extends boolean = false>(options: Options<GitGetReadmeData, ThrowOnError>): RequestResult<GitGetReadmeResponses, GitGetReadmeErrors, ThrowOnError> => (options.client ?? client).get<GitGetReadmeResponses, GitGetReadmeErrors, ThrowOnError>({
+    security: [{
+            key: 'serviceAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }],
+    url: '/internal/git/repos/{repoId}/readme',
     ...options
 });

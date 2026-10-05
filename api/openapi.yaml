@@ -53,7 +53,8 @@ tags:
   - name: repos
     description: >
       Repository Git (M-03): creazione, impostazioni, eliminazione e
-      ripristino. Un repo e' una risorsa generica `type=repo` (D15); servita
+      ripristino; letture del codice (M-04): albero, file, branch, tag,
+      commit, diff, blame, archivio, lingue, README. Un repo e' una risorsa generica `type=repo` (D15); servita
       da core.
   - name: git-internal
     description: >
@@ -1703,6 +1704,385 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /repos/{owner}/{repo}/tree:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryTree
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Albero di una cartella con l'ultimo commit per voce
+      description: >
+        Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/PathParam"
+      responses:
+        "200":
+          description: Contenuto della cartella.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tree"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/contents:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryFile
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Contenuto di un file
+      description: >
+        Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/FilePathParam"
+      responses:
+        "200":
+          description: Il file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/raw:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryRaw
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Contenuto grezzo di un file (streaming)
+      description: >
+        Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/FilePathParam"
+      responses:
+        "200":
+          description: Byte del file.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/branches:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryBranches
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Branch del repo, con conteggi
+      description: >
+        Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+        Come per `getRepository`: un repo che l'utente non puo' leggere, o
+        eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
+      responses:
+        "200":
+          description: Branch.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/tags:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryTags
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Tag del repo, con conteggi
+      description: >
+        Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+        Come per `getRepository`: un repo che l'utente non puo' leggere, o
+        eliminato, risponde 404. Non ha `ref`: elenca tutti i tag.
+      responses:
+        "200":
+          description: Tag.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/commits:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryCommits
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Storico dei commit, paginato
+      description: >
+        Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/CommitAuthorFilter"
+        - $ref: "#/components/parameters/PathParam"
+        - $ref: "#/components/parameters/CommitPageParam"
+        - $ref: "#/components/parameters/CommitPerPageParam"
+      responses:
+        "200":
+          description: Pagina di commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/commits/{sha}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryCommit
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Dettaglio di un commit con diff per file
+      description: >
+        Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/CommitShaParam"
+      responses:
+        "200":
+          description: Il commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/blame:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryBlame
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Blame di un file
+      description: >
+        Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/FilePathParam"
+      responses:
+        "200":
+          description: Blame del file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blame"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/archive:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryArchive
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Archivio ZIP di un ref (streaming)
+      description: >
+        ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+      responses:
+        "200":
+          description: L'archivio.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/languages:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryLanguages
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: Lingue del repo
+      description: >
+        Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+      responses:
+        "200":
+          description: Lingue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Languages"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/readme:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepositoryReadme
+      tags: [repos]
+      x-required-scopes: ["read:resource"]
+      summary: README di una cartella
+      description: >
+        Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo'
+        leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o
+        sha; se manca vale il branch principale (R4). Un `ref` non valido
+        risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/RefParam"
+        - $ref: "#/components/parameters/PathParam"
+      responses:
+        "200":
+          description: Il README.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/verify:
     post:
       operationId: verifyCredential
@@ -2068,6 +2448,395 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/users/lookup-emails:
+    post:
+      operationId: lookupUsersByEmail
+      tags: [internal]
+      summary: Trova gli utenti GitStack dalle email dei commit
+      description: >
+        Per core (M-04): confronta le email, senza distinguere maiuscole, con
+        `users.email` (unica su lower(email)). Massimo 100 email per
+        chiamata; core la chiama una volta per pagina di storico, dettaglio o
+        blame. Le email senza utente non compaiono nella risposta.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupEmailsInput"
+      responses:
+        "200":
+          description: Gli utenti trovati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LookupEmailsResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/tree:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetTree
+      tags: [git-internal]
+      summary: "Albero di una cartella con l'ultimo commit per voce (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryTree`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/PathParam"
+      responses:
+        "200":
+          description: Contenuto della cartella.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tree"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/contents:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetFile
+      tags: [git-internal]
+      summary: "Contenuto di un file (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryFile`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/FilePathParam"
+      responses:
+        "200":
+          description: Il file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/raw:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetRaw
+      tags: [git-internal]
+      summary: "Contenuto grezzo di un file (streaming) (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryRaw`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/FilePathParam"
+      responses:
+        "200":
+          description: Byte del file.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/branches:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetBranches
+      tags: [git-internal]
+      summary: "Branch del repo, con conteggi (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryBranches`: parla solo per
+        repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core.
+        Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Branch.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/tags:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetTags
+      tags: [git-internal]
+      summary: "Tag del repo, con conteggi (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryTags`: parla solo per
+        repoId e non conosce utenti ne' permessi. Gli autori non portano `user`: lo aggiunge core.
+        Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Tag.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/commits:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetCommits
+      tags: [git-internal]
+      summary: "Storico dei commit, paginato (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryCommits`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/CommitAuthorFilter"
+        - $ref: "#/components/parameters/PathParam"
+        - $ref: "#/components/parameters/CommitPageParam"
+        - $ref: "#/components/parameters/CommitPerPageParam"
+      responses:
+        "200":
+          description: Pagina di commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/commits/{sha}:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetCommit
+      tags: [git-internal]
+      summary: "Dettaglio di un commit con diff per file (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryCommit`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CommitShaParam"
+      responses:
+        "200":
+          description: Il commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/blame:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetBlame
+      tags: [git-internal]
+      summary: "Blame di un file (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryBlame`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/FilePathParam"
+      responses:
+        "200":
+          description: Blame del file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blame"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/archive:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetArchive
+      tags: [git-internal]
+      summary: "Archivio ZIP di un ref (streaming) (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryArchive`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+      responses:
+        "200":
+          description: L'archivio.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/languages:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetLanguages
+      tags: [git-internal]
+      summary: "Lingue del repo (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryLanguages`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+      responses:
+        "200":
+          description: Lingue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Languages"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/git/repos/{repoId}/readme:
+    parameters:
+      - $ref: "#/components/parameters/GitRepoIdParam"
+    get:
+      operationId: gitGetReadme
+      tags: [git-internal]
+      summary: "README di una cartella (per core)"
+      description: >
+        Corrispondente interno di `getRepositoryReadme`: parla solo per
+        repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito
+        (lo risolve core). Gli autori non portano `user`: lo aggiunge core.
+        Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+      security:
+        - serviceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/GitRefParam"
+        - $ref: "#/components/parameters/PathParam"
+      responses:
+        "200":
+          description: Il README.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2204,6 +2973,89 @@ components:
       description: Slug del provider OIDC.
       schema:
         $ref: "#/components/schemas/Name"
+    RefParam:
+      name: ref
+      in: query
+      required: false
+      description: >
+        Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se
+        manca vale il branch principale del repo (R4). Un nome non valido
+        (vuoto, con `..`, spazi, caratteri di controllo o oltre 255
+        caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404
+        `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    GitRefParam:
+      name: ref
+      in: query
+      required: true
+      description: >
+        Branch, tag o sha, sempre esplicito: core sostituisce il branch
+        principale prima di chiamare il servizio git. Stesse regole di
+        `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    PathParam:
+      name: path
+      in: query
+      required: false
+      description: >
+        Percorso relativo alla radice del repo, con `/` come separatore, senza
+        `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente
+        o vuoto: la radice.
+      schema:
+        type: string
+        maxLength: 4096
+    FilePathParam:
+      name: path
+      in: query
+      required: true
+      description: Percorso del file (stesse regole di `PathParam`, non vuoto).
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 4096
+    CommitAuthorFilter:
+      name: author
+      in: query
+      required: false
+      description: Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    CommitPageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    CommitPerPageParam:
+      name: perPage
+      in: query
+      required: false
+      description: Commit per pagina (default 30, massimo 100).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 30
+    CommitShaParam:
+      name: sha
+      in: path
+      required: true
+      description: Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+      schema:
+        type: string
+        pattern: "^[0-9a-f]{7,64}$"
+        minLength: 7
+        maxLength: 64
 
   schemas:
     Health:
@@ -3466,6 +4318,379 @@ components:
           description: Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
           items:
             type: string
+
+    CodeUser:
+      type: object
+      description: >
+        Utente GitStack che corrisponde all'email di un commit (confronto
+        senza distinguere maiuscole con l'email di identity). `kind` da' il
+        badge umano/agente.
+      additionalProperties: false
+      required: [id, username, kind, avatarUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          $ref: "#/components/schemas/Name"
+        kind:
+          type: string
+          enum: [human, agent]
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    CommitPerson:
+      type: object
+      description: >
+        Autore o committer dichiarato nel commit. Non e' una prova d'identita':
+        chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user`
+        e' null se nessun utente GitStack ha quell'email (e sempre assente
+        nelle risposte del servizio git, che non conosce gli utenti).
+      additionalProperties: false
+      required: [name, email, date]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        date:
+          type: string
+          format: date-time
+        user:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CodeUser"
+
+    CommitSummary:
+      type: object
+      additionalProperties: false
+      required: [sha, subject, author, committer, parents]
+      properties:
+        sha:
+          type: string
+          pattern: "^[0-9a-f]{40,64}$"
+        subject:
+          type: string
+          description: Prima riga del messaggio.
+        message:
+          type: string
+          description: Messaggio completo (omesso nell'ultimo commit di una voce d'albero).
+        author:
+          $ref: "#/components/schemas/CommitPerson"
+        committer:
+          $ref: "#/components/schemas/CommitPerson"
+        parents:
+          type: array
+          items:
+            type: string
+
+    TreeEntry:
+      type: object
+      additionalProperties: false
+      required: [name, path, type, mode, lastCommit]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+          enum: [file, dir, symlink, submodule]
+        mode:
+          type: string
+          description: Modo Git in ottale, es. `100644`.
+        size:
+          type: integer
+          format: int64
+          description: Byte, solo per i file.
+        lastCommit:
+          $ref: "#/components/schemas/CommitSummary"
+
+    Tree:
+      type: object
+      additionalProperties: false
+      required: [ref, commitSha, path, entries, truncated]
+      properties:
+        ref:
+          type: string
+          description: Il `ref` risolto (il branch principale se non indicato).
+        commitSha:
+          type: string
+        path:
+          type: string
+        entries:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/TreeEntry"
+        truncated:
+          type: boolean
+          description: True se la cartella ha piu' di 1 000 voci e queste sono le prime 1 000.
+
+    FileContent:
+      type: object
+      additionalProperties: false
+      required: [ref, path, name, sha, size, binary, truncated, lastCommit]
+      properties:
+        ref:
+          type: string
+        path:
+          type: string
+        name:
+          type: string
+        sha:
+          type: string
+          description: Sha del blob.
+        size:
+          type: integer
+          format: int64
+          description: Dimensione reale in byte, anche se troncato.
+        binary:
+          type: boolean
+        truncated:
+          type: boolean
+          description: True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+        content:
+          type: string
+          description: Testo UTF-8; assente se `binary` (usare `raw`).
+        lastCommit:
+          $ref: "#/components/schemas/CommitSummary"
+
+    Branch:
+      type: object
+      additionalProperties: false
+      required: [name, isDefault, protected, commit]
+      properties:
+        name:
+          type: string
+        isDefault:
+          type: boolean
+        protected:
+          type: boolean
+          description: Protezione del branch principale (R9). Per il servizio git e' sempre false, la imposta core.
+        commit:
+          $ref: "#/components/schemas/CommitSummary"
+
+    BranchList:
+      type: object
+      additionalProperties: false
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Branch"
+        total:
+          type: integer
+          minimum: 0
+
+    Tag:
+      type: object
+      additionalProperties: false
+      required: [name, commit, annotated]
+      properties:
+        name:
+          type: string
+        annotated:
+          type: boolean
+        message:
+          type: string
+          description: Messaggio del tag annotato.
+        taggedAt:
+          type: string
+          format: date-time
+        commit:
+          $ref: "#/components/schemas/CommitSummary"
+
+    TagList:
+      type: object
+      additionalProperties: false
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+        total:
+          type: integer
+          minimum: 0
+
+    CommitList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/CommitSummary"
+        page:
+          type: integer
+          minimum: 1
+        perPage:
+          type: integer
+          minimum: 1
+          maximum: 100
+        hasMore:
+          type: boolean
+          description: Non c'e' un totale, contarlo costa un giro completo della storia.
+
+    FileDiff:
+      type: object
+      additionalProperties: false
+      required: [path, status, additions, deletions, binary, truncated]
+      properties:
+        path:
+          type: string
+        oldPath:
+          type: string
+          description: Percorso precedente, per rinomine e copie.
+        status:
+          type: string
+          enum: [added, modified, deleted, renamed, copied]
+        additions:
+          type: integer
+          minimum: 0
+        deletions:
+          type: integer
+          minimum: 0
+        binary:
+          type: boolean
+        truncated:
+          type: boolean
+          description: True se il patch supera 1 MB o il limite totale di 20 000 righe e' gia' esaurito; `patch` e' parziale o assente.
+        patch:
+          type: string
+          description: Diff unificato (hunk), assente per i binari.
+
+    CommitDetail:
+      type: object
+      additionalProperties: false
+      required: [commit, files, filesChanged, additions, deletions, truncated]
+      properties:
+        commit:
+          $ref: "#/components/schemas/CommitSummary"
+        files:
+          type: array
+          maxItems: 300
+          items:
+            $ref: "#/components/schemas/FileDiff"
+        filesChanged:
+          type: integer
+          minimum: 0
+          description: Numero reale di file toccati, anche oltre i 300 elencati.
+        additions:
+          type: integer
+          minimum: 0
+        deletions:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
+          description: True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
+
+    BlameRange:
+      type: object
+      additionalProperties: false
+      required: [startLine, endLine, commit]
+      properties:
+        startLine:
+          type: integer
+          minimum: 1
+        endLine:
+          type: integer
+          minimum: 1
+        commit:
+          $ref: "#/components/schemas/CommitSummary"
+
+    Blame:
+      type: object
+      additionalProperties: false
+      required: [ref, path, ranges]
+      properties:
+        ref:
+          type: string
+        path:
+          type: string
+        ranges:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlameRange"
+
+    LanguageShare:
+      type: object
+      additionalProperties: false
+      required: [name, bytes, percent]
+      properties:
+        name:
+          type: string
+        bytes:
+          type: integer
+          format: int64
+          minimum: 0
+        percent:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    Languages:
+      type: object
+      additionalProperties: false
+      required: [languages, totalBytes]
+      properties:
+        languages:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageShare"
+        totalBytes:
+          type: integer
+          format: int64
+          minimum: 0
+
+    LookupEmailsInput:
+      type: object
+      additionalProperties: false
+      required: [emails]
+      properties:
+        emails:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            maxLength: 320
+
+    LookupEmailsResult:
+      type: object
+      additionalProperties: false
+      required: [users]
+      properties:
+        users:
+          type: array
+          description: Solo le email che corrispondono a un utente; le altre mancano.
+          items:
+            type: object
+            additionalProperties: false
+            required: [email, id, username, kind, avatarUrl]
+            properties:
+              email:
+                type: string
+              id:
+                type: string
+                format: uuid
+              username:
+                $ref: "#/components/schemas/Name"
+              kind:
+                type: string
+                enum: [human, agent]
+              avatarUrl:
+                type: string
+                format: uri
+                nullable: true
 
   responses:
     TooManyRequests:

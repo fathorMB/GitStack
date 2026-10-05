@@ -90,6 +90,24 @@ func (e GrantSubjectType) Valid() bool {
 	}
 }
 
+// Defines values for LookupEmailsResultUsersKind.
+const (
+	LookupEmailsResultUsersKindAgent LookupEmailsResultUsersKind = "agent"
+	LookupEmailsResultUsersKindHuman LookupEmailsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the LookupEmailsResultUsersKind enum.
+func (e LookupEmailsResultUsersKind) Valid() bool {
+	switch e {
+	case LookupEmailsResultUsersKindAgent:
+		return true
+	case LookupEmailsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrgRole.
 const (
 	OrgRoleMember OrgRole = "member"
@@ -477,6 +495,31 @@ type LoginInput struct {
 	// Username Username oppure email.
 	Username string `json:"username"`
 }
+
+// LookupEmailsInput defines model for LookupEmailsInput.
+type LookupEmailsInput struct {
+	Emails []string `json:"emails"`
+}
+
+// LookupEmailsResult defines model for LookupEmailsResult.
+type LookupEmailsResult struct {
+	// Users Solo le email che corrispondono a un utente; le altre mancano.
+	Users []struct {
+		AvatarUrl *string                     `json:"avatarUrl"`
+		Email     string                      `json:"email"`
+		Id        openapi_types.UUID          `json:"id"`
+		Kind      LookupEmailsResultUsersKind `json:"kind"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
+type LookupEmailsResultUsersKind string
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -974,6 +1017,9 @@ type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 
+// LookupUsersByEmailJSONRequestBody defines body for LookupUsersByEmail for application/json ContentType.
+type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
+
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
@@ -1057,6 +1103,9 @@ type ServerInterface interface {
 	// LookupSshKey Risolve un utente dal fingerprint di una chiave SSH
 	// (GET /internal/ssh-keys/{fingerprint})
 	LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprint string)
+	// LookupUsersByEmail Trova gli utenti GitStack dalle email dei commit
+	// (POST /internal/users/lookup-emails)
+	LookupUsersByEmail(w http.ResponseWriter, r *http.Request)
 	// VerifyCredential Verifica una credenziale (per il gateway)
 	// (POST /internal/verify)
 	VerifyCredential(w http.ResponseWriter, r *http.Request)
@@ -1458,6 +1507,20 @@ func (siw *ServerInterfaceWrapper) LookupSshKey(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LookupSshKey(w, r, fingerprint)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LookupUsersByEmail operation middleware
+func (siw *ServerInterfaceWrapper) LookupUsersByEmail(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LookupUsersByEmail(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2920,6 +2983,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/internal/resources/{resourceId}/attributes", wrapper.SetResourceAttributes)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 
 	return m
 }

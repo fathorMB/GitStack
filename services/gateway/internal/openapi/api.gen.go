@@ -15,6 +15,51 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for CodeUserKind.
+const (
+	Agent CodeUserKind = "agent"
+	Human CodeUserKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the CodeUserKind enum.
+func (e CodeUserKind) Valid() bool {
+	switch e {
+	case Agent:
+		return true
+	case Human:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FileDiffStatus.
+const (
+	Added    FileDiffStatus = "added"
+	Copied   FileDiffStatus = "copied"
+	Deleted  FileDiffStatus = "deleted"
+	Modified FileDiffStatus = "modified"
+	Renamed  FileDiffStatus = "renamed"
+)
+
+// Valid indicates whether the value is a known member of the FileDiffStatus enum.
+func (e FileDiffStatus) Valid() bool {
+	switch e {
+	case Added:
+		return true
+	case Copied:
+		return true
+	case Deleted:
+		return true
+	case Modified:
+		return true
+	case Renamed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GitignoreTemplate.
 const (
 	Cpp       GitignoreTemplate = "cpp"
@@ -150,6 +195,124 @@ func (e RepoVisibility) Valid() bool {
 	}
 }
 
+// Defines values for TreeEntryType.
+const (
+	Dir       TreeEntryType = "dir"
+	File      TreeEntryType = "file"
+	Submodule TreeEntryType = "submodule"
+	Symlink   TreeEntryType = "symlink"
+)
+
+// Valid indicates whether the value is a known member of the TreeEntryType enum.
+func (e TreeEntryType) Valid() bool {
+	switch e {
+	case Dir:
+		return true
+	case File:
+		return true
+	case Submodule:
+		return true
+	case Symlink:
+		return true
+	default:
+		return false
+	}
+}
+
+// Blame defines model for Blame.
+type Blame struct {
+	Path   string       `json:"path"`
+	Ranges []BlameRange `json:"ranges"`
+	Ref    string       `json:"ref"`
+}
+
+// BlameRange defines model for BlameRange.
+type BlameRange struct {
+	Commit    CommitSummary `json:"commit"`
+	EndLine   int           `json:"endLine"`
+	StartLine int           `json:"startLine"`
+}
+
+// Branch defines model for Branch.
+type Branch struct {
+	Commit    CommitSummary `json:"commit"`
+	IsDefault bool          `json:"isDefault"`
+	Name      string        `json:"name"`
+
+	// Protected Protezione del branch principale (R9). Per il servizio git e' sempre false, la imposta core.
+	Protected bool `json:"protected"`
+}
+
+// BranchList defines model for BranchList.
+type BranchList struct {
+	Items []Branch `json:"items"`
+	Total int      `json:"total"`
+}
+
+// CodeUser Utente GitStack che corrisponde all'email di un commit (confronto senza distinguere maiuscole con l'email di identity). `kind` da' il badge umano/agente.
+type CodeUser struct {
+	AvatarUrl *string            `json:"avatarUrl"`
+	Id        openapi_types.UUID `json:"id"`
+	Kind      CodeUserKind       `json:"kind"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// CodeUserKind defines model for CodeUser.Kind.
+type CodeUserKind string
+
+// CommitDetail defines model for CommitDetail.
+type CommitDetail struct {
+	Additions int           `json:"additions"`
+	Commit    CommitSummary `json:"commit"`
+	Deletions int           `json:"deletions"`
+	Files     []FileDiff    `json:"files"`
+
+	// FilesChanged Numero reale di file toccati, anche oltre i 300 elencati.
+	FilesChanged int `json:"filesChanged"`
+
+	// Truncated True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
+	Truncated bool `json:"truncated"`
+}
+
+// CommitList defines model for CommitList.
+type CommitList struct {
+	// HasMore Non c'e' un totale, contarlo costa un giro completo della storia.
+	HasMore bool            `json:"hasMore"`
+	Items   []CommitSummary `json:"items"`
+	Page    int             `json:"page"`
+	PerPage int             `json:"perPage"`
+}
+
+// CommitPerson Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+type CommitPerson struct {
+	Date  time.Time `json:"date"`
+	Email string    `json:"email"`
+	Name  string    `json:"name"`
+	User  *CodeUser `json:"user,omitempty"`
+}
+
+// CommitSummary defines model for CommitSummary.
+type CommitSummary struct {
+	// Author Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+	Author CommitPerson `json:"author"`
+
+	// Committer Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+	Committer CommitPerson `json:"committer"`
+
+	// Message Messaggio completo (omesso nell'ultimo commit di una voce d'albero).
+	Message *string  `json:"message,omitempty"`
+	Parents []string `json:"parents"`
+	Sha     string   `json:"sha"`
+
+	// Subject Prima riga del messaggio.
+	Subject string `json:"subject"`
+}
+
 // CreateRepositoryInput defines model for CreateRepositoryInput.
 type CreateRepositoryInput struct {
 	Description *string `json:"description,omitempty"`
@@ -225,6 +388,48 @@ type Error struct {
 	} `json:"error"`
 }
 
+// FileContent defines model for FileContent.
+type FileContent struct {
+	Binary bool `json:"binary"`
+
+	// Content Testo UTF-8; assente se `binary` (usare `raw`).
+	Content    *string       `json:"content,omitempty"`
+	LastCommit CommitSummary `json:"lastCommit"`
+	Name       string        `json:"name"`
+	Path       string        `json:"path"`
+	Ref        string        `json:"ref"`
+
+	// Sha Sha del blob.
+	Sha string `json:"sha"`
+
+	// Size Dimensione reale in byte, anche se troncato.
+	Size int64 `json:"size"`
+
+	// Truncated True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+	Truncated bool `json:"truncated"`
+}
+
+// FileDiff defines model for FileDiff.
+type FileDiff struct {
+	Additions int  `json:"additions"`
+	Binary    bool `json:"binary"`
+	Deletions int  `json:"deletions"`
+
+	// OldPath Percorso precedente, per rinomine e copie.
+	OldPath *string `json:"oldPath,omitempty"`
+
+	// Patch Diff unificato (hunk), assente per i binari.
+	Patch  *string        `json:"patch,omitempty"`
+	Path   string         `json:"path"`
+	Status FileDiffStatus `json:"status"`
+
+	// Truncated True se il patch supera 1 MB o il limite totale di 20 000 righe e' gia' esaurito; `patch` e' parziale o assente.
+	Truncated bool `json:"truncated"`
+}
+
+// FileDiffStatus defines model for FileDiff.Status.
+type FileDiffStatus string
+
 // GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
 type GitignoreTemplate string
 
@@ -238,6 +443,19 @@ type Health struct {
 
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
+
+// LanguageShare defines model for LanguageShare.
+type LanguageShare struct {
+	Bytes   int64   `json:"bytes"`
+	Name    string  `json:"name"`
+	Percent float32 `json:"percent"`
+}
+
+// Languages defines model for Languages.
+type Languages struct {
+	Languages  []LanguageShare `json:"languages"`
+	TotalBytes int64           `json:"totalBytes"`
+}
 
 // LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
 type LicenseTemplate string
@@ -353,6 +571,53 @@ type ResourceList struct {
 	Total   int        `json:"total"`
 }
 
+// Tag defines model for Tag.
+type Tag struct {
+	Annotated bool          `json:"annotated"`
+	Commit    CommitSummary `json:"commit"`
+
+	// Message Messaggio del tag annotato.
+	Message  *string    `json:"message,omitempty"`
+	Name     string     `json:"name"`
+	TaggedAt *time.Time `json:"taggedAt,omitempty"`
+}
+
+// TagList defines model for TagList.
+type TagList struct {
+	Items []Tag `json:"items"`
+	Total int   `json:"total"`
+}
+
+// Tree defines model for Tree.
+type Tree struct {
+	CommitSha string      `json:"commitSha"`
+	Entries   []TreeEntry `json:"entries"`
+	Path      string      `json:"path"`
+
+	// Ref Il `ref` risolto (il branch principale se non indicato).
+	Ref string `json:"ref"`
+
+	// Truncated True se la cartella ha piu' di 1 000 voci e queste sono le prime 1 000.
+	Truncated bool `json:"truncated"`
+}
+
+// TreeEntry defines model for TreeEntry.
+type TreeEntry struct {
+	LastCommit CommitSummary `json:"lastCommit"`
+
+	// Mode Modo Git in ottale, es. `100644`.
+	Mode string `json:"mode"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+
+	// Size Byte, solo per i file.
+	Size *int64        `json:"size,omitempty"`
+	Type TreeEntryType `json:"type"`
+}
+
+// TreeEntryType defines model for TreeEntry.Type.
+type TreeEntryType string
+
 // UpdateRepositoryInput defines model for UpdateRepositoryInput.
 type UpdateRepositoryInput struct {
 	Archived             *bool   `json:"archived,omitempty"`
@@ -369,6 +634,21 @@ type UpdateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
 	Name       *string                 `json:"name,omitempty"`
 }
+
+// CommitAuthorFilter defines model for CommitAuthorFilter.
+type CommitAuthorFilter = string
+
+// CommitPageParam defines model for CommitPageParam.
+type CommitPageParam = int
+
+// CommitPerPageParam defines model for CommitPerPageParam.
+type CommitPerPageParam = int
+
+// CommitShaParam defines model for CommitShaParam.
+type CommitShaParam = string
+
+// FilePathParam defines model for FilePathParam.
+type FilePathParam = string
 
 // GitRepoIdParam defines model for GitRepoIdParam.
 type GitRepoIdParam = openapi_types.UUID
@@ -389,8 +669,14 @@ type OrgParam = Name
 // PageParam defines model for PageParam.
 type PageParam = int
 
+// PathParam defines model for PathParam.
+type PathParam = string
+
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RefParam defines model for RefParam.
+type RefParam = string
 
 // RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
 //
@@ -461,6 +747,79 @@ type ListDeletedRepositoriesParams struct {
 	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
 }
 
+// GetRepositoryArchiveParams defines parameters for GetRepositoryArchive.
+type GetRepositoryArchiveParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// GetRepositoryBlameParams defines parameters for GetRepositoryBlame.
+type GetRepositoryBlameParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GetRepositoryCommitsParams defines parameters for GetRepositoryCommits.
+type GetRepositoryCommitsParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Author Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+	Author *CommitAuthorFilter `form:"author,omitempty" json:"author,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam       `form:"path,omitempty" json:"path,omitempty"`
+	Page *CommitPageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// PerPage Commit per pagina (default 30, massimo 100).
+	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// GetRepositoryFileParams defines parameters for GetRepositoryFile.
+type GetRepositoryFileParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GetRepositoryLanguagesParams defines parameters for GetRepositoryLanguages.
+type GetRepositoryLanguagesParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// GetRepositoryRawParams defines parameters for GetRepositoryRaw.
+type GetRepositoryRawParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GetRepositoryReadmeParams defines parameters for GetRepositoryReadme.
+type GetRepositoryReadmeParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// GetRepositoryTreeParams defines parameters for GetRepositoryTree.
+type GetRepositoryTreeParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
 // ListResourcesParams defines parameters for ListResources.
 type ListResourcesParams struct {
 	// Type Filtra per tipo di risorsa (es. `repo`).
@@ -507,6 +866,39 @@ type ServerInterface interface {
 	// UpdateRepository Modifica le impostazioni di un repo
 	// (PATCH /repos/{owner}/{repo})
 	UpdateRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepositoryArchive Archivio ZIP di un ref (streaming)
+	// (GET /repos/{owner}/{repo}/archive)
+	GetRepositoryArchive(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryArchiveParams)
+	// GetRepositoryBlame Blame di un file
+	// (GET /repos/{owner}/{repo}/blame)
+	GetRepositoryBlame(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryBlameParams)
+	// GetRepositoryBranches Branch del repo, con conteggi
+	// (GET /repos/{owner}/{repo}/branches)
+	GetRepositoryBranches(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepositoryCommits Storico dei commit, paginato
+	// (GET /repos/{owner}/{repo}/commits)
+	GetRepositoryCommits(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryCommitsParams)
+	// GetRepositoryCommit Dettaglio di un commit con diff per file
+	// (GET /repos/{owner}/{repo}/commits/{sha})
+	GetRepositoryCommit(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam)
+	// GetRepositoryFile Contenuto di un file
+	// (GET /repos/{owner}/{repo}/contents)
+	GetRepositoryFile(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryFileParams)
+	// GetRepositoryLanguages Lingue del repo
+	// (GET /repos/{owner}/{repo}/languages)
+	GetRepositoryLanguages(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryLanguagesParams)
+	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
+	// (GET /repos/{owner}/{repo}/raw)
+	GetRepositoryRaw(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryRawParams)
+	// GetRepositoryReadme README di una cartella
+	// (GET /repos/{owner}/{repo}/readme)
+	GetRepositoryReadme(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryReadmeParams)
+	// GetRepositoryTags Tag del repo, con conteggi
+	// (GET /repos/{owner}/{repo}/tags)
+	GetRepositoryTags(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepositoryTree Albero di una cartella con l'ultimo commit per voce
+	// (GET /repos/{owner}/{repo}/tree)
+	GetRepositoryTree(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryTreeParams)
 	// ListResources Elenca le risorse
 	// (GET /resources)
 	ListResources(w http.ResponseWriter, r *http.Request, params ListResourcesParams)
@@ -775,6 +1167,645 @@ func (siw *ServerInterfaceWrapper) UpdateRepository(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateRepository(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryArchive operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryArchive(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryArchiveParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryArchive(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryBlame operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryBlame(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryBlameParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryBlame(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryBranches operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryBranches(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryBranches(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryCommits operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryCommits(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryCommitsParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "author" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "author", r.URL.Query(), &params.Author, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "author"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "author", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryCommits(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryCommit operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryCommit(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sha" -------------
+	var sha CommitShaParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sha", r.PathValue("sha"), &sha, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sha", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryCommit(w, r, owner, repo, sha)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryFile operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryFile(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryFileParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryFile(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryLanguages operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryLanguages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryLanguagesParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryLanguages(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryRaw operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryRaw(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryRawParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryRaw(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryReadme operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryReadme(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryReadmeParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryReadme(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryTags operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryTags(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryTags(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryTree operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryTree(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryTreeParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryTree(w, r, owner, repo, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1068,6 +2099,17 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.DeleteRepository)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.GetRepository)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}", wrapper.UpdateRepository)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/tree", wrapper.GetRepositoryTree)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/contents", wrapper.GetRepositoryFile)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/raw", wrapper.GetRepositoryRaw)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/branches", wrapper.GetRepositoryBranches)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/tags", wrapper.GetRepositoryTags)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits", wrapper.GetRepositoryCommits)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}", wrapper.GetRepositoryCommit)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/blame", wrapper.GetRepositoryBlame)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/archive", wrapper.GetRepositoryArchive)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/languages", wrapper.GetRepositoryLanguages)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/readme", wrapper.GetRepositoryReadme)
 
 	return m
 }
