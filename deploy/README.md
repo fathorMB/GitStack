@@ -75,6 +75,10 @@ Rieseguire `install.sh` è sicuro:
 
 Lo script stampa l'URL della UI (`http://<ip-macchina>/`), l'URL di salute dell'API (`http://<ip-macchina>/api/healthz`) e i comandi per verificare lo stato: `kubectl get pods`, `helm status`, `curl` sull'health endpoint, `journalctl -u k3s`.
 
+### Comando `gitstack` e configurazione
+
+L'installer scrive `/etc/gitstack/config.yaml` (root-only, `0600`) e installa in `/usr/local/bin/gitstack` il comando di amministrazione (`admin/`, GIT-142) con il checksum SHA-256 verificato (`--admin-binary`, `--admin-sha256`; se non c'è un binario pubblicato lo salta con un avviso). Dopo l'installazione: `sudo gitstack status`. Formato del file, build e codici di uscita: [`../admin/README.md`](../admin/README.md).
+
 ### Sicurezza: CA interna, certificati, utente admin
 
 CA interna e certificati non sono ancora implementati in v0: l'installazione parla HTTP in chiaro sull'IP della macchina. Completamento previsto in M-02/M-08 [c_8458909a21d9035f].

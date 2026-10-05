@@ -19,7 +19,8 @@ Dettagli dei componenti e dei flussi chiave: `.lmbrain-lite/knowledge/architectu
 api/        contratto OpenAPI unico dell'API pubblica (fonte di verità)
 services/   servizi Go (gateway, identity, git, core), un modulo per servizio
 web/        web UI React + TypeScript
-cli/        CLI gs in Go
+cli/        CLI gs in Go (per gli utenti)
+admin/      comando gitstack in Go (amministrazione dell'host)
 client/     client Go e TypeScript generati dal contratto OpenAPI
 skills/     pacchetto di skills per agenti di coding
 deploy/     manifest k3s / Helm chart interno e installer
@@ -31,6 +32,7 @@ Ogni cartella ha un proprio README con lo stato e i rimandi alle milestone che l
 ## Licenze
 
 - **AGPL-3.0** in radice (`LICENSE`): copre il prodotto server (`services/`, `web/`, `deploy/`, `docs/`). Scelta per proteggere dal "prendi e chiudi" — prendere il software e chiuderlo senza condividere i contributi — seguendo i precedenti di Forgejo, Grafana e Mattermost (decisione D13 [c_c0aa0b2a2659ff40]).
+- **AGPL-3.0** anche in `admin/` (`gitstack`, lo strumento dell'host, con un `LICENSE` dedicato).
 - **Apache-2.0** solo in `cli/`, `client/` (`client/go/`, `client/ts/`) e `skills/` (un `LICENSE` dedicato in ciascuna cartella): il client non deve porre barriere all'integrazione negli strumenti degli agenti di coding, mentre il cuore del prodotto — incluso il contratto OpenAPI in `api/` — resta protetto da AGPL-3.0 (decisione D17 [c_1d1d61aca3dea601]).
 
 GitStack è interamente open source; eventuali ricavi vengono da supporto e servizi, non dalla chiusura del codice (decisione D12 [c_85f1f52e96d98e7f]).

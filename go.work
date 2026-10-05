@@ -1,6 +1,7 @@
 go 1.26.2
 
 use (
+	./admin
 	./api
 	./cli
 	./client/go

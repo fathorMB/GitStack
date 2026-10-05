@@ -63,6 +63,24 @@ GITSTACK_IMAGE_REGISTRY="${GITSTACK_IMAGE_REGISTRY:-}"
 GITSTACK_SKIP_PREFLIGHT="${GITSTACK_SKIP_PREFLIGHT:-0}"
 GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 
+# Comando di amministrazione `gitstack` (admin/, GIT-142). Sorgente del
+# binario: un percorso locale o un URL http(s). Senza, si prova la release
+# GitHub di ${GITSTACK_REPO} taggata come il tag immagine (asset
+# gitstack-linux-amd64 e gitstack-linux-amd64.sha256): se non è pubblicata si
+# avvisa e si prosegue (finché una CI non la pubblica, vedi admin/README.md).
+# Il checksum SHA-256 (V5) è obbligatorio: GITSTACK_ADMIN_SHA256 oppure il
+# file `<sorgente>.sha256`. GITSTACK_ADMIN_REQUIRED=1 rende fatale l'assenza.
+GITSTACK_ADMIN_BINARY="${GITSTACK_ADMIN_BINARY:-}"
+GITSTACK_ADMIN_SHA256="${GITSTACK_ADMIN_SHA256:-}"
+GITSTACK_ADMIN_REQUIRED="${GITSTACK_ADMIN_REQUIRED:-0}"
+ADMIN_BIN_PATH="/usr/local/bin/gitstack"
+# File di configurazione dell'installazione, root-only: lo scrive questo
+# script, lo leggono i comandi di `gitstack` (formato: admin/README.md).
+GITSTACK_CONFIG_DIR="/etc/gitstack"
+GITSTACK_CONFIG_FILE="${GITSTACK_CONFIG_DIR}/config.yaml"
+GITSTACK_BACKUP_DIR="${GITSTACK_BACKUP_DIR:-}"
+GITSTACK_BACKUP_RETENTION="${GITSTACK_BACKUP_RETENTION:-}"
+
 # Requisiti minimi della macchina di destinazione in M-01 (decisione di
 # Atlas, provvisoria, da rivedere con M-08 [c_8458909a21d9035f]): Ubuntu
 # Server 24.04 LTS x86_64, 4 vCPU, 8 GB di RAM, disco da 60 GB (profilo
@@ -116,6 +134,11 @@ Opzioni:
                              risolto automaticamente dal commit corrente).
   --image-registry HOST     Registry delle immagini GitStack (default: dal
                              chart, ghcr.io). Utile per un mirror (M-08).
+  --admin-binary PERCORSO|URL
+                            Binario di `gitstack` (admin/) da installare in
+                             /usr/local/bin, con il checksum verificato.
+  --admin-sha256 HEX        SHA-256 atteso del binario (default: il file
+                             <binario>.sha256 accanto al sorgente).
   --values FILE             File di valori Helm aggiuntivo (-f), ripetibile.
   --set CHIAVE=VALORE       Valore Helm aggiuntivo (--set), ripetibile.
   -h, --help                Stampa questo aiuto ed esce.
@@ -124,7 +147,9 @@ Variabili d'ambiente equivalenti (i flag ripetibili --values/--set non ne
 hanno una, solo da riga di comando): INSTALL_K3S_VERSION,
 GITSTACK_HELM_VERSION, GITSTACK_REPO, GITSTACK_REF, GITSTACK_RELEASE_NAME,
 GITSTACK_NAMESPACE, GITSTACK_CHART_DIR, GITSTACK_IMAGE_TAG,
-GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1.
+GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1, GITSTACK_ADMIN_BINARY,
+GITSTACK_ADMIN_SHA256, GITSTACK_ADMIN_REQUIRED=1, GITSTACK_BACKUP_DIR,
+GITSTACK_BACKUP_RETENTION.
 EOF
 }
 
@@ -152,6 +177,14 @@ while [ "$#" -gt 0 ]; do
       ;;
     --image-registry)
       GITSTACK_IMAGE_REGISTRY="$2"
+      shift 2
+      ;;
+    --admin-binary)
+      GITSTACK_ADMIN_BINARY="$2"
+      shift 2
+      ;;
+    --admin-sha256)
+      GITSTACK_ADMIN_SHA256="$2"
       shift 2
       ;;
     --values)
@@ -571,6 +604,147 @@ install_gitstack() {
     || fail "'helm upgrade --install' fallito. Diagnostica: KUBECONFIG=${GITSTACK_KUBECONFIG} k3s kubectl get pods -n ${GITSTACK_NAMESPACE}, k3s kubectl describe pod ..., k3s kubectl logs ..."
 }
 
+# --- Comando `gitstack` e file di configurazione -----------------------
+
+# Percorso del binario verificato, pronto da installare (vuoto: niente da
+# installare). Variabile globale e non "$(...)": TMP_DIRS deve restare del
+# processo principale (vedi resolve_chart_dir).
+ADMIN_STAGED=""
+ADMIN_SOURCE_DESC=""
+
+# Copia in $2 la risorsa $1 (percorso locale o URL). Ritorna 1 se manca.
+fetch_resource() {
+  local src="$1" dest="$2"
+  case "${src}" in
+    http://*|https://*)
+      command -v curl >/dev/null 2>&1 || fail "serve 'curl' per scaricare ${src}."
+      curl -fsSL -o "${dest}" "${src}" 2>/dev/null
+      ;;
+    *)
+      [ -f "${src}" ] && cp "${src}" "${dest}"
+      ;;
+  esac
+}
+
+# Scarica (o copia) il binario di `gitstack` e ne verifica lo SHA-256 prima
+# di toccare il sistema: se il checksum non torna, esce con errore e non
+# installa niente.
+prepare_admin() {
+  local image_tag="$1"
+  local src="${GITSTACK_ADMIN_BINARY}" explicit=0
+  if [ -n "${src}" ]; then
+    explicit=1
+  else
+    src="https://github.com/${GITSTACK_REPO}/releases/download/${image_tag}/gitstack-linux-amd64"
+  fi
+  if [ "${GITSTACK_ADMIN_REQUIRED}" = "1" ]; then
+    explicit=1
+  fi
+  command -v sha256sum >/dev/null 2>&1 || fail "serve 'sha256sum' per verificare il binario di gitstack."
+
+  local workdir
+  workdir="$(mktemp -d)"
+  TMP_DIRS+=("${workdir}")
+
+  if ! fetch_resource "${src}" "${workdir}/gitstack"; then
+    if [ "${explicit}" -eq 1 ]; then
+      fail "binario di gitstack non trovato: ${src}"
+    fi
+    warn "binario di gitstack non pubblicato (${src}): il comando 'gitstack' non viene installato. Costruiscilo e rilancia con --admin-binary (vedi admin/README.md)."
+    return 0
+  fi
+
+  local expected="${GITSTACK_ADMIN_SHA256}"
+  if [ -z "${expected}" ]; then
+    fetch_resource "${src}.sha256" "${workdir}/gitstack.sha256" \
+      || fail "checksum SHA-256 di gitstack non trovato (${src}.sha256): passa --admin-sha256 oppure pubblica il file accanto al binario."
+    expected="$(awk 'NR==1 { print $1 }' "${workdir}/gitstack.sha256")"
+  fi
+  expected="$(printf '%s' "${expected}" | tr 'A-F' 'a-f')"
+  case "${expected}" in
+    *[!0-9a-f]*|'') fail "checksum SHA-256 di gitstack non valido: '${expected}'." ;;
+  esac
+  [ "${#expected}" -eq 64 ] || fail "checksum SHA-256 di gitstack non valido: '${expected}' (servono 64 cifre esadecimali)."
+
+  local actual
+  actual="$(sha256sum "${workdir}/gitstack" | awk '{ print $1 }')"
+  if [ "${actual}" != "${expected}" ]; then
+    fail "il binario di gitstack (${src}) non corrisponde al checksum SHA-256: atteso ${expected}, trovato ${actual}. Non installato."
+  fi
+  chmod 0755 "${workdir}/gitstack"
+  ADMIN_STAGED="${workdir}/gitstack"
+  ADMIN_SOURCE_DESC="${src}"
+  log "Binario di gitstack verificato (SHA-256 ${actual})."
+}
+
+# Installa il binario verificato in /usr/local/bin; se è diverso da quello
+# presente lo aggiorna, con una sostituzione atomica.
+install_admin() {
+  [ -n "${ADMIN_STAGED}" ] || return 0
+  if [ -f "${ADMIN_BIN_PATH}" ] && cmp -s "${ADMIN_STAGED}" "${ADMIN_BIN_PATH}"; then
+    log "gitstack in ${ADMIN_BIN_PATH} è già alla versione indicata."
+    return 0
+  fi
+  install -m 0755 "${ADMIN_STAGED}" "${ADMIN_BIN_PATH}.new"
+  mv -f "${ADMIN_BIN_PATH}.new" "${ADMIN_BIN_PATH}"
+  log "Installato ${ADMIN_BIN_PATH} da ${ADMIN_SOURCE_DESC}: $("${ADMIN_BIN_PATH}" version 2>/dev/null || echo 'versione non leggibile')."
+}
+
+# Valore di una chiave (di primo livello, o dentro la sezione data) del
+# config esistente: una riesecuzione non cancella le scelte sul backup.
+existing_config_value() {
+  local section="$1" key="$2"
+  [ -f "${GITSTACK_CONFIG_FILE}" ] || return 0
+  if [ -n "${section}" ]; then
+    awk -v sec="${section}:" -v key="${key}:" '
+      $0 == sec { insec = 1; next }
+      /^[^ ]/ { insec = 0 }
+      insec && $1 == key { print $2; exit }' "${GITSTACK_CONFIG_FILE}"
+  else
+    awk -v key="${key}:" '$1 == key { print $2; exit }' "${GITSTACK_CONFIG_FILE}"
+  fi
+}
+
+# Scrive /etc/gitstack/config.yaml (0600, root). Formato e significato dei
+# campi: admin/README.md.
+write_config() {
+  local image_tag="$1"
+  local backup_dir="${GITSTACK_BACKUP_DIR:-$(existing_config_value backup destination)}"
+  local retention="${GITSTACK_BACKUP_RETENTION:-$(existing_config_value backup retention)}"
+  backup_dir="${backup_dir:-/var/backups/gitstack}"
+  retention="${retention:-7}"
+  case "${backup_dir}" in
+    /*) ;;
+    *) fail "GITSTACK_BACKUP_DIR deve essere un percorso assoluto: '${backup_dir}'." ;;
+  esac
+  case "${retention}" in
+    ''|*[!0-9]*|0) fail "GITSTACK_BACKUP_RETENTION non valida: '${retention}' (numero intero >= 1)." ;;
+  esac
+
+  mkdir -p "${GITSTACK_CONFIG_DIR}"
+  chmod 0700 "${GITSTACK_CONFIG_DIR}"
+  local tmp
+  tmp="$(mktemp "${GITSTACK_CONFIG_DIR}/.config.XXXXXX")"
+  TMP_DIRS+=("${tmp}")
+  cat >"${tmp}" <<EOF
+# Scritto da deploy/install.sh: lo leggono i comandi di gitstack.
+# Root-only (0600). Rieseguire l'installer lo riscrive, mantenendo la sezione backup.
+version: 1
+host: $(primary_ip)
+ssh_port: $(git_ssh_port)
+release: ${GITSTACK_RELEASE_NAME}
+namespace: ${GITSTACK_NAMESPACE}
+image_tag: ${image_tag}
+kubeconfig: ${GITSTACK_KUBECONFIG}
+backup:
+  destination: ${backup_dir}
+  retention: ${retention}
+EOF
+  chmod 0600 "${tmp}"
+  mv -f "${tmp}" "${GITSTACK_CONFIG_FILE}"
+  log "Configurazione scritta in ${GITSTACK_CONFIG_FILE} (0600)."
+}
+
 # --- Riepilogo finale -------------------------------------------------
 
 primary_ip() {
@@ -596,7 +770,7 @@ print_summary() {
 UI:            http://${ip}/
 API (salute):  http://${ip}/api/healthz
 
-Verifica lo stato:
+Verifica lo stato (con il comando di amministrazione: sudo gitstack status):
   KUBECONFIG=${GITSTACK_KUBECONFIG} k3s kubectl get pods -n ${GITSTACK_NAMESPACE}
   KUBECONFIG=${GITSTACK_KUBECONFIG} helm status ${GITSTACK_RELEASE_NAME} -n ${GITSTACK_NAMESPACE}
   curl -i http://${ip}/api/healthz
@@ -635,11 +809,17 @@ main() {
   image_tag="$(resolve_image_tag "${chart_dir}")"
   log "Tag immagine: ${image_tag}"
 
+  # Il binario di gitstack si scarica e si verifica prima di toccare il
+  # sistema: un checksum sbagliato ferma l'installazione senza effetti.
+  prepare_admin "${image_tag}"
+
   install_k3s
   wait_for_k3s_ready
   wait_for_traefik_crd
   install_helm
   install_gitstack "${chart_dir}" "${image_tag}"
+  install_admin
+  write_config "${image_tag}"
 
   print_summary
 }

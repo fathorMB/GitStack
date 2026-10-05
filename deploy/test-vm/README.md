@@ -337,6 +337,10 @@ VHDX, ISO e le due cartelle della VM sono stati eliminati.
    comando `ssh` — sono le informazioni minime per collegarsi e lanciare le
    prove.
 
+### Provare `gitstack` (GIT-142)
+
+Dopo `reset-vm.ps1`: costruire il binario Linux sull'host come in `admin/README.md`, copiarlo sulla VM con `scp` insieme al `.sha256` e lanciare `sudo ./install.sh --admin-binary ./gitstack-linux-amd64` (dal checkout copiato sulla VM); poi `sudo gitstack status`. `e2e.ps1` non lo fa ancora (usa `curl | sudo bash`, senza binario pubblicato).
+
 ## Test end-to-end (GIT-11)
 
 `e2e.ps1` è il comando che il board lancia, da PowerShell **come
