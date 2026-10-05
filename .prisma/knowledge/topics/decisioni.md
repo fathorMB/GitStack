@@ -1,5 +1,5 @@
 ---
-{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-1565db4b-4108-490d-aca1-28d30c36ad99","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5"],"reopen_reason":"Scelte P2 e P3 confermate dall'operatore il 2026-09-30: nessun accesso anonimo, visibilità privato/interno.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-05T13:00:00+00:00"}
+{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-1565db4b-4108-490d-aca1-28d30c36ad99","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5"],"reopen_reason":"Scelte P2 e P3 confermate dall'operatore il 2026-09-30: nessun accesso anonimo, visibilità privato/interno.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-05T13:20:00+00:00"}
 ---
 
 
@@ -26,7 +26,7 @@ Registro delle scelte prese nell'analisi pre-sviluppo (2026-09-27) con l'operato
 | D11 | Bus eventi | NATS con JetStream | Leggero, nativo Go, persistente; spina dorsale per build e deploy |
 | D12 | Distribuzione | Tutto open source; ricavi da supporto e servizi | Diffusione e fiducia per un prodotto on-prem |
 | D13 | Licenza server | AGPL-3.0 | Protegge dal "prendi e chiudi"; precedenti Forgejo, Grafana, Mattermost |
-| D14 | Installazione | Linux + supporto ufficiale Windows via WSL2. **Rischio noto**: WSL2 in produzione è fragile (rete, avvio automatico, IP che cambiano), va testato come piattaforma a sé | Allarga il pubblico ai clienti con soli server Windows |
+| D14 | Installazione | Linux (Ubuntu Server e Pop!_OS, N2) + Windows via WSL2 **di prova** con limiti dichiarati: script PowerShell, avvio al login, rete locale facoltativa (W1, W2 in [[knowledge/topics/installazione-e-deploy]]); supporto ufficiale Windows candidato dopo la v1. Rivista il 2026-10-05 | Prova rapida per i clienti su Windows senza promettere ciò che WSL2 non garantisce in produzione |
 | D15 | Ponte verso il cloud | v1 = solo fondamenta: niente CI/registry/deploy, ma eventi di push su NATS, permessi e API su "risorse" generiche | Rilascio più veloce senza debito sul futuro |
 | D16 | Team e ritmo | Operatore + agenti AI; milestone piccole (1–2 settimane) con risultato provabile; prima lo "scheletro che cammina" | Gli agenti rendono con contratti chiari e test forti |
 | D17 | Licenza client | Apache-2.0 per CLI `gs`, skills e client generati; AGPL-3.0 per server e contratto OpenAPI | Nessuna barriera all'integrazione negli strumenti degli agenti |
@@ -40,6 +40,7 @@ Scelte di default (prese senza domanda, modificabili): monorepo unico; Git lato 
 
 - D20, prima proposta: palette teal, **scartata** dall'operatore perché troppo simile a LMBrain; sostituita da Aurora.
 - D13, valutazione aperta di una licenza permissiva per CLI e skills: **chiusa** da D17.
+- D14, versione del 2026-09-27: "Linux + supporto **ufficiale** Windows via WSL2", con rischio noto (rete, avvio automatico, IP che cambiano): **sostituita** il 2026-10-05 dal supporto "di prova" con limiti dichiarati (W1, W2), per scelta dell'operatore.
 - Visibilità "pubblico" dei repo (prevista in M-03 T-02 della roadmap Lite): **eliminata** il 2026-09-30 (P2, P3): nessun accesso anonimo; restano privato e interno.
 
 ## Open questions

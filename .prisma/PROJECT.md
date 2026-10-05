@@ -15,7 +15,7 @@ Team e aziende che vogliono ospitare codice e issues sui propri server, senza cl
 
 ## Stack
 
-- Piattaforma: k3s incluso nell'installer (Linux; Windows via WSL2 previsto).
+- Piattaforma: k3s incluso nell'installer (Linux: Ubuntu Server e Pop!_OS; Windows via WSL2 di prova).
 - Backend: Go, pochi servizi (gateway, identity, git, core) + NATS JetStream.
 - Dati: PostgreSQL (incluso o esterno), uno schema per servizio; repo Git su volume persistente.
 - Frontend: React + TypeScript, usa solo l'API pubblica REST descritta in OpenAPI.

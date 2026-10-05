@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "id": "PROP-62cbfe78-5634-41d6-b23f-c9a5e5587dff",
+  "state": "applied",
+  "created": "2026-10-05T13:19:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Supporto Windows via WSL2\" con W1–W2; D14 rivista da supporto ufficiale a supporto di prova (versione precedente tra le superate); outcome e scope di M-08 aggiornati (orizzonte invariato); installazione e PROJECT.md allineati.",
+    "targets": [
+      "TOP-9b160889-2953-4eaf-b316-1fb22dc8f061",
+      "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+      "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+      "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+      "PROJECT.md"
+    ],
+    "before_digests": {
+      "roadmap/analysis/wsl2-produzione.md": "5991cc6a9b44f3fb661dc63850092017e162287320a3bf3ea298bc68680a967f",
+      "roadmap/product/m-08-installazione-upgrade-backup.md": "6e18d14b79f8d6663fc7477b71d6809d9e366e8b4b6e147500b0bc2a7ddaee8d",
+      "knowledge/topics/installazione-e-deploy.md": "9b8188a8d2b5250ab7dee959ecb61e784fdcd54941177e072e4a41d5fce4a177",
+      "knowledge/topics/decisioni.md": "e58ba2370b9a03f631659af19ec82b62cf5488ba886979859214eda672ec7224",
+      "PROJECT.md": "368fd8db77ef9a99e8dd04e1e24d023996b6d41646dfa4d1a2690842b86c87e2"
+    },
+    "operations": [
+      {
+        "target": "TOP-9b160889-2953-4eaf-b316-1fb22dc8f061",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (W1, W2)."
+      },
+      {
+        "target": "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+        "op": "update",
+        "reason": "D14 cambiata (conflitto mostrato all'operatore e confermato); versione precedente in Superseded."
+      },
+      {
+        "target": "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+        "op": "update_scope",
+        "reason": "Windows via WSL2 di prova; supporto ufficiale fuori dalla v1."
+      },
+      {
+        "target": "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+        "op": "update",
+        "reason": "W1, W2; rimossa la domanda aperta sul rischio WSL2."
+      },
+      {
+        "target": "PROJECT.md",
+        "op": "update",
+        "reason": "Piattaforma: Ubuntu Server e Pop!_OS; Windows via WSL2 di prova."
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–2 nella sessione di analisi del 2026-10-05",
+      "Conflitto con D14 segnalato prima della conferma"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" alla domanda \"Confermi il consolidamento così, compreso il cambio di D14?\"."
+  }
+}
