@@ -38,6 +38,10 @@
          Secret gitstack-identity-admin (mai stampata), 403
          password_change_required sulle altre chiamate, cambio password e
          chiamata autenticata attraverso il gateway.
+      e5. git reale (GIT-77): utente di prova con token e chiave SSH, repo
+         creato via API, push via HTTPS (ingress) e via SSH (porta 2222 della
+         VM), clone/pull incrociati e clone anonimo rifiutato. Serve git
+         nel PATH dell'host.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -60,6 +64,9 @@
     Salta il passo (a): riusa la VM nello stato in cui si trova. Solo per il
     debug di questo script: normalmente la VM viene sempre ripristinata al
     checkpoint 'clean' prima di ogni prova.
+
+.PARAMETER GitSshPort
+    Passo (e5): porta SSH del servizio git sulla VM. Default 2222.
 
 .PARAMETER JetStreamPollAttempts
     Passo (e): numero di letture del conteggio JetStream dopo la create,
@@ -90,7 +97,8 @@ param(
     [int]$SshCommandTimeoutSeconds = 60,
     [int]$InstallTimeoutSeconds = 900,
     [int]$JetStreamPollAttempts = 6,
-    [int]$JetStreamPollIntervalSeconds = 5
+    [int]$JetStreamPollIntervalSeconds = 5,
+    [int]$GitSshPort = 2222
 )
 
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
@@ -581,6 +589,107 @@ function Main {
         }
 
         Add-StepResult -Name 'e4. risorsa di prova: 401 senza credenziali, create+read con la sessione, evento JetStream' -Ok $e4Ok -Detail ($e4Details -join '; ')
+
+        # --- e5. git reale: repo via API, clone e push via HTTPS e SSH (GIT-77) ---
+        # Dall'host Windows, con il git e l'ssh del board: utente di prova con
+        # token e chiave SSH (porta 2222 della VM), repo creato via API, push
+        # via HTTPS (ingress, token in Basic auth) e via SSH, clone dell'altro
+        # protocollo che vede il commit, e un clone anonimo che deve fallire.
+        Write-Log "==> Passo e5: repo via API, clone e push via HTTPS e SSH (porta $GitSshPort) ..."
+        $e5Ok = $true
+        $e5Details = @()
+        $e5Stage = 'preparazione'
+        $savedEnv = @{}
+        foreach ($n in 'GIT_TERMINAL_PROMPT', 'GCM_INTERACTIVE', 'GIT_SSH_COMMAND', 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL') {
+            $savedEnv[$n] = [Environment]::GetEnvironmentVariable($n)
+        }
+        try {
+            if (-not $ck) { throw "manca la sessione dell'admin (passo e3 fallito)" }
+            if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "git non e nel PATH dell'host" }
+            $gitWork = Join-Path $OutDir 'git-e5'
+            New-Item -ItemType Directory -Path $gitWork -Force | Out-Null
+            $suffix = Get-Date -Format 'HHmmss'
+            $gitUser = "e2egit$suffix"
+            $gitPassword = 'E2e-git-password-lunga-42'
+            $gitRepo = "prova-$suffix"
+
+            $e5Stage = 'utente di prova'
+            $mkUser = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Method 'POST' -Cookie $ck -Body (@{ username = $gitUser; email = "$gitUser@example.com"; password = $gitPassword } | ConvertTo-Json)
+            if ($mkUser.StatusCode -ne 201) { throw "creazione utente: status $($mkUser.StatusCode), corpo '$($mkUser.Body)' $($mkUser.Error)" }
+            $uLogin = Invoke-HttpRaw -Uri "$baseUrl/api/v1/auth/login" -Method 'POST' -Body (@{ username = $gitUser; password = $gitPassword } | ConvertTo-Json)
+            if ($uLogin.StatusCode -ne 200 -or -not $uLogin.Cookie) { throw "login utente di prova: status $($uLogin.StatusCode) $($uLogin.Body)" }
+            $uck = $uLogin.Cookie
+            $expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
+            $mkTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $uck -Body (@{ name = 'e2e'; scopes = @('read:resource', 'write:resource'); expiresAt = $expires } | ConvertTo-Json)
+            if ($mkTok.StatusCode -ne 201) { throw "creazione token: status $($mkTok.StatusCode) $($mkTok.Body)" }
+            $gitToken = ($mkTok.Body | ConvertFrom-Json).token
+            if (-not $gitToken) { throw "creazione token: risposta senza 'token'" }
+
+            $sshKey = Join-Path $gitWork 'id_e2e'
+            & ssh-keygen -q -t ed25519 -N '""' -C 'e2e-git' -f $sshKey | Out-Null
+            if (-not (Test-Path -LiteralPath "$sshKey.pub")) { throw "ssh-keygen non ha creato la chiave" }
+            $pub = (Get-Content -Raw -LiteralPath "$sshKey.pub").Trim()
+            $mkKey = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/ssh-keys" -Method 'POST' -Cookie $uck -Body (@{ title = 'e2e'; publicKey = $pub } | ConvertTo-Json)
+            if ($mkKey.StatusCode -ne 201) { throw "registrazione chiave SSH: status $($mkKey.StatusCode) $($mkKey.Body)" }
+
+            $e5Stage = 'creazione del repo'
+            $bearer = @{ Authorization = "Bearer $gitToken" }
+            $mkRepo = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos" -Method 'POST' -Headers $bearer -Body (@{ owner = $gitUser; name = $gitRepo; visibility = 'private' } | ConvertTo-Json)
+            if ($mkRepo.StatusCode -ne 201) { throw "POST /api/v1/repos: status $($mkRepo.StatusCode), corpo '$($mkRepo.Body)' $($mkRepo.Error)" }
+
+            $env:GIT_TERMINAL_PROMPT = '0'
+            $env:GCM_INTERACTIVE = 'never'
+            $env:GIT_AUTHOR_NAME = 'E2E'; $env:GIT_AUTHOR_EMAIL = 'e2e@example.com'
+            $env:GIT_COMMITTER_NAME = 'E2E'; $env:GIT_COMMITTER_EMAIL = 'e2e@example.com'
+            $knownHosts = (Join-Path $gitWork 'known_hosts') -replace '\\', '/'
+            $env:GIT_SSH_COMMAND = "ssh -i $($sshKey -replace '\\', '/') -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=$knownHosts -o LogLevel=ERROR"
+            $gitBase = @('-c', 'credential.helper=', '-c', 'core.autocrlf=false')
+            $httpsUrl = "http://${gitUser}:$gitToken@$($script:VmIp)/$gitUser/$gitRepo.git"
+            $sshUrl = "ssh://git@$($script:VmIp):$GitSshPort/$gitUser/$gitRepo.git"
+
+            $e5Stage = 'push via HTTPS'
+            $w1 = Join-Path $gitWork 'w1'
+            New-Item -ItemType Directory -Path $w1 -Force | Out-Null
+            foreach ($g in @(
+                    @('init', '-q', '-b', 'main', $w1),
+                    @('-C', $w1, 'remote', 'add', 'origin', $httpsUrl))) {
+                $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 60
+                if ($r.ExitCode -ne 0) { throw "git $($g[0]): exit $($r.ExitCode) $($r.StdErr)" }
+            }
+            Set-Content -LiteralPath (Join-Path $w1 'https.txt') -Value 'da https' -Encoding ascii
+            foreach ($g in @(@('-C', $w1, 'add', '-A'), @('-C', $w1, 'commit', '-q', '-m', 'push https'), @('-C', $w1, 'push', '-q', '-u', 'origin', 'main'))) {
+                $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 120
+                if ($r.ExitCode -ne 0) { throw "git $($g[2]) via HTTPS: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            }
+
+            $e5Stage = 'clone e push via SSH'
+            $w2 = Join-Path $gitWork 'w2'
+            $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('clone', '-q', $sshUrl, $w2)) -TimeoutSeconds 120
+            if ($r.ExitCode -ne 0) { throw "git clone via SSH: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            if (-not (Test-Path -LiteralPath (Join-Path $w2 'https.txt'))) { throw "il clone SSH non ha il file spinto via HTTPS" }
+            Set-Content -LiteralPath (Join-Path $w2 'ssh.txt') -Value 'da ssh' -Encoding ascii
+            foreach ($g in @(@('-C', $w2, 'add', '-A'), @('-C', $w2, 'commit', '-q', '-m', 'push ssh'), @('-C', $w2, 'push', '-q', 'origin', 'main'))) {
+                $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 120
+                if ($r.ExitCode -ne 0) { throw "git $($g[2]) via SSH: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            }
+
+            $e5Stage = 'pull via HTTPS del commit spinto via SSH'
+            $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'pull', '-q', '--ff-only', 'origin', 'main')) -TimeoutSeconds 120
+            if ($r.ExitCode -ne 0) { throw "git pull via HTTPS: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            if (-not (Test-Path -LiteralPath (Join-Path $w1 'ssh.txt'))) { throw "il pull HTTPS non ha portato il commit spinto via SSH" }
+
+            $e5Stage = 'accesso negato senza credenziali'
+            $anonUrl = "http://$($script:VmIp)/$gitUser/$gitRepo.git"
+            $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('clone', '-q', $anonUrl, (Join-Path $gitWork 'anon'))) -TimeoutSeconds 60
+            if ($r.ExitCode -eq 0) { throw "il clone senza credenziali e riuscito" }
+            if (Test-Path -LiteralPath (Join-Path $gitWork 'anon\https.txt')) { throw "il clone senza credenziali ha portato dati del repo" }
+        } catch {
+            $e5Ok = $false
+            $e5Details += "[$e5Stage] $($_.Exception.Message)"
+        } finally {
+            foreach ($n in $savedEnv.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv[$n]) }
+        }
+        Add-StepResult -Name 'e5. git reale: repo via API, clone/push/pull via HTTPS (token) e via SSH (porta 2222), clone anonimo negato' -Ok $e5Ok -Detail ($e5Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
