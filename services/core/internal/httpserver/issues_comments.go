@@ -50,20 +50,22 @@ func attachmentIDs(in *[]openapi_types.UUID) []uuid.UUID {
 
 // commentRow è una riga di core.issue_comments.
 type commentRow struct {
-	ID        uuid.UUID
-	AuthorID  uuid.UUID
-	Body      string
-	Edited    bool
-	DeletedAt *time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID           uuid.UUID
+	AuthorID     uuid.UUID
+	Body         string
+	Edited       bool
+	DeletedAt    *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	ViaTokenID   *uuid.UUID
+	ViaTokenName *string
 }
 
-const commentCols = `c.id, c.author_id, c.body, c.edited, c.deleted_at, c.created_at, c.updated_at`
+const commentCols = `c.id, c.author_id, c.body, c.edited, c.deleted_at, c.created_at, c.updated_at, c.via_token_id, c.via_token_name`
 
 func scanComment(r pgx.Row) (commentRow, error) {
 	var c commentRow
-	err := r.Scan(&c.ID, &c.AuthorID, &c.Body, &c.Edited, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt)
+	err := r.Scan(&c.ID, &c.AuthorID, &c.Body, &c.Edited, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt, &c.ViaTokenID, &c.ViaTokenName)
 	return c, err
 }
 
@@ -124,7 +126,7 @@ func (s *apiServer) commentViews(ctx context.Context, q querier, ia issueAccess,
 	out := make([]openapi.IssueComment, 0, len(list))
 	for _, c := range list {
 		v := openapi.IssueComment{
-			Id: openapi_types.UUID(c.ID), IssueNumber: x.Number, Author: dir[c.AuthorID], Edited: c.Edited,
+			Id: openapi_types.UUID(c.ID), IssueNumber: x.Number, Author: dir[c.AuthorID], ViaToken: viaToken(c.ViaTokenID, c.ViaTokenName), Edited: c.Edited,
 			Deleted: c.DeletedAt != nil, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 		}
 		if c.DeletedAt == nil {
@@ -260,8 +262,9 @@ func (s *apiServer) CreateIssueComment(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	id := uuid.New()
-	if _, err := tx.Exec(ctx, `INSERT INTO core.issue_comments (id, issue_id, author_id, body, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, clock_timestamp(), clock_timestamp())`, id, x.ID, ia.userID, in.Body); err != nil {
+	viaID, viaName := tokenOrigin(ia.caller)
+	if _, err := tx.Exec(ctx, `INSERT INTO core.issue_comments (id, issue_id, author_id, body, created_at, updated_at, via_token_id, via_token_name)
+		VALUES ($1, $2, $3, $4, clock_timestamp(), clock_timestamp(), $5, $6)`, id, x.ID, ia.userID, in.Body, viaID, viaName); err != nil {
 		writeIssueFailure(w, "creazione del commento non riuscita", err)
 		return
 	}

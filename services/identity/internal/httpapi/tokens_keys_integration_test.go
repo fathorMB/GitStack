@@ -96,7 +96,7 @@ func TestTokensLifecycleOverHTTP(t *testing.T) {
 	status(t, v, 200)
 	vj := v.json()
 	p, _ := vj["principal"].(map[string]any)
-	if vj["active"] != true || p["username"] != "alice" || p["authMethod"] != "token" || p["credentialId"] != id {
+	if vj["active"] != true || p["username"] != "alice" || p["authMethod"] != "token" || p["credentialId"] != id || p["tokenName"] != "ci" {
 		t.Fatalf("verify: %s", v.body)
 	}
 	if sc, _ := p["scopes"].([]any); len(sc) != 2 {

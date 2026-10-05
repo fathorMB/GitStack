@@ -279,8 +279,9 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 		return
 	}
 	issueID := uuid.New()
-	if _, err := tx.Exec(ctx, `INSERT INTO core.issues (id, repo_id, number, title, body, author_id, milestone_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`, issueID, ia.repo.ID, number, title, body, ia.userID, milestoneID); err != nil {
+	viaID, viaName := tokenOrigin(ia.caller)
+	if _, err := tx.Exec(ctx, `INSERT INTO core.issues (id, repo_id, number, title, body, author_id, milestone_id, via_token_id, via_token_name)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, issueID, ia.repo.ID, number, title, body, ia.userID, milestoneID, viaID, viaName); err != nil {
 		writeIssueFailure(w, "creazione della issue non riuscita", err)
 		return
 	}

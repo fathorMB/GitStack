@@ -11,10 +11,13 @@
 //	X-Gitstack-Username   username
 //	X-Gitstack-Scopes     scope del token separati da virgola; vuoto per le
 //	                      sessioni web
+//	X-Gitstack-Token-Id   id del token usato (vuoto per le sessioni web)
+//	X-Gitstack-Token-Name nome del token usato (vuoto per le sessioni web)
 //	X-Gitstack-Timestamp  secondi Unix del momento della firma
 //	X-Gitstack-Signature  hex(HMAC-SHA256(segreto di servizio,
 //	                      "gitstack-identity-v1\n" + timestamp + "\n" +
-//	                      userId + "\n" + username + "\n" + scopes))
+//	                      userId + "\n" + username + "\n" + scopes + "\n" +
+//	                      tokenId + "\n" + tokenName))
 //
 // Il segreto è quello del Secret `<release>-identity-service`, chiave
 // `secret` (variabile GITSTACK_IDENTITY_SERVICE_SECRET); non viene mai
@@ -38,6 +41,8 @@ const (
 	HeaderUserID    = "X-Gitstack-User-Id"
 	HeaderUsername  = "X-Gitstack-Username"
 	HeaderScopes    = "X-Gitstack-Scopes"
+	HeaderTokenID   = "X-Gitstack-Token-Id"
+	HeaderTokenName = "X-Gitstack-Token-Name"
 	HeaderTimestamp = "X-Gitstack-Timestamp"
 	HeaderSignature = "X-Gitstack-Signature"
 )
@@ -52,6 +57,10 @@ type Identity struct {
 	UserID   string
 	Username string
 	Scopes   []string
+	// TokenID e TokenName sono il token con cui il client si è autenticato;
+	// vuoti per le sessioni web e per le chiamate interne.
+	TokenID   string
+	TokenName string
 }
 
 // Sign scrive gli header d'identità firmati (è ciò che fa il gateway; qui
@@ -62,8 +71,10 @@ func Sign(h http.Header, secret string, id Identity, now time.Time) {
 	h.Set(HeaderUserID, id.UserID)
 	h.Set(HeaderUsername, id.Username)
 	h.Set(HeaderScopes, scopes)
+	h.Set(HeaderTokenID, id.TokenID)
+	h.Set(HeaderTokenName, id.TokenName)
 	h.Set(HeaderTimestamp, ts)
-	h.Set(HeaderSignature, mac(secret, ts, id.UserID, id.Username, scopes))
+	h.Set(HeaderSignature, mac(secret, ts, id.UserID, id.Username, scopes, id.TokenID, id.TokenName))
 }
 
 // Verify controlla gli header d'identità di una richiesta. ok è false se
@@ -83,9 +94,11 @@ func Verify(h http.Header, secret string, now time.Time) (Identity, bool) {
 	userID, ok1 := get(HeaderUserID)
 	username, ok2 := get(HeaderUsername)
 	scopes, ok3 := get(HeaderScopes)
+	tokenID, ok6 := get(HeaderTokenID)
+	tokenName, ok7 := get(HeaderTokenName)
 	ts, ok4 := get(HeaderTimestamp)
 	sig, ok5 := get(HeaderSignature)
-	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || userID == "" || username == "" {
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || userID == "" || username == "" {
 		return Identity{}, false
 	}
 	secs, err := strconv.ParseInt(ts, 10, 64)
@@ -100,20 +113,20 @@ func Verify(h http.Header, secret string, now time.Time) (Identity, bool) {
 	if err != nil {
 		return Identity{}, false
 	}
-	want, _ := hex.DecodeString(mac(secret, ts, userID, username, scopes))
+	want, _ := hex.DecodeString(mac(secret, ts, userID, username, scopes, tokenID, tokenName))
 	if !hmac.Equal(got, want) {
 		return Identity{}, false
 	}
-	id := Identity{UserID: userID, Username: username}
+	id := Identity{UserID: userID, Username: username, TokenID: tokenID, TokenName: tokenName}
 	if scopes != "" {
 		id.Scopes = strings.Split(scopes, ",")
 	}
 	return id, true
 }
 
-func mac(secret, ts, userID, username, scopes string) string {
+func mac(secret, ts, userID, username, scopes, tokenID, tokenName string) string {
 	m := hmac.New(sha256.New, []byte(secret))
-	m.Write([]byte(signaturePrefix + ts + "\n" + userID + "\n" + username + "\n" + scopes))
+	m.Write([]byte(signaturePrefix + ts + "\n" + userID + "\n" + username + "\n" + scopes + "\n" + tokenID + "\n" + tokenName))
 	return hex.EncodeToString(m.Sum(nil))
 }
 

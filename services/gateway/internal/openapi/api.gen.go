@@ -1430,6 +1430,9 @@ type Issue struct {
 	State     IssueState `json:"state"`
 	Title     string     `json:"title"`
 	UpdatedAt time.Time  `json:"updatedAt"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
 }
 
 // IssueAttachment defines model for IssueAttachment.
@@ -1464,6 +1467,9 @@ type IssueComment struct {
 	Id          openapi_types.UUID `json:"id"`
 	IssueNumber int64              `json:"issueNumber"`
 	UpdatedAt   time.Time          `json:"updatedAt"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
 }
 
 // IssueCommentList defines model for IssueCommentList.
@@ -1606,6 +1612,12 @@ type IssueUser struct {
 
 // IssueUserKind defines model for IssueUser.Kind.
 type IssueUserKind string
+
+// IssueViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+type IssueViaToken struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+}
 
 // Label defines model for Label.
 type Label struct {

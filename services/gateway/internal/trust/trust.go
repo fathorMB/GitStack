@@ -8,10 +8,13 @@
 //	X-Gitstack-Username   username
 //	X-Gitstack-Scopes     scope del token separati da virgola; vuoto per le
 //	                      sessioni web (che non hanno scope)
+//	X-Gitstack-Token-Id   id del token usato (vuoto per le sessioni web)
+//	X-Gitstack-Token-Name nome del token usato (vuoto per le sessioni web)
 //	X-Gitstack-Timestamp  secondi Unix del momento della firma
 //	X-Gitstack-Signature  hex(HMAC-SHA256(segreto di servizio,
 //	                      "gitstack-identity-v1\n" + timestamp + "\n" +
-//	                      userId + "\n" + username + "\n" + scopes))
+//	                      userId + "\n" + username + "\n" + scopes + "\n" +
+//	                      tokenId + "\n" + tokenName))
 //
 // Il segreto è quello di servizio (Secret `<release>-identity-service`,
 // chiave `secret`): lo conoscono solo gateway, identity e core, mai il
@@ -37,6 +40,8 @@ const (
 	HeaderUserID    = "X-Gitstack-User-Id"
 	HeaderUsername  = "X-Gitstack-Username"
 	HeaderScopes    = "X-Gitstack-Scopes"
+	HeaderTokenID   = "X-Gitstack-Token-Id"
+	HeaderTokenName = "X-Gitstack-Token-Name"
 	HeaderTimestamp = "X-Gitstack-Timestamp"
 	HeaderSignature = "X-Gitstack-Signature"
 
@@ -52,6 +57,10 @@ type Identity struct {
 	UserID   string
 	Username string
 	Scopes   []string
+	// TokenID e TokenName sono il token con cui il client si è autenticato;
+	// vuoti per le sessioni web e per le chiamate interne.
+	TokenID   string
+	TokenName string
 }
 
 // Sign scrive gli header d'identità firmati su h.
@@ -61,8 +70,10 @@ func Sign(h http.Header, secret string, id Identity, now time.Time) {
 	h.Set(HeaderUserID, id.UserID)
 	h.Set(HeaderUsername, id.Username)
 	h.Set(HeaderScopes, scopes)
+	h.Set(HeaderTokenID, id.TokenID)
+	h.Set(HeaderTokenName, id.TokenName)
 	h.Set(HeaderTimestamp, ts)
-	h.Set(HeaderSignature, mac(secret, ts, id.UserID, id.Username, scopes))
+	h.Set(HeaderSignature, mac(secret, ts, id.UserID, id.Username, scopes, id.TokenID, id.TokenName))
 }
 
 // StripClientHeaders elimina da h ogni header con il prefisso riservato.
@@ -74,9 +85,9 @@ func StripClientHeaders(h http.Header) {
 	}
 }
 
-func mac(secret, ts, userID, username, scopes string) string {
+func mac(secret, ts, userID, username, scopes, tokenID, tokenName string) string {
 	m := hmac.New(sha256.New, []byte(secret))
-	m.Write([]byte(signaturePrefix + ts + "\n" + userID + "\n" + username + "\n" + scopes))
+	m.Write([]byte(signaturePrefix + ts + "\n" + userID + "\n" + username + "\n" + scopes + "\n" + tokenID + "\n" + tokenName))
 	return hex.EncodeToString(m.Sum(nil))
 }
 

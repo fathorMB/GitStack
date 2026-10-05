@@ -349,7 +349,7 @@ func (s *server) VerifyCredential(w http.ResponseWriter, r *http.Request) {
 		sc := toScopes(p.Token.Scopes)
 		writeJSON(w, http.StatusOK, openapi.VerifyCredentialResult{Active: true, CacheTtlSeconds: &ttl, Principal: &openapi.Principal{
 			UserId: uid, Username: p.Username, Kind: openapi.PrincipalKind(p.Kind), IsAdmin: p.IsAdmin,
-			AuthMethod: openapi.PrincipalAuthMethod("token"), Scopes: &sc, CredentialId: &id, ExpiresAt: p.Token.ExpiresAt,
+			AuthMethod: openapi.PrincipalAuthMethod("token"), Scopes: &sc, CredentialId: &id, TokenName: &p.Token.Name, ExpiresAt: p.Token.ExpiresAt,
 		}})
 		return
 	}
