@@ -33,6 +33,69 @@ func (e CodeUserKind) Valid() bool {
 	}
 }
 
+// Defines values for FileContentDisplay.
+const (
+	FileContentDisplayDownload  FileContentDisplay = "download"
+	FileContentDisplayHighlight FileContentDisplay = "highlight"
+	FileContentDisplayImage     FileContentDisplay = "image"
+	FileContentDisplayPlain     FileContentDisplay = "plain"
+)
+
+// Valid indicates whether the value is a known member of the FileContentDisplay enum.
+func (e FileContentDisplay) Valid() bool {
+	switch e {
+	case FileContentDisplayDownload:
+		return true
+	case FileContentDisplayHighlight:
+		return true
+	case FileContentDisplayImage:
+		return true
+	case FileContentDisplayPlain:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FileContentEncoding.
+const (
+	Base64 FileContentEncoding = "base64"
+	Utf8   FileContentEncoding = "utf-8"
+)
+
+// Valid indicates whether the value is a known member of the FileContentEncoding enum.
+func (e FileContentEncoding) Valid() bool {
+	switch e {
+	case Base64:
+		return true
+	case Utf8:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FileContentKind.
+const (
+	FileContentKindBinary FileContentKind = "binary"
+	FileContentKindImage  FileContentKind = "image"
+	FileContentKindText   FileContentKind = "text"
+)
+
+// Valid indicates whether the value is a known member of the FileContentKind enum.
+func (e FileContentKind) Valid() bool {
+	switch e {
+	case FileContentKindBinary:
+		return true
+	case FileContentKindImage:
+		return true
+	case FileContentKindText:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FileDiffCollapseReason.
 const (
 	Generated FileDiffCollapseReason = "generated"
@@ -240,6 +303,78 @@ func (e TreeEntryType) Valid() bool {
 	}
 }
 
+// Defines values for ArchiveFormatParam.
+const (
+	ArchiveFormatParamTarGz ArchiveFormatParam = "tar.gz"
+	ArchiveFormatParamZip   ArchiveFormatParam = "zip"
+)
+
+// Valid indicates whether the value is a known member of the ArchiveFormatParam enum.
+func (e ArchiveFormatParam) Valid() bool {
+	switch e {
+	case ArchiveFormatParamTarGz:
+		return true
+	case ArchiveFormatParamZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchFormatParam.
+const (
+	PatchFormatParamDiff  PatchFormatParam = "diff"
+	PatchFormatParamPatch PatchFormatParam = "patch"
+)
+
+// Valid indicates whether the value is a known member of the PatchFormatParam enum.
+func (e PatchFormatParam) Valid() bool {
+	switch e {
+	case PatchFormatParamDiff:
+		return true
+	case PatchFormatParamPatch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetRepositoryArchiveParamsFormat.
+const (
+	GetRepositoryArchiveParamsFormatTarGz GetRepositoryArchiveParamsFormat = "tar.gz"
+	GetRepositoryArchiveParamsFormatZip   GetRepositoryArchiveParamsFormat = "zip"
+)
+
+// Valid indicates whether the value is a known member of the GetRepositoryArchiveParamsFormat enum.
+func (e GetRepositoryArchiveParamsFormat) Valid() bool {
+	switch e {
+	case GetRepositoryArchiveParamsFormatTarGz:
+		return true
+	case GetRepositoryArchiveParamsFormatZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetRepositoryCommitPatchParamsFormat.
+const (
+	GetRepositoryCommitPatchParamsFormatDiff  GetRepositoryCommitPatchParamsFormat = "diff"
+	GetRepositoryCommitPatchParamsFormatPatch GetRepositoryCommitPatchParamsFormat = "patch"
+)
+
+// Valid indicates whether the value is a known member of the GetRepositoryCommitPatchParamsFormat enum.
+func (e GetRepositoryCommitPatchParamsFormat) Valid() bool {
+	switch e {
+	case GetRepositoryCommitPatchParamsFormatDiff:
+		return true
+	case GetRepositoryCommitPatchParamsFormatPatch:
+		return true
+	default:
+		return false
+	}
+}
+
 // Blame defines model for Blame.
 type Blame struct {
 	Path   string       `json:"path"`
@@ -268,6 +403,30 @@ type Branch struct {
 type BranchList struct {
 	Items []Branch `json:"items"`
 	Total int      `json:"total"`
+}
+
+// CodeSearchHit defines model for CodeSearchHit.
+type CodeSearchHit struct {
+	// Fragment La riga della corrispondenza, tagliata a 300 caratteri (`searchFragmentMaxChars`) attorno al testo cercato.
+	Fragment string `json:"fragment"`
+
+	// Line Numero di riga (da 1) della corrispondenza.
+	Line int    `json:"line"`
+	Path string `json:"path"`
+}
+
+// CodeSearchResult Risultato di "Search code" (regola B5): ricerca testuale senza indice sul ref scelto, in un solo repo.
+type CodeSearchResult struct {
+	// LimitReached True se ci sono altri risultati oltre i 100 restituiti.
+	LimitReached bool   `json:"limitReached"`
+	Query        string `json:"query"`
+	Ref          string `json:"ref"`
+
+	// Results Al massimo 100 risultati (`searchMaxResults`), per percorso e riga. Si cerca solo nei file di testo fino a 1 MB (`searchFileMaxBytes`).
+	Results []CodeSearchHit `json:"results"`
+
+	// TimedOut True se la ricerca e' stata interrotta dopo 10 secondi (`searchTimeoutSeconds`); i risultati sono parziali.
+	TimedOut bool `json:"timedOut"`
 }
 
 // CodeUser Utente GitStack che corrisponde all'email di un commit (confronto senza distinguere maiuscole con l'email di identity). `kind` da' il badge umano/agente.
@@ -420,24 +579,46 @@ type Error struct {
 
 // FileContent defines model for FileContent.
 type FileContent struct {
+	// Binary True per tutto cio' che non e' testo (anche le immagini, SVG compreso).
 	Binary bool `json:"binary"`
 
-	// Content Testo UTF-8; assente se `binary` (usare `raw`).
-	Content    *string       `json:"content,omitempty"`
-	LastCommit CommitSummary `json:"lastCommit"`
-	Name       string        `json:"name"`
-	Path       string        `json:"path"`
-	Ref        string        `json:"ref"`
+	// Content Testo UTF-8 (`display` `highlight` o `plain`) o immagine in base64 (`display` `image`); assente con `display` `download`.
+	Content *string `json:"content,omitempty"`
+
+	// Display Regola B1, sempre presente. `highlight`: testo fino a 1 MB (1 048 576 byte, `fileHighlightMaxBytes`), `content` intero, da evidenziare. `plain`: testo da 1 MB a 5 MB (5 242 880 byte, `filePlainMaxBytes`), `content` intero, senza evidenziazione. `image`: immagine fino a 1 MB (`imageInlineMaxBytes`), `content` in base64. `download`: nessun `content` (testo oltre 5 MB, immagine oltre 1 MB, altri binari): si scarica con `raw`.
+	Display FileContentDisplay `json:"display"`
+
+	// Encoding Codifica di `content`; assente se `content` manca. `base64` solo per le immagini.
+	Encoding *FileContentEncoding `json:"encoding,omitempty"`
+
+	// Kind `text`; `image` per PNG, JPEG, GIF, WebP e SVG (riconosciuti dal contenuto, non dall'estensione; SVG solo come immagine, mai come pagina); `binary` per ogni altro file non di testo.
+	Kind       FileContentKind `json:"kind"`
+	LastCommit CommitSummary   `json:"lastCommit"`
+
+	// MimeType Solo per `kind` `image`, es. `image/png`, `image/svg+xml`.
+	MimeType *string `json:"mimeType,omitempty"`
+	Name     string  `json:"name"`
+	Path     string  `json:"path"`
+	Ref      string  `json:"ref"`
 
 	// Sha Sha del blob.
 	Sha string `json:"sha"`
 
-	// Size Dimensione reale in byte, anche se troncato.
+	// Size Dimensione reale in byte, sempre, anche se `content` manca.
 	Size int64 `json:"size"`
 
-	// Truncated True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+	// Truncated True se `content` non porta tutto il file per il limite di dimensione: un testo oltre 5 MB (`display` `download`, nessun contenuto). Mai true per binari e immagini, che per natura non hanno `content` testuale; mai true per `highlight`, `plain` e `image`, il cui `content` e' sempre intero.
 	Truncated bool `json:"truncated"`
 }
+
+// FileContentDisplay Regola B1, sempre presente. `highlight`: testo fino a 1 MB (1 048 576 byte, `fileHighlightMaxBytes`), `content` intero, da evidenziare. `plain`: testo da 1 MB a 5 MB (5 242 880 byte, `filePlainMaxBytes`), `content` intero, senza evidenziazione. `image`: immagine fino a 1 MB (`imageInlineMaxBytes`), `content` in base64. `download`: nessun `content` (testo oltre 5 MB, immagine oltre 1 MB, altri binari): si scarica con `raw`.
+type FileContentDisplay string
+
+// FileContentEncoding Codifica di `content`; assente se `content` manca. `base64` solo per le immagini.
+type FileContentEncoding string
+
+// FileContentKind `text`; `image` per PNG, JPEG, GIF, WebP e SVG (riconosciuti dal contenuto, non dall'estensione; SVG solo come immagine, mai come pagina); `binary` per ogni altro file non di testo.
+type FileContentKind string
 
 // FileDiff defines model for FileDiff.
 type FileDiff struct {
@@ -468,6 +649,20 @@ type FileDiffCollapseReason string
 
 // FileDiffStatus defines model for FileDiff.Status.
 type FileDiffStatus string
+
+// FileList Percorsi di tutti i file del ref per "Go to file" (regola B5): la corrispondenza approssimata la fa il client sull'elenco.
+type FileList struct {
+	CommitSha string `json:"commitSha"`
+
+	// Paths Percorsi dei file (non delle cartelle), in ordine alfabetico, al massimo 50 000 (`fileListMaxPaths`).
+	Paths []string `json:"paths"`
+
+	// Ref Il `ref` risolto (il branch principale se non indicato).
+	Ref string `json:"ref"`
+
+	// Truncated True se il repo ha piu' di 50 000 file e questi sono i primi 50 000.
+	Truncated bool `json:"truncated"`
+}
 
 // GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
 type GitignoreTemplate string
@@ -615,10 +810,18 @@ type Tag struct {
 	Annotated bool          `json:"annotated"`
 	Commit    CommitSummary `json:"commit"`
 
-	// Message Messaggio del tag annotato.
-	Message  *string    `json:"message,omitempty"`
-	Name     string     `json:"name"`
-	TaggedAt *time.Time `json:"taggedAt,omitempty"`
+	// Message Messaggio del tag; solo se `annotated`.
+	Message *string `json:"message,omitempty"`
+	Name    string  `json:"name"`
+
+	// TaggedAt Data del tag; per un tag leggero quella del commit (regola B7).
+	TaggedAt time.Time `json:"taggedAt"`
+
+	// TarGzUrl Come `zipUrl`, per il tar.gz.
+	TarGzUrl *string `json:"tarGzUrl,omitempty"`
+
+	// ZipUrl Indirizzo di scaricamento ZIP (`getRepositoryArchive` con `ref` il nome del tag, relativo a `/v1`). Lo aggiunge core: il servizio git non conosce owner e nome, quindi nella sua risposta manca; sempre presente in quella pubblica.
+	ZipUrl *string `json:"zipUrl,omitempty"`
 }
 
 // TagList defines model for TagList.
@@ -674,6 +877,12 @@ type UpdateResourceInput struct {
 	Name       *string                 `json:"name,omitempty"`
 }
 
+// ArchiveFormatParam defines model for ArchiveFormatParam.
+type ArchiveFormatParam string
+
+// CodeSearchQueryParam defines model for CodeSearchQueryParam.
+type CodeSearchQueryParam = string
+
 // CommitAuthorFilter defines model for CommitAuthorFilter.
 type CommitAuthorFilter = string
 
@@ -686,6 +895,9 @@ type CommitPerPageParam = int
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
 
+// DiffFilePathParam defines model for DiffFilePathParam.
+type DiffFilePathParam = string
+
 // FilePathParam defines model for FilePathParam.
 type FilePathParam = string
 
@@ -694,6 +906,9 @@ type GitRepoIdParam = openapi_types.UUID
 
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
+
+// IgnoreWhitespaceParam defines model for IgnoreWhitespaceParam.
+type IgnoreWhitespaceParam = bool
 
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -708,11 +923,17 @@ type OrgParam = Name
 // PageParam defines model for PageParam.
 type PageParam = int
 
+// PatchFormatParam defines model for PatchFormatParam.
+type PatchFormatParam string
+
 // PathParam defines model for PathParam.
 type PathParam = string
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RefAndPathParam defines model for RefAndPathParam.
+type RefAndPathParam = string
 
 // RefParam defines model for RefParam.
 type RefParam = string
@@ -790,7 +1011,13 @@ type ListDeletedRepositoriesParams struct {
 type GetRepositoryArchiveParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Format Formato dell'archivio (default `zip`).
+	Format *GetRepositoryArchiveParamsFormat `form:"format,omitempty" json:"format,omitempty"`
 }
+
+// GetRepositoryArchiveParamsFormat defines parameters for GetRepositoryArchive.
+type GetRepositoryArchiveParamsFormat string
 
 // GetRepositoryBlameParams defines parameters for GetRepositoryBlame.
 type GetRepositoryBlameParams struct {
@@ -817,6 +1044,27 @@ type GetRepositoryCommitsParams struct {
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// GetRepositoryCommitParams defines parameters for GetRepositoryCommit.
+type GetRepositoryCommitParams struct {
+	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+	Path *DiffFilePathParam `form:"path,omitempty" json:"path,omitempty"`
+
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// GetRepositoryCommitPatchParams defines parameters for GetRepositoryCommitPatch.
+type GetRepositoryCommitPatchParams struct {
+	// Format `patch` (default): formato mbox di `git format-patch` con autore, data e messaggio, scaricato come `.patch`; `diff`: solo il diff unificato, scaricato come `.diff`.
+	Format *GetRepositoryCommitPatchParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// GetRepositoryCommitPatchParamsFormat defines parameters for GetRepositoryCommitPatch.
+type GetRepositoryCommitPatchParamsFormat string
+
 // GetRepositoryFileParams defines parameters for GetRepositoryFile.
 type GetRepositoryFileParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -824,6 +1072,12 @@ type GetRepositoryFileParams struct {
 
 	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
 	Path FilePathParam `form:"path" json:"path"`
+}
+
+// ListRepositoryFilesParams defines parameters for ListRepositoryFiles.
+type ListRepositoryFilesParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
 
 // GetRepositoryLanguagesParams defines parameters for GetRepositoryLanguages.
@@ -848,6 +1102,15 @@ type GetRepositoryReadmeParams struct {
 
 	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// SearchRepositoryCodeParams defines parameters for SearchRepositoryCode.
+type SearchRepositoryCodeParams struct {
+	// Q Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+	Q CodeSearchQueryParam `form:"q" json:"q"`
+
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
 
 // GetRepositoryTreeParams defines parameters for GetRepositoryTree.
@@ -905,7 +1168,7 @@ type ServerInterface interface {
 	// UpdateRepository Modifica le impostazioni di un repo
 	// (PATCH /repos/{owner}/{repo})
 	UpdateRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
-	// GetRepositoryArchive Archivio ZIP di un ref (streaming)
+	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	// (GET /repos/{owner}/{repo}/archive)
 	GetRepositoryArchive(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryArchiveParams)
 	// GetRepositoryBlame Blame di un file
@@ -919,19 +1182,31 @@ type ServerInterface interface {
 	GetRepositoryCommits(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryCommitsParams)
 	// GetRepositoryCommit Dettaglio di un commit con diff per file
 	// (GET /repos/{owner}/{repo}/commits/{sha})
-	GetRepositoryCommit(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam)
+	GetRepositoryCommit(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params GetRepositoryCommitParams)
+	// GetRepositoryCommitPatch Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+	// (GET /repos/{owner}/{repo}/commits/{sha}/patch)
+	GetRepositoryCommitPatch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params GetRepositoryCommitPatchParams)
 	// GetRepositoryFile Contenuto di un file
 	// (GET /repos/{owner}/{repo}/contents)
 	GetRepositoryFile(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryFileParams)
+	// ListRepositoryFiles Percorsi di tutti i file di un ref ("Go to file")
+	// (GET /repos/{owner}/{repo}/files)
+	ListRepositoryFiles(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListRepositoryFilesParams)
 	// GetRepositoryLanguages Lingue del repo
 	// (GET /repos/{owner}/{repo}/languages)
 	GetRepositoryLanguages(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryLanguagesParams)
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	// (GET /repos/{owner}/{repo}/raw)
 	GetRepositoryRaw(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryRawParams)
+	// GetRepositoryRawByPath Contenuto grezzo di un file, per indirizzo (streaming)
+	// (GET /repos/{owner}/{repo}/raw/{refAndPath})
+	GetRepositoryRawByPath(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, refAndPath RefAndPathParam)
 	// GetRepositoryReadme README di una cartella
 	// (GET /repos/{owner}/{repo}/readme)
 	GetRepositoryReadme(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryReadmeParams)
+	// SearchRepositoryCode Cerca un testo nel codice di un ref ("Search code")
+	// (GET /repos/{owner}/{repo}/search)
+	SearchRepositoryCode(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params SearchRepositoryCodeParams)
 	// GetRepositoryTags Tag del repo, con conteggi
 	// (GET /repos/{owner}/{repo}/tags)
 	GetRepositoryTags(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -1255,6 +1530,19 @@ func (siw *ServerInterfaceWrapper) GetRepositoryArchive(w http.ResponseWriter, r
 		return
 	}
 
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRepositoryArchive(w, r, owner, repo, params)
 	}))
@@ -1501,8 +1789,110 @@ func (siw *ServerInterfaceWrapper) GetRepositoryCommit(w http.ResponseWriter, r 
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryCommitParams
+
+	// ------------- Optional query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ignoreWhitespace" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ignoreWhitespace", r.URL.Query(), &params.IgnoreWhitespace, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ignoreWhitespace"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ignoreWhitespace", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetRepositoryCommit(w, r, owner, repo, sha)
+		siw.Handler.GetRepositoryCommit(w, r, owner, repo, sha, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepositoryCommitPatch operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryCommitPatch(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sha" -------------
+	var sha CommitShaParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sha", r.PathValue("sha"), &sha, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sha", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRepositoryCommitPatchParams
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", r.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "format"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "format", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ignoreWhitespace" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ignoreWhitespace", r.URL.Query(), &params.IgnoreWhitespace, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ignoreWhitespace"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ignoreWhitespace", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryCommitPatch(w, r, owner, repo, sha, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1567,6 +1957,57 @@ func (siw *ServerInterfaceWrapper) GetRepositoryFile(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRepositoryFile(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepositoryFiles operation middleware
+func (siw *ServerInterfaceWrapper) ListRepositoryFiles(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListRepositoryFilesParams
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepositoryFiles(w, r, owner, repo, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1691,6 +2132,50 @@ func (siw *ServerInterfaceWrapper) GetRepositoryRaw(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// GetRepositoryRawByPath operation middleware
+func (siw *ServerInterfaceWrapper) GetRepositoryRawByPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "refAndPath" -------------
+	var refAndPath RefAndPathParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "refAndPath", r.PathValue("refAndPath"), &refAndPath, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "refAndPath", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepositoryRawByPath(w, r, owner, repo, refAndPath)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetRepositoryReadme operation middleware
 func (siw *ServerInterfaceWrapper) GetRepositoryReadme(w http.ResponseWriter, r *http.Request) {
 
@@ -1746,6 +2231,70 @@ func (siw *ServerInterfaceWrapper) GetRepositoryReadme(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRepositoryReadme(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchRepositoryCode operation middleware
+func (siw *ServerInterfaceWrapper) SearchRepositoryCode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchRepositoryCodeParams
+
+	// ------------- Required query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ref" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ref", r.URL.Query(), &params.Ref, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ref"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchRepositoryCode(w, r, owner, repo, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2149,6 +2698,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/archive", wrapper.GetRepositoryArchive)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/languages", wrapper.GetRepositoryLanguages)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/readme", wrapper.GetRepositoryReadme)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/raw/{refAndPath}", wrapper.GetRepositoryRawByPath)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/files", wrapper.ListRepositoryFiles)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/search", wrapper.SearchRepositoryCode)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/patch", wrapper.GetRepositoryCommitPatch)
 
 	return m
 }

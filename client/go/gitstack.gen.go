@@ -93,6 +93,69 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	}
 }
 
+// Defines values for FileContentDisplay.
+const (
+	FileContentDisplayDownload  FileContentDisplay = "download"
+	FileContentDisplayHighlight FileContentDisplay = "highlight"
+	FileContentDisplayImage     FileContentDisplay = "image"
+	FileContentDisplayPlain     FileContentDisplay = "plain"
+)
+
+// Valid indicates whether the value is a known member of the FileContentDisplay enum.
+func (e FileContentDisplay) Valid() bool {
+	switch e {
+	case FileContentDisplayDownload:
+		return true
+	case FileContentDisplayHighlight:
+		return true
+	case FileContentDisplayImage:
+		return true
+	case FileContentDisplayPlain:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FileContentEncoding.
+const (
+	Base64 FileContentEncoding = "base64"
+	Utf8   FileContentEncoding = "utf-8"
+)
+
+// Valid indicates whether the value is a known member of the FileContentEncoding enum.
+func (e FileContentEncoding) Valid() bool {
+	switch e {
+	case Base64:
+		return true
+	case Utf8:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FileContentKind.
+const (
+	FileContentKindBinary FileContentKind = "binary"
+	FileContentKindImage  FileContentKind = "image"
+	FileContentKindText   FileContentKind = "text"
+)
+
+// Valid indicates whether the value is a known member of the FileContentKind enum.
+func (e FileContentKind) Valid() bool {
+	switch e {
+	case FileContentKindBinary:
+		return true
+	case FileContentKindImage:
+		return true
+	case FileContentKindText:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FileDiffCollapseReason.
 const (
 	Generated FileDiffCollapseReason = "generated"
@@ -501,6 +564,96 @@ func (e VerifyCredentialInputKind) Valid() bool {
 	}
 }
 
+// Defines values for ArchiveFormatParam.
+const (
+	ArchiveFormatParamTarGz ArchiveFormatParam = "tar.gz"
+	ArchiveFormatParamZip   ArchiveFormatParam = "zip"
+)
+
+// Valid indicates whether the value is a known member of the ArchiveFormatParam enum.
+func (e ArchiveFormatParam) Valid() bool {
+	switch e {
+	case ArchiveFormatParamTarGz:
+		return true
+	case ArchiveFormatParamZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchFormatParam.
+const (
+	PatchFormatParamDiff  PatchFormatParam = "diff"
+	PatchFormatParamPatch PatchFormatParam = "patch"
+)
+
+// Valid indicates whether the value is a known member of the PatchFormatParam enum.
+func (e PatchFormatParam) Valid() bool {
+	switch e {
+	case PatchFormatParamDiff:
+		return true
+	case PatchFormatParamPatch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GitGetArchiveParamsFormat.
+const (
+	GitGetArchiveParamsFormatTarGz GitGetArchiveParamsFormat = "tar.gz"
+	GitGetArchiveParamsFormatZip   GitGetArchiveParamsFormat = "zip"
+)
+
+// Valid indicates whether the value is a known member of the GitGetArchiveParamsFormat enum.
+func (e GitGetArchiveParamsFormat) Valid() bool {
+	switch e {
+	case GitGetArchiveParamsFormatTarGz:
+		return true
+	case GitGetArchiveParamsFormatZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetRepositoryArchiveParamsFormat.
+const (
+	GetRepositoryArchiveParamsFormatTarGz GetRepositoryArchiveParamsFormat = "tar.gz"
+	GetRepositoryArchiveParamsFormatZip   GetRepositoryArchiveParamsFormat = "zip"
+)
+
+// Valid indicates whether the value is a known member of the GetRepositoryArchiveParamsFormat enum.
+func (e GetRepositoryArchiveParamsFormat) Valid() bool {
+	switch e {
+	case GetRepositoryArchiveParamsFormatTarGz:
+		return true
+	case GetRepositoryArchiveParamsFormatZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetRepositoryCommitPatchParamsFormat.
+const (
+	GetRepositoryCommitPatchParamsFormatDiff  GetRepositoryCommitPatchParamsFormat = "diff"
+	GetRepositoryCommitPatchParamsFormatPatch GetRepositoryCommitPatchParamsFormat = "patch"
+)
+
+// Valid indicates whether the value is a known member of the GetRepositoryCommitPatchParamsFormat enum.
+func (e GetRepositoryCommitPatchParamsFormat) Valid() bool {
+	switch e {
+	case GetRepositoryCommitPatchParamsFormatDiff:
+		return true
+	case GetRepositoryCommitPatchParamsFormatPatch:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddSshKeyInput defines model for AddSshKeyInput.
 type AddSshKeyInput struct {
 	// PublicKey Riga in formato `authorized_keys` (tipo, base64, commento facoltativo).
@@ -559,6 +712,30 @@ type CheckPermissionInput struct {
 type CheckPermissionResult struct {
 	Allowed       bool          `json:"allowed"`
 	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
+}
+
+// CodeSearchHit defines model for CodeSearchHit.
+type CodeSearchHit struct {
+	// Fragment La riga della corrispondenza, tagliata a 300 caratteri (`searchFragmentMaxChars`) attorno al testo cercato.
+	Fragment string `json:"fragment"`
+
+	// Line Numero di riga (da 1) della corrispondenza.
+	Line int    `json:"line"`
+	Path string `json:"path"`
+}
+
+// CodeSearchResult Risultato di "Search code" (regola B5): ricerca testuale senza indice sul ref scelto, in un solo repo.
+type CodeSearchResult struct {
+	// LimitReached True se ci sono altri risultati oltre i 100 restituiti.
+	LimitReached bool   `json:"limitReached"`
+	Query        string `json:"query"`
+	Ref          string `json:"ref"`
+
+	// Results Al massimo 100 risultati (`searchMaxResults`), per percorso e riga. Si cerca solo nei file di testo fino a 1 MB (`searchFileMaxBytes`).
+	Results []CodeSearchHit `json:"results"`
+
+	// TimedOut True se la ricerca e' stata interrotta dopo 10 secondi (`searchTimeoutSeconds`); i risultati sono parziali.
+	TimedOut bool `json:"timedOut"`
 }
 
 // CodeUser Utente GitStack che corrisponde all'email di un commit (confronto senza distinguere maiuscole con l'email di identity). `kind` da' il badge umano/agente.
@@ -816,24 +993,46 @@ type Error struct {
 
 // FileContent defines model for FileContent.
 type FileContent struct {
+	// Binary True per tutto cio' che non e' testo (anche le immagini, SVG compreso).
 	Binary bool `json:"binary"`
 
-	// Content Testo UTF-8; assente se `binary` (usare `raw`).
-	Content    *string       `json:"content,omitempty"`
-	LastCommit CommitSummary `json:"lastCommit"`
-	Name       string        `json:"name"`
-	Path       string        `json:"path"`
-	Ref        string        `json:"ref"`
+	// Content Testo UTF-8 (`display` `highlight` o `plain`) o immagine in base64 (`display` `image`); assente con `display` `download`.
+	Content *string `json:"content,omitempty"`
+
+	// Display Regola B1, sempre presente. `highlight`: testo fino a 1 MB (1 048 576 byte, `fileHighlightMaxBytes`), `content` intero, da evidenziare. `plain`: testo da 1 MB a 5 MB (5 242 880 byte, `filePlainMaxBytes`), `content` intero, senza evidenziazione. `image`: immagine fino a 1 MB (`imageInlineMaxBytes`), `content` in base64. `download`: nessun `content` (testo oltre 5 MB, immagine oltre 1 MB, altri binari): si scarica con `raw`.
+	Display FileContentDisplay `json:"display"`
+
+	// Encoding Codifica di `content`; assente se `content` manca. `base64` solo per le immagini.
+	Encoding *FileContentEncoding `json:"encoding,omitempty"`
+
+	// Kind `text`; `image` per PNG, JPEG, GIF, WebP e SVG (riconosciuti dal contenuto, non dall'estensione; SVG solo come immagine, mai come pagina); `binary` per ogni altro file non di testo.
+	Kind       FileContentKind `json:"kind"`
+	LastCommit CommitSummary   `json:"lastCommit"`
+
+	// MimeType Solo per `kind` `image`, es. `image/png`, `image/svg+xml`.
+	MimeType *string `json:"mimeType,omitempty"`
+	Name     string  `json:"name"`
+	Path     string  `json:"path"`
+	Ref      string  `json:"ref"`
 
 	// Sha Sha del blob.
 	Sha string `json:"sha"`
 
-	// Size Dimensione reale in byte, anche se troncato.
+	// Size Dimensione reale in byte, sempre, anche se `content` manca.
 	Size int64 `json:"size"`
 
-	// Truncated True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+	// Truncated True se `content` non porta tutto il file per il limite di dimensione: un testo oltre 5 MB (`display` `download`, nessun contenuto). Mai true per binari e immagini, che per natura non hanno `content` testuale; mai true per `highlight`, `plain` e `image`, il cui `content` e' sempre intero.
 	Truncated bool `json:"truncated"`
 }
+
+// FileContentDisplay Regola B1, sempre presente. `highlight`: testo fino a 1 MB (1 048 576 byte, `fileHighlightMaxBytes`), `content` intero, da evidenziare. `plain`: testo da 1 MB a 5 MB (5 242 880 byte, `filePlainMaxBytes`), `content` intero, senza evidenziazione. `image`: immagine fino a 1 MB (`imageInlineMaxBytes`), `content` in base64. `download`: nessun `content` (testo oltre 5 MB, immagine oltre 1 MB, altri binari): si scarica con `raw`.
+type FileContentDisplay string
+
+// FileContentEncoding Codifica di `content`; assente se `content` manca. `base64` solo per le immagini.
+type FileContentEncoding string
+
+// FileContentKind `text`; `image` per PNG, JPEG, GIF, WebP e SVG (riconosciuti dal contenuto, non dall'estensione; SVG solo come immagine, mai come pagina); `binary` per ogni altro file non di testo.
+type FileContentKind string
 
 // FileDiff defines model for FileDiff.
 type FileDiff struct {
@@ -864,6 +1063,20 @@ type FileDiffCollapseReason string
 
 // FileDiffStatus defines model for FileDiff.Status.
 type FileDiffStatus string
+
+// FileList Percorsi di tutti i file del ref per "Go to file" (regola B5): la corrispondenza approssimata la fa il client sull'elenco.
+type FileList struct {
+	CommitSha string `json:"commitSha"`
+
+	// Paths Percorsi dei file (non delle cartelle), in ordine alfabetico, al massimo 50 000 (`fileListMaxPaths`).
+	Paths []string `json:"paths"`
+
+	// Ref Il `ref` risolto (il branch principale se non indicato).
+	Ref string `json:"ref"`
+
+	// Truncated True se il repo ha piu' di 50 000 file e questi sono i primi 50 000.
+	Truncated bool `json:"truncated"`
+}
 
 // GitCreateRepoInput defines model for GitCreateRepoInput.
 type GitCreateRepoInput struct {
@@ -1277,10 +1490,18 @@ type Tag struct {
 	Annotated bool          `json:"annotated"`
 	Commit    CommitSummary `json:"commit"`
 
-	// Message Messaggio del tag annotato.
-	Message  *string    `json:"message,omitempty"`
-	Name     string     `json:"name"`
-	TaggedAt *time.Time `json:"taggedAt,omitempty"`
+	// Message Messaggio del tag; solo se `annotated`.
+	Message *string `json:"message,omitempty"`
+	Name    string  `json:"name"`
+
+	// TaggedAt Data del tag; per un tag leggero quella del commit (regola B7).
+	TaggedAt time.Time `json:"taggedAt"`
+
+	// TarGzUrl Come `zipUrl`, per il tar.gz.
+	TarGzUrl *string `json:"tarGzUrl,omitempty"`
+
+	// ZipUrl Indirizzo di scaricamento ZIP (`getRepositoryArchive` con `ref` il nome del tag, relativo a `/v1`). Lo aggiunge core: il servizio git non conosce owner e nome, quindi nella sua risposta manca; sempre presente in quella pubblica.
+	ZipUrl *string `json:"zipUrl,omitempty"`
 }
 
 // TagList defines model for TagList.
@@ -1494,6 +1715,12 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// ArchiveFormatParam defines model for ArchiveFormatParam.
+type ArchiveFormatParam string
+
+// CodeSearchQueryParam defines model for CodeSearchQueryParam.
+type CodeSearchQueryParam = string
+
 // CommitAuthorFilter defines model for CommitAuthorFilter.
 type CommitAuthorFilter = string
 
@@ -1505,6 +1732,9 @@ type CommitPerPageParam = int
 
 // CommitShaParam defines model for CommitShaParam.
 type CommitShaParam = string
+
+// DiffFilePathParam defines model for DiffFilePathParam.
+type DiffFilePathParam = string
 
 // FilePathParam defines model for FilePathParam.
 type FilePathParam = string
@@ -1534,11 +1764,17 @@ type OrgParam = Name
 // PageParam defines model for PageParam.
 type PageParam = int
 
+// PatchFormatParam defines model for PatchFormatParam.
+type PatchFormatParam string
+
 // PathParam defines model for PathParam.
 type PathParam = string
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RefAndPathParam defines model for RefAndPathParam.
+type RefAndPathParam = string
 
 // RefParam defines model for RefParam.
 type RefParam = string
@@ -1619,7 +1855,16 @@ type StartOidcLoginParams struct {
 type GitGetArchiveParams struct {
 	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
 	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Format Formato dell'archivio (default `zip`).
+	Format *GitGetArchiveParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+
+	// Name Nome del repo, per comporre il nome del file dell'archivio.
+	Name RepoName `form:"name" json:"name"`
 }
+
+// GitGetArchiveParamsFormat defines parameters for GitGetArchive.
+type GitGetArchiveParamsFormat string
 
 // GitGetBlameParams defines parameters for GitGetBlame.
 type GitGetBlameParams struct {
@@ -1673,6 +1918,12 @@ type GitGetFileParams struct {
 	Path FilePathParam `form:"path" json:"path"`
 }
 
+// GitListFilesParams defines parameters for GitListFiles.
+type GitListFilesParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+}
+
 // GitGetLanguagesParams defines parameters for GitGetLanguages.
 type GitGetLanguagesParams struct {
 	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
@@ -1695,6 +1946,15 @@ type GitGetReadmeParams struct {
 
 	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// GitSearchCodeParams defines parameters for GitSearchCode.
+type GitSearchCodeParams struct {
+	// Q Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+	Q CodeSearchQueryParam `form:"q" json:"q"`
+
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
 }
 
 // GitGetTreeParams defines parameters for GitGetTree.
@@ -1748,7 +2008,13 @@ type ListDeletedRepositoriesParams struct {
 type GetRepositoryArchiveParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Format Formato dell'archivio (default `zip`).
+	Format *GetRepositoryArchiveParamsFormat `form:"format,omitempty" json:"format,omitempty"`
 }
+
+// GetRepositoryArchiveParamsFormat defines parameters for GetRepositoryArchive.
+type GetRepositoryArchiveParamsFormat string
 
 // GetRepositoryBlameParams defines parameters for GetRepositoryBlame.
 type GetRepositoryBlameParams struct {
@@ -1775,6 +2041,27 @@ type GetRepositoryCommitsParams struct {
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// GetRepositoryCommitParams defines parameters for GetRepositoryCommit.
+type GetRepositoryCommitParams struct {
+	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+	Path *DiffFilePathParam `form:"path,omitempty" json:"path,omitempty"`
+
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// GetRepositoryCommitPatchParams defines parameters for GetRepositoryCommitPatch.
+type GetRepositoryCommitPatchParams struct {
+	// Format `patch` (default): formato mbox di `git format-patch` con autore, data e messaggio, scaricato come `.patch`; `diff`: solo il diff unificato, scaricato come `.diff`.
+	Format *GetRepositoryCommitPatchParamsFormat `form:"format,omitempty" json:"format,omitempty"`
+
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// GetRepositoryCommitPatchParamsFormat defines parameters for GetRepositoryCommitPatch.
+type GetRepositoryCommitPatchParamsFormat string
+
 // GetRepositoryFileParams defines parameters for GetRepositoryFile.
 type GetRepositoryFileParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -1782,6 +2069,12 @@ type GetRepositoryFileParams struct {
 
 	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
 	Path FilePathParam `form:"path" json:"path"`
+}
+
+// ListRepositoryFilesParams defines parameters for ListRepositoryFiles.
+type ListRepositoryFilesParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
 
 // GetRepositoryLanguagesParams defines parameters for GetRepositoryLanguages.
@@ -1806,6 +2099,15 @@ type GetRepositoryReadmeParams struct {
 
 	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// SearchRepositoryCodeParams defines parameters for SearchRepositoryCode.
+type SearchRepositoryCodeParams struct {
+	// Q Testo da cercare (sottostringa letterale, senza distinguere maiuscole), da 2 a 256 caratteri.
+	Q CodeSearchQueryParam `form:"q" json:"q"`
+
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
 }
 
 // GetRepositoryTreeParams defines parameters for GetRepositoryTree.
@@ -2099,9 +2401,9 @@ type ClientInterface interface {
 	// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
 	GitGetRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GitGetArchive Archivio ZIP di un ref (streaming) (per core)
+	// GitGetArchive Archivio ZIP o tar.gz di un ref (streaming) (per core)
 	//
-	// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+	// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Archivio dell'albero a `ref`, in ZIP (default) o tar.gz secondo `format`, in streaming (nessun buffer in memoria). Il nome del file (`Content-Disposition`) lo mette il servizio con il nome del repo che gli passa core in `name`; stesse intestazioni di sicurezza di `getRepositoryRaw`.
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/archive (the `GitGetArchive` operationId).
 	GitGetArchive(ctx context.Context, repoId GitRepoIdParam, params *GitGetArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2150,10 +2452,17 @@ type ClientInterface interface {
 
 	// GitGetFile Contenuto di un file (per core)
 	//
-	// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+	// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Stesse regole B1 di `getRepositoryFile` per `kind`, `display`, `content`, `encoding`, `mimeType` e `truncated` (1 MB evidenziato, 5 MB testo semplice, immagini inline fino a 1 MB). 404 se `path` non esiste o non e' un file.
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
 	GitGetFile(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitListFiles Percorsi di tutti i file di un ref (per core)
+	//
+	// Corrispondente interno di `listRepositoryFiles`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (al massimo 50 000 percorsi, `truncated`).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/files (the `GitListFiles` operationId).
+	GitListFiles(ctx context.Context, repoId GitRepoIdParam, params *GitListFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GitGetLanguages Lingue del repo (per core)
 	//
@@ -2164,14 +2473,14 @@ type ClientInterface interface {
 
 	// GitGetRaw Contenuto grezzo di un file (streaming) (per core)
 	//
-	// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+	// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Le intestazioni di sicurezza della regola B3 le scrive questo servizio (non nginx, ne' core le riscrive): vedi `getRepositoryRaw`. 404 se `path` non esiste o non e' un file.
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/raw (the `GitGetRaw` operationId).
 	GitGetRaw(ctx context.Context, repoId GitRepoIdParam, params *GitGetRawParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GitGetReadme README di una cartella (per core)
 	//
-	// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+	// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents`. 404 se non c'e'.
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/readme (the `GitGetReadme` operationId).
 	GitGetReadme(ctx context.Context, repoId GitRepoIdParam, params *GitGetReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2180,6 +2489,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
 	GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitSearchCode Cerca un testo nel codice di un ref (per core)
+	//
+	// Corrispondente interno di `searchRepositoryCode`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (100 risultati, 10 secondi, senza indice).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/search (the `GitSearchCode` operationId).
+	GitSearchCode(ctx context.Context, repoId GitRepoIdParam, params *GitSearchCodeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GitGetTags Tag del repo, con conteggi (per core)
 	//
@@ -2562,9 +2878,9 @@ type ClientInterface interface {
 	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 	UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetRepositoryArchive Archivio ZIP di un ref (streaming)
+	// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 	//
-	// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/archive (the `GetRepositoryArchive` operationId).
 	GetRepositoryArchive(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2592,17 +2908,31 @@ type ClientInterface interface {
 
 	// GetRepositoryCommit Dettaglio di un commit con diff per file
 	//
-	// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
-	GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryCommitPatch Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+	//
+	// Regola B6: il diff intero del commit, senza i limiti di `getRepositoryCommit` (nessun file chiuso, nessun troncamento), in streaming. `Content-Disposition: attachment` con nome `<sha12>.diff` o `.patch` (lo imposta il servizio git) secondo `format`: `diff` e' `gitGetCommitDiff`, `patch` e' `gitGetCommitPatch`, passati in streaming da core (le interne le definisce GIT-82). Stesse intestazioni di sicurezza di `getRepositoryRaw`. Un commit senza genitori e' confrontato con l'albero vuoto. Un merge e' confrontato con il primo genitore. 400 se `sha` non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
+	GetRepositoryCommitPatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryFile Contenuto di un file
 	//
-	// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
 	GetRepositoryFile(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepositoryFiles Percorsi di tutti i file di un ref ("Go to file")
+	//
+	// Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per il "Go to file"; la corrispondenza approssimata la fa il client. Al massimo 50 000 percorsi: oltre, `truncated` e' true. Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
+	ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryLanguages Lingue del repo
 	//
@@ -2613,17 +2943,31 @@ type ClientInterface interface {
 
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	//
-	// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
 	GetRepositoryRaw(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetRepositoryRawByPath Contenuto grezzo di un file, per indirizzo (streaming)
+	//
+	// Forma a indirizzo di `getRepositoryRaw` (regola B3): il browser la raggiunge come `/<owner>/<repo>/raw/<ref>/<percorso>` (la riscrive il container web, vedi docs/repos.md), l'API come `/v1/repos/<owner>/<repo>/raw/<ref>/<percorso>`. Stesse regole di sicurezza, stessi byte e stesse intestazioni di `getRepositoryRaw` (`text/plain` o allegato, `nosniff`, `Content-Security-Policy: sandbox`). `refAndPath` occupa piu' segmenti: il router di core e la tabella del gateway lo trattano come coda (`x-path-tail`), non come un segmento solo. Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Un ref che non corrisponde a nessun branch, tag o sha risponde 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/raw/{refAndPath} (the `GetRepositoryRawByPath` operationId).
+	GetRepositoryRawByPath(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, refAndPath RefAndPathParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRepositoryReadme README di una cartella
 	//
-	// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
 	GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchRepositoryCode Cerca un testo nel codice di un ref ("Search code")
+	//
+	// Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/search (the `SearchRepositoryCode` operationId).
+	SearchRepositoryCode(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *SearchRepositoryCodeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryTags Tag del repo, con conteggi
 	//
@@ -3122,9 +3466,9 @@ func (c *Client) GitGetRepo(ctx context.Context, repoId GitRepoIdParam, reqEdito
 	return c.Client.Do(req)
 }
 
-// GitGetArchive Archivio ZIP di un ref (streaming) (per core)
+// GitGetArchive Archivio ZIP o tar.gz di un ref (streaming) (per core)
 //
-// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Archivio dell'albero a `ref`, in ZIP (default) o tar.gz secondo `format`, in streaming (nessun buffer in memoria). Il nome del file (`Content-Disposition`) lo mette il servizio con il nome del repo che gli passa core in `name`; stesse intestazioni di sicurezza di `getRepositoryRaw`.
 //
 // Corresponds with GET /internal/git/repos/{repoId}/archive (the `GitGetArchive` operationId).
 func (c *Client) GitGetArchive(ctx context.Context, repoId GitRepoIdParam, params *GitGetArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3243,11 +3587,28 @@ func (c *Client) GitGetCommitPatch(ctx context.Context, repoId GitRepoIdParam, s
 
 // GitGetFile Contenuto di un file (per core)
 //
-// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Stesse regole B1 di `getRepositoryFile` per `kind`, `display`, `content`, `encoding`, `mimeType` e `truncated` (1 MB evidenziato, 5 MB testo semplice, immagini inline fino a 1 MB). 404 se `path` non esiste o non e' un file.
 //
 // Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
 func (c *Client) GitGetFile(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGitGetFileRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitListFiles Percorsi di tutti i file di un ref (per core)
+//
+// Corrispondente interno di `listRepositoryFiles`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (al massimo 50 000 percorsi, `truncated`).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/files (the `GitListFiles` operationId).
+func (c *Client) GitListFiles(ctx context.Context, repoId GitRepoIdParam, params *GitListFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitListFilesRequest(c.Server, repoId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3277,7 +3638,7 @@ func (c *Client) GitGetLanguages(ctx context.Context, repoId GitRepoIdParam, par
 
 // GitGetRaw Contenuto grezzo di un file (streaming) (per core)
 //
-// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Le intestazioni di sicurezza della regola B3 le scrive questo servizio (non nginx, ne' core le riscrive): vedi `getRepositoryRaw`. 404 se `path` non esiste o non e' un file.
 //
 // Corresponds with GET /internal/git/repos/{repoId}/raw (the `GitGetRaw` operationId).
 func (c *Client) GitGetRaw(ctx context.Context, repoId GitRepoIdParam, params *GitGetRawParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3294,7 +3655,7 @@ func (c *Client) GitGetRaw(ctx context.Context, repoId GitRepoIdParam, params *G
 
 // GitGetReadme README di una cartella (per core)
 //
-// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents`. 404 se non c'e'.
 //
 // Corresponds with GET /internal/git/repos/{repoId}/readme (the `GitGetReadme` operationId).
 func (c *Client) GitGetReadme(ctx context.Context, repoId GitRepoIdParam, params *GitGetReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3314,6 +3675,23 @@ func (c *Client) GitGetReadme(ctx context.Context, repoId GitRepoIdParam, params
 // Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
 func (c *Client) GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGitRestoreRepoRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitSearchCode Cerca un testo nel codice di un ref (per core)
+//
+// Corrispondente interno di `searchRepositoryCode`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (100 risultati, 10 secondi, senza indice).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/search (the `GitSearchCode` operationId).
+func (c *Client) GitSearchCode(ctx context.Context, repoId GitRepoIdParam, params *GitSearchCodeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitSearchCodeRequest(c.Server, repoId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4195,9 +4573,9 @@ func (c *Client) UpdateRepository(ctx context.Context, owner RepoOwnerParam, rep
 	return c.Client.Do(req)
 }
 
-// GetRepositoryArchive Archivio ZIP di un ref (streaming)
+// GetRepositoryArchive Archivio ZIP o tar.gz di un ref (streaming)
 //
-// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Corresponds with GET /repos/{owner}/{repo}/archive (the `GetRepositoryArchive` operationId).
 func (c *Client) GetRepositoryArchive(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4265,11 +4643,28 @@ func (c *Client) GetRepositoryCommits(ctx context.Context, owner RepoOwnerParam,
 
 // GetRepositoryCommit Dettaglio di un commit con diff per file
 //
-// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
-func (c *Client) GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetRepositoryCommitRequest(c.Server, owner, repo, sha)
+func (c *Client) GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryCommitRequest(c.Server, owner, repo, sha, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryCommitPatch Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+//
+// Regola B6: il diff intero del commit, senza i limiti di `getRepositoryCommit` (nessun file chiuso, nessun troncamento), in streaming. `Content-Disposition: attachment` con nome `<sha12>.diff` o `.patch` (lo imposta il servizio git) secondo `format`: `diff` e' `gitGetCommitDiff`, `patch` e' `gitGetCommitPatch`, passati in streaming da core (le interne le definisce GIT-82). Stesse intestazioni di sicurezza di `getRepositoryRaw`. Un commit senza genitori e' confrontato con l'albero vuoto. Un merge e' confrontato con il primo genitore. 400 se `sha` non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
+func (c *Client) GetRepositoryCommitPatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryCommitPatchRequest(c.Server, owner, repo, sha, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4282,11 +4677,28 @@ func (c *Client) GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, 
 
 // GetRepositoryFile Contenuto di un file
 //
-// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
 func (c *Client) GetRepositoryFile(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRepositoryFileRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepositoryFiles Percorsi di tutti i file di un ref ("Go to file")
+//
+// Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per il "Go to file"; la corrispondenza approssimata la fa il client. Al massimo 50 000 percorsi: oltre, `truncated` e' true. Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
+func (c *Client) ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepositoryFilesRequest(c.Server, owner, repo, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4316,7 +4728,7 @@ func (c *Client) GetRepositoryLanguages(ctx context.Context, owner RepoOwnerPara
 
 // GetRepositoryRaw Contenuto grezzo di un file (streaming)
 //
-// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
 func (c *Client) GetRepositoryRaw(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4331,13 +4743,47 @@ func (c *Client) GetRepositoryRaw(ctx context.Context, owner RepoOwnerParam, rep
 	return c.Client.Do(req)
 }
 
+// GetRepositoryRawByPath Contenuto grezzo di un file, per indirizzo (streaming)
+//
+// Forma a indirizzo di `getRepositoryRaw` (regola B3): il browser la raggiunge come `/<owner>/<repo>/raw/<ref>/<percorso>` (la riscrive il container web, vedi docs/repos.md), l'API come `/v1/repos/<owner>/<repo>/raw/<ref>/<percorso>`. Stesse regole di sicurezza, stessi byte e stesse intestazioni di `getRepositoryRaw` (`text/plain` o allegato, `nosniff`, `Content-Security-Policy: sandbox`). `refAndPath` occupa piu' segmenti: il router di core e la tabella del gateway lo trattano come coda (`x-path-tail`), non come un segmento solo. Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Un ref che non corrisponde a nessun branch, tag o sha risponde 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/raw/{refAndPath} (the `GetRepositoryRawByPath` operationId).
+func (c *Client) GetRepositoryRawByPath(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, refAndPath RefAndPathParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryRawByPathRequest(c.Server, owner, repo, refAndPath)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetRepositoryReadme README di una cartella
 //
-// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
 func (c *Client) GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRepositoryReadmeRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchRepositoryCode Cerca un testo nel codice di un ref ("Search code")
+//
+// Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/search (the `SearchRepositoryCode` operationId).
+func (c *Client) SearchRepositoryCode(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *SearchRepositoryCodeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchRepositoryCodeRequest(c.Server, owner, repo, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5439,6 +5885,26 @@ func NewGitGetArchiveRequest(server string, repoId GitRepoIdParam, params *GitGe
 			}
 		}
 
+		if params.Format != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "format", *params.Format, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -5926,6 +6392,63 @@ func NewGitGetFileRequest(server string, repoId GitRepoIdParam, params *GitGetFi
 	return req, nil
 }
 
+// NewGitListFilesRequest constructs an http.Request for the GitListFiles method
+func NewGitListFilesRequest(server string, repoId GitRepoIdParam, params *GitListFilesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/files", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGitGetLanguagesRequest constructs an http.Request for the GitGetLanguages method
 func NewGitGetLanguagesRequest(server string, repoId GitRepoIdParam, params *GitGetLanguagesParams) (*http.Request, error) {
 	var err error
@@ -6144,6 +6667,71 @@ func NewGitRestoreRepoRequest(server string, repoId GitRepoIdParam) (*http.Reque
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitSearchCodeRequest constructs an http.Request for the GitSearchCode method
+func NewGitSearchCodeRequest(server string, repoId GitRepoIdParam, params *GitSearchCodeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/search", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -7874,6 +8462,18 @@ func NewGetRepositoryArchiveRequest(server string, owner RepoOwnerParam, repo Re
 
 		}
 
+		if params.Format != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "format", *params.Format, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -8122,7 +8722,7 @@ func NewGetRepositoryCommitsRequest(server string, owner RepoOwnerParam, repo Re
 }
 
 // NewGetRepositoryCommitRequest constructs an http.Request for the GetRepositoryCommit method
-func NewGetRepositoryCommitRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam) (*http.Request, error) {
+func NewGetRepositoryCommitRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8159,6 +8759,132 @@ func NewGetRepositoryCommitRequest(server string, owner RepoOwnerParam, repo Rep
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IgnoreWhitespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ignoreWhitespace", *params.IgnoreWhitespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryCommitPatchRequest constructs an http.Request for the GetRepositoryCommitPatch method
+func NewGetRepositoryCommitPatchRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits/%s/patch", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Format != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "format", *params.Format, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IgnoreWhitespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ignoreWhitespace", *params.IgnoreWhitespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -8229,6 +8955,74 @@ func NewGetRepositoryFileRequest(server string, owner RepoOwnerParam, repo RepoN
 			for _, qp := range strings.Split(queryFrag, "&") {
 				rawQueryFragments = append(rawQueryFragments, qp)
 			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListRepositoryFilesRequest constructs an http.Request for the ListRepositoryFiles method
+func NewListRepositoryFilesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/files", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
 		}
 
 		if encoded := queryValues.Encode(); encoded != "" {
@@ -8389,6 +9183,54 @@ func NewGetRepositoryRawRequest(server string, owner RepoOwnerParam, repo RepoNa
 	return req, nil
 }
 
+// NewGetRepositoryRawByPathRequest constructs an http.Request for the GetRepositoryRawByPath method
+func NewGetRepositoryRawByPathRequest(server string, owner RepoOwnerParam, repo RepoNameParam, refAndPath RefAndPathParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "refAndPath", refAndPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/raw/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetRepositoryReadmeRequest constructs an http.Request for the GetRepositoryReadme method
 func NewGetRepositoryReadmeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams) (*http.Request, error) {
 	var err error
@@ -8446,6 +9288,82 @@ func NewGetRepositoryReadmeRequest(server string, owner RepoOwnerParam, repo Rep
 		if params.Path != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSearchRepositoryCodeRequest constructs an http.Request for the SearchRepositoryCode method
+func NewSearchRepositoryCodeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *SearchRepositoryCodeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -9977,9 +10895,9 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
 	GitGetRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetRepoResponse, error)
 
-	// GitGetArchiveWithResponse Archivio ZIP di un ref (streaming) (per core)
+	// GitGetArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming) (per core)
 	//
-	// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+	// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Archivio dell'albero a `ref`, in ZIP (default) o tar.gz secondo `format`, in streaming (nessun buffer in memoria). Il nome del file (`Content-Disposition`) lo mette il servizio con il nome del repo che gli passa core in `name`; stesse intestazioni di sicurezza di `getRepositoryRaw`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10042,12 +10960,21 @@ type ClientWithResponsesInterface interface {
 
 	// GitGetFileWithResponse Contenuto di un file (per core)
 	//
-	// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+	// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Stesse regole B1 di `getRepositoryFile` per `kind`, `display`, `content`, `encoding`, `mimeType` e `truncated` (1 MB evidenziato, 5 MB testo semplice, immagini inline fino a 1 MB). 404 se `path` non esiste o non e' un file.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
 	GitGetFileWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*GitGetFileResponse, error)
+
+	// GitListFilesWithResponse Percorsi di tutti i file di un ref (per core)
+	//
+	// Corrispondente interno di `listRepositoryFiles`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (al massimo 50 000 percorsi, `truncated`).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/files (the `GitListFiles` operationId).
+	GitListFilesWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitListFilesParams, reqEditors ...RequestEditorFn) (*GitListFilesResponse, error)
 
 	// GitGetLanguagesWithResponse Lingue del repo (per core)
 	//
@@ -10060,7 +10987,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitGetRawWithResponse Contenuto grezzo di un file (streaming) (per core)
 	//
-	// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+	// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Le intestazioni di sicurezza della regola B3 le scrive questo servizio (non nginx, ne' core le riscrive): vedi `getRepositoryRaw`. 404 se `path` non esiste o non e' un file.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10069,7 +10996,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitGetReadmeWithResponse README di una cartella (per core)
 	//
-	// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+	// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents`. 404 se non c'e'.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10082,6 +11009,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
 	GitRestoreRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitRestoreRepoResponse, error)
+
+	// GitSearchCodeWithResponse Cerca un testo nel codice di un ref (per core)
+	//
+	// Corrispondente interno di `searchRepositoryCode`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (100 risultati, 10 secondi, senza indice).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/search (the `GitSearchCode` operationId).
+	GitSearchCodeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitSearchCodeParams, reqEditors ...RequestEditorFn) (*GitSearchCodeResponse, error)
 
 	// GitGetTagsWithResponse Tag del repo, con conteggi (per core)
 	//
@@ -10506,9 +11442,9 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 	UpdateRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error)
 
-	// GetRepositoryArchiveWithResponse Archivio ZIP di un ref (streaming)
+	// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 	//
-	// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -10544,21 +11480,39 @@ type ClientWithResponsesInterface interface {
 
 	// GetRepositoryCommitWithResponse Dettaglio di un commit con diff per file
 	//
-	// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
-	GetRepositoryCommitWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GetRepositoryCommitResponse, error)
+	GetRepositoryCommitWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitResponse, error)
+
+	// GetRepositoryCommitPatchWithResponse Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+	//
+	// Regola B6: il diff intero del commit, senza i limiti di `getRepositoryCommit` (nessun file chiuso, nessun troncamento), in streaming. `Content-Disposition: attachment` con nome `<sha12>.diff` o `.patch` (lo imposta il servizio git) secondo `format`: `diff` e' `gitGetCommitDiff`, `patch` e' `gitGetCommitPatch`, passati in streaming da core (le interne le definisce GIT-82). Stesse intestazioni di sicurezza di `getRepositoryRaw`. Un commit senza genitori e' confrontato con l'albero vuoto. Un merge e' confrontato con il primo genitore. 400 se `sha` non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
+	GetRepositoryCommitPatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitPatchResponse, error)
 
 	// GetRepositoryFileWithResponse Contenuto di un file
 	//
-	// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
 	GetRepositoryFileWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*GetRepositoryFileResponse, error)
+
+	// ListRepositoryFilesWithResponse Percorsi di tutti i file di un ref ("Go to file")
+	//
+	// Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per il "Go to file"; la corrispondenza approssimata la fa il client. Al massimo 50 000 percorsi: oltre, `truncated` e' true. Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
+	ListRepositoryFilesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*ListRepositoryFilesResponse, error)
 
 	// GetRepositoryLanguagesWithResponse Lingue del repo
 	//
@@ -10571,21 +11525,39 @@ type ClientWithResponsesInterface interface {
 
 	// GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
 	//
-	// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
 	GetRepositoryRawWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*GetRepositoryRawResponse, error)
 
+	// GetRepositoryRawByPathWithResponse Contenuto grezzo di un file, per indirizzo (streaming)
+	//
+	// Forma a indirizzo di `getRepositoryRaw` (regola B3): il browser la raggiunge come `/<owner>/<repo>/raw/<ref>/<percorso>` (la riscrive il container web, vedi docs/repos.md), l'API come `/v1/repos/<owner>/<repo>/raw/<ref>/<percorso>`. Stesse regole di sicurezza, stessi byte e stesse intestazioni di `getRepositoryRaw` (`text/plain` o allegato, `nosniff`, `Content-Security-Policy: sandbox`). `refAndPath` occupa piu' segmenti: il router di core e la tabella del gateway lo trattano come coda (`x-path-tail`), non come un segmento solo. Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Un ref che non corrisponde a nessun branch, tag o sha risponde 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/raw/{refAndPath} (the `GetRepositoryRawByPath` operationId).
+	GetRepositoryRawByPathWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, refAndPath RefAndPathParam, reqEditors ...RequestEditorFn) (*GetRepositoryRawByPathResponse, error)
+
 	// GetRepositoryReadmeWithResponse README di una cartella
 	//
-	// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
 	GetRepositoryReadmeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*GetRepositoryReadmeResponse, error)
+
+	// SearchRepositoryCodeWithResponse Cerca un testo nel codice di un ref ("Search code")
+	//
+	// Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/search (the `SearchRepositoryCode` operationId).
+	SearchRepositoryCodeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *SearchRepositoryCodeParams, reqEditors ...RequestEditorFn) (*SearchRepositoryCodeResponse, error)
 
 	// GetRepositoryTagsWithResponse Tag del repo, con conteggi
 	//
@@ -11517,6 +12489,13 @@ func (r GitGetRepoResponse) ContentType() string {
 	return ""
 }
 
+// GitGetArchiveResponse200Headers the declared response headers of an HTTP 200 response for GitGetArchive
+type GitGetArchiveResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
 type GitGetArchiveResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11528,6 +12507,8 @@ type GitGetArchiveResponse struct {
 	JSON404 *NotFound
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitGetArchiveResponse200Headers
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -12048,6 +13029,75 @@ func (r GitGetFileResponse) ContentType() string {
 	return ""
 }
 
+type GitListFilesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FileList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitListFilesResponse) GetJSON200() *FileList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitListFilesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitListFilesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitListFilesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitListFilesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitListFilesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitListFilesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitListFilesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitListFilesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GitGetLanguagesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12117,6 +13167,13 @@ func (r GitGetLanguagesResponse) ContentType() string {
 	return ""
 }
 
+// GitGetRawResponse200Headers the declared response headers of an HTTP 200 response for GitGetRaw
+type GitGetRawResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
 type GitGetRawResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12128,6 +13185,8 @@ type GitGetRawResponse struct {
 	JSON404 *NotFound
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitGetRawResponse200Headers
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -12297,6 +13356,75 @@ func (r GitRestoreRepoResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GitRestoreRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitSearchCodeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CodeSearchResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitSearchCodeResponse) GetJSON200() *CodeSearchResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitSearchCodeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitSearchCodeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitSearchCodeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitSearchCodeResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitSearchCodeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitSearchCodeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitSearchCodeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitSearchCodeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14851,6 +15979,13 @@ func (r UpdateRepositoryResponse) ContentType() string {
 	return ""
 }
 
+// GetRepositoryArchiveResponse200Headers the declared response headers of an HTTP 200 response for GetRepositoryArchive
+type GetRepositoryArchiveResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
 type GetRepositoryArchiveResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14864,6 +15999,8 @@ type GetRepositoryArchiveResponse struct {
 	JSON404 *NotFound
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetRepositoryArchiveResponse200Headers
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -15224,6 +16361,84 @@ func (r GetRepositoryCommitResponse) ContentType() string {
 	return ""
 }
 
+// GetRepositoryCommitPatchResponse200Headers the declared response headers of an HTTP 200 response for GetRepositoryCommitPatch
+type GetRepositoryCommitPatchResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
+type GetRepositoryCommitPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetRepositoryCommitPatchResponse200Headers
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryCommitPatchResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryCommitPatchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryCommitPatchResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryCommitPatchResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryCommitPatchResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryCommitPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryCommitPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryCommitPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryCommitPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRepositoryFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15294,6 +16509,82 @@ func (r GetRepositoryFileResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRepositoryFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListRepositoryFilesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FileList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepositoryFilesResponse) GetJSON200() *FileList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListRepositoryFilesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepositoryFilesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepositoryFilesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepositoryFilesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListRepositoryFilesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepositoryFilesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepositoryFilesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepositoryFilesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepositoryFilesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -15376,6 +16667,13 @@ func (r GetRepositoryLanguagesResponse) ContentType() string {
 	return ""
 }
 
+// GetRepositoryRawResponse200Headers the declared response headers of an HTTP 200 response for GetRepositoryRaw
+type GetRepositoryRawResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
 type GetRepositoryRawResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15389,6 +16687,8 @@ type GetRepositoryRawResponse struct {
 	JSON404 *NotFound
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetRepositoryRawResponse200Headers
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
@@ -15439,6 +16739,84 @@ func (r GetRepositoryRawResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRepositoryRawResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetRepositoryRawByPathResponse200Headers the declared response headers of an HTTP 200 response for GetRepositoryRawByPath
+type GetRepositoryRawByPathResponse200Headers struct {
+	ContentDisposition    *string
+	ContentSecurityPolicy *string
+	XContentTypeOptions   *string
+}
+
+type GetRepositoryRawByPathResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetRepositoryRawByPathResponse200Headers
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryRawByPathResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryRawByPathResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryRawByPathResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryRawByPathResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryRawByPathResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryRawByPathResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryRawByPathResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryRawByPathResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryRawByPathResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -15515,6 +16893,82 @@ func (r GetRepositoryReadmeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRepositoryReadmeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchRepositoryCodeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CodeSearchResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchRepositoryCodeResponse) GetJSON200() *CodeSearchResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchRepositoryCodeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchRepositoryCodeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchRepositoryCodeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchRepositoryCodeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SearchRepositoryCodeResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchRepositoryCodeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchRepositoryCodeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchRepositoryCodeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchRepositoryCodeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -17771,9 +19225,9 @@ func (c *ClientWithResponses) GitGetRepoWithResponse(ctx context.Context, repoId
 	return ParseGitGetRepoResponse(rsp)
 }
 
-// GitGetArchiveWithResponse Archivio ZIP di un ref (streaming) (per core)
+// GitGetArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming) (per core)
 //
-// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Archivio dell'albero a `ref`, in ZIP (default) o tar.gz secondo `format`, in streaming (nessun buffer in memoria). Il nome del file (`Content-Disposition`) lo mette il servizio con il nome del repo che gli passa core in `name`; stesse intestazioni di sicurezza di `getRepositoryRaw`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -17878,7 +19332,7 @@ func (c *ClientWithResponses) GitGetCommitPatchWithResponse(ctx context.Context,
 
 // GitGetFileWithResponse Contenuto di un file (per core)
 //
-// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Stesse regole B1 di `getRepositoryFile` per `kind`, `display`, `content`, `encoding`, `mimeType` e `truncated` (1 MB evidenziato, 5 MB testo semplice, immagini inline fino a 1 MB). 404 se `path` non esiste o non e' un file.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -17889,6 +19343,21 @@ func (c *ClientWithResponses) GitGetFileWithResponse(ctx context.Context, repoId
 		return nil, err
 	}
 	return ParseGitGetFileResponse(rsp)
+}
+
+// GitListFilesWithResponse Percorsi di tutti i file di un ref (per core)
+//
+// Corrispondente interno di `listRepositoryFiles`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (al massimo 50 000 percorsi, `truncated`).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/files (the `GitListFiles` operationId).
+func (c *ClientWithResponses) GitListFilesWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitListFilesParams, reqEditors ...RequestEditorFn) (*GitListFilesResponse, error) {
+	rsp, err := c.GitListFiles(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitListFilesResponse(rsp)
 }
 
 // GitGetLanguagesWithResponse Lingue del repo (per core)
@@ -17908,7 +19377,7 @@ func (c *ClientWithResponses) GitGetLanguagesWithResponse(ctx context.Context, r
 
 // GitGetRawWithResponse Contenuto grezzo di un file (streaming) (per core)
 //
-// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Le intestazioni di sicurezza della regola B3 le scrive questo servizio (non nginx, ne' core le riscrive): vedi `getRepositoryRaw`. 404 se `path` non esiste o non e' un file.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -17923,7 +19392,7 @@ func (c *ClientWithResponses) GitGetRawWithResponse(ctx context.Context, repoId 
 
 // GitGetReadmeWithResponse README di una cartella (per core)
 //
-// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents`. 404 se non c'e'.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -17947,6 +19416,21 @@ func (c *ClientWithResponses) GitRestoreRepoWithResponse(ctx context.Context, re
 		return nil, err
 	}
 	return ParseGitRestoreRepoResponse(rsp)
+}
+
+// GitSearchCodeWithResponse Cerca un testo nel codice di un ref (per core)
+//
+// Corrispondente interno di `searchRepositoryCode`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Stesse regole B5 (100 risultati, 10 secondi, senza indice).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/search (the `GitSearchCode` operationId).
+func (c *ClientWithResponses) GitSearchCodeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitSearchCodeParams, reqEditors ...RequestEditorFn) (*GitSearchCodeResponse, error) {
+	rsp, err := c.GitSearchCode(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitSearchCodeResponse(rsp)
 }
 
 // GitGetTagsWithResponse Tag del repo, con conteggi (per core)
@@ -18666,9 +20150,9 @@ func (c *ClientWithResponses) UpdateRepositoryWithResponse(ctx context.Context, 
 	return ParseUpdateRepositoryResponse(rsp)
 }
 
-// GetRepositoryArchiveWithResponse Archivio ZIP di un ref (streaming)
+// GetRepositoryArchiveWithResponse Archivio ZIP o tar.gz di un ref (streaming)
 //
-// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -18728,22 +20212,37 @@ func (c *ClientWithResponses) GetRepositoryCommitsWithResponse(ctx context.Conte
 
 // GetRepositoryCommitWithResponse Dettaglio di un commit con diff per file
 //
-// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
-func (c *ClientWithResponses) GetRepositoryCommitWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GetRepositoryCommitResponse, error) {
-	rsp, err := c.GetRepositoryCommit(ctx, owner, repo, sha, reqEditors...)
+func (c *ClientWithResponses) GetRepositoryCommitWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitResponse, error) {
+	rsp, err := c.GetRepositoryCommit(ctx, owner, repo, sha, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetRepositoryCommitResponse(rsp)
 }
 
+// GetRepositoryCommitPatchWithResponse Diff completo di un commit, scaricabile come .diff o .patch (streaming)
+//
+// Regola B6: il diff intero del commit, senza i limiti di `getRepositoryCommit` (nessun file chiuso, nessun troncamento), in streaming. `Content-Disposition: attachment` con nome `<sha12>.diff` o `.patch` (lo imposta il servizio git) secondo `format`: `diff` e' `gitGetCommitDiff`, `patch` e' `gitGetCommitPatch`, passati in streaming da core (le interne le definisce GIT-82). Stesse intestazioni di sicurezza di `getRepositoryRaw`. Un commit senza genitori e' confrontato con l'albero vuoto. Un merge e' confrontato con il primo genitore. 400 se `sha` non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
+func (c *ClientWithResponses) GetRepositoryCommitPatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitPatchResponse, error) {
+	rsp, err := c.GetRepositoryCommitPatch(ctx, owner, repo, sha, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryCommitPatchResponse(rsp)
+}
+
 // GetRepositoryFileWithResponse Contenuto di un file
 //
-// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -18754,6 +20253,21 @@ func (c *ClientWithResponses) GetRepositoryFileWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetRepositoryFileResponse(rsp)
+}
+
+// ListRepositoryFilesWithResponse Percorsi di tutti i file di un ref ("Go to file")
+//
+// Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per il "Go to file"; la corrispondenza approssimata la fa il client. Al massimo 50 000 percorsi: oltre, `truncated` e' true. Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
+func (c *ClientWithResponses) ListRepositoryFilesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*ListRepositoryFilesResponse, error) {
+	rsp, err := c.ListRepositoryFiles(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepositoryFilesResponse(rsp)
 }
 
 // GetRepositoryLanguagesWithResponse Lingue del repo
@@ -18773,7 +20287,7 @@ func (c *ClientWithResponses) GetRepositoryLanguagesWithResponse(ctx context.Con
 
 // GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
 //
-// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -18786,9 +20300,24 @@ func (c *ClientWithResponses) GetRepositoryRawWithResponse(ctx context.Context, 
 	return ParseGetRepositoryRawResponse(rsp)
 }
 
+// GetRepositoryRawByPathWithResponse Contenuto grezzo di un file, per indirizzo (streaming)
+//
+// Forma a indirizzo di `getRepositoryRaw` (regola B3): il browser la raggiunge come `/<owner>/<repo>/raw/<ref>/<percorso>` (la riscrive il container web, vedi docs/repos.md), l'API come `/v1/repos/<owner>/<repo>/raw/<ref>/<percorso>`. Stesse regole di sicurezza, stessi byte e stesse intestazioni di `getRepositoryRaw` (`text/plain` o allegato, `nosniff`, `Content-Security-Policy: sandbox`). `refAndPath` occupa piu' segmenti: il router di core e la tabella del gateway lo trattano come coda (`x-path-tail`), non come un segmento solo. Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Un ref che non corrisponde a nessun branch, tag o sha risponde 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/raw/{refAndPath} (the `GetRepositoryRawByPath` operationId).
+func (c *ClientWithResponses) GetRepositoryRawByPathWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, refAndPath RefAndPathParam, reqEditors ...RequestEditorFn) (*GetRepositoryRawByPathResponse, error) {
+	rsp, err := c.GetRepositoryRawByPath(ctx, owner, repo, refAndPath, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryRawByPathResponse(rsp)
+}
+
 // GetRepositoryReadmeWithResponse README di una cartella
 //
-// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -18799,6 +20328,21 @@ func (c *ClientWithResponses) GetRepositoryReadmeWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetRepositoryReadmeResponse(rsp)
+}
+
+// SearchRepositoryCodeWithResponse Cerca un testo nel codice di un ref ("Search code")
+//
+// Regola B5: cerca `q` (sottostringa letterale, senza distinguere maiuscole) nei file di testo di `ref`, senza indice. Al massimo 100 risultati con percorso, riga e frammento (`limitReached` se ce ne sono altri), tempo massimo 10 secondi (`timedOut` se interrotta). Un `q` piu' corto di 2 caratteri risponde 400. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/search (the `SearchRepositoryCode` operationId).
+func (c *ClientWithResponses) SearchRepositoryCodeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *SearchRepositoryCodeParams, reqEditors ...RequestEditorFn) (*SearchRepositoryCodeResponse, error) {
+	rsp, err := c.SearchRepositoryCode(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchRepositoryCodeResponse(rsp)
 }
 
 // GetRepositoryTagsWithResponse Tag del repo, con conteggi
@@ -19891,6 +21435,33 @@ func ParseGitGetArchiveResponse(rsp *http.Response) (*GitGetArchiveResponse, err
 
 	}
 
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitGetArchiveResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
 	return response, nil
 }
 
@@ -20258,6 +21829,60 @@ func ParseGitGetFileResponse(rsp *http.Response) (*GitGetFileResponse, error) {
 	return response, nil
 }
 
+// ParseGitListFilesResponse parses an HTTP response from a GitListFilesWithResponse call
+func ParseGitListFilesResponse(rsp *http.Response) (*GitListFilesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitListFilesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FileList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGitGetLanguagesResponse parses an HTTP response from a GitGetLanguagesWithResponse call
 func ParseGitGetLanguagesResponse(rsp *http.Response) (*GitGetLanguagesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -20356,6 +21981,33 @@ func ParseGitGetRawResponse(rsp *http.Response) (*GitGetRawResponse, error) {
 
 	}
 
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitGetRawResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
 	return response, nil
 }
 
@@ -20429,6 +22081,60 @@ func ParseGitRestoreRepoResponse(rsp *http.Response) (*GitRestoreRepoResponse, e
 	switch {
 	case rsp.StatusCode == 204:
 		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitSearchCodeResponse parses an HTTP response from a GitSearchCodeWithResponse call
+func ParseGitSearchCodeResponse(rsp *http.Response) (*GitSearchCodeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitSearchCodeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CodeSearchResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
@@ -22572,6 +24278,33 @@ func ParseGetRepositoryArchiveResponse(rsp *http.Response) (*GetRepositoryArchiv
 
 	}
 
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetRepositoryArchiveResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
 	return response, nil
 }
 
@@ -22819,6 +24552,87 @@ func ParseGetRepositoryCommitResponse(rsp *http.Response) (*GetRepositoryCommitR
 	return response, nil
 }
 
+// ParseGetRepositoryCommitPatchResponse parses an HTTP response from a GetRepositoryCommitPatchWithResponse call
+func ParseGetRepositoryCommitPatchResponse(rsp *http.Response) (*GetRepositoryCommitPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryCommitPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetRepositoryCommitPatchResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseGetRepositoryFileResponse parses an HTTP response from a GetRepositoryFileWithResponse call
 func ParseGetRepositoryFileResponse(rsp *http.Response) (*GetRepositoryFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -22835,6 +24649,67 @@ func ParseGetRepositoryFileResponse(rsp *http.Response) (*GetRepositoryFileRespo
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest FileContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepositoryFilesResponse parses an HTTP response from a ListRepositoryFilesWithResponse call
+func ParseListRepositoryFilesResponse(rsp *http.Response) (*ListRepositoryFilesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepositoryFilesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FileList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -22992,6 +24867,114 @@ func ParseGetRepositoryRawResponse(rsp *http.Response) (*GetRepositoryRawRespons
 
 	}
 
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetRepositoryRawResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryRawByPathResponse parses an HTTP response from a GetRepositoryRawByPathWithResponse call
+func ParseGetRepositoryRawByPathResponse(rsp *http.Response) (*GetRepositoryRawByPathResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryRawByPathResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetRepositoryRawByPathResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		if values := rsp.Header.Values("Content-Security-Policy"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Security-Policy", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentSecurityPolicy = &value
+		}
+		if values := rsp.Header.Values("X-Content-Type-Options"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Content-Type-Options", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XContentTypeOptions = &value
+		}
+		response.Headers200 = &headers
+	}
+
 	return response, nil
 }
 
@@ -23011,6 +24994,67 @@ func ParseGetRepositoryReadmeResponse(rsp *http.Response) (*GetRepositoryReadmeR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest FileContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchRepositoryCodeResponse parses an HTTP response from a SearchRepositoryCodeWithResponse call
+func ParseSearchRepositoryCodeResponse(rsp *http.Response) (*SearchRepositoryCodeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchRepositoryCodeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CodeSearchResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
