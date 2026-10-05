@@ -35,13 +35,21 @@ test('login admin, pagina principale, lista repo senza 4xx/5xx su /api', async (
   expect((await loginResponse).status(), 'POST /auth/login').toBe(200);
   loggedIn = true;
 
+  // La UI naviga solo dopo aver letto il JSON del login: si aspetta la fine
+  // della navigazione prima di decidere se c'e' il cambio password.
+  await page.waitForURL((u) => u.pathname === '/change-password' || u.pathname === '/');
+
   // Password iniziale: la UI porta a /change-password prima di tutto il resto.
-  if (/\/change-password$/.test(page.url()) || (await page.getByRole('heading', { name: 'Change your password' }).isVisible().catch(() => false))) {
+  if (new URL(page.url()).pathname === '/change-password') {
     expect(newPassword.length, 'password iniziale: serve E2E_ADMIN_NEW_PASSWORD (>= 12 caratteri)').toBeGreaterThanOrEqual(12);
     await page.getByLabel('Current password', { exact: true }).fill(password);
     await page.getByLabel('New password', { exact: true }).fill(newPassword);
     await page.getByLabel('Confirm new password', { exact: true }).fill(newPassword);
+    const changeResponse = page.waitForResponse(
+      (r) => /\/users\/[^/]+\/password$/.test(new URL(r.url()).pathname) && r.request().method() === 'PUT',
+    );
     await page.getByRole('button', { name: 'Change password' }).click();
+    expect([200, 204], 'PUT /users/<utente>/password').toContain((await changeResponse).status());
   }
 
   // Pagina principale (Resources) dentro l'AppShell.

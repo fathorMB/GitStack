@@ -496,6 +496,7 @@ corepack pnpm e2e
 | `E2E_ADMIN_PASSWORD` | Password corrente dell'admin. Obbligatoria. |
 | `E2E_ADMIN_NEW_PASSWORD` | Serve solo se l'admin ha ancora la password iniziale: la UI impone il cambio e lo smoke lo esegue. **Cambia davvero la password dell'admin sulla VM**: dopo, `E2E_ADMIN_PASSWORD` è quella nuova (e un secondo giro non ha più bisogno di `E2E_ADMIN_NEW_PASSWORD`). Per ripartire da zero: `reset-vm.ps1`. |
 | `E2E_ADMIN_USERNAME` | Default `admin`. |
+| `E2E_CHROMIUM_ARGS` | Argomenti extra di Chromium; vuota = nessuno. Array JSON (obbligatorio se un argomento contiene spazi) oppure argomenti separati da spazi. Esempio per un nome host che non risolve: `E2E_CHROMIUM_ARGS='["--host-resolver-rules=MAP gitstack.test 127.0.0.1"]' E2E_BASE_URL=http://gitstack.test:8080`. |
 
 Se fallisce, trace e screenshot sono in `web/e2e-results/` (`pnpm exec playwright show-trace <trace.zip>`); in CI il job li carica come artefatto `e2e-ui-trace`.
 
