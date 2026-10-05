@@ -13,6 +13,7 @@ import {
   fetchLanguages,
   fetchReadme,
   fetchTags,
+  searchHref,
   commitsHref,
   fetchTree,
   fuzzyFilter,
@@ -419,7 +420,7 @@ function SearchCode({ owner, repo, refName }: { owner: string; repo: string; ref
     const query = q.trim();
     if (query === '') return;
     setOpen(false);
-    navigate(`/${owner}/${repo}/search?q=${encodeURIComponent(query)}&ref=${encodeURIComponent(refName)}`);
+    navigate(searchHref(owner, repo, query, refName));
   }
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>

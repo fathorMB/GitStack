@@ -34,6 +34,8 @@ describe('rotte del browser del codice', () => {
     ['/acme/api/commits', 'commits'],
     ['/acme/api/commits/main/cmd/main.go', 'commits'],
     ['/acme/api/commit/4e1a9c0', 'commit'],
+    ['/acme/api/tags', 'tags'],
+    ['/acme/api/search', 'search'],
   ])('%s apre la pagina del repo in modo %s', async (path, mode) => {
     at(path);
     expect(await screen.findByTestId('repo-page')).toHaveTextContent(mode);
