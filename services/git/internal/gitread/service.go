@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
+	"github.com/fathorMB/GitStack/services/git/internal/languages"
 )
 
 // Service legge la storia dei repo. Dir risolve l'id del repo nel percorso
@@ -13,11 +14,13 @@ import (
 type Service struct {
 	run *gitrun.Runner
 	dir func(repoID string) (string, error)
+
+	langs *languages.Cache // lingue per sha del commit
 }
 
 // New crea il servizio.
 func New(run *gitrun.Runner, dir func(repoID string) (string, error)) *Service {
-	return &Service{run: run, dir: dir}
+	return &Service{run: run, dir: dir, langs: languages.NewCache()}
 }
 
 // ErrRepo avvolge l'errore di risoluzione del repo.
