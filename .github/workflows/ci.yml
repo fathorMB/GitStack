@@ -334,6 +334,60 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  # Comando di amministrazione `gitstack` (admin/, GIT-142): costruisce il
+  # binario Linux e lo pubblica come asset della release GitHub
+  # "sha-<sha completo>", lo STESSO tag delle immagini (IMAGE_TAG): deploy/
+  # install.sh costruisce l'URL del binario da image_tag
+  # (.../releases/download/<image_tag>/gitstack-linux-amd64) e il suo
+  # .sha256, che prepare_admin legge (primo campo) per il checksum SHA-256 (V5).
+  # Così `curl | sudo bash` installa il comando alla stessa versione del
+  # server. Stesse condizioni del job "registry": gira SOLO dopo il merge
+  # (push su main o tag, mai sulle PR) e solo con go, ts e security a posto.
+  # La prerelease è idempotente: se esiste già (rerun) si ricaricano gli asset
+  # con --clobber.
+  admin-binary:
+    name: Admin — build e pubblicazione di gitstack
+    needs: [go, ts, security]
+    if: >-
+      !cancelled() && needs.go.result == 'success' && needs.ts.result == 'success'
+      && (needs.security.result == 'success' || needs.security.result == 'skipped')
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+
+      - name: Build gitstack-linux-amd64
+        working-directory: admin
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w -X main.version=sha-${GITHUB_SHA}" \
+            -o gitstack-linux-amd64 ./cmd/gitstack
+          sha256sum gitstack-linux-amd64 > gitstack-linux-amd64.sha256
+          cat gitstack-linux-amd64.sha256
+
+      - name: Pubblica gli asset nella release sha-<commit>
+        working-directory: admin
+        run: |
+          if gh release view "${IMAGE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${IMAGE_TAG}" gitstack-linux-amd64 gitstack-linux-amd64.sha256 --clobber
+          else
+            gh release create "${IMAGE_TAG}" gitstack-linux-amd64 gitstack-linux-amd64.sha256 \
+              --prerelease --target "${GITHUB_SHA}" \
+              --title "${IMAGE_TAG}" \
+              --notes "Build del commit ${GITHUB_SHA}: comando gitstack per install.sh (non è una release di prodotto)."
+          fi
+
   # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
   # un'installazione di prova su un cluster effimero k3d (un k3s vero in
   # Docker: Traefik e le sue CRD, incluso il Middleware usato dall'Ingress

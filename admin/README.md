@@ -39,18 +39,29 @@ sudo ./deploy/install.sh --admin-binary ./admin/gitstack-linux-amd64
 sudo ./deploy/install.sh --admin-binary <percorso|URL> --admin-sha256 <hex>
 ```
 
-Senza `--admin-binary` l'installer cerca la release GitHub taggata come il tag
-immagine (`…/releases/download/<tag>/gitstack-linux-amd64` e
-`gitstack-linux-amd64.sha256`). **Oggi nessuna CI pubblica quel binario**: se
-non c'è, l'installer avvisa («binario di gitstack non pubblicato») e prosegue
-senza installarlo; `GITSTACK_ADMIN_REQUIRED=1` rende l'assenza un errore.
+### Da dove arriva il binario
+
+Nel percorso standard (`curl | sudo bash`, quello del cliente) l'installer
+scarica da solo `gitstack-linux-amd64` e `gitstack-linux-amd64.sha256` dalla
+release GitHub `sha-<commit>`, lo stesso tag delle immagini (`image_tag`):
+`…/releases/download/sha-<commit>/gitstack-linux-amd64`. Li pubblica il job
+`admin-binary` di `.github/workflows/ci.yml`, che gira **solo dopo il merge**
+(push su main o tag, mai sulle PR, come il job `registry`): finché la CI di quel
+commit non è finita, la release non esiste. Il `.sha256` è nel formato di
+`sha256sum` (primo campo = hash), quello che legge `install.sh`. Se il binario
+non c'è l'installer avvisa («binario di gitstack non pubblicato») e prosegue senza
+installarlo; `GITSTACK_ADMIN_REQUIRED=1` (lo imposta `e2e.ps1`) rende l'assenza
+un errore.
+
+Per un checkout locale, o un commit non ancora su main, si costruisce il
+binario come sopra e si passa `--admin-binary`.
+
 Rilanciare l'installer aggiorna il binario se differisce da quello installato
 (sostituzione atomica) e riscrive il file di configurazione.
 
-Sulla VM di test (`deploy/test-vm`): costruire il binario sull'host come sopra,
-copiarlo con `scp` (utente `-VmUser`, IP di `reset-vm.ps1`) insieme al suo
-`.sha256` e lanciare l'installer con `--admin-binary` (vedi anche
-`deploy/test-vm/README.md`). Poi `sudo gitstack status`.
+Sulla VM di test (`deploy/test-vm`) `e2e.ps1` usa il percorso standard (binario
+della release `sha-<Ref>`) e prova `sudo gitstack status`; per un commit non
+ancora pubblicato vedi `deploy/test-vm/README.md`.
 
 ## File di configurazione: `/etc/gitstack/config.yaml`
 

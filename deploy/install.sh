@@ -690,8 +690,9 @@ install_admin() {
   log "Installato ${ADMIN_BIN_PATH} da ${ADMIN_SOURCE_DESC}: $("${ADMIN_BIN_PATH}" version 2>/dev/null || echo 'versione non leggibile')."
 }
 
-# Valore di una chiave (di primo livello, o dentro la sezione data) del
-# config esistente: una riesecuzione non cancella le scelte sul backup.
+# Valore di una chiave del config esistente: di primo livello (section vuota)
+# o dentro la sezione indicata (qui "backup"). Una riesecuzione non cancella
+# così le scelte sul backup.
 existing_config_value() {
   local section="$1" key="$2"
   [ -f "${GITSTACK_CONFIG_FILE}" ] || return 0
