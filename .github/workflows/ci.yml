@@ -50,6 +50,10 @@ jobs:
       - name: golangci-lint (per modulo)
         run: bash scripts/go-each.sh golangci-lint run ./... --timeout=5m
 
+      # golangci-lint non controlla gofmt (GIT-119).
+      - name: gofmt (file .go committati)
+        run: go run scripts/check-gofmt.go
+
       - name: go test -race (per modulo)
         run: bash scripts/go-each.sh go test ./... -race
 

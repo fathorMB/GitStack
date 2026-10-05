@@ -1129,6 +1129,10 @@ export type CreateIssueInput = {
 export type UpdateIssueInput = {
     title?: string;
     body?: string;
+    /**
+     * Allegati gia' caricati dall'autore, da collegare alla issue (I9). Anche da soli, senza `title` o `body`.
+     */
+    attachmentIds?: Array<string>;
 };
 
 export type CloseIssueInput = {

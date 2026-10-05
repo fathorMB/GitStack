@@ -351,3 +351,9 @@ ul.list{margin:0;padding:0;list-style:none}
 .dh.add>div{background:var(--diff-add)}.dh.add .n{background:var(--diff-add-strong)}
 .dh.del>div{background:var(--diff-del)}.dh.del .n{background:var(--diff-del-strong)}
 .btn-group{display:inline-flex;gap:6px}
+
+.label{display:inline-block;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;line-height:18px;color:var(--lc);border:1px solid var(--lc);background:color-mix(in srgb,var(--lc) 12%,transparent)}
+.ilist .ititle{font-weight:600;color:var(--text)}
+.ilist .imeta{margin-top:4px;font-size:12px;color:var(--text-muted)}
+.ilist .iright{color:var(--text-muted);font-size:13px}
+.seg button{display:inline-flex;align-items:center;gap:4px}

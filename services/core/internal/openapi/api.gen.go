@@ -1620,8 +1620,10 @@ type UpdateIssueCommentInput struct {
 
 // UpdateIssueInput defines model for UpdateIssueInput.
 type UpdateIssueInput struct {
-	Body  *string `json:"body,omitempty"`
-	Title *string `json:"title,omitempty"`
+	// AttachmentIds Allegati gia' caricati dall'autore, da collegare alla issue (I9). Anche da soli, senza `title` o `body`.
+	AttachmentIds *[]openapi_types.UUID `json:"attachmentIds,omitempty"`
+	Body          *string               `json:"body,omitempty"`
+	Title         *string               `json:"title,omitempty"`
 }
 
 // UpdateLabelInput defines model for UpdateLabelInput.
