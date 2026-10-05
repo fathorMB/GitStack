@@ -40,7 +40,8 @@ Esempi già previsti dall'architettura:
 |---|---|---|---|
 | `git.push` | `git` | servizio `git` | dopo ogni push accettato, HTTPS o SSH (schema v1 sotto) |
 | `issue.created`, `issue.closed`, ... | `issue` | servizio `core` | ciclo di vita di una issue |
-| `repo.created`, ... | `repo` | servizio `core` | ciclo di vita di un repo |
+| `issue_comment.created`, ... | `issue_comment` | servizio `core` | commenti delle issue (M-06, sotto) |
+| `repository.created`, ... | `repository` | servizio `core` | ciclo di vita di un repo (M-06, sotto; sostituisce il segnaposto `repo.*`) |
 | `core.resource.test.created` | `core` | servizio `core` | evento di prova (vedi sotto) |
 
 `events.Domain(name)` estrae il dominio da un nome evento.
@@ -51,7 +52,7 @@ Uno stream JetStream per dominio, che raccoglie tutti i subject di quel
 dominio con un wildcard: subject `"<dominio>.>"`. Il nome dello stream è il
 dominio in SCREAMING_SNAKE_CASE (qui coincide con il maiuscolo semplice
 perché i domini sono parole singole): `git` → `GIT`, `issue` → `ISSUE`,
-`repo` → `REPO`, `core` → `CORE`.
+`repository` → `REPOSITORY`, `issue_comment` → `ISSUE_COMMENT`, `core` → `CORE`.
 
 Solo il servizio che possiede il dominio pubblica sul suo stream (stesso
 principio di "uno schema Postgres per servizio": nessun servizio scrive
@@ -244,6 +245,126 @@ Limite noto: i ref prima e dopo il push si leggono con `git for-each-ref`
 attorno al `receive-pack`. Due push concorrenti sullo stesso repo possono
 vedersi a vicenda; in quel caso un evento può contenere ref aggiornati
 dall'altro push, e nessun ref va perso.
+
+## Eventi di dominio di core (M-06): `issue.*`, `issue_comment.*`, `repository.*`
+
+Contratto fissato da GIT-129; li pubblica il servizio `core` **dopo** aver
+confermato la transazione che cambia lo stato (mai prima: un evento senza
+modifica sarebbe peggio di una modifica senza evento), e li consumano in core
+le notifiche (M-06/B, consumer `core-notifier`), i webhook (`core-webhooks`)
+e il collegamento commit↔issue (`core-issue-linker`, su `git.push`).
+Sostituiscono il segnaposto `repo.*` della tabella sopra: il dominio del
+repo si chiama `repository`, come l'evento webhook.
+
+Tre domini, tre stream (`ISSUE`, `ISSUE_COMMENT`, `REPOSITORY`; subject
+`issue.>`, `issue_comment.>`, `repository.>`). `issue_comment` è un dominio a
+sé, e non `issue.comment.*`, perché i subject `issue.>` e `issue_comment.>`
+non si sovrappongono e uno stream per dominio resta la regola. Tutti a
+versione **1**. Pubblicazione come per gli altri eventi
+(`Publisher.Publish`, con ack): se NATS non risponde la richiesta HTTP non
+fallisce, l'evento va ritentato in background e, se si perde, i consumatori
+non hanno una coda su disco (vedi «Se NATS non risponde» per `git.push`: stessa
+politica, 3 tentativi). I consumatori sono idempotenti sull'`id` della busta
+(`envelope.id`): JetStream può consegnare due volte.
+
+### Campi comuni del payload
+
+| Campo | Significato |
+|---|---|
+| `repo` | `{ id, fullName, defaultBranch, visibility, archived }` come in core al momento dell'evento |
+| `actor` | `{ id, username, type }` chi ha agito (`type`: `human` o `agent`); `null` per eventi di sistema (es. chiusura da commit) |
+
+I payload sono **istantanee minime**: gli id e i campi che servono a decidere
+chi notificare e a scrivere il testo. Chi deve il dettaglio completo (i
+webhook costruiscono il corpo di `docs/webhooks.md`) lo legge dal database di
+core, che è lo stesso servizio. Gli id sono uuid, `number` è il `#n` della
+issue.
+
+### `issue.*`
+
+Campo `issue` in tutti: `{ id, number, title, state, authorId, assigneeIds,
+hidden, locked }` (stato **dopo** il cambiamento). Le issues nascoste
+pubblicano comunque l'evento (per la cronologia), con `hidden: true`: notifiche
+e webhook li scartano.
+
+| Evento | Campi in più | Note |
+|---|---|---|
+| `issue.created` | `mentions[]` (user id menzionati nel titolo/testo) | apertura (I1) |
+| `issue.edited` | `changes`: `{ title?: { from }, body?: { from } }`, `mentions[]` (nuovi) | |
+| `issue.closed` | `reason` (`completed`, `not_planned`, `duplicate`), `duplicateOf?`, `commit?`: `{ sha, repository }` | con `commit` la chiusura viene da `fixes #n` (C2) e `actor` è `null` |
+| `issue.reopened` | | |
+| `issue.assigned`, `issue.unassigned` | `assignee`: `{ id, username, type }` | un evento per assegnatario |
+| `issue.labeled`, `issue.unlabeled` | `label`: `{ id, name, color }` | |
+| `issue.milestoned`, `issue.demilestoned` | `milestone`: `{ id, number, title }` | |
+| `issue.locked`, `issue.unlocked` | `reason?` | |
+| `issue.hidden`, `issue.unhidden` | | |
+| `issue.referenced` | `source`: `{ kind, repository, number, commentId? }` (C1) | un'altra issue/PR cita questa; nasce da `core.issue_references` e dalla riga «referenced from» della cronologia |
+| `issue.commit_linked` | `commit`: `{ sha, repository, subject, ref, closeKeyword? }` (C2) | un commit cita la issue, su qualunque branch; riga «linked commit» |
+
+Con `fixes #n` su un branch non principale c'è solo `issue.commit_linked`; la
+chiusura (`issue.closed` con `commit`, e riga «closed by commit <sha>» della
+cronologia, tipo `closed_by_commit`) arriva quando il commit entra nel
+branch principale, e solo se chi ha fatto il push ha `write` sul repo della
+issue (C1, C2). `issue.referenced` e `issue.commit_linked` non cambiano
+`issue.updatedAt`.
+
+### `issue_comment.*`
+
+Campi: `issue` come sopra e `comment`: `{ id, authorId, body }` (per
+`deleted` senza `body`, I4), `mentions[]` (utenti menzionati nel testo nuovo)
+e, per `edited`, `changes`: `{ body: { from } }`.
+
+| Evento | Quando |
+|---|---|
+| `issue_comment.created` | nuovo commento |
+| `issue_comment.edited` | modifica del testo da parte dell'autore |
+| `issue_comment.deleted` | eliminazione (resta la traccia «comment deleted», I4) |
+
+### `repository.*`
+
+Campi: solo i comuni, più `changes` dove indicato.
+
+| Evento | Campi in più |
+|---|---|
+| `repository.created` | |
+| `repository.deleted` | `deletedAt`, `purgeAt` (7 giorni dopo, R2) |
+| `repository.restored` | |
+| `repository.archived`, `repository.unarchived` | |
+| `repository.visibility_changed` | `changes`: `{ visibility: { from } }` |
+
+La rinomina e il trasferimento non esistono nella v1 (R3): niente eventi.
+
+### Corrispondenza con i webhook e le notifiche
+
+| Evento di dominio | Webhook | Notifica (motivo) |
+|---|---|---|
+| `git.push` | `push`, uno per ref | commit citati: `commit_linked` agli iscritti |
+| `issue.created` | `issues` / `opened` | `mentioned`, `assigned`, `subscribed` (Watch `all`) |
+| `issue.edited` | `issues` / `edited` | `mentioned` (nuovi menzionati) |
+| `issue.closed`, `issue.reopened` | `issues` / `closed`, `reopened` | `state_change` |
+| `issue.assigned`, `issue.unassigned` | `issues` / `assigned`, `unassigned` | `assigned` all'assegnatario |
+| `issue.labeled` … `issue.unlocked` | `issues` / azione omonima | nessuna |
+| `issue.hidden`, `issue.unhidden` | nessuno | nessuna |
+| `issue.referenced` | nessuno | nessuna |
+| `issue.commit_linked` | nessuno | `commit_linked` agli iscritti |
+| `issue_comment.created` | `issue_comment` / `created` | `mentioned`, `participating`, `subscribed` |
+| `issue_comment.edited` | `issue_comment` / `edited` | `mentioned` (nuovi menzionati) |
+| `issue_comment.deleted` | `issue_comment` / `deleted` | nessuna |
+| `repository.*` | `repository` / azione omonima | nessuna |
+
+Chi riceve una notifica lo decide il consumer: iscritti alla issue
+(`core.issue_subscriptions`), watch del repo (`core.repo_watches`), menzioni e
+assegnatari; mai chi ha causato l'evento, anche via token (C3). Un repo in
+Watch `ignore` non notifica, salvo le menzioni dirette. La notifica
+`webhook` (C7) non nasce da un evento NATS: la scrive il job di consegna
+quando disattiva un webhook.
+
+Consumer durevoli (convenzione `<servizio>-<scopo>`; un consumer JetStream
+appartiene a uno stream, quindi si aggiunge il dominio): `core-notifier-issue`,
+`core-notifier-issue_comment` (notifiche), `core-webhooks-git`,
+`core-webhooks-issue`, `core-webhooks-issue_comment`,
+`core-webhooks-repository` (webhook) e `core-issue-linker` (su `git.push`).
+Nomi stabili: cambiarli riparte da zero.
 
 ## Come si avvia NATS per i test
 

@@ -17,6 +17,8 @@ altre guide utente dedicate, il riferimento è
 `.gitstack/ISSUE_TEMPLATE/`: formato, front matter, comportamento e
 contratto API.
 
+`webhooks.md` (M-06/A, GIT-129) è il formato dei payload webhook GitStack v1 (push, issues, issue_comment, repository), con intestazioni, firma HMAC-SHA256, tentativi ed esempi; gli eventi di dominio `issue.*`, `issue_comment.*` e `repository.*` che li alimentano sono in `events.md`.
+
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
 
 `rules-coverage.md` (GIT-115) è la tabella regole di prodotto → test; `scripts/check-rules-coverage.go` ne verifica in CI che i test citati esistano.

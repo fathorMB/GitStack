@@ -983,6 +983,9 @@ type LabelNameParam = string
 // MilestoneNumberParam defines model for MilestoneNumberParam.
 type MilestoneNumberParam = int64
 
+// NotificationIdParam defines model for NotificationIdParam.
+type NotificationIdParam = openapi_types.UUID
+
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
@@ -1030,6 +1033,12 @@ type TokenIdParam = openapi_types.UUID
 //
 // Example: alice
 type UsernameParam = Name
+
+// WebhookDeliveryIdParam defines model for WebhookDeliveryIdParam.
+type WebhookDeliveryIdParam = openapi_types.UUID
+
+// WebhookIdParam defines model for WebhookIdParam.
+type WebhookIdParam = openapi_types.UUID
 
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error

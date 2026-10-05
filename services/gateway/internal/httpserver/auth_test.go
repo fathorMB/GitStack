@@ -221,14 +221,14 @@ func TestSicurezza_RotteDiCoreServite(t *testing.T) {
 			continue
 		}
 		e := newEnv(t, allowAll())
-		// ?path=x&q=xx: le letture di file hanno `path` obbligatorio nel contratto, la ricerca `q`.
+		// ?path=x&q=xx&state=read: le letture di file hanno `path` obbligatorio nel contratto, la ricerca `q`, l'eliminazione in blocco delle notifiche `state`.
 		path := param.ReplaceAllStringFunc(r.Path, func(p string) string {
 			if p == "{number}" || p == "{milestoneNumber}" {
 				return "1" // numeri interi (issues, milestone), non UUID
 			}
 			return "00000000-0000-0000-0000-000000000000"
 		})
-		rec := e.do(authedRequestFor(table, r.Method, "/v1"+path+"?path=x&q=xx"))
+		rec := e.do(authedRequestFor(table, r.Method, "/v1"+path+"?path=x&q=xx&state=read"))
 		if rec.Code != http.StatusNoContent || e.core.count() != 1 {
 			t.Errorf("%s %s: status %d, richieste a core %d", r.Method, r.Path, rec.Code, e.core.count())
 		}

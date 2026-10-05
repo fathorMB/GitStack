@@ -256,7 +256,9 @@ func (e IssueCloseReason) Valid() bool {
 const (
 	IssueEventTypeAssigned       IssueEventType = "assigned"
 	IssueEventTypeClosed         IssueEventType = "closed"
+	IssueEventTypeClosedByCommit IssueEventType = "closed_by_commit"
 	IssueEventTypeCommentDeleted IssueEventType = "comment_deleted"
+	IssueEventTypeCommitLinked   IssueEventType = "commit_linked"
 	IssueEventTypeDemilestoned   IssueEventType = "demilestoned"
 	IssueEventTypeEdited         IssueEventType = "edited"
 	IssueEventTypeHidden         IssueEventType = "hidden"
@@ -265,6 +267,7 @@ const (
 	IssueEventTypeMilestoned     IssueEventType = "milestoned"
 	IssueEventTypeOpened         IssueEventType = "opened"
 	IssueEventTypeReferenced     IssueEventType = "referenced"
+	IssueEventTypeReferencedFrom IssueEventType = "referenced_from"
 	IssueEventTypeRenamed        IssueEventType = "renamed"
 	IssueEventTypeReopened       IssueEventType = "reopened"
 	IssueEventTypeUnassigned     IssueEventType = "unassigned"
@@ -280,7 +283,11 @@ func (e IssueEventType) Valid() bool {
 		return true
 	case IssueEventTypeClosed:
 		return true
+	case IssueEventTypeClosedByCommit:
+		return true
 	case IssueEventTypeCommentDeleted:
+		return true
+	case IssueEventTypeCommitLinked:
 		return true
 	case IssueEventTypeDemilestoned:
 		return true
@@ -297,6 +304,8 @@ func (e IssueEventType) Valid() bool {
 	case IssueEventTypeOpened:
 		return true
 	case IssueEventTypeReferenced:
+		return true
+	case IssueEventTypeReferencedFrom:
 		return true
 	case IssueEventTypeRenamed:
 		return true
@@ -345,6 +354,36 @@ func (e IssueState) Valid() bool {
 	case IssueStateClosed:
 		return true
 	case IssueStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueSubscriptionReason.
+const (
+	IssueSubscriptionReasonAssignee  IssueSubscriptionReason = "assignee"
+	IssueSubscriptionReasonAuthor    IssueSubscriptionReason = "author"
+	IssueSubscriptionReasonCommenter IssueSubscriptionReason = "commenter"
+	IssueSubscriptionReasonManual    IssueSubscriptionReason = "manual"
+	IssueSubscriptionReasonMentioned IssueSubscriptionReason = "mentioned"
+	IssueSubscriptionReasonNone      IssueSubscriptionReason = "none"
+)
+
+// Valid indicates whether the value is a known member of the IssueSubscriptionReason enum.
+func (e IssueSubscriptionReason) Valid() bool {
+	switch e {
+	case IssueSubscriptionReasonAssignee:
+		return true
+	case IssueSubscriptionReasonAuthor:
+		return true
+	case IssueSubscriptionReasonCommenter:
+		return true
+	case IssueSubscriptionReasonManual:
+		return true
+	case IssueSubscriptionReasonMentioned:
+		return true
+	case IssueSubscriptionReasonNone:
 		return true
 	default:
 		return false
@@ -426,6 +465,57 @@ func (e MilestoneState) Valid() bool {
 	}
 }
 
+// Defines values for NotificationIssueState.
+const (
+	NotificationIssueStateClosed NotificationIssueState = "closed"
+	NotificationIssueStateOpen   NotificationIssueState = "open"
+)
+
+// Valid indicates whether the value is a known member of the NotificationIssueState enum.
+func (e NotificationIssueState) Valid() bool {
+	switch e {
+	case NotificationIssueStateClosed:
+		return true
+	case NotificationIssueStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NotificationReason.
+const (
+	NotificationReasonAssigned      NotificationReason = "assigned"
+	NotificationReasonCommitLinked  NotificationReason = "commit_linked"
+	NotificationReasonMentioned     NotificationReason = "mentioned"
+	NotificationReasonParticipating NotificationReason = "participating"
+	NotificationReasonStateChange   NotificationReason = "state_change"
+	NotificationReasonSubscribed    NotificationReason = "subscribed"
+	NotificationReasonWebhook       NotificationReason = "webhook"
+)
+
+// Valid indicates whether the value is a known member of the NotificationReason enum.
+func (e NotificationReason) Valid() bool {
+	switch e {
+	case NotificationReasonAssigned:
+		return true
+	case NotificationReasonCommitLinked:
+		return true
+	case NotificationReasonMentioned:
+		return true
+	case NotificationReasonParticipating:
+		return true
+	case NotificationReasonStateChange:
+		return true
+	case NotificationReasonSubscribed:
+		return true
+	case NotificationReasonWebhook:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OwnerType.
 const (
 	Organization OwnerType = "organization"
@@ -462,21 +552,42 @@ func (e RepoVisibility) Valid() bool {
 	}
 }
 
+// Defines values for RepoWatchMode.
+const (
+	RepoWatchModeAll           RepoWatchMode = "all"
+	RepoWatchModeIgnore        RepoWatchMode = "ignore"
+	RepoWatchModeParticipating RepoWatchMode = "participating"
+)
+
+// Valid indicates whether the value is a known member of the RepoWatchMode enum.
+func (e RepoWatchMode) Valid() bool {
+	switch e {
+	case RepoWatchModeAll:
+		return true
+	case RepoWatchModeIgnore:
+		return true
+	case RepoWatchModeParticipating:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceRole.
 const (
-	Admin ResourceRole = "admin"
-	Read  ResourceRole = "read"
-	Write ResourceRole = "write"
+	ResourceRoleAdmin ResourceRole = "admin"
+	ResourceRoleRead  ResourceRole = "read"
+	ResourceRoleWrite ResourceRole = "write"
 )
 
 // Valid indicates whether the value is a known member of the ResourceRole enum.
 func (e ResourceRole) Valid() bool {
 	switch e {
-	case Admin:
+	case ResourceRoleAdmin:
 		return true
-	case Read:
+	case ResourceRoleRead:
 		return true
-	case Write:
+	case ResourceRoleWrite:
 		return true
 	default:
 		return false
@@ -519,6 +630,87 @@ func (e UpdateMilestoneInputState) Valid() bool {
 	case UpdateMilestoneInputStateClosed:
 		return true
 	case UpdateMilestoneInputStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDisabledReason.
+const (
+	ConsecutiveFailures WebhookDisabledReason = "consecutive_failures"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDisabledReason enum.
+func (e WebhookDisabledReason) Valid() bool {
+	switch e {
+	case ConsecutiveFailures:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDeliveryStatus.
+const (
+	Failed  WebhookDeliveryStatus = "failed"
+	Gone    WebhookDeliveryStatus = "gone"
+	Pending WebhookDeliveryStatus = "pending"
+	Success WebhookDeliveryStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeliveryStatus enum.
+func (e WebhookDeliveryStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case Gone:
+		return true
+	case Pending:
+		return true
+	case Success:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookEvent.
+const (
+	WebhookEventIssueComment WebhookEvent = "issue_comment"
+	WebhookEventIssues       WebhookEvent = "issues"
+	WebhookEventPush         WebhookEvent = "push"
+	WebhookEventRepository   WebhookEvent = "repository"
+)
+
+// Valid indicates whether the value is a known member of the WebhookEvent enum.
+func (e WebhookEvent) Valid() bool {
+	switch e {
+	case WebhookEventIssueComment:
+		return true
+	case WebhookEventIssues:
+		return true
+	case WebhookEventPush:
+		return true
+	case WebhookEventRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookScope.
+const (
+	Org  WebhookScope = "org"
+	Repo WebhookScope = "repo"
+)
+
+// Valid indicates whether the value is a known member of the WebhookScope enum.
+func (e WebhookScope) Valid() bool {
+	switch e {
+	case Org:
+		return true
+	case Repo:
 		return true
 	default:
 		return false
@@ -609,6 +801,30 @@ func (e MilestoneStateFilter) Valid() bool {
 	}
 }
 
+// Defines values for NotificationStateFilter.
+const (
+	NotificationStateFilterAll      NotificationStateFilter = "all"
+	NotificationStateFilterArchived NotificationStateFilter = "archived"
+	NotificationStateFilterRead     NotificationStateFilter = "read"
+	NotificationStateFilterUnread   NotificationStateFilter = "unread"
+)
+
+// Valid indicates whether the value is a known member of the NotificationStateFilter enum.
+func (e NotificationStateFilter) Valid() bool {
+	switch e {
+	case NotificationStateFilterAll:
+		return true
+	case NotificationStateFilterArchived:
+		return true
+	case NotificationStateFilterRead:
+		return true
+	case NotificationStateFilterUnread:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PatchFormatParam.
 const (
 	PatchFormatParamDiff  PatchFormatParam = "diff"
@@ -621,6 +837,48 @@ func (e PatchFormatParam) Valid() bool {
 	case PatchFormatParamDiff:
 		return true
 	case PatchFormatParamPatch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteNotificationsParamsState.
+const (
+	DeleteNotificationsParamsStateArchived DeleteNotificationsParamsState = "archived"
+	DeleteNotificationsParamsStateRead     DeleteNotificationsParamsState = "read"
+)
+
+// Valid indicates whether the value is a known member of the DeleteNotificationsParamsState enum.
+func (e DeleteNotificationsParamsState) Valid() bool {
+	switch e {
+	case DeleteNotificationsParamsStateArchived:
+		return true
+	case DeleteNotificationsParamsStateRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListNotificationsParamsState.
+const (
+	ListNotificationsParamsStateAll      ListNotificationsParamsState = "all"
+	ListNotificationsParamsStateArchived ListNotificationsParamsState = "archived"
+	ListNotificationsParamsStateRead     ListNotificationsParamsState = "read"
+	ListNotificationsParamsStateUnread   ListNotificationsParamsState = "unread"
+)
+
+// Valid indicates whether the value is a known member of the ListNotificationsParamsState enum.
+func (e ListNotificationsParamsState) Valid() bool {
+	switch e {
+	case ListNotificationsParamsStateAll:
+		return true
+	case ListNotificationsParamsStateArchived:
+		return true
+	case ListNotificationsParamsStateRead:
+		return true
+	case ListNotificationsParamsStateUnread:
 		return true
 	default:
 		return false
@@ -982,6 +1240,21 @@ type CreateResourceInput struct {
 	Type string `json:"type"`
 }
 
+// CreateWebhookInput defines model for CreateWebhookInput.
+type CreateWebhookInput struct {
+	Active *bool          `json:"active,omitempty"`
+	Events []WebhookEvent `json:"events"`
+
+	// Secret Segreto per l'HMAC-SHA256 di `X-GitStack-Signature`. Facoltativo; scritto una volta, mai restituito.
+	Secret *string `json:"secret,omitempty"`
+	Url    string  `json:"url"`
+}
+
+// DeletedNotifications defines model for DeletedNotifications.
+type DeletedNotifications struct {
+	Deleted int `json:"deleted"`
+}
+
 // DeletedRepository defines model for DeletedRepository.
 type DeletedRepository struct {
 	DeletedAt time.Time          `json:"deletedAt"`
@@ -1207,7 +1480,7 @@ type IssueEvent struct {
 	Actor     *IssueUser `json:"actor,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 
-	// Data Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+	// Data Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` (non piu' scritto, sostituito da `commit_linked`) ha `commit`; `comment_deleted` ha `commentId`. Eventi di M-06: `referenced_from` (C1, "referenced from owner/repo#n") ha `source` (`kind` issue|pull_request, `repository` `owner/repo`, `number`, `title`, `commentId` se cita un commento) e compare solo a chi vede entrambi i repo; `commit_linked` (C2, "linked commit") ha `commit` (`sha`, `repository` `owner/repo`, `subject`, `ref`, `authorName`); `closed_by_commit` (C2, "closed by commit <sha>") ha `commit` e `reason` `completed`, senza `actor`, ed e' l'unico evento scritto per una chiusura da `fixes #n` (non c'e' anche un `closed`).
 	Data *map[string]interface{} `json:"data,omitempty"`
 	Id   openapi_types.UUID      `json:"id"`
 	Type IssueEventType          `json:"type"`
@@ -1271,6 +1544,16 @@ type IssueSearchResultList struct {
 
 // IssueState defines model for IssueState.
 type IssueState string
+
+// IssueSubscription defines model for IssueSubscription.
+type IssueSubscription struct {
+	// Reason Perche' si segue: `author`, `assignee`, `commenter`, `mentioned` (automatico), `manual` (Subscribe), oppure `none` se non si segue (Unsubscribe esplicito o mai coinvolti).
+	Reason     IssueSubscriptionReason `json:"reason"`
+	Subscribed bool                    `json:"subscribed"`
+}
+
+// IssueSubscriptionReason Perche' si segue: `author`, `assignee`, `commenter`, `mentioned` (automatico), `manual` (Subscribe), oppure `none` se non si segue (Unsubscribe esplicito o mai coinvolti).
+type IssueSubscriptionReason string
 
 // IssueSummary Issue negli elenchi: senza testo.
 type IssueSummary struct {
@@ -1371,6 +1654,12 @@ type LockIssueInput struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
+// MarkedNotifications defines model for MarkedNotifications.
+type MarkedNotifications struct {
+	// Marked Quante notifiche sono passate da non letta a letta.
+	Marked int `json:"marked"`
+}
+
 // Milestone defines model for Milestone.
 type Milestone struct {
 	ClosedAt *time.Time `json:"closedAt,omitempty"`
@@ -1404,6 +1693,83 @@ type MilestoneList struct {
 //
 // Example: alice
 type Name = string
+
+// Notification defines model for Notification.
+type Notification struct {
+	// Actor Chi ha causato la notifica; assente per gli eventi di sistema (es. chiusura da commit).
+	Actor    *IssueUser `json:"actor,omitempty"`
+	Archived bool       `json:"archived"`
+
+	// CommentId Il commento che ha causato la notifica, se c'e'.
+	CommentId *openapi_types.UUID `json:"commentId,omitempty"`
+	CreatedAt time.Time           `json:"createdAt"`
+
+	// Event Nome dell'evento di dominio da cui nasce (es. `issue.closed`, docs/events.md).
+	//
+	// Example: issue.closed
+	Event  string             `json:"event"`
+	Id     openapi_types.UUID `json:"id"`
+	Issue  *NotificationIssue `json:"issue,omitempty"`
+	Read   bool               `json:"read"`
+	ReadAt *time.Time         `json:"readAt,omitempty"`
+
+	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+	Reason     NotificationReason `json:"reason"`
+	Repository *NotificationRepo  `json:"repository,omitempty"`
+
+	// Summary Testo breve leggibile da persone, non contrattuale.
+	Summary string               `json:"summary"`
+	Webhook *NotificationWebhook `json:"webhook,omitempty"`
+}
+
+// NotificationIssue defines model for NotificationIssue.
+type NotificationIssue struct {
+	Number int64                  `json:"number"`
+	State  NotificationIssueState `json:"state"`
+	Title  string                 `json:"title"`
+}
+
+// NotificationIssueState defines model for NotificationIssue.State.
+type NotificationIssueState string
+
+// NotificationList defines model for NotificationList.
+type NotificationList struct {
+	Items   []Notification `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+
+	// UnreadCount Notifiche non lette e non archiviate dell'utente (filtri `reason` e `repo` compresi).
+	UnreadCount int `json:"unreadCount"`
+}
+
+// NotificationPreferences defines model for NotificationPreferences.
+type NotificationPreferences struct {
+	// Email Per ogni tipo (`NotificationReason`) se arriva anche una email. Sono sempre presenti tutti i tipi.
+	//
+	// Example: {"assigned":true,"commit_linked":false,"mentioned":true,"participating":false,"state_change":false,"subscribed":false,"webhook":false}
+	Email map[string]bool `json:"email"`
+
+	// EmailAvailable `false` senza SMTP configurato o per un agente: le email non partono (C4, C5).
+	EmailAvailable bool `json:"emailAvailable"`
+}
+
+// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+type NotificationReason string
+
+// NotificationRepo defines model for NotificationRepo.
+type NotificationRepo struct {
+	// FullName `owner/repo`.
+	FullName string             `json:"fullName"`
+	Id       openapi_types.UUID `json:"id"`
+}
+
+// NotificationWebhook Il webhook di una notifica `webhook`; assente se e' stato eliminato nel frattempo (la notifica sparisce con lui).
+type NotificationWebhook struct {
+	Id    openapi_types.UUID `json:"id"`
+	Scope WebhookScope       `json:"scope"`
+	Url   string             `json:"url"`
+}
 
 // OwnerType defines model for OwnerType.
 type OwnerType string
@@ -1443,6 +1809,17 @@ type RepoOwner struct {
 
 // RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
 type RepoVisibility string
+
+// RepoWatch defines model for RepoWatch.
+type RepoWatch struct {
+	Mode RepoWatchMode `json:"mode"`
+
+	// UpdatedAt Assente finche' l'utente non ha mai scelto (default `participating`).
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+}
+
+// RepoWatchMode defines model for RepoWatchMode.
+type RepoWatchMode string
 
 // Repository defines model for Repository.
 type Repository struct {
@@ -1536,6 +1913,11 @@ type SetIssueLabelsInput struct {
 type SetIssueMilestoneInput struct {
 	// Milestone Numero della milestone, o `null` per toglierla.
 	Milestone *int64 `json:"milestone"`
+}
+
+// SetRepoWatchInput defines model for SetRepoWatchInput.
+type SetRepoWatchInput struct {
+	Mode RepoWatchMode `json:"mode"`
 }
 
 // Tag defines model for Tag.
@@ -1647,6 +2029,21 @@ type UpdateMilestoneInput struct {
 // UpdateMilestoneInputState defines model for UpdateMilestoneInput.State.
 type UpdateMilestoneInputState string
 
+// UpdateNotificationInput defines model for UpdateNotificationInput.
+type UpdateNotificationInput struct {
+	// Archived `true` archivia, `false` ripristina.
+	Archived *bool `json:"archived,omitempty"`
+
+	// Read `true` segna come letta, `false` di nuovo come non letta.
+	Read *bool `json:"read,omitempty"`
+}
+
+// UpdateNotificationPreferencesInput defines model for UpdateNotificationPreferencesInput.
+type UpdateNotificationPreferencesInput struct {
+	// Email Tipo (`NotificationReason`) → email si/no. I tipi omessi non cambiano.
+	Email map[string]bool `json:"email"`
+}
+
 // UpdateRepositoryInput defines model for UpdateRepositoryInput.
 type UpdateRepositoryInput struct {
 	Archived             *bool   `json:"archived,omitempty"`
@@ -1662,6 +2059,16 @@ type UpdateRepositoryInput struct {
 type UpdateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
 	Name       *string                 `json:"name,omitempty"`
+}
+
+// UpdateWebhookInput defines model for UpdateWebhookInput.
+type UpdateWebhookInput struct {
+	Active *bool           `json:"active,omitempty"`
+	Events *[]WebhookEvent `json:"events,omitempty"`
+
+	// Secret Una stringa sostituisce il segreto; la stringa vuota lo toglie.
+	Secret *string `json:"secret,omitempty"`
+	Url    *string `json:"url,omitempty"`
 }
 
 // UploadIssueAttachmentInput defines model for UploadIssueAttachmentInput.
@@ -1692,6 +2099,145 @@ type UserAccessList struct {
 	PerPage int              `json:"perPage"`
 	Total   int              `json:"total"`
 }
+
+// Webhook defines model for Webhook.
+type Webhook struct {
+	Active    bool       `json:"active"`
+	CreatedAt time.Time  `json:"createdAt"`
+	CreatedBy *IssueUser `json:"createdBy,omitempty"`
+
+	// DisabledAt Quando i fallimenti consecutivi lo hanno disattivato (C7); `null` se attivo o messo in pausa a mano.
+	DisabledAt     *time.Time             `json:"disabledAt,omitempty"`
+	DisabledReason *WebhookDisabledReason `json:"disabledReason,omitempty"`
+	Events         []WebhookEvent         `json:"events"`
+
+	// FailingSince Inizio dei fallimenti consecutivi in corso; dopo 3 giorni il webhook si disattiva.
+	FailingSince *time.Time `json:"failingSince,omitempty"`
+
+	// HasSecret Il segreto non torna mai nelle risposte; senza segreto la consegna non e' firmata.
+	HasSecret    bool                    `json:"hasSecret"`
+	Id           openapi_types.UUID      `json:"id"`
+	LastDelivery *WebhookDeliverySummary `json:"lastDelivery,omitempty"`
+
+	// Organization Nome dell'organizzazione, per scope `org`.
+	Organization *string `json:"organization,omitempty"`
+
+	// Repository Il repo, per scope `repo`.
+	Repository *NotificationRepo `json:"repository,omitempty"`
+	Scope      WebhookScope      `json:"scope"`
+	UpdatedAt  time.Time         `json:"updatedAt"`
+	Url        string            `json:"url"`
+}
+
+// WebhookDisabledReason defines model for Webhook.DisabledReason.
+type WebhookDisabledReason string
+
+// WebhookDelivery defines model for WebhookDelivery.
+type WebhookDelivery = WebhookDeliverySummary
+
+// WebhookDeliveryDetail defines model for WebhookDeliveryDetail.
+type WebhookDeliveryDetail struct {
+	// Action Azione dell'evento (es. `opened`, `closed`); vuota per `push`.
+	Action *string `json:"action,omitempty"`
+
+	// Attempt Tentativi fatti, al massimo 8 (C7).
+	Attempt     int        `json:"attempt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	DeliveredAt *time.Time `json:"deliveredAt,omitempty"`
+	DurationMs  *int       `json:"durationMs,omitempty"`
+
+	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
+	Error *string `json:"error,omitempty"`
+
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	Event WebhookEvent `json:"event"`
+
+	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
+	Id            openapi_types.UUID     `json:"id"`
+	NextAttemptAt *time.Time             `json:"nextAttemptAt,omitempty"`
+	RedeliveryOf  *openapi_types.UUID    `json:"redeliveryOf,omitempty"`
+	Request       WebhookDeliveryRequest `json:"request"`
+
+	// Response Assente se non c'e' stata nessuna risposta.
+	Response *WebhookDeliveryResponse `json:"response,omitempty"`
+
+	// Status `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+	Status WebhookDeliveryStatus `json:"status"`
+
+	// StatusCode Codice HTTP dell'ultimo tentativo; assente per errori di rete o timeout di 10 s.
+	StatusCode *int `json:"statusCode,omitempty"`
+}
+
+// WebhookDeliveryList defines model for WebhookDeliveryList.
+type WebhookDeliveryList struct {
+	Items   []WebhookDeliverySummary `json:"items"`
+	Page    int                      `json:"page"`
+	PerPage int                      `json:"perPage"`
+	Total   int                      `json:"total"`
+}
+
+// WebhookDeliveryRequest defines model for WebhookDeliveryRequest.
+type WebhookDeliveryRequest struct {
+	// Headers Le intestazioni inviate (`X-GitStack-Event`, `X-GitStack-Delivery`, `X-GitStack-Signature` se c'e' un segreto, ...).
+	Headers map[string]string `json:"headers"`
+
+	// Payload Il corpo JSON inviato (formato in docs/webhooks.md).
+	Payload map[string]interface{} `json:"payload"`
+}
+
+// WebhookDeliveryResponse defines model for WebhookDeliveryResponse.
+type WebhookDeliveryResponse struct {
+	// Body Corpo della risposta, troncato a 4 KB (C8).
+	Body      string            `json:"body"`
+	Headers   map[string]string `json:"headers"`
+	Truncated bool              `json:"truncated"`
+}
+
+// WebhookDeliveryStatus `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+type WebhookDeliveryStatus string
+
+// WebhookDeliverySummary defines model for WebhookDeliverySummary.
+type WebhookDeliverySummary struct {
+	// Action Azione dell'evento (es. `opened`, `closed`); vuota per `push`.
+	Action *string `json:"action,omitempty"`
+
+	// Attempt Tentativi fatti, al massimo 8 (C7).
+	Attempt     int        `json:"attempt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	DeliveredAt *time.Time `json:"deliveredAt,omitempty"`
+	DurationMs  *int       `json:"durationMs,omitempty"`
+
+	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
+	Error *string `json:"error,omitempty"`
+
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	Event WebhookEvent `json:"event"`
+
+	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
+	Id            openapi_types.UUID  `json:"id"`
+	NextAttemptAt *time.Time          `json:"nextAttemptAt,omitempty"`
+	RedeliveryOf  *openapi_types.UUID `json:"redeliveryOf,omitempty"`
+
+	// Status `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+	Status WebhookDeliveryStatus `json:"status"`
+
+	// StatusCode Codice HTTP dell'ultimo tentativo; assente per errori di rete o timeout di 10 s.
+	StatusCode *int `json:"statusCode,omitempty"`
+}
+
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+type WebhookEvent string
+
+// WebhookList defines model for WebhookList.
+type WebhookList struct {
+	Items   []Webhook `json:"items"`
+	Page    int       `json:"page"`
+	PerPage int       `json:"perPage"`
+	Total   int       `json:"total"`
+}
+
+// WebhookScope defines model for WebhookScope.
+type WebhookScope string
 
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
@@ -1768,6 +2314,18 @@ type MilestoneNumberParam = int64
 // MilestoneStateFilter defines model for MilestoneStateFilter.
 type MilestoneStateFilter string
 
+// NotificationIdParam defines model for NotificationIdParam.
+type NotificationIdParam = openapi_types.UUID
+
+// NotificationReasonFilter Example: assigned,mentioned
+type NotificationReasonFilter = string
+
+// NotificationRepoFilter defines model for NotificationRepoFilter.
+type NotificationRepoFilter = string
+
+// NotificationStateFilter defines model for NotificationStateFilter.
+type NotificationStateFilter string
+
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
@@ -1833,6 +2391,12 @@ type TokenIdParam = openapi_types.UUID
 // Example: alice
 type UsernameParam = Name
 
+// WebhookDeliveryIdParam defines model for WebhookDeliveryIdParam.
+type WebhookDeliveryIdParam = openapi_types.UUID
+
+// WebhookIdParam defines model for WebhookIdParam.
+type WebhookIdParam = openapi_types.UUID
+
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
 
@@ -1856,6 +2420,57 @@ type UnexpectedError = Error
 
 // UnprocessableEntity Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnprocessableEntity = Error
+
+// DeleteNotificationsParams defines parameters for DeleteNotifications.
+type DeleteNotificationsParams struct {
+	State DeleteNotificationsParamsState `form:"state" json:"state"`
+
+	// Reason Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+	Reason *NotificationReasonFilter `form:"reason,omitempty" json:"reason,omitempty"`
+
+	// Repo Solo le notifiche di un repo, `owner/repo`.
+	Repo *NotificationRepoFilter `form:"repo,omitempty" json:"repo,omitempty"`
+}
+
+// DeleteNotificationsParamsState defines parameters for DeleteNotifications.
+type DeleteNotificationsParamsState string
+
+// ListNotificationsParams defines parameters for ListNotifications.
+type ListNotificationsParams struct {
+	// Reason Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+	Reason *NotificationReasonFilter     `form:"reason,omitempty" json:"reason,omitempty"`
+	State  *ListNotificationsParamsState `form:"state,omitempty" json:"state,omitempty"`
+
+	// Repo Solo le notifiche di un repo, `owner/repo`.
+	Repo    *NotificationRepoFilter `form:"repo,omitempty" json:"repo,omitempty"`
+	Page    *PageParam              `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam           `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListNotificationsParamsState defines parameters for ListNotifications.
+type ListNotificationsParamsState string
+
+// MarkAllNotificationsReadParams defines parameters for MarkAllNotificationsRead.
+type MarkAllNotificationsReadParams struct {
+	// Reason Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+	Reason *NotificationReasonFilter `form:"reason,omitempty" json:"reason,omitempty"`
+
+	// Repo Solo le notifiche di un repo, `owner/repo`.
+	Repo *NotificationRepoFilter `form:"repo,omitempty" json:"repo,omitempty"`
+}
+
+// ListOrgWebhooksParams defines parameters for ListOrgWebhooks.
+type ListOrgWebhooksParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListOrgWebhookDeliveriesParams defines parameters for ListOrgWebhookDeliveries.
+type ListOrgWebhookDeliveriesParams struct {
+	Status  *WebhookDeliveryStatus `form:"status,omitempty" json:"status,omitempty"`
+	Page    *PageParam             `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam          `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
 
 // ListRepositoriesParams defines parameters for ListRepositories.
 type ListRepositoriesParams struct {
@@ -1942,6 +2557,19 @@ type GetRepositoryFileParams struct {
 type ListRepositoryFilesParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// ListRepoWebhooksParams defines parameters for ListRepoWebhooks.
+type ListRepoWebhooksParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListRepoWebhookDeliveriesParams defines parameters for ListRepoWebhookDeliveries.
+type ListRepoWebhookDeliveriesParams struct {
+	Status  *WebhookDeliveryStatus `form:"status,omitempty" json:"status,omitempty"`
+	Page    *PageParam             `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam          `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // ListIssuesParams defines parameters for ListIssues.
@@ -2071,11 +2699,26 @@ type GetUserAccessParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// UpdateNotificationJSONRequestBody defines body for UpdateNotification for application/json ContentType.
+type UpdateNotificationJSONRequestBody = UpdateNotificationInput
+
+// CreateOrgWebhookJSONRequestBody defines body for CreateOrgWebhook for application/json ContentType.
+type CreateOrgWebhookJSONRequestBody = CreateWebhookInput
+
+// UpdateOrgWebhookJSONRequestBody defines body for UpdateOrgWebhook for application/json ContentType.
+type UpdateOrgWebhookJSONRequestBody = UpdateWebhookInput
+
 // CreateRepositoryJSONRequestBody defines body for CreateRepository for application/json ContentType.
 type CreateRepositoryJSONRequestBody = CreateRepositoryInput
 
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
+
+// CreateRepoWebhookJSONRequestBody defines body for CreateRepoWebhook for application/json ContentType.
+type CreateRepoWebhookJSONRequestBody = CreateWebhookInput
+
+// UpdateRepoWebhookJSONRequestBody defines body for UpdateRepoWebhook for application/json ContentType.
+type UpdateRepoWebhookJSONRequestBody = UpdateWebhookInput
 
 // UploadIssueAttachmentMultipartRequestBody defines body for UploadIssueAttachment for multipart/form-data ContentType.
 type UploadIssueAttachmentMultipartRequestBody = UploadIssueAttachmentInput
@@ -2122,17 +2765,68 @@ type CreateMilestoneJSONRequestBody = CreateMilestoneInput
 // UpdateMilestoneJSONRequestBody defines body for UpdateMilestone for application/json ContentType.
 type UpdateMilestoneJSONRequestBody = UpdateMilestoneInput
 
+// SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
+type SetRepoWatchJSONRequestBody = SetRepoWatchInput
+
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
 
 // UpdateResourceJSONRequestBody defines body for UpdateResource for application/json ContentType.
 type UpdateResourceJSONRequestBody = UpdateResourceInput
 
+// UpdateNotificationPreferencesJSONRequestBody defines body for UpdateNotificationPreferences for application/json ContentType.
+type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreferencesInput
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// DeleteNotifications Elimina in blocco le notifiche
+	// (DELETE /notifications)
+	DeleteNotifications(w http.ResponseWriter, r *http.Request, params DeleteNotificationsParams)
+	// ListNotifications Casella delle notifiche
+	// (GET /notifications)
+	ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams)
+	// MarkAllNotificationsRead Segna come lette tutte le notifiche
+	// (POST /notifications/read-all)
+	MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request, params MarkAllNotificationsReadParams)
+	// DeleteNotification Elimina una notifica
+	// (DELETE /notifications/{notificationId})
+	DeleteNotification(w http.ResponseWriter, r *http.Request, notificationId NotificationIdParam)
+	// GetNotification Legge una notifica
+	// (GET /notifications/{notificationId})
+	GetNotification(w http.ResponseWriter, r *http.Request, notificationId NotificationIdParam)
+	// UpdateNotification Segna come letta/non letta o archivia
+	// (PATCH /notifications/{notificationId})
+	UpdateNotification(w http.ResponseWriter, r *http.Request, notificationId NotificationIdParam)
+	// ListOrgWebhooks Elenca i webhook di un'organizzazione
+	// (GET /orgs/{org}/hooks)
+	ListOrgWebhooks(w http.ResponseWriter, r *http.Request, org OrgParam, params ListOrgWebhooksParams)
+	// CreateOrgWebhook Crea un webhook di un'organizzazione
+	// (POST /orgs/{org}/hooks)
+	CreateOrgWebhook(w http.ResponseWriter, r *http.Request, org OrgParam)
+	// DeleteOrgWebhook Elimina un webhook di un'organizzazione
+	// (DELETE /orgs/{org}/hooks/{hookId})
+	DeleteOrgWebhook(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam)
+	// GetOrgWebhook Legge un webhook di un'organizzazione
+	// (GET /orgs/{org}/hooks/{hookId})
+	GetOrgWebhook(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam)
+	// UpdateOrgWebhook Modifica un webhook di un'organizzazione
+	// (PATCH /orgs/{org}/hooks/{hookId})
+	UpdateOrgWebhook(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam)
+	// ListOrgWebhookDeliveries Log delle consegne di un webhook di un'organizzazione
+	// (GET /orgs/{org}/hooks/{hookId}/deliveries)
+	ListOrgWebhookDeliveries(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam, params ListOrgWebhookDeliveriesParams)
+	// GetOrgWebhookDelivery Dettaglio di una consegna di un'organizzazione
+	// (GET /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId})
+	GetOrgWebhookDelivery(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam)
+	// RedeliverOrgWebhookDelivery Rinvia una consegna (Redeliver) di un'organizzazione
+	// (POST /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver)
+	RedeliverOrgWebhookDelivery(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam)
+	// ReactivateOrgWebhook Riattiva un webhook di un'organizzazione
+	// (POST /orgs/{org}/hooks/{hookId}/reactivate)
+	ReactivateOrgWebhook(w http.ResponseWriter, r *http.Request, org OrgParam, hookId WebhookIdParam)
 	// ListRepositories Elenca i repo leggibili dall'utente
 	// (GET /repos)
 	ListRepositories(w http.ResponseWriter, r *http.Request, params ListRepositoriesParams)
@@ -2178,6 +2872,33 @@ type ServerInterface interface {
 	// ListRepositoryFiles Percorsi di tutti i file di un ref ("Go to file")
 	// (GET /repos/{owner}/{repo}/files)
 	ListRepositoryFiles(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListRepositoryFilesParams)
+	// ListRepoWebhooks Elenca i webhook di un repo
+	// (GET /repos/{owner}/{repo}/hooks)
+	ListRepoWebhooks(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListRepoWebhooksParams)
+	// CreateRepoWebhook Crea un webhook di un repo
+	// (POST /repos/{owner}/{repo}/hooks)
+	CreateRepoWebhook(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// DeleteRepoWebhook Elimina un webhook di un repo
+	// (DELETE /repos/{owner}/{repo}/hooks/{hookId})
+	DeleteRepoWebhook(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam)
+	// GetRepoWebhook Legge un webhook di un repo
+	// (GET /repos/{owner}/{repo}/hooks/{hookId})
+	GetRepoWebhook(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam)
+	// UpdateRepoWebhook Modifica un webhook di un repo
+	// (PATCH /repos/{owner}/{repo}/hooks/{hookId})
+	UpdateRepoWebhook(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam)
+	// ListRepoWebhookDeliveries Log delle consegne di un webhook di un repo
+	// (GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries)
+	ListRepoWebhookDeliveries(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, params ListRepoWebhookDeliveriesParams)
+	// GetRepoWebhookDelivery Dettaglio di una consegna di un repo
+	// (GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId})
+	GetRepoWebhookDelivery(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam)
+	// RedeliverRepoWebhookDelivery Rinvia una consegna (Redeliver) di un repo
+	// (POST /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver)
+	RedeliverRepoWebhookDelivery(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam)
+	// ReactivateRepoWebhook Riattiva un webhook di un repo
+	// (POST /repos/{owner}/{repo}/hooks/{hookId}/reactivate)
+	ReactivateRepoWebhook(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam)
 	// UploadIssueAttachment Carica un allegato
 	// (POST /repos/{owner}/{repo}/issue-attachments)
 	UploadIssueAttachment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -2241,6 +2962,15 @@ type ServerInterface interface {
 	// ReopenIssue Riapre una issue
 	// (POST /repos/{owner}/{repo}/issues/{number}/reopen)
 	ReopenIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// UnsubscribeIssue Smette di seguire la issue (Unsubscribe)
+	// (DELETE /repos/{owner}/{repo}/issues/{number}/subscription)
+	UnsubscribeIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// GetIssueSubscription Iscrizione alla issue
+	// (GET /repos/{owner}/{repo}/issues/{number}/subscription)
+	GetIssueSubscription(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
+	// SubscribeIssue Segue la issue (Subscribe)
+	// (PUT /repos/{owner}/{repo}/issues/{number}/subscription)
+	SubscribeIssue(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
 	// ListIssueVersions Versioni precedenti del testo della issue
 	// (GET /repos/{owner}/{repo}/issues/{number}/versions)
 	ListIssueVersions(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam)
@@ -2295,6 +3025,15 @@ type ServerInterface interface {
 	// GetRepositoryTree Albero di una cartella con l'ultimo commit per voce
 	// (GET /repos/{owner}/{repo}/tree)
 	GetRepositoryTree(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryTreeParams)
+	// ResetRepoWatch Riporta il Watch al default
+	// (DELETE /repos/{owner}/{repo}/watch)
+	ResetRepoWatch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetRepoWatch Watch del repo
+	// (GET /repos/{owner}/{repo}/watch)
+	GetRepoWatch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// SetRepoWatch Imposta il Watch del repo
+	// (PUT /repos/{owner}/{repo}/watch)
+	SetRepoWatch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// ListResources Elenca le risorse
 	// (GET /resources)
 	ListResources(w http.ResponseWriter, r *http.Request, params ListResourcesParams)
@@ -2313,6 +3052,12 @@ type ServerInterface interface {
 	// SearchIssues Cerca issues su tutta l'installazione
 	// (GET /search/issues)
 	SearchIssues(w http.ResponseWriter, r *http.Request, params SearchIssuesParams)
+	// GetNotificationPreferences Preferenze email delle notifiche
+	// (GET /user/notification-preferences)
+	GetNotificationPreferences(w http.ResponseWriter, r *http.Request)
+	// UpdateNotificationPreferences Imposta le preferenze email
+	// (PUT /user/notification-preferences)
+	UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request)
 	// GetUserAccess Accesso effettivo di un utente ai repository
 	// (GET /users/{username}/access)
 	GetUserAccess(w http.ResponseWriter, r *http.Request, username UsernameParam, params GetUserAccessParams)
@@ -2332,6 +3077,660 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteNotifications operation middleware
+func (siw *ServerInterfaceWrapper) DeleteNotifications(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteNotificationsParams
+
+	// ------------- Required query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "reason" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "reason", r.URL.Query(), &params.Reason, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "reason"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "reason", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "repo" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "repo", r.URL.Query(), &params.Repo, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "repo"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteNotifications(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListNotifications operation middleware
+func (siw *ServerInterfaceWrapper) ListNotifications(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListNotificationsParams
+
+	// ------------- Optional query parameter "reason" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "reason", r.URL.Query(), &params.Reason, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "reason"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "reason", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "repo" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "repo", r.URL.Query(), &params.Repo, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "repo"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListNotifications(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MarkAllNotificationsRead operation middleware
+func (siw *ServerInterfaceWrapper) MarkAllNotificationsRead(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MarkAllNotificationsReadParams
+
+	// ------------- Optional query parameter "reason" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "reason", r.URL.Query(), &params.Reason, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "reason"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "reason", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "repo" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "repo", r.URL.Query(), &params.Repo, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "repo"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkAllNotificationsRead(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteNotification operation middleware
+func (siw *ServerInterfaceWrapper) DeleteNotification(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "notificationId" -------------
+	var notificationId NotificationIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "notificationId", r.PathValue("notificationId"), &notificationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "notificationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteNotification(w, r, notificationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNotification operation middleware
+func (siw *ServerInterfaceWrapper) GetNotification(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "notificationId" -------------
+	var notificationId NotificationIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "notificationId", r.PathValue("notificationId"), &notificationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "notificationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNotification(w, r, notificationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateNotification operation middleware
+func (siw *ServerInterfaceWrapper) UpdateNotification(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "notificationId" -------------
+	var notificationId NotificationIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "notificationId", r.PathValue("notificationId"), &notificationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "notificationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateNotification(w, r, notificationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrgWebhooks operation middleware
+func (siw *ServerInterfaceWrapper) ListOrgWebhooks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListOrgWebhooksParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrgWebhooks(w, r, org, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateOrgWebhook operation middleware
+func (siw *ServerInterfaceWrapper) CreateOrgWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateOrgWebhook(w, r, org)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteOrgWebhook operation middleware
+func (siw *ServerInterfaceWrapper) DeleteOrgWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteOrgWebhook(w, r, org, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrgWebhook operation middleware
+func (siw *ServerInterfaceWrapper) GetOrgWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrgWebhook(w, r, org, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateOrgWebhook operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOrgWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateOrgWebhook(w, r, org, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrgWebhookDeliveries operation middleware
+func (siw *ServerInterfaceWrapper) ListOrgWebhookDeliveries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListOrgWebhookDeliveriesParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrgWebhookDeliveries(w, r, org, hookId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrgWebhookDelivery operation middleware
+func (siw *ServerInterfaceWrapper) GetOrgWebhookDelivery(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "deliveryId" -------------
+	var deliveryId WebhookDeliveryIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "deliveryId", r.PathValue("deliveryId"), &deliveryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "deliveryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrgWebhookDelivery(w, r, org, hookId, deliveryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RedeliverOrgWebhookDelivery operation middleware
+func (siw *ServerInterfaceWrapper) RedeliverOrgWebhookDelivery(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "deliveryId" -------------
+	var deliveryId WebhookDeliveryIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "deliveryId", r.PathValue("deliveryId"), &deliveryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "deliveryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RedeliverOrgWebhookDelivery(w, r, org, hookId, deliveryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReactivateOrgWebhook operation middleware
+func (siw *ServerInterfaceWrapper) ReactivateOrgWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "org" -------------
+	var org OrgParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "org", r.PathValue("org"), &org, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "org", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReactivateOrgWebhook(w, r, org, hookId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3096,6 +4495,473 @@ func (siw *ServerInterfaceWrapper) ListRepositoryFiles(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListRepositoryFiles(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepoWebhooks operation middleware
+func (siw *ServerInterfaceWrapper) ListRepoWebhooks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListRepoWebhooksParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepoWebhooks(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateRepoWebhook operation middleware
+func (siw *ServerInterfaceWrapper) CreateRepoWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateRepoWebhook(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteRepoWebhook operation middleware
+func (siw *ServerInterfaceWrapper) DeleteRepoWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteRepoWebhook(w, r, owner, repo, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepoWebhook operation middleware
+func (siw *ServerInterfaceWrapper) GetRepoWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepoWebhook(w, r, owner, repo, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateRepoWebhook operation middleware
+func (siw *ServerInterfaceWrapper) UpdateRepoWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateRepoWebhook(w, r, owner, repo, hookId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepoWebhookDeliveries operation middleware
+func (siw *ServerInterfaceWrapper) ListRepoWebhookDeliveries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListRepoWebhookDeliveriesParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepoWebhookDeliveries(w, r, owner, repo, hookId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepoWebhookDelivery operation middleware
+func (siw *ServerInterfaceWrapper) GetRepoWebhookDelivery(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "deliveryId" -------------
+	var deliveryId WebhookDeliveryIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "deliveryId", r.PathValue("deliveryId"), &deliveryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "deliveryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepoWebhookDelivery(w, r, owner, repo, hookId, deliveryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RedeliverRepoWebhookDelivery operation middleware
+func (siw *ServerInterfaceWrapper) RedeliverRepoWebhookDelivery(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "deliveryId" -------------
+	var deliveryId WebhookDeliveryIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "deliveryId", r.PathValue("deliveryId"), &deliveryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "deliveryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RedeliverRepoWebhookDelivery(w, r, owner, repo, hookId, deliveryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReactivateRepoWebhook operation middleware
+func (siw *ServerInterfaceWrapper) ReactivateRepoWebhook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "hookId" -------------
+	var hookId WebhookIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hookId", r.PathValue("hookId"), &hookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hookId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReactivateRepoWebhook(w, r, owner, repo, hookId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4211,6 +6077,138 @@ func (siw *ServerInterfaceWrapper) ReopenIssue(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// UnsubscribeIssue operation middleware
+func (siw *ServerInterfaceWrapper) UnsubscribeIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnsubscribeIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetIssueSubscription operation middleware
+func (siw *ServerInterfaceWrapper) GetIssueSubscription(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetIssueSubscription(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SubscribeIssue operation middleware
+func (siw *ServerInterfaceWrapper) SubscribeIssue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number IssueNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SubscribeIssue(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListIssueVersions operation middleware
 func (siw *ServerInterfaceWrapper) ListIssueVersions(w http.ResponseWriter, r *http.Request) {
 
@@ -5116,6 +7114,111 @@ func (siw *ServerInterfaceWrapper) GetRepositoryTree(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// ResetRepoWatch operation middleware
+func (siw *ServerInterfaceWrapper) ResetRepoWatch(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResetRepoWatch(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRepoWatch operation middleware
+func (siw *ServerInterfaceWrapper) GetRepoWatch(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepoWatch(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetRepoWatch operation middleware
+func (siw *ServerInterfaceWrapper) SetRepoWatch(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetRepoWatch(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListResources operation middleware
 func (siw *ServerInterfaceWrapper) ListResources(w http.ResponseWriter, r *http.Request) {
 
@@ -5330,6 +7433,34 @@ func (siw *ServerInterfaceWrapper) SearchIssues(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchIssues(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNotificationPreferences operation middleware
+func (siw *ServerInterfaceWrapper) GetNotificationPreferences(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNotificationPreferences(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateNotificationPreferences operation middleware
+func (siw *ServerInterfaceWrapper) UpdateNotificationPreferences(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateNotificationPreferences(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5576,6 +7707,38 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.DeleteMilestone)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.GetMilestone)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.UpdateMilestone)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/notifications", wrapper.DeleteNotifications)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/notifications", wrapper.ListNotifications)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/notifications/read-all", wrapper.MarkAllNotificationsRead)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/notifications/{notificationId}", wrapper.DeleteNotification)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/notifications/{notificationId}", wrapper.GetNotification)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/notifications/{notificationId}", wrapper.UpdateNotification)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/notification-preferences", wrapper.GetNotificationPreferences)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/user/notification-preferences", wrapper.UpdateNotificationPreferences)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/watch", wrapper.ResetRepoWatch)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/watch", wrapper.GetRepoWatch)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/watch", wrapper.SetRepoWatch)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/subscription", wrapper.UnsubscribeIssue)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/subscription", wrapper.GetIssueSubscription)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/issues/{number}/subscription", wrapper.SubscribeIssue)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks", wrapper.ListRepoWebhooks)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks", wrapper.CreateRepoWebhook)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}", wrapper.DeleteRepoWebhook)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}", wrapper.GetRepoWebhook)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}", wrapper.UpdateRepoWebhook)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}/reactivate", wrapper.ReactivateRepoWebhook)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}/deliveries", wrapper.ListRepoWebhookDeliveries)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}", wrapper.GetRepoWebhookDelivery)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver", wrapper.RedeliverRepoWebhookDelivery)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/hooks", wrapper.ListOrgWebhooks)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs/{org}/hooks", wrapper.CreateOrgWebhook)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}", wrapper.DeleteOrgWebhook)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}", wrapper.GetOrgWebhook)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}", wrapper.UpdateOrgWebhook)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/reactivate", wrapper.ReactivateOrgWebhook)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries", wrapper.ListOrgWebhookDeliveries)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}", wrapper.GetOrgWebhookDelivery)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver", wrapper.RedeliverOrgWebhookDelivery)
 
 	return m
 }

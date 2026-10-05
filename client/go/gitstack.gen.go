@@ -334,7 +334,9 @@ func (e IssueCloseReason) Valid() bool {
 const (
 	IssueEventTypeAssigned       IssueEventType = "assigned"
 	IssueEventTypeClosed         IssueEventType = "closed"
+	IssueEventTypeClosedByCommit IssueEventType = "closed_by_commit"
 	IssueEventTypeCommentDeleted IssueEventType = "comment_deleted"
+	IssueEventTypeCommitLinked   IssueEventType = "commit_linked"
 	IssueEventTypeDemilestoned   IssueEventType = "demilestoned"
 	IssueEventTypeEdited         IssueEventType = "edited"
 	IssueEventTypeHidden         IssueEventType = "hidden"
@@ -343,6 +345,7 @@ const (
 	IssueEventTypeMilestoned     IssueEventType = "milestoned"
 	IssueEventTypeOpened         IssueEventType = "opened"
 	IssueEventTypeReferenced     IssueEventType = "referenced"
+	IssueEventTypeReferencedFrom IssueEventType = "referenced_from"
 	IssueEventTypeRenamed        IssueEventType = "renamed"
 	IssueEventTypeReopened       IssueEventType = "reopened"
 	IssueEventTypeUnassigned     IssueEventType = "unassigned"
@@ -358,7 +361,11 @@ func (e IssueEventType) Valid() bool {
 		return true
 	case IssueEventTypeClosed:
 		return true
+	case IssueEventTypeClosedByCommit:
+		return true
 	case IssueEventTypeCommentDeleted:
+		return true
+	case IssueEventTypeCommitLinked:
 		return true
 	case IssueEventTypeDemilestoned:
 		return true
@@ -375,6 +382,8 @@ func (e IssueEventType) Valid() bool {
 	case IssueEventTypeOpened:
 		return true
 	case IssueEventTypeReferenced:
+		return true
+	case IssueEventTypeReferencedFrom:
 		return true
 	case IssueEventTypeRenamed:
 		return true
@@ -423,6 +432,36 @@ func (e IssueState) Valid() bool {
 	case IssueStateClosed:
 		return true
 	case IssueStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssueSubscriptionReason.
+const (
+	IssueSubscriptionReasonAssignee  IssueSubscriptionReason = "assignee"
+	IssueSubscriptionReasonAuthor    IssueSubscriptionReason = "author"
+	IssueSubscriptionReasonCommenter IssueSubscriptionReason = "commenter"
+	IssueSubscriptionReasonManual    IssueSubscriptionReason = "manual"
+	IssueSubscriptionReasonMentioned IssueSubscriptionReason = "mentioned"
+	IssueSubscriptionReasonNone      IssueSubscriptionReason = "none"
+)
+
+// Valid indicates whether the value is a known member of the IssueSubscriptionReason enum.
+func (e IssueSubscriptionReason) Valid() bool {
+	switch e {
+	case IssueSubscriptionReasonAssignee:
+		return true
+	case IssueSubscriptionReasonAuthor:
+		return true
+	case IssueSubscriptionReasonCommenter:
+		return true
+	case IssueSubscriptionReasonManual:
+		return true
+	case IssueSubscriptionReasonMentioned:
+		return true
+	case IssueSubscriptionReasonNone:
 		return true
 	default:
 		return false
@@ -540,6 +579,57 @@ func (e MilestoneState) Valid() bool {
 	}
 }
 
+// Defines values for NotificationIssueState.
+const (
+	NotificationIssueStateClosed NotificationIssueState = "closed"
+	NotificationIssueStateOpen   NotificationIssueState = "open"
+)
+
+// Valid indicates whether the value is a known member of the NotificationIssueState enum.
+func (e NotificationIssueState) Valid() bool {
+	switch e {
+	case NotificationIssueStateClosed:
+		return true
+	case NotificationIssueStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NotificationReason.
+const (
+	NotificationReasonAssigned      NotificationReason = "assigned"
+	NotificationReasonCommitLinked  NotificationReason = "commit_linked"
+	NotificationReasonMentioned     NotificationReason = "mentioned"
+	NotificationReasonParticipating NotificationReason = "participating"
+	NotificationReasonStateChange   NotificationReason = "state_change"
+	NotificationReasonSubscribed    NotificationReason = "subscribed"
+	NotificationReasonWebhook       NotificationReason = "webhook"
+)
+
+// Valid indicates whether the value is a known member of the NotificationReason enum.
+func (e NotificationReason) Valid() bool {
+	switch e {
+	case NotificationReasonAssigned:
+		return true
+	case NotificationReasonCommitLinked:
+		return true
+	case NotificationReasonMentioned:
+		return true
+	case NotificationReasonParticipating:
+		return true
+	case NotificationReasonStateChange:
+		return true
+	case NotificationReasonSubscribed:
+		return true
+	case NotificationReasonWebhook:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrgRole.
 const (
 	OrgRoleMember OrgRole = "member"
@@ -633,21 +723,42 @@ func (e RepoVisibility) Valid() bool {
 	}
 }
 
+// Defines values for RepoWatchMode.
+const (
+	RepoWatchModeAll           RepoWatchMode = "all"
+	RepoWatchModeIgnore        RepoWatchMode = "ignore"
+	RepoWatchModeParticipating RepoWatchMode = "participating"
+)
+
+// Valid indicates whether the value is a known member of the RepoWatchMode enum.
+func (e RepoWatchMode) Valid() bool {
+	switch e {
+	case RepoWatchModeAll:
+		return true
+	case RepoWatchModeIgnore:
+		return true
+	case RepoWatchModeParticipating:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceRole.
 const (
-	Admin ResourceRole = "admin"
-	Read  ResourceRole = "read"
-	Write ResourceRole = "write"
+	ResourceRoleAdmin ResourceRole = "admin"
+	ResourceRoleRead  ResourceRole = "read"
+	ResourceRoleWrite ResourceRole = "write"
 )
 
 // Valid indicates whether the value is a known member of the ResourceRole enum.
 func (e ResourceRole) Valid() bool {
 	switch e {
-	case Admin:
+	case ResourceRoleAdmin:
 		return true
-	case Read:
+	case ResourceRoleRead:
 		return true
-	case Write:
+	case ResourceRoleWrite:
 		return true
 	default:
 		return false
@@ -783,6 +894,87 @@ func (e VerifyCredentialInputKind) Valid() bool {
 	}
 }
 
+// Defines values for WebhookDisabledReason.
+const (
+	ConsecutiveFailures WebhookDisabledReason = "consecutive_failures"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDisabledReason enum.
+func (e WebhookDisabledReason) Valid() bool {
+	switch e {
+	case ConsecutiveFailures:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookDeliveryStatus.
+const (
+	Failed  WebhookDeliveryStatus = "failed"
+	Gone    WebhookDeliveryStatus = "gone"
+	Pending WebhookDeliveryStatus = "pending"
+	Success WebhookDeliveryStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the WebhookDeliveryStatus enum.
+func (e WebhookDeliveryStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case Gone:
+		return true
+	case Pending:
+		return true
+	case Success:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookEvent.
+const (
+	WebhookEventIssueComment WebhookEvent = "issue_comment"
+	WebhookEventIssues       WebhookEvent = "issues"
+	WebhookEventPush         WebhookEvent = "push"
+	WebhookEventRepository   WebhookEvent = "repository"
+)
+
+// Valid indicates whether the value is a known member of the WebhookEvent enum.
+func (e WebhookEvent) Valid() bool {
+	switch e {
+	case WebhookEventIssueComment:
+		return true
+	case WebhookEventIssues:
+		return true
+	case WebhookEventPush:
+		return true
+	case WebhookEventRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookScope.
+const (
+	Org  WebhookScope = "org"
+	Repo WebhookScope = "repo"
+)
+
+// Valid indicates whether the value is a known member of the WebhookScope enum.
+func (e WebhookScope) Valid() bool {
+	switch e {
+	case Org:
+		return true
+	case Repo:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ArchiveFormatParam.
 const (
 	ArchiveFormatParamTarGz ArchiveFormatParam = "tar.gz"
@@ -867,6 +1059,30 @@ func (e MilestoneStateFilter) Valid() bool {
 	}
 }
 
+// Defines values for NotificationStateFilter.
+const (
+	NotificationStateFilterAll      NotificationStateFilter = "all"
+	NotificationStateFilterArchived NotificationStateFilter = "archived"
+	NotificationStateFilterRead     NotificationStateFilter = "read"
+	NotificationStateFilterUnread   NotificationStateFilter = "unread"
+)
+
+// Valid indicates whether the value is a known member of the NotificationStateFilter enum.
+func (e NotificationStateFilter) Valid() bool {
+	switch e {
+	case NotificationStateFilterAll:
+		return true
+	case NotificationStateFilterArchived:
+		return true
+	case NotificationStateFilterRead:
+		return true
+	case NotificationStateFilterUnread:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PatchFormatParam.
 const (
 	PatchFormatParamDiff  PatchFormatParam = "diff"
@@ -897,6 +1113,48 @@ func (e GitGetArchiveParamsFormat) Valid() bool {
 	case GitGetArchiveParamsFormatTarGz:
 		return true
 	case GitGetArchiveParamsFormatZip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteNotificationsParamsState.
+const (
+	DeleteNotificationsParamsStateArchived DeleteNotificationsParamsState = "archived"
+	DeleteNotificationsParamsStateRead     DeleteNotificationsParamsState = "read"
+)
+
+// Valid indicates whether the value is a known member of the DeleteNotificationsParamsState enum.
+func (e DeleteNotificationsParamsState) Valid() bool {
+	switch e {
+	case DeleteNotificationsParamsStateArchived:
+		return true
+	case DeleteNotificationsParamsStateRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListNotificationsParamsState.
+const (
+	ListNotificationsParamsStateAll      ListNotificationsParamsState = "all"
+	ListNotificationsParamsStateArchived ListNotificationsParamsState = "archived"
+	ListNotificationsParamsStateRead     ListNotificationsParamsState = "read"
+	ListNotificationsParamsStateUnread   ListNotificationsParamsState = "unread"
+)
+
+// Valid indicates whether the value is a known member of the ListNotificationsParamsState enum.
+func (e ListNotificationsParamsState) Valid() bool {
+	switch e {
+	case ListNotificationsParamsStateAll:
+		return true
+	case ListNotificationsParamsStateArchived:
+		return true
+	case ListNotificationsParamsStateRead:
+		return true
+	case ListNotificationsParamsStateUnread:
 		return true
 	default:
 		return false
@@ -1350,6 +1608,16 @@ type CreateUserInput struct {
 // CreateUserInputKind defines model for CreateUserInput.Kind.
 type CreateUserInputKind string
 
+// CreateWebhookInput defines model for CreateWebhookInput.
+type CreateWebhookInput struct {
+	Active *bool          `json:"active,omitempty"`
+	Events []WebhookEvent `json:"events"`
+
+	// Secret Segreto per l'HMAC-SHA256 di `X-GitStack-Signature`. Facoltativo; scritto una volta, mai restituito.
+	Secret *string `json:"secret,omitempty"`
+	Url    string  `json:"url"`
+}
+
 // CreatedToken Il token appena creato; `token` compare solo in questa risposta.
 type CreatedToken struct {
 	CreatedAt time.Time  `json:"createdAt"`
@@ -1384,6 +1652,11 @@ type CurrentSession struct {
 
 // CurrentSessionAuthMethod Come e' stato autenticato il chiamante.
 type CurrentSessionAuthMethod string
+
+// DeletedNotifications defines model for DeletedNotifications.
+type DeletedNotifications struct {
+	Deleted int `json:"deleted"`
+}
 
 // DeletedRepository defines model for DeletedRepository.
 type DeletedRepository struct {
@@ -1686,7 +1959,7 @@ type IssueEvent struct {
 	Actor     *IssueUser `json:"actor,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 
-	// Data Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` e `closed` da commit hanno `commit`; `comment_deleted` ha `commentId`.
+	// Data Dettagli dell'evento: `closed` ha `reason` e `duplicateOf`; `labeled` e `unlabeled` ha `label`; `assigned` e `unassigned` ha `assignee`; `milestoned` ha `milestone`; `renamed` ha `from` e `to`; `referenced` (non piu' scritto, sostituito da `commit_linked`) ha `commit`; `comment_deleted` ha `commentId`. Eventi di M-06: `referenced_from` (C1, "referenced from owner/repo#n") ha `source` (`kind` issue|pull_request, `repository` `owner/repo`, `number`, `title`, `commentId` se cita un commento) e compare solo a chi vede entrambi i repo; `commit_linked` (C2, "linked commit") ha `commit` (`sha`, `repository` `owner/repo`, `subject`, `ref`, `authorName`); `closed_by_commit` (C2, "closed by commit <sha>") ha `commit` e `reason` `completed`, senza `actor`, ed e' l'unico evento scritto per una chiusura da `fixes #n` (non c'e' anche un `closed`).
 	Data *map[string]interface{} `json:"data,omitempty"`
 	Id   openapi_types.UUID      `json:"id"`
 	Type IssueEventType          `json:"type"`
@@ -1750,6 +2023,16 @@ type IssueSearchResultList struct {
 
 // IssueState defines model for IssueState.
 type IssueState string
+
+// IssueSubscription defines model for IssueSubscription.
+type IssueSubscription struct {
+	// Reason Perche' si segue: `author`, `assignee`, `commenter`, `mentioned` (automatico), `manual` (Subscribe), oppure `none` se non si segue (Unsubscribe esplicito o mai coinvolti).
+	Reason     IssueSubscriptionReason `json:"reason"`
+	Subscribed bool                    `json:"subscribed"`
+}
+
+// IssueSubscriptionReason Perche' si segue: `author`, `assignee`, `commenter`, `mentioned` (automatico), `manual` (Subscribe), oppure `none` se non si segue (Unsubscribe esplicito o mai coinvolti).
+type IssueSubscriptionReason string
 
 // IssueSummary Issue negli elenchi: senza testo.
 type IssueSummary struct {
@@ -1905,6 +2188,12 @@ type LookupIdsResult struct {
 // LookupIdsResultUsersKind defines model for LookupIdsResult.Users.Kind.
 type LookupIdsResultUsersKind string
 
+// MarkedNotifications defines model for MarkedNotifications.
+type MarkedNotifications struct {
+	// Marked Quante notifiche sono passate da non letta a letta.
+	Marked int `json:"marked"`
+}
+
 // Milestone defines model for Milestone.
 type Milestone struct {
 	ClosedAt *time.Time `json:"closedAt,omitempty"`
@@ -1938,6 +2227,83 @@ type MilestoneList struct {
 //
 // Example: alice
 type Name = string
+
+// Notification defines model for Notification.
+type Notification struct {
+	// Actor Chi ha causato la notifica; assente per gli eventi di sistema (es. chiusura da commit).
+	Actor    *IssueUser `json:"actor,omitempty"`
+	Archived bool       `json:"archived"`
+
+	// CommentId Il commento che ha causato la notifica, se c'e'.
+	CommentId *openapi_types.UUID `json:"commentId,omitempty"`
+	CreatedAt time.Time           `json:"createdAt"`
+
+	// Event Nome dell'evento di dominio da cui nasce (es. `issue.closed`, docs/events.md).
+	//
+	// Example: issue.closed
+	Event  string             `json:"event"`
+	Id     openapi_types.UUID `json:"id"`
+	Issue  *NotificationIssue `json:"issue,omitempty"`
+	Read   bool               `json:"read"`
+	ReadAt *time.Time         `json:"readAt,omitempty"`
+
+	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+	Reason     NotificationReason `json:"reason"`
+	Repository *NotificationRepo  `json:"repository,omitempty"`
+
+	// Summary Testo breve leggibile da persone, non contrattuale.
+	Summary string               `json:"summary"`
+	Webhook *NotificationWebhook `json:"webhook,omitempty"`
+}
+
+// NotificationIssue defines model for NotificationIssue.
+type NotificationIssue struct {
+	Number int64                  `json:"number"`
+	State  NotificationIssueState `json:"state"`
+	Title  string                 `json:"title"`
+}
+
+// NotificationIssueState defines model for NotificationIssue.State.
+type NotificationIssueState string
+
+// NotificationList defines model for NotificationList.
+type NotificationList struct {
+	Items   []Notification `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+
+	// UnreadCount Notifiche non lette e non archiviate dell'utente (filtri `reason` e `repo` compresi).
+	UnreadCount int `json:"unreadCount"`
+}
+
+// NotificationPreferences defines model for NotificationPreferences.
+type NotificationPreferences struct {
+	// Email Per ogni tipo (`NotificationReason`) se arriva anche una email. Sono sempre presenti tutti i tipi.
+	//
+	// Example: {"assigned":true,"commit_linked":false,"mentioned":true,"participating":false,"state_change":false,"subscribed":false,"webhook":false}
+	Email map[string]bool `json:"email"`
+
+	// EmailAvailable `false` senza SMTP configurato o per un agente: le email non partono (C4, C5).
+	EmailAvailable bool `json:"emailAvailable"`
+}
+
+// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+type NotificationReason string
+
+// NotificationRepo defines model for NotificationRepo.
+type NotificationRepo struct {
+	// FullName `owner/repo`.
+	FullName string             `json:"fullName"`
+	Id       openapi_types.UUID `json:"id"`
+}
+
+// NotificationWebhook Il webhook di una notifica `webhook`; assente se e' stato eliminato nel frattempo (la notifica sparisce con lui).
+type NotificationWebhook struct {
+	Id    openapi_types.UUID `json:"id"`
+	Scope WebhookScope       `json:"scope"`
+	Url   string             `json:"url"`
+}
 
 // OidcProvider defines model for OidcProvider.
 type OidcProvider struct {
@@ -2091,6 +2457,17 @@ type RepoOwner struct {
 // RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
 type RepoVisibility string
 
+// RepoWatch defines model for RepoWatch.
+type RepoWatch struct {
+	Mode RepoWatchMode `json:"mode"`
+
+	// UpdatedAt Assente finche' l'utente non ha mai scelto (default `participating`).
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+}
+
+// RepoWatchMode defines model for RepoWatchMode.
+type RepoWatchMode string
+
 // Repository defines model for Repository.
 type Repository struct {
 	Archived   bool       `json:"archived"`
@@ -2198,6 +2575,11 @@ type SetIssueMilestoneInput struct {
 type SetOrgMemberInput struct {
 	// Role `owner` gestisce organizzazione, team e membri; `member` no.
 	Role OrgRole `json:"role"`
+}
+
+// SetRepoWatchInput defines model for SetRepoWatchInput.
+type SetRepoWatchInput struct {
+	Mode RepoWatchMode `json:"mode"`
 }
 
 // SetTeamMemberInput defines model for SetTeamMemberInput.
@@ -2417,6 +2799,21 @@ type UpdateMilestoneInput struct {
 // UpdateMilestoneInputState defines model for UpdateMilestoneInput.State.
 type UpdateMilestoneInputState string
 
+// UpdateNotificationInput defines model for UpdateNotificationInput.
+type UpdateNotificationInput struct {
+	// Archived `true` archivia, `false` ripristina.
+	Archived *bool `json:"archived,omitempty"`
+
+	// Read `true` segna come letta, `false` di nuovo come non letta.
+	Read *bool `json:"read,omitempty"`
+}
+
+// UpdateNotificationPreferencesInput defines model for UpdateNotificationPreferencesInput.
+type UpdateNotificationPreferencesInput struct {
+	// Email Tipo (`NotificationReason`) → email si/no. I tipi omessi non cambiano.
+	Email map[string]bool `json:"email"`
+}
+
 // UpdateOrganizationInput defines model for UpdateOrganizationInput.
 type UpdateOrganizationInput struct {
 	Description *string `json:"description,omitempty"`
@@ -2463,6 +2860,16 @@ type UpdateUserInput struct {
 
 	// IsAdmin Solo amministratori.
 	IsAdmin *bool `json:"isAdmin,omitempty"`
+}
+
+// UpdateWebhookInput defines model for UpdateWebhookInput.
+type UpdateWebhookInput struct {
+	Active *bool           `json:"active,omitempty"`
+	Events *[]WebhookEvent `json:"events,omitempty"`
+
+	// Secret Una stringa sostituisce il segreto; la stringa vuota lo toglie.
+	Secret *string `json:"secret,omitempty"`
+	Url    *string `json:"url,omitempty"`
 }
 
 // UploadIssueAttachmentInput defines model for UploadIssueAttachmentInput.
@@ -2562,6 +2969,145 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// Webhook defines model for Webhook.
+type Webhook struct {
+	Active    bool       `json:"active"`
+	CreatedAt time.Time  `json:"createdAt"`
+	CreatedBy *IssueUser `json:"createdBy,omitempty"`
+
+	// DisabledAt Quando i fallimenti consecutivi lo hanno disattivato (C7); `null` se attivo o messo in pausa a mano.
+	DisabledAt     *time.Time             `json:"disabledAt,omitempty"`
+	DisabledReason *WebhookDisabledReason `json:"disabledReason,omitempty"`
+	Events         []WebhookEvent         `json:"events"`
+
+	// FailingSince Inizio dei fallimenti consecutivi in corso; dopo 3 giorni il webhook si disattiva.
+	FailingSince *time.Time `json:"failingSince,omitempty"`
+
+	// HasSecret Il segreto non torna mai nelle risposte; senza segreto la consegna non e' firmata.
+	HasSecret    bool                    `json:"hasSecret"`
+	Id           openapi_types.UUID      `json:"id"`
+	LastDelivery *WebhookDeliverySummary `json:"lastDelivery,omitempty"`
+
+	// Organization Nome dell'organizzazione, per scope `org`.
+	Organization *string `json:"organization,omitempty"`
+
+	// Repository Il repo, per scope `repo`.
+	Repository *NotificationRepo `json:"repository,omitempty"`
+	Scope      WebhookScope      `json:"scope"`
+	UpdatedAt  time.Time         `json:"updatedAt"`
+	Url        string            `json:"url"`
+}
+
+// WebhookDisabledReason defines model for Webhook.DisabledReason.
+type WebhookDisabledReason string
+
+// WebhookDelivery defines model for WebhookDelivery.
+type WebhookDelivery = WebhookDeliverySummary
+
+// WebhookDeliveryDetail defines model for WebhookDeliveryDetail.
+type WebhookDeliveryDetail struct {
+	// Action Azione dell'evento (es. `opened`, `closed`); vuota per `push`.
+	Action *string `json:"action,omitempty"`
+
+	// Attempt Tentativi fatti, al massimo 8 (C7).
+	Attempt     int        `json:"attempt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	DeliveredAt *time.Time `json:"deliveredAt,omitempty"`
+	DurationMs  *int       `json:"durationMs,omitempty"`
+
+	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
+	Error *string `json:"error,omitempty"`
+
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	Event WebhookEvent `json:"event"`
+
+	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
+	Id            openapi_types.UUID     `json:"id"`
+	NextAttemptAt *time.Time             `json:"nextAttemptAt,omitempty"`
+	RedeliveryOf  *openapi_types.UUID    `json:"redeliveryOf,omitempty"`
+	Request       WebhookDeliveryRequest `json:"request"`
+
+	// Response Assente se non c'e' stata nessuna risposta.
+	Response *WebhookDeliveryResponse `json:"response,omitempty"`
+
+	// Status `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+	Status WebhookDeliveryStatus `json:"status"`
+
+	// StatusCode Codice HTTP dell'ultimo tentativo; assente per errori di rete o timeout di 10 s.
+	StatusCode *int `json:"statusCode,omitempty"`
+}
+
+// WebhookDeliveryList defines model for WebhookDeliveryList.
+type WebhookDeliveryList struct {
+	Items   []WebhookDeliverySummary `json:"items"`
+	Page    int                      `json:"page"`
+	PerPage int                      `json:"perPage"`
+	Total   int                      `json:"total"`
+}
+
+// WebhookDeliveryRequest defines model for WebhookDeliveryRequest.
+type WebhookDeliveryRequest struct {
+	// Headers Le intestazioni inviate (`X-GitStack-Event`, `X-GitStack-Delivery`, `X-GitStack-Signature` se c'e' un segreto, ...).
+	Headers map[string]string `json:"headers"`
+
+	// Payload Il corpo JSON inviato (formato in docs/webhooks.md).
+	Payload map[string]interface{} `json:"payload"`
+}
+
+// WebhookDeliveryResponse defines model for WebhookDeliveryResponse.
+type WebhookDeliveryResponse struct {
+	// Body Corpo della risposta, troncato a 4 KB (C8).
+	Body      string            `json:"body"`
+	Headers   map[string]string `json:"headers"`
+	Truncated bool              `json:"truncated"`
+}
+
+// WebhookDeliveryStatus `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+type WebhookDeliveryStatus string
+
+// WebhookDeliverySummary defines model for WebhookDeliverySummary.
+type WebhookDeliverySummary struct {
+	// Action Azione dell'evento (es. `opened`, `closed`); vuota per `push`.
+	Action *string `json:"action,omitempty"`
+
+	// Attempt Tentativi fatti, al massimo 8 (C7).
+	Attempt     int        `json:"attempt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	DeliveredAt *time.Time `json:"deliveredAt,omitempty"`
+	DurationMs  *int       `json:"durationMs,omitempty"`
+
+	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
+	Error *string `json:"error,omitempty"`
+
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	Event WebhookEvent `json:"event"`
+
+	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
+	Id            openapi_types.UUID  `json:"id"`
+	NextAttemptAt *time.Time          `json:"nextAttemptAt,omitempty"`
+	RedeliveryOf  *openapi_types.UUID `json:"redeliveryOf,omitempty"`
+
+	// Status `pending`: in coda o in attesa del prossimo tentativo; `success`: risposta 2xx; `failed`: tentativi esauriti (8 in circa 24 ore) o errore non ritentabile; `gone`: il destinatario ha risposto `410 Gone` e la consegna e' ferma (C7).
+	Status WebhookDeliveryStatus `json:"status"`
+
+	// StatusCode Codice HTTP dell'ultimo tentativo; assente per errori di rete o timeout di 10 s.
+	StatusCode *int `json:"statusCode,omitempty"`
+}
+
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+type WebhookEvent string
+
+// WebhookList defines model for WebhookList.
+type WebhookList struct {
+	Items   []Webhook `json:"items"`
+	Page    int       `json:"page"`
+	PerPage int       `json:"perPage"`
+	Total   int       `json:"total"`
+}
+
+// WebhookScope defines model for WebhookScope.
+type WebhookScope string
+
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
 
@@ -2640,6 +3186,18 @@ type MilestoneNumberParam = int64
 // MilestoneStateFilter defines model for MilestoneStateFilter.
 type MilestoneStateFilter string
 
+// NotificationIdParam defines model for NotificationIdParam.
+type NotificationIdParam = openapi_types.UUID
+
+// NotificationReasonFilter Example: assigned,mentioned
+type NotificationReasonFilter = string
+
+// NotificationRepoFilter defines model for NotificationRepoFilter.
+type NotificationRepoFilter = string
+
+// NotificationStateFilter defines model for NotificationStateFilter.
+type NotificationStateFilter string
+
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
@@ -2704,6 +3262,12 @@ type TokenIdParam = openapi_types.UUID
 //
 // Example: alice
 type UsernameParam = Name
+
+// WebhookDeliveryIdParam defines model for WebhookDeliveryIdParam.
+type WebhookDeliveryIdParam = openapi_types.UUID
+
+// WebhookIdParam defines model for WebhookIdParam.
+type WebhookIdParam = openapi_types.UUID
 
 // BadRequest Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type BadRequest = Error
@@ -2858,10 +3422,61 @@ type GitGetTreeParams struct {
 	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
 }
 
+// DeleteNotificationsParams defines parameters for DeleteNotifications.
+type DeleteNotificationsParams struct {
+	State DeleteNotificationsParamsState `form:"state" json:"state"`
+
+	// Reason Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+	Reason *NotificationReasonFilter `form:"reason,omitempty" json:"reason,omitempty"`
+
+	// Repo Solo le notifiche di un repo, `owner/repo`.
+	Repo *NotificationRepoFilter `form:"repo,omitempty" json:"repo,omitempty"`
+}
+
+// DeleteNotificationsParamsState defines parameters for DeleteNotifications.
+type DeleteNotificationsParamsState string
+
+// ListNotificationsParams defines parameters for ListNotifications.
+type ListNotificationsParams struct {
+	// Reason Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+	Reason *NotificationReasonFilter     `form:"reason,omitempty" json:"reason,omitempty"`
+	State  *ListNotificationsParamsState `form:"state,omitempty" json:"state,omitempty"`
+
+	// Repo Solo le notifiche di un repo, `owner/repo`.
+	Repo    *NotificationRepoFilter `form:"repo,omitempty" json:"repo,omitempty"`
+	Page    *PageParam              `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam           `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListNotificationsParamsState defines parameters for ListNotifications.
+type ListNotificationsParamsState string
+
+// MarkAllNotificationsReadParams defines parameters for MarkAllNotificationsRead.
+type MarkAllNotificationsReadParams struct {
+	// Reason Uno o piu' motivi (`NotificationReason`) separati da virgola, es. `assigned,mentioned`. Un motivo sconosciuto: 400.
+	Reason *NotificationReasonFilter `form:"reason,omitempty" json:"reason,omitempty"`
+
+	// Repo Solo le notifiche di un repo, `owner/repo`.
+	Repo *NotificationRepoFilter `form:"repo,omitempty" json:"repo,omitempty"`
+}
+
 // ListOrganizationsParams defines parameters for ListOrganizations.
 type ListOrganizationsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListOrgWebhooksParams defines parameters for ListOrgWebhooks.
+type ListOrgWebhooksParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListOrgWebhookDeliveriesParams defines parameters for ListOrgWebhookDeliveries.
+type ListOrgWebhookDeliveriesParams struct {
+	Status  *WebhookDeliveryStatus `form:"status,omitempty" json:"status,omitempty"`
+	Page    *PageParam             `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam          `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // ListOrgMembersParams defines parameters for ListOrgMembers.
@@ -2967,6 +3582,19 @@ type GetRepositoryFileParams struct {
 type ListRepositoryFilesParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
 	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// ListRepoWebhooksParams defines parameters for ListRepoWebhooks.
+type ListRepoWebhooksParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListRepoWebhookDeliveriesParams defines parameters for ListRepoWebhookDeliveries.
+type ListRepoWebhookDeliveriesParams struct {
+	Status  *WebhookDeliveryStatus `form:"status,omitempty" json:"status,omitempty"`
+	Page    *PageParam             `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam          `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // ListIssuesParams defines parameters for ListIssues.
@@ -3158,11 +3786,20 @@ type LookupUsersByIdsJSONRequestBody = LookupIdsInput
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
 
+// UpdateNotificationJSONRequestBody defines body for UpdateNotification for application/json ContentType.
+type UpdateNotificationJSONRequestBody = UpdateNotificationInput
+
 // CreateOrganizationJSONRequestBody defines body for CreateOrganization for application/json ContentType.
 type CreateOrganizationJSONRequestBody = CreateOrganizationInput
 
 // UpdateOrganizationJSONRequestBody defines body for UpdateOrganization for application/json ContentType.
 type UpdateOrganizationJSONRequestBody = UpdateOrganizationInput
+
+// CreateOrgWebhookJSONRequestBody defines body for CreateOrgWebhook for application/json ContentType.
+type CreateOrgWebhookJSONRequestBody = CreateWebhookInput
+
+// UpdateOrgWebhookJSONRequestBody defines body for UpdateOrgWebhook for application/json ContentType.
+type UpdateOrgWebhookJSONRequestBody = UpdateWebhookInput
 
 // SetOrgMemberJSONRequestBody defines body for SetOrgMember for application/json ContentType.
 type SetOrgMemberJSONRequestBody = SetOrgMemberInput
@@ -3181,6 +3818,12 @@ type CreateRepositoryJSONRequestBody = CreateRepositoryInput
 
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
+
+// CreateRepoWebhookJSONRequestBody defines body for CreateRepoWebhook for application/json ContentType.
+type CreateRepoWebhookJSONRequestBody = CreateWebhookInput
+
+// UpdateRepoWebhookJSONRequestBody defines body for UpdateRepoWebhook for application/json ContentType.
+type UpdateRepoWebhookJSONRequestBody = UpdateWebhookInput
 
 // UploadIssueAttachmentMultipartRequestBody defines body for UploadIssueAttachment for multipart/form-data ContentType.
 type UploadIssueAttachmentMultipartRequestBody = UploadIssueAttachmentInput
@@ -3227,6 +3870,9 @@ type CreateMilestoneJSONRequestBody = CreateMilestoneInput
 // UpdateMilestoneJSONRequestBody defines body for UpdateMilestone for application/json ContentType.
 type UpdateMilestoneJSONRequestBody = UpdateMilestoneInput
 
+// SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
+type SetRepoWatchJSONRequestBody = SetRepoWatchInput
+
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
 
@@ -3238,6 +3884,9 @@ type CreateResourceGrantJSONRequestBody = CreateGrantInput
 
 // UpdateResourceGrantJSONRequestBody defines body for UpdateResourceGrant for application/json ContentType.
 type UpdateResourceGrantJSONRequestBody = UpdateGrantInput
+
+// UpdateNotificationPreferencesJSONRequestBody defines body for UpdateNotificationPreferences for application/json ContentType.
+type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreferencesInput
 
 // AddSshKeyJSONRequestBody defines body for AddSshKey for application/json ContentType.
 type AddSshKeyJSONRequestBody = AddSshKeyInput
@@ -3701,6 +4350,59 @@ type ClientInterface interface {
 	// Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 	VerifyCredential(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteNotifications Elimina in blocco le notifiche
+	//
+	// Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
+	//
+	// Corresponds with DELETE /notifications (the `DeleteNotifications` operationId).
+	DeleteNotifications(ctx context.Context, params *DeleteNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListNotifications Casella delle notifiche
+	//
+	// Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason` (uno o piu' motivi separati da virgola), `state` (`unread` default, `read`, `archived`, `all`; le archiviate compaiono solo con `archived` o `all`) e `repo` (`owner/repo`). Stessa casella e stesse regole per persone e agenti (C4); `gs notification list --json` usa questa operazione. Le notifiche di un repo che l'utente non legge piu' non compaiono e vengono eliminate (C9). `unreadCount` conta le non lette non archiviate dell'utente, con i soli filtri `reason` e `repo`.
+	//
+	// Corresponds with GET /notifications (the `ListNotifications` operationId).
+	ListNotifications(ctx context.Context, params *ListNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MarkAllNotificationsRead Segna come lette tutte le notifiche
+	//
+	// Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi (`reason`, `repo`) dell'elenco. Idempotente. Le archiviate non cambiano.
+	//
+	// Corresponds with POST /notifications/read-all (the `MarkAllNotificationsRead` operationId).
+	MarkAllNotificationsRead(ctx context.Context, params *MarkAllNotificationsReadParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteNotification Elimina una notifica
+	//
+	// Eliminazione manuale (C9), anche di una non letta.
+	//
+	// Corresponds with DELETE /notifications/{notificationId} (the `DeleteNotification` operationId).
+	DeleteNotification(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNotification Legge una notifica
+	//
+	// Una notifica di un'altra persona risponde 404, come una inesistente.
+	//
+	// Corresponds with GET /notifications/{notificationId} (the `GetNotification` operationId).
+	GetNotification(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateNotificationWithBody Segna come letta/non letta o archivia
+	//
+	// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+	UpdateNotificationWithBody(ctx context.Context, notificationId NotificationIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateNotification Segna come letta/non letta o archivia
+	//
+	// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+	UpdateNotification(ctx context.Context, notificationId NotificationIdParam, body UpdateNotificationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListOrganizations Elenca le organizzazioni
 	//
 	// Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
@@ -3755,6 +4457,91 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /orgs/{org} (the `UpdateOrganization` operationId).
 	UpdateOrganization(ctx context.Context, org OrgParam, body UpdateOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOrgWebhooks Elenca i webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /orgs/{org}/hooks (the `ListOrgWebhooks` operationId).
+	ListOrgWebhooks(ctx context.Context, org OrgParam, params *ListOrgWebhooksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOrgWebhookWithBody Crea un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+	CreateOrgWebhookWithBody(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOrgWebhook Crea un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+	CreateOrgWebhook(ctx context.Context, org OrgParam, body CreateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteOrgWebhook Elimina un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+	//
+	// Corresponds with DELETE /orgs/{org}/hooks/{hookId} (the `DeleteOrgWebhook` operationId).
+	DeleteOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrgWebhook Legge un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
+	//
+	// Corresponds with GET /orgs/{org}/hooks/{hookId} (the `GetOrgWebhook` operationId).
+	GetOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrgWebhookWithBody Modifica un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+	UpdateOrgWebhookWithBody(ctx context.Context, org OrgParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrgWebhook Modifica un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+	UpdateOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, body UpdateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOrgWebhookDeliveries Log delle consegne di un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+	//
+	// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries (the `ListOrgWebhookDeliveries` operationId).
+	ListOrgWebhookDeliveries(ctx context.Context, org OrgParam, hookId WebhookIdParam, params *ListOrgWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrgWebhookDelivery Dettaglio di una consegna di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+	//
+	// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId} (the `GetOrgWebhookDelivery` operationId).
+	GetOrgWebhookDelivery(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedeliverOrgWebhookDelivery Rinvia una consegna (Redeliver) di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+	//
+	// Corresponds with POST /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverOrgWebhookDelivery` operationId).
+	RedeliverOrgWebhookDelivery(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReactivateOrgWebhook Riattiva un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+	//
+	// Corresponds with POST /orgs/{org}/hooks/{hookId}/reactivate (the `ReactivateOrgWebhook` operationId).
+	ReactivateOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListOrgMembers Elenca i membri di un'organizzazione
 	//
@@ -3990,6 +4777,91 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
 	ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListRepoWebhooks Elenca i webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks (the `ListRepoWebhooks` operationId).
+	ListRepoWebhooks(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoWebhooksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepoWebhookWithBody Crea un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+	CreateRepoWebhookWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepoWebhook Crea un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+	CreateRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRepoWebhook Elimina un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/hooks/{hookId} (the `DeleteRepoWebhook` operationId).
+	DeleteRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepoWebhook Legge un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId} (the `GetRepoWebhook` operationId).
+	GetRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepoWebhookWithBody Modifica un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+	UpdateRepoWebhookWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepoWebhook Modifica un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+	UpdateRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, body UpdateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepoWebhookDeliveries Log delle consegne di un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries (the `ListRepoWebhookDeliveries` operationId).
+	ListRepoWebhookDeliveries(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, params *ListRepoWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepoWebhookDelivery Dettaglio di una consegna di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId} (the `GetRepoWebhookDelivery` operationId).
+	GetRepoWebhookDelivery(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedeliverRepoWebhookDelivery Rinvia una consegna (Redeliver) di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverRepoWebhookDelivery` operationId).
+	RedeliverRepoWebhookDelivery(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReactivateRepoWebhook Riattiva un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/reactivate (the `ReactivateRepoWebhook` operationId).
+	ReactivateRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UploadIssueAttachmentWithBody Carica un allegato
 	//
 	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -4158,7 +5030,7 @@ type ClientInterface interface {
 
 	// ListIssueEvents Cronologia degli eventi
 	//
-	// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+	// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e, da M-06, `referenced_from`, `commit_linked` e `closed_by_commit` (C1, C2). Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/events (the `ListIssueEvents` operationId).
 	ListIssueEvents(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4248,6 +5120,27 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
 	ReopenIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnsubscribeIssue Smette di seguire la issue (Unsubscribe)
+	//
+	// Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche' non fa Subscribe. Le menzioni dirette (`@utente`) e le assegnazioni notificano comunque. Idempotente.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/subscription (the `UnsubscribeIssue` operationId).
+	UnsubscribeIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetIssueSubscription Iscrizione alla issue
+	//
+	// Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati seguono in automatico. Serve poter leggere la issue; una nascosta risponde 404 a chi non e' `admin`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/subscription (the `GetIssueSubscription` operationId).
+	GetIssueSubscription(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubscribeIssue Segue la issue (Subscribe)
+	//
+	// Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter leggere la issue.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/subscription (the `SubscribeIssue` operationId).
+	SubscribeIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListIssueVersions Versioni precedenti del testo della issue
 	//
@@ -4419,6 +5312,38 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/tree (the `GetRepositoryTree` operationId).
 	GetRepositoryTree(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ResetRepoWatch Riporta il Watch al default
+	//
+	// Torna a `participating`. Idempotente.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/watch (the `ResetRepoWatch` operationId).
+	ResetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepoWatch Watch del repo
+	//
+	// Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul repo; un repo che non si legge risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/watch (the `GetRepoWatch` operationId).
+	GetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetRepoWatchWithBody Imposta il Watch del repo
+	//
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+	SetRepoWatchWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetRepoWatch Imposta il Watch del repo
+	//
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+	SetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListResources Elenca le risorse
 	//
 	// Elenco paginato delle risorse, con filtro opzionale per tipo (es. `repo`). Il tipo non è vincolato a un insieme fisso: nuove milestone aggiungono nuovi tipi senza cambiare l'endpoint (D15).
@@ -4525,6 +5450,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNotificationPreferences Preferenze email delle notifiche
+	//
+	// Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
+	//
+	// Corresponds with GET /user/notification-preferences (the `GetNotificationPreferences` operationId).
+	GetNotificationPreferences(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateNotificationPreferencesWithBody Imposta le preferenze email
+	//
+	// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+	UpdateNotificationPreferencesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateNotificationPreferences Imposta le preferenze email
+	//
+	// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+	UpdateNotificationPreferences(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
 	//
@@ -5556,6 +6506,129 @@ func (c *Client) VerifyCredential(ctx context.Context, body VerifyCredentialJSON
 	return c.Client.Do(req)
 }
 
+// DeleteNotifications Elimina in blocco le notifiche
+//
+// Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
+//
+// Corresponds with DELETE /notifications (the `DeleteNotifications` operationId).
+func (c *Client) DeleteNotifications(ctx context.Context, params *DeleteNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteNotificationsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListNotifications Casella delle notifiche
+//
+// Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason` (uno o piu' motivi separati da virgola), `state` (`unread` default, `read`, `archived`, `all`; le archiviate compaiono solo con `archived` o `all`) e `repo` (`owner/repo`). Stessa casella e stesse regole per persone e agenti (C4); `gs notification list --json` usa questa operazione. Le notifiche di un repo che l'utente non legge piu' non compaiono e vengono eliminate (C9). `unreadCount` conta le non lette non archiviate dell'utente, con i soli filtri `reason` e `repo`.
+//
+// Corresponds with GET /notifications (the `ListNotifications` operationId).
+func (c *Client) ListNotifications(ctx context.Context, params *ListNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListNotificationsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MarkAllNotificationsRead Segna come lette tutte le notifiche
+//
+// Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi (`reason`, `repo`) dell'elenco. Idempotente. Le archiviate non cambiano.
+//
+// Corresponds with POST /notifications/read-all (the `MarkAllNotificationsRead` operationId).
+func (c *Client) MarkAllNotificationsRead(ctx context.Context, params *MarkAllNotificationsReadParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMarkAllNotificationsReadRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteNotification Elimina una notifica
+//
+// Eliminazione manuale (C9), anche di una non letta.
+//
+// Corresponds with DELETE /notifications/{notificationId} (the `DeleteNotification` operationId).
+func (c *Client) DeleteNotification(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteNotificationRequest(c.Server, notificationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetNotification Legge una notifica
+//
+// Una notifica di un'altra persona risponde 404, come una inesistente.
+//
+// Corresponds with GET /notifications/{notificationId} (the `GetNotification` operationId).
+func (c *Client) GetNotification(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNotificationRequest(c.Server, notificationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateNotificationWithBody Segna come letta/non letta o archivia
+//
+// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+func (c *Client) UpdateNotificationWithBody(ctx context.Context, notificationId NotificationIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateNotificationRequestWithBody(c.Server, notificationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateNotification Segna come letta/non letta o archivia
+//
+// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+func (c *Client) UpdateNotification(ctx context.Context, notificationId NotificationIdParam, body UpdateNotificationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateNotificationRequest(c.Server, notificationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListOrganizations Elenca le organizzazioni
 //
 // Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
@@ -5671,6 +6744,201 @@ func (c *Client) UpdateOrganizationWithBody(ctx context.Context, org OrgParam, c
 // Corresponds with PATCH /orgs/{org} (the `UpdateOrganization` operationId).
 func (c *Client) UpdateOrganization(ctx context.Context, org OrgParam, body UpdateOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationRequest(c.Server, org, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOrgWebhooks Elenca i webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+//
+// Corresponds with GET /orgs/{org}/hooks (the `ListOrgWebhooks` operationId).
+func (c *Client) ListOrgWebhooks(ctx context.Context, org OrgParam, params *ListOrgWebhooksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrgWebhooksRequest(c.Server, org, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOrgWebhookWithBody Crea un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+func (c *Client) CreateOrgWebhookWithBody(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOrgWebhookRequestWithBody(c.Server, org, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOrgWebhook Crea un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+func (c *Client) CreateOrgWebhook(ctx context.Context, org OrgParam, body CreateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOrgWebhookRequest(c.Server, org, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteOrgWebhook Elimina un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+//
+// Corresponds with DELETE /orgs/{org}/hooks/{hookId} (the `DeleteOrgWebhook` operationId).
+func (c *Client) DeleteOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOrgWebhookRequest(c.Server, org, hookId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrgWebhook Legge un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
+//
+// Corresponds with GET /orgs/{org}/hooks/{hookId} (the `GetOrgWebhook` operationId).
+func (c *Client) GetOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrgWebhookRequest(c.Server, org, hookId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrgWebhookWithBody Modifica un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+func (c *Client) UpdateOrgWebhookWithBody(ctx context.Context, org OrgParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrgWebhookRequestWithBody(c.Server, org, hookId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrgWebhook Modifica un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+func (c *Client) UpdateOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, body UpdateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrgWebhookRequest(c.Server, org, hookId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOrgWebhookDeliveries Log delle consegne di un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+//
+// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries (the `ListOrgWebhookDeliveries` operationId).
+func (c *Client) ListOrgWebhookDeliveries(ctx context.Context, org OrgParam, hookId WebhookIdParam, params *ListOrgWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrgWebhookDeliveriesRequest(c.Server, org, hookId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrgWebhookDelivery Dettaglio di una consegna di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+//
+// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId} (the `GetOrgWebhookDelivery` operationId).
+func (c *Client) GetOrgWebhookDelivery(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrgWebhookDeliveryRequest(c.Server, org, hookId, deliveryId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedeliverOrgWebhookDelivery Rinvia una consegna (Redeliver) di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+//
+// Corresponds with POST /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverOrgWebhookDelivery` operationId).
+func (c *Client) RedeliverOrgWebhookDelivery(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedeliverOrgWebhookDeliveryRequest(c.Server, org, hookId, deliveryId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReactivateOrgWebhook Riattiva un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+//
+// Corresponds with POST /orgs/{org}/hooks/{hookId}/reactivate (the `ReactivateOrgWebhook` operationId).
+func (c *Client) ReactivateOrgWebhook(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReactivateOrgWebhookRequest(c.Server, org, hookId)
 	if err != nil {
 		return nil, err
 	}
@@ -6235,6 +7503,201 @@ func (c *Client) ListRepositoryFiles(ctx context.Context, owner RepoOwnerParam, 
 	return c.Client.Do(req)
 }
 
+// ListRepoWebhooks Elenca i webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks (the `ListRepoWebhooks` operationId).
+func (c *Client) ListRepoWebhooks(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoWebhooksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepoWebhooksRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRepoWebhookWithBody Crea un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+func (c *Client) CreateRepoWebhookWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepoWebhookRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRepoWebhook Crea un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+func (c *Client) CreateRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepoWebhookRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteRepoWebhook Elimina un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/hooks/{hookId} (the `DeleteRepoWebhook` operationId).
+func (c *Client) DeleteRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepoWebhookRequest(c.Server, owner, repo, hookId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepoWebhook Legge un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId} (the `GetRepoWebhook` operationId).
+func (c *Client) GetRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepoWebhookRequest(c.Server, owner, repo, hookId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepoWebhookWithBody Modifica un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+func (c *Client) UpdateRepoWebhookWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepoWebhookRequestWithBody(c.Server, owner, repo, hookId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepoWebhook Modifica un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+func (c *Client) UpdateRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, body UpdateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepoWebhookRequest(c.Server, owner, repo, hookId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepoWebhookDeliveries Log delle consegne di un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries (the `ListRepoWebhookDeliveries` operationId).
+func (c *Client) ListRepoWebhookDeliveries(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, params *ListRepoWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepoWebhookDeliveriesRequest(c.Server, owner, repo, hookId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepoWebhookDelivery Dettaglio di una consegna di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId} (the `GetRepoWebhookDelivery` operationId).
+func (c *Client) GetRepoWebhookDelivery(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepoWebhookDeliveryRequest(c.Server, owner, repo, hookId, deliveryId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedeliverRepoWebhookDelivery Rinvia una consegna (Redeliver) di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverRepoWebhookDelivery` operationId).
+func (c *Client) RedeliverRepoWebhookDelivery(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedeliverRepoWebhookDeliveryRequest(c.Server, owner, repo, hookId, deliveryId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReactivateRepoWebhook Riattiva un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/reactivate (the `ReactivateRepoWebhook` operationId).
+func (c *Client) ReactivateRepoWebhook(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReactivateRepoWebhookRequest(c.Server, owner, repo, hookId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // UploadIssueAttachmentWithBody Carica un allegato
 //
 // `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -6603,7 +8066,7 @@ func (c *Client) ListIssueCommentVersions(ctx context.Context, owner RepoOwnerPa
 
 // ListIssueEvents Cronologia degli eventi
 //
-// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e, da M-06, `referenced_from`, `commit_linked` e `closed_by_commit` (C1, C2). Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
 //
 // Corresponds with GET /repos/{owner}/{repo}/issues/{number}/events (the `ListIssueEvents` operationId).
 func (c *Client) ListIssueEvents(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, params *ListIssueEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6794,6 +8257,57 @@ func (c *Client) SetIssueMilestone(ctx context.Context, owner RepoOwnerParam, re
 // Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
 func (c *Client) ReopenIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewReopenIssueRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UnsubscribeIssue Smette di seguire la issue (Unsubscribe)
+//
+// Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche' non fa Subscribe. Le menzioni dirette (`@utente`) e le assegnazioni notificano comunque. Idempotente.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/subscription (the `UnsubscribeIssue` operationId).
+func (c *Client) UnsubscribeIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnsubscribeIssueRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetIssueSubscription Iscrizione alla issue
+//
+// Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati seguono in automatico. Serve poter leggere la issue; una nascosta risponde 404 a chi non e' `admin`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/subscription (the `GetIssueSubscription` operationId).
+func (c *Client) GetIssueSubscription(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetIssueSubscriptionRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SubscribeIssue Segue la issue (Subscribe)
+//
+// Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter leggere la issue.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/subscription (the `SubscribeIssue` operationId).
+func (c *Client) SubscribeIssue(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubscribeIssueRequest(c.Server, owner, repo, number)
 	if err != nil {
 		return nil, err
 	}
@@ -7194,6 +8708,78 @@ func (c *Client) GetRepositoryTree(ctx context.Context, owner RepoOwnerParam, re
 	return c.Client.Do(req)
 }
 
+// ResetRepoWatch Riporta il Watch al default
+//
+// Torna a `participating`. Idempotente.
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/watch (the `ResetRepoWatch` operationId).
+func (c *Client) ResetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResetRepoWatchRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepoWatch Watch del repo
+//
+// Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul repo; un repo che non si legge risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/watch (the `GetRepoWatch` operationId).
+func (c *Client) GetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepoWatchRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetRepoWatchWithBody Imposta il Watch del repo
+//
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+func (c *Client) SetRepoWatchWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetRepoWatchRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetRepoWatch Imposta il Watch del repo
+//
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+func (c *Client) SetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetRepoWatchRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListResources Elenca le risorse
 //
 // Elenco paginato delle risorse, con filtro opzionale per tipo (es. `repo`). Il tipo non è vincolato a un insieme fisso: nuove milestone aggiungono nuovi tipi senza cambiare l'endpoint (D15).
@@ -7441,6 +9027,61 @@ func (c *Client) GetMyResourcePermission(ctx context.Context, resourceId Resourc
 // Corresponds with GET /search/issues (the `SearchIssues` operationId).
 func (c *Client) SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchIssuesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetNotificationPreferences Preferenze email delle notifiche
+//
+// Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
+//
+// Corresponds with GET /user/notification-preferences (the `GetNotificationPreferences` operationId).
+func (c *Client) GetNotificationPreferences(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNotificationPreferencesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateNotificationPreferencesWithBody Imposta le preferenze email
+//
+// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+func (c *Client) UpdateNotificationPreferencesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateNotificationPreferencesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateNotificationPreferences Imposta le preferenze email
+//
+// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+func (c *Client) UpdateNotificationPreferences(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateNotificationPreferencesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9712,6 +11353,363 @@ func NewVerifyCredentialRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
+// NewDeleteNotificationsRequest constructs an http.Request for the DeleteNotifications method
+func NewDeleteNotificationsRequest(server string, params *DeleteNotificationsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/notifications")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Reason != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "reason", *params.Reason, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Repo != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "repo", *params.Repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListNotificationsRequest constructs an http.Request for the ListNotifications method
+func NewListNotificationsRequest(server string, params *ListNotificationsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/notifications")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Reason != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "reason", *params.Reason, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Repo != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "repo", *params.Repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMarkAllNotificationsReadRequest constructs an http.Request for the MarkAllNotificationsRead method
+func NewMarkAllNotificationsReadRequest(server string, params *MarkAllNotificationsReadParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/notifications/read-all")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Reason != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "reason", *params.Reason, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Repo != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "repo", *params.Repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteNotificationRequest constructs an http.Request for the DeleteNotification method
+func NewDeleteNotificationRequest(server string, notificationId NotificationIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "notificationId", notificationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/notifications/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetNotificationRequest constructs an http.Request for the GetNotification method
+func NewGetNotificationRequest(server string, notificationId NotificationIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "notificationId", notificationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/notifications/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateNotificationRequest calls the generic UpdateNotification builder with application/json body
+func NewUpdateNotificationRequest(server string, notificationId NotificationIdParam, body UpdateNotificationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateNotificationRequestWithBody(server, notificationId, "application/json", bodyReader)
+}
+
+// NewUpdateNotificationRequestWithBody constructs an http.Request for the UpdateNotification method, with any body, and a specified content type
+func NewUpdateNotificationRequestWithBody(server string, notificationId NotificationIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "notificationId", notificationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/notifications/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListOrganizationsRequest constructs an http.Request for the ListOrganizations method
 func NewListOrganizationsRequest(server string, params *ListOrganizationsParams) (*http.Request, error) {
 	var err error
@@ -9929,6 +11927,491 @@ func NewUpdateOrganizationRequestWithBody(server string, org OrgParam, contentTy
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListOrgWebhooksRequest constructs an http.Request for the ListOrgWebhooks method
+func NewListOrgWebhooksRequest(server string, org OrgParam, params *ListOrgWebhooksParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateOrgWebhookRequest calls the generic CreateOrgWebhook builder with application/json body
+func NewCreateOrgWebhookRequest(server string, org OrgParam, body CreateOrgWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateOrgWebhookRequestWithBody(server, org, "application/json", bodyReader)
+}
+
+// NewCreateOrgWebhookRequestWithBody constructs an http.Request for the CreateOrgWebhook method, with any body, and a specified content type
+func NewCreateOrgWebhookRequestWithBody(server string, org OrgParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteOrgWebhookRequest constructs an http.Request for the DeleteOrgWebhook method
+func NewDeleteOrgWebhookRequest(server string, org OrgParam, hookId WebhookIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOrgWebhookRequest constructs an http.Request for the GetOrgWebhook method
+func NewGetOrgWebhookRequest(server string, org OrgParam, hookId WebhookIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOrgWebhookRequest calls the generic UpdateOrgWebhook builder with application/json body
+func NewUpdateOrgWebhookRequest(server string, org OrgParam, hookId WebhookIdParam, body UpdateOrgWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOrgWebhookRequestWithBody(server, org, hookId, "application/json", bodyReader)
+}
+
+// NewUpdateOrgWebhookRequestWithBody constructs an http.Request for the UpdateOrgWebhook method, with any body, and a specified content type
+func NewUpdateOrgWebhookRequestWithBody(server string, org OrgParam, hookId WebhookIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListOrgWebhookDeliveriesRequest constructs an http.Request for the ListOrgWebhookDeliveries method
+func NewListOrgWebhookDeliveriesRequest(server string, org OrgParam, hookId WebhookIdParam, params *ListOrgWebhookDeliveriesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s/deliveries", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOrgWebhookDeliveryRequest constructs an http.Request for the GetOrgWebhookDelivery method
+func NewGetOrgWebhookDeliveryRequest(server string, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "deliveryId", deliveryId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s/deliveries/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRedeliverOrgWebhookDeliveryRequest constructs an http.Request for the RedeliverOrgWebhookDelivery method
+func NewRedeliverOrgWebhookDeliveryRequest(server string, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "deliveryId", deliveryId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s/deliveries/%s/redeliver", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewReactivateOrgWebhookRequest constructs an http.Request for the ReactivateOrgWebhook method
+func NewReactivateOrgWebhookRequest(server string, org OrgParam, hookId WebhookIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "org", org, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/orgs/%s/hooks/%s/reactivate", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -11519,6 +14002,554 @@ func NewListRepositoryFilesRequest(server string, owner RepoOwnerParam, repo Rep
 	return req, nil
 }
 
+// NewListRepoWebhooksRequest constructs an http.Request for the ListRepoWebhooks method
+func NewListRepoWebhooksRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoWebhooksParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateRepoWebhookRequest calls the generic CreateRepoWebhook builder with application/json body
+func NewCreateRepoWebhookRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRepoWebhookRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateRepoWebhookRequestWithBody constructs an http.Request for the CreateRepoWebhook method, with any body, and a specified content type
+func NewCreateRepoWebhookRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteRepoWebhookRequest constructs an http.Request for the DeleteRepoWebhook method
+func NewDeleteRepoWebhookRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepoWebhookRequest constructs an http.Request for the GetRepoWebhook method
+func NewGetRepoWebhookRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateRepoWebhookRequest calls the generic UpdateRepoWebhook builder with application/json body
+func NewUpdateRepoWebhookRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, body UpdateRepoWebhookJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateRepoWebhookRequestWithBody(server, owner, repo, hookId, "application/json", bodyReader)
+}
+
+// NewUpdateRepoWebhookRequestWithBody constructs an http.Request for the UpdateRepoWebhook method, with any body, and a specified content type
+func NewUpdateRepoWebhookRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListRepoWebhookDeliveriesRequest constructs an http.Request for the ListRepoWebhookDeliveries method
+func NewListRepoWebhookDeliveriesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, params *ListRepoWebhookDeliveriesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s/deliveries", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepoWebhookDeliveryRequest constructs an http.Request for the GetRepoWebhookDelivery method
+func NewGetRepoWebhookDeliveryRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "deliveryId", deliveryId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s/deliveries/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRedeliverRepoWebhookDeliveryRequest constructs an http.Request for the RedeliverRepoWebhookDelivery method
+func NewRedeliverRepoWebhookDeliveryRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "deliveryId", deliveryId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s/deliveries/%s/redeliver", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewReactivateRepoWebhookRequest constructs an http.Request for the ReactivateRepoWebhook method
+func NewReactivateRepoWebhookRequest(server string, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "hookId", hookId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/hooks/%s/reactivate", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUploadIssueAttachmentRequestWithBody constructs an http.Request for the UploadIssueAttachment method, with any body, and a specified content type
 func NewUploadIssueAttachmentRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -12865,6 +15896,150 @@ func NewReopenIssueRequest(server string, owner RepoOwnerParam, repo RepoNamePar
 	return req, nil
 }
 
+// NewUnsubscribeIssueRequest constructs an http.Request for the UnsubscribeIssue method
+func NewUnsubscribeIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/subscription", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetIssueSubscriptionRequest constructs an http.Request for the GetIssueSubscription method
+func NewGetIssueSubscriptionRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/subscription", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubscribeIssueRequest constructs an http.Request for the SubscribeIssue method
+func NewSubscribeIssueRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues/%s/subscription", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListIssueVersionsRequest constructs an http.Request for the ListIssueVersions method
 func NewListIssueVersionsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam) (*http.Request, error) {
 	var err error
@@ -13976,6 +17151,142 @@ func NewGetRepositoryTreeRequest(server string, owner RepoOwnerParam, repo RepoN
 	return req, nil
 }
 
+// NewResetRepoWatchRequest constructs an http.Request for the ResetRepoWatch method
+func NewResetRepoWatchRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/watch", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepoWatchRequest constructs an http.Request for the GetRepoWatch method
+func NewGetRepoWatchRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/watch", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetRepoWatchRequest calls the generic SetRepoWatch builder with application/json body
+func NewSetRepoWatchRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetRepoWatchRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewSetRepoWatchRequestWithBody constructs an http.Request for the SetRepoWatch method, with any body, and a specified content type
+func NewSetRepoWatchRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/watch", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListResourcesRequest constructs an http.Request for the ListResources method
 func NewListResourcesRequest(server string, params *ListResourcesParams) (*http.Request, error) {
 	var err error
@@ -14544,6 +17855,73 @@ func NewSearchIssuesRequest(server string, params *SearchIssuesParams) (*http.Re
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetNotificationPreferencesRequest constructs an http.Request for the GetNotificationPreferences method
+func NewGetNotificationPreferencesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/notification-preferences")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateNotificationPreferencesRequest calls the generic UpdateNotificationPreferences builder with application/json body
+func NewUpdateNotificationPreferencesRequest(server string, body UpdateNotificationPreferencesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateNotificationPreferencesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateNotificationPreferencesRequestWithBody constructs an http.Request for the UpdateNotificationPreferences method, with any body, and a specified content type
+func NewUpdateNotificationPreferencesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/notification-preferences")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -15846,6 +19224,69 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 	VerifyCredentialWithResponse(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyCredentialResponse, error)
 
+	// DeleteNotificationsWithResponse Elimina in blocco le notifiche
+	//
+	// Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /notifications (the `DeleteNotifications` operationId).
+	DeleteNotificationsWithResponse(ctx context.Context, params *DeleteNotificationsParams, reqEditors ...RequestEditorFn) (*DeleteNotificationsResponse, error)
+
+	// ListNotificationsWithResponse Casella delle notifiche
+	//
+	// Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason` (uno o piu' motivi separati da virgola), `state` (`unread` default, `read`, `archived`, `all`; le archiviate compaiono solo con `archived` o `all`) e `repo` (`owner/repo`). Stessa casella e stesse regole per persone e agenti (C4); `gs notification list --json` usa questa operazione. Le notifiche di un repo che l'utente non legge piu' non compaiono e vengono eliminate (C9). `unreadCount` conta le non lette non archiviate dell'utente, con i soli filtri `reason` e `repo`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /notifications (the `ListNotifications` operationId).
+	ListNotificationsWithResponse(ctx context.Context, params *ListNotificationsParams, reqEditors ...RequestEditorFn) (*ListNotificationsResponse, error)
+
+	// MarkAllNotificationsReadWithResponse Segna come lette tutte le notifiche
+	//
+	// Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi (`reason`, `repo`) dell'elenco. Idempotente. Le archiviate non cambiano.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /notifications/read-all (the `MarkAllNotificationsRead` operationId).
+	MarkAllNotificationsReadWithResponse(ctx context.Context, params *MarkAllNotificationsReadParams, reqEditors ...RequestEditorFn) (*MarkAllNotificationsReadResponse, error)
+
+	// DeleteNotificationWithResponse Elimina una notifica
+	//
+	// Eliminazione manuale (C9), anche di una non letta.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /notifications/{notificationId} (the `DeleteNotification` operationId).
+	DeleteNotificationWithResponse(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*DeleteNotificationResponse, error)
+
+	// GetNotificationWithResponse Legge una notifica
+	//
+	// Una notifica di un'altra persona risponde 404, come una inesistente.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /notifications/{notificationId} (the `GetNotification` operationId).
+	GetNotificationWithResponse(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*GetNotificationResponse, error)
+
+	// UpdateNotificationWithBodyWithResponse Segna come letta/non letta o archivia
+	//
+	// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+	UpdateNotificationWithBodyWithResponse(ctx context.Context, notificationId NotificationIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNotificationResponse, error)
+
+	// UpdateNotificationWithResponse Segna come letta/non letta o archivia
+	//
+	// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+	UpdateNotificationWithResponse(ctx context.Context, notificationId NotificationIdParam, body UpdateNotificationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNotificationResponse, error)
+
 	// ListOrganizationsWithResponse Elenca le organizzazioni
 	//
 	// Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
@@ -15906,6 +19347,105 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /orgs/{org} (the `UpdateOrganization` operationId).
 	UpdateOrganizationWithResponse(ctx context.Context, org OrgParam, body UpdateOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationResponse, error)
+
+	// ListOrgWebhooksWithResponse Elenca i webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /orgs/{org}/hooks (the `ListOrgWebhooks` operationId).
+	ListOrgWebhooksWithResponse(ctx context.Context, org OrgParam, params *ListOrgWebhooksParams, reqEditors ...RequestEditorFn) (*ListOrgWebhooksResponse, error)
+
+	// CreateOrgWebhookWithBodyWithResponse Crea un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+	CreateOrgWebhookWithBodyWithResponse(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrgWebhookResponse, error)
+
+	// CreateOrgWebhookWithResponse Crea un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+	CreateOrgWebhookWithResponse(ctx context.Context, org OrgParam, body CreateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrgWebhookResponse, error)
+
+	// DeleteOrgWebhookWithResponse Elimina un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /orgs/{org}/hooks/{hookId} (the `DeleteOrgWebhook` operationId).
+	DeleteOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*DeleteOrgWebhookResponse, error)
+
+	// GetOrgWebhookWithResponse Legge un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /orgs/{org}/hooks/{hookId} (the `GetOrgWebhook` operationId).
+	GetOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*GetOrgWebhookResponse, error)
+
+	// UpdateOrgWebhookWithBodyWithResponse Modifica un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+	UpdateOrgWebhookWithBodyWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrgWebhookResponse, error)
+
+	// UpdateOrgWebhookWithResponse Modifica un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+	UpdateOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, body UpdateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrgWebhookResponse, error)
+
+	// ListOrgWebhookDeliveriesWithResponse Log delle consegne di un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries (the `ListOrgWebhookDeliveries` operationId).
+	ListOrgWebhookDeliveriesWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, params *ListOrgWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*ListOrgWebhookDeliveriesResponse, error)
+
+	// GetOrgWebhookDeliveryWithResponse Dettaglio di una consegna di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId} (the `GetOrgWebhookDelivery` operationId).
+	GetOrgWebhookDeliveryWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*GetOrgWebhookDeliveryResponse, error)
+
+	// RedeliverOrgWebhookDeliveryWithResponse Rinvia una consegna (Redeliver) di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverOrgWebhookDelivery` operationId).
+	RedeliverOrgWebhookDeliveryWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*RedeliverOrgWebhookDeliveryResponse, error)
+
+	// ReactivateOrgWebhookWithResponse Riattiva un webhook di un'organizzazione
+	//
+	// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /orgs/{org}/hooks/{hookId}/reactivate (the `ReactivateOrgWebhook` operationId).
+	ReactivateOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*ReactivateOrgWebhookResponse, error)
 
 	// ListOrgMembersWithResponse Elenca i membri di un'organizzazione
 	//
@@ -16181,6 +19721,105 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/files (the `ListRepositoryFiles` operationId).
 	ListRepositoryFilesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepositoryFilesParams, reqEditors ...RequestEditorFn) (*ListRepositoryFilesResponse, error)
 
+	// ListRepoWebhooksWithResponse Elenca i webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks (the `ListRepoWebhooks` operationId).
+	ListRepoWebhooksWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoWebhooksParams, reqEditors ...RequestEditorFn) (*ListRepoWebhooksResponse, error)
+
+	// CreateRepoWebhookWithBodyWithResponse Crea un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+	CreateRepoWebhookWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoWebhookResponse, error)
+
+	// CreateRepoWebhookWithResponse Crea un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+	CreateRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoWebhookResponse, error)
+
+	// DeleteRepoWebhookWithResponse Elimina un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/hooks/{hookId} (the `DeleteRepoWebhook` operationId).
+	DeleteRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*DeleteRepoWebhookResponse, error)
+
+	// GetRepoWebhookWithResponse Legge un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId} (the `GetRepoWebhook` operationId).
+	GetRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*GetRepoWebhookResponse, error)
+
+	// UpdateRepoWebhookWithBodyWithResponse Modifica un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+	UpdateRepoWebhookWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepoWebhookResponse, error)
+
+	// UpdateRepoWebhookWithResponse Modifica un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+	UpdateRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, body UpdateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepoWebhookResponse, error)
+
+	// ListRepoWebhookDeliveriesWithResponse Log delle consegne di un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries (the `ListRepoWebhookDeliveries` operationId).
+	ListRepoWebhookDeliveriesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, params *ListRepoWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*ListRepoWebhookDeliveriesResponse, error)
+
+	// GetRepoWebhookDeliveryWithResponse Dettaglio di una consegna di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId} (the `GetRepoWebhookDelivery` operationId).
+	GetRepoWebhookDeliveryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*GetRepoWebhookDeliveryResponse, error)
+
+	// RedeliverRepoWebhookDeliveryWithResponse Rinvia una consegna (Redeliver) di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverRepoWebhookDelivery` operationId).
+	RedeliverRepoWebhookDeliveryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*RedeliverRepoWebhookDeliveryResponse, error)
+
+	// ReactivateRepoWebhookWithResponse Riattiva un webhook di un repo
+	//
+	// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/reactivate (the `ReactivateRepoWebhook` operationId).
+	ReactivateRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*ReactivateRepoWebhookResponse, error)
+
 	// UploadIssueAttachmentWithBodyWithResponse Carica un allegato
 	//
 	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -16363,7 +20002,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListIssueEventsWithResponse Cronologia degli eventi
 	//
-	// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+	// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e, da M-06, `referenced_from`, `commit_linked` e `closed_by_commit` (C1, C2). Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -16459,6 +20098,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/issues/{number}/reopen (the `ReopenIssue` operationId).
 	ReopenIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*ReopenIssueResponse, error)
+
+	// UnsubscribeIssueWithResponse Smette di seguire la issue (Unsubscribe)
+	//
+	// Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche' non fa Subscribe. Le menzioni dirette (`@utente`) e le assegnazioni notificano comunque. Idempotente.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/subscription (the `UnsubscribeIssue` operationId).
+	UnsubscribeIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*UnsubscribeIssueResponse, error)
+
+	// GetIssueSubscriptionWithResponse Iscrizione alla issue
+	//
+	// Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati seguono in automatico. Serve poter leggere la issue; una nascosta risponde 404 a chi non e' `admin`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/subscription (the `GetIssueSubscription` operationId).
+	GetIssueSubscriptionWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*GetIssueSubscriptionResponse, error)
+
+	// SubscribeIssueWithResponse Segue la issue (Subscribe)
+	//
+	// Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter leggere la issue.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/subscription (the `SubscribeIssue` operationId).
+	SubscribeIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*SubscribeIssueResponse, error)
 
 	// ListIssueVersionsWithResponse Versioni precedenti del testo della issue
 	//
@@ -16658,6 +20324,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/tree (the `GetRepositoryTree` operationId).
 	GetRepositoryTreeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams, reqEditors ...RequestEditorFn) (*GetRepositoryTreeResponse, error)
 
+	// ResetRepoWatchWithResponse Riporta il Watch al default
+	//
+	// Torna a `participating`. Idempotente.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/watch (the `ResetRepoWatch` operationId).
+	ResetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ResetRepoWatchResponse, error)
+
+	// GetRepoWatchWithResponse Watch del repo
+	//
+	// Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul repo; un repo che non si legge risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/watch (the `GetRepoWatch` operationId).
+	GetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepoWatchResponse, error)
+
+	// SetRepoWatchWithBodyWithResponse Imposta il Watch del repo
+	//
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+	SetRepoWatchWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetRepoWatchResponse, error)
+
+	// SetRepoWatchWithResponse Imposta il Watch del repo
+	//
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+	SetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*SetRepoWatchResponse, error)
+
 	// ListResourcesWithResponse Elenca le risorse
 	//
 	// Elenco paginato delle risorse, con filtro opzionale per tipo (es. `repo`). Il tipo non è vincolato a un insieme fisso: nuove milestone aggiungono nuovi tipi senza cambiare l'endpoint (D15).
@@ -16778,6 +20480,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssuesWithResponse(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*SearchIssuesResponse, error)
+
+	// GetNotificationPreferencesWithResponse Preferenze email delle notifiche
+	//
+	// Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user/notification-preferences (the `GetNotificationPreferences` operationId).
+	GetNotificationPreferencesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNotificationPreferencesResponse, error)
+
+	// UpdateNotificationPreferencesWithBodyWithResponse Imposta le preferenze email
+	//
+	// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+	UpdateNotificationPreferencesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNotificationPreferencesResponse, error)
+
+	// UpdateNotificationPreferencesWithResponse Imposta le preferenze email
+	//
+	// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+	UpdateNotificationPreferencesWithResponse(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNotificationPreferencesResponse, error)
 
 	// ListSshKeysWithResponse Elenca le chiavi SSH dell'utente corrente
 	//
@@ -19433,6 +23162,420 @@ func (r VerifyCredentialResponse) ContentType() string {
 	return ""
 }
 
+type DeleteNotificationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeletedNotifications
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteNotificationsResponse) GetJSON200() *DeletedNotifications {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteNotificationsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteNotificationsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteNotificationsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteNotificationsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteNotificationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteNotificationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteNotificationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteNotificationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListNotificationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *NotificationList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListNotificationsResponse) GetJSON200() *NotificationList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListNotificationsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListNotificationsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListNotificationsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListNotificationsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListNotificationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListNotificationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListNotificationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListNotificationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MarkAllNotificationsReadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *MarkedNotifications
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MarkAllNotificationsReadResponse) GetJSON200() *MarkedNotifications {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r MarkAllNotificationsReadResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r MarkAllNotificationsReadResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r MarkAllNotificationsReadResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r MarkAllNotificationsReadResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MarkAllNotificationsReadResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MarkAllNotificationsReadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MarkAllNotificationsReadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MarkAllNotificationsReadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteNotificationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteNotificationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteNotificationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteNotificationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteNotificationResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteNotificationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteNotificationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteNotificationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteNotificationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNotificationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Notification
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetNotificationResponse) GetJSON200() *Notification {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetNotificationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetNotificationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetNotificationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetNotificationResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetNotificationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNotificationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNotificationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNotificationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateNotificationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Notification
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateNotificationResponse) GetJSON200() *Notification {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateNotificationResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateNotificationResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateNotificationResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateNotificationResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateNotificationResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateNotificationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateNotificationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateNotificationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateNotificationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListOrganizationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19793,6 +23936,683 @@ func (r UpdateOrganizationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateOrganizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListOrgWebhooksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhookList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrgWebhooksResponse) GetJSON200() *WebhookList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListOrgWebhooksResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrgWebhooksResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOrgWebhooksResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrgWebhooksResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListOrgWebhooksResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrgWebhooksResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrgWebhooksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrgWebhooksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrgWebhooksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateOrgWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Webhook
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON201() *Webhook {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateOrgWebhookResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateOrgWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateOrgWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateOrgWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateOrgWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateOrgWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteOrgWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOrgWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOrgWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOrgWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteOrgWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOrgWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOrgWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOrgWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOrgWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrgWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Webhook
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrgWebhookResponse) GetJSON200() *Webhook {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrgWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrgWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrgWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetOrgWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrgWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrgWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrgWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrgWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOrgWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Webhook
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON200() *Webhook {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateOrgWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOrgWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOrgWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOrgWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOrgWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListOrgWebhookDeliveriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhookDeliveryList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrgWebhookDeliveriesResponse) GetJSON200() *WebhookDeliveryList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListOrgWebhookDeliveriesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrgWebhookDeliveriesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOrgWebhookDeliveriesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrgWebhookDeliveriesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListOrgWebhookDeliveriesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrgWebhookDeliveriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrgWebhookDeliveriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrgWebhookDeliveriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrgWebhookDeliveriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrgWebhookDeliveryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhookDeliveryDetail
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrgWebhookDeliveryResponse) GetJSON200() *WebhookDeliveryDetail {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrgWebhookDeliveryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrgWebhookDeliveryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrgWebhookDeliveryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetOrgWebhookDeliveryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrgWebhookDeliveryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrgWebhookDeliveryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrgWebhookDeliveryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrgWebhookDeliveryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedeliverOrgWebhookDeliveryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *WebhookDelivery
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RedeliverOrgWebhookDeliveryResponse) GetJSON202() *WebhookDelivery {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RedeliverOrgWebhookDeliveryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RedeliverOrgWebhookDeliveryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RedeliverOrgWebhookDeliveryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RedeliverOrgWebhookDeliveryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RedeliverOrgWebhookDeliveryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedeliverOrgWebhookDeliveryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedeliverOrgWebhookDeliveryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedeliverOrgWebhookDeliveryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReactivateOrgWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Webhook
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReactivateOrgWebhookResponse) GetJSON200() *Webhook {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReactivateOrgWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReactivateOrgWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReactivateOrgWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReactivateOrgWebhookResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ReactivateOrgWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ReactivateOrgWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReactivateOrgWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReactivateOrgWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReactivateOrgWebhookResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21821,6 +26641,683 @@ func (r ListRepositoryFilesResponse) ContentType() string {
 	return ""
 }
 
+type ListRepoWebhooksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhookList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepoWebhooksResponse) GetJSON200() *WebhookList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListRepoWebhooksResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepoWebhooksResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepoWebhooksResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepoWebhooksResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListRepoWebhooksResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepoWebhooksResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepoWebhooksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepoWebhooksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepoWebhooksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateRepoWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Webhook
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON201() *Webhook {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateRepoWebhookResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateRepoWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateRepoWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRepoWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRepoWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateRepoWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteRepoWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteRepoWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteRepoWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteRepoWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteRepoWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteRepoWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepoWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepoWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteRepoWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepoWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Webhook
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepoWebhookResponse) GetJSON200() *Webhook {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepoWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepoWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepoWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepoWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepoWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepoWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepoWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepoWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateRepoWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Webhook
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON200() *Webhook {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateRepoWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateRepoWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateRepoWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateRepoWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateRepoWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListRepoWebhookDeliveriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhookDeliveryList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepoWebhookDeliveriesResponse) GetJSON200() *WebhookDeliveryList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListRepoWebhookDeliveriesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepoWebhookDeliveriesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepoWebhookDeliveriesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepoWebhookDeliveriesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListRepoWebhookDeliveriesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepoWebhookDeliveriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepoWebhookDeliveriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepoWebhookDeliveriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepoWebhookDeliveriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepoWebhookDeliveryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WebhookDeliveryDetail
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepoWebhookDeliveryResponse) GetJSON200() *WebhookDeliveryDetail {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepoWebhookDeliveryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepoWebhookDeliveryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepoWebhookDeliveryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepoWebhookDeliveryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepoWebhookDeliveryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepoWebhookDeliveryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepoWebhookDeliveryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepoWebhookDeliveryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedeliverRepoWebhookDeliveryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *WebhookDelivery
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RedeliverRepoWebhookDeliveryResponse) GetJSON202() *WebhookDelivery {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RedeliverRepoWebhookDeliveryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RedeliverRepoWebhookDeliveryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RedeliverRepoWebhookDeliveryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RedeliverRepoWebhookDeliveryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RedeliverRepoWebhookDeliveryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedeliverRepoWebhookDeliveryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedeliverRepoWebhookDeliveryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedeliverRepoWebhookDeliveryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReactivateRepoWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Webhook
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReactivateRepoWebhookResponse) GetJSON200() *Webhook {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReactivateRepoWebhookResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReactivateRepoWebhookResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReactivateRepoWebhookResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReactivateRepoWebhookResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ReactivateRepoWebhookResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ReactivateRepoWebhookResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReactivateRepoWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReactivateRepoWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReactivateRepoWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // UploadIssueAttachmentResponse201Headers the declared response headers of an HTTP 201 response for UploadIssueAttachment
 type UploadIssueAttachmentResponse201Headers struct {
 	Location *string
@@ -23650,6 +29147,213 @@ func (r ReopenIssueResponse) ContentType() string {
 	return ""
 }
 
+type UnsubscribeIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueSubscription
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UnsubscribeIssueResponse) GetJSON200() *IssueSubscription {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UnsubscribeIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UnsubscribeIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UnsubscribeIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UnsubscribeIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UnsubscribeIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UnsubscribeIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnsubscribeIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnsubscribeIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetIssueSubscriptionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueSubscription
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetIssueSubscriptionResponse) GetJSON200() *IssueSubscription {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetIssueSubscriptionResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetIssueSubscriptionResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetIssueSubscriptionResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetIssueSubscriptionResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetIssueSubscriptionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetIssueSubscriptionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetIssueSubscriptionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetIssueSubscriptionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SubscribeIssueResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *IssueSubscription
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SubscribeIssueResponse) GetJSON200() *IssueSubscription {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SubscribeIssueResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SubscribeIssueResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SubscribeIssueResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SubscribeIssueResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SubscribeIssueResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SubscribeIssueResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubscribeIssueResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubscribeIssueResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListIssueVersionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -25092,6 +30796,220 @@ func (r GetRepositoryTreeResponse) ContentType() string {
 	return ""
 }
 
+type ResetRepoWatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResetRepoWatchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ResetRepoWatchResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ResetRepoWatchResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ResetRepoWatchResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ResetRepoWatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResetRepoWatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResetRepoWatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResetRepoWatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepoWatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepoWatch
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepoWatchResponse) GetJSON200() *RepoWatch {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepoWatchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepoWatchResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepoWatchResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepoWatchResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepoWatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepoWatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepoWatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepoWatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetRepoWatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepoWatch
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetRepoWatchResponse) GetJSON200() *RepoWatch {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetRepoWatchResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetRepoWatchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetRepoWatchResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetRepoWatchResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetRepoWatchResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetRepoWatchResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetRepoWatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetRepoWatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetRepoWatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetRepoWatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListResourcesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -25873,6 +31791,144 @@ func (r SearchIssuesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SearchIssuesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetNotificationPreferencesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *NotificationPreferences
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetNotificationPreferencesResponse) GetJSON200() *NotificationPreferences {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetNotificationPreferencesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetNotificationPreferencesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetNotificationPreferencesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetNotificationPreferencesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNotificationPreferencesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNotificationPreferencesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetNotificationPreferencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateNotificationPreferencesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *NotificationPreferences
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateNotificationPreferencesResponse) GetJSON200() *NotificationPreferences {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateNotificationPreferencesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateNotificationPreferencesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateNotificationPreferencesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateNotificationPreferencesResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateNotificationPreferencesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateNotificationPreferencesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateNotificationPreferencesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateNotificationPreferencesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateNotificationPreferencesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -27878,6 +33934,111 @@ func (c *ClientWithResponses) VerifyCredentialWithResponse(ctx context.Context, 
 	return ParseVerifyCredentialResponse(rsp)
 }
 
+// DeleteNotificationsWithResponse Elimina in blocco le notifiche
+//
+// Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /notifications (the `DeleteNotifications` operationId).
+func (c *ClientWithResponses) DeleteNotificationsWithResponse(ctx context.Context, params *DeleteNotificationsParams, reqEditors ...RequestEditorFn) (*DeleteNotificationsResponse, error) {
+	rsp, err := c.DeleteNotifications(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteNotificationsResponse(rsp)
+}
+
+// ListNotificationsWithResponse Casella delle notifiche
+//
+// Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason` (uno o piu' motivi separati da virgola), `state` (`unread` default, `read`, `archived`, `all`; le archiviate compaiono solo con `archived` o `all`) e `repo` (`owner/repo`). Stessa casella e stesse regole per persone e agenti (C4); `gs notification list --json` usa questa operazione. Le notifiche di un repo che l'utente non legge piu' non compaiono e vengono eliminate (C9). `unreadCount` conta le non lette non archiviate dell'utente, con i soli filtri `reason` e `repo`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /notifications (the `ListNotifications` operationId).
+func (c *ClientWithResponses) ListNotificationsWithResponse(ctx context.Context, params *ListNotificationsParams, reqEditors ...RequestEditorFn) (*ListNotificationsResponse, error) {
+	rsp, err := c.ListNotifications(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListNotificationsResponse(rsp)
+}
+
+// MarkAllNotificationsReadWithResponse Segna come lette tutte le notifiche
+//
+// Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi (`reason`, `repo`) dell'elenco. Idempotente. Le archiviate non cambiano.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /notifications/read-all (the `MarkAllNotificationsRead` operationId).
+func (c *ClientWithResponses) MarkAllNotificationsReadWithResponse(ctx context.Context, params *MarkAllNotificationsReadParams, reqEditors ...RequestEditorFn) (*MarkAllNotificationsReadResponse, error) {
+	rsp, err := c.MarkAllNotificationsRead(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMarkAllNotificationsReadResponse(rsp)
+}
+
+// DeleteNotificationWithResponse Elimina una notifica
+//
+// Eliminazione manuale (C9), anche di una non letta.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /notifications/{notificationId} (the `DeleteNotification` operationId).
+func (c *ClientWithResponses) DeleteNotificationWithResponse(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*DeleteNotificationResponse, error) {
+	rsp, err := c.DeleteNotification(ctx, notificationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteNotificationResponse(rsp)
+}
+
+// GetNotificationWithResponse Legge una notifica
+//
+// Una notifica di un'altra persona risponde 404, come una inesistente.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /notifications/{notificationId} (the `GetNotification` operationId).
+func (c *ClientWithResponses) GetNotificationWithResponse(ctx context.Context, notificationId NotificationIdParam, reqEditors ...RequestEditorFn) (*GetNotificationResponse, error) {
+	rsp, err := c.GetNotification(ctx, notificationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNotificationResponse(rsp)
+}
+
+// UpdateNotificationWithBodyWithResponse Segna come letta/non letta o archivia
+//
+// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+func (c *ClientWithResponses) UpdateNotificationWithBodyWithResponse(ctx context.Context, notificationId NotificationIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNotificationResponse, error) {
+	rsp, err := c.UpdateNotificationWithBody(ctx, notificationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateNotificationResponse(rsp)
+}
+
+// UpdateNotificationWithResponse Segna come letta/non letta o archivia
+//
+// Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un campo, altrimenti 400. Idempotente.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /notifications/{notificationId} (the `UpdateNotification` operationId).
+func (c *ClientWithResponses) UpdateNotificationWithResponse(ctx context.Context, notificationId NotificationIdParam, body UpdateNotificationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNotificationResponse, error) {
+	rsp, err := c.UpdateNotification(ctx, notificationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateNotificationResponse(rsp)
+}
+
 // ListOrganizationsWithResponse Elenca le organizzazioni
 //
 // Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
@@ -27979,6 +34140,171 @@ func (c *ClientWithResponses) UpdateOrganizationWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseUpdateOrganizationResponse(rsp)
+}
+
+// ListOrgWebhooksWithResponse Elenca i webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /orgs/{org}/hooks (the `ListOrgWebhooks` operationId).
+func (c *ClientWithResponses) ListOrgWebhooksWithResponse(ctx context.Context, org OrgParam, params *ListOrgWebhooksParams, reqEditors ...RequestEditorFn) (*ListOrgWebhooksResponse, error) {
+	rsp, err := c.ListOrgWebhooks(ctx, org, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrgWebhooksResponse(rsp)
+}
+
+// CreateOrgWebhookWithBodyWithResponse Crea un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+func (c *ClientWithResponses) CreateOrgWebhookWithBodyWithResponse(ctx context.Context, org OrgParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrgWebhookResponse, error) {
+	rsp, err := c.CreateOrgWebhookWithBody(ctx, org, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOrgWebhookResponse(rsp)
+}
+
+// CreateOrgWebhookWithResponse Crea un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /orgs/{org}/hooks (the `CreateOrgWebhook` operationId).
+func (c *ClientWithResponses) CreateOrgWebhookWithResponse(ctx context.Context, org OrgParam, body CreateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrgWebhookResponse, error) {
+	rsp, err := c.CreateOrgWebhook(ctx, org, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOrgWebhookResponse(rsp)
+}
+
+// DeleteOrgWebhookWithResponse Elimina un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /orgs/{org}/hooks/{hookId} (the `DeleteOrgWebhook` operationId).
+func (c *ClientWithResponses) DeleteOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*DeleteOrgWebhookResponse, error) {
+	rsp, err := c.DeleteOrgWebhook(ctx, org, hookId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOrgWebhookResponse(rsp)
+}
+
+// GetOrgWebhookWithResponse Legge un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /orgs/{org}/hooks/{hookId} (the `GetOrgWebhook` operationId).
+func (c *ClientWithResponses) GetOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*GetOrgWebhookResponse, error) {
+	rsp, err := c.GetOrgWebhook(ctx, org, hookId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrgWebhookResponse(rsp)
+}
+
+// UpdateOrgWebhookWithBodyWithResponse Modifica un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+func (c *ClientWithResponses) UpdateOrgWebhookWithBodyWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrgWebhookResponse, error) {
+	rsp, err := c.UpdateOrgWebhookWithBody(ctx, org, hookId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrgWebhookResponse(rsp)
+}
+
+// UpdateOrgWebhookWithResponse Modifica un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /orgs/{org}/hooks/{hookId} (the `UpdateOrgWebhook` operationId).
+func (c *ClientWithResponses) UpdateOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, body UpdateOrgWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrgWebhookResponse, error) {
+	rsp, err := c.UpdateOrgWebhook(ctx, org, hookId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrgWebhookResponse(rsp)
+}
+
+// ListOrgWebhookDeliveriesWithResponse Log delle consegne di un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries (the `ListOrgWebhookDeliveries` operationId).
+func (c *ClientWithResponses) ListOrgWebhookDeliveriesWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, params *ListOrgWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*ListOrgWebhookDeliveriesResponse, error) {
+	rsp, err := c.ListOrgWebhookDeliveries(ctx, org, hookId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrgWebhookDeliveriesResponse(rsp)
+}
+
+// GetOrgWebhookDeliveryWithResponse Dettaglio di una consegna di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId} (the `GetOrgWebhookDelivery` operationId).
+func (c *ClientWithResponses) GetOrgWebhookDeliveryWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*GetOrgWebhookDeliveryResponse, error) {
+	rsp, err := c.GetOrgWebhookDelivery(ctx, org, hookId, deliveryId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrgWebhookDeliveryResponse(rsp)
+}
+
+// RedeliverOrgWebhookDeliveryWithResponse Rinvia una consegna (Redeliver) di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverOrgWebhookDelivery` operationId).
+func (c *ClientWithResponses) RedeliverOrgWebhookDeliveryWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*RedeliverOrgWebhookDeliveryResponse, error) {
+	rsp, err := c.RedeliverOrgWebhookDelivery(ctx, org, hookId, deliveryId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedeliverOrgWebhookDeliveryResponse(rsp)
+}
+
+// ReactivateOrgWebhookWithResponse Riattiva un webhook di un'organizzazione
+//
+// Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /orgs/{org}/hooks/{hookId}/reactivate (the `ReactivateOrgWebhook` operationId).
+func (c *ClientWithResponses) ReactivateOrgWebhookWithResponse(ctx context.Context, org OrgParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*ReactivateOrgWebhookResponse, error) {
+	rsp, err := c.ReactivateOrgWebhook(ctx, org, hookId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReactivateOrgWebhookResponse(rsp)
 }
 
 // ListOrgMembersWithResponse Elenca i membri di un'organizzazione
@@ -28447,6 +34773,171 @@ func (c *ClientWithResponses) ListRepositoryFilesWithResponse(ctx context.Contex
 	return ParseListRepositoryFilesResponse(rsp)
 }
 
+// ListRepoWebhooksWithResponse Elenca i webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks (the `ListRepoWebhooks` operationId).
+func (c *ClientWithResponses) ListRepoWebhooksWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoWebhooksParams, reqEditors ...RequestEditorFn) (*ListRepoWebhooksResponse, error) {
+	rsp, err := c.ListRepoWebhooks(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepoWebhooksResponse(rsp)
+}
+
+// CreateRepoWebhookWithBodyWithResponse Crea un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+func (c *ClientWithResponses) CreateRepoWebhookWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoWebhookResponse, error) {
+	rsp, err := c.CreateRepoWebhookWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepoWebhookResponse(rsp)
+}
+
+// CreateRepoWebhookWithResponse Crea un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo redirect e risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 (`details.fields.url`, codice `url_not_allowed`). `events` almeno uno fra `push`, `issues`, `issue_comment`, `repository`. Il `secret` e' facoltativo (senza, la consegna non e' firmata): non torna mai nelle risposte. Il formato dei payload e le intestazioni sono in docs/webhooks.md. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks (the `CreateRepoWebhook` operationId).
+func (c *ClientWithResponses) CreateRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoWebhookResponse, error) {
+	rsp, err := c.CreateRepoWebhook(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepoWebhookResponse(rsp)
+}
+
+// DeleteRepoWebhookWithResponse Elimina un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/hooks/{hookId} (the `DeleteRepoWebhook` operationId).
+func (c *ClientWithResponses) DeleteRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*DeleteRepoWebhookResponse, error) {
+	rsp, err := c.DeleteRepoWebhook(ctx, owner, repo, hookId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepoWebhookResponse(rsp)
+}
+
+// GetRepoWebhookWithResponse Legge un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId} (the `GetRepoWebhook` operationId).
+func (c *ClientWithResponses) GetRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*GetRepoWebhookResponse, error) {
+	rsp, err := c.GetRepoWebhook(ctx, owner, repo, hookId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepoWebhookResponse(rsp)
+}
+
+// UpdateRepoWebhookWithBodyWithResponse Modifica un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+func (c *ClientWithResponses) UpdateRepoWebhookWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepoWebhookResponse, error) {
+	rsp, err := c.UpdateRepoWebhookWithBody(ctx, owner, repo, hookId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepoWebhookResponse(rsp)
+}
+
+// UpdateRepoWebhookWithResponse Modifica un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo toglie. `active: false` mette in pausa il webhook senza eliminarlo. Un webhook disattivato dai fallimenti (C7) si riattiva con l'operazione `reactivate`, non con `active: true`: 409 `webhook_disabled`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/hooks/{hookId} (the `UpdateRepoWebhook` operationId).
+func (c *ClientWithResponses) UpdateRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, body UpdateRepoWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepoWebhookResponse, error) {
+	rsp, err := c.UpdateRepoWebhook(ctx, owner, repo, hookId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepoWebhookResponse(rsp)
+}
+
+// ListRepoWebhookDeliveriesWithResponse Log delle consegne di un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries (the `ListRepoWebhookDeliveries` operationId).
+func (c *ClientWithResponses) ListRepoWebhookDeliveriesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, params *ListRepoWebhookDeliveriesParams, reqEditors ...RequestEditorFn) (*ListRepoWebhookDeliveriesResponse, error) {
+	rsp, err := c.ListRepoWebhookDeliveries(ctx, owner, repo, hookId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepoWebhookDeliveriesResponse(rsp)
+}
+
+// GetRepoWebhookDeliveryWithResponse Dettaglio di una consegna di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId} (the `GetRepoWebhookDelivery` operationId).
+func (c *ClientWithResponses) GetRepoWebhookDeliveryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*GetRepoWebhookDeliveryResponse, error) {
+	rsp, err := c.GetRepoWebhookDelivery(ctx, owner, repo, hookId, deliveryId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepoWebhookDeliveryResponse(rsp)
+}
+
+// RedeliverRepoWebhookDeliveryWithResponse Rinvia una consegna (Redeliver) di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf` punta all'originale), firmata di nuovo col segreto corrente. Risponde 202: la consegna e' in coda e il risultato si legge dal log. Funziona anche su un webhook non attivo e dopo un `410 Gone`; una consegna piu' vecchia di 30 giorni non esiste piu' (404).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/deliveries/{deliveryId}/redeliver (the `RedeliverRepoWebhookDelivery` operationId).
+func (c *ClientWithResponses) RedeliverRepoWebhookDeliveryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, deliveryId WebhookDeliveryIdParam, reqEditors ...RequestEditorFn) (*RedeliverRepoWebhookDeliveryResponse, error) {
+	rsp, err := c.RedeliverRepoWebhookDelivery(ctx, owner, repo, hookId, deliveryId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedeliverRepoWebhookDeliveryResponse(rsp)
+}
+
+// ReactivateRepoWebhookWithResponse Riattiva un webhook di un repo
+//
+// Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active` torna `true` e i fallimenti consecutivi si azzerano. Idempotente su un webhook gia' attivo.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/hooks/{hookId}/reactivate (the `ReactivateRepoWebhook` operationId).
+func (c *ClientWithResponses) ReactivateRepoWebhookWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, hookId WebhookIdParam, reqEditors ...RequestEditorFn) (*ReactivateRepoWebhookResponse, error) {
+	rsp, err := c.ReactivateRepoWebhook(ctx, owner, repo, hookId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReactivateRepoWebhookResponse(rsp)
+}
+
 // UploadIssueAttachmentWithBodyWithResponse Carica un allegato
 //
 // `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -28749,7 +35240,7 @@ func (c *ClientWithResponses) ListIssueCommentVersionsWithResponse(ctx context.C
 
 // ListIssueEventsWithResponse Cronologia degli eventi
 //
-// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e menzioni di commit. Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
+// Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette, assegnatari, milestone, modifica del titolo, blocco, `comment_deleted` ("comment deleted", I4) e, da M-06, `referenced_from`, `commit_linked` e `closed_by_commit` (C1, C2). Le issues nascoste: 404 a chi non e' `admin`. Paginazione come `GET /repos`.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -28910,6 +35401,51 @@ func (c *ClientWithResponses) ReopenIssueWithResponse(ctx context.Context, owner
 		return nil, err
 	}
 	return ParseReopenIssueResponse(rsp)
+}
+
+// UnsubscribeIssueWithResponse Smette di seguire la issue (Unsubscribe)
+//
+// Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche' non fa Subscribe. Le menzioni dirette (`@utente`) e le assegnazioni notificano comunque. Idempotente.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/issues/{number}/subscription (the `UnsubscribeIssue` operationId).
+func (c *ClientWithResponses) UnsubscribeIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*UnsubscribeIssueResponse, error) {
+	rsp, err := c.UnsubscribeIssue(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnsubscribeIssueResponse(rsp)
+}
+
+// GetIssueSubscriptionWithResponse Iscrizione alla issue
+//
+// Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati seguono in automatico. Serve poter leggere la issue; una nascosta risponde 404 a chi non e' `admin`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/issues/{number}/subscription (the `GetIssueSubscription` operationId).
+func (c *ClientWithResponses) GetIssueSubscriptionWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*GetIssueSubscriptionResponse, error) {
+	rsp, err := c.GetIssueSubscription(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetIssueSubscriptionResponse(rsp)
+}
+
+// SubscribeIssueWithResponse Segue la issue (Subscribe)
+//
+// Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter leggere la issue.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/issues/{number}/subscription (the `SubscribeIssue` operationId).
+func (c *ClientWithResponses) SubscribeIssueWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number IssueNumberParam, reqEditors ...RequestEditorFn) (*SubscribeIssueResponse, error) {
+	rsp, err := c.SubscribeIssue(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubscribeIssueResponse(rsp)
 }
 
 // ListIssueVersionsWithResponse Versioni precedenti del testo della issue
@@ -29242,6 +35778,66 @@ func (c *ClientWithResponses) GetRepositoryTreeWithResponse(ctx context.Context,
 	return ParseGetRepositoryTreeResponse(rsp)
 }
 
+// ResetRepoWatchWithResponse Riporta il Watch al default
+//
+// Torna a `participating`. Idempotente.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/watch (the `ResetRepoWatch` operationId).
+func (c *ClientWithResponses) ResetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*ResetRepoWatchResponse, error) {
+	rsp, err := c.ResetRepoWatch(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResetRepoWatchResponse(rsp)
+}
+
+// GetRepoWatchWithResponse Watch del repo
+//
+// Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul repo; un repo che non si legge risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/watch (the `GetRepoWatch` operationId).
+func (c *ClientWithResponses) GetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepoWatchResponse, error) {
+	rsp, err := c.GetRepoWatch(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepoWatchResponse(rsp)
+}
+
+// SetRepoWatchWithBodyWithResponse Imposta il Watch del repo
+//
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+func (c *ClientWithResponses) SetRepoWatchWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetRepoWatchResponse, error) {
+	rsp, err := c.SetRepoWatchWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetRepoWatchResponse(rsp)
+}
+
+// SetRepoWatchWithResponse Imposta il Watch del repo
+//
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/watch (the `SetRepoWatch` operationId).
+func (c *ClientWithResponses) SetRepoWatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body SetRepoWatchJSONRequestBody, reqEditors ...RequestEditorFn) (*SetRepoWatchResponse, error) {
+	rsp, err := c.SetRepoWatch(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetRepoWatchResponse(rsp)
+}
+
 // ListResourcesWithResponse Elenca le risorse
 //
 // Elenco paginato delle risorse, con filtro opzionale per tipo (es. `repo`). Il tipo non è vincolato a un insieme fisso: nuove milestone aggiungono nuovi tipi senza cambiare l'endpoint (D15).
@@ -29451,6 +36047,51 @@ func (c *ClientWithResponses) SearchIssuesWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseSearchIssuesResponse(rsp)
+}
+
+// GetNotificationPreferencesWithResponse Preferenze email delle notifiche
+//
+// Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user/notification-preferences (the `GetNotificationPreferences` operationId).
+func (c *ClientWithResponses) GetNotificationPreferencesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetNotificationPreferencesResponse, error) {
+	rsp, err := c.GetNotificationPreferences(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNotificationPreferencesResponse(rsp)
+}
+
+// UpdateNotificationPreferencesWithBodyWithResponse Imposta le preferenze email
+//
+// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+func (c *ClientWithResponses) UpdateNotificationPreferencesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNotificationPreferencesResponse, error) {
+	rsp, err := c.UpdateNotificationPreferencesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateNotificationPreferencesResponse(rsp)
+}
+
+// UpdateNotificationPreferencesWithResponse Imposta le preferenze email
+//
+// Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422 (`details.fields.email`).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
+func (c *ClientWithResponses) UpdateNotificationPreferencesWithResponse(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNotificationPreferencesResponse, error) {
+	rsp, err := c.UpdateNotificationPreferences(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateNotificationPreferencesResponse(rsp)
 }
 
 // ListSshKeysWithResponse Elenca le chiavi SSH dell'utente corrente
@@ -31761,6 +38402,333 @@ func ParseVerifyCredentialResponse(rsp *http.Response) (*VerifyCredentialRespons
 	return response, nil
 }
 
+// ParseDeleteNotificationsResponse parses an HTTP response from a DeleteNotificationsWithResponse call
+func ParseDeleteNotificationsResponse(rsp *http.Response) (*DeleteNotificationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteNotificationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeletedNotifications
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListNotificationsResponse parses an HTTP response from a ListNotificationsWithResponse call
+func ParseListNotificationsResponse(rsp *http.Response) (*ListNotificationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListNotificationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NotificationList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMarkAllNotificationsReadResponse parses an HTTP response from a MarkAllNotificationsReadWithResponse call
+func ParseMarkAllNotificationsReadResponse(rsp *http.Response) (*MarkAllNotificationsReadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MarkAllNotificationsReadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MarkedNotifications
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteNotificationResponse parses an HTTP response from a DeleteNotificationWithResponse call
+func ParseDeleteNotificationResponse(rsp *http.Response) (*DeleteNotificationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteNotificationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNotificationResponse parses an HTTP response from a GetNotificationWithResponse call
+func ParseGetNotificationResponse(rsp *http.Response) (*GetNotificationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNotificationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Notification
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateNotificationResponse parses an HTTP response from a UpdateNotificationWithResponse call
+func ParseUpdateNotificationResponse(rsp *http.Response) (*UpdateNotificationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateNotificationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Notification
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListOrganizationsResponse parses an HTTP response from a ListOrganizationsWithResponse call
 func ParseListOrganizationsResponse(rsp *http.Response) (*ListOrganizationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32048,6 +39016,551 @@ func ParseUpdateOrganizationResponse(rsp *http.Response) (*UpdateOrganizationRes
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOrgWebhooksResponse parses an HTTP response from a ListOrgWebhooksWithResponse call
+func ParseListOrgWebhooksResponse(rsp *http.Response) (*ListOrgWebhooksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrgWebhooksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhookList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateOrgWebhookResponse parses an HTTP response from a CreateOrgWebhookWithResponse call
+func ParseCreateOrgWebhookResponse(rsp *http.Response) (*CreateOrgWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateOrgWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteOrgWebhookResponse parses an HTTP response from a DeleteOrgWebhookWithResponse call
+func ParseDeleteOrgWebhookResponse(rsp *http.Response) (*DeleteOrgWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOrgWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrgWebhookResponse parses an HTTP response from a GetOrgWebhookWithResponse call
+func ParseGetOrgWebhookResponse(rsp *http.Response) (*GetOrgWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrgWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOrgWebhookResponse parses an HTTP response from a UpdateOrgWebhookWithResponse call
+func ParseUpdateOrgWebhookResponse(rsp *http.Response) (*UpdateOrgWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOrgWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOrgWebhookDeliveriesResponse parses an HTTP response from a ListOrgWebhookDeliveriesWithResponse call
+func ParseListOrgWebhookDeliveriesResponse(rsp *http.Response) (*ListOrgWebhookDeliveriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrgWebhookDeliveriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhookDeliveryList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrgWebhookDeliveryResponse parses an HTTP response from a GetOrgWebhookDeliveryWithResponse call
+func ParseGetOrgWebhookDeliveryResponse(rsp *http.Response) (*GetOrgWebhookDeliveryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrgWebhookDeliveryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhookDeliveryDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRedeliverOrgWebhookDeliveryResponse parses an HTTP response from a RedeliverOrgWebhookDeliveryWithResponse call
+func ParseRedeliverOrgWebhookDeliveryResponse(rsp *http.Response) (*RedeliverOrgWebhookDeliveryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedeliverOrgWebhookDeliveryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WebhookDelivery
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReactivateOrgWebhookResponse parses an HTTP response from a ReactivateOrgWebhookWithResponse call
+func ParseReactivateOrgWebhookResponse(rsp *http.Response) (*ReactivateOrgWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReactivateOrgWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
@@ -33753,6 +41266,551 @@ func ParseListRepositoryFilesResponse(rsp *http.Response) (*ListRepositoryFilesR
 	return response, nil
 }
 
+// ParseListRepoWebhooksResponse parses an HTTP response from a ListRepoWebhooksWithResponse call
+func ParseListRepoWebhooksResponse(rsp *http.Response) (*ListRepoWebhooksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepoWebhooksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhookList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRepoWebhookResponse parses an HTTP response from a CreateRepoWebhookWithResponse call
+func ParseCreateRepoWebhookResponse(rsp *http.Response) (*CreateRepoWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRepoWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRepoWebhookResponse parses an HTTP response from a DeleteRepoWebhookWithResponse call
+func ParseDeleteRepoWebhookResponse(rsp *http.Response) (*DeleteRepoWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepoWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepoWebhookResponse parses an HTTP response from a GetRepoWebhookWithResponse call
+func ParseGetRepoWebhookResponse(rsp *http.Response) (*GetRepoWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepoWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateRepoWebhookResponse parses an HTTP response from a UpdateRepoWebhookWithResponse call
+func ParseUpdateRepoWebhookResponse(rsp *http.Response) (*UpdateRepoWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateRepoWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepoWebhookDeliveriesResponse parses an HTTP response from a ListRepoWebhookDeliveriesWithResponse call
+func ParseListRepoWebhookDeliveriesResponse(rsp *http.Response) (*ListRepoWebhookDeliveriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepoWebhookDeliveriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhookDeliveryList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepoWebhookDeliveryResponse parses an HTTP response from a GetRepoWebhookDeliveryWithResponse call
+func ParseGetRepoWebhookDeliveryResponse(rsp *http.Response) (*GetRepoWebhookDeliveryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepoWebhookDeliveryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebhookDeliveryDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRedeliverRepoWebhookDeliveryResponse parses an HTTP response from a RedeliverRepoWebhookDeliveryWithResponse call
+func ParseRedeliverRepoWebhookDeliveryResponse(rsp *http.Response) (*RedeliverRepoWebhookDeliveryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedeliverRepoWebhookDeliveryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest WebhookDelivery
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReactivateRepoWebhookResponse parses an HTTP response from a ReactivateRepoWebhookWithResponse call
+func ParseReactivateRepoWebhookResponse(rsp *http.Response) (*ReactivateRepoWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReactivateRepoWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Webhook
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseUploadIssueAttachmentResponse parses an HTTP response from a UploadIssueAttachmentWithResponse call
 func ParseUploadIssueAttachmentResponse(rsp *http.Response) (*UploadIssueAttachmentResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -35306,6 +43364,168 @@ func ParseReopenIssueResponse(rsp *http.Response) (*ReopenIssueResponse, error) 
 	return response, nil
 }
 
+// ParseUnsubscribeIssueResponse parses an HTTP response from a UnsubscribeIssueWithResponse call
+func ParseUnsubscribeIssueResponse(rsp *http.Response) (*UnsubscribeIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnsubscribeIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetIssueSubscriptionResponse parses an HTTP response from a GetIssueSubscriptionWithResponse call
+func ParseGetIssueSubscriptionResponse(rsp *http.Response) (*GetIssueSubscriptionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetIssueSubscriptionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSubscribeIssueResponse parses an HTTP response from a SubscribeIssueWithResponse call
+func ParseSubscribeIssueResponse(rsp *http.Response) (*SubscribeIssueResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubscribeIssueResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IssueSubscription
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListIssueVersionsResponse parses an HTTP response from a ListIssueVersionsWithResponse call
 func ParseListIssueVersionsResponse(rsp *http.Response) (*ListIssueVersionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -36532,6 +44752,178 @@ func ParseGetRepositoryTreeResponse(rsp *http.Response) (*GetRepositoryTreeRespo
 	return response, nil
 }
 
+// ParseResetRepoWatchResponse parses an HTTP response from a ResetRepoWatchWithResponse call
+func ParseResetRepoWatchResponse(rsp *http.Response) (*ResetRepoWatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResetRepoWatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepoWatchResponse parses an HTTP response from a GetRepoWatchWithResponse call
+func ParseGetRepoWatchResponse(rsp *http.Response) (*GetRepoWatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepoWatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoWatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetRepoWatchResponse parses an HTTP response from a SetRepoWatchWithResponse call
+func ParseSetRepoWatchResponse(rsp *http.Response) (*SetRepoWatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetRepoWatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoWatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListResourcesResponse parses an HTTP response from a ListResourcesWithResponse call
 func ParseListResourcesResponse(rsp *http.Response) (*ListResourcesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -37121,6 +45513,114 @@ func ParseSearchIssuesResponse(rsp *http.Response) (*SearchIssuesResponse, error
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest IssueSearchResultList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNotificationPreferencesResponse parses an HTTP response from a GetNotificationPreferencesWithResponse call
+func ParseGetNotificationPreferencesResponse(rsp *http.Response) (*GetNotificationPreferencesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNotificationPreferencesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NotificationPreferences
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateNotificationPreferencesResponse parses an HTTP response from a UpdateNotificationPreferencesWithResponse call
+func ParseUpdateNotificationPreferencesResponse(rsp *http.Response) (*UpdateNotificationPreferencesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateNotificationPreferencesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NotificationPreferences
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
