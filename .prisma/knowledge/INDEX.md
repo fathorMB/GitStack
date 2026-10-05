@@ -8,6 +8,7 @@
 - [[knowledge/topics/design-system]] — Design system Aurora
 ## requirements
 
+- [[knowledge/topics/cli-gs-skills]] — CLI gs e skills per agenti: regole di prodotto
 - [[knowledge/topics/browser-codice]] — Browser del codice: regole di prodotto
 - [[knowledge/topics/collegamenti-notifiche-webhook]] — Collegamenti, notifiche e webhook: regole di prodotto
 - [[knowledge/topics/identita-e-sicurezza]] — Identità, autenticazione e permessi

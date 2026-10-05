@@ -29,5 +29,6 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 21 | Notification settings (email per tipo, Watch, conservazione) | M-06 |
 | 22 | Blame (autore per riga, badge agent) | M-04 |
 | 23 | Tags (download ZIP e tar.gz) | M-04 |
+| 24 | CLI & skills (download di gs e skills dall'istanza) | M-07 |
 
 Dati finti: organizzazione "Acme", utenti mrossi, lbianchi, gverdi, fneri, agente build-agent.

@@ -1,5 +1,5 @@
 ---
-{"area":"design","id":"DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4","related":["TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Conflitto risolto dall'operatore il 2026-09-30: nessun responsabile umano per gli agent; regola \"per conto di\" superata.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/design-system.md","source_id":"SRC-097a8c99-5cbb-4109-9eee-9b8df512c2c9"}],"tags":["design","ui","token"],"title":"Design system Aurora","updated":"2026-10-05T09:45:00+00:00"}
+{"area":"design","id":"DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4","related":["TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Conflitto risolto dall'operatore il 2026-09-30: nessun responsabile umano per gli agent; regola \"per conto di\" superata.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/design-system.md","source_id":"SRC-097a8c99-5cbb-4109-9eee-9b8df512c2c9"}],"tags":["design","ui","token"],"title":"Design system Aurora","updated":"2026-10-05T10:00:00+00:00"}
 ---
 
 
@@ -7,7 +7,7 @@
 
 ## Context
 
-Stile "console" con palette **Aurora** (decisione D20). Riferimento visivo: `design/styleguide/index.html`; 23 schermate v1 navigabili in `design/mockups-v1/index.html` (login, home, repository, nuovo repo, notifiche, repo vuoto, codice, file, commit, diff, blame, tag, webhook, lista, dettaglio e nuova issue, token e chiavi SSH, preferenze di notifica, organizzazione e team, admin di sistema, admin agent, impostazioni generali del repo, repo eliminati). Dati finti: organizzazione "Acme", utenti mrossi, lbianchi, gverdi, fneri, agenti build-agent, review-agent, docs-agent.
+Stile "console" con palette **Aurora** (decisione D20). Riferimento visivo: `design/styleguide/index.html`; 24 schermate v1 navigabili in `design/mockups-v1/index.html` (login, home, repository, nuovo repo, notifiche, repo vuoto, codice, file, commit, diff, blame, tag, webhook, lista, dettaglio e nuova issue, token e chiavi SSH, download di CLI e skills, preferenze di notifica, organizzazione e team, admin di sistema, admin agent, impostazioni generali del repo, repo eliminati). Dati finti: organizzazione "Acme", utenti mrossi, lbianchi, gverdi, fneri, agenti build-agent, review-agent, docs-agent.
 
 Aggiornamento 2026-09-30: mockup allineati alle regole sui permessi (P2–P5): visibilità solo Private (default) e Internal; schermata 14 con il catalogo scope reale e scadenza obbligatoria; nuova schermata 17 **Admin · Agents** (account agent senza password, token creati e revocati dall'admin, accesso effettivo da grant, team e visibilità).
 

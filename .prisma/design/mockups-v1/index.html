@@ -373,7 +373,7 @@ p{margin:0}
   <b><span style="background:#facc15;color:#1a1a1a;border-radius:3px;padding:1px 5px;margin-right:6px;font-size:10px">MOCKUP</span>GitStack v1</b>
   <select id="pick">
     <optgroup label="Accesso"><option value="login">01 · Login</option></optgroup>
-    <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option></optgroup>
+    <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option><option value="downloads">24 · CLI &amp; skills</option></optgroup>
     <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="blame">22 · Blame</option><option value="tags">23 · Tags</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
     <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option><option value="new-issue">20 · New issue</option></optgroup>
     <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="notif-settings">21 · Notification settings</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
@@ -421,6 +421,7 @@ p{margin:0}
     <a class="sb-item" data-nav="repos" data-go="repos"><svg class="icon icon-lg"><use href="#i-repo"/></svg>Repositories</a>
     <a class="sb-item" data-nav="issues" data-go="issues"><svg class="icon icon-lg"><use href="#i-issue"/></svg>Issues<span class="counter">7</span></a>
     <a class="sb-item" data-nav="notifications" data-go="notifications"><svg class="icon icon-lg"><use href="#i-bell"/></svg>Notifications<span class="counter">3</span></a>
+    <a class="sb-item" data-nav="downloads" data-go="downloads"><svg class="icon icon-lg"><use href="#i-terminal"/></svg>CLI &amp; skills</a>
     <div class="sb-grp">Platform</div>
     <a class="sb-item disabled"><svg class="icon icon-lg"><use href="#i-apps"/></svg>Apps<span class="badge badge-soon">Soon</span></a>
     <a class="sb-item disabled"><svg class="icon icon-lg"><use href="#i-db"/></svg>Databases<span class="badge badge-soon">Soon</span></a>
@@ -1056,8 +1057,55 @@ GitStack version: v0.5.0</textarea>
   </div>
 </section>
 
+<!-- ============ 24 DOWNLOADS: CLI & SKILLS ============ -->
+<section class="screen" data-screen="downloads" data-nav="downloads" data-crumb="<b>CLI &amp; skills</b>" data-desc="Pagina /downloads servita dall'istanza (G6): binari gs della stessa versione del server per Linux, macOS e Windows (amd64, arm64), script di installazione in un comando, skills Agent Skills (G5), primi passi con token (G2). Funziona anche senza internet.">
+  <div class="page" style="max-width:980px">
+    <div class="page-h"><h1>CLI &amp; skills</h1><span class="badge badge-accent">GitStack v0.5.0</span></div>
+    <p class="muted" style="margin:-6px 0 18px">Download <span class="mono">gs</span> and the agent skills from this GitStack. They always match the server version, and work without internet access.</p>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-h"><svg class="icon" style="color:var(--accent)"><use href="#i-terminal"/></svg>Install in one command<span class="sp"></span><span class="seg"><span class="active">Linux &amp; macOS</span><span>Windows</span></span></div>
+      <div class="card-b">
+        <div class="cmdblock"><span class="p">$ </span>curl -fsSL https://git.acme.local/install-gs.sh | sh</div>
+        <p class="small muted" style="margin-top:8px">Windows (PowerShell): <span class="mono">irm https://git.acme.local/install-gs.ps1 | iex</span></p>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-h"><svg class="icon"><use href="#i-download"/></svg>gs 0.5.0 binaries</div>
+      <div class="list" style="border:0;border-radius:0">
+        <div class="list-row"><b style="width:120px">Linux</b><span class="sp"></span><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>amd64</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>arm64</button></div>
+        <div class="list-row"><b style="width:120px">macOS</b><span class="sp"></span><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>Intel</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>Apple silicon</button></div>
+        <div class="list-row"><b style="width:120px">Windows</b><span class="sp"></span><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>amd64</button><button class="btn btn-sm"><svg class="icon"><use href="#i-download"/></svg>arm64</button></div>
+      </div>
+      <div class="card-b small muted" style="border-top:1px solid var(--border)">Checksums: <a class="mono">SHA256SUMS</a> · <span class="mono">gs</span> warns when it talks to a different GitStack version and refuses only a different major version.</div>
+    </div>
+    <div class="repo-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="card" style="min-width:0">
+        <div class="card-h"><svg class="icon"><use href="#i-key"/></svg>Sign in</div>
+        <div class="card-b stack" style="gap:10px">
+          <p class="small muted" style="margin:0">People: create a token in the browser and paste it.</p>
+          <div class="cmdblock" style="font-size:12px"><span class="p">$ </span>gs auth login --web
+<span class="p">$ </span>gs auth setup-git</div>
+          <p class="small muted" style="margin:0">Agents and CI: set environment variables, nothing interactive.</p>
+          <div class="cmdblock" style="font-size:12px">GS_HOST=git.acme.local
+GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
+        </div>
+      </div>
+      <div class="card" style="min-width:0">
+        <div class="card-h"><svg class="icon" style="color:var(--agent)"><use href="#i-bot"/></svg>Agent skills</div>
+        <div class="card-b stack" style="gap:10px">
+          <p class="small muted" style="margin:0">Standard Agent Skills (<span class="mono">SKILL.md</span>) for coding agents. <span class="mono">gs</span> detects the agent and installs them in the project.</p>
+          <div class="cmdblock" style="font-size:12px"><span class="p">$ </span>gs skills install
+<span class="p">$ </span>gs skills install --agents-md  <span class="tk-c"># agents without skills</span></div>
+          <div class="small"><b>Included:</b> <span class="muted">install &amp; sign in · work on an issue until the commit · triage issues · manage repositories · notifications loop</span></div>
+          <button class="btn btn-sm" style="align-self:flex-start"><svg class="icon"><use href="#i-download"/></svg>Download skills (.zip)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ 14 TOKENS & SSH KEYS ============ -->
-<section class="screen" data-screen="tokens" data-nav="" data-crumb="<a>mrossi</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni personali: token di accesso con gli scope reali del catalogo e scadenza obbligatoria (max 1 anno), token appena creato mostrato una sola volta, chiavi SSH. Gli agenti non usano token personali: hanno un account agent dedicato (schermata 17).">
+<section class="screen" data-screen="tokens" data-nav="" data-crumb="<a>mrossi</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni personali: token di accesso con gli scope reali del catalogo e scadenza obbligatoria (max 1 anno), token appena creato mostrato una sola volta, chiavi SSH. Gli agenti non usano token personali: hanno un account agent dedicato (schermata 17). Pagina aperta da gs auth login --web con gli scope consigliati preselezionati (G2).">
   <div class="page">
     <div class="settings-grid">
       <nav class="subnav">
@@ -1091,6 +1139,7 @@ GitStack version: v0.5.0</textarea>
               <div class="field" style="flex:1"><label>Name</label><input class="input" value="laptop-cli"></div>
               <div class="field" style="width:200px"><label>Expiration</label><select class="select"><option>90 days</option><option>30 days</option><option>1 year (maximum)</option><option>Custom date…</option></select></div>
             </div>
+            <div class="alert alert-info" style="margin:0"><svg class="icon"><use href="#i-terminal"/></svg><div>Opened from <span class="mono">gs auth login --web</span>: the scopes recommended for the CLI are already selected. Create the token and paste it in the terminal.</div></div>
             <div class="small muted"><svg class="icon" style="vertical-align:-3px"><use href="#i-info"/></svg> Every token must expire. For a coding agent, ask an administrator for an <a data-go="agents">agent account</a> instead.</div>
             <div class="field"><label>Scopes</label>
               <div class="scope-grid">

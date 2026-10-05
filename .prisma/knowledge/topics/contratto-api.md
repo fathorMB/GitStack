@@ -1,5 +1,5 @@
 ---
-{"area":"technical-choices","id":"DOC-7d7f0293-9b0f-4175-9bc5-b085d5db5f3f","related":[],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["api","openapi","client"],"title":"Contratto API e client generati","updated":"2026-09-30T21:13:45.437889700+00:00"}
+{"area":"technical-choices","id":"DOC-7d7f0293-9b0f-4175-9bc5-b085d5db5f3f","related":["DOC-84811cef-6f8e-4028-97d6-d47381172907"],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["api","openapi","client"],"title":"Contratto API e client generati","updated":"2026-10-05T09:50:00+00:00"}
 ---
 
 # Contratto API e client generati
@@ -17,6 +17,7 @@ Fonti nel repo: `api/README.md`, `client/README.md`, README principale. Decision
 - **Sicurezza dichiarata nel contratto:** ogni operazione dice se è pubblica (`security: []`), quali credenziali accetta, gli scope richiesti (`x-required-scopes`) e se è esente dal cambio password (`x-password-change-exempt`). Il gateway genera da qui le regole per rotta; una rotta senza dichiarazione risponde 404.
 - Tag `internal` (`/internal/*`) solo fra servizi, mai esposto dal gateway.
 - Licenza: contratto AGPL-3.0; client generati Apache-2.0 (D17).
+- **Contratto della CLI (G3, 2026-10-05):** i campi `--json` di `gs` e i suoi codici di uscita (`0`, `1`, `2`, `4`, `5`, `6`) sono un contratto: nella v1 si aggiungono campi ma non si tolgono né si rinominano senza una nuova versione maggiore di `gs`. Vedi [[knowledge/topics/cli-gs-skills]].
 - CI: workflow `api-contract` con due job separati: `check-generated` (codice generato allineato, lint Redocly) e `workspace-sync` (`go work sync` committato).
 
 ## Related topics

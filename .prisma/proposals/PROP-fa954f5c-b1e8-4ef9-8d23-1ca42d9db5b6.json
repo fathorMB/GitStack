@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "id": "PROP-fa954f5c-b1e8-4ef9-8d23-1ca42d9db5b6",
+  "state": "applied",
+  "created": "2026-10-05T09:49:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"CLI gs e skills per agenti\" con le regole G1–G8; nuovo documento; scope M-07 aggiornato (orizzonte invariato); contratto della CLI nel contratto API; download dall'istanza in installazione; mockup v1 needs_update.",
+    "targets": [
+      "TOP-5cc14fc3-52fa-4baa-ae1b-6cd27bf145e4",
+      "DOC-84811cef-6f8e-4028-97d6-d47381172907",
+      "OBJ-0820d6e7-7b4f-4c7c-b84d-a3ef18d5bc81",
+      "DOC-7d7f0293-9b0f-4175-9bc5-b085d5db5f3f",
+      "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+      "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0"
+    ],
+    "before_digests": {
+      "roadmap/analysis/cli-gs-skills.md": "c603861b203bdfc131aef48479a767d22642521eb964f6ecc4873d7f0a14e8a8",
+      "roadmap/product/m-07-cli-gs-skills.md": "54745775332509203c64b10ee31b74a09f84ec8e855766487bbfa1e2e4366c0d",
+      "knowledge/topics/contratto-api.md": "375082012b719e06c9ffd2b2177636b22b4249a3fe7e9926369a658aaa113bc2",
+      "knowledge/topics/installazione-e-deploy.md": "081933c63861a98d1c7298852e40493f3a64bd186e20439965da80378bf29fde",
+      "knowledge/INDEX.md": "5a095613295a96827ae85b128c86bdf8f464cacbd8b80dbba756e0ad972f8260",
+      "design/mockups-v1/manifest.json": "647673bdd23c7df0f1180c200a054290251a3068cc4697d84429744c54d4d950"
+    },
+    "operations": [
+      {
+        "target": "TOP-5cc14fc3-52fa-4baa-ae1b-6cd27bf145e4",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (G1–G8)."
+      },
+      {
+        "target": "DOC-84811cef-6f8e-4028-97d6-d47381172907",
+        "op": "create",
+        "path": "knowledge/topics/cli-gs-skills.md"
+      },
+      {
+        "target": "OBJ-0820d6e7-7b4f-4c7c-b84d-a3ef18d5bc81",
+        "op": "update_scope",
+        "reason": "Regole G1–G8 e fuori-scope v1."
+      },
+      {
+        "target": "DOC-7d7f0293-9b0f-4175-9bc5-b085d5db5f3f",
+        "op": "update",
+        "reason": "Campi JSON e codici di uscita di gs come contratto (G3)."
+      },
+      {
+        "target": "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+        "op": "update",
+        "reason": "Download di gs e skills dall'istanza (G6)."
+      },
+      {
+        "target": "knowledge/INDEX.md",
+        "op": "update",
+        "reason": "Aggiunto cli-gs-skills."
+      },
+      {
+        "target": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
+        "op": "set_status",
+        "status": "needs_update"
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–8 nella sessione di analisi del 2026-10-05",
+      "cli/README.md (scheletro di gs)",
+      "design/mockups-v1/index.html (schermate 06, 14)"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" dopo il riepilogo della proposta (G1–G8, nuovo documento, scope M-07, contratto API, installazione, mockup da aggiornare)."
+  }
+}
