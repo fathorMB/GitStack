@@ -1,31 +1,33 @@
 package main
 
 import (
-	"fmt"
-	"strings"
+	"errors"
 
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/templates"
 )
 
-// content è il collegamento provvisorio ai modelli di contenuto iniziale:
-// il README è già generato qui, i modelli .gitignore e licenza arrivano dal
-// pacchetto services/git/internal/templates (GIT-69). Finché non c'è, ogni id
-// di modello è "sconosciuto" (400).
+// content collega l'API interna ai modelli di contenuto iniziale (R5) del
+// pacchetto templates, mappando il suo errore su quello dell'handler (400).
 type content struct{}
 
 func newContent() httpserver.Content { return content{} }
 
-func (content) Gitignore(string) ([]byte, error) { return nil, httpserver.ErrUnknownTemplate }
-
-func (content) License(string, int, string) ([]byte, error) {
-	return nil, httpserver.ErrUnknownTemplate
-}
-
-func (content) Readme(name, description string) []byte {
-	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n", name)
-	if strings.TrimSpace(description) != "" {
-		fmt.Fprintf(&b, "\n%s\n", description)
+func mapErr(err error) error {
+	if errors.Is(err, templates.ErrUnknownTemplate) {
+		return httpserver.ErrUnknownTemplate
 	}
-	return []byte(b.String())
+	return err
 }
+
+func (content) Gitignore(id string) ([]byte, error) {
+	b, err := templates.Gitignore(id)
+	return b, mapErr(err)
+}
+
+func (content) License(id string, year int, holder string) ([]byte, error) {
+	b, err := templates.License(id, year, holder)
+	return b, mapErr(err)
+}
+
+func (content) Readme(name, description string) []byte { return templates.Readme(name, description) }
