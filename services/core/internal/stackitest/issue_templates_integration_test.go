@@ -5,13 +5,32 @@ package stackitest
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
+	"github.com/fathorMB/GitStack/services/core/internal/events"
+	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
+	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 )
+
+// tplItem è il modello di una issue template in risposta JSON.
+type tplItem struct {
+	Name   string    `json:"name"`
+	Title  *string   `json:"title"`
+	About  *string   `json:"about"`
+	Labels *[]string `json:"labels"`
+	Body   string    `json:"body"`
+}
+
+// scratchIssueTemplates è il ramo di lavoro per il test di issue templates.
+const scratchIssueTemplates = "item/GIT-108"
 
 // TestIssueTemplates prova le letture dei modelli issue (I11) sullo stack
 // vero: gateway e identity e git sono i binari, core è il router in-process
@@ -106,9 +125,11 @@ func TestIssueTemplates(t *testing.T) {
 
 	t.Run("repo_vuoto", func(t *testing.T) {
 		r := rawGet(t, s.gateway+"/v1/repos/alice/tpl-empty/issue-templates", alice)
-		want(t, r, 200, "")
+		if r.status != 200 {
+			t.Fatalf("status %d, atteso 200: %s", r.status, r.body)
+		}
 		var out struct {
-			Items []struct{ Name string } `json:"items"`
+			Items []tplItem `json:"items"`
 		}
 		if err := json.Unmarshal(r.body, &out); err != nil {
 			t.Fatalf("JSON invalido: %s", string(r.body))
@@ -132,7 +153,7 @@ func TestIssueTemplates(t *testing.T) {
 	repoID["templates"], _ = r.json()["id"].(string)
 
 	work := t.TempDir()
-	runGit(t, work, nil, "init", "-q", "-b", scratch)
+	runGit(t, work, nil, "init", "-q", "-b", scratchIssueTemplates)
 	write := func(p, c string) {
 		full := filepath.Join(work, filepath.FromSlash(p))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -148,31 +169,26 @@ func TestIssueTemplates(t *testing.T) {
 	write(".gitstack/ISSUE_TEMPLATE/broken.md", "---\ntitle: [INVALID\nbroken yaml {{{\n---\n\nBad\n")
 	runGit(t, work, authorEnv("Alice", "alice@example.com"), "add", "-A")
 	runGit(t, work, authorEnv("Alice", "alice@example.com"), "commit", "-q", "-m", "add issue templates")
-	sha := runGit(t, work, nil, "rev-parse", "HEAD")
 
 	bare := filepath.Join(dataDir, "repos", repoID["templates"][:2], repoID["templates"]+".git")
-	runGit(t, bare, nil, "fetch", "-q", "--force", work, scratch+":refs/heads/main")
+	runGit(t, bare, nil, "fetch", "-q", "--force", work, scratchIssueTemplates+":refs/heads/main")
 
 	t.Run("modelli_con_ordinamento", func(t *testing.T) {
 		r := rawGet(t, s.gateway+"/v1/repos/alice/tpl-templates/issue-templates", alice)
-		want(t, r, 200, "")
+		if r.status != 200 {
+			t.Fatalf("status %d, atteso 200: %s", r.status, r.body)
+		}
 		var out struct {
-			Items []struct {
-				Name   string    `json:"name"`
-				Title  *string   `json:"title"`
-				About  *string   `json:"about"`
-				Labels *[]string `json:"labels"`
-				Body   string    `json:"body"`
-			} `json:"items"`
+			Items []tplItem `json:"items"`
 		}
 		if err := json.Unmarshal(r.body, &out); err != nil {
 			t.Fatalf("JSON invalido: %s", string(r.body))
 		}
-		if len(out.Items) != 3 {
-			t.Fatalf("3 modelli (broken saltato), trovato %d: %v", len(out.Items), itemNames(out.Items))
+		if len(out.Items) != 2 {
+			t.Fatalf("2 modelli (broken saltato), trovato %d: %v", len(out.Items), itemNames(out.Items))
 		}
-		if out.Items[0].Name != "bug" || out.Items[1].Name != "feature" || out.Items[2].Name != "broken" {
-			t.Errorf("nomi = %v, voluto [bug feature broken]", itemNames(out.Items))
+		if out.Items[0].Name != "bug" || out.Items[1].Name != "feature" {
+			t.Errorf("nomi = %v, voluto [bug feature]", itemNames(out.Items))
 		}
 		// bug: con title, about, labels
 		if out.Items[0].Title == nil || *out.Items[0].Title != "Bug Report" {
@@ -188,15 +204,39 @@ func TestIssueTemplates(t *testing.T) {
 		if out.Items[1].Labels != nil {
 			t.Errorf("feature labels = %v, voluto nil", *out.Items[1].Labels)
 		}
-		// broken: nessun front matter valido (salta tutto il file)
-		if out.Items[2].Body == "" {
-			t.Errorf("broken body vuoto")
+	})
+
+	// --- repo vuoto (ref main inesistente) ----------------------------------
+	r = s.gw("POST", "/repos", map[string]any{
+		"owner":      "alice",
+		"name":       "tpl-new-empty",
+		"visibility": "internal",
+	}, alice, nil)
+	want(t, r, 201, "")
+	repoID["new-empty"], _ = r.json()["id"].(string)
+
+	t.Run("repo_nuovo_vuoto", func(t *testing.T) {
+		r := rawGet(t, s.gateway+"/v1/repos/alice/tpl-new-empty/issue-templates", alice)
+		if r.status != 200 {
+			t.Fatalf("status %d, atteso 200: %s", r.status, r.body)
+		}
+		var out struct {
+			Items []tplItem `json:"items"`
+		}
+		if err := json.Unmarshal(r.body, &out); err != nil {
+			t.Fatalf("JSON invalido: %s", string(r.body))
+		}
+		if out.Items == nil {
+			t.Errorf("items = nil, voluto []")
+		}
+		if len(out.Items) != 0 {
+			t.Errorf("items = %d, voluto 0", len(out.Items))
 		}
 	})
 }
 
 // itemNames estrae i nomi dalle items.
-func itemNames(items []struct{ Name string }) []string {
+func itemNames(items []tplItem) []string {
 	names := make([]string, len(items))
 	for i, it := range items {
 		names[i] = it.Name
