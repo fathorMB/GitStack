@@ -111,7 +111,7 @@ func TestRelay_RitentaConLoStessoId(t *testing.T) {
 	}
 }
 
-func TestMigration0007_SaleEScende(t *testing.T) {
+func TestMigration0009_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 	exists := func() bool {
@@ -128,7 +128,7 @@ func TestMigration0007_SaleEScende(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0007: %v", err)
+		t.Fatalf("down 0009: %v", err)
 	}
 	if exists() {
 		t.Fatal("event_outbox esiste dopo il down")

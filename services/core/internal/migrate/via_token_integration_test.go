@@ -30,8 +30,8 @@ func TestMigration0008_SaleEScende(t *testing.T) {
 	if n := viaTokenColumns(t, pool); n != 4 {
 		t.Fatalf("colonne via_token_* = %d, volute 4", n)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0008: %v", err)
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+		t.Fatalf("down 0009+0008: %v", err)
 	}
 	if n := viaTokenColumns(t, pool); n != 0 {
 		t.Fatalf("colonne via_token_* dopo il down = %d", n)

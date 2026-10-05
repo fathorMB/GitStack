@@ -269,7 +269,7 @@ A differenza di `git.push`, gli eventi di core **non si perdono** e **non
 escono mai per una modifica fallita**: core usa un'outbox transazionale.
 
 - La modifica scrive l'evento nella tabella `core.event_outbox` **nella stessa
-  transazione Postgres** (migrazione 0007). Se la transazione fallisce o
+  transazione Postgres** (migrazione 0009). Se la transazione fallisce o
   fa rollback (anche dopo aver già accodato l'evento) non resta niente, né
   nell'outbox né sullo stream; se arriva al commit l'evento esiste e prima o
   poi parte, anche con NATS fermo o dopo un riavvio di core.
