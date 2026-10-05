@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -29,6 +30,12 @@ const (
 	// smart HTTP (token, permessi, risoluzione owner/repo). Se mancano, le
 	// richieste git rispondono 503.
 	EnvIdentityURL = "GITSTACK_IDENTITY_URL"
+	// EnvMaxBlobSize: dimensione massima di un file in un push (R6). Numero di
+	// byte o con suffisso KB, MB, GB (multipli di 1024); default 100MB; 0 = nessun limite.
+	EnvMaxBlobSize = "GITSTACK_GIT_MAX_FILE_SIZE"
+	// EnvRepoSizeWarn: oltre questa dimensione del repo il push è accettato con
+	// un avviso (R6). Stesso formato; default 5GB; 0 = nessun avviso.
+	EnvRepoSizeWarn = "GITSTACK_GIT_REPO_SIZE_WARN"
 	EnvCoreURL     = "GITSTACK_CORE_URL"
 )
 
@@ -51,6 +58,9 @@ type Config struct {
 	// IdentityURL e CoreURL: vuoti = smart HTTP non configurato.
 	IdentityURL string
 	CoreURL     string
+	// MaxBlobBytes e RepoWarnBytes sono le soglie di R6 in byte (0 = disattivata).
+	MaxBlobBytes  int64
+	RepoWarnBytes int64
 }
 
 // Load legge la configurazione dall'ambiente di processo.
@@ -58,7 +68,7 @@ func Load() (Config, error) { return load(os.LookupEnv) }
 
 func load(lookup func(string) (string, bool)) (Config, error) {
 	var errs []string
-	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr}
+	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30}
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = strings.TrimSpace(v)
@@ -107,8 +117,44 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		cfg.CoreURL = strings.TrimSpace(v)
 	}
 
+	for _, s := range []struct {
+		env string
+		dst *int64
+	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}} {
+		if v, ok := lookup(s.env); ok && strings.TrimSpace(v) != "" {
+			n, err := ParseSize(v)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s non è una dimensione valida: %q (numero di byte o con suffisso KB, MB, GB)", s.env, v))
+			} else {
+				*s.dst = n
+			}
+		}
+	}
+
 	if len(errs) > 0 {
 		return Config{}, fmt.Errorf("configurazione non valida:\n- %s", strings.Join(errs, "\n- "))
 	}
 	return cfg, nil
+}
+
+// ParseSize legge una dimensione: byte nudi o con suffisso KB, MB, GB, TB
+// (anche KiB…, senza distinguere le maiuscole; sempre multipli di 1024).
+// Zero è ammesso, i negativi no.
+func ParseSize(s string) (int64, error) {
+	s = strings.ToUpper(strings.TrimSpace(s))
+	mult := int64(1)
+	for _, u := range []struct {
+		suffix string
+		mult   int64
+	}{{"KIB", 1 << 10}, {"MIB", 1 << 20}, {"GIB", 1 << 30}, {"TIB", 1 << 40}, {"KB", 1 << 10}, {"MB", 1 << 20}, {"GB", 1 << 30}, {"TB", 1 << 40}, {"B", 1}} {
+		if strings.HasSuffix(s, u.suffix) {
+			s, mult = strings.TrimSpace(strings.TrimSuffix(s, u.suffix)), u.mult
+			break
+		}
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || n < 0 || n > (1<<62)/mult {
+		return 0, fmt.Errorf("dimensione non valida")
+	}
+	return n * mult, nil
 }

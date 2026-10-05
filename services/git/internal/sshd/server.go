@@ -22,6 +22,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 )
 
 // LoginUser è l'unico nome di login accettato: ssh://git@host:2222/...
@@ -31,6 +32,12 @@ const LoginUser = "git"
 // controllo dei permessi dello smart HTTP (M-03/H).
 type Authorizer interface {
 	Authorize(ctx context.Context, p access.Principal, owner, name string, write bool) (string, error)
+}
+
+// RepoAuthorizer è un Authorizer che dà anche il repo risolto da core (branch
+// protetto per le regole alla ricezione del push).
+type RepoAuthorizer interface {
+	AuthorizeRepo(ctx context.Context, p access.Principal, owner, name string, write bool) (string, access.RepoRef, error)
 }
 
 // sshScopes: una chiave SSH vale come l'utente intero, senza la limitazione
@@ -46,6 +53,8 @@ type Config struct {
 	Logger  *slog.Logger
 	// GitBin è il binario git (vuoto = "git").
 	GitBin string
+	// Rules sono le regole alla ricezione del push (R6, R9); nil = nessuna.
+	Rules *receiverules.Rules
 	// HandshakeTimeout limita la fase prima dell'autenticazione (0 = 30s).
 	HandshakeTimeout time.Duration
 }
@@ -281,7 +290,16 @@ func (s *Server) fail(ch ssh.Channel, code uint32, msg string) {
 // run autorizza e serve un upload-pack o receive-pack.
 func (s *Server) run(ctx context.Context, u access.Principal, ch ssh.Channel, svc, owner, name, protocol string) {
 	actx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	path, err := s.cfg.Auth.Authorize(actx, u, owner, name, svc == "receive-pack")
+	var (
+		path string
+		ref  access.RepoRef
+		err  error
+	)
+	if ra, ok := s.cfg.Auth.(RepoAuthorizer); ok {
+		path, ref, err = ra.AuthorizeRepo(actx, u, owner, name, svc == "receive-pack")
+	} else {
+		path, err = s.cfg.Auth.Authorize(actx, u, owner, name, svc == "receive-pack")
+	}
 	cancel()
 	switch {
 	case err == nil:
@@ -304,8 +322,14 @@ func (s *Server) run(ctx context.Context, u access.Principal, ch ssh.Channel, sv
 		return
 	}
 
+	var gitArgs []string
 	cmd := exec.CommandContext(ctx, s.cfg.GitBin, svc, filepath.Clean(path))
 	cmd.Env = gitEnv(protocol)
+	if svc == "receive-pack" {
+		gitArgs = append(s.cfg.Rules.GitArgs(), svc, filepath.Clean(path))
+		cmd = exec.CommandContext(ctx, s.cfg.GitBin, gitArgs...)
+		cmd.Env = append(gitEnv(protocol), s.cfg.Rules.Env(receiverules.ProtectedBranch(ref))...)
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		s.fail(ch, 1, "servizio temporaneamente non disponibile")

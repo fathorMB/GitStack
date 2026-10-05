@@ -79,6 +79,10 @@ type Keys interface {
 type RepoRef struct {
 	ID       string
 	Archived bool
+	// DefaultBranch e ProtectDefaultBranch sono il branch principale e la
+	// sua protezione (R9), come li dà core.
+	DefaultBranch        string
+	ProtectDefaultBranch bool
 }
 
 // Core risolve owner/nome applicando la lettura (core risponde 404 a un repo
@@ -114,48 +118,55 @@ func (a *Authorizer) Authenticate(ctx context.Context, token string) (Principal,
 // Authorize controlla l'operazione su owner/name e ritorna il percorso su
 // disco del repo bare. write true = push.
 func (a *Authorizer) Authorize(ctx context.Context, p Principal, owner, name string, write bool) (dir string, err error) {
+	dir, _, err = a.AuthorizeRepo(ctx, p, owner, name, write)
+	return dir, err
+}
+
+// AuthorizeRepo è Authorize e in più ritorna il repo risolto da core (branch
+// principale e sua protezione, per le regole alla ricezione del push).
+func (a *Authorizer) AuthorizeRepo(ctx context.Context, p Principal, owner, name string, write bool) (dir string, ref RepoRef, err error) {
 	need, role := ScopeRead, "read"
 	if write {
 		need, role = ScopeWrite, "write"
 	}
 	if !slices.Contains(p.Scopes, need) {
-		return "", ErrForbidden
+		return "", RepoRef{}, ErrForbidden
 	}
 	caller := trust.Identity{UserID: p.UserID, Username: p.Username, Scopes: p.Scopes}
-	ref, err := a.Core.ResolveRepo(ctx, caller, owner, name)
+	ref, err = a.Core.ResolveRepo(ctx, caller, owner, name)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return "", ErrNotFound
+			return "", RepoRef{}, ErrNotFound
 		}
-		return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
+		return "", RepoRef{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
 	id := ref.ID
 	if write {
 		// La lettura l'ha già verificata core; se non legge non scrive.
 		ok, err := a.Identity.HasRole(ctx, p.UserID, id, role)
 		if err != nil {
-			return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
+			return "", RepoRef{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
 		if !ok {
-			return "", ErrForbidden
+			return "", RepoRef{}, ErrForbidden
 		}
 		if ref.Archived {
-			return "", ErrArchived
+			return "", RepoRef{}, ErrArchived
 		}
 	}
 	info, err := a.Disk.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, repostore.ErrNotFound) {
-			return "", ErrNotFound
+			return "", RepoRef{}, ErrNotFound
 		}
-		return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
+		return "", RepoRef{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
 	if info.Trashed {
-		return "", ErrNotFound
+		return "", RepoRef{}, ErrNotFound
 	}
 	dir, err = a.Disk.RepoPath(id)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
+		return "", RepoRef{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
-	return dir, nil
+	return dir, ref, nil
 }

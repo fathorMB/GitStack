@@ -13,6 +13,8 @@ Servizio git di GitStack: tiene i repo bare su un volume e li gestisce con il bi
 | `GITSTACK_GIT_SSH_HOST_KEY_FILE` | `<DATA_DIR>/ssh/ssh_host_ed25519_key` | File PEM della chiave host ed25519. Se non esiste viene generata al primo avvio (0600) e riusata dai riavvii. Nel chart è il Secret `<release>-git-ssh-host-key` montato in `/etc/gitstack/ssh`, generato una sola volta. |
 | `GITSTACK_IDENTITY_URL`, `GITSTACK_CORE_URL` | — | Servizi interrogati da smart HTTP e SSH (token, chiavi, permessi, owner/repo). Senza, o senza segreto di servizio, né smart HTTP né SSH partono (avviso nel log). |
 | `GITSTACK_IDENTITY_SERVICE_SECRET` | — | Segreto di servizio, lo stesso di core e identity. Senza, ogni chiamata a `/internal/*` è 401. Non finisce mai nei log. |
+| `GITSTACK_GIT_MAX_FILE_SIZE` | `100MB` | Dimensione massima di un file (blob) in un push (R6). Numero di byte o con suffisso `KB`, `MB`, `GB` (multipli di 1024: 100MB = 104 857 600 byte); `0` = nessun limite. |
+| `GITSTACK_GIT_REPO_SIZE_WARN` | `5GB` | Oltre questa dimensione del repo il push è accettato con un avviso (R6). Stesso formato; `0` = nessun avviso. |
 
 Probe: `GET /healthz` (liveness, sempre `ok`) e `GET /readyz` (503 se `DATA_DIR` non esiste o non è scrivibile).
 
@@ -25,6 +27,15 @@ Porta **2222** di default (`GITSTACK_GIT_SSH_ADDR`, nel chart `git.ssh.port`); l
 - Permessi: core `GET /repos/{owner}/{repo}` con l'identità firmata dell'utente (404 per «non esiste» e «non puoi leggerlo», stesso messaggio) e identity `POST /internal/permissions/check`: `read` per upload-pack, `write` per receive-pack; un repo archiviato rifiuta il push. È lo stesso `access.Authorizer` dello smart HTTP (`write=true` per receive-pack), con un solo `upstream.Client`; una chiave SSH vale come l'utente intero (scope read e write), restano ruolo e archiviazione. Il repo archiviato (R10) si legge ma rifiuta il push, anche via HTTPS (403) e via SSH (`access.ErrArchived`). La chiave si risolve con `upstream.Client.LookupKey`.
 - Chiave host: vedi la variabile sopra; non cambia a ogni riavvio, quindi i client non vedono «host key changed».
 - `internal/sshd`; i test usano un client `ssh`/`git` reale (`t.Skip` se mancano dal PATH).
+
+## Regole alla ricezione del push (M-03/J: R6, R9, R10)
+
+Valgono uguali per HTTPS e SSH, lato server, prima che il push entri nel repo. R6 e R9 stanno in un hook **pre-receive** unico (`internal/receiverules`), scritto in `<DATA_DIR>/hooks` a ogni avvio e attivato con `-c core.hooksPath` sul solo `receive-pack`: dentro ai repo non si scrive niente. Soglie e branch protetto arrivano all'hook con variabili `GITSTACK_RULE_*` (le `GIT_*` si tolgono). I rifiuti escono su stderr e il client li mostra come `remote: gitstack: ...`.
+
+- **R6, limite per file**: un push con un blob oltre `GITSTACK_GIT_MAX_FILE_SIZE` (100 MB di default) è rifiutato per intero; il messaggio nomina i file (fino a 5) con percorso e dimensione. Un file esattamente alla soglia passa. Oltre `GITSTACK_GIT_REPO_SIZE_WARN` (5 GB) il push passa con un avviso. Nessuna quota per organizzazione.
+- **R9, branch principale**: se la protezione del repo è attiva (default; core la dà in `protectDefaultBranch`, il branch in `defaultBranch`) force-push (non fast-forward) ed eliminazione del branch principale sono rifiutati; gli altri branch sono liberi. Con la protezione spenta sono accettati (`receive.denyDeleteCurrent=ignore`: la decide GitStack, non il default di git).
+- **R10, repo archiviato**: rifiutato prima di git da `access.Authorizer` (`ErrArchived`: 403 su HTTPS, uscita 1 su SSH).
+- **Git LFS (R8)**: l'hook guarda i blob del push; i file puntatore di LFS sono di poche centinaia di byte e passano, quindi LFS si potrà aggiungere senza toccare queste regole (gli oggetti LFS andranno in un endpoint a parte, non nel push git).
 
 ## Layout su disco
 
