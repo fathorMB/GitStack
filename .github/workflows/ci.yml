@@ -17,7 +17,7 @@ env:
 jobs:
   go:
     name: Go — build, lint, test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -60,7 +60,7 @@ jobs:
       # Test d'integrazione di core contro un Postgres reale (criterio di
       # accettazione di GIT-5), con testcontainers-go: il tag "integration"
       # li tiene fuori dallo step precedente (go test ./... -race, che deve
-      # restare veloce e non richiedere Docker). ubuntu-latest ha già un
+      # restare veloce e non richiedere Docker). ubuntu-24.04 ha già un
       # demone Docker raggiungibile, che testcontainers usa per avviare
       # Postgres. Solo services/core: è l'unico modulo con test così
       # taggati.
@@ -97,7 +97,7 @@ jobs:
   # Immagine Keycloak a versione esatta, per riproducibilità.
   identity-oidc:
     name: Identity — login OIDC (Keycloak, Postgres)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       KEYCLOAK_IMAGE: quay.io/keycloak/keycloak:26.0.7
@@ -155,7 +155,7 @@ jobs:
 
   ts:
     name: Web — lint, typecheck, test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
@@ -198,13 +198,13 @@ jobs:
   # shellcheck su tutti gli script di shell del repository, incluso
   # l'installer (deploy/install.sh, M-01/T-09, criterio "Script con
   # shellcheck in CI" di GIT-9). shellcheck è già preinstallato sui runner
-  # ubuntu-latest di GitHub Actions: nessuna action/tool aggiuntivo da
+  # ubuntu-24.04 di GitHub Actions: nessuna action/tool aggiuntivo da
   # pinnare o aggiornare (le versioni delle action le aggiorna GIT-18).
   # Indipendente da go/ts: non compila né esegue codice, gira anche se
   # quelli falliscono.
   shellcheck:
     name: Shellcheck — script di shell
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -244,7 +244,7 @@ jobs:
       && (needs.security.result == 'success' || needs.security.result == 'skipped')
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -345,7 +345,7 @@ jobs:
   chart:
     name: Chart — helm lint & installazione di prova (k3d)
     needs: [go, ts]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       IMAGE_TAG: sha-${{ github.sha }}
       # k3d pinnato (GIT-23): senza una versione fissa l'installer prende
