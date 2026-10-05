@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "id": "PROP-ff2a9841-2314-4037-ba15-f5ba358d5d5a",
+  "state": "applied",
+  "created": "2026-10-05T09:09:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Collegamenti, notifiche e webhook\" con le regole C1–C9; nuovo documento; scope M-06 aggiornato (orizzonte invariato); rimando in D10; SMTP facoltativo e liste webhook in installazione; mockup v1 needs_update.",
+    "targets": [
+      "TOP-062637bf-9acd-47cb-a089-3fb3bccee486",
+      "DOC-6db23bbe-fbf2-4913-a207-711865af66f6",
+      "OBJ-60448747-d91d-4e43-8de7-fa718dadf250",
+      "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+      "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+      "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0"
+    ],
+    "before_digests": {
+      "roadmap/analysis/collegamenti-notifiche-webhook.md": "685467b09b09f5deda794fd3b08db4934f6161102856b98abf67f6f307bb2639",
+      "roadmap/product/m-06-collegamenti-notifiche-webhook.md": "bf24852fa91f99088dbef241742188e54c3722b07c910f7a1e2c9876fd6e7190",
+      "knowledge/topics/decisioni.md": "6d8069d789023bfb3a96e1e18873a6574d50876e357fba562c58d6d37df3d3b6",
+      "knowledge/topics/installazione-e-deploy.md": "d93db3a7e667bc0ad8fef18e155eaec8911767e926dd113ec78510bdcb376e54",
+      "knowledge/INDEX.md": "16a303409f52516b7d04b639130189d0b2d0ff8467c75915b98c48664cacbf9d",
+      "design/mockups-v1/manifest.json": "f3ebf1e50d0326e74df8c9ac05d749ba26843e34aced13cbcfe9b47a0b050fa6"
+    },
+    "operations": [
+      {
+        "target": "TOP-062637bf-9acd-47cb-a089-3fb3bccee486",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (C1–C9)."
+      },
+      {
+        "target": "DOC-6db23bbe-fbf2-4913-a207-711865af66f6",
+        "op": "create",
+        "path": "knowledge/topics/collegamenti-notifiche-webhook.md"
+      },
+      {
+        "target": "OBJ-60448747-d91d-4e43-8de7-fa718dadf250",
+        "op": "update_scope",
+        "reason": "Regole C1–C9 e fuori-scope v1."
+      },
+      {
+        "target": "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+        "op": "update",
+        "reason": "D10 rimanda a C1–C9."
+      },
+      {
+        "target": "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+        "op": "update",
+        "reason": "SMTP facoltativo e liste di destinazioni dei webhook."
+      },
+      {
+        "target": "knowledge/INDEX.md",
+        "op": "update",
+        "reason": "Aggiunto collegamenti-notifiche-webhook."
+      },
+      {
+        "target": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
+        "op": "set_status",
+        "status": "needs_update"
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–9 nella sessione di analisi del 2026-10-05",
+      "design/mockups-v1/index.html (schermate 05, 07, 11, 12, 13)"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" dopo il riepilogo della proposta (C1–C9, nuovo documento, scope M-06, D10, installazione, mockup da aggiornare)."
+  }
+}

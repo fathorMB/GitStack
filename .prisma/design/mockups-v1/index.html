@@ -376,7 +376,7 @@ p{margin:0}
     <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option></optgroup>
     <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
     <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option><option value="new-issue">20 · New issue</option></optgroup>
-    <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
+    <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="notif-settings">21 · Notification settings</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
     <optgroup label="Amministrazione"><option value="admin">16 · Admin · System</option><option value="agents">17 · Admin · Agents</option></optgroup>
   </select>
   <button id="prev">←</button><button id="next">→</button>
@@ -545,9 +545,10 @@ p{margin:0}
 </section>
 
 <!-- ============ 05 NOTIFICATIONS ============ -->
-<section class="screen" data-screen="notifications" data-nav="notifications" data-crumb="<b>Notifications</b>" data-desc="Centro notifiche: menzioni, assegnazioni, attività degli agenti. Email configurabile per tipo.">
+<section class="screen" data-screen="notifications" data-nav="notifications" data-crumb="<b>Notifications</b>" data-desc="Centro notifiche: menzioni, assegnazioni, attività sulle issue seguite (C3), filtro per motivo, link alle preferenze email per tipo (C5). Gli agenti leggono la stessa casella via API e gs (C4).">
   <div class="page" style="max-width:980px">
-    <div class="page-h"><h1>Notifications</h1><span class="sp"></span><span class="seg"><span class="active">Unread 3</span><span>All</span></span><button class="btn btn-sm"><svg class="icon"><use href="#i-check"/></svg>Mark all as read</button></div>
+    <div class="page-h"><h1>Notifications</h1><span class="sp"></span><span class="seg"><span class="active">Unread 3</span><span>All</span></span><button class="btn btn-sm"><svg class="icon"><use href="#i-check"/></svg>Mark all as read</button><button class="btn btn-sm" data-go="notif-settings"><svg class="icon"><use href="#i-settings"/></svg>Settings</button></div>
+    <div class="row small" style="margin:-4px 0 12px;gap:8px"><span class="muted">Reason:</span><span class="seg"><span class="active">All</span><span>Mentioned</span><span>Assigned</span><span>Participating</span><span>Webhooks</span></span></div>
     <div class="list notif">
       <div class="list-row hover unread"><span class="avatar av-c">GV</span><div style="flex:1"><div><b>gverdi</b> mentioned you in <a data-go="issue">Support OIDC login with Microsoft Entra ID</a></div><div class="small muted"><span class="mono">acme/identity</span> #42 · "@mrossi can you confirm the redirect URL format?"</div></div><span class="badge">Mention</span><span class="small subtle">20m</span></div>
       <div class="list-row hover unread"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><div style="flex:1"><div><b>build-agent</b> <span class="badge badge-agent">agent</span> finished work on <a data-go="issue">Push over SSH fails with ed25519 keys</a></div><div class="small muted"><span class="mono">acme/api-gateway</span> #41 · pushed 2 commits, asks for review</div></div><span class="badge">Agent</span><span class="small subtle">5m</span></div>
@@ -592,7 +593,7 @@ p{margin:0}
 <section class="screen" data-screen="repo-code" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>api-gateway</b>" data-desc="Pagina principale di un repo: file, ultimo commit, README, pannello About. Menu Clone aperto: HTTPS con token, SSH sulla porta 2222 (R7), CLI.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="sp"></span>
-      <span class="btn-group"><button class="btn btn-sm"><svg class="icon"><use href="#i-eye"/></svg>Watch</button><button class="btn btn-sm"><span class="counter">6</span></button></span>
+      <span class="btn-group"><button class="btn btn-sm" data-go="notif-settings" title="Participating · All activity · Ignore"><svg class="icon"><use href="#i-eye"/></svg>Watch: Participating<svg class="icon"><use href="#i-chev"/></svg></button><button class="btn btn-sm"><span class="counter">6</span></button></span>
       <span class="btn-group"><button class="btn btn-sm"><svg class="icon"><use href="#i-star"/></svg>Star</button><button class="btn btn-sm"><span class="counter">14</span></button></span>
     </div>
     <div class="tabs"><a class="tab active" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -771,7 +772,7 @@ make dev</pre>
 </section>
 
 <!-- ============ 11 REPO SETTINGS · WEBHOOKS ============ -->
-<section class="screen" data-screen="repo-webhooks" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni repo, sezione Webhook: eventi, firma HMAC, ultime consegne con esito.">
+<section class="screen" data-screen="repo-webhooks" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Settings</b>" data-desc="Impostazioni repo, sezione Webhook (admin del repo; quelli di organizzazione li gestiscono gli owner): eventi, formato GitStack v1 con header X-GitStack-* e firma HMAC (C6), tentativi e disattivazione automatica (C7), destinazioni interne bloccate (C8), ultime consegne con esito.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -786,9 +787,10 @@ make dev</pre>
       </nav>
       <div>
         <div class="sec-h"><h2>Webhooks</h2><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Add webhook</button></div>
-        <p class="muted" style="margin-bottom:16px">GitStack sends a signed <span class="mono">POST</span> request to these URLs when selected events happen. Failed deliveries are retried up to 8 times over 24 hours.</p>
+        <p class="muted" style="margin-bottom:16px">GitStack sends a signed <span class="mono">POST</span> request to these URLs when selected events happen. Failed deliveries are retried up to 8 times over 24 hours; a webhook failing for 3 days is disabled automatically. Payload format: GitStack v1, with <span class="mono">X-GitStack-Event</span>, <span class="mono">X-GitStack-Delivery</span> and <span class="mono">X-GitStack-Signature</span> headers. Addresses inside the GitStack cluster are never allowed.</p>
         <div class="list" style="margin-bottom:24px">
           <div class="list-row"><span class="dot" style="background:var(--success)"></span><div style="flex:1"><div class="mono" style="font-size:13px">https://ci.acme.local/hooks/gitstack</div><div class="small muted">push, issues · last delivery 5 min ago <b style="color:var(--success)">200</b></div></div><button class="btn btn-sm">Edit</button></div>
+          <div class="list-row"><span class="dot" style="background:var(--text-subtle)"></span><div style="flex:1"><div class="mono" style="font-size:13px;color:var(--text-muted)">https://old-ci.acme.local/hooks/gitstack</div><div class="small muted">push · <b style="color:var(--danger)">disabled automatically</b> after 3 days of failed deliveries (connection refused)</div></div><button class="btn btn-sm">Re-enable</button></div>
           <div class="list-row"><span class="dot" style="background:var(--warning)"></span><div style="flex:1"><div class="mono" style="font-size:13px">https://chat.acme.local/api/incoming/9f2a…</div><div class="small muted">issues, issue_comment · last delivery failed 2 h ago <b style="color:var(--danger)">503</b> · retrying</div></div><button class="btn btn-sm">Edit</button></div>
         </div>
         <div class="card">
@@ -912,7 +914,7 @@ make dev</pre>
 </section>
 
 <!-- ============ 13 ISSUE DETAIL ============ -->
-<section class="screen" data-screen="issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue: cronologia con commenti umani e dell'agente, testo modificato (edited, I4), allegato (I9), commit collegati, chiusura come completata (I2), barra laterale con assegnatari, etichette, milestone e, per gli admin, blocco della discussione (I11) e nascondi issue (I4).">
+<section class="screen" data-screen="issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue: cronologia con commenti umani e dell'agente, riferimento da un altro repo (C1), testo modificato (edited, I4), allegato (I9), commit collegati, chiusura come completata (I2), barra laterale con assegnatari, etichette, milestone e, per gli admin, blocco della discussione (I11) e nascondi issue (I4).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -927,6 +929,7 @@ Unable to negotiate with git.acme.local port 2222: no matching host key type fou
         <div class="ev"><span class="evi"><svg class="icon"><use href="#i-tag"/></svg></span><span><b style="color:var(--text)">mrossi</b> added <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span> and milestone <b style="color:var(--text)">v0.5</b> · yesterday</span></div>
         <div class="ev"><span class="evi"><svg class="icon"><use href="#i-user"/></svg></span><span><b style="color:var(--text)">mrossi</b> assigned <b style="color:var(--text)">build-agent</b> <span class="badge badge-agent">agent</span> · 40 min ago</span></div>
         <div class="cmt"><span class="avatar avatar-lg av-bot"><svg class="icon" style="width:20px;height:20px"><use href="#i-bot"/></svg></span><div class="cmt-box"><div class="cmt-h"><b>build-agent</b><span class="badge badge-agent">agent</span><span class="muted">via token <span class="mono">ci-runner</span> · 12 min ago</span><span class="sp"></span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-dots"/></svg></button></div><div class="cmt-b"><p>Root cause: the SSH server only registers an RSA host key (<code>internal/ssh/server.go:43</code>).</p><p>Plan:</p><ul><li>generate and advertise an ed25519 host key on first start</li><li>keep RSA for older clients</li><li>add tests for both key types</li></ul><p>Working on branch <code>fix/ssh-ed25519</code>.</p></div></div></div>
+        <div class="ev"><span class="evi"><svg class="icon"><use href="#i-link"/></svg></span><span><b style="color:var(--text)">lbianchi</b> referenced this issue from <a class="mono">acme/identity#44</a> · 30 min ago</span></div>
         <div class="ev"><span class="evi commit"><svg class="icon"><use href="#i-commit"/></svg></span><span><b style="color:var(--text)">build-agent</b> pushed 2 commits referencing this issue · 5 min ago</span></div>
         <div style="margin:-8px 0 18px 48px" class="list">
           <div class="list-row small" style="padding:8px 12px"><svg class="icon muted"><use href="#i-commit"/></svg><span>test(ssh): cover ed25519 and rsa-sha2-512</span><span class="sp"></span><a class="sha">c81f3e2</a></div>
@@ -1009,7 +1012,7 @@ GitStack version: v0.5.0</textarea>
         <div class="row" style="padding:0 10px 14px"><span class="avatar avatar-lg av-a">MR</span><div><b>mrossi</b><div class="small muted">Personal settings</div></div></div>
         <a><svg class="icon"><use href="#i-user"/></svg>Profile</a>
         <a><svg class="icon"><use href="#i-shield"/></svg>Password &amp; sign-in</a>
-        <a><svg class="icon"><use href="#i-bell"/></svg>Notifications</a>
+        <a data-go="notif-settings"><svg class="icon"><use href="#i-bell"/></svg>Notifications</a>
         <div class="grp">Access</div>
         <a class="active"><svg class="icon"><use href="#i-key"/></svg>Access tokens</a>
         <a><svg class="icon"><use href="#i-terminal"/></svg>SSH keys</a>
@@ -1057,6 +1060,52 @@ GitStack version: v0.5.0</textarea>
             <div class="list-row"><svg class="icon muted"><use href="#i-terminal"/></svg><div style="flex:1"><b>work-laptop</b><div class="mono small muted">SHA256:q4Z3…vN8k · ed25519</div></div><div class="small muted">Added 2 months ago · used today</div><button class="btn btn-sm btn-danger">Delete</button></div>
             <div class="list-row"><svg class="icon muted"><use href="#i-terminal"/></svg><div style="flex:1"><b>build-server</b><div class="mono small muted">SHA256:Lk8p…1xQa · rsa 4096</div></div><div class="small muted">Added last year · never used</div><button class="btn btn-sm btn-danger">Delete</button></div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 21 NOTIFICATION SETTINGS ============ -->
+<section class="screen" data-screen="notif-settings" data-nav="" data-crumb="<a>mrossi</a><span class='sep'>/</span><a>Settings</a><span class='sep'>/</span><b>Notifications</b>" data-desc="Impostazioni personali delle notifiche: email per tipo con default su menzioni e assegnazioni (C5), avviso se l'SMTP non è configurato, repo seguiti con i tre livelli di Watch (C3), conservazione (C9). Gli agenti leggono la stessa casella via API e gs (C4).">
+  <div class="page">
+    <div class="settings-grid">
+      <nav class="subnav">
+        <div class="row" style="padding:0 10px 14px"><span class="avatar avatar-lg av-a">MR</span><div><b>mrossi</b><div class="small muted">Personal settings</div></div></div>
+        <a><svg class="icon"><use href="#i-user"/></svg>Profile</a>
+        <a><svg class="icon"><use href="#i-shield"/></svg>Password &amp; sign-in</a>
+        <a class="active"><svg class="icon"><use href="#i-bell"/></svg>Notifications</a>
+        <div class="grp">Access</div>
+        <a data-go="tokens"><svg class="icon"><use href="#i-key"/></svg>Access tokens</a>
+        <a data-go="tokens"><svg class="icon"><use href="#i-terminal"/></svg>SSH keys</a>
+      </nav>
+      <div class="stack" style="gap:28px">
+        <div>
+          <div class="sec-h"><h2>Notifications</h2></div>
+          <p class="muted" style="margin-bottom:16px">You always get in-app notifications. Choose which ones should also reach you by email at <b style="color:var(--text)">mario.rossi@acme.local</b>. You never get notified about your own actions.</p>
+          <div class="list">
+            <div class="list-row list-head small" style="font-weight:600"><span style="flex:1">Type</span><span style="width:80px;text-align:center">In-app</span><span style="width:80px;text-align:center">Email</span></div>
+            <div class="list-row"><div style="flex:1"><b>Mentions</b><div class="small muted">Someone writes @mrossi or a team you belong to</div></div><span style="width:80px;text-align:center"><input type="checkbox" checked disabled></span><span style="width:80px;text-align:center"><input type="checkbox" checked></span></div>
+            <div class="list-row"><div style="flex:1"><b>Assignments</b><div class="small muted">An issue is assigned to you</div></div><span style="width:80px;text-align:center"><input type="checkbox" checked disabled></span><span style="width:80px;text-align:center"><input type="checkbox" checked></span></div>
+            <div class="list-row"><div style="flex:1"><b>Activity on issues you follow</b><div class="small muted">Comments, closing and reopening, linked commits</div></div><span style="width:80px;text-align:center"><input type="checkbox" checked disabled></span><span style="width:80px;text-align:center"><input type="checkbox"></span></div>
+            <div class="list-row"><div style="flex:1"><b>Webhooks you manage</b><div class="small muted">A webhook was disabled after repeated failures</div></div><span style="width:80px;text-align:center"><input type="checkbox" checked disabled></span><span style="width:80px;text-align:center"><input type="checkbox"></span></div>
+          </div>
+          <div class="alert alert-info" style="margin-top:12px"><svg class="icon"><use href="#i-info"/></svg><div>If your administrator hasn't configured an email server, GitStack shows notifications in-app only and these email options are hidden.</div></div>
+        </div>
+        <div>
+          <div class="sec-h"><h2>Watching</h2></div>
+          <p class="muted" style="margin-bottom:12px"><b style="color:var(--text)">Participating</b>: only issues you opened, are assigned to, comment on or are mentioned in. <b style="color:var(--text)">All activity</b>: every new issue and comment. <b style="color:var(--text)">Ignore</b>: nothing, not even mentions.</p>
+          <div class="list">
+            <div class="list-row"><span class="mono" style="flex:1;font-size:13px">acme/api-gateway</span><button class="btn btn-sm"><svg class="icon"><use href="#i-eye"/></svg>All activity<svg class="icon"><use href="#i-chev"/></svg></button></div>
+            <div class="list-row"><span class="mono" style="flex:1;font-size:13px">acme/identity</span><button class="btn btn-sm"><svg class="icon"><use href="#i-eye"/></svg>Participating<svg class="icon"><use href="#i-chev"/></svg></button></div>
+            <div class="list-row"><span class="mono" style="flex:1;font-size:13px">acme/docs</span><button class="btn btn-sm"><svg class="icon"><use href="#i-eye"/></svg>Ignore<svg class="icon"><use href="#i-chev"/></svg></button></div>
+          </div>
+          <p class="small muted" style="margin-top:8px">Every other repository you can see uses <b style="color:var(--text)">Participating</b>.</p>
+        </div>
+        <div>
+          <div class="sec-h"><h2>Retention</h2></div>
+          <p class="muted">Read notifications are removed after 90 days. Unread notifications are kept until you read them. Notifications from a repository you lose access to disappear.</p>
+          <div class="cmdblock" style="margin-top:10px;font-size:12px">gs notification list --reason assigned,mentioned --json</div>
         </div>
       </div>
     </div>

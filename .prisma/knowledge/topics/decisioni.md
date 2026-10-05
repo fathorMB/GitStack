@@ -1,5 +1,5 @@
 ---
-{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-1565db4b-4108-490d-aca1-28d30c36ad99","DOC-6878277b-230e-448b-a761-215e9d233c54","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Scelte P2 e P3 confermate dall'operatore il 2026-09-30: nessun accesso anonimo, visibilità privato/interno.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-05T08:42:00+00:00"}
+{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-1565db4b-4108-490d-aca1-28d30c36ad99","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726"],"reopen_reason":"Scelte P2 e P3 confermate dall'operatore il 2026-09-30: nessun accesso anonimo, visibilità privato/interno.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-05T09:10:00+00:00"}
 ---
 
 
@@ -22,7 +22,7 @@ Registro delle scelte prese nell'analisi pre-sviluppo (2026-09-27) con l'operato
 | D7 | Web UI e API-first | React + TypeScript (SPA); la UI usa solo l'API pubblica | Tutto ciò che si fa da browser è possibile a un agente |
 | D8 | Integrazione agenti | REST + OpenAPI come fonte unica; v1: CLI `gs` in Go (stile `gh`, output JSON) + skills; server MCP in v1.1, generato dalla stessa API | Funziona con qualsiasi agente con terminale |
 | D9 | Codice v1 | Push/pull HTTPS (token) + SSH; browser di file, branch, tag, commit, diff, README; organizzazioni, team, ruoli, visibilità repo (**privato/interno, nessun accesso anonimo**: vedi P2 e P3 nel topic di analisi sui permessi). PR in v1.1, modello dati predisposto | Minimo per un mini GitHub; le PR sono il flusso chiave con gli agenti |
-| D10 | Issues v1 | Titolo, Markdown, commenti, stato, assegnatari, ricerca + etichette e milestone + collegamenti ai commit (`#12`, `fixes #12`) + notifiche in-app/email e webhook. Kanban dopo la v1. Regole di dettaglio I1–I11 in [[knowledge/topics/issues]] | Lega codice e issues; utile agli agenti |
+| D10 | Issues v1 | Titolo, Markdown, commenti, stato, assegnatari, ricerca + etichette e milestone + collegamenti ai commit (`#12`, `fixes #12`) + notifiche in-app/email e webhook. Kanban dopo la v1. Regole di dettaglio I1–I11 in [[knowledge/topics/issues]]; collegamenti, notifiche e webhook C1–C9 in [[knowledge/topics/collegamenti-notifiche-webhook]] | Lega codice e issues; utile agli agenti |
 | D11 | Bus eventi | NATS con JetStream | Leggero, nativo Go, persistente; spina dorsale per build e deploy |
 | D12 | Distribuzione | Tutto open source; ricavi da supporto e servizi | Diffusione e fiducia per un prodotto on-prem |
 | D13 | Licenza server | AGPL-3.0 | Protegge dal "prendi e chiudi"; precedenti Forgejo, Grafana, Mattermost |

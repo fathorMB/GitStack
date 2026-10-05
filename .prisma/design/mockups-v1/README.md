@@ -26,5 +26,6 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 18 | Settings · General (branch principale, protezione, archiviazione, eliminazione) | M-03 |
 | 19 | Deleted repositories (ripristino entro 7 giorni) | M-03 |
 | 20 | New issue (modelli, allegati) | M-05 |
+| 21 | Notification settings (email per tipo, Watch, conservazione) | M-06 |
 
 Dati finti: organizzazione "Acme", utenti mrossi, lbianchi, gverdi, fneri, agente build-agent.
