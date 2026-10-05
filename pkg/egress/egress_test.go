@@ -336,3 +336,50 @@ func TestReadBodyTruncates(t *testing.T) {
 		t.Error("nil reader")
 	}
 }
+
+func TestControlForRealPath(t *testing.T) {
+	cases := []struct {
+		name    string
+		cfg     Config
+		host    string
+		addr    string
+		blocked bool
+	}{
+		{"allow host ok", Config{Allow: []string{"hooks.corp.example"}}, "hooks.corp.example", "10.1.2.3:443", false},
+		{"allow host other", Config{Allow: []string{"hooks.corp.example"}}, "other.example", "10.1.2.3:443", true},
+		{"allow suffix ok", Config{Allow: []string{"*.ci.example"}}, "x.ci.example", "10.1.2.3:443", false},
+		{"allowed name to loopback", Config{Allow: []string{"hooks.corp.example"}}, "hooks.corp.example", "127.0.0.1:80", true},
+		{"allowed name to cluster", Config{Allow: []string{"hooks.corp.example"}}, "hooks.corp.example", "10.42.0.1:80", true},
+		{"allowed name to special", Config{Allow: []string{"hooks.corp.example"}}, "hooks.corp.example", "100.64.1.1:80", true},
+		{"allow cidr unlocks cgnat", Config{Allow: []string{"100.64.0.0/10"}}, "h.example", "100.64.1.1:443", false},
+		{"deny ip with allowed name", Config{Allow: []string{"hooks.corp.example"}, Deny: []string{"10.1.0.0/16"}}, "hooks.corp.example", "10.1.2.3:443", true},
+		{"ipv6 literal", Config{}, "h.example", "[fe80::1]:80", true},
+	}
+	for _, tc := range cases {
+		err := mustPolicy(t, tc.cfg).controlFor(tc.host)("tcp", tc.addr, nil)
+		if IsBlocked(err) != tc.blocked || (!tc.blocked && err != nil) {
+			t.Errorf("%s: blocked=%v err=%v", tc.name, tc.blocked, err)
+		}
+	}
+	if err := mustPolicy(t, Config{}).controlFor("h")("udp", "10.1.2.3:53", nil); !IsBlocked(err) {
+		t.Errorf("udp: %v", err)
+	}
+}
+
+// End to end with the real dialer: an allowed host name reaches a real listener.
+func TestAllowByNameRealConnect(t *testing.T) {
+	_, addr := newBackend(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	// Only the lookup is fake; the backend is on loopback, so the real Control
+	// must refuse it even though the name is allowed.
+	c := NewClient(mustPolicy(t, Config{Allow: []string{"hooks.corp.example"}}), Options{
+		lookup: func(context.Context, string) ([]netip.Addr, error) {
+			return []netip.Addr{netip.MustParseAddr("10.1.2.3")}, nil
+		},
+		connect: func(ctx context.Context, d *net.Dialer, network, _ string) (net.Conn, error) {
+			return d.DialContext(ctx, network, addr)
+		},
+	})
+	if _, err := c.Get("http://hooks.corp.example/"); !IsBlocked(err) {
+		t.Fatalf("loopback must stay blocked for an allowed name: %v", err)
+	}
+}

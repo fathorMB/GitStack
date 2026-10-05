@@ -56,23 +56,6 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 			return d.DialContext(ctx, network, addr)
 		}
 	}
-	dialer := &net.Dialer{
-		Timeout: 5 * time.Second,
-		// Control runs after resolution, right before connect(2): this is
-		// the check that cannot be bypassed by DNS rebinding.
-		Control: func(network, address string, _ syscall.RawConn) error {
-			switch network {
-			case "tcp", "tcp4", "tcp6":
-			default:
-				return fmt.Errorf("%w: network %q", ErrBlocked, network)
-			}
-			ap, err := netip.ParseAddrPort(address)
-			if err != nil {
-				return fmt.Errorf("%w: unparsable address %q", ErrBlocked, address)
-			}
-			return policy.check("", ap.Addr())
-		},
-	}
 	dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
@@ -81,6 +64,9 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 		if policy.deny.matchHost(host) {
 			return nil, fmt.Errorf("%w: host %s is denied by the administrator", ErrBlocked, host)
 		}
+		// Control runs after resolution, right before connect(2), and knows the
+		// request host: the check that DNS rebinding cannot bypass.
+		dialer := &net.Dialer{Timeout: 5 * time.Second, Control: policy.controlFor(host)}
 		var ips []netip.Addr
 		if ip, perr := netip.ParseAddr(host); perr == nil {
 			ips = []netip.Addr{ip}
@@ -123,6 +109,23 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 			}
 			return nil // the address is judged by the dialer
 		},
+	}
+}
+
+// controlFor returns a net.Dialer Control that judges the address actually
+// being connected, knowing the host name of the request (for name rules).
+func (p *Policy) controlFor(host string) func(network, address string, c syscall.RawConn) error {
+	return func(network, address string, _ syscall.RawConn) error {
+		switch network {
+		case "tcp", "tcp4", "tcp6":
+		default:
+			return fmt.Errorf("%w: network %q", ErrBlocked, network)
+		}
+		ap, err := netip.ParseAddrPort(address)
+		if err != nil {
+			return fmt.Errorf("%w: unparsable address %q", ErrBlocked, address)
+		}
+		return p.check(host, ap.Addr())
 	}
 }
 
