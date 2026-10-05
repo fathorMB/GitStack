@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -182,7 +183,7 @@ func newBrowserEnv(t *testing.T) *browserEnv {
 	write("assets/pixel.png", string(png))
 	write("blob.bin", string(bin))
 	write("small.txt", "una\nriga\nsotto\n1 MB\n")
-	write("media.txt", lines("m", 40000))  // ~1,6 MB: fascia 1–5 MB
+	write("media.txt", lines("m", 40000))   // ~1,6 MB: fascia 1–5 MB
 	write("grande.txt", lines("g", 170000)) // ~6,8 MB: oltre 5 MB
 	write(secretFile, secretContent+"\n")
 	b.shaFirst = commit(alice, "primo commit")
@@ -769,7 +770,7 @@ func TestBrowserCodice(t *testing.T) {
 
 // uiSmoke lancia il controllo di fumo della UI (web/src/smoke, Vitest con
 // Testing Library e jsdom: lo strumento del resto di web/) contro questo
-// stack: le pagine 07, 08, 09 e 10 si caricano sul repo di prova senza
+// stack: le pagine 07, 08, 22 (blame), 09 e 10 si caricano sul repo di prova senza
 // errori. Serve node con pnpm e le dipendenze di web/ (corepack pnpm install
 // --frozen-lockfile): se mancano il sottotest è saltato, tranne con
 // GITSTACK_REQUIRE_UI_SMOKE=1 (la CI), dove è un errore.
@@ -805,8 +806,9 @@ func (b *browserEnv) uiSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("smoke UI: %v\n%s", err, out)
 	}
-	if strings.Contains(string(out), "skipped") && !strings.Contains(string(out), "4 passed") {
-		t.Fatalf("smoke UI: i test sono stati saltati:\n%s", out)
+	plain := ansiRe.ReplaceAllString(string(out), "")
+	if strings.Contains(plain, "skipped") || strings.Contains(plain, "failed") || !strings.Contains(plain, "passed") {
+		t.Fatalf("smoke UI: test saltati, falliti o non eseguiti:\n%s", out)
 	}
 	t.Logf("smoke UI:\n%s", out)
 }
@@ -914,6 +916,8 @@ func rawGetCookie(t *testing.T, url string, c *http.Cookie) fullReply {
 	b, _ := io.ReadAll(resp.Body)
 	return fullReply{status: resp.StatusCode, header: resp.Header, body: b}
 }
+
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func contains(list []string, s string) bool {
 	for _, x := range list {

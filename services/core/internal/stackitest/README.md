@@ -82,10 +82,10 @@ B1–B7 di `.prisma/knowledge/topics/browser-codice.md` (tabella regole→test i
 | `ricerca_e_elenco_file` | Search code senza distinguere maiuscole, massimo 100 risultati con `limitReached`, niente binari, `q` di 1 carattere 400; elenco file per Go to file |
 | `lingue` | byte e percentuali per lingua, in ordine decrescente (saltato finché `getRepositoryLanguages` risponde 501, GIT-117) |
 | `permessi` | per ogni lettura: proprietario 200; utente senza permesso su repo privato 404 identico a un repo inesistente; senza credenziali 401 (anche sul repo interno: raw e archivi compresi); token senza `read:resource` 403; repo interno letto da un altro utente; sessione web accettata, token inventato 401. Ogni caso negativo controlla che il corpo non porti nome o id del repo, nomi di file, contenuto, sha (interi e abbreviati), autori |
-| `ui_smoke` | Vitest + Testing Library + jsdom (`web/src/smoke`, lo strumento del resto di web/) contro questo stack: le pagine 07 (albero e README), 08 (file), 09 (storico) e 10 (dettaglio commit) si caricano senza chiamate fallite né `console.error`. Senza node o senza `web/node_modules` è saltato; in CI (`GITSTACK_REQUIRE_UI_SMOKE=1`) è un errore |
+| `ui_smoke` | Vitest + Testing Library + jsdom (`web/src/smoke`, lo strumento del resto di web/) contro questo stack: le pagine 07 (albero e README), 08 (file), 22 (blame), 09 (storico) e 10 (dettaglio commit) si caricano senza chiamate fallite né `console.error`. Senza node o senza `web/node_modules` è saltato; in CI (`GITSTACK_REQUIRE_UI_SMOKE=1`) è un errore |
 
 Il contratto dice `blame_unavailable` per un blame impossibile, ma core oggi inoltra un 400 `invalid_request`: il test prova lo status.
-Le pagine 22 (Tags) e 23 (Search code) della UI arrivano con GIT-94 e si aggiungono allo smoke quando sono su main.
+La pagina 23 (Tags) e quella dei risultati di Search code arrivano con GIT-94 e si aggiungono allo smoke quando sono su main.
 
 ## VM di test
 

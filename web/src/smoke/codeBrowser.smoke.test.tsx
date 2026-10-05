@@ -34,7 +34,7 @@ vi.mock('../lib/http', async (importOriginal) => ({
 configure({ asyncUtilTimeout: 15_000 });
 
 // Le pagine del browser del codice dei mockup 07, 08, 09 e 10.
-// Le 22 (Tags) e 23 (Search code) si aggiungono con GIT-94.
+// La 22 è Blame; la 23 (Tags) e la pagina dei risultati di Search code si aggiungono con GIT-94.
 const pages: { screen: string; path: string; expect: (v: ReturnType<typeof within>) => Promise<unknown> }[] = [
   {
     screen: '07 repo (albero e README)',
@@ -49,6 +49,15 @@ const pages: { screen: string; path: string; expect: (v: ReturnType<typeof withi
     path: `/${repo}/blob/main/main.go`,
     expect: async (v) => {
       expect((await v.findAllByText(/quarzo dal bot/)).length).toBeGreaterThan(0);
+    },
+  },
+  {
+    screen: '22 blame (blocchi per commit)',
+    path: `/${repo}/blame/main/main.go`,
+    expect: async (v) => {
+      expect((await v.findAllByText(/modifica del bot/)).length).toBeGreaterThan(0);
+      expect((await v.findAllByText(/primo commit/)).length).toBeGreaterThan(0);
+      expect((await v.findAllByText('agent')).length).toBeGreaterThan(0);
     },
   },
   {
