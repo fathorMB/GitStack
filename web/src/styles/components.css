@@ -243,6 +243,10 @@ ul.list{margin:0;padding:0;list-style:none}
 .alert-info svg{color:var(--accent);flex:none;margin-top:2px}
 .alert-warning{background:var(--warning-soft);border-color:color-mix(in srgb, var(--warning) 30%, transparent);color:var(--text)}
 .alert-warning svg{color:var(--warning);flex:none;margin-top:2px}
+.mention-wrap{position:relative}
+.mention-list{position:absolute;left:12px;top:100%;z-index:10;min-width:220px;max-width:320px;list-style:none;margin:2px 0 0}
+.mention-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-sm);cursor:pointer}
+.mention-item[aria-selected="true"]{background:var(--surface-2);outline:2px solid var(--accent);outline-offset:-2px}
 
 /* Issue detail (mockup 13): chiusura con motivo, anteprima della issue nascosta */
 .splitbtn{display:inline-flex}

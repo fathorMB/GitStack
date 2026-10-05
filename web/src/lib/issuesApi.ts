@@ -1,6 +1,7 @@
 // Issues (M-05) via client generato (client di default: l'interceptor 401 le vede).
 import {
   closeIssue,
+  createIssue,
   createIssueComment,
   deleteIssueComment,
   getIssue,
@@ -10,6 +11,8 @@ import {
   listIssueComments,
   listIssueEvents,
   listIssues,
+  listIssueTemplates,
+  listUsers,
   listIssueVersions,
   listLabels,
   listMilestones,
@@ -24,10 +27,10 @@ import {
   updateIssueComment,
   uploadIssueAttachment,
 } from '@gitstack/api-client';
-import type { Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueCommentList, IssueEvent, IssueEventList, TextVersion, IssueList, IssueSummary, IssueUser, Label, LabelList, Milestone, MilestoneList } from '@gitstack/api-client';
+import type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueCommentList, IssueEvent, IssueEventList, TextVersion, IssueList, IssueSummary, IssueUser, Label, LabelList, Milestone, MilestoneList } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap } from './http';
 
-export type { Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, TextVersion, IssueList, IssueSummary, IssueUser, Label, Milestone };
+export type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, TextVersion, IssueList, IssueSummary, IssueUser, Label, Milestone };
 
 export type IssueSort = 'created' | 'updated' | 'comments' | 'relevance';
 
@@ -56,6 +59,22 @@ export async function fetchLabels(owner: string, repo: string): Promise<LabelLis
 
 export async function fetchMilestones(owner: string, repo: string): Promise<MilestoneList> {
   return unwrap(await listMilestones({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { state: 'all' } }));
+}
+
+// ---- nuova issue (M-05/K) ----
+
+/** Modelli di .gitstack/ISSUE_TEMPLATE/ (I11). */
+export async function fetchTemplates(owner: string, repo: string): Promise<IssueTemplate[]> {
+  return unwrap(await listIssueTemplates({ baseUrl: API_BASE_URL, path: { owner, repo } })).items;
+}
+
+export async function createNewIssue(owner: string, repo: string, input: CreateIssueInput): Promise<Issue> {
+  return unwrap(await createIssue({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }));
+}
+
+/** Persone e agenti per prefisso (suggerimenti di @menzione, I8). */
+export async function searchUsers(q: string, perPage = 8): Promise<User[]> {
+  return unwrap(await listUsers({ baseUrl: API_BASE_URL, query: { q, perPage } })).items;
 }
 
 // ---- dettaglio issue (M-05/J) ----
