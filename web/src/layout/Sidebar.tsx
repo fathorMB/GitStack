@@ -1,4 +1,4 @@
-import { Boxes, Database, GitBranch, Grid2x2, Home, Server, Users } from 'lucide-react';
+import { Bot, Boxes, Database, GitBranch, Grid2x2, Home, Server, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../components';
@@ -63,6 +63,7 @@ export function Sidebar() {
 
       <div className="sb-grp">Administration</div>
       <SidebarItem icon={<Users size={18} strokeWidth={1.8} />} label="Organization" to="/orgs" />
+      <SidebarItem icon={<Bot size={18} strokeWidth={1.8} />} label="Agents" to="/admin/agents" />
       <SidebarItem icon={<Server size={18} strokeWidth={1.8} />} label="System" disabled soon />
     </aside>
   );

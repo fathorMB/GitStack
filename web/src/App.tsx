@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
+import { AgentsPage } from './pages/admin/AgentsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
@@ -42,6 +43,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Components">
               <ComponentsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/agents"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Agents">
+              <AgentsPage />
             </AppShell>
           </RequireAuth>
         }
