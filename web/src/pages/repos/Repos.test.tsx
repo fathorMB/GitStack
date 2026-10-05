@@ -155,8 +155,20 @@ describe('NewRepoPage', () => {
     const f = await form();
     await u.type(within(f).getByLabelText('Repository name'), 'demo');
     await u.click(within(f).getByRole('button', { name: 'Create repository' }));
-    await waitFor(() => expect(createRepo).toHaveBeenCalledWith({ owner: 'mrossi', name: 'demo', visibility: 'private', readme: false }));
+    await waitFor(() => expect(createRepo).toHaveBeenCalledWith({ owner: 'mrossi', name: 'demo', visibility: 'private', readme: false, defaultLabels: true }));
     expect(await screen.findByRole('region', { name: 'Quick setup' })).toBeInTheDocument();
+  });
+
+  it('Add default labels e attiva di default e si puo disattivare (I5)', async () => {
+    vi.mocked(createRepo).mockRejectedValue(new ApiError({ error: { code: 'conflict', message: 'Name taken.' } }, 409));
+    const u = userEvent.setup();
+    const f = await form();
+    const box = within(f).getByRole('checkbox', { name: 'Add default labels' });
+    expect(box).toBeChecked();
+    await u.click(box);
+    await u.type(within(f).getByLabelText('Repository name'), 'demo');
+    await u.click(within(f).getByRole('button', { name: 'Create repository' }));
+    await waitFor(() => expect(createRepo).toHaveBeenCalledWith({ owner: 'mrossi', name: 'demo', visibility: 'private', readme: false, defaultLabels: false }));
   });
 
   it('Internal e opzioni attive finiscono nel corpo, con il primo modello', async () => {
@@ -169,7 +181,7 @@ describe('NewRepoPage', () => {
     await u.click(within(f).getByRole('checkbox', { name: 'Add .gitignore' }));
     await u.click(within(f).getByRole('button', { name: 'Create repository' }));
     await waitFor(() =>
-      expect(createRepo).toHaveBeenCalledWith({ owner: 'mrossi', name: 'demo', visibility: 'internal', readme: true, gitignoreTemplate: 'go' }),
+      expect(createRepo).toHaveBeenCalledWith({ owner: 'mrossi', name: 'demo', visibility: 'internal', readme: true, defaultLabels: true, gitignoreTemplate: 'go' }),
     );
     expect(await within(f).findByText('Name taken.')).toBeInTheDocument();
   });

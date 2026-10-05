@@ -38,6 +38,8 @@ describe('rotte del browser del codice', () => {
     ['/acme/api/issues', 'issues'],
     ['/acme/api/issues/41', 'issue'],
     ['/acme/api/issues/new', 'newissue'],
+    ['/acme/api/labels', 'labels'],
+    ['/acme/api/milestones', 'milestones'],
     ['/acme/api/search', 'search'],
   ])('%s apre la pagina del repo in modo %s', async (path, mode) => {
     at(path);
