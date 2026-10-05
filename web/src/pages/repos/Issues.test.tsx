@@ -120,9 +120,11 @@ describe('lista issues', () => {
     await u.selectOptions(screen.getByLabelText('Sort'), 'comments');
     await waitFor(() => expect(screen.getByLabelText('Search issues')).toHaveValue('is:open label:"good first issue" milestone:v0.5 assignee:@agents '));
     expect(screen.getByTestId('where').textContent).toContain('sort=comments');
-    const last = vi.mocked(fetchIssues).mock.calls.at(-1)!;
-    expect(last[2]).toBe('is:open label:"good first issue" milestone:v0.5 assignee:@agents');
-    expect(last[3]).toBe('comments');
+    await waitFor(() => {
+      const last = vi.mocked(fetchIssues).mock.calls.at(-1)!;
+      expect(last[2]).toBe('is:open label:"good first issue" milestone:v0.5 assignee:@agents');
+      expect(last[3]).toBe('comments');
+    });
     await u.click(screen.getByRole('button', { name: /Closed/ }));
     await waitFor(() => expect(screen.getByLabelText('Search issues')).toHaveValue('label:"good first issue" milestone:v0.5 assignee:@agents is:closed '));
   });
@@ -130,7 +132,7 @@ describe('lista issues', () => {
   it("la ricerca dall'indirizzo riempie la barra e interroga l'API", async () => {
     renderAt('/acme/api/issues?q=' + encodeURIComponent('is:open label:bug crash') + '&sort=relevance');
     expect(await screen.findByLabelText('Search issues')).toHaveValue('is:open label:bug crash ');
-    expect(fetchIssues).toHaveBeenCalledWith('acme', 'api', 'is:open label:bug crash', 'relevance');
+    await waitFor(() => expect(fetchIssues).toHaveBeenCalledWith('acme', 'api', 'is:open label:bug crash', 'relevance'));
     expect(screen.getByLabelText('Label')).toHaveValue('bug');
   });
 
