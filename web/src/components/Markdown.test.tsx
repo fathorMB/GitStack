@@ -103,3 +103,21 @@ describe('Markdown: percorsi relativi', () => {
     expect(srcs).toEqual(['/raw/o/r/main/docs/guide/img/p.png', '/raw/o/r/main/img/q.png', 'https://e.com/i.png']);
   });
 });
+
+describe('Markdown: note a piè di pagina', () => {
+  it('rimando, nota e link di ritorno puntano agli id giusti', () => {
+    const { container } = renderMd('Testo[^1]\n\n[^1]: nota');
+    const ref = container.querySelector('sup a');
+    const back = container.querySelector('li a[href^="#"]');
+    const note = container.querySelector('li');
+    expect(ref).not.toBeNull();
+    expect(note?.id).toBe('user-content-fn-1');
+    expect(ref?.getAttribute('href')).toBe('#' + note?.id);
+    expect(ref?.id).toBeTruthy();
+    expect(back?.getAttribute('href')).toBe('#' + ref?.id);
+    const ids = Array.from(container.querySelectorAll('[id]')).map((e) => e.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.some((i) => i.includes('user-content-user-content-'))).toBe(false);
+    expect(container.innerHTML).not.toContain('user-content-user-content-');
+  });
+});
