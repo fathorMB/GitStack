@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 )
 
 // pathRe: /<owner>/<repo>.git/<endpoint>.
@@ -36,9 +37,17 @@ type Authorizer interface {
 	Authorize(ctx context.Context, p access.Principal, owner, name string, write bool) (string, error)
 }
 
+// RepoAuthorizer è un Authorizer che dà anche il repo risolto da core: serve
+// per applicare le regole alla ricezione del push (branch protetto).
+type RepoAuthorizer interface {
+	AuthorizeRepo(ctx context.Context, p access.Principal, owner, name string, write bool) (string, access.RepoRef, error)
+}
+
 // Handler serve le rotte smart HTTP.
 type Handler struct {
-	Auth   Authorizer
+	Auth Authorizer
+	// Rules sono le regole alla ricezione del push (R6, R9); nil = nessuna.
+	Rules  *receiverules.Rules
 	GitBin string
 	Logger *slog.Logger
 	// Realm è il realm del Basic auth (default "GitStack").
@@ -95,7 +104,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Permessi.
-	dir, err := h.Auth.Authorize(r.Context(), p, owner, name, write)
+	var (
+		dir string
+		ref access.RepoRef
+	)
+	if ra, ok := h.Auth.(RepoAuthorizer); ok {
+		dir, ref, err = ra.AuthorizeRepo(r.Context(), p, owner, name, write)
+	} else {
+		dir, err = h.Auth.Authorize(r.Context(), p, owner, name, write)
+	}
 	switch {
 	case err == nil:
 	case errors.Is(err, access.ErrNotFound):
@@ -126,7 +143,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		banner := "# service=" + service + "\n"
 		_, _ = io.WriteString(w, pktLine(banner)+"0000")
-		h.run(w, r, sub, dir, nil, true)
+		h.run(w, r, sub, dir, ref, nil, true)
 		return
 	}
 	if ct := r.Header.Get("Content-Type"); ct != "application/x-"+service+"-request" {
@@ -145,7 +162,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/x-"+service+"-result")
 	w.WriteHeader(http.StatusOK)
-	h.run(w, r, sub, dir, body, false)
+	h.run(w, r, sub, dir, ref, body, false)
 }
 
 func (h *Handler) logger() *slog.Logger {
@@ -166,8 +183,12 @@ func (h *Handler) challenge(w http.ResponseWriter) {
 
 // run esegue git upload-pack/receive-pack in modalità stateless-rpc e
 // scrive l'uscita nella risposta (già con gli header inviati).
-func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, stdin io.Reader, advertise bool) {
-	args := []string{sub, "--stateless-rpc"}
+func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, ref access.RepoRef, stdin io.Reader, advertise bool) {
+	var args []string
+	if sub == "receive-pack" {
+		args = h.Rules.GitArgs()
+	}
+	args = append(args, sub, "--stateless-rpc")
 	if advertise {
 		args = append(args, "--advertise-refs")
 	}
@@ -178,6 +199,9 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, s
 	}
 	cmd := exec.CommandContext(r.Context(), bin, args...)
 	cmd.Env = append(cleanEnv(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_TERMINAL_PROMPT=0")
+	if sub == "receive-pack" {
+		cmd.Env = append(cmd.Env, h.Rules.Env(receiverules.ProtectedBranch(ref))...)
+	}
 	if gp := r.Header.Get("Git-Protocol"); gp != "" && safeProtocol(gp) {
 		cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+gp)
 	}

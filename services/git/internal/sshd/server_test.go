@@ -18,6 +18,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
 )
@@ -31,6 +32,8 @@ type fakeDir struct {
 	keys     map[string]access.KeyOwner
 	roles    map[string]string // userID -> read|write
 	archived atomic.Bool
+	// unprotected: protezione del branch principale spenta (R9).
+	unprotected atomic.Bool
 }
 
 func (f *fakeDir) LookupKey(_ context.Context, fp string) (access.KeyOwner, error) {
@@ -45,7 +48,7 @@ func (f *fakeDir) ResolveRepo(_ context.Context, c trust.Identity, owner, name s
 	if owner != "alice" || name != "app" || f.roles[c.UserID] == "" {
 		return access.RepoRef{}, access.ErrNotFound
 	}
-	return access.RepoRef{ID: repoID, Archived: f.archived.Load()}, nil
+	return access.RepoRef{ID: repoID, Archived: f.archived.Load(), DefaultBranch: "main", ProtectDefaultBranch: !f.unprotected.Load()}, nil
 }
 
 func (f *fakeDir) VerifyToken(context.Context, string) (access.Principal, bool, error) {
@@ -134,7 +137,11 @@ func (e *env) launch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := New(Config{Addr: "127.0.0.1:0", HostKey: hk, Auth: &access.Authorizer{Identity: e.dir, Core: e.dir, Disk: e.store}, Keys: e.dir})
+	rules, err := receiverules.Install(filepath.Join(t.TempDir(), "hooks"), receiverules.DefaultLimits())
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := New(Config{Addr: "127.0.0.1:0", HostKey: hk, Auth: &access.Authorizer{Identity: e.dir, Core: e.dir, Disk: e.store}, Keys: e.dir, Rules: rules})
 	if err != nil {
 		t.Fatal(err)
 	}

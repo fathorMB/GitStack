@@ -13,6 +13,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
@@ -57,6 +58,8 @@ type fakeCore struct {
 	by map[string]string // owner/name → repoId
 	// archived: repo archiviati (R10).
 	archived map[string]bool
+	// unprotected: repo con la protezione del branch principale spenta (R9).
+	unprotected map[string]bool
 }
 
 func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (access.RepoRef, error) {
@@ -67,7 +70,7 @@ func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner
 	if ok, _ := c.id.HasRole(ctx, caller.UserID, rid, "read"); !ok {
 		return access.RepoRef{}, access.ErrNotFound
 	}
-	return access.RepoRef{ID: rid, Archived: c.archived[rid]}, nil
+	return access.RepoRef{ID: rid, Archived: c.archived[rid], DefaultBranch: "main", ProtectDefaultBranch: !c.unprotected[rid]}, nil
 }
 
 func gitBin(t *testing.T) string {
@@ -82,9 +85,12 @@ func gitBin(t *testing.T) string {
 type env struct {
 	srv   *httptest.Server
 	store *repostore.Store
+	core  *fakeCore
 }
 
-func setup(t *testing.T) *env {
+func setup(t *testing.T) *env { return setupWith(t, receiverules.DefaultLimits()) }
+
+func setupWith(t *testing.T, limits receiverules.Limits) *env {
 	t.Helper()
 	bin := gitBin(t)
 	store, err := repostore.New(t.TempDir())
@@ -123,14 +129,19 @@ func setup(t *testing.T) *env {
 	}
 	core := &fakeCore{id: ident, by: map[string]string{
 		"alice/priv": repoPriv, "alice/shared": repoInt, "alice/gone": repoGone, "alice/arch": repoArch,
-	}, archived: map[string]bool{repoArch: true}}
+	}, archived: map[string]bool{repoArch: true}, unprotected: map[string]bool{}}
+	rules, err := receiverules.Install(filepath.Join(t.TempDir(), "hooks"), limits)
+	if err != nil {
+		t.Fatal(err)
+	}
 	h := &smarthttp.Handler{
 		Auth:   &access.Authorizer{Identity: ident, Core: core, Disk: store},
 		GitBin: bin,
+		Rules:  rules,
 	}
 	srv := httptest.NewServer(httpserver.NewRouter(httpserver.Deps{Store: store, Secret: "s", Git: h}))
 	t.Cleanup(srv.Close)
-	return &env{srv: srv, store: store}
+	return &env{srv: srv, store: store, core: core}
 }
 
 func (e *env) url(user, token, path string) string {

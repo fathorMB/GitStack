@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
 	"github.com/fathorMB/GitStack/services/git/internal/sshd"
@@ -64,12 +66,18 @@ func run(out io.Writer) int {
 		gitHandler http.Handler
 		auth       *access.Authorizer
 		keys       access.Keys
+		rules      *receiverules.Rules
 	)
 	if cfg.IdentityURL != "" && cfg.CoreURL != "" && cfg.ServiceSecret != "" {
 		up := upstream.New(cfg.IdentityURL, cfg.CoreURL, cfg.ServiceSecret, 5*time.Second)
 		auth = &access.Authorizer{Identity: up, Core: up, Disk: store}
 		keys = up
-		gitHandler = &smarthttp.Handler{Auth: auth, Logger: logger}
+		rules, err = receiverules.Install(filepath.Join(cfg.DataDir, "hooks"), receiverules.Limits{MaxBlobBytes: cfg.MaxBlobBytes, WarnRepoBytes: cfg.RepoWarnBytes})
+		if err != nil {
+			logger.Error("regole alla ricezione del push non installabili", "err", err)
+			return 1
+		}
+		gitHandler = &smarthttp.Handler{Auth: auth, Logger: logger, Rules: rules}
 	} else {
 		logger.Warn("smart HTTP non configurato: servono identity, core e segreto di servizio", "env", []string{config.EnvIdentityURL, config.EnvCoreURL, config.EnvServiceSecret})
 		gitHandler = unconfigured{}
@@ -88,7 +96,7 @@ func run(out io.Writer) int {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	sshSrv, err := startSSH(cfg, auth, keys, logger)
+	sshSrv, err := startSSH(cfg, auth, keys, rules, logger)
 	if err != nil {
 		logger.Error("server SSH non avviabile", "err", err)
 		return 1
@@ -149,7 +157,7 @@ func (unconfigured) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 // access.Authorizer dello smart HTTP. nil, nil se è disattivato
 // (GITSTACK_GIT_SSH_ADDR=off) o se manca la configurazione di identity e
 // core (auth nil): in quel caso lo dice nel log.
-func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, logger *slog.Logger) (*sshd.Server, error) {
+func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, rules *receiverules.Rules, logger *slog.Logger) (*sshd.Server, error) {
 	if cfg.SSHAddr == "" {
 		logger.Info("server SSH disattivato", "env", config.EnvSSHAddr)
 		return nil, nil
@@ -168,6 +176,7 @@ func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, logg
 		HostKey: key,
 		Auth:    auth,
 		Keys:    keys,
+		Rules:   rules,
 		Logger:  logger,
 	})
 	if err != nil {
