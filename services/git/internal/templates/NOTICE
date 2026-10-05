@@ -1,0 +1,33 @@
+Provenienza dei testi incorporati in questo pacchetto.
+
+.gitignore: https://github.com/github/gitignore (licenza CC0-1.0), cartella
+principale, ramo main, scaricati il 2026-10-05.
+
+  gitignore/go.gitignore         https://github.com/github/gitignore/blob/main/Go.gitignore
+  gitignore/node.gitignore       https://github.com/github/gitignore/blob/main/Node.gitignore
+  gitignore/python.gitignore     https://github.com/github/gitignore/blob/main/Python.gitignore
+  gitignore/java.gitignore       https://github.com/github/gitignore/blob/main/Java.gitignore
+  gitignore/dotnet.gitignore     https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
+  gitignore/rust.gitignore       https://github.com/github/gitignore/blob/main/Rust.gitignore
+  gitignore/cpp.gitignore        https://github.com/github/gitignore/blob/main/C%2B%2B.gitignore
+  gitignore/terraform.gitignore  https://github.com/github/gitignore/blob/main/Terraform.gitignore
+  gitignore/ruby.gitignore       https://github.com/github/gitignore/blob/main/Ruby.gitignore
+  gitignore/php.gitignore        https://github.com/github/gitignore/blob/main/Composer.gitignore
+                                 (solo Composer, senza le righe di Laravel)
+
+Licenze: testi ufficiali SPDX, da https://github.com/spdx/license-list-data
+(cartella text/, dati della SPDX License List; i testi delle licenze restano
+dei rispettivi autori). In mit, bsd-2-clause e bsd-3-clause la riga di
+copyright usa i segnaposto {{year}} e {{holder}} al posto di <year> e
+<owner>/<copyright holders>; nei due testi BSD sono stati tolti gli spazi a
+fine riga.
+
+  licenses/mit.txt           MIT
+  licenses/apache-2.0.txt    Apache-2.0
+  licenses/gpl-3.0.txt       GPL-3.0-only
+  licenses/agpl-3.0.txt      AGPL-3.0-only
+  licenses/lgpl-3.0.txt      LGPL-3.0-only
+  licenses/mpl-2.0.txt       MPL-2.0
+  licenses/bsd-2-clause.txt  BSD-2-Clause
+  licenses/bsd-3-clause.txt  BSD-3-Clause
+  licenses/unlicense.txt     Unlicense
