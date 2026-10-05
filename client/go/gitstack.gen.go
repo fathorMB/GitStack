@@ -1553,14 +1553,14 @@ type ClientInterface interface {
 
 	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
 	//
-	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
 	//
 	// Corresponds with GET /internal/owners/{name} (the `ResolveOwner` operationId).
 	ResolveOwner(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CheckPermissionWithBody Verifica un permesso su una risorsa
 	//
-	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1569,7 +1569,7 @@ type ClientInterface interface {
 
 	// CheckPermission Verifica un permesso su una risorsa
 	//
-	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1578,7 +1578,7 @@ type ClientInterface interface {
 
 	// ListReadableResourcesWithBody Risorse leggibili da un utente
 	//
-	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1587,7 +1587,7 @@ type ClientInterface interface {
 
 	// ListReadableResources Risorse leggibili da un utente
 	//
-	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1596,7 +1596,7 @@ type ClientInterface interface {
 
 	// SetResourceAttributesWithBody Imposta owner e visibilita' di una risorsa (per core)
 	//
-	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1605,7 +1605,7 @@ type ClientInterface interface {
 
 	// SetResourceAttributes Imposta owner e visibilita' di una risorsa (per core)
 	//
-	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -2371,7 +2371,7 @@ func (c *Client) GitTrashRepo(ctx context.Context, repoId GitRepoIdParam, reqEdi
 
 // ResolveOwner Risolve il nome di un utente o di un'organizzazione
 //
-// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
 //
 // Corresponds with GET /internal/owners/{name} (the `ResolveOwner` operationId).
 func (c *Client) ResolveOwner(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2388,7 +2388,7 @@ func (c *Client) ResolveOwner(ctx context.Context, name string, reqEditors ...Re
 
 // CheckPermissionWithBody Verifica un permesso su una risorsa
 //
-// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 //
 // Takes any type of body and a specified content type.
 //
@@ -2407,7 +2407,7 @@ func (c *Client) CheckPermissionWithBody(ctx context.Context, contentType string
 
 // CheckPermission Verifica un permesso su una risorsa
 //
-// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2426,7 +2426,7 @@ func (c *Client) CheckPermission(ctx context.Context, body CheckPermissionJSONRe
 
 // ListReadableResourcesWithBody Risorse leggibili da un utente
 //
-// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2445,7 +2445,7 @@ func (c *Client) ListReadableResourcesWithBody(ctx context.Context, contentType 
 
 // ListReadableResources Risorse leggibili da un utente
 //
-// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2464,7 +2464,7 @@ func (c *Client) ListReadableResources(ctx context.Context, body ListReadableRes
 
 // SetResourceAttributesWithBody Imposta owner e visibilita' di una risorsa (per core)
 //
-// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2483,7 +2483,7 @@ func (c *Client) SetResourceAttributesWithBody(ctx context.Context, resourceId o
 
 // SetResourceAttributes Imposta owner e visibilita' di una risorsa (per core)
 //
-// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -6846,7 +6846,7 @@ type ClientWithResponsesInterface interface {
 
 	// ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 	//
-	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -6855,7 +6855,7 @@ type ClientWithResponsesInterface interface {
 
 	// CheckPermissionWithBodyWithResponse Verifica un permesso su una risorsa
 	//
-	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -6864,7 +6864,7 @@ type ClientWithResponsesInterface interface {
 
 	// CheckPermissionWithResponse Verifica un permesso su una risorsa
 	//
-	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -6873,7 +6873,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListReadableResourcesWithBodyWithResponse Risorse leggibili da un utente
 	//
-	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -6882,7 +6882,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListReadableResourcesWithResponse Risorse leggibili da un utente
 	//
-	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+	// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -6891,7 +6891,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetResourceAttributesWithBodyWithResponse Imposta owner e visibilita' di una risorsa (per core)
 	//
-	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -6900,7 +6900,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetResourceAttributesWithResponse Imposta owner e visibilita' di una risorsa (per core)
 	//
-	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12309,7 +12309,7 @@ func (c *ClientWithResponses) GitTrashRepoWithResponse(ctx context.Context, repo
 
 // ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 //
-// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -12324,7 +12324,7 @@ func (c *ClientWithResponses) ResolveOwnerWithResponse(ctx context.Context, name
 
 // CheckPermissionWithBodyWithResponse Verifica un permesso su una risorsa
 //
-// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -12339,7 +12339,7 @@ func (c *ClientWithResponses) CheckPermissionWithBodyWithResponse(ctx context.Co
 
 // CheckPermissionWithResponse Verifica un permesso su una risorsa
 //
-// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
+// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team, amministratore; owner dell'organizzazione e proprietario del repo personale sono admin, una risorsa interna e' leggibile da ogni utente attivo: P1, P6, P3).
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -12354,7 +12354,7 @@ func (c *ClientWithResponses) CheckPermissionWithResponse(ctx context.Context, b
 
 // ListReadableResourcesWithBodyWithResponse Risorse leggibili da un utente
 //
-// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -12369,7 +12369,7 @@ func (c *ClientWithResponses) ListReadableResourcesWithBodyWithResponse(ctx cont
 
 // ListReadableResourcesWithResponse Risorse leggibili da un utente
 //
-// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
+// Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono le risorse su cui l'utente ha almeno read (grant diretto, via team o via owner dell'organizzazione, owner della risorsa o visibilita' interna: stesse regole di `checkPermission`). `all` e' vero solo per l'amministratore di sistema, e in quel caso `resourceIds` e' vuoto. Un utente inesistente o disattivato riceve `all` falso e nessuna risorsa.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -12384,7 +12384,7 @@ func (c *ClientWithResponses) ListReadableResourcesWithResponse(ctx context.Cont
 
 // SetResourceAttributesWithBodyWithResponse Imposta owner e visibilita' di una risorsa (per core)
 //
-// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -12399,7 +12399,7 @@ func (c *ClientWithResponses) SetResourceAttributesWithBodyWithResponse(ctx cont
 
 // SetResourceAttributesWithResponse Imposta owner e visibilita' di una risorsa (per core)
 //
-// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Con attributi valgono P1 (owner dell'organizzazione: admin), P6 (proprietario del repo personale: admin) e P3 (interno: read a ogni utente attivo), sia in `checkPermission` sia in `listReadableResources`. 404 se l'owner non esiste, 409 se la risorsa ha gia' un altro owner.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

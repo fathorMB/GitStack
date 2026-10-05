@@ -5,6 +5,7 @@ package migrate_test
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/fathorMB/GitStack/services/identity/internal/migrate"
@@ -33,6 +34,9 @@ func newPool(t *testing.T) (*pgxpool.Pool, string) {
 		_, _ = pool.Exec(ctx, `DO $$ DECLARE r record; BEGIN
 			FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'identity' LOOP
 				EXECUTE format('DROP TABLE IF EXISTS identity.%I CASCADE', r.tablename);
+			END LOOP;
+			FOR r IN SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'identity' LOOP
+				EXECUTE format('DROP FUNCTION IF EXISTS identity.%I() CASCADE', r.proname);
 			END LOOP; END $$`)
 	}
 	drop()
@@ -62,7 +66,7 @@ func tables(t *testing.T, pool *pgxpool.Pool) map[string]bool {
 var domainTables = []string{
 	"users", "credentials", "sessions", "api_tokens", "ssh_keys",
 	"oidc_providers", "oidc_identities", "organizations", "org_members",
-	"teams", "team_members", "resource_grants",
+	"teams", "team_members", "resource_grants", "owner_names", "resource_attributes",
 }
 
 func TestUpDownUp(t *testing.T) {
@@ -82,7 +86,7 @@ func TestUpDownUp(t *testing.T) {
 		}
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 	got = tables(t, pool)
@@ -162,5 +166,50 @@ func TestConstraints(t *testing.T) {
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM identity.team_members`).Scan(&n); err != nil || n != 0 {
 		t.Errorf("team_members dopo uscita dall'org: n=%d err=%v", n, err)
+	}
+}
+
+// 0003: con dati già presenti, il registro dei nomi si popola; se un nome è
+// usato sia da un utente sia da un'organizzazione, la migrazione si ferma con
+// un messaggio che lo elenca e non lascia niente a metà.
+func TestOwnerNamesBackfillAndCollision(t *testing.T) {
+	pool, dsn := newPool(t)
+	ctx := context.Background()
+	exec := func(q string) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := migrate.Up(ctx, pool, dsn); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+		t.Fatalf("Down 1: %v", err)
+	}
+	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'alice')`)
+	exec(`INSERT INTO identity.organizations (id, name) VALUES (gen_random_uuid(), 'acme')`)
+	if err := migrate.Up(ctx, pool, dsn); err != nil {
+		t.Fatalf("Up con dati non in collisione: %v", err)
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM identity.owner_names`).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("owner_names dopo il backfill = %d (%v), attese 2 righe", n, err)
+	}
+
+	// Collisione: stesso nome in users e organizations prima della 0003.
+	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+		t.Fatalf("Down 1 (bis): %v", err)
+	}
+	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'acme')`)
+	err := migrate.Up(ctx, pool, dsn)
+	if err == nil {
+		t.Fatal("Up con un nome in collisione doveva fallire")
+	}
+	if !strings.Contains(err.Error(), "acme") || !strings.Contains(err.Error(), "utente") {
+		t.Errorf("messaggio poco chiaro: %v", err)
+	}
+	if tables(t, pool)["owner_names"] {
+		t.Error("owner_names creata nonostante la migrazione fallita")
 	}
 }

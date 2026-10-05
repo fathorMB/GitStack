@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/fathorMB/GitStack/pkg/names"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -121,11 +123,19 @@ func New(pool *pgxpool.Pool, now func() time.Time) *Service {
 // transazione. Ritorna ErrAlreadyExists se il nome esiste già.
 type AlreadyExistsError struct{ Field string }
 
+// ReservedNameError: il nome è riservato (R1, pkg/names): 400.
+type ReservedNameError struct{ Name string }
+
+func (e *ReservedNameError) Error() string { return "il nome " + e.Name + " è riservato" }
+
 func (e *AlreadyExistsError) Error() string { return e.Field + " già in uso" }
 
 func (s *Service) Create(ctx context.Context, in CreateOrgInput, userID uuid.UUID) (Organization, error) {
 	if err := validateName(in.Name); err != nil {
 		return Organization{}, err
+	}
+	if names.IsReservedOwnerName(in.Name) {
+		return Organization{}, &ReservedNameError{Name: in.Name}
 	}
 	if len(in.DisplayName) > 128 {
 		return Organization{}, &ValidationError{Fields: map[string]string{"displayName": "al massimo 128 caratteri"}}

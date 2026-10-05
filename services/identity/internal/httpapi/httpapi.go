@@ -567,9 +567,12 @@ func (s *server) userError(w http.ResponseWriter, r *http.Request, err error) bo
 	}
 	var ve *users.ValidationError
 	var ae *users.AlreadyExistsError
+	var rn *users.ReservedNameError
 	switch {
 	case errors.As(err, &ve):
 		validationFailed(w, ve.Fields)
+	case errors.As(err, &rn):
+		writeError(w, http.StatusBadRequest, "reserved_name", "Il nome "+rn.Name+" è riservato.")
 	case errors.As(err, &ae):
 		writeErrorDetails(w, http.StatusConflict, "already_exists", ae.Field+" già in uso.", map[string]any{"field": ae.Field})
 	case errors.Is(err, users.ErrNotFound):

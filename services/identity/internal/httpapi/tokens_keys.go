@@ -396,13 +396,3 @@ func (s *server) LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprin
 	}
 	writeJSON(w, http.StatusOK, openapi.SshKeyLookup{Key: toSSHKey(k), User: toUser(u, true)})
 }
-
-// SetResourceAttributes e ResolveOwner (M-03, D-C): nel contratto, risposte
-// 501 finché GIT-65 non le implementa.
-func (s *server) SetResourceAttributes(w http.ResponseWriter, _ *http.Request, _ openapi_types.UUID) {
-	unavailable(w)
-}
-
-func (s *server) ResolveOwner(w http.ResponseWriter, _ *http.Request, _ string) {
-	unavailable(w)
-}

@@ -76,5 +76,8 @@ func dropTables(ctx context.Context, pool *pgxpool.Pool) {
 	_, _ = pool.Exec(ctx, `DO $$ DECLARE r record; BEGIN
 		FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'identity' LOOP
 			EXECUTE format('DROP TABLE IF EXISTS identity.%I CASCADE', r.tablename);
+		END LOOP;
+		FOR r IN SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'identity' LOOP
+			EXECUTE format('DROP FUNCTION IF EXISTS identity.%I() CASCADE', r.proname);
 		END LOOP; END $$`)
 }

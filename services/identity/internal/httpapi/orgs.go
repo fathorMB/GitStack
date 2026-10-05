@@ -137,6 +137,11 @@ func (s *server) CreateOrganization(w http.ResponseWriter, r *http.Request) {
 		ci.Description = *in.Description
 	}
 	org, err := s.orgs.Create(r.Context(), ci, cur.User.ID)
+	var rne *orgs.ReservedNameError
+	if errors.As(err, &rne) {
+		writeError(w, http.StatusBadRequest, "reserved_name", "Il nome "+rne.Name+" è riservato.")
+		return
+	}
 	var aee *orgs.AlreadyExistsError
 	if errors.As(err, &aee) {
 		writeError(w, http.StatusConflict, "already_exists", "Organizzazione gia' esistente.")
