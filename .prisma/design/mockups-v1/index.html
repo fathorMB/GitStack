@@ -375,7 +375,7 @@ p{margin:0}
     <optgroup label="Accesso"><option value="login">01 · Login</option></optgroup>
     <optgroup label="Workspace"><option value="home">02 · Home (dashboard)</option><option value="repos">03 · Repositories</option><option value="new-repo">04 · New repository</option><option value="notifications">05 · Notifications</option></optgroup>
     <optgroup label="Repository"><option value="repo-empty">06 · Empty repository (quick setup)</option><option value="repo-code">07 · Code</option><option value="repo-file">08 · File view</option><option value="repo-commits">09 · Commits</option><option value="commit">10 · Commit diff</option><option value="repo-webhooks">11 · Settings · Webhooks</option><option value="repo-general">18 · Settings · General</option></optgroup>
-    <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option></optgroup>
+    <optgroup label="Issues"><option value="issues">12 · Issue list</option><option value="issue">13 · Issue detail</option><option value="new-issue">20 · New issue</option></optgroup>
     <optgroup label="Account e organizzazione"><option value="tokens">14 · Access tokens &amp; SSH keys</option><option value="org">15 · Organization · Teams</option><option value="deleted-repos">19 · Deleted repositories</option></optgroup>
     <optgroup label="Amministrazione"><option value="admin">16 · Admin · System</option><option value="agents">17 · Admin · Agents</option></optgroup>
   </select>
@@ -883,7 +883,7 @@ make dev</pre>
 </section>
 
 <!-- ============ 12 ISSUE LIST ============ -->
-<section class="screen" data-screen="issues" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Issues</b>" data-desc="Lista issues del repo: filtri, ricerca con sintassi tipo GitHub, etichette, milestone, assegnatari (anche agenti).">
+<section class="screen" data-screen="issues" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>Issues</b>" data-desc="Lista issues del repo: ricerca con sintassi GitHub (I10), etichette, milestone, assegnatari anche agenti (I6). Chiuse come completate o scartate con icone diverse e filtro reason: (I2).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -893,7 +893,7 @@ make dev</pre>
       <div class="input-icon" style="flex:1"><svg class="icon"><use href="#i-search"/></svg><input class="input mono" style="font-family:var(--font-mono);font-size:13px" value="is:open label:bug "></div>
       <button class="btn"><svg class="icon"><use href="#i-tag"/></svg>Labels <span class="counter">9</span></button>
       <button class="btn"><svg class="icon"><use href="#i-flag"/></svg>Milestones <span class="counter">2</span></button>
-      <button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New issue</button>
+      <button class="btn btn-primary" data-go="new-issue"><svg class="icon"><use href="#i-plus"/></svg>New issue</button>
     </div>
     <div class="list ilist">
       <div class="list-row list-head" style="align-items:center">
@@ -904,25 +904,26 @@ make dev</pre>
       <div class="list-row hover"><svg class="icon" style="color:var(--success);margin-top:3px"><use href="#i-issue"/></svg><div style="flex:1"><a class="ititle" data-go="issue">Webhook deliveries retry forever on 410</a> <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#b8720b">needs triage</span><div class="imeta">#57 opened 2 hours ago by lbianchi · <svg class="icon" style="width:13px;height:13px"><use href="#i-flag"/></svg> v0.5</div></div><span class="iright"><span class="avatar av-a">MR</span><span style="width:34px"><svg class="icon"><use href="#i-msg"/></svg> 1</span></span></div>
       <div class="list-row hover"><svg class="icon" style="color:var(--success);margin-top:3px"><use href="#i-issue"/></svg><div style="flex:1"><a class="ititle" data-go="issue">Push over SSH fails with ed25519 keys</a> <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span><div class="imeta">#41 opened yesterday by gverdi · <svg class="icon" style="width:13px;height:13px"><use href="#i-flag"/></svg> v0.5 · <svg class="icon" style="width:13px;height:13px"><use href="#i-commit"/></svg> 2 linked commits</div></div><span class="iright"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><span style="width:34px"><svg class="icon"><use href="#i-msg"/></svg> 4</span></span></div>
       <div class="list-row hover"><svg class="icon" style="color:var(--success);margin-top:3px"><use href="#i-issue"/></svg><div style="flex:1"><a class="ititle" data-go="issue">Rate limiter ignores X-Forwarded-For behind Traefik</a> <span class="label" style="--lc:#d73a4a">bug</span><div class="imeta">#36 opened 5 days ago by fneri</div></div><span class="iright"><span class="avatar av-d">FN</span><span style="width:34px"><svg class="icon"><use href="#i-msg"/></svg> 7</span></span></div>
-      <div class="list-row hover"><svg class="icon" style="color:var(--success);margin-top:3px"><use href="#i-issue"/></svg><div style="flex:1"><a class="ititle" data-go="issue">Return 404 instead of 403 for private repos to anonymous users</a> <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#1a8f4c">good first issue</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span><div class="imeta">#29 opened last week by mrossi · <svg class="icon" style="width:13px;height:13px"><use href="#i-flag"/></svg> v0.5</div></div><span class="iright"><span style="width:24px"></span><span style="width:34px"></span></span></div>
+      <div class="list-row hover"><svg class="icon" style="color:var(--success);margin-top:3px"><use href="#i-issue"/></svg><div style="flex:1"><a class="ititle" data-go="issue">Return 404 instead of 403 for private repos to users without access</a> <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#1a8f4c">good first issue</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span><div class="imeta">#29 opened last week by mrossi · <svg class="icon" style="width:13px;height:13px"><use href="#i-flag"/></svg> v0.5</div></div><span class="iright"><span style="width:24px"></span><span style="width:34px"></span></span></div>
     </div>
-    <p class="small muted" style="margin-top:12px;text-align:center"><svg class="icon"><use href="#i-info"/></svg> Tip: <span class="mono">assignee:@agents</span> shows issues assigned to coding agents. Same filters work with <span class="mono">gs issue list --search</span>.</p>
+    <div class="row small muted" style="margin-top:12px;justify-content:center;gap:18px"><span class="row" style="gap:5px"><svg class="icon" style="color:var(--closed)"><use href="#i-issue-closed"/></svg>Closed as completed <span class="mono">reason:completed</span></span><span class="row" style="gap:5px"><svg class="icon" style="color:var(--text-subtle)"><use href="#i-x"/></svg>Closed as not planned or duplicate <span class="mono">reason:not-planned</span> <span class="mono">reason:duplicate</span></span></div>
+    <p class="small muted" style="margin-top:8px;text-align:center"><svg class="icon"><use href="#i-info"/></svg> Tip: <span class="mono">assignee:@agents</span> shows issues assigned to coding agents. Same filters work with <span class="mono">gs issue list --search</span>.</p>
   </div>
 </section>
 
 <!-- ============ 13 ISSUE DETAIL ============ -->
-<section class="screen" data-screen="issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue: cronologia con commenti umani e dell'agente, commit collegati, chiusura automatica, barra laterale con assegnatari, etichette, milestone.">
+<section class="screen" data-screen="issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>#41</b>" data-desc="Dettaglio issue: cronologia con commenti umani e dell'agente, testo modificato (edited, I4), allegato (I9), commit collegati, chiusura come completata (I2), barra laterale con assegnatari, etichette, milestone e, per gli admin, blocco della discussione (I11) e nascondi issue (I4).">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
   </div></div>
   <div class="page">
-    <div class="row" style="margin-bottom:8px;flex-wrap:nowrap;align-items:flex-start"><h1 class="issue-title" style="flex:1">Push over SSH fails with ed25519 keys <span>#41</span></h1><button class="btn">Edit</button><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New issue</button></div>
-    <div class="row" style="padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:22px"><span class="badge badge-closed"><svg class="icon"><use href="#i-issue-closed"/></svg>Closed</span><span class="muted"><b style="color:var(--text)">gverdi</b> opened this issue yesterday · 4 comments</span></div>
+    <div class="row" style="margin-bottom:8px;flex-wrap:nowrap;align-items:flex-start"><h1 class="issue-title" style="flex:1">Push over SSH fails with ed25519 keys <span>#41</span></h1><button class="btn">Edit</button><button class="btn btn-primary" data-go="new-issue"><svg class="icon"><use href="#i-plus"/></svg>New issue</button></div>
+    <div class="row" style="padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:22px"><span class="badge badge-closed"><svg class="icon"><use href="#i-issue-closed"/></svg>Closed as completed</span><span class="muted"><b style="color:var(--text)">gverdi</b> opened this issue yesterday · 4 comments</span></div>
     <div class="issue-grid">
       <div class="timeline">
-        <div class="cmt"><span class="avatar avatar-lg av-c">GV</span><div class="cmt-box"><div class="cmt-h"><b>gverdi</b><span class="muted">commented yesterday</span><span class="sp"></span><span class="badge">Author</span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-dots"/></svg></button></div><div class="cmt-b"><p>Pushing over SSH fails for everyone using an ed25519 key:</p><pre class="cmdblock" style="margin:0 0 8px">$ git push
-Unable to negotiate with git.acme.local port 2222: no matching host key type found.</pre><p>RSA keys work. Expected: ed25519 should be supported, it is the OpenSSH default.</p></div></div></div>
+        <div class="cmt"><span class="avatar avatar-lg av-c">GV</span><div class="cmt-box"><div class="cmt-h"><b>gverdi</b><span class="muted">commented yesterday · <a class="muted" title="Admins can view previous versions">edited</a></span><span class="sp"></span><span class="badge">Author</span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-dots"/></svg></button></div><div class="cmt-b"><p>Pushing over SSH fails for everyone using an ed25519 key:</p><pre class="cmdblock" style="margin:0 0 8px">$ git push
+Unable to negotiate with git.acme.local port 2222: no matching host key type found.</pre><p>RSA keys work. Expected: ed25519 should be supported, it is the OpenSSH default.</p><span class="row small" style="gap:6px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface-2);display:inline-flex"><svg class="icon"><use href="#i-file"/></svg><span class="mono">ssh-debug.log</span><span class="muted">12 KB</span></span></div></div></div>
         <div class="ev"><span class="evi"><svg class="icon"><use href="#i-tag"/></svg></span><span><b style="color:var(--text)">mrossi</b> added <span class="label" style="--lc:#d73a4a">bug</span> <span class="label" style="--lc:#ff8a3d">agent-ready</span> and milestone <b style="color:var(--text)">v0.5</b> · yesterday</span></div>
         <div class="ev"><span class="evi"><svg class="icon"><use href="#i-user"/></svg></span><span><b style="color:var(--text)">mrossi</b> assigned <b style="color:var(--text)">build-agent</b> <span class="badge badge-agent">agent</span> · 40 min ago</span></div>
         <div class="cmt"><span class="avatar avatar-lg av-bot"><svg class="icon" style="width:20px;height:20px"><use href="#i-bot"/></svg></span><div class="cmt-box"><div class="cmt-h"><b>build-agent</b><span class="badge badge-agent">agent</span><span class="muted">via token <span class="mono">ci-runner</span> · 12 min ago</span><span class="sp"></span><button class="btn btn-ghost btn-sm"><svg class="icon"><use href="#i-dots"/></svg></button></div><div class="cmt-b"><p>Root cause: the SSH server only registers an RSA host key (<code>internal/ssh/server.go:43</code>).</p><p>Plan:</p><ul><li>generate and advertise an ed25519 host key on first start</li><li>keep RSA for older clients</li><li>add tests for both key types</li></ul><p>Working on branch <code>fix/ssh-ed25519</code>.</p></div></div></div>
@@ -937,7 +938,7 @@ Unable to negotiate with git.acme.local port 2222: no matching host key type fou
           <div class="editor" style="flex:1">
             <div class="tabs"><a class="tab active">Write</a><a class="tab">Preview</a></div>
             <textarea class="textarea" placeholder="Leave a comment. Markdown, @mentions and #references supported."></textarea>
-            <div class="editor-f"><svg class="icon"><use href="#i-info"/></svg>Markdown supported · paste images to attach<span class="sp"></span><button class="btn">Reopen issue</button><button class="btn btn-primary">Comment</button></div>
+            <div class="editor-f"><svg class="icon"><use href="#i-info"/></svg>Markdown supported · paste or drop images, PDF, logs, ZIP (max 10 MB)<span class="sp"></span><button class="btn">Reopen issue</button><button class="btn btn-primary">Comment</button></div>
           </div>
         </div>
       </div>
@@ -947,7 +948,54 @@ Unable to negotiate with git.acme.local port 2222: no matching host key type fou
         <div class="side-sec"><h4>Milestone<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row" style="margin-bottom:6px"><svg class="icon muted"><use href="#i-flag"/></svg><b>v0.5</b><span class="sp"></span><span class="small muted">due Oct 15</span></div><div class="progress"><i style="width:64%"></i></div><div class="small muted" style="margin-top:4px">64% complete · 9 of 14 closed</div></div>
         <div class="side-sec"><h4>Linked commits</h4><div class="stack" style="gap:6px"><a class="mono small" data-go="commit">4e1a9c0 fix(ssh): accept…</a><a class="mono small">c81f3e2 test(ssh): cover…</a></div></div>
         <div class="side-sec"><h4>Notifications</h4><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-bell"/></svg>Unsubscribe</button><p class="small muted" style="margin-top:6px">You're receiving notifications because you're the owner.</p></div>
+        <div class="side-sec"><h4>Admin</h4><div class="stack" style="gap:6px"><button class="btn btn-sm" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-lock"/></svg>Lock conversation</button><button class="btn btn-sm btn-danger" style="width:100%;justify-content:center"><svg class="icon"><use href="#i-eye"/></svg>Hide issue</button></div><p class="small muted" style="margin-top:6px">Locked: only people with Write can comment. Hidden: content visible to admins only; the number is kept.</p></div>
         <div class="side-sec" style="border:0"><h4>For agents</h4><div class="cmdblock" style="font-size:11.5px;padding:8px 10px">gs issue view acme/api-gateway#41 --json</div></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 20 NEW ISSUE ============ -->
+<section class="screen" data-screen="new-issue" data-nav="issues" data-crumb="<a>acme</a><span class='sep'>/</span><a>api-gateway</a><span class='sep'>/</span><b>New issue</b>" data-desc="Nuova issue: scelta del modello da .gitstack/ISSUE_TEMPLATE/ (I11), editor Markdown con allegati fino a 10 MB (I9). Assegnatari, etichette e milestone visibili solo a chi ha write (I3, I6); chi ha read apre comunque la issue.">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / api-gateway</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
+    <div class="tabs"><a class="tab" data-go="repo-code"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab active" data-go="issues"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">12</span></a><a class="tab" data-go="repo-commits"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="repo-general"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <h1 style="font-size:22px;font-weight:600;margin-bottom:4px">New issue</h1>
+    <p class="muted" style="margin-bottom:16px">Pick a template. Templates live in the repository under <span class="mono">.gitstack/ISSUE_TEMPLATE/</span>.</p>
+    <div class="scope-grid" style="margin-bottom:22px">
+      <label class="check scope" style="border-color:var(--accent);background:var(--accent-soft)"><input type="radio" name="tpl" checked><span><b>Bug report</b><br><span class="small muted">Something doesn't work as expected. Adds <span class="label" style="--lc:#d73a4a">bug</span></span></span></label>
+      <label class="check scope"><input type="radio" name="tpl"><span><b>Feature request</b><br><span class="small muted">Propose an improvement. Adds <span class="label" style="--lc:#a2eeef">enhancement</span></span></span></label>
+      <label class="check scope"><input type="radio" name="tpl"><span><b>Agent task</b><br><span class="small muted">Precise goal and acceptance criteria. Adds <span class="label" style="--lc:#ff8a3d">agent-ready</span></span></span></label>
+      <label class="check scope"><input type="radio" name="tpl"><span><b>Blank issue</b><br><span class="small muted">Start from an empty description.</span></span></label>
+    </div>
+    <div class="issue-grid">
+      <div class="stack" style="gap:14px">
+        <div class="field"><label>Title</label><input class="input" value="Clone over HTTPS fails with expired token message"></div>
+        <div class="editor">
+          <div class="tabs"><a class="tab active">Write</a><a class="tab">Preview</a></div>
+          <textarea class="textarea" style="min-height:220px;font-family:var(--font-mono);font-size:13px">## What happened
+Cloning with a valid token returns "token expired".
+
+## Steps to reproduce
+1. Create a token with scope repo:read
+2. git clone https://git.acme.local/acme/api-gateway.git
+
+## Expected
+The clone succeeds.
+
+## Environment
+GitStack version: v0.5.0</textarea>
+          <div class="editor-f" style="flex-wrap:wrap;gap:8px"><span class="row small" style="gap:6px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface-2)"><svg class="icon"><use href="#i-file"/></svg><span class="mono">git-clone-trace.log</span><span class="muted">48 KB</span><svg class="icon muted"><use href="#i-x"/></svg></span><span class="row small" style="gap:6px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface-2)"><svg class="icon"><use href="#i-file"/></svg><span class="mono">screenshot.png</span><span class="muted">312 KB</span><svg class="icon muted"><use href="#i-x"/></svg></span><span class="sp"></span><span class="small muted">Paste or drop images, PDF, logs, ZIP · max 10 MB each</span></div>
+        </div>
+        <div class="row"><span class="small muted">Only people who can see this repository can open attachments.</span><span class="sp"></span><button class="btn" data-go="issues">Cancel</button><button class="btn btn-primary" data-go="issue">Submit new issue</button></div>
+      </div>
+      <aside>
+        <div class="side-sec"><h4>Assignees<svg class="icon"><use href="#i-settings"/></svg></h4><div class="small muted">No one — <a>assign yourself</a></div></div>
+        <div class="side-sec"><h4>Labels<svg class="icon"><use href="#i-settings"/></svg></h4><div class="row" style="gap:6px"><span class="label" style="--lc:#d73a4a">bug</span></div></div>
+        <div class="side-sec"><h4>Milestone<svg class="icon"><use href="#i-settings"/></svg></h4><div class="small muted">No milestone</div></div>
+        <div class="side-sec" style="border:0"><p class="small muted">Assignees, labels and milestone can be set by people with <b>Write</b> access. Anyone who can see the repository can open an issue.</p></div>
       </aside>
     </div>
   </div>

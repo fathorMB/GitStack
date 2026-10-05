@@ -10,6 +10,7 @@
 
 - [[knowledge/topics/identita-e-sicurezza]] — Identità, autenticazione e permessi
 - [[knowledge/topics/installazione-e-deploy]] — Installazione, deploy e operazioni
+- [[knowledge/topics/issues]] — Issues: regole di prodotto
 - [[knowledge/topics/repository-git]] — Repository Git: regole di prodotto
 ## technical-choices
 

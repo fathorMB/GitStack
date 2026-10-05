@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "PROP-9be9cb4b-e31f-48aa-95a3-14c8717f3514",
+  "state": "applied",
+  "created": "2026-10-05T08:41:52+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Issues: regole di prodotto\" con le regole I1–I11; nuovo documento Issues; scope M-05 aggiornato (orizzonte invariato); rimando in D10; mockup v1 segnati needs_update.",
+    "targets": [
+      "TOP-5dd4b056-b64a-4878-9266-6dc2e134dd00",
+      "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
+      "OBJ-43ae9cfe-b093-4063-a4d8-90e6cf6827e2",
+      "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+      "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0"
+    ],
+    "before_digests": {
+      "roadmap/analysis/issues-regole.md": "24e8b9fa1afd1a469e6dd9484f1209dab047ff414fe632025da712c48905d2cb",
+      "roadmap/product/m-05-issues.md": "9cfced5982cdf2b7150d65324efe99177137eea3058be376353597f396dfe918",
+      "knowledge/topics/decisioni.md": "09d132b2d6651ccc8820640561b9bcaecfd9b15f6e128081f8c44da55a6b50e0",
+      "knowledge/INDEX.md": "907b7d23bb0cc71fda8f3f8fc26c68817cce359fdbd91cf4dbc56444468967d1",
+      "design/mockups-v1/manifest.json": "b5986bdc7f947d51b8fe65bb3d3d0503447096baf6fdece4604a881087faef9f"
+    },
+    "operations": [
+      {
+        "target": "TOP-5dd4b056-b64a-4878-9266-6dc2e134dd00",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (I1–I11)."
+      },
+      {
+        "target": "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
+        "op": "create",
+        "path": "knowledge/topics/issues.md"
+      },
+      {
+        "target": "OBJ-43ae9cfe-b093-4063-a4d8-90e6cf6827e2",
+        "op": "update_scope",
+        "reason": "Regole I1–I11 e fuori-scope v1."
+      },
+      {
+        "target": "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+        "op": "update",
+        "reason": "D10 rimanda alle regole I1–I11 (decisione invariata)."
+      },
+      {
+        "target": "knowledge/INDEX.md",
+        "op": "update",
+        "reason": "Aggiunto issues."
+      },
+      {
+        "target": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
+        "op": "set_status",
+        "status": "needs_update"
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–11 nella sessione di analisi del 2026-10-05",
+      "design/mockups-v1/index.html (schermate 04, 12, 13)"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" dopo il riepilogo della proposta (I1–I11, nuovo documento, scope M-05, rimando D10, mockup da aggiornare)."
+  }
+}
