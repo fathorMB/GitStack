@@ -47,6 +47,9 @@
          contents, raw (https.txt e page.html come text/plain, mai text/html;
          image.svg come octet-stream con attachment; nosniff e CSP
          sandbox), commits e dettaglio, e 401/404 senza credenziali.
+      e7. prefisso API della UI (GIT-151): legge API_BASE_URL da
+         web/src/lib/http.ts e, con quel prefisso, verifica sessione 401
+         JSON, login admin e sessione 200 col cookie (la UI passa di li).
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -794,6 +797,53 @@ function Main {
             foreach ($n in $savedEnv6.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv6[$n]) }
         }
         Add-StepResult -Name 'e6. browser del codice: tree, contents, raw (https.txt e page.html text/plain; image.svg octet-stream+attachment; nosniff, sandbox), commits, nessun dato senza credenziali' -Ok $e6Ok -Detail ($e6Details -join '; ')
+
+        # --- e7. prefisso API della UI, con login (GIT-151) ---------------
+        # La UI chiama <API_BASE_URL>/<percorso> (web/src/lib/http.ts), non
+        # /api/v1 scritto a mano: il prefisso si legge dal sorgente. Con '/api'
+        # l'Ingress toglie /api e il gateway riceve /auth/session (404). Il
+        # passo e3 ha gia cambiato la password dell'admin: si prova prima
+        # quella nuova, poi la iniziale del Secret (mai stampate).
+        Write-Log "==> Passo e7: prefisso API della UI (sessione 401, login admin, sessione 200 col cookie) ..."
+        $e7Ok = $true
+        $e7Details = @()
+        $uiHttpTs = Join-Path $PSScriptRoot '..\..\web\src\lib\http.ts'
+        $uiPrefix = $null
+        if (Test-Path -LiteralPath $uiHttpTs) {
+            $m7 = Select-String -LiteralPath $uiHttpTs -Pattern "^export const API_BASE_URL = '([^']*)';" | Select-Object -First 1
+            if ($m7) { $uiPrefix = $m7.Matches[0].Groups[1].Value }
+        }
+        if (-not $uiPrefix) {
+            $e7Ok = $false
+            $e7Details += "API_BASE_URL non trovato in web/src/lib/http.ts"
+        } else {
+            $uiBase = "$baseUrl$uiPrefix"
+            $uiSess = Invoke-HttpRaw -Uri "$uiBase/auth/session"
+            $uiCt = if ($uiSess.Headers -and $uiSess.Headers['content-type']) { [string]$uiSess.Headers['content-type'] } else { '' }
+            if ($uiSess.StatusCode -ne 401 -or $uiSess.Body -notmatch 'unauthenticated' -or $uiCt -notmatch 'application/json') {
+                $e7Ok = $false
+                $e7Details += "GET $uiPrefix/auth/session senza cookie: status $($uiSess.StatusCode) content-type '$uiCt' (atteso 401 JSON unauthenticated), corpo '$($uiSess.Body)' $($uiSess.Error)"
+            }
+            $uiCookie = $null
+            $uiLastStatus = $null
+            foreach ($candidate in @($adminNewPassword, $adminInitialPassword)) {
+                if ([string]::IsNullOrEmpty($candidate)) { continue }
+                $uiLogin = Invoke-HttpRaw -Uri "$uiBase/auth/login" -Method 'POST' -Body (@{ username = 'admin'; password = $candidate } | ConvertTo-Json)
+                $uiLastStatus = $uiLogin.StatusCode
+                if ($uiLogin.StatusCode -eq 200 -and $uiLogin.Cookie) { $uiCookie = $uiLogin.Cookie; break }
+            }
+            if (-not $uiCookie) {
+                $e7Ok = $false
+                $e7Details += "POST $uiPrefix/auth/login dell'admin: ultimo status $uiLastStatus (atteso 200 con cookie di sessione)"
+            } else {
+                $uiSess2 = Invoke-HttpRaw -Uri "$uiBase/auth/session" -Cookie $uiCookie
+                if ($uiSess2.StatusCode -ne 200 -or $uiSess2.Body -notmatch '"username"') {
+                    $e7Ok = $false
+                    $e7Details += "GET $uiPrefix/auth/session col cookie: status $($uiSess2.StatusCode) (atteso 200), corpo '$($uiSess2.Body)'"
+                }
+            }
+        }
+        Add-StepResult -Name 'e7. prefisso API della UI (letto da web/src/lib/http.ts): sessione 401 JSON, login admin, sessione 200 col cookie' -Ok $e7Ok -Detail ($e7Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
