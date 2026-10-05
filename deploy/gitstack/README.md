@@ -107,7 +107,7 @@ Le richieste smart HTTP (`/<owner>/<repo>.git/info/refs`, `/git-upload-pack`, `/
 
 ## Servizio git (GIT-74)
 
-Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) si attiva con `git.ssh.enabled` (sotto). Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`).
+Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) si attiva con `git.ssh.enabled` (sotto). Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`). Dopo ogni push accettato (HTTPS o SSH) il servizio pubblica `git.push` sul NATS interno (`GITSTACK_GIT_NATS_URL`, GIT-73, schema in `docs/events.md`); con NATS giù i push restano accettati.
 
 | Value | Default | Significato |
 |---|---|---|

@@ -18,6 +18,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
+	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
@@ -97,9 +98,14 @@ type env struct {
 	off   clientKey // carol, disattivata
 	other clientKey // sconosciuta
 	hk    string
+	// events è il notifier di git.push (nil = nessun evento).
+	events *pushevent.Notifier
 }
 
-func start(t *testing.T) *env {
+func start(t *testing.T) *env { return startWith(t, nil) }
+
+// startWith come start, con il notifier di git.push (nil = nessun evento).
+func startWith(t *testing.T, events *pushevent.Notifier) *env {
 	t.Helper()
 	for _, bin := range []string{"git", "ssh"} {
 		if _, err := exec.LookPath(bin); err != nil {
@@ -117,10 +123,10 @@ func start(t *testing.T) *env {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	e := &env{store: store, rw: newClientKey(t), ro: newClientKey(t), off: newClientKey(t), other: newClientKey(t)}
+	e := &env{events: events, store: store, rw: newClientKey(t), ro: newClientKey(t), off: newClientKey(t), other: newClientKey(t)}
 	e.dir = &fakeDir{
 		keys: map[string]access.KeyOwner{
-			e.rw.fp:  {UserID: "u-alice", Username: "alice", Active: true},
+			e.rw.fp:  {UserID: "u-alice", Username: "alice", Kind: "agent", Active: true},
 			e.ro.fp:  {UserID: "u-bob", Username: "bob", Active: true},
 			e.off.fp: {UserID: "u-carol", Username: "carol", Active: false},
 		},
@@ -141,7 +147,7 @@ func (e *env) launch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := New(Config{Addr: "127.0.0.1:0", HostKey: hk, Auth: &access.Authorizer{Identity: e.dir, Core: e.dir, Disk: e.store}, Keys: e.dir, Rules: rules})
+	srv, err := New(Config{Addr: "127.0.0.1:0", HostKey: hk, Auth: &access.Authorizer{Identity: e.dir, Core: e.dir, Disk: e.store}, Keys: e.dir, Rules: rules, Events: e.events})
 	if err != nil {
 		t.Fatal(err)
 	}

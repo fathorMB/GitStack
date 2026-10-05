@@ -14,6 +14,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
@@ -100,9 +101,11 @@ type env struct {
 	core  *fakeCore
 }
 
-func setup(t *testing.T) *env { return setupWith(t, receiverules.DefaultLimits()) }
+func setup(t *testing.T) *env { return setupWith(t, receiverules.DefaultLimits(), nil) }
 
-func setupWith(t *testing.T, limits receiverules.Limits) *env {
+// setupWith come setup, con i limiti del push e il notifier di git.push
+// (nil = nessun evento).
+func setupWith(t *testing.T, limits receiverules.Limits, events *pushevent.Notifier) *env {
 	t.Helper()
 	bin := gitBin(t)
 	store, err := repostore.New(t.TempDir())
@@ -150,6 +153,7 @@ func setupWith(t *testing.T, limits receiverules.Limits) *env {
 		Auth:   &access.Authorizer{Identity: ident, Core: core, Disk: store},
 		GitBin: bin,
 		Rules:  rules,
+		Events: events,
 	}
 	srv := httptest.NewServer(httpserver.NewRouter(httpserver.Deps{Store: store, Secret: "s", Git: h}))
 	t.Cleanup(srv.Close)

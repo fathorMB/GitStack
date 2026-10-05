@@ -80,7 +80,7 @@ func TestPushFileOltreLaSogliaRifiutato(t *testing.T) {
 }
 
 func TestPushSogliaConfigurabile(t *testing.T) {
-	e := setupWith(t, receiverules.Limits{MaxBlobBytes: 1 << 10})
+	e := setupWith(t, receiverules.Limits{MaxBlobBytes: 1 << 10}, nil)
 	w := cloneAlice(t, e)
 	writeSized(t, filepath.Join(w, "due.bin"), 2<<10)
 	mustGit(t, w, "add", ".")
@@ -90,7 +90,7 @@ func TestPushSogliaConfigurabile(t *testing.T) {
 		t.Fatalf("err=%v\n%s", err, out)
 	}
 	// Soglia a zero: nessun limite.
-	e = setupWith(t, receiverules.Limits{})
+	e = setupWith(t, receiverules.Limits{}, nil)
 	w = cloneAlice(t, e)
 	writeSized(t, filepath.Join(w, "due.bin"), 2<<10)
 	mustGit(t, w, "add", ".")
@@ -99,7 +99,7 @@ func TestPushSogliaConfigurabile(t *testing.T) {
 }
 
 func TestPushRepoGrandeAvvisaMaAccetta(t *testing.T) {
-	e := setupWith(t, receiverules.Limits{MaxBlobBytes: 100 << 20, WarnRepoBytes: 1 << 10})
+	e := setupWith(t, receiverules.Limits{MaxBlobBytes: 100 << 20, WarnRepoBytes: 1 << 10}, nil)
 	w := cloneAlice(t, e)
 	mustGit(t, w, "commit", "--allow-empty", "-m", "vuoto")
 	out, err := git(t, w, "push", "origin", "HEAD")

@@ -21,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
@@ -61,6 +62,28 @@ func run(out io.Writer) int {
 		logger.Warn("directory dei dati non pronta: /readyz risponde 503", "dir", cfg.DataDir, "err", err)
 	}
 
+	// git.push su NATS: la connessione si riprova in background, quindi un
+	// NATS giù all'avvio non impedisce il servizio.
+	var events *pushevent.Notifier
+	if cfg.NatsURL == "" {
+		logger.Warn("git.push non verrà pubblicato: NATS non configurato", "env", config.EnvNatsURL)
+	} else {
+		np, err := pushevent.NewNATSPublisher(cfg.NatsURL)
+		if err != nil {
+			logger.Error("NATS non configurabile", "err", err)
+			return 1
+		}
+		defer np.Close()
+		events = &pushevent.Notifier{Pub: np, Git: runner, Logger: logger}
+		defer func() {
+			wctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if !events.Wait(wctx) {
+				logger.Warn("arresto: pubblicazioni di git.push ancora in corso, interrotte")
+			}
+		}()
+	}
+
 	// Un solo upstream.Client e un solo Authorizer per smart HTTP e SSH.
 	var (
 		gitHandler http.Handler
@@ -77,7 +100,7 @@ func run(out io.Writer) int {
 			logger.Error("regole alla ricezione del push non installabili", "err", err)
 			return 1
 		}
-		gitHandler = &smarthttp.Handler{Auth: auth, Logger: logger, Rules: rules}
+		gitHandler = &smarthttp.Handler{Auth: auth, Logger: logger, Rules: rules, Events: events}
 	} else {
 		logger.Warn("smart HTTP non configurato: servono identity, core e segreto di servizio", "env", []string{config.EnvIdentityURL, config.EnvCoreURL, config.EnvServiceSecret})
 		gitHandler = unconfigured{}
@@ -96,7 +119,7 @@ func run(out io.Writer) int {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	sshSrv, err := startSSH(cfg, auth, keys, rules, logger)
+	sshSrv, err := startSSH(cfg, auth, keys, rules, events, logger)
 	if err != nil {
 		logger.Error("server SSH non avviabile", "err", err)
 		return 1
@@ -157,7 +180,7 @@ func (unconfigured) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 // access.Authorizer dello smart HTTP. nil, nil se è disattivato
 // (GITSTACK_GIT_SSH_ADDR=off) o se manca la configurazione di identity e
 // core (auth nil): in quel caso lo dice nel log.
-func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, rules *receiverules.Rules, logger *slog.Logger) (*sshd.Server, error) {
+func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, rules *receiverules.Rules, events *pushevent.Notifier, logger *slog.Logger) (*sshd.Server, error) {
 	if cfg.SSHAddr == "" {
 		logger.Info("server SSH disattivato", "env", config.EnvSSHAddr)
 		return nil, nil
@@ -177,6 +200,7 @@ func startSSH(cfg config.Config, auth *access.Authorizer, keys access.Keys, rule
 		Auth:    auth,
 		Keys:    keys,
 		Rules:   rules,
+		Events:  events,
 		Logger:  logger,
 	})
 	if err != nil {
