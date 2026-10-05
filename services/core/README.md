@@ -136,7 +136,7 @@ Operazioni del tag `repos`: `POST /repos`, `GET /repos`, `GET|PATCH /repos/{owne
 | `GITSTACK_GIT_URL` | no | — | URL interno del servizio git (es. `http://git:8080`). Senza, un warn all'avvio e creare/modificare i repo risponde 503 (come senza `GITSTACK_IDENTITY_URL`); il chart la emette solo con `git.enabled` |
 | `GITSTACK_CORE_PUBLIC_URL` | consigliata | — | Base HTTPS pubblica per gli indirizzi di clone (es. `https://git.example.com`). Senza, un warn all'avvio e gli indirizzi si compongono dalla richiesta: `X-Forwarded-Proto`/`X-Forwarded-Host` (scritti dal gateway), altrimenti `Host` con `http`; l'host SSH di default diventa quello |
 | `GITSTACK_CORE_SSH_HOST` | no | host di `PUBLIC_URL` (o della richiesta) | Host dell'indirizzo SSH |
-| `GITSTACK_CORE_SSH_PORT` | no | `2222` | Porta SSH dell'installazione (R7) |
+| `GITSTACK_CORE_SSH_PORT` | no | `2222` | Porta SSH dell'installazione (R7); `off` = SSH spento: `cloneUrls` senza `ssh` né `sshShort` |
 
 Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).
 

@@ -70,7 +70,9 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
 // li costruisce mai. L'SSH usa la porta dell'installazione (R7, 2222).
 export function QuickSetup({ repo }: { repo: Repository }) {
   const [tab, setTab] = useState<'https' | 'ssh'>('https');
-  const url = repo.cloneUrls[tab];
+  const sshAvailable = Boolean(repo.cloneUrls.ssh);
+  const activeTab = tab === 'ssh' && !sshAvailable ? 'https' : tab;
+  const url = (activeTab === 'ssh' ? repo.cloneUrls.ssh : repo.cloneUrls.https) ?? '';
   const branch = repo.defaultBranch || 'main';
   return (
     <section className="card section-gap" aria-label="Quick setup">
@@ -79,12 +81,14 @@ export function QuickSetup({ repo }: { repo: Repository }) {
         Quick setup
         <span className="sp" />
         <span className="seg" role="group" aria-label="Clone protocol">
-          <button type="button" className={tab === 'https' ? 'active' : undefined} aria-pressed={tab === 'https'} onClick={() => setTab('https')}>
+          <button type="button" className={activeTab === 'https' ? 'active' : undefined} aria-pressed={activeTab === 'https'} onClick={() => setTab('https')}>
             HTTPS
           </button>
-          <button type="button" className={tab === 'ssh' ? 'active' : undefined} aria-pressed={tab === 'ssh'} onClick={() => setTab('ssh')}>
-            SSH
-          </button>
+          {sshAvailable ? (
+            <button type="button" className={activeTab === 'ssh' ? 'active' : undefined} aria-pressed={activeTab === 'ssh'} onClick={() => setTab('ssh')}>
+              SSH
+            </button>
+          ) : null}
         </span>
       </div>
       <div className="card-b stack form-stack">

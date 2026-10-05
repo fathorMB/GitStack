@@ -72,6 +72,10 @@ type Config struct {
 	// default 2222, R7).
 	SSHPort int
 
+	// SSHEnabled è false quando GITSTACK_CORE_SSH_PORT vale "off" (server SSH
+	// dell'installazione spento): core non pubblica gli indirizzi di clone SSH.
+	SSHEnabled bool
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -164,6 +168,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	cfg.SSHPort = defaultSSHPort
+	cfg.SSHEnabled = true
 	if v, ok := lookup(envGitURL); ok {
 		cfg.GitURL = strings.TrimSpace(v)
 	}
@@ -174,9 +179,11 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		cfg.SSHHost = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envSSHPort); ok && strings.TrimSpace(v) != "" {
-		n, err := strconv.Atoi(strings.TrimSpace(v))
-		if err != nil || n < 1 || n > 65535 {
-			errs = append(errs, fmt.Sprintf("%s non è una porta valida (1-65535): %q", envSSHPort, v))
+		if strings.EqualFold(strings.TrimSpace(v), "off") {
+			cfg.SSHEnabled = false
+			cfg.SSHPort = 0
+		} else if n, err := strconv.Atoi(strings.TrimSpace(v)); err != nil || n < 1 || n > 65535 {
+			errs = append(errs, fmt.Sprintf("%s non è una porta valida (1-65535) né \"off\": %q", envSSHPort, v))
 		} else {
 			cfg.SSHPort = n
 		}

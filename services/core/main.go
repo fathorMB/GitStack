@@ -180,7 +180,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		routerOpts = append(routerOpts, httpserver.WithGit(gitAPI))
 	}
 	routerOpts = append(routerOpts,
-		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort}),
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort, SSHOff: !cfg.SSHEnabled}),
 	)
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
 

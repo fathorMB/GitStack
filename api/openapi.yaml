@@ -4618,13 +4618,15 @@ components:
         Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e'
         sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
       additionalProperties: false
-      required: [https, ssh]
+      required: [https]
       properties:
         https:
           type: string
           example: https://git.example.com/alice/my-app.git
         ssh:
           type: string
+          description: >
+            Assente quando il server SSH dell'installazione e' spento.
           example: ssh://git@git.example.com:2222/alice/my-app.git
         sshShort:
           type: string

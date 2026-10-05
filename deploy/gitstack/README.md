@@ -122,7 +122,7 @@ Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fs
 | `core.env.publicUrl` | vuoto | `GITSTACK_CORE_PUBLIC_URL`, emesso solo se valorizzato. |
 | `core.env.sshHost` | vuoto | `GITSTACK_CORE_SSH_HOST`, emesso solo se valorizzato. |
 
-Core riceve `GITSTACK_GIT_URL` (Service interno di git, se `git.enabled`) e `GITSTACK_CORE_SSH_PORT` (`git.ssh.port`).
+Core riceve `GITSTACK_GIT_URL` (Service interno di git, se `git.enabled`) e `GITSTACK_CORE_SSH_PORT` (`git.ssh.port`, oppure `off` quando `git.ssh.enabled=false`: core non pubblica allora nessun indirizzo di clone SSH).
 
 Preflight di `install.sh`: la porta SSH (`git.ssh.port`, letta da `--set git.ssh.port=N`, altrimenti 2222) si aggiunge a 80/443/6443; se è occupata l'installer si ferma con un messaggio che dice di liberarla o di sceglierne un'altra con `--set git.ssh.port=N`. Come per le altre porte il controllo è saltato se k3s è già installato.
 
