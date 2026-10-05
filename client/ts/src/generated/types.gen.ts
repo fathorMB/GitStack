@@ -451,6 +451,154 @@ export type ReadableResourcesResult = {
 };
 
 /**
+ * Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+ *
+ */
+export type RepoName = string;
+
+/**
+ * Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+ *
+ */
+export type RepoVisibility = 'private' | 'internal';
+
+/**
+ * Modello di `.gitignore` per il contenuto iniziale (R5).
+ */
+export type GitignoreTemplate = 'go' | 'node' | 'python' | 'java' | 'dotnet' | 'rust' | 'cpp' | 'terraform' | 'ruby' | 'php';
+
+/**
+ * Modello di licenza per il contenuto iniziale (R5).
+ */
+export type LicenseTemplate = 'mit' | 'apache-2.0' | 'gpl-3.0' | 'agpl-3.0' | 'lgpl-3.0' | 'mpl-2.0' | 'bsd-2-clause' | 'bsd-3-clause' | 'unlicense';
+
+export type OwnerType = 'user' | 'organization';
+
+export type RepoOwner = {
+    type: OwnerType;
+    name: Name;
+};
+
+/**
+ * Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
+ *
+ */
+export type RepoCloneUrls = {
+    https: string;
+    ssh: string;
+};
+
+export type Repository = {
+    /**
+     * Id della risorsa (`type=repo`) in core.
+     */
+    readonly id: string;
+    owner: RepoOwner;
+    name: RepoName;
+    /**
+     * `owner/name`.
+     */
+    fullName: string;
+    description: string;
+    visibility: RepoVisibility;
+    defaultBranch: string;
+    /**
+     * Force-push ed eliminazione del branch principale rifiutati (R9).
+     */
+    protectDefaultBranch: boolean;
+    archived: boolean;
+    archivedAt?: string | null;
+    /**
+     * Il repo non ha ancora nessun commit.
+     */
+    empty: boolean;
+    cloneUrls: RepoCloneUrls;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+};
+
+export type CreateRepositoryInput = {
+    owner: Name;
+    name: RepoName;
+    description?: string;
+    visibility?: RepoVisibility;
+    /**
+     * Crea un `README.md` iniziale (R5).
+     */
+    readme?: boolean;
+    gitignoreTemplate?: GitignoreTemplate;
+    licenseTemplate?: LicenseTemplate;
+};
+
+export type UpdateRepositoryInput = {
+    description?: string;
+    visibility?: RepoVisibility;
+    defaultBranch?: string;
+    protectDefaultBranch?: boolean;
+    archived?: boolean;
+};
+
+export type RepositoryList = {
+    items: Array<Repository>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type DeletedRepository = {
+    id: string;
+    owner: RepoOwner;
+    name: RepoName;
+    deletedAt: string;
+    /**
+     * Dopo questo istante il repo e' cancellato definitivamente (7 giorni, R2).
+     */
+    purgeAt: string;
+};
+
+export type DeletedRepositoryList = {
+    items: Array<DeletedRepository>;
+};
+
+export type ResourceAttributesInput = {
+    ownerType: OwnerType;
+    ownerId: string;
+    visibility: RepoVisibility;
+};
+
+export type OwnerRef = {
+    type: OwnerType;
+    id: string;
+    name: Name;
+};
+
+export type GitCreateRepoInput = {
+    repoId: string;
+    name: RepoName;
+    description?: string;
+    defaultBranch?: string;
+    readme?: boolean;
+    gitignoreTemplate?: GitignoreTemplate;
+    licenseTemplate?: LicenseTemplate;
+    licenseHolder?: string;
+    author: {
+        name: string;
+        email: string;
+    };
+};
+
+export type GitRepoCreated = {
+    repoId: string;
+    empty: boolean;
+};
+
+export type GitRepoState = {
+    repoId: string;
+    trashed: boolean;
+    empty: boolean;
+};
+
+/**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
  */
@@ -667,10 +815,60 @@ export type VerifyCredentialInputWritable = {
     kind?: 'session' | 'token';
 };
 
+export type RepositoryWritable = {
+    owner: RepoOwner;
+    name: RepoName;
+    /**
+     * `owner/name`.
+     */
+    fullName: string;
+    description: string;
+    visibility: RepoVisibility;
+    defaultBranch: string;
+    /**
+     * Force-push ed eliminazione del branch principale rifiutati (R9).
+     */
+    protectDefaultBranch: boolean;
+    archived: boolean;
+    archivedAt?: string | null;
+    /**
+     * Il repo non ha ancora nessun commit.
+     */
+    empty: boolean;
+    cloneUrls: RepoCloneUrls;
+};
+
+export type RepositoryListWritable = {
+    items: Array<RepositoryWritable>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
 /**
  * Identificatore della risorsa.
  */
 export type ResourceIdParam = string;
+
+/**
+ * Filtra per nome dell'utente o dell'organizzazione proprietaria.
+ */
+export type RepoOwnerFilter = Name;
+
+/**
+ * Nome dell'utente o dell'organizzazione proprietaria (R1).
+ */
+export type RepoOwnerParam = Name;
+
+/**
+ * Nome del repo.
+ */
+export type RepoNameParam = RepoName;
+
+/**
+ * Id del repo (la risorsa `type=repo` in core).
+ */
+export type GitRepoIdParam = string;
 
 /**
  * Filtra per tipo di risorsa (es. `repo`).
@@ -2725,6 +2923,372 @@ export type GetMyResourcePermissionResponses = {
 
 export type GetMyResourcePermissionResponse = GetMyResourcePermissionResponses[keyof GetMyResourcePermissionResponses];
 
+export type ListRepositoriesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filtra per nome dell'utente o dell'organizzazione proprietaria.
+         */
+        owner?: Name;
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos';
+};
+
+export type ListRepositoriesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListRepositoriesError = ListRepositoriesErrors[keyof ListRepositoriesErrors];
+
+export type ListRepositoriesResponses = {
+    /**
+     * Pagina di repo.
+     */
+    200: RepositoryList;
+};
+
+export type ListRepositoriesResponse = ListRepositoriesResponses[keyof ListRepositoriesResponses];
+
+export type CreateRepositoryData = {
+    body: CreateRepositoryInput;
+    path?: never;
+    query?: never;
+    url: '/repos';
+};
+
+export type CreateRepositoryErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateRepositoryError = CreateRepositoryErrors[keyof CreateRepositoryErrors];
+
+export type CreateRepositoryResponses = {
+    /**
+     * Repo creato.
+     */
+    201: Repository;
+};
+
+export type CreateRepositoryResponse = CreateRepositoryResponses[keyof CreateRepositoryResponses];
+
+export type ListDeletedRepositoriesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filtra per nome dell'utente o dell'organizzazione proprietaria.
+         */
+        owner?: Name;
+    };
+    url: '/repos/deleted';
+};
+
+export type ListDeletedRepositoriesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListDeletedRepositoriesError = ListDeletedRepositoriesErrors[keyof ListDeletedRepositoriesErrors];
+
+export type ListDeletedRepositoriesResponses = {
+    /**
+     * Repo eliminati.
+     */
+    200: DeletedRepositoryList;
+};
+
+export type ListDeletedRepositoriesResponse = ListDeletedRepositoriesResponses[keyof ListDeletedRepositoriesResponses];
+
+export type RestoreRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Identificatore del repo eliminato (`DeletedRepository.id`).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/repos/deleted/{repoId}/restore';
+};
+
+export type RestoreRepositoryErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RestoreRepositoryError = RestoreRepositoryErrors[keyof RestoreRepositoryErrors];
+
+export type RestoreRepositoryResponses = {
+    /**
+     * Repo ripristinato.
+     */
+    200: Repository;
+};
+
+export type RestoreRepositoryResponse = RestoreRepositoryResponses[keyof RestoreRepositoryResponses];
+
+export type DeleteRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}';
+};
+
+export type DeleteRepositoryErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteRepositoryError = DeleteRepositoryErrors[keyof DeleteRepositoryErrors];
+
+export type DeleteRepositoryResponses = {
+    /**
+     * Repo eliminato.
+     */
+    204: void;
+};
+
+export type DeleteRepositoryResponse = DeleteRepositoryResponses[keyof DeleteRepositoryResponses];
+
+export type GetRepositoryData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}';
+};
+
+export type GetRepositoryErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepositoryError = GetRepositoryErrors[keyof GetRepositoryErrors];
+
+export type GetRepositoryResponses = {
+    /**
+     * Il repo.
+     */
+    200: Repository;
+};
+
+export type GetRepositoryResponse = GetRepositoryResponses[keyof GetRepositoryResponses];
+
+export type UpdateRepositoryData = {
+    body: UpdateRepositoryInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}';
+};
+
+export type UpdateRepositoryErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateRepositoryError = UpdateRepositoryErrors[keyof UpdateRepositoryErrors];
+
+export type UpdateRepositoryResponses = {
+    /**
+     * Repo aggiornato.
+     */
+    200: Repository;
+};
+
+export type UpdateRepositoryResponse = UpdateRepositoryResponses[keyof UpdateRepositoryResponses];
+
 export type VerifyCredentialData = {
     body: VerifyCredentialInputWritable;
     path?: never;
@@ -2908,3 +3472,274 @@ export type LookupSshKeyResponses = {
 };
 
 export type LookupSshKeyResponse = LookupSshKeyResponses[keyof LookupSshKeyResponses];
+
+export type SetResourceAttributesData = {
+    body: ResourceAttributesInput;
+    path: {
+        resourceId: string;
+    };
+    query?: never;
+    url: '/internal/resources/{resourceId}/attributes';
+};
+
+export type SetResourceAttributesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetResourceAttributesError = SetResourceAttributesErrors[keyof SetResourceAttributesErrors];
+
+export type SetResourceAttributesResponses = {
+    /**
+     * Attributi impostati.
+     */
+    204: void;
+};
+
+export type SetResourceAttributesResponse = SetResourceAttributesResponses[keyof SetResourceAttributesResponses];
+
+export type ResolveOwnerData = {
+    body?: never;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/internal/owners/{name}';
+};
+
+export type ResolveOwnerErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ResolveOwnerError = ResolveOwnerErrors[keyof ResolveOwnerErrors];
+
+export type ResolveOwnerResponses = {
+    /**
+     * Owner trovato.
+     */
+    200: OwnerRef;
+};
+
+export type ResolveOwnerResponse = ResolveOwnerResponses[keyof ResolveOwnerResponses];
+
+export type GitCreateRepoData = {
+    body: GitCreateRepoInput;
+    path?: never;
+    query?: never;
+    url: '/internal/git/repos';
+};
+
+export type GitCreateRepoErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitCreateRepoError = GitCreateRepoErrors[keyof GitCreateRepoErrors];
+
+export type GitCreateRepoResponses = {
+    /**
+     * Repo creato.
+     */
+    201: GitRepoCreated;
+};
+
+export type GitCreateRepoResponse = GitCreateRepoResponses[keyof GitCreateRepoResponses];
+
+export type GitDeleteRepoData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}';
+};
+
+export type GitDeleteRepoErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitDeleteRepoError = GitDeleteRepoErrors[keyof GitDeleteRepoErrors];
+
+export type GitDeleteRepoResponses = {
+    /**
+     * Repo cancellato.
+     */
+    204: void;
+};
+
+export type GitDeleteRepoResponse = GitDeleteRepoResponses[keyof GitDeleteRepoResponses];
+
+export type GitGetRepoData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}';
+};
+
+export type GitGetRepoErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitGetRepoError = GitGetRepoErrors[keyof GitGetRepoErrors];
+
+export type GitGetRepoResponses = {
+    /**
+     * Stato del repo.
+     */
+    200: GitRepoState;
+};
+
+export type GitGetRepoResponse = GitGetRepoResponses[keyof GitGetRepoResponses];
+
+export type GitTrashRepoData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}/trash';
+};
+
+export type GitTrashRepoErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitTrashRepoError = GitTrashRepoErrors[keyof GitTrashRepoErrors];
+
+export type GitTrashRepoResponses = {
+    /**
+     * Repo nel cestino.
+     */
+    204: void;
+};
+
+export type GitTrashRepoResponse = GitTrashRepoResponses[keyof GitTrashRepoResponses];
+
+export type GitRestoreRepoData = {
+    body?: never;
+    path: {
+        /**
+         * Id del repo (la risorsa `type=repo` in core).
+         */
+        repoId: string;
+    };
+    query?: never;
+    url: '/internal/git/repos/{repoId}/restore';
+};
+
+export type GitRestoreRepoErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GitRestoreRepoError = GitRestoreRepoErrors[keyof GitRestoreRepoErrors];
+
+export type GitRestoreRepoResponses = {
+    /**
+     * Repo ripristinato.
+     */
+    204: void;
+};
+
+export type GitRestoreRepoResponse = GitRestoreRepoResponses[keyof GitRestoreRepoResponses];

@@ -12,4 +12,6 @@ altre guide utente dedicate, il riferimento è
 `.lmbrain-lite/knowledge/architecture.md` e
 `.lmbrain-lite/knowledge/vision.md`.
 
+`repos.md` (M-03/A) documenta scope, owner/visibilità e API interna dei repo.
+
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).

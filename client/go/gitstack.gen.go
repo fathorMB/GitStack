@@ -75,6 +75,48 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	}
 }
 
+// Defines values for GitignoreTemplate.
+const (
+	Cpp       GitignoreTemplate = "cpp"
+	Dotnet    GitignoreTemplate = "dotnet"
+	Go        GitignoreTemplate = "go"
+	Java      GitignoreTemplate = "java"
+	Node      GitignoreTemplate = "node"
+	Php       GitignoreTemplate = "php"
+	Python    GitignoreTemplate = "python"
+	Ruby      GitignoreTemplate = "ruby"
+	Rust      GitignoreTemplate = "rust"
+	Terraform GitignoreTemplate = "terraform"
+)
+
+// Valid indicates whether the value is a known member of the GitignoreTemplate enum.
+func (e GitignoreTemplate) Valid() bool {
+	switch e {
+	case Cpp:
+		return true
+	case Dotnet:
+		return true
+	case Go:
+		return true
+	case Java:
+		return true
+	case Node:
+		return true
+	case Php:
+		return true
+	case Python:
+		return true
+	case Ruby:
+		return true
+	case Rust:
+		return true
+	case Terraform:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GrantSubjectType.
 const (
 	GrantSubjectTypeTeam GrantSubjectType = "team"
@@ -111,6 +153,45 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for LicenseTemplate.
+const (
+	Agpl30     LicenseTemplate = "agpl-3.0"
+	Apache20   LicenseTemplate = "apache-2.0"
+	Bsd2Clause LicenseTemplate = "bsd-2-clause"
+	Bsd3Clause LicenseTemplate = "bsd-3-clause"
+	Gpl30      LicenseTemplate = "gpl-3.0"
+	Lgpl30     LicenseTemplate = "lgpl-3.0"
+	Mit        LicenseTemplate = "mit"
+	Mpl20      LicenseTemplate = "mpl-2.0"
+	Unlicense  LicenseTemplate = "unlicense"
+)
+
+// Valid indicates whether the value is a known member of the LicenseTemplate enum.
+func (e LicenseTemplate) Valid() bool {
+	switch e {
+	case Agpl30:
+		return true
+	case Apache20:
+		return true
+	case Bsd2Clause:
+		return true
+	case Bsd3Clause:
+		return true
+	case Gpl30:
+		return true
+	case Lgpl30:
+		return true
+	case Mit:
+		return true
+	case Mpl20:
+		return true
+	case Unlicense:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrgRole.
 const (
 	OrgRoleMember OrgRole = "member"
@@ -123,6 +204,24 @@ func (e OrgRole) Valid() bool {
 	case OrgRoleMember:
 		return true
 	case OrgRoleOwner:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OwnerType.
+const (
+	OwnerTypeOrganization OwnerType = "organization"
+	OwnerTypeUser         OwnerType = "user"
+)
+
+// Valid indicates whether the value is a known member of the OwnerType enum.
+func (e OwnerType) Valid() bool {
+	switch e {
+	case OwnerTypeOrganization:
+		return true
+	case OwnerTypeUser:
 		return true
 	default:
 		return false
@@ -162,6 +261,24 @@ func (e PrincipalKind) Valid() bool {
 	case PrincipalKindAgent:
 		return true
 	case PrincipalKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoVisibility.
+const (
+	Internal RepoVisibility = "internal"
+	Private  RepoVisibility = "private"
+)
+
+// Valid indicates whether the value is a known member of the RepoVisibility enum.
+func (e RepoVisibility) Valid() bool {
+	switch e {
+	case Internal:
+		return true
+	case Private:
 		return true
 	default:
 		return false
@@ -329,6 +446,35 @@ type CreateOrganizationInput struct {
 	Name Name `json:"name"`
 }
 
+// CreateRepositoryInput defines model for CreateRepositoryInput.
+type CreateRepositoryInput struct {
+	Description *string `json:"description,omitempty"`
+
+	// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
+	GitignoreTemplate *GitignoreTemplate `json:"gitignoreTemplate,omitempty"`
+
+	// LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
+	LicenseTemplate *LicenseTemplate `json:"licenseTemplate,omitempty"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name RepoName `json:"name"`
+
+	// Owner Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Owner Name `json:"owner"`
+
+	// Readme Crea un `README.md` iniziale (R5).
+	Readme *bool `json:"readme,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
+
 // CreateResourceInput defines model for CreateResourceInput.
 type CreateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
@@ -412,6 +558,27 @@ type CurrentSession struct {
 // CurrentSessionAuthMethod Come e' stato autenticato il chiamante.
 type CurrentSessionAuthMethod string
 
+// DeletedRepository defines model for DeletedRepository.
+type DeletedRepository struct {
+	DeletedAt time.Time          `json:"deletedAt"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name  RepoName  `json:"name"`
+	Owner RepoOwner `json:"owner"`
+
+	// PurgeAt Dopo questo istante il repo e' cancellato definitivamente (7 giorni, R2).
+	PurgeAt time.Time `json:"purgeAt"`
+}
+
+// DeletedRepositoryList defines model for DeletedRepositoryList.
+type DeletedRepositoryList struct {
+	Items []DeletedRepository `json:"items"`
+}
+
 // EffectivePermission defines model for EffectivePermission.
 type EffectivePermission struct {
 	ResourceId openapi_types.UUID `json:"resourceId"`
@@ -435,6 +602,47 @@ type Error struct {
 		Message string `json:"message"`
 	} `json:"error"`
 }
+
+// GitCreateRepoInput defines model for GitCreateRepoInput.
+type GitCreateRepoInput struct {
+	Author struct {
+		Email string `json:"email"`
+		Name  string `json:"name"`
+	} `json:"author"`
+	DefaultBranch *string `json:"defaultBranch,omitempty"`
+	Description   *string `json:"description,omitempty"`
+
+	// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
+	GitignoreTemplate *GitignoreTemplate `json:"gitignoreTemplate,omitempty"`
+	LicenseHolder     *string            `json:"licenseHolder,omitempty"`
+
+	// LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
+	LicenseTemplate *LicenseTemplate `json:"licenseTemplate,omitempty"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name   RepoName           `json:"name"`
+	Readme *bool              `json:"readme,omitempty"`
+	RepoId openapi_types.UUID `json:"repoId"`
+}
+
+// GitRepoCreated defines model for GitRepoCreated.
+type GitRepoCreated struct {
+	Empty  bool               `json:"empty"`
+	RepoId openapi_types.UUID `json:"repoId"`
+}
+
+// GitRepoState defines model for GitRepoState.
+type GitRepoState struct {
+	Empty   bool               `json:"empty"`
+	RepoId  openapi_types.UUID `json:"repoId"`
+	Trashed bool               `json:"trashed"`
+}
+
+// GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
+type GitignoreTemplate string
 
 // Grant Ruolo su una risorsa generica (D15) per un utente o un team.
 type Grant struct {
@@ -474,6 +682,9 @@ type Health struct {
 
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
+
+// LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
+type LicenseTemplate string
 
 // LoginInput defines model for LoginInput.
 type LoginInput struct {
@@ -548,6 +759,21 @@ type OrganizationList struct {
 	Total   int            `json:"total"`
 }
 
+// OwnerRef defines model for OwnerRef.
+type OwnerRef struct {
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name      `json:"name"`
+	Type OwnerType `json:"type"`
+}
+
+// OwnerType defines model for OwnerType.
+type OwnerType string
+
 // Principal Chi ha presentato la credenziale.
 type Principal struct {
 	AuthMethod PrincipalAuthMethod `json:"authMethod"`
@@ -589,6 +815,80 @@ type ReadableResourcesResult struct {
 	ResourceIds []openapi_types.UUID `json:"resourceIds"`
 }
 
+// RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
+type RepoCloneUrls struct {
+	// Https Example: https://git.example.com/alice/my-app.git
+	Https string `json:"https"`
+
+	// Ssh Example: ssh://git@git.example.com:2222/alice/my-app.git
+	Ssh string `json:"ssh"`
+}
+
+// RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoName = string
+
+// RepoOwner defines model for RepoOwner.
+type RepoOwner struct {
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name      `json:"name"`
+	Type OwnerType `json:"type"`
+}
+
+// RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+type RepoVisibility string
+
+// Repository defines model for Repository.
+type Repository struct {
+	Archived   bool       `json:"archived"`
+	ArchivedAt *time.Time `json:"archivedAt,omitempty"`
+
+	// CloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
+	CloneUrls RepoCloneUrls `json:"cloneUrls"`
+	CreatedAt *time.Time    `json:"createdAt,omitempty"`
+
+	// DefaultBranch Example: main
+	DefaultBranch string `json:"defaultBranch"`
+	Description   string `json:"description"`
+
+	// Empty Il repo non ha ancora nessun commit.
+	Empty bool `json:"empty"`
+
+	// FullName `owner/name`.
+	//
+	// Example: alice/my-app
+	FullName string `json:"fullName"`
+
+	// Id Id della risorsa (`type=repo`) in core.
+	Id *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	//
+	//
+	// Example: my-app
+	Name  RepoName  `json:"name"`
+	Owner RepoOwner `json:"owner"`
+
+	// ProtectDefaultBranch Force-push ed eliminazione del branch principale rifiutati (R9).
+	ProtectDefaultBranch bool       `json:"protectDefaultBranch"`
+	UpdatedAt            *time.Time `json:"updatedAt,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
+}
+
+// RepositoryList defines model for RepositoryList.
+type RepositoryList struct {
+	Items   []Repository `json:"items"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+	Total   int          `json:"total"`
+}
+
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
 type Resource struct {
 	// Attributes Attributi specifici del tipo di risorsa, a forma libera.
@@ -602,6 +902,15 @@ type Resource struct {
 	// Example: repo
 	Type      string     `json:"type"`
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+}
+
+// ResourceAttributesInput defines model for ResourceAttributesInput.
+type ResourceAttributesInput struct {
+	OwnerId   openapi_types.UUID `json:"ownerId"`
+	OwnerType OwnerType          `json:"ownerType"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
 }
 
 // ResourceList defines model for ResourceList.
@@ -735,6 +1044,17 @@ type UpdateOrganizationInput struct {
 	DisplayName *string `json:"displayName,omitempty"`
 }
 
+// UpdateRepositoryInput defines model for UpdateRepositoryInput.
+type UpdateRepositoryInput struct {
+	Archived             *bool   `json:"archived,omitempty"`
+	DefaultBranch        *string `json:"defaultBranch,omitempty"`
+	Description          *string `json:"description,omitempty"`
+	ProtectDefaultBranch *bool   `json:"protectDefaultBranch,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
+
 // UpdateResourceInput defines model for UpdateResourceInput.
 type UpdateResourceInput struct {
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
@@ -819,6 +1139,9 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// GitRepoIdParam defines model for GitRepoIdParam.
+type GitRepoIdParam = openapi_types.UUID
+
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
 
@@ -837,6 +1160,21 @@ type PageParam = int
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoNameParam = RepoName
+
+// RepoOwnerFilter Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type RepoOwnerFilter = Name
+
+// RepoOwnerParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type RepoOwnerParam = Name
 
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
@@ -919,6 +1257,20 @@ type ListTeamMembersParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListRepositoriesParams defines parameters for ListRepositories.
+type ListRepositoriesParams struct {
+	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
+	Owner   *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+	Page    *PageParam       `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam    `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListDeletedRepositoriesParams defines parameters for ListDeletedRepositories.
+type ListDeletedRepositoriesParams struct {
+	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
+	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+}
+
 // ListResourcesParams defines parameters for ListResources.
 type ListResourcesParams struct {
 	// Type Filtra per tipo di risorsa (es. `repo`).
@@ -956,11 +1308,17 @@ type ListUsersParams struct {
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
+// GitCreateRepoJSONRequestBody defines body for GitCreateRepo for application/json ContentType.
+type GitCreateRepoJSONRequestBody = GitCreateRepoInput
+
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
 // ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
 type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
+
+// SetResourceAttributesJSONRequestBody defines body for SetResourceAttributes for application/json ContentType.
+type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
 
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
@@ -985,6 +1343,12 @@ type UpdateTeamJSONRequestBody = UpdateTeamInput
 
 // SetTeamMemberJSONRequestBody defines body for SetTeamMember for application/json ContentType.
 type SetTeamMemberJSONRequestBody = SetTeamMemberInput
+
+// CreateRepositoryJSONRequestBody defines body for CreateRepository for application/json ContentType.
+type CreateRepositoryJSONRequestBody = CreateRepositoryInput
+
+// UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
+type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 
 // CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
 type CreateResourceJSONRequestBody = CreateResourceInput
@@ -1147,6 +1511,53 @@ type ClientInterface interface {
 	// Corresponds with GET /health (the `GetHealth` operationId).
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GitCreateRepoWithBody Crea il repo su disco (per core)
+	//
+	// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+	GitCreateRepoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitCreateRepo Crea il repo su disco (per core)
+	//
+	// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+	GitCreateRepo(ctx context.Context, body GitCreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitDeleteRepo Cancella definitivamente un repo (solo dal cestino)
+	//
+	// Risponde 409 se il repo non e' nel cestino.
+	//
+	// Corresponds with DELETE /internal/git/repos/{repoId} (the `GitDeleteRepo` operationId).
+	GitDeleteRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetRepo Stato di un repo su disco
+	//
+	// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
+	GitGetRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitRestoreRepo Ripristina un repo dal cestino (R2)
+	//
+	// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
+	GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitTrashRepo Sposta un repo nel cestino (R2)
+	//
+	// Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
+	GitTrashRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
+	//
+	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+	//
+	// Corresponds with GET /internal/owners/{name} (the `ResolveOwner` operationId).
+	ResolveOwner(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CheckPermissionWithBody Verifica un permesso su una risorsa
 	//
 	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
@@ -1182,6 +1593,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 	ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetResourceAttributesWithBody Imposta owner e visibilita' di una risorsa (per core)
+	//
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+	SetResourceAttributesWithBody(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetResourceAttributes Imposta owner e visibilita' di una risorsa (per core)
+	//
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+	SetResourceAttributes(ctx context.Context, resourceId openapi_types.UUID, body SetResourceAttributesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GrantResourceCreatorWithBody Assegna il ruolo admin al creatore di una risorsa
 	//
@@ -1387,6 +1816,77 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /orgs/{org}/teams/{team}/members/{username} (the `SetTeamMember` operationId).
 	SetTeamMember(ctx context.Context, org OrgParam, team TeamParam, username UsernameParam, body SetTeamMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepositories Elenca i repo leggibili dall'utente
+	//
+	// Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
+	//
+	// Corresponds with GET /repos (the `ListRepositories` operationId).
+	ListRepositories(ctx context.Context, params *ListRepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepositoryWithBody Crea un repo
+	//
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos (the `CreateRepository` operationId).
+	CreateRepositoryWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepository Crea un repo
+	//
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos (the `CreateRepository` operationId).
+	CreateRepository(ctx context.Context, body CreateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDeletedRepositories Elenca i repo eliminati e ancora ripristinabili
+	//
+	// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+	//
+	// Corresponds with GET /repos/deleted (the `ListDeletedRepositories` operationId).
+	ListDeletedRepositories(ctx context.Context, params *ListDeletedRepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestoreRepository Ripristina un repo eliminato
+	//
+	// Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non esiste, non e' eliminato o il periodo di 7 giorni e' scaduto.
+	//
+	// Corresponds with POST /repos/deleted/{repoId}/restore (the `RestoreRepository` operationId).
+	RestoreRepository(ctx context.Context, repoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRepository Elimina un repo (recuperabile per 7 giorni)
+	//
+	// Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e resta ripristinabile per 7 giorni (R2); il nome resta occupato.
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo} (the `DeleteRepository` operationId).
+	DeleteRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepository Legge un repo per owner/nome
+	//
+	// Un repo che l'utente non puo' leggere risponde 404, non 403, per non rivelarne l'esistenza.
+	//
+	// Corresponds with GET /repos/{owner}/{repo} (the `GetRepository` operationId).
+	GetRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepositoryWithBody Modifica le impostazioni di un repo
+	//
+	// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+	UpdateRepositoryWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepository Modifica le impostazioni di un repo
+	//
+	// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+	UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListResources Elenca le risorse
 	//
@@ -1769,6 +2269,123 @@ func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
+// GitCreateRepoWithBody Crea il repo su disco (per core)
+//
+// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+func (c *Client) GitCreateRepoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitCreateRepoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitCreateRepo Crea il repo su disco (per core)
+//
+// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+func (c *Client) GitCreateRepo(ctx context.Context, body GitCreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitCreateRepoRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitDeleteRepo Cancella definitivamente un repo (solo dal cestino)
+//
+// Risponde 409 se il repo non e' nel cestino.
+//
+// Corresponds with DELETE /internal/git/repos/{repoId} (the `GitDeleteRepo` operationId).
+func (c *Client) GitDeleteRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitDeleteRepoRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetRepo Stato di un repo su disco
+//
+// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
+func (c *Client) GitGetRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetRepoRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitRestoreRepo Ripristina un repo dal cestino (R2)
+//
+// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
+func (c *Client) GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitRestoreRepoRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitTrashRepo Sposta un repo nel cestino (R2)
+//
+// Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
+func (c *Client) GitTrashRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitTrashRepoRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResolveOwner Risolve il nome di un utente o di un'organizzazione
+//
+// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+//
+// Corresponds with GET /internal/owners/{name} (the `ResolveOwner` operationId).
+func (c *Client) ResolveOwner(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolveOwnerRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CheckPermissionWithBody Verifica un permesso su una risorsa
 //
 // Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
@@ -1835,6 +2452,44 @@ func (c *Client) ListReadableResourcesWithBody(ctx context.Context, contentType 
 // Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 func (c *Client) ListReadableResources(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListReadableResourcesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetResourceAttributesWithBody Imposta owner e visibilita' di una risorsa (per core)
+//
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+func (c *Client) SetResourceAttributesWithBody(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetResourceAttributesRequestWithBody(c.Server, resourceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetResourceAttributes Imposta owner e visibilita' di una risorsa (per core)
+//
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+func (c *Client) SetResourceAttributes(ctx context.Context, resourceId openapi_types.UUID, body SetResourceAttributesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetResourceAttributesRequest(c.Server, resourceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2310,6 +2965,167 @@ func (c *Client) SetTeamMemberWithBody(ctx context.Context, org OrgParam, team T
 // Corresponds with PUT /orgs/{org}/teams/{team}/members/{username} (the `SetTeamMember` operationId).
 func (c *Client) SetTeamMember(ctx context.Context, org OrgParam, team TeamParam, username UsernameParam, body SetTeamMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetTeamMemberRequest(c.Server, org, team, username, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepositories Elenca i repo leggibili dall'utente
+//
+// Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
+//
+// Corresponds with GET /repos (the `ListRepositories` operationId).
+func (c *Client) ListRepositories(ctx context.Context, params *ListRepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepositoriesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRepositoryWithBody Crea un repo
+//
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos (the `CreateRepository` operationId).
+func (c *Client) CreateRepositoryWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepositoryRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRepository Crea un repo
+//
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos (the `CreateRepository` operationId).
+func (c *Client) CreateRepository(ctx context.Context, body CreateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepositoryRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDeletedRepositories Elenca i repo eliminati e ancora ripristinabili
+//
+// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+//
+// Corresponds with GET /repos/deleted (the `ListDeletedRepositories` operationId).
+func (c *Client) ListDeletedRepositories(ctx context.Context, params *ListDeletedRepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDeletedRepositoriesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RestoreRepository Ripristina un repo eliminato
+//
+// Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non esiste, non e' eliminato o il periodo di 7 giorni e' scaduto.
+//
+// Corresponds with POST /repos/deleted/{repoId}/restore (the `RestoreRepository` operationId).
+func (c *Client) RestoreRepository(ctx context.Context, repoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestoreRepositoryRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteRepository Elimina un repo (recuperabile per 7 giorni)
+//
+// Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e resta ripristinabile per 7 giorni (R2); il nome resta occupato.
+//
+// Corresponds with DELETE /repos/{owner}/{repo} (the `DeleteRepository` operationId).
+func (c *Client) DeleteRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepositoryRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepository Legge un repo per owner/nome
+//
+// Un repo che l'utente non puo' leggere risponde 404, non 403, per non rivelarne l'esistenza.
+//
+// Corresponds with GET /repos/{owner}/{repo} (the `GetRepository` operationId).
+func (c *Client) GetRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepositoryWithBody Modifica le impostazioni di un repo
+//
+// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+func (c *Client) UpdateRepositoryWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepositoryRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepository Modifica le impostazioni di un repo
+//
+// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+func (c *Client) UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepositoryRequest(c.Server, owner, repo, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3154,6 +3970,216 @@ func NewGetHealthRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGitCreateRepoRequest calls the generic GitCreateRepo builder with application/json body
+func NewGitCreateRepoRequest(server string, body GitCreateRepoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGitCreateRepoRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGitCreateRepoRequestWithBody constructs an http.Request for the GitCreateRepo method, with any body, and a specified content type
+func NewGitCreateRepoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGitDeleteRepoRequest constructs an http.Request for the GitDeleteRepo method
+func NewGitDeleteRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetRepoRequest constructs an http.Request for the GitGetRepo method
+func NewGitGetRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitRestoreRepoRequest constructs an http.Request for the GitRestoreRepo method
+func NewGitRestoreRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/restore", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitTrashRepoRequest constructs an http.Request for the GitTrashRepo method
+func NewGitTrashRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/trash", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewResolveOwnerRequest constructs an http.Request for the ResolveOwner method
+func NewResolveOwnerRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/owners/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCheckPermissionRequest calls the generic CheckPermission builder with application/json body
 func NewCheckPermissionRequest(server string, body CheckPermissionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -3225,6 +4251,53 @@ func NewListReadableResourcesRequestWithBody(server string, contentType string, 
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSetResourceAttributesRequest calls the generic SetResourceAttributes builder with application/json body
+func NewSetResourceAttributesRequest(server string, resourceId openapi_types.UUID, body SetResourceAttributesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetResourceAttributesRequestWithBody(server, resourceId, "application/json", bodyReader)
+}
+
+// NewSetResourceAttributesRequestWithBody constructs an http.Request for the SetResourceAttributes method, with any body, and a specified content type
+func NewSetResourceAttributesRequestWithBody(server string, resourceId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/resources/%s/attributes", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -4180,6 +5253,348 @@ func NewSetTeamMemberRequestWithBody(server string, org OrgParam, team TeamParam
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListRepositoriesRequest constructs an http.Request for the ListRepositories method
+func NewListRepositoriesRequest(server string, params *ListRepositoriesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Owner != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "owner", *params.Owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateRepositoryRequest calls the generic CreateRepository builder with application/json body
+func NewCreateRepositoryRequest(server string, body CreateRepositoryJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRepositoryRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateRepositoryRequestWithBody constructs an http.Request for the CreateRepository method, with any body, and a specified content type
+func NewCreateRepositoryRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDeletedRepositoriesRequest constructs an http.Request for the ListDeletedRepositories method
+func NewListDeletedRepositoriesRequest(server string, params *ListDeletedRepositoriesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/deleted")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Owner != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "owner", *params.Owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRestoreRepositoryRequest constructs an http.Request for the RestoreRepository method
+func NewRestoreRepositoryRequest(server string, repoId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/deleted/%s/restore", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteRepositoryRequest constructs an http.Request for the DeleteRepository method
+func NewDeleteRepositoryRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryRequest constructs an http.Request for the GetRepository method
+func NewGetRepositoryRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateRepositoryRequest calls the generic UpdateRepository builder with application/json body
+func NewUpdateRepositoryRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateRepositoryRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewUpdateRepositoryRequestWithBody constructs an http.Request for the UpdateRepository method, with any body, and a specified content type
+func NewUpdateRepositoryRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -5381,6 +6796,63 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /health (the `GetHealth` operationId).
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
 
+	// GitCreateRepoWithBodyWithResponse Crea il repo su disco (per core)
+	//
+	// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+	GitCreateRepoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitCreateRepoResponse, error)
+
+	// GitCreateRepoWithResponse Crea il repo su disco (per core)
+	//
+	// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+	GitCreateRepoWithResponse(ctx context.Context, body GitCreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*GitCreateRepoResponse, error)
+
+	// GitDeleteRepoWithResponse Cancella definitivamente un repo (solo dal cestino)
+	//
+	// Risponde 409 se il repo non e' nel cestino.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /internal/git/repos/{repoId} (the `GitDeleteRepo` operationId).
+	GitDeleteRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitDeleteRepoResponse, error)
+
+	// GitGetRepoWithResponse Stato di un repo su disco
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
+	GitGetRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetRepoResponse, error)
+
+	// GitRestoreRepoWithResponse Ripristina un repo dal cestino (R2)
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
+	GitRestoreRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitRestoreRepoResponse, error)
+
+	// GitTrashRepoWithResponse Sposta un repo nel cestino (R2)
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
+	GitTrashRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitTrashRepoResponse, error)
+
+	// ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
+	//
+	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/owners/{name} (the `ResolveOwner` operationId).
+	ResolveOwnerWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*ResolveOwnerResponse, error)
+
 	// CheckPermissionWithBodyWithResponse Verifica un permesso su una risorsa
 	//
 	// Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
@@ -5416,6 +6888,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /internal/permissions/readable-resources (the `ListReadableResources` operationId).
 	ListReadableResourcesWithResponse(ctx context.Context, body ListReadableResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*ListReadableResourcesResponse, error)
+
+	// SetResourceAttributesWithBodyWithResponse Imposta owner e visibilita' di una risorsa (per core)
+	//
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+	SetResourceAttributesWithBodyWithResponse(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceAttributesResponse, error)
+
+	// SetResourceAttributesWithResponse Imposta owner e visibilita' di una risorsa (per core)
+	//
+	// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+	SetResourceAttributesWithResponse(ctx context.Context, resourceId openapi_types.UUID, body SetResourceAttributesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetResourceAttributesResponse, error)
 
 	// GrantResourceCreatorWithBodyWithResponse Assegna il ruolo admin al creatore di una risorsa
 	//
@@ -5643,6 +7133,87 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /orgs/{org}/teams/{team}/members/{username} (the `SetTeamMember` operationId).
 	SetTeamMemberWithResponse(ctx context.Context, org OrgParam, team TeamParam, username UsernameParam, body SetTeamMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*SetTeamMemberResponse, error)
+
+	// ListRepositoriesWithResponse Elenca i repo leggibili dall'utente
+	//
+	// Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos (the `ListRepositories` operationId).
+	ListRepositoriesWithResponse(ctx context.Context, params *ListRepositoriesParams, reqEditors ...RequestEditorFn) (*ListRepositoriesResponse, error)
+
+	// CreateRepositoryWithBodyWithResponse Crea un repo
+	//
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos (the `CreateRepository` operationId).
+	CreateRepositoryWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepositoryResponse, error)
+
+	// CreateRepositoryWithResponse Crea un repo
+	//
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos (the `CreateRepository` operationId).
+	CreateRepositoryWithResponse(ctx context.Context, body CreateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepositoryResponse, error)
+
+	// ListDeletedRepositoriesWithResponse Elenca i repo eliminati e ancora ripristinabili
+	//
+	// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/deleted (the `ListDeletedRepositories` operationId).
+	ListDeletedRepositoriesWithResponse(ctx context.Context, params *ListDeletedRepositoriesParams, reqEditors ...RequestEditorFn) (*ListDeletedRepositoriesResponse, error)
+
+	// RestoreRepositoryWithResponse Ripristina un repo eliminato
+	//
+	// Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non esiste, non e' eliminato o il periodo di 7 giorni e' scaduto.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/deleted/{repoId}/restore (the `RestoreRepository` operationId).
+	RestoreRepositoryWithResponse(ctx context.Context, repoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RestoreRepositoryResponse, error)
+
+	// DeleteRepositoryWithResponse Elimina un repo (recuperabile per 7 giorni)
+	//
+	// Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e resta ripristinabile per 7 giorni (R2); il nome resta occupato.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo} (the `DeleteRepository` operationId).
+	DeleteRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryResponse, error)
+
+	// GetRepositoryWithResponse Legge un repo per owner/nome
+	//
+	// Un repo che l'utente non puo' leggere risponde 404, non 403, per non rivelarne l'esistenza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo} (the `GetRepository` operationId).
+	GetRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryResponse, error)
+
+	// UpdateRepositoryWithBodyWithResponse Modifica le impostazioni di un repo
+	//
+	// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+	UpdateRepositoryWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error)
+
+	// UpdateRepositoryWithResponse Modifica le impostazioni di un repo
+	//
+	// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+	UpdateRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error)
 
 	// ListResourcesWithResponse Elenca le risorse
 	//
@@ -6327,6 +7898,371 @@ func (r GetHealthResponse) ContentType() string {
 	return ""
 }
 
+type GitCreateRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *GitRepoCreated
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r GitCreateRepoResponse) GetJSON201() *GitRepoCreated {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitCreateRepoResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitCreateRepoResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r GitCreateRepoResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitCreateRepoResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitCreateRepoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitCreateRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitCreateRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitCreateRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitDeleteRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitDeleteRepoResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitDeleteRepoResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r GitDeleteRepoResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitDeleteRepoResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitDeleteRepoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitDeleteRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitDeleteRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitDeleteRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitRepoState
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetRepoResponse) GetJSON200() *GitRepoState {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetRepoResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetRepoResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetRepoResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetRepoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitRestoreRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitRestoreRepoResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitRestoreRepoResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitRestoreRepoResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitRestoreRepoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitRestoreRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitRestoreRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitRestoreRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitTrashRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitTrashRepoResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitTrashRepoResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitTrashRepoResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitTrashRepoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitTrashRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitTrashRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitTrashRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ResolveOwnerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OwnerRef
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ResolveOwnerResponse) GetJSON200() *OwnerRef {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResolveOwnerResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ResolveOwnerResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ResolveOwnerResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ResolveOwnerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResolveOwnerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResolveOwnerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResolveOwnerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CheckPermissionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -6452,6 +8388,75 @@ func (r ListReadableResourcesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListReadableResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetResourceAttributesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetResourceAttributesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetResourceAttributesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetResourceAttributesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetResourceAttributesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetResourceAttributesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetResourceAttributesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetResourceAttributesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetResourceAttributesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetResourceAttributesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -7847,6 +9852,587 @@ func (r SetTeamMemberResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetTeamMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListRepositoriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepositoryList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepositoriesResponse) GetJSON200() *RepositoryList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListRepositoriesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepositoriesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepositoriesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepositoriesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ListRepositoriesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListRepositoriesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepositoriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepositoriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepositoriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepositoriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreateRepositoryResponse201Headers the declared response headers of an HTTP 201 response for CreateRepository
+type CreateRepositoryResponse201Headers struct {
+	Location *string
+}
+
+type CreateRepositoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Repository
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreateRepositoryResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateRepositoryResponse) GetJSON201() *Repository {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateRepositoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateRepositoryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateRepositoryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateRepositoryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateRepositoryResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateRepositoryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateRepositoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRepositoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRepositoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateRepositoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDeletedRepositoriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeletedRepositoryList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSON200() *DeletedRepositoryList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListDeletedRepositoriesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDeletedRepositoriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDeletedRepositoriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDeletedRepositoriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDeletedRepositoriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RestoreRepositoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Repository
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RestoreRepositoryResponse) GetJSON200() *Repository {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RestoreRepositoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RestoreRepositoryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RestoreRepositoryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RestoreRepositoryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RestoreRepositoryResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RestoreRepositoryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RestoreRepositoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RestoreRepositoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestoreRepositoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RestoreRepositoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteRepositoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteRepositoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteRepositoryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteRepositoryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteRepositoryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteRepositoryResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteRepositoryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteRepositoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepositoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepositoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteRepositoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Repository
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryResponse) GetJSON200() *Repository {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r GetRepositoryResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateRepositoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Repository
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateRepositoryResponse) GetJSON200() *Repository {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateRepositoryResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateRepositoryResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateRepositoryResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateRepositoryResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateRepositoryResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateRepositoryResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateRepositoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateRepositoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateRepositoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateRepositoryResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9637,6 +12223,105 @@ func (c *ClientWithResponses) GetHealthWithResponse(ctx context.Context, reqEdit
 	return ParseGetHealthResponse(rsp)
 }
 
+// GitCreateRepoWithBodyWithResponse Crea il repo su disco (per core)
+//
+// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+func (c *ClientWithResponses) GitCreateRepoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitCreateRepoResponse, error) {
+	rsp, err := c.GitCreateRepoWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitCreateRepoResponse(rsp)
+}
+
+// GitCreateRepoWithResponse Crea il repo su disco (per core)
+//
+// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/git/repos (the `GitCreateRepo` operationId).
+func (c *ClientWithResponses) GitCreateRepoWithResponse(ctx context.Context, body GitCreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*GitCreateRepoResponse, error) {
+	rsp, err := c.GitCreateRepo(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitCreateRepoResponse(rsp)
+}
+
+// GitDeleteRepoWithResponse Cancella definitivamente un repo (solo dal cestino)
+//
+// Risponde 409 se il repo non e' nel cestino.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /internal/git/repos/{repoId} (the `GitDeleteRepo` operationId).
+func (c *ClientWithResponses) GitDeleteRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitDeleteRepoResponse, error) {
+	rsp, err := c.GitDeleteRepo(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitDeleteRepoResponse(rsp)
+}
+
+// GitGetRepoWithResponse Stato di un repo su disco
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
+func (c *ClientWithResponses) GitGetRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetRepoResponse, error) {
+	rsp, err := c.GitGetRepo(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetRepoResponse(rsp)
+}
+
+// GitRestoreRepoWithResponse Ripristina un repo dal cestino (R2)
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
+func (c *ClientWithResponses) GitRestoreRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitRestoreRepoResponse, error) {
+	rsp, err := c.GitRestoreRepo(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitRestoreRepoResponse(rsp)
+}
+
+// GitTrashRepoWithResponse Sposta un repo nel cestino (R2)
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
+func (c *ClientWithResponses) GitTrashRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitTrashRepoResponse, error) {
+	rsp, err := c.GitTrashRepo(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitTrashRepoResponse(rsp)
+}
+
+// ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
+//
+// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste. Finche' non e' implementata (GIT-65) risponde 501.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/owners/{name} (the `ResolveOwner` operationId).
+func (c *ClientWithResponses) ResolveOwnerWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*ResolveOwnerResponse, error) {
+	rsp, err := c.ResolveOwner(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolveOwnerResponse(rsp)
+}
+
 // CheckPermissionWithBodyWithResponse Verifica un permesso su una risorsa
 //
 // Usata da core e git per applicare i permessi: `allowed` e' vero se l'utente ha almeno il ruolo richiesto sulla risorsa (grant diretto, via team o amministratore).
@@ -9695,6 +12380,36 @@ func (c *ClientWithResponses) ListReadableResourcesWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseListReadableResourcesResponse(rsp)
+}
+
+// SetResourceAttributesWithBodyWithResponse Imposta owner e visibilita' di una risorsa (per core)
+//
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+func (c *ClientWithResponses) SetResourceAttributesWithBodyWithResponse(ctx context.Context, resourceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetResourceAttributesResponse, error) {
+	rsp, err := c.SetResourceAttributesWithBody(ctx, resourceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetResourceAttributesResponse(rsp)
+}
+
+// SetResourceAttributesWithResponse Imposta owner e visibilita' di una risorsa (per core)
+//
+// Servita da identity (D-C, M-03). Core la chiama alla creazione di un repo, prima di `grantResourceCreator`, e a ogni cambio di visibilita'. L'owner non cambia mai (R3). Idempotente. Una risorsa senza attributi si comporta come prima di M-03. Finche' non e' implementata (GIT-65) risponde 501.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /internal/resources/{resourceId}/attributes (the `SetResourceAttributes` operationId).
+func (c *ClientWithResponses) SetResourceAttributesWithResponse(ctx context.Context, resourceId openapi_types.UUID, body SetResourceAttributesJSONRequestBody, reqEditors ...RequestEditorFn) (*SetResourceAttributesResponse, error) {
+	rsp, err := c.SetResourceAttributes(ctx, resourceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetResourceAttributesResponse(rsp)
 }
 
 // GrantResourceCreatorWithBodyWithResponse Assegna il ruolo admin al creatore di una risorsa
@@ -10084,6 +12799,141 @@ func (c *ClientWithResponses) SetTeamMemberWithResponse(ctx context.Context, org
 		return nil, err
 	}
 	return ParseSetTeamMemberResponse(rsp)
+}
+
+// ListRepositoriesWithResponse Elenca i repo leggibili dall'utente
+//
+// Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli eliminati; con `owner` solo quelli di quell'utente o organizzazione. Paginazione come `GET /resources`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos (the `ListRepositories` operationId).
+func (c *ClientWithResponses) ListRepositoriesWithResponse(ctx context.Context, params *ListRepositoriesParams, reqEditors ...RequestEditorFn) (*ListRepositoriesResponse, error) {
+	rsp, err := c.ListRepositories(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepositoriesResponse(rsp)
+}
+
+// CreateRepositoryWithBodyWithResponse Crea un repo
+//
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos (the `CreateRepository` operationId).
+func (c *ClientWithResponses) CreateRepositoryWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepositoryResponse, error) {
+	rsp, err := c.CreateRepositoryWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepositoryResponse(rsp)
+}
+
+// CreateRepositoryWithResponse Crea un repo
+//
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos (the `CreateRepository` operationId).
+func (c *ClientWithResponses) CreateRepositoryWithResponse(ctx context.Context, body CreateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepositoryResponse, error) {
+	rsp, err := c.CreateRepository(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepositoryResponse(rsp)
+}
+
+// ListDeletedRepositoriesWithResponse Elenca i repo eliminati e ancora ripristinabili
+//
+// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/deleted (the `ListDeletedRepositories` operationId).
+func (c *ClientWithResponses) ListDeletedRepositoriesWithResponse(ctx context.Context, params *ListDeletedRepositoriesParams, reqEditors ...RequestEditorFn) (*ListDeletedRepositoriesResponse, error) {
+	rsp, err := c.ListDeletedRepositories(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDeletedRepositoriesResponse(rsp)
+}
+
+// RestoreRepositoryWithResponse Ripristina un repo eliminato
+//
+// Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non esiste, non e' eliminato o il periodo di 7 giorni e' scaduto.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/deleted/{repoId}/restore (the `RestoreRepository` operationId).
+func (c *ClientWithResponses) RestoreRepositoryWithResponse(ctx context.Context, repoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RestoreRepositoryResponse, error) {
+	rsp, err := c.RestoreRepository(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestoreRepositoryResponse(rsp)
+}
+
+// DeleteRepositoryWithResponse Elimina un repo (recuperabile per 7 giorni)
+//
+// Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e resta ripristinabile per 7 giorni (R2); il nome resta occupato.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo} (the `DeleteRepository` operationId).
+func (c *ClientWithResponses) DeleteRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*DeleteRepositoryResponse, error) {
+	rsp, err := c.DeleteRepository(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepositoryResponse(rsp)
+}
+
+// GetRepositoryWithResponse Legge un repo per owner/nome
+//
+// Un repo che l'utente non puo' leggere risponde 404, non 403, per non rivelarne l'esistenza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo} (the `GetRepository` operationId).
+func (c *ClientWithResponses) GetRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryResponse, error) {
+	rsp, err := c.GetRepository(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryResponse(rsp)
+}
+
+// UpdateRepositoryWithBodyWithResponse Modifica le impostazioni di un repo
+//
+// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+func (c *ClientWithResponses) UpdateRepositoryWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error) {
+	rsp, err := c.UpdateRepositoryWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepositoryResponse(rsp)
+}
+
+// UpdateRepositoryWithResponse Modifica le impostazioni di un repo
+//
+// Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo). Il branch principale (R4) deve essere un branch esistente; `protectDefaultBranch` e' R9; `archived` archivia o riattiva (R10). Owner e nome non cambiano mai (R3). Un repo archiviato rifiuta ogni modifica con 409, tranne `archived: false` da solo.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
+func (c *ClientWithResponses) UpdateRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error) {
+	rsp, err := c.UpdateRepository(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepositoryResponse(rsp)
 }
 
 // ListResourcesWithResponse Elenca le risorse
@@ -10891,6 +13741,290 @@ func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
 	return response, nil
 }
 
+// ParseGitCreateRepoResponse parses an HTTP response from a GitCreateRepoWithResponse call
+func ParseGitCreateRepoResponse(rsp *http.Response) (*GitCreateRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitCreateRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest GitRepoCreated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitDeleteRepoResponse parses an HTTP response from a GitDeleteRepoWithResponse call
+func ParseGitDeleteRepoResponse(rsp *http.Response) (*GitDeleteRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitDeleteRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetRepoResponse parses an HTTP response from a GitGetRepoWithResponse call
+func ParseGitGetRepoResponse(rsp *http.Response) (*GitGetRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitRepoState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitRestoreRepoResponse parses an HTTP response from a GitRestoreRepoWithResponse call
+func ParseGitRestoreRepoResponse(rsp *http.Response) (*GitRestoreRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitRestoreRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitTrashRepoResponse parses an HTTP response from a GitTrashRepoWithResponse call
+func ParseGitTrashRepoResponse(rsp *http.Response) (*GitTrashRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitTrashRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResolveOwnerResponse parses an HTTP response from a ResolveOwnerWithResponse call
+func ParseResolveOwnerResponse(rsp *http.Response) (*ResolveOwnerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResolveOwnerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OwnerRef
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCheckPermissionResponse parses an HTTP response from a CheckPermissionWithResponse call
 func ParseCheckPermissionResponse(rsp *http.Response) (*CheckPermissionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -10979,6 +14113,63 @@ func ParseListReadableResourcesResponse(rsp *http.Response) (*ListReadableResour
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetResourceAttributesResponse parses an HTTP response from a SetResourceAttributesWithResponse call
+func ParseSetResourceAttributesResponse(rsp *http.Response) (*SetResourceAttributesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetResourceAttributesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
@@ -12113,6 +15304,491 @@ func ParseSetTeamMemberResponse(rsp *http.Response) (*SetTeamMemberResponse, err
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepositoriesResponse parses an HTTP response from a ListRepositoriesWithResponse call
+func ParseListRepositoriesResponse(rsp *http.Response) (*ListRepositoriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepositoriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepositoryList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRepositoryResponse parses an HTTP response from a CreateRepositoryWithResponse call
+func ParseCreateRepositoryResponse(rsp *http.Response) (*CreateRepositoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRepositoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Repository
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreateRepositoryResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: "uri"}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseListDeletedRepositoriesResponse parses an HTTP response from a ListDeletedRepositoriesWithResponse call
+func ParseListDeletedRepositoriesResponse(rsp *http.Response) (*ListDeletedRepositoriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDeletedRepositoriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeletedRepositoryList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRestoreRepositoryResponse parses an HTTP response from a RestoreRepositoryWithResponse call
+func ParseRestoreRepositoryResponse(rsp *http.Response) (*RestoreRepositoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestoreRepositoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Repository
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRepositoryResponse parses an HTTP response from a DeleteRepositoryWithResponse call
+func ParseDeleteRepositoryResponse(rsp *http.Response) (*DeleteRepositoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepositoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryResponse parses an HTTP response from a GetRepositoryWithResponse call
+func ParseGetRepositoryResponse(rsp *http.Response) (*GetRepositoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Repository
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateRepositoryResponse parses an HTTP response from a UpdateRepositoryWithResponse call
+func ParseUpdateRepositoryResponse(rsp *http.Response) (*UpdateRepositoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateRepositoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Repository
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

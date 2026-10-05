@@ -5,7 +5,7 @@
 // a mano che possano divergere dal contratto (la CI rigenera e confronta,
 // vedi scripts/check-api-generated.sh).
 //
-// Le operazioni con tag `internal` (interfaccia fra servizi) non entrano
+// Le operazioni con tag `internal` e `git-internal` (interfaccia fra servizi) non entrano
 // nella tabella: il gateway non le espone mai.
 package main
 
@@ -40,7 +40,7 @@ var methods = map[string]string{
 	"patch": "PATCH", "head": "HEAD", "options": "OPTIONS",
 }
 
-var coreTags = map[string]bool{"system": true, "resources": true}
+var coreTags = map[string]bool{"system": true, "resources": true, "repos": true}
 
 var identityTags = map[string]bool{
 	"auth": true, "users": true, "tokens": true, "ssh-keys": true,
@@ -133,7 +133,7 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 	var service string
 	for _, tag := range op.Tags {
 		switch {
-		case tag == "internal":
+		case tag == "internal" || tag == "git-internal":
 			return route{}, true, nil
 		case coreTags[tag]:
 			service = "core"

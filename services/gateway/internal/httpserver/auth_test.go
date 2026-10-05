@@ -166,7 +166,7 @@ func TestSicurezza_OgniRottaHaLaSuaDichiarazione(t *testing.T) {
 				t.Fatal(err)
 			}
 			m, found := table.Lookup(method, param.ReplaceAllString(path, "x"))
-			if hasAny(op.Tags, map[string]bool{"internal": true}) {
+			if hasAny(op.Tags, map[string]bool{"internal": true, "git-internal": true}) {
 				if found {
 					t.Errorf("%s %s (internal) non deve avere una dichiarazione nel gateway", method, path)
 				}

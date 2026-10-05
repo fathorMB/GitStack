@@ -108,6 +108,24 @@ func (e OrgRole) Valid() bool {
 	}
 }
 
+// Defines values for OwnerType.
+const (
+	OwnerTypeOrganization OwnerType = "organization"
+	OwnerTypeUser         OwnerType = "user"
+)
+
+// Valid indicates whether the value is a known member of the OwnerType enum.
+func (e OwnerType) Valid() bool {
+	switch e {
+	case OwnerTypeOrganization:
+		return true
+	case OwnerTypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PrincipalAuthMethod.
 const (
 	PrincipalAuthMethodOidc     PrincipalAuthMethod = "oidc"
@@ -141,6 +159,24 @@ func (e PrincipalKind) Valid() bool {
 	case PrincipalKindAgent:
 		return true
 	case PrincipalKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoVisibility.
+const (
+	Internal RepoVisibility = "internal"
+	Private  RepoVisibility = "private"
+)
+
+// Valid indicates whether the value is a known member of the RepoVisibility enum.
+func (e RepoVisibility) Valid() bool {
+	switch e {
+	case Internal:
+		return true
+	case Private:
 		return true
 	default:
 		return false
@@ -507,6 +543,21 @@ type OrganizationList struct {
 	Total   int            `json:"total"`
 }
 
+// OwnerRef defines model for OwnerRef.
+type OwnerRef struct {
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Name Name      `json:"name"`
+	Type OwnerType `json:"type"`
+}
+
+// OwnerType defines model for OwnerType.
+type OwnerType string
+
 // Principal Chi ha presentato la credenziale.
 type Principal struct {
 	AuthMethod PrincipalAuthMethod `json:"authMethod"`
@@ -546,6 +597,23 @@ type ReadableResourcesInput struct {
 type ReadableResourcesResult struct {
 	All         bool                 `json:"all"`
 	ResourceIds []openapi_types.UUID `json:"resourceIds"`
+}
+
+// RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoName = string
+
+// RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+type RepoVisibility string
+
+// ResourceAttributesInput defines model for ResourceAttributesInput.
+type ResourceAttributesInput struct {
+	OwnerId   openapi_types.UUID `json:"ownerId"`
+	OwnerType OwnerType          `json:"ownerType"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
 }
 
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
@@ -749,6 +817,9 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// GitRepoIdParam defines model for GitRepoIdParam.
+type GitRepoIdParam = openapi_types.UUID
+
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
 
@@ -767,6 +838,16 @@ type PageParam = int
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+//
+// Example: my-app
+type RepoNameParam = RepoName
+
+// RepoOwnerParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+//
+// Example: alice
+type RepoOwnerParam = Name
 
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
@@ -881,6 +962,9 @@ type CheckPermissionJSONRequestBody = CheckPermissionInput
 // ListReadableResourcesJSONRequestBody defines body for ListReadableResources for application/json ContentType.
 type ListReadableResourcesJSONRequestBody = ReadableResourcesInput
 
+// SetResourceAttributesJSONRequestBody defines body for SetResourceAttributes for application/json ContentType.
+type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
+
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
 
@@ -946,12 +1030,18 @@ type ServerInterface interface {
 	// GetCurrentSession Sessione corrente
 	// (GET /auth/session)
 	GetCurrentSession(w http.ResponseWriter, r *http.Request)
+	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
+	// (GET /internal/owners/{name})
+	ResolveOwner(w http.ResponseWriter, r *http.Request, name string)
 	// CheckPermission Verifica un permesso su una risorsa
 	// (POST /internal/permissions/check)
 	CheckPermission(w http.ResponseWriter, r *http.Request)
 	// ListReadableResources Risorse leggibili da un utente
 	// (POST /internal/permissions/readable-resources)
 	ListReadableResources(w http.ResponseWriter, r *http.Request)
+	// SetResourceAttributes Imposta owner e visibilita' di una risorsa (per core)
+	// (PUT /internal/resources/{resourceId}/attributes)
+	SetResourceAttributes(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
 	// GrantResourceCreator Assegna il ruolo admin al creatore di una risorsa
 	// (POST /internal/resources/{resourceId}/grants/creator)
 	GrantResourceCreator(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
@@ -1227,6 +1317,32 @@ func (siw *ServerInterfaceWrapper) GetCurrentSession(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// ResolveOwner operation middleware
+func (siw *ServerInterfaceWrapper) ResolveOwner(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", r.PathValue("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolveOwner(w, r, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CheckPermission operation middleware
 func (siw *ServerInterfaceWrapper) CheckPermission(w http.ResponseWriter, r *http.Request) {
 
@@ -1246,6 +1362,32 @@ func (siw *ServerInterfaceWrapper) ListReadableResources(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListReadableResources(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetResourceAttributes operation middleware
+func (siw *ServerInterfaceWrapper) SetResourceAttributes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetResourceAttributes(w, r, resourceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2639,6 +2781,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/permissions/readable-resources", wrapper.ListReadableResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/resources/{resourceId}/grants/creator", wrapper.GrantResourceCreator)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/internal/resources/{resourceId}/attributes", wrapper.SetResourceAttributes)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
 
 	return m
 }
