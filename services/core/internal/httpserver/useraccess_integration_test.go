@@ -90,18 +90,18 @@ func TestUserAccess(t *testing.T) {
 		for _, it := range l.Items {
 			by[it.FullName] = it
 		}
-		if it := by["alice/direct"]; it.Role != openapi.Write || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindDirect {
+		if it := by["alice/direct"]; it.Role != openapi.ResourceRoleWrite || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindDirect {
 			t.Errorf("diretto: %+v", it)
 		}
-		if it := by["acme/viateam"]; it.Role != openapi.Read || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindTeam ||
+		if it := by["acme/viateam"]; it.Role != openapi.ResourceRoleRead || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindTeam ||
 			it.Sources[0].Organization == nil || *it.Sources[0].Organization != "acme" || it.Sources[0].Team == nil || *it.Sources[0].Team != "web" {
 			t.Errorf("via team: %+v", it)
 		}
-		if it := by["acme/internal"]; it.Role != openapi.Read || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindInternal ||
+		if it := by["acme/internal"]; it.Role != openapi.ResourceRoleRead || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindInternal ||
 			it.Visibility == nil || *it.Visibility != openapi.RepoVisibilityInternal {
 			t.Errorf("internal: %+v", it)
 		}
-		if it := by["acme/summed"]; it.Role != openapi.Write || len(it.Sources) != 3 {
+		if it := by["acme/summed"]; it.Role != openapi.ResourceRoleWrite || len(it.Sources) != 3 {
 			t.Errorf("fonti sommate: %+v", it)
 		}
 		if _, ok := by["alice/gone"]; ok {
@@ -128,7 +128,7 @@ func TestUserAccess(t *testing.T) {
 			t.Fatalf("total = %d", l.Total)
 		}
 		for _, it := range l.Items {
-			if it.Role != openapi.Admin || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindInstallationAdmin {
+			if it.Role != openapi.ResourceRoleAdmin || len(it.Sources) != 1 || it.Sources[0].Kind != openapi.AccessSourceKindInstallationAdmin {
 				t.Errorf("%s: %+v", it.FullName, it)
 			}
 		}
