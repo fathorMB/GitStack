@@ -1,5 +1,5 @@
 ---
-{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907"],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-05T09:50:00+00:00"}
+{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5"],"schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-05T13:00:00+00:00"}
 ---
 
 # Installazione, deploy e operazioni
@@ -24,13 +24,20 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 
 **Download di `gs` e skills (G6, 2026-10-05):** ogni istanza serve su `https://<host>/downloads` i binari di `gs` per Linux, macOS e Windows (amd64, arm64) e le skills della propria versione, con gli script `install-gs.sh` e PowerShell; funziona anche air-gapped. Vedi [[knowledge/topics/cli-gs-skills]].
 
-**Requisiti ancora da realizzare (M-08):** installer definitivo per Ubuntu, Debian e RHEL; Windows via WSL2 (avvio automatico, rete, riavvio); TLS con CA interna, Let's Encrypt o certificato del cliente (**oggi HTTP in chiaro**); `gitstack upgrade` con backup e rollback (D18); `gitstack backup/restore` coerente e backup giornaliero locale o S3 (D19); aggiornare k3s di un'installazione esistente; air-gapped; test CI di installazione, upgrade e ripristino; documentazione operativa.
+**Requisiti dell'installer definitivo (N1–N6, confermati il 2026-10-05):**
+- **N1 Hardware:** profilo *minimo* 4 vCPU, 8 GB RAM, 60 GB di disco con 20 GB liberi (sotto, il preflight blocca); profilo *consigliato* 8 vCPU, 16 GB RAM, 200 GB SSD fino a ~100 utenti (sotto, avviso). Spazio per i repo: circa 2 volte la loro dimensione.
+- **N2 Sistemi:** Ubuntu Server 22.04 e 24.04 LTS, Pop!_OS 22.04 e 24.04, solo amd64, ciascuno con test in CI di installazione, aggiornamento e ripristino; altri sistemi solo con `--force`. Debian, RHEL e arm64 dopo la v1.
+- **N3 Nodi:** un solo nodo; protezione dai guasti con backup e ripristino (obiettivo di ripristino su macchina nuova da fissare, indicativamente meno di un'ora); alta disponibilità dopo la v1.
+- **N4 Rete:** internet oppure mirror o proxy aziendale configurabile; pacchetto e aggiornamenti offline (air-gapped) dopo la v1.
+- **N5 TLS:** HTTPS sempre; CA interna di default con certificato della CA su `/downloads` e installabile da `install-gs.sh`; `--tls letsencrypt` o `--tls-cert`/`--tls-key`; HTTP solo con `--insecure-http` e avviso nella UI.
+- **N6 Nome host:** `--host` con verifica DNS nel preflight; senza, nome della macchina e IP nel certificato per le prove; cambio con `gitstack config set host` (rigenera il certificato, avvisa del cambio degli URL).
+
+**Requisiti ancora da realizzare (M-08):** installer definitivo per Ubuntu Server e Pop!_OS (N2); Windows via WSL2 (avvio automatico, rete, riavvio); TLS con CA interna, Let's Encrypt o certificato del cliente (**oggi HTTP in chiaro**); `gitstack upgrade` con backup e rollback (D18); `gitstack backup/restore` coerente e backup giornaliero locale o S3 (D19); aggiornare k3s di un'installazione esistente; air-gapped; test CI di installazione, upgrade e ripristino; documentazione operativa.
 
 **Immagini e rilasci:** pubblicate su ghcr.io dalla CI su `main` e sui tag; il tag di versione (`vX.Y.Z` e `X.Y.Z`) esisterà dal primo rilascio. Nessun rilascio ancora tagliato.
 
 ## Open questions
 
-- Requisiti minimi definitivi e distribuzioni supportate: soglie provvisorie da rivedere in M-08.
 - WSL2 in produzione: rischio noto (D14), vedi il topic di analisi.
 
 ## Related topics

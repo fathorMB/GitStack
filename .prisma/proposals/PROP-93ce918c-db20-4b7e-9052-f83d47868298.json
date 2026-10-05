@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "id": "PROP-93ce918c-db20-4b7e-9052-f83d47868298",
+  "state": "applied",
+  "created": "2026-10-05T12:59:00+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Consolidare il tema \"Requisiti minimi e distribuzioni dell'installer definitivo\" con N1–N6; requisiti in Installazione e deploy; cambio di scope di M-08 (Debian e RHEL fuori dalla v1, Ubuntu Server e Pop!_OS dentro; orizzonte invariato); TLS nelle scelte di default; mockup 16 needs_update.",
+    "targets": [
+      "TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5",
+      "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+      "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+      "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+      "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0"
+    ],
+    "before_digests": {
+      "roadmap/analysis/requisiti-installer-definitivo.md": "ef83deb6747e9c137424bbef39697b32cd1e0cc9ec69002bbc2d8cbe19aea461",
+      "roadmap/product/m-08-installazione-upgrade-backup.md": "4eb34acd1c2546686f25dd83d3a8bd90b7a72719e2184072b4db6c9803720e5a",
+      "knowledge/topics/installazione-e-deploy.md": "22adca1368a62c99330c775fc8e1ff5bd4d2aa3aaec275d1a80a136aa0651e6f",
+      "knowledge/topics/decisioni.md": "cd6cf69443126426778478d94f5a830d8b2144608a2b12978dfed06863f9421d",
+      "design/mockups-v1/manifest.json": "d9c1838926253a7115c4dbe542de80b461559a9fb58ccab2df67c0e6e7abb3f8"
+    },
+    "operations": [
+      {
+        "target": "TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5",
+        "op": "set_state",
+        "state": "consolidated",
+        "reason": "Tutte le domande risposte (N1–N6)."
+      },
+      {
+        "target": "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+        "op": "update",
+        "reason": "Requisiti definitivi N1–N6; rimossa la domanda aperta sui requisiti provvisori."
+      },
+      {
+        "target": "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+        "op": "update_scope",
+        "reason": "Debian e RHEL fuori dalla v1 (scelta esplicita dell'operatore in conflitto con lo scope precedente); Ubuntu Server e Pop!_OS 22.04/24.04; un nodo; HTTPS di default; air-gapped dopo la v1."
+      },
+      {
+        "target": "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+        "op": "update",
+        "reason": "Scelta di default TLS precisata con N5."
+      },
+      {
+        "target": "DESIGN-4bb62f4a-1db0-4919-bde7-10850000f4d0",
+        "op": "set_status",
+        "status": "needs_update"
+      }
+    ],
+    "evidence": [
+      "Risposte dell'operatore alle domande 1–6 nella sessione di analisi del 2026-10-05, incluso il conflitto su Debian/RHEL mostrato e risolto",
+      "deploy/install.sh (installer v0)",
+      "knowledge/topics/installazione-e-deploy.md"
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha risposto \"sì, confermo il consolidamento\" dopo il riepilogo della proposta (N1–N6, cambio di scope M-08, TLS, mockup 16)."
+  }
+}

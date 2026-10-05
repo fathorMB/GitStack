@@ -1252,7 +1252,7 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
 </section>
 
 <!-- ============ 16 ADMIN SYSTEM ============ -->
-<section class="screen" data-screen="admin" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>System</b>" data-desc="Console amministratore: stato dei servizi su k3s, risorse del nodo, backup, aggiornamenti. Base della futura console cloud.">
+<section class="screen" data-screen="admin" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>System</b>" data-desc="Console amministratore: stato dei servizi su k3s, accesso (nome host verificato, certificato HTTPS, porta SSH; N5, N6, R7), risorse del nodo confrontate con il profilo consigliato (N1), backup, aggiornamenti. Con --insecure-http compare un avviso rosso. Base della futura console cloud.">
   <div class="page">
     <div class="page-h"><h1>System</h1><span class="badge badge-accent"><span class="dot" style="background:var(--accent)"></span>All systems operational</span><span class="sp"></span><span class="muted small">GitStack <b class="mono" style="color:var(--text)">1.0.0</b> · k3s v1.31 · 1 node</span></div>
     <div class="alert alert-info" style="margin-bottom:20px"><svg class="icon"><use href="#i-download"/></svg><div style="flex:1"><b>GitStack 1.0.1 is available.</b> Security fixes for SSH. A backup is taken automatically before upgrading. <a>Release notes</a></div><button class="btn btn-sm btn-primary">Upgrade…</button></div>
@@ -1265,6 +1265,15 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
       <div class="card svc"><div class="row"><b class="row"><svg class="icon"><use href="#i-db"/></svg>postgres</b><span class="row small" style="gap:5px"><span class="dot" style="background:var(--success)"></span>Healthy</span></div><div class="small muted" style="margin-top:6px">bundled · 412 MB · 14 connections</div></div>
       <div class="card svc"><div class="row"><b class="row"><svg class="icon"><use href="#i-activity"/></svg>nats</b><span class="row small" style="gap:5px"><span class="dot" style="background:var(--warning)"></span>Degraded</span></div><div class="small muted" style="margin-top:6px">webhooks consumer lagging · 37 pending</div></div>
     </div>
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-h"><svg class="icon"><use href="#i-lock"/></svg>Access<span class="sp"></span><button class="btn btn-sm">Change host…</button></div>
+      <div class="list" style="border:0;border-radius:0">
+        <div class="list-row small"><b style="width:140px">Host</b><span class="mono">git.acme.local</span><span class="row" style="gap:5px;margin-left:8px"><span class="dot" style="background:var(--success)"></span><span class="muted">DNS resolves to this node</span></span></div>
+        <div class="list-row small"><b style="width:140px">HTTPS certificate</b><span>Internal CA <span class="muted">· valid until Oct 2027 · also covers 192.168.1.50</span></span><span class="sp"></span><a data-go="downloads">Download CA certificate</a></div>
+        <div class="list-row small"><b style="width:140px">Git over SSH</b><span class="mono">port 2222</span><span class="muted" style="margin-left:8px">the host's own SSH is untouched</span></div>
+      </div>
+      <div class="card-b small muted" style="border-top:1px solid var(--border)">Change host with <span class="mono">gitstack config set host</span>: the certificate is regenerated and clone URLs and email links change. Installed with <span class="mono">--insecure-http</span>? A red banner warns on every page that passwords and tokens travel unencrypted.</div>
+    </div>
     <div class="home-grid" style="grid-template-columns:1fr 1fr">
       <div class="card">
         <div class="card-h"><svg class="icon"><use href="#i-server"/></svg>Node · gitstack-01<span class="sp"></span><span class="badge">Ubuntu 24.04</span></div>
@@ -1272,6 +1281,7 @@ GS_TOKEN=gst_…  <span class="tk-c"># token of the agent account</span></div>
           <div><div class="row small"><b>CPU</b><span class="sp"></span><span class="muted">1.2 / 4 cores</span></div><div class="meter"><i style="width:30%"></i></div></div>
           <div><div class="row small"><b>Memory</b><span class="sp"></span><span class="muted">3.1 / 8 GB</span></div><div class="meter"><i style="width:39%"></i></div></div>
           <div><div class="row small"><b>Disk · /var/lib/gitstack</b><span class="sp"></span><span class="muted">41 / 100 GB</span></div><div class="meter"><i style="width:41%"></i></div></div>
+          <div class="row small" style="gap:6px;color:var(--warning)"><svg class="icon"><use href="#i-alert"/></svg><span>Below the recommended profile (8 vCPU, 16 GB RAM, 200 GB SSD). Fine for trials and small teams.</span></div>
         </div>
       </div>
       <div class="card">
