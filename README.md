@@ -100,6 +100,14 @@ stesso repo):
 - **ts**: `pnpm install`, lint, typecheck e test di `web/`.
 - **registry**: build e push delle immagini dei servizi su un registry container (parametro `CONTAINER_REGISTRY`, default `ghcr.io`), come `ghcr.io/<owner>/gitstack-<servizio>` con tag sha del commit e, sui tag Git, anche il tag di versione. Gira solo dopo che `go` e `ts` sono verdi, solo su push a `main` o su tag, mai sulle PR; un servizio senza `Dockerfile` (arrivano con GIT-4/GIT-5) viene saltato senza far fallire la pipeline.
 
+Riepilogo di quando gira ogni workflow e perché:
+
+| Workflow | Quando gira | Perché |
+| --- | --- | --- |
+| `ci.yml` | ogni pull request; push su `main` e sui tag `v*` | build, lint e test a ogni cambio che entra; pubblicazione delle immagini solo da `main` e dai tag |
+| `api-contract.yml` | push su `main` e ogni pull request, senza filtro `paths:` | il contratto e i client generati non devono derivare, anche per cambi a soli `go.work`/`go.mod`/`go.sum` |
+| `security.yml` | ogni pull request; ogni notte alle 03:17 UTC su `main` (schedule); a mano (`workflow_dispatch`, con `release` per il dry-run); sui tag `v*`, richiamato da `ci.yml` in modalità release, bloccante | le scansioni sono lente e lanciano circa 15 job: a ogni push su `main` consumavano troppi minuti e job paralleli del piano gratuito (decisione del board del 2026-10-05), quindi su `main` girano di notte, in segnalazione |
+
 Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra, sezione "Contratto API e client generati"), che gira sia su push a `main` sia su pull request, su qualunque file cambi (nessun filtro `paths:`), così anche un cambio ai soli `go.work`/`go.mod`/`go.sum` fa girare `workspace-sync`.
 
 Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
@@ -108,4 +116,4 @@ Oltre alla CI su GitHub Actions, il motore GalaxyLab legge `.galaxylab/checks.to
 
 ## Scansioni di sicurezza
 
-`.github/workflows/security.yml` (GIT-114, regola V2 di rilascio v1.0) scansiona dipendenze (`govulncheck` su tutti i moduli di `go.work`, `pnpm audit` su web), codice (`gosec` per Go, `eslint-plugin-security` per TypeScript) e le cinque immagini (Trivy, stesso sha del job `registry`). Su `main` e sulle pull request segnala (annotazioni e riepilogo nel run) senza bloccare; sui tag `v*`, comprese le `-rc.N`, un CRITICAL o HIGH senza eccezione fa fallire il job e il job `registry` non pubblica. Le eccezioni stanno in `.github/security-exceptions.json` (motivo e scadenza obbligatori). Scelte (gosec/ESLint invece di CodeQL), uso, dry-run e risultati del primo giro: [`docs/security-scans.md`](docs/security-scans.md).
+`.github/workflows/security.yml` (GIT-114, regola V2 di rilascio v1.0) scansiona dipendenze (`govulncheck` su tutti i moduli di `go.work`, `pnpm audit` su web), codice (`gosec` per Go, `eslint-plugin-security` per TypeScript) e le cinque immagini (Trivy, stesso sha del job `registry`). Segnala (annotazioni e riepilogo nel run) senza bloccare sulle pull request, ogni notte alle 03:17 UTC su `main` (schedule, non più a ogni push, per il consumo di minuti e di job paralleli) e a mano; il run notturno scansiona l'ultimo `main` (il job delle immagini costruisce dal checkout); sui tag `v*`, comprese le `-rc.N`, un CRITICAL o HIGH senza eccezione fa fallire il job e il job `registry` non pubblica. Le eccezioni stanno in `.github/security-exceptions.json` (motivo e scadenza obbligatori). Scelte (gosec/ESLint invece di CodeQL), uso, dry-run e risultati del primo giro: [`docs/security-scans.md`](docs/security-scans.md).

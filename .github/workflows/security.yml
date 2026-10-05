@@ -5,8 +5,9 @@ name: security
 # sicurezza".
 #
 # Due modalità, decise da `inputs.release`:
-# - segnalazione (main e pull request): annotazioni e riepilogo nel run, il
-#   job non fallisce per i finding. Fallisce solo se uno strumento non gira o
+# - segnalazione (pull request, schedule notturno su main, avvio a mano
+#   senza "release"): annotazioni e riepilogo nel run, il job non fallisce
+#   per i finding. Fallisce solo se uno strumento non gira o
 #   il file delle eccezioni non è valido (un'assenza di report non deve
 #   sembrare "nessun finding").
 # - release (tag v*, comprese le -rc.N): CRITICAL e HIGH senza eccezione valida
@@ -15,12 +16,20 @@ name: security
 #   job che pubblica le immagini. Per provarlo senza un tag: Actions →
 #   security → Run workflow, con "release" spuntato (dry-run).
 #
+# Quando gira: su ogni pull request; ogni notte alle 03:17 UTC (schedule, che
+# GitHub esegue solo sul ramo di default, quindi su main; non passa input,
+# quindi è sempre in segnalazione); a mano con workflow_dispatch; sui tag v*
+# via ci.yml. Non gira più a ogni push su main: ogni push lanciava circa 15
+# job e il consumo di minuti e di job paralleli del piano gratuito era troppo
+# (decisione del board del 2026-10-05). Il job "images" costruisce dal
+# checkout allo sha del run: di notte scansiona l'ultimo main.
+#
 # Le eccezioni stanno in .github/security-exceptions.json (id, motivo,
 # scadenza); le legge scripts/security/gate.mjs per tutti gli strumenti.
 on:
-  push:
-    branches: [main]
   pull_request:
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
       release:

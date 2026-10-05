@@ -214,8 +214,8 @@ jobs:
 
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
-  # Su main e sulle pull request security.yml parte da sé e segnala senza
-  # bloccare. "registry" dipende da questo job: un tag con un CRITICAL/HIGH
+  # Sulle pull request e ogni notte su main (schedule) security.yml parte da
+  # sé e segnala senza bloccare; non gira più a ogni push su main. "registry" dipende da questo job: un tag con un CRITICAL/HIGH
   # senza eccezione valida non pubblica immagini.
   security:
     name: Sicurezza — scansioni bloccanti (release)
