@@ -9,9 +9,22 @@ Servizio git di GitStack: tiene i repo bare su un volume e li gestisce con il bi
 | `GITSTACK_GIT_DATA_DIR` | — (obbligatoria) | Directory dei repo; in produzione il PVC `git-data`. Nell'immagine vale `/data`. |
 | `GITSTACK_GIT_ADDR` | `:8080` | Indirizzo di ascolto HTTP. |
 | `GITSTACK_GIT_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. Log JSON (slog) su stdout. |
+| `GITSTACK_GIT_SSH_ADDR` | `:2222` | Indirizzo del server SSH integrato (R7); `off` lo disattiva. Il chart lo imposta da `git.ssh.port` (o `off` se `git.ssh.enabled=false`). |
+| `GITSTACK_GIT_SSH_HOST_KEY_FILE` | `<DATA_DIR>/ssh/ssh_host_ed25519_key` | File PEM della chiave host ed25519. Se non esiste viene generata al primo avvio (0600) e riusata dai riavvii. Nel chart è il Secret `<release>-git-ssh-host-key` montato in `/etc/gitstack/ssh`, generato una sola volta. |
+| `GITSTACK_IDENTITY_URL`, `GITSTACK_CORE_URL` | — | Servizi interrogati da smart HTTP e SSH (token, chiavi, permessi, owner/repo). Senza, o senza segreto di servizio, né smart HTTP né SSH partono (avviso nel log). |
 | `GITSTACK_IDENTITY_SERVICE_SECRET` | — | Segreto di servizio, lo stesso di core e identity. Senza, ogni chiamata a `/internal/*` è 401. Non finisce mai nei log. |
 
 Probe: `GET /healthz` (liveness, sempre `ok`) e `GET /readyz` (503 se `DATA_DIR` non esiste o non è scrivibile).
+
+## Server SSH (M-03/I, R7)
+
+Porta **2222** di default (`GITSTACK_GIT_SSH_ADDR`, nel chart `git.ssh.port`); l'installer non tocca mai l'SSH dell'host. Indirizzo: `ssh://git@<host>:2222/<owner>/<repo>.git`; la forma corta `git@<host>:<owner>/<repo>.git` vale solo con porta 22.
+
+- Solo chiave pubblica, login `git`. Il fingerprint `SHA256:...` della chiave si risolve con identity `GET /internal/ssh-keys/{fingerprint}` (percorso con `url.PathEscape`); chiave sconosciuta o utente disattivato: rifiuto.
+- Nessuna shell, pty, subsystem o forwarding. Si accettano solo `git-upload-pack` e `git-receive-pack` (anche `git upload-pack`/`git receive-pack`) su `[/]<owner>/<repo>[.git]`, senza argomenti extra, senza metacaratteri; ogni altro comando esce con errore 128.
+- Permessi: core `GET /repos/{owner}/{repo}` con l'identità firmata dell'utente (404 per «non esiste» e «non puoi leggerlo», stesso messaggio) e identity `POST /internal/permissions/check`: `read` per upload-pack, `write` per receive-pack; un repo archiviato rifiuta il push. È lo stesso `access.Authorizer` dello smart HTTP (`write=true` per receive-pack), con un solo `upstream.Client`; una chiave SSH vale come l'utente intero (scope read e write), restano ruolo e archiviazione. Il repo archiviato (R10) si legge ma rifiuta il push, anche via HTTPS (403) e via SSH (`access.ErrArchived`). La chiave si risolve con `upstream.Client.LookupKey`.
+- Chiave host: vedi la variabile sopra; non cambia a ogni riavvio, quindi i client non vedono «host key changed».
+- `internal/sshd`; i test usano un client `ssh`/`git` reale (`t.Skip` se mancano dal PATH).
 
 ## Layout su disco
 

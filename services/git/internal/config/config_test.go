@@ -32,3 +32,28 @@ func TestLoad_Errori(t *testing.T) {
 		t.Fatal("il segreto compare nell'errore")
 	}
 }
+
+func TestLoad_SSH(t *testing.T) {
+	cfg, err := load(env(map[string]string{EnvDataDir: "/data"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SSHAddr != ":2222" || cfg.SSHHostKeyFile == "" || cfg.IdentityURL != "" {
+		t.Fatalf("default SSH: %+v", cfg)
+	}
+	cfg, err = load(env(map[string]string{
+		EnvDataDir: "/data", EnvSSHAddr: " :2200 ", EnvSSHHostKey: "/etc/gitstack/ssh/ssh_host_ed25519_key",
+		EnvIdentityURL: "http://identity:8080", EnvCoreURL: "http://core:8080",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SSHAddr != ":2200" || cfg.SSHHostKeyFile != "/etc/gitstack/ssh/ssh_host_ed25519_key" ||
+		cfg.IdentityURL != "http://identity:8080" || cfg.CoreURL != "http://core:8080" {
+		t.Fatalf("cfg = %+v", cfg)
+	}
+	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvSSHAddr: "OFF"}))
+	if err != nil || cfg.SSHAddr != "" {
+		t.Fatalf("off: %+v, %v", cfg, err)
+	}
+}

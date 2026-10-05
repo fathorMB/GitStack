@@ -6,6 +6,7 @@
 //   - fetch/clone: scope read:resource e ruolo read sul repo (interno = read
 //     per tutti gli utenti attivi, lo calcola identity);
 //   - push: scope write:resource e ruolo write;
+//   - un repo archiviato (R10) rifiuta il push con ErrArchived, ma si legge;
 //   - un repo inesistente, eliminato, nel cestino o non leggibile dà lo stesso
 //     ErrNotFound, per non rivelare che esiste; ErrForbidden solo quando il
 //     repo è leggibile ma manca scope o ruolo di scrittura.
@@ -33,6 +34,10 @@ var (
 	ErrNotFound = errors.New("access: repo non trovato")
 	// ErrForbidden: il repo è leggibile ma manca scope o ruolo richiesto.
 	ErrForbidden = errors.New("access: permesso negato")
+	// ErrArchived: il repo è archiviato (R10): si legge ma non si scrive.
+	ErrArchived = errors.New("access: repo archiviato")
+	// ErrUnknownKey: nessun utente ha registrato la chiave SSH.
+	ErrUnknownKey = errors.New("access: chiave SSH sconosciuta")
 	// ErrUnavailable: identity, core o il disco non hanno risposto: mai
 	// aprire l'accesso per un errore.
 	ErrUnavailable = errors.New("access: dipendenza non disponibile")
@@ -55,12 +60,33 @@ type Identity interface {
 	HasRole(ctx context.Context, userID, resourceID, role string) (bool, error)
 }
 
-// Core risolve owner/nome in id del repo applicando la lettura (core risponde
-// 404 a un repo che il chiamante non può leggere).
+// KeyOwner è l'utente a cui appartiene una chiave SSH registrata.
+type KeyOwner struct {
+	UserID   string
+	Username string
+	// Active è false per un utente disattivato: la chiave non apre l'accesso.
+	Active bool
+}
+
+// Keys risolve il fingerprint di una chiave SSH (accesso SSH, M-03/I).
+type Keys interface {
+	// LookupKey ritorna il proprietario del fingerprint SHA256:...;
+	// ErrUnknownKey se non esiste. Errori di trasporto: ErrUnavailable.
+	LookupKey(ctx context.Context, fingerprint string) (KeyOwner, error)
+}
+
+// RepoRef è il repo risolto da core.
+type RepoRef struct {
+	ID       string
+	Archived bool
+}
+
+// Core risolve owner/nome applicando la lettura (core risponde 404 a un repo
+// che il chiamante non può leggere).
 type Core interface {
-	// ResolveRepo ritorna l'id del repo; ErrNotFound se non esiste, è
-	// eliminato o il chiamante non lo legge.
-	ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (repoID string, err error)
+	// ResolveRepo ritorna il repo; ErrNotFound se non esiste, è eliminato o
+	// il chiamante non lo legge.
+	ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (RepoRef, error)
 }
 
 // Disk è la parte di repostore.Store usata qui.
@@ -96,13 +122,14 @@ func (a *Authorizer) Authorize(ctx context.Context, p Principal, owner, name str
 		return "", ErrForbidden
 	}
 	caller := trust.Identity{UserID: p.UserID, Username: p.Username, Scopes: p.Scopes}
-	id, err := a.Core.ResolveRepo(ctx, caller, owner, name)
+	ref, err := a.Core.ResolveRepo(ctx, caller, owner, name)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return "", ErrNotFound
 		}
 		return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
+	id := ref.ID
 	if write {
 		// La lettura l'ha già verificata core; se non legge non scrive.
 		ok, err := a.Identity.HasRole(ctx, p.UserID, id, role)
@@ -111,6 +138,9 @@ func (a *Authorizer) Authorize(ctx context.Context, p Principal, owner, name str
 		}
 		if !ok {
 			return "", ErrForbidden
+		}
+		if ref.Archived {
+			return "", ErrArchived
 		}
 	}
 	info, err := a.Disk.Get(ctx, id)

@@ -83,6 +83,8 @@ func TestResolveRepo(t *testing.T) {
 		switch r.URL.Path {
 		case "/repos/alice/app":
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
+		case "/repos/alice/arch":
+			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","archived":true}`))
 		case "/repos/alice/boom":
 			w.WriteHeader(http.StatusBadGateway)
 		default:
@@ -93,14 +95,64 @@ func TestResolveRepo(t *testing.T) {
 	c := New("", core.URL, secret, time.Second)
 	caller := trust.Identity{UserID: "u1", Username: "alice", Scopes: []string{"read:resource"}}
 
-	id, err := c.ResolveRepo(context.Background(), caller, "alice", "app")
-	if err != nil || id != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" {
-		t.Fatalf("resolve: %q %v", id, err)
+	ref, err := c.ResolveRepo(context.Background(), caller, "alice", "app")
+	if err != nil || ref.ID != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" || ref.Archived {
+		t.Fatalf("resolve: %+v %v", ref, err)
+	}
+	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "arch"); err != nil || !ref.Archived {
+		t.Fatalf("archiviato: %+v %v", ref, err)
 	}
 	if _, err := c.ResolveRepo(context.Background(), caller, "alice", "altro"); !errors.Is(err, access.ErrNotFound) {
 		t.Errorf("404 deve essere ErrNotFound: %v", err)
 	}
 	if _, err := c.ResolveRepo(context.Background(), caller, "alice", "boom"); err == nil || errors.Is(err, access.ErrNotFound) {
 		t.Errorf("5xx non deve essere ErrNotFound: %v", err)
+	}
+}
+
+func TestLookupKey(t *testing.T) {
+	const fp = "SHA256:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNO+/1234567"
+	idp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer sec" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		// Il fingerprint con '/' e '+' deve arrivare come un solo segmento.
+		if !strings.HasPrefix(r.URL.EscapedPath(), "/internal/ssh-keys/") || strings.Contains(strings.TrimPrefix(r.URL.EscapedPath(), "/internal/ssh-keys/"), "/") {
+			t.Errorf("percorso non escapato: %s", r.URL.EscapedPath())
+		}
+		switch r.URL.Path {
+		case "/internal/ssh-keys/" + fp:
+			_, _ = w.Write([]byte(`{"key":{},"user":{"id":"u1","username":"alice","isActive":true}}`))
+		case "/internal/ssh-keys/SHA256:off":
+			_, _ = w.Write([]byte(`{"user":{"id":"u2","username":"carol","isActive":false}}`))
+		case "/internal/ssh-keys/SHA256:noflag":
+			_, _ = w.Write([]byte(`{"user":{"id":"u3","username":"dan"}}`))
+		case "/internal/ssh-keys/SHA256:boom":
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer idp.Close()
+	c := New(idp.URL, "", "sec", time.Second)
+	ctx := context.Background()
+	if u, err := c.LookupKey(ctx, fp); err != nil || u != (access.KeyOwner{UserID: "u1", Username: "alice", Active: true}) {
+		t.Fatalf("chiave valida: %+v %v", u, err)
+	}
+	if u, err := c.LookupKey(ctx, "SHA256:off"); err != nil || u.Active {
+		t.Errorf("disattivato: %+v %v", u, err)
+	}
+	if u, err := c.LookupKey(ctx, "SHA256:noflag"); err != nil || u.Active {
+		t.Errorf("senza isActive deve essere non attivo: %+v %v", u, err)
+	}
+	if _, err := c.LookupKey(ctx, "SHA256:ignota"); !errors.Is(err, access.ErrUnknownKey) {
+		t.Errorf("ignota: %v", err)
+	}
+	if _, err := c.LookupKey(ctx, "SHA256:boom"); !errors.Is(err, access.ErrUnavailable) {
+		t.Errorf("500: %v", err)
+	}
+	if _, err := New("http://127.0.0.1:1", "", "sec", time.Second).LookupKey(ctx, fp); !errors.Is(err, access.ErrUnavailable) {
+		t.Errorf("identity spenta: %v", err)
 	}
 }

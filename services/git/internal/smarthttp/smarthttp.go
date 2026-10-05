@@ -104,6 +104,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, access.ErrForbidden):
 		textErr(w, http.StatusForbidden, "Permesso negato.")
 		return
+	case errors.Is(err, access.ErrArchived):
+		textErr(w, http.StatusForbidden, "Repository archiviato: push non consentito.")
+		return
 	default:
 		h.logger().Error("controllo dei permessi non riuscito", "err", err)
 		textErr(w, http.StatusServiceUnavailable, "Servizio temporaneamente non disponibile.")

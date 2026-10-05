@@ -19,12 +19,21 @@ const (
 	EnvLogLevel = "GITSTACK_GIT_LOG_LEVEL"
 	// EnvServiceSecret: segreto di servizio, lo stesso di core e identity.
 	EnvServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	// EnvSSHAddr: indirizzo del server SSH integrato (default ":2222", R7);
+	// "off" lo disattiva. Mai la 22: l'installer non tocca l'SSH dell'host.
+	EnvSSHAddr = "GITSTACK_GIT_SSH_ADDR"
+	// EnvSSHHostKey: file della chiave host ed25519 (PEM); se manca viene
+	// generato al primo avvio. Default <dati>/ssh/ssh_host_ed25519_key.
+	EnvSSHHostKey = "GITSTACK_GIT_SSH_HOST_KEY_FILE"
 	// EnvIdentityURL e EnvCoreURL: URL interni di identity e core, usati dallo
 	// smart HTTP (token, permessi, risoluzione owner/repo). Se mancano, le
 	// richieste git rispondono 503.
 	EnvIdentityURL = "GITSTACK_IDENTITY_URL"
 	EnvCoreURL     = "GITSTACK_CORE_URL"
 )
+
+// DefaultSSHAddr è la porta SSH di default (R7).
+const DefaultSSHAddr = ":2222"
 
 // Config è la configurazione del servizio git.
 type Config struct {
@@ -34,6 +43,11 @@ type Config struct {
 	// ServiceSecret firma gli header d'identità; vuoto = ogni chiamata
 	// interna è rifiutata con 401. Non va mai nei log né negli errori.
 	ServiceSecret string
+	// SSHAddr è l'indirizzo di ascolto SSH; vuoto = SSH disattivato. Il server
+	// SSH parte solo se ci sono anche IdentityURL, CoreURL e ServiceSecret.
+	SSHAddr string
+	// SSHHostKeyFile è il file della chiave host (valorizzato se c'è DataDir).
+	SSHHostKeyFile string
 	// IdentityURL e CoreURL: vuoti = smart HTTP non configurato.
 	IdentityURL string
 	CoreURL     string
@@ -44,7 +58,7 @@ func Load() (Config, error) { return load(os.LookupEnv) }
 
 func load(lookup func(string) (string, bool)) (Config, error) {
 	var errs []string
-	cfg := Config{Addr: ":8080", LogLevel: "info"}
+	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr}
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = strings.TrimSpace(v)
@@ -73,6 +87,19 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		cfg.ServiceSecret = strings.TrimSpace(v)
 	}
 
+	if v, ok := lookup(EnvSSHAddr); ok && strings.TrimSpace(v) != "" {
+		v = strings.TrimSpace(v)
+		if strings.EqualFold(v, "off") {
+			cfg.SSHAddr = ""
+		} else {
+			cfg.SSHAddr = v
+		}
+	}
+	if v, ok := lookup(EnvSSHHostKey); ok && strings.TrimSpace(v) != "" {
+		cfg.SSHHostKeyFile = strings.TrimSpace(v)
+	} else if cfg.DataDir != "" {
+		cfg.SSHHostKeyFile = filepath.Join(cfg.DataDir, "ssh", "ssh_host_ed25519_key")
+	}
 	if v, ok := lookup(EnvIdentityURL); ok {
 		cfg.IdentityURL = strings.TrimSpace(v)
 	}

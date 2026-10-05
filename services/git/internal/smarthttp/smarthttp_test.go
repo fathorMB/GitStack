@@ -26,6 +26,7 @@ const (
 	repoPriv = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" // alice/priv, privato
 	repoInt  = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" // alice/shared, interno
 	repoGone = "cccccccc-cccc-4ccc-8ccc-cccccccccccc" // alice/gone, nel cestino
+	repoArch = "dddddddd-dddd-4ddd-8ddd-dddddddddddd" // alice/arch, archiviato
 )
 
 // fakeIdentity: token → principal; ruoli per (utente, repo).
@@ -54,17 +55,19 @@ func (f *fakeIdentity) HasRole(_ context.Context, user, repo, role string) (bool
 type fakeCore struct {
 	id *fakeIdentity
 	by map[string]string // owner/name → repoId
+	// archived: repo archiviati (R10).
+	archived map[string]bool
 }
 
-func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (string, error) {
+func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner, name string) (access.RepoRef, error) {
 	rid, ok := c.by[owner+"/"+name]
 	if !ok {
-		return "", access.ErrNotFound
+		return access.RepoRef{}, access.ErrNotFound
 	}
 	if ok, _ := c.id.HasRole(ctx, caller.UserID, rid, "read"); !ok {
-		return "", access.ErrNotFound
+		return access.RepoRef{}, access.ErrNotFound
 	}
-	return rid, nil
+	return access.RepoRef{ID: rid, Archived: c.archived[rid]}, nil
 }
 
 func gitBin(t *testing.T) string {
@@ -93,7 +96,7 @@ func setup(t *testing.T) *env {
 		Files:  []repostore.File{{Path: "README.md", Content: []byte("# ciao\n")}},
 		Author: repostore.Author{Name: "Alice", Email: "alice@example.com"},
 	}
-	for _, id := range []string{repoPriv, repoInt, repoGone} {
+	for _, id := range []string{repoPriv, repoInt, repoGone, repoArch} {
 		if _, err := store.Create(ctx, id, opts); err != nil {
 			t.Fatal(err)
 		}
@@ -113,14 +116,14 @@ func setup(t *testing.T) *env {
 			"gst_bob_ro": {UserID: bob, Username: "bob", Scopes: []string{access.ScopeRead}},
 		},
 		roles: map[[2]string]string{
-			{alice, repoPriv}: "admin", {alice, repoInt}: "admin", {alice, repoGone}: "admin",
+			{alice, repoPriv}: "admin", {alice, repoInt}: "admin", {alice, repoGone}: "admin", {alice, repoArch}: "admin",
 			{bob, repoPriv}: "read",
 		},
 		internal: map[string]bool{repoInt: true},
 	}
 	core := &fakeCore{id: ident, by: map[string]string{
-		"alice/priv": repoPriv, "alice/shared": repoInt, "alice/gone": repoGone,
-	}}
+		"alice/priv": repoPriv, "alice/shared": repoInt, "alice/gone": repoGone, "alice/arch": repoArch,
+	}, archived: map[string]bool{repoArch: true}}
 	h := &smarthttp.Handler{
 		Auth:   &access.Authorizer{Identity: ident, Core: core, Disk: store},
 		GitBin: bin,
@@ -303,6 +306,22 @@ func TestSoloLetturaNonPuoPushare(t *testing.T) {
 	dir, _ := e.store.RepoPath(repoPriv)
 	if out := mustGit(t, dir, "rev-list", "--count", "HEAD"); strings.TrimSpace(out) != "1" {
 		t.Errorf("il repo è cambiato: %s", out)
+	}
+}
+
+func TestRepoArchiviatoSiLeggeMaNonSiScrive(t *testing.T) {
+	e := setup(t)
+	work := t.TempDir()
+	c := filepath.Join(work, "c")
+	mustGit(t, work, "clone", e.url("alice", "gst_alice", "/alice/arch.git"), c)
+	mustGit(t, c, "commit", "--allow-empty", "-m", "vuoto")
+	out, err := git(t, c, "push", "origin", "HEAD")
+	if err == nil || !strings.Contains(out, "403") {
+		t.Fatalf("push su repo archiviato: err=%v\n%s", err, out)
+	}
+	dir, _ := e.store.RepoPath(repoArch)
+	if n := mustGit(t, dir, "rev-list", "--count", "HEAD"); strings.TrimSpace(n) != "1" {
+		t.Errorf("il repo archiviato è cambiato: %s", n)
 	}
 }
 
