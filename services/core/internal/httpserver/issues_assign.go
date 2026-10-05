@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/google/uuid"
@@ -89,6 +90,11 @@ func (s *apiServer) replaceAssignees(ctx context.Context, tx querier, issueID, a
 		if err := insertIssueEvent(ctx, tx, issueID, "assigned", actor, map[string]any{"assignee": a.name}); err != nil {
 			return err
 		}
+		if err := emitIssue(ctx, tx, domainevents.IssueAssigned, issueID, actor, func(p *domainevents.IssuePayload) {
+			p.Assignee = &domainevents.User{ID: a.id.String(), Username: a.name}
+		}); err != nil {
+			return err
+		}
 	}
 	var removed []uuid.UUID
 	for id := range have {
@@ -108,6 +114,11 @@ func (s *apiServer) replaceAssignees(ctx context.Context, tx querier, issueID, a
 			return err
 		}
 		if err := insertIssueEvent(ctx, tx, issueID, "unassigned", actor, map[string]any{"assignee": dir[id].Username}); err != nil {
+			return err
+		}
+		if err := emitIssue(ctx, tx, domainevents.IssueUnassigned, issueID, actor, func(p *domainevents.IssuePayload) {
+			p.Assignee = &domainevents.User{ID: id.String(), Username: dir[id].Username}
+		}); err != nil {
 			return err
 		}
 	}

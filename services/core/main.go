@@ -22,6 +22,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
+	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -165,6 +166,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 
 	var routerOpts []httpserver.Option
 	var identityPurger repopurge.Access
+	var repoLookup any
 	var gitAPI gitclient.Git
 	if cfg.IdentityURL != "" {
 		identityURL, err := url.Parse(cfg.IdentityURL)
@@ -174,6 +176,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 		idc := identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)
 		identityPurger = idc
+		repoLookup = idc
 		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc), httpserver.WithRepoIdentity(idc), httpserver.WithUserAccess(idc))
 	} else {
 		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources e le operazioni sui repo risponderanno 503")
@@ -193,6 +196,18 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	} else {
 		logger.Warn("GITSTACK_CORE_ATTACHMENTS_DIR non impostata: gli allegati rispondono 503")
 	}
+	// Outbox degli eventi di dominio (M-06/B, GIT-130): le modifiche scrivono
+	// l'evento nella propria transazione, il relay lo pubblica su NATS con
+	// ack e ritenta con attesa crescente. Parte dopo le migrazioni e riprende
+	// le righe rimaste pendenti da un riavvio o da un'interruzione di NATS.
+	relay := &outbox.Relay{Pool: pool, Sink: publisher, Log: logger}
+	if cfg.IdentityURL != "" {
+		if look, ok := repoLookup.(outbox.Users); ok {
+			relay.Users = look
+		}
+	}
+	go relay.Run(ctx)
+
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
 
 	srv := &http.Server{

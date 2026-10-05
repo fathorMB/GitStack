@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/google/uuid"
@@ -280,6 +281,11 @@ func (s *apiServer) CreateIssueComment(w http.ResponseWriter, r *http.Request, o
 		writeIssueFailure(w, "aggiornamento della issue non riuscito", err)
 		return
 	}
+	if err := emitComment(ctx, tx, domainevents.IssueCommentCreated, x.ID, ia.userID,
+		domainevents.Comment{ID: id.String(), AuthorID: ia.userID.String(), Body: in.Body}, nil); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+		return
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit del commento non riuscito", err)
 		return
@@ -358,6 +364,12 @@ func (s *apiServer) UpdateIssueComment(w http.ResponseWriter, r *http.Request, o
 			writeIssueFailure(w, "aggiornamento della issue non riuscito", err)
 			return
 		}
+		if err := emitComment(ctx, tx, domainevents.IssueCommentEdited, x.ID, ia.userID,
+			domainevents.Comment{ID: c.ID.String(), AuthorID: c.AuthorID.String(), Body: in.Body},
+			&domainevents.CommentChanges{Body: &domainevents.From{From: c.Body}}); err != nil {
+			writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+			return
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della modifica non riuscito", err)
@@ -425,6 +437,12 @@ func (s *apiServer) DeleteIssueComment(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	if err := insertIssueEvent(ctx, tx, x.ID, "comment_deleted", ia.userID, map[string]any{"commentId": c.ID.String()}); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+		return
+	}
+	// Senza testo (I4): l'evento dice solo quale commento è sparito.
+	if err := emitComment(ctx, tx, domainevents.IssueCommentDeleted, x.ID, ia.userID,
+		domainevents.Comment{ID: c.ID.String(), AuthorID: c.AuthorID.String()}, nil); err != nil {
 		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 		return
 	}

@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/fathorMB/GitStack/pkg/names"
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
@@ -426,6 +427,12 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile: il repo non è stato creato.")
 		return
 	}
+	if err := emitRepo(r.Context(), tx.Tx(), domainevents.RepositoryCreated, repo, creatorID, nil); err != nil {
+		slog.Default().Error("scrittura dell'evento di creazione non riuscita", "repo_id", repoID, "err", err)
+		s.discardOnDisk(caller, repoID)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la creazione del repo.")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		slog.Default().Error("commit della creazione del repo non riuscito", "repo_id", repoID, "err", err)
 		s.discardOnDisk(caller, repoID)
@@ -576,6 +583,17 @@ func (s *apiServer) UpdateRepository(w http.ResponseWriter, r *http.Request, own
 			writeError(w, http.StatusServiceUnavailable, "identity_unavailable", "Identity non disponibile: la modifica non è stata applicata.")
 			return
 		}
+	}
+	if err := s.emitRepoUpdate(r.Context(), tx.Tx(), cur, updated, userID); err != nil {
+		slog.Default().Error("scrittura dell'evento del repo non riuscita", "repo_id", cur.ID, "err", err)
+		if updated.Visibility != cur.Visibility {
+			// Identity ha già la nuova visibilità: la si riporta indietro.
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = s.repoIdentity.SetResourceAttributes(ctx, cur.ID, cur.OwnerType, cur.OwnerID, cur.Visibility)
+		}
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante l'aggiornamento del repo.")
+		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		if updated.Visibility != cur.Visibility {

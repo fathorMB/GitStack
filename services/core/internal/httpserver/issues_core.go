@@ -11,6 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/fathorMB/GitStack/services/core/internal/domainevents"
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
@@ -289,6 +290,17 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 		return
 	}
+	// issue.created precede labeled/assigned/milestoned e porta già gli
+	// assegnatari richiesti (la riga in core.issue_assignees nasce dopo).
+	if err := emitIssue(ctx, tx, domainevents.IssueCreated, issueID, ia.userID, func(p *domainevents.IssuePayload) {
+		p.Issue.AssigneeIDs = []string{}
+		for _, a := range assignees {
+			p.Issue.AssigneeIDs = append(p.Issue.AssigneeIDs, a.id.String())
+		}
+	}); err != nil {
+		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+		return
+	}
 	for _, l := range labels {
 		if _, err := tx.Exec(ctx, `INSERT INTO core.issue_labels (issue_id, label_id) VALUES ($1, $2)`, issueID, l.id); err != nil {
 			writeIssueFailure(w, "assegnazione dell'etichetta non riuscita", err)
@@ -477,6 +489,19 @@ func (s *apiServer) UpdateIssue(w http.ResponseWriter, r *http.Request, owner op
 				writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 				return
 			}
+		}
+		// Un solo issue.edited, coi valori precedenti dei campi cambiati.
+		if err := emitIssue(ctx, tx, domainevents.IssueEdited, x.ID, ia.userID, func(p *domainevents.IssuePayload) {
+			p.Changes = &domainevents.IssueChanges{}
+			if titleChanged {
+				p.Changes.Title = &domainevents.From{From: x.Title}
+			}
+			if bodyChanged {
+				p.Changes.Body = &domainevents.From{From: x.Body}
+			}
+		}); err != nil {
+			writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+			return
 		}
 	}
 	if err := store.LinkAttachments(ctx, tx, ia.repo.ID, ia.userID, x.ID, nil, attachmentIDs(in.AttachmentIds)); err != nil {

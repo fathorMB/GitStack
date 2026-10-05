@@ -260,11 +260,55 @@ Tre domini, tre stream (`ISSUE`, `ISSUE_COMMENT`, `REPOSITORY`; subject
 `issue.>`, `issue_comment.>`, `repository.>`). `issue_comment` è un dominio a
 sé, e non `issue.comment.*`, perché i subject `issue.>` e `issue_comment.>`
 non si sovrappongono e uno stream per dominio resta la regola. Tutti a
-versione **1**. Pubblicazione come per gli altri eventi
-(`Publisher.Publish`, con ack): se NATS non risponde la richiesta HTTP non
-fallisce, l'evento va ritentato in background e, se si perde, i consumatori
-non hanno una coda su disco (vedi «Se NATS non risponde» per `git.push`: stessa
-politica, 3 tentativi). I consumatori sono idempotenti sull'`id` della busta
+versione **1**. Gli schemi (nomi, tipi dei payload, decoder) sono in
+`pkg/events/coreevents`: un consumer chiama `coreevents.Register(reg)`.
+
+#### Pubblicazione (outbox transazionale, GIT-130)
+
+A differenza di `git.push`, gli eventi di core **non si perdono** e **non
+escono mai per una modifica fallita**: core usa un'outbox transazionale.
+
+- La modifica scrive l'evento nella tabella `core.event_outbox` **nella stessa
+  transazione Postgres** (migrazione 0009). Se la transazione fallisce o
+  fa rollback (anche dopo aver già accodato l'evento) non resta niente, né
+  nell'outbox né sullo stream; se arriva al commit l'evento esiste e prima o
+  poi parte, anche con NATS fermo o dopo un riavvio di core.
+- Un relay in background (`internal/outbox`, avviato da `core serve`) legge
+  le righe non inviate (`FOR UPDATE SKIP LOCKED`: sicuro con più repliche),
+  le pubblica con `Publish` con ack di JetStream e solo dopo segna
+  `sent_at`. Se NATS non risponde o rifiuta, la riga resta pendente con
+  `attempts` e `last_error` aggiornati e il tentativo successivo è spostato
+  in avanti di 2 s, poi 4, 8… fino a 5 minuti (attesa crescente, senza limite
+  di tentativi). Il relay parte subito all'avvio (riprende quel che era
+  rimasto) e poi controlla ogni secondo. La connessione NATS si riapre da sola.
+- L'**id della busta è fissato nell'outbox** alla scrittura (`event_outbox.id`
+  = `envelope.id` = `Nats-Msg-Id`) e resta uguale a ogni tentativo: se il
+  relay muore fra l'ack e l'aggiornamento della riga l'evento si ripubblica,
+  e i consumatori (idempotenti sull'`id`; JetStream deduplica comunque nella
+  sua finestra) lo scartano. Consegna **at-least-once**.
+- `envelope.time` è il momento della modifica (la riga dell'outbox), non
+  quello dell'invio. L'ordine di invio è quello di scrittura, ma non è
+  garantito fra un tentativo e l'altro: i payload sono istantanee dello stato
+  dopo la modifica, quindi un consumer legge lo stato attuale dal database
+  quando l'ordine conta.
+- `actor.type` e `assignee.type` (`human`/`agent`) li risolve il relay
+  chiedendo a identity al momento dell'invio (la richiesta non lo sa): se
+  identity non risponde l'invio si ritenta, un utente sconosciuto è `human`.
+- Le righe inviate si tengono 7 giorni (debug) e poi il relay le toglie.
+- `mentions[]` non è ancora valorizzato (assente = nessuna menzione): core non
+  ha ancora un parser delle menzioni; lo aggiungerà il lavoro sulle notifiche.
+  `issue.referenced` e `issue.commit_linked` li pubblica il collegamento
+  commit↔issue (`core-issue-linker`), non questa parte.
+- «Via token» non fa parte del contratto: lo porterà GIT-125.
+
+Pubblicati da core: `issue.created` (porta già gli assegnatari iniziali, poi
+un `labeled`/`assigned`/`milestoned` per ciascuno), `edited` (uno solo anche se
+cambiano titolo e testo), `closed`, `reopened`, `assigned`, `unassigned`,
+`labeled`, `unlabeled`, `milestoned`, `demilestoned`, `locked`, `unlocked`,
+`hidden`, `unhidden`; `issue_comment.created|edited|deleted`; `repository.created`,
+`archived`, `unarchived`, `deleted`, `restored`, `visibility_changed`. Eliminare
+un'etichetta o una milestone emette un `unlabeled`/`demilestoned` per ogni issue
+toccata. I consumatori sono idempotenti sull'`id` della busta
 (`envelope.id`): JetStream può consegnare due volte.
 
 ### Campi comuni del payload
