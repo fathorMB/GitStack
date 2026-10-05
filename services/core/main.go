@@ -117,15 +117,29 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
-	gitURL, err := url.Parse(cfg.GitURL)
-	if cfg.GitURL == "" || err != nil || gitURL.Scheme == "" || gitURL.Host == "" {
-		logger.Error("configurazione non valida", "err", "GITSTACK_GIT_URL è obbligatoria per avviare il server (non per 'migrate up|down') e deve essere una URL assoluta: è il servizio git a cui core chiede di creare i repo")
-		return 1
+	// GITSTACK_GIT_URL e GITSTACK_CORE_PUBLIC_URL non impediscono l'avvio
+	// (il chart le emette solo se valorizzate, git.enabled=false): senza git
+	// le operazioni sui repo rispondono 503, senza PUBLIC_URL gli indirizzi di
+	// clone si compongono dalla richiesta.
+	var gitURL *url.URL
+	if cfg.GitURL != "" {
+		u, err := url.Parse(cfg.GitURL)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			logger.Error("configurazione non valida", "err", "GITSTACK_GIT_URL deve essere una URL assoluta (es. http://git:8080)")
+			return 1
+		}
+		gitURL = u
+	} else {
+		logger.Warn("GITSTACK_GIT_URL non impostata: creare e modificare i repo risponderà 503")
 	}
-	publicURL, err := url.Parse(cfg.PublicURL)
-	if cfg.PublicURL == "" || err != nil || publicURL.Scheme == "" || publicURL.Host == "" {
-		logger.Error("configurazione non valida", "err", "GITSTACK_CORE_PUBLIC_URL è obbligatoria per avviare il server (non per 'migrate up|down') e deve essere una URL assoluta (es. https://git.example.com): serve agli indirizzi di clone")
-		return 1
+	if cfg.PublicURL != "" {
+		u, err := url.Parse(cfg.PublicURL)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			logger.Error("configurazione non valida", "err", "GITSTACK_CORE_PUBLIC_URL deve essere una URL assoluta (es. https://git.example.com)")
+			return 1
+		}
+	} else {
+		logger.Warn("GITSTACK_CORE_PUBLIC_URL non impostata: gli indirizzi di clone si compongono dall'host della richiesta (X-Forwarded-Host/Proto)")
 	}
 
 	// NATSPublisher (internal/events, libreria condivisa di GIT-6): si
@@ -153,8 +167,10 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources e le operazioni sui repo risponderanno 503")
 	}
 
+	if gitURL != nil {
+		routerOpts = append(routerOpts, httpserver.WithGit(gitclient.New(gitURL, cfg.ServiceSecret, 30*time.Second)))
+	}
 	routerOpts = append(routerOpts,
-		httpserver.WithGit(gitclient.New(gitURL, cfg.ServiceSecret, 30*time.Second)),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort}),
 	)
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)

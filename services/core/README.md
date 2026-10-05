@@ -126,16 +126,16 @@ Operazioni del tag `repos`: `POST /repos`, `GET /repos`, `GET|PATCH /repos/{owne
 - **Impostazioni** (`PATCH`): `description`, `visibility` (aggiorna anche identity, annullando tutto se identity non risponde), `defaultBranch` (R4: deve essere fra i branch che `GET /internal/git/repos/{id}` elenca in `branches`), `protectDefaultBranch` (R9, `true` di default), `archived` (R10). Un repo archiviato risponde **409** `archived` a qualunque modifica tranne `{"archived": false}` da solo. Le modifiche si serializzano con `SELECT … FOR UPDATE`.
 - **Owner in core.** La migrazione `0003_repositories_owner_name` aggiunge `core.repositories.owner_name`, copia del nome scritta alla creazione: serve a risolvere `/repos/{owner}/{repo}` e a comporre `fullName` e indirizzi di clone senza una chiamata a identity per riga (rinomina dell'owner: fuori dalla v1, R3).
 - **`empty`** viene da git (`GET /internal/git/repos/{id}`); se git non risponde l'elenco e la lettura ripiegano su `false` e lo loggano, le modifiche no (503).
-- **Indirizzi di clone** (R1, R7): `https` = `<PUBLIC_URL>/<owner>/<repo>.git`; `ssh` = sempre `ssh://git@<host>:<porta>/<owner>/<repo>.git` (porta 2222 di default); `sshShort` = `git@<host>:<owner>/<repo>.git`, presente **solo con porta 22** (campo opzionale aggiunto a `RepoCloneUrls`).
+- **Indirizzi di clone** (R1, R7): `https` = `<PUBLIC_URL>/<owner>/<repo>.git` (senza PUBLIC_URL, la base della richiesta); `ssh` = sempre `ssh://git@<host>:<porta>/<owner>/<repo>.git` (porta 2222 di default); `sshShort` = `git@<host>:<owner>/<repo>.git`, presente **solo con porta 22** (campo opzionale aggiunto a `RepoCloneUrls`).
 - **API interna di git** (`internal/gitclient`): chiamate con gli header `X-Gitstack-*` firmati col segreto di servizio, con l'identità di chi ha fatto la richiesta a core. `GET /internal/git/repos/{id}` ha ora anche `branches` (aggiunto a `GitRepoState`, `services/git`).
 
 ### Variabili d'ambiente dei repo (le usa anche il chart, GIT-74)
 
 | Variabile | Obbligatoria | Default | Descrizione |
 |---|---|---|---|
-| `GITSTACK_GIT_URL` | sì, per `serve` | — | URL interno del servizio git (es. `http://git:8080`) |
-| `GITSTACK_CORE_PUBLIC_URL` | sì, per `serve` | — | Base HTTPS pubblica per gli indirizzi di clone (es. `https://git.example.com`) |
-| `GITSTACK_CORE_SSH_HOST` | no | host di `PUBLIC_URL` | Host dell'indirizzo SSH |
+| `GITSTACK_GIT_URL` | no | — | URL interno del servizio git (es. `http://git:8080`). Senza, un warn all'avvio e creare/modificare i repo risponde 503 (come senza `GITSTACK_IDENTITY_URL`); il chart la emette solo con `git.enabled` |
+| `GITSTACK_CORE_PUBLIC_URL` | consigliata | — | Base HTTPS pubblica per gli indirizzi di clone (es. `https://git.example.com`). Senza, un warn all'avvio e gli indirizzi si compongono dalla richiesta: `X-Forwarded-Proto`/`X-Forwarded-Host` (scritti dal gateway), altrimenti `Host` con `http`; l'host SSH di default diventa quello |
+| `GITSTACK_CORE_SSH_HOST` | no | host di `PUBLIC_URL` (o della richiesta) | Host dell'indirizzo SSH |
 | `GITSTACK_CORE_SSH_PORT` | no | `2222` | Porta SSH dell'installazione (R7) |
 
 Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).

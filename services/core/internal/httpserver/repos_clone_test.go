@@ -34,7 +34,7 @@ func TestCloneConfig_R7(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			u := c.cfg.urls("alice", "app")
+			u := c.cfg.urls(nil, "alice", "app")
 			if u.Https != c.https || u.Ssh != c.ssh {
 				t.Fatalf("https=%q ssh=%q, voluti %q %q", u.Https, u.Ssh, c.https, c.ssh)
 			}
@@ -62,5 +62,47 @@ func TestRepos_NonConfigurato503(t *testing.T) {
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Fatalf("%s %s = %d %s, voluto 503", c.method, c.path, rec.Code, rec.Body.String())
 		}
+	}
+}
+
+// Senza PublicURL gli indirizzi si compongono dalla richiesta: prima
+// X-Forwarded-Proto/Host (scritti dal gateway), altrimenti r.Host con http.
+func TestCloneConfig_SenzaPublicURL(t *testing.T) {
+	req := func(host string, hdr map[string]string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, "/repos", nil)
+		r.Host = host
+		for k, v := range hdr {
+			r.Header.Set(k, v)
+		}
+		return r
+	}
+	cases := []struct {
+		name, https, ssh string
+		r                *http.Request
+		cfg              CloneConfig
+	}{
+		{"forwarded", "https://git.example.com/alice/app.git", "ssh://git@git.example.com:2222/alice/app.git",
+			req("core:8080", map[string]string{"X-Forwarded-Proto": "https", "X-Forwarded-Host": "git.example.com"}), CloneConfig{}},
+		{"forwarded_con_porta", "https://git.example.com:8443/alice/app.git", "ssh://git@git.example.com:2222/alice/app.git",
+			req("core:8080", map[string]string{"X-Forwarded-Proto": "https", "X-Forwarded-Host": "git.example.com:8443"}), CloneConfig{}},
+		{"forwarded_catena", "https://git.example.com/alice/app.git", "ssh://git@git.example.com:2222/alice/app.git",
+			req("core:8080", map[string]string{"X-Forwarded-Proto": "https, http", "X-Forwarded-Host": "git.example.com, proxy"}), CloneConfig{}},
+		{"solo_host", "http://core.local:8080/alice/app.git", "ssh://git@core.local:2222/alice/app.git",
+			req("core.local:8080", nil), CloneConfig{}},
+		{"proto_non_valido_ignorato", "http://core.local/alice/app.git", "ssh://git@core.local:2222/alice/app.git",
+			req("core.local", map[string]string{"X-Forwarded-Proto": "javascript"}), CloneConfig{}},
+		{"ssh_host_esplicito", "https://git.example.com/alice/app.git", "ssh://git@ssh.example.com:2222/alice/app.git",
+			req("core", map[string]string{"X-Forwarded-Proto": "https", "X-Forwarded-Host": "git.example.com"}), CloneConfig{SSHHost: "ssh.example.com"}},
+		// Con PublicURL impostata gli header della richiesta non contano.
+		{"public_url_vince", "https://git.example.com/alice/app.git", "ssh://git@git.example.com:2222/alice/app.git",
+			req("evil.example", map[string]string{"X-Forwarded-Host": "evil.example"}), CloneConfig{PublicURL: "https://git.example.com"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			u := c.cfg.urls(c.r, "alice", "app")
+			if u.Https != c.https || u.Ssh != c.ssh {
+				t.Fatalf("https=%q ssh=%q, voluti %q %q", u.Https, u.Ssh, c.https, c.ssh)
+			}
+		})
 	}
 }

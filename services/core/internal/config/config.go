@@ -182,7 +182,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 
-	if v, ok := lookup(envLogLevel); ok &&strings.TrimSpace(v) != "" {
+	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {
 		level := strings.ToLower(strings.TrimSpace(v))
 		switch level {
 		case "debug", "info", "warn", "error":

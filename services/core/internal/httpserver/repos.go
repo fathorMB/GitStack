@@ -57,11 +57,37 @@ func (c CloneConfig) sshPort() int {
 	return c.SSHPort
 }
 
-func (c CloneConfig) sshHost() string {
+// publicBase è la base pubblica dell'installazione: PublicURL se impostata;
+// altrimenti si ricava dalla richiesta (X-Forwarded-Proto e X-Forwarded-Host
+// scritti dal gateway, poi r.Host con http).
+func (c CloneConfig) publicBase(r *http.Request) string {
+	if c.PublicURL != "" {
+		return strings.TrimRight(c.PublicURL, "/")
+	}
+	first := func(v string) string {
+		v, _, _ = strings.Cut(v, ",")
+		return strings.TrimSpace(v)
+	}
+	scheme, host := "http", ""
+	if r != nil {
+		if p := first(r.Header.Get("X-Forwarded-Proto")); p == "http" || p == "https" {
+			scheme = p
+		}
+		if host = first(r.Header.Get("X-Forwarded-Host")); host == "" {
+			host = r.Host
+		}
+	}
+	if host == "" {
+		host = "localhost"
+	}
+	return scheme + "://" + host
+}
+
+func (c CloneConfig) sshHost(r *http.Request) string {
 	if c.SSHHost != "" {
 		return c.SSHHost
 	}
-	if u, err := url.Parse(c.PublicURL); err == nil && u.Hostname() != "" {
+	if u, err := url.Parse(c.publicBase(r)); err == nil && u.Hostname() != "" {
 		return u.Hostname()
 	}
 	return "localhost"
@@ -70,11 +96,11 @@ func (c CloneConfig) sshHost() string {
 // urls compone gli indirizzi di clone. SSH è sempre l'indirizzo completo
 // `ssh://git@host:porta/owner/repo.git`; la forma corta `git@host:owner/repo.git`
 // vale solo con la porta 22 (R7) e solo allora è valorizzata.
-func (c CloneConfig) urls(owner, name string) openapi.RepoCloneUrls {
+func (c CloneConfig) urls(r *http.Request, owner, name string) openapi.RepoCloneUrls {
 	path := owner + "/" + name + ".git"
-	host, port := c.sshHost(), c.sshPort()
+	host, port := c.sshHost(r), c.sshPort()
 	out := openapi.RepoCloneUrls{
-		Https: strings.TrimRight(c.PublicURL, "/") + "/" + path,
+		Https: c.publicBase(r) + "/" + path,
 		Ssh:   fmt.Sprintf("ssh://git@%s:%d/%s", hostForURL(host), port, path),
 	}
 	if port == 22 {
@@ -117,7 +143,7 @@ func (s *apiServer) reposReady(w http.ResponseWriter) bool {
 	return true
 }
 
-func (s *apiServer) toAPIRepo(r store.Repo, empty bool) openapi.Repository {
+func (s *apiServer) toAPIRepo(req *http.Request, r store.Repo, empty bool) openapi.Repository {
 	id := openapi_types.UUID(r.ID)
 	createdAt, updatedAt := r.CreatedAt, r.UpdatedAt
 	return openapi.Repository{
@@ -132,7 +158,7 @@ func (s *apiServer) toAPIRepo(r store.Repo, empty bool) openapi.Repository {
 		Archived:             r.ArchivedAt != nil,
 		ArchivedAt:           r.ArchivedAt,
 		Empty:                empty,
-		CloneUrls:            s.clone.urls(r.OwnerName, r.Name),
+		CloneUrls:            s.clone.urls(req, r.OwnerName, r.Name),
 		CreatedAt:            &createdAt,
 		UpdatedAt:            &updatedAt,
 	}
@@ -243,7 +269,7 @@ func (s *apiServer) ListRepositories(w http.ResponseWriter, r *http.Request, par
 
 	out := make([]openapi.Repository, 0, len(items))
 	for i, it := range items {
-		out = append(out, s.toAPIRepo(it, empties[i]))
+		out = append(out, s.toAPIRepo(r, it, empties[i]))
 	}
 	writeJSON(w, http.StatusOK, openapi.RepositoryList{Items: out, Page: page, PerPage: perPage, Total: total})
 }
@@ -358,7 +384,7 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 		Name:          body.Name,
 		Description:   description,
 		DefaultBranch: defaultBranchName,
-		Author:        gitclient.Author{Name: caller.Username, Email: caller.Username + "@users.noreply." + s.clone.sshHost()},
+		Author:        gitclient.Author{Name: caller.Username, Email: caller.Username + "@users.noreply." + s.clone.sshHost(r)},
 	}
 	if body.Readme != nil {
 		in.Readme = *body.Readme
@@ -394,7 +420,7 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Location", "/repos/"+repo.OwnerName+"/"+repo.Name)
-	writeJSON(w, http.StatusCreated, s.toAPIRepo(repo, empty))
+	writeJSON(w, http.StatusCreated, s.toAPIRepo(r, repo, empty))
 }
 
 // discardOnDisk toglie dal disco un repo appena creato la cui creazione in
@@ -426,7 +452,7 @@ func (s *apiServer) GetRepository(w http.ResponseWriter, r *http.Request, owner 
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, s.toAPIRepo(repo, s.isEmpty(r.Context(), caller, repo.ID)))
+	writeJSON(w, http.StatusOK, s.toAPIRepo(r, repo, s.isEmpty(r.Context(), caller, repo.ID)))
 }
 
 func validVisibility(v string) bool { return v == "private" || v == "internal" }
@@ -547,7 +573,7 @@ func (s *apiServer) UpdateRepository(w http.ResponseWriter, r *http.Request, own
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante l'aggiornamento del repo.")
 		return
 	}
-	writeJSON(w, http.StatusOK, s.toAPIRepo(updated, s.isEmpty(r.Context(), caller, updated.ID)))
+	writeJSON(w, http.StatusOK, s.toAPIRepo(r, updated, s.isEmpty(r.Context(), caller, updated.ID)))
 }
 
 // Eliminazione e ripristino: item successivo, per ora 501.
