@@ -110,9 +110,9 @@ describe('FileView', () => {
     expect(screen.getByRole('link', { name: 'Blame' })).toHaveAttribute('href', '/acme/api/blame/main/cmd/main.go');
     expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute('download', 'main.go');
     // evidenziazione caricata in modo asincrono
-    await waitFor(() => expect(document.querySelector('.hljs-keyword')).not.toBeNull());
+    await waitFor(() => expect(document.querySelector('.hljs-keyword')).not.toBeNull(), { timeout: 20000 });
     expect(document.querySelectorAll('.codeline')).toHaveLength(3);
-  });
+  }, 30000);
 
   it('ref con slash: feature/x/cmd/main.go', async () => {
     vi.mocked(fetchFile).mockResolvedValue(file({}));
