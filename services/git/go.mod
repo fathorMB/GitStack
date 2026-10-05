@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	github.com/fathorMB/GitStack/pkg/events v0.0.0-20260928132205-2c4b9a62a011
+	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf
 	github.com/nats-io/nats-server/v2 v2.15.0
 	github.com/nats-io/nats.go v1.54.0
 	golang.org/x/sys v0.48.0 // indirect

@@ -82,7 +82,7 @@ func TestResolveRepo(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/repos/alice/app":
-			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","defaultBranch":"trunk"}`))
+			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}`))
 		case "/repos/alice/arch":
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","archived":true}`))
 		case "/repos/alice/trunk":
@@ -98,7 +98,7 @@ func TestResolveRepo(t *testing.T) {
 	caller := trust.Identity{UserID: "u1", Username: "alice", Scopes: []string{"read:resource"}}
 
 	ref, err := c.ResolveRepo(context.Background(), caller, "alice", "app")
-	if err != nil || ref.ID != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" || ref.Archived || ref.DefaultBranch != "trunk" {
+	if err != nil || ref.ID != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" || ref.Archived {
 		t.Fatalf("resolve: %+v %v", ref, err)
 	}
 	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "arch"); err != nil || !ref.Archived {
