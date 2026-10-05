@@ -54,6 +54,25 @@ func isTrusted(nets []*net.IPNet, ip net.IP) bool {
 	return false
 }
 
+// forwardedProto ritorna lo schema originale dichiarato da un proxy fidato
+// ("http" o "https"), "" se il peer non è fidato o l'header manca o non è
+// valido: in quel caso resta il valore calcolato da SetXForwarded.
+func forwardedProto(r *http.Request, trusted []*net.IPNet) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return ""
+	}
+	peer := net.ParseIP(host)
+	if peer == nil || !isTrusted(trusted, peer) {
+		return ""
+	}
+	v := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")))
+	if v == "http" || v == "https" {
+		return v
+	}
+	return ""
+}
+
 // ClientIP ricava l'IP del client. Se la connessione (RemoteAddr) non arriva
 // da un proxy fidato, X-Forwarded-For è ignorato e vale RemoteAddr. Se arriva
 // da un proxy fidato si scorre X-Forwarded-For da destra a sinistra e si

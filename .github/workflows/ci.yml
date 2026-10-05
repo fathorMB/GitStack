@@ -689,6 +689,31 @@ jobs:
           fi
           echo "OK: ${prefix}/auth/session 401 -> login admin 200 -> sessione 200 (via Ingress)"
 
+      # GIT-153: come un browser. curl rimanda anche un cookie Secure ricevuto
+      # su http; un cookie jar vero lo scarta (tranne che su localhost). Il
+      # programma usa http://gitstack.test:8080 (non loopback) e si collega a
+      # 127.0.0.1:8080: con gst_session sempre Secure il login dà 200 ma la
+      # sessione successiva 401 e il passo fallisce.
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+
+      - name: Login come un browser su HTTP (cookie jar che rispetta Secure)
+        run: |
+          set -euo pipefail
+          prefix=$(sed -n "s/^export const API_BASE_URL = '\([^']*\)';.*$/\1/p" web/src/lib/http.ts)
+          if [ -z "$prefix" ]; then
+            echo "FALLITO: API_BASE_URL non trovato in web/src/lib/http.ts" >&2
+            exit 1
+          fi
+          GITSTACK_PROBE_PASSWORD=$(kubectl get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d)
+          export GITSTACK_PROBE_PASSWORD
+          go run scripts/check-browser-login.go -addr 127.0.0.1:8080 -host gitstack.test:8080 -prefix "$prefix" || {
+            kubectl logs deployment/gitstack-gateway --tail=50 || true
+            kubectl logs deployment/gitstack-identity --tail=50 || true
+            exit 1
+          }
+
       # GIT-152: smoke della UI nel browser (Chromium headless) attraverso
       # l'Ingress: /login, login admin con la password iniziale del Secret (la
       # UI impone il cambio: E2E_ADMIN_NEW_PASSWORD), pagina principale, lista

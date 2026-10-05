@@ -48,7 +48,13 @@ Compromesso accettato: dopo una revoca il gateway può accettare la vecchia cred
 
 **Realizzazione (GIT-54)**: vedi `services/gateway/README.md`, sezione "Autenticazione centralizzata". Una sessione con la password iniziale da cambiare (`mustChange`) è per `/internal/verify` **attiva** con `principal.mustChangePassword: true`: è il gateway a rispondere 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza (`x-password-change-exempt` nel contratto).
 
-Le sessioni sono cookie opachi `gst_session` (HttpOnly, Secure, SameSite=Lax) con scadenza assoluta e `last_seen_at`; sono verificate con lo stesso `/internal/verify` dei token.
+Le sessioni sono cookie opachi `gst_session` (HttpOnly, SameSite=Lax, Path=/; `Secure` solo su HTTPS, vedi sotto) con scadenza assoluta e `last_seen_at`; sono verificate con lo stesso `/internal/verify` dei token.
+
+### Cookie `Secure`: HTTP e HTTPS (GIT-153)
+
+Un browser scarta un `Set-Cookie` con `Secure` ricevuto su `http://` (localhost escluso): con il cookie sempre `Secure` il login su un'installazione in chiaro risponde 200 ma non entra mai. Identity imposta quindi `Secure` solo se la richiesta originale è HTTPS: connessione TLS diretta (`r.TLS`), oppure `X-Forwarded-Proto: https` arrivato da un peer in `GITSTACK_IDENTITY_TRUSTED_PROXIES` (stessa fiducia dell'IP del client; da un peer non fidato l'header è ignorato). Vale per `gst_session` (login password e OIDC), per il cookie di logout e per il cookie di stato OIDC `gst_oidc_state`. `HttpOnly`, `SameSite=Lax` e `Path` non cambiano. Il gateway conserva `X-Forwarded-Proto` solo dai propri proxy fidati (`GITSTACK_GATEWAY_TRUSTED_PROXIES`, Traefik), altrimenti lo calcola dalla connessione.
+
+**Rischio**: finché non c'è HTTPS (N5) l'installazione v0 parla HTTP e il cookie di sessione viaggia in chiaro sulla LAN: chi intercetta il traffico può rubare la sessione. Con HTTPS davanti (Traefik con TLS) il cookie torna `Secure` da solo.
 
 ## Modello dati (schema Postgres `identity`)
 
