@@ -27,6 +27,24 @@ func (e GrantSubjectType) Valid() bool {
 	}
 }
 
+// Defines values for LookupEmailsResultUsersKind.
+const (
+	LookupEmailsResultUsersKindAgent LookupEmailsResultUsersKind = "agent"
+	LookupEmailsResultUsersKindHuman LookupEmailsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the LookupEmailsResultUsersKind enum.
+func (e LookupEmailsResultUsersKind) Valid() bool {
+	switch e {
+	case LookupEmailsResultUsersKindAgent:
+		return true
+	case LookupEmailsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OwnerType.
 const (
 	OwnerTypeOrganization OwnerType = "organization"
@@ -242,6 +260,31 @@ type GrantSubjectType string
 type GrantResourceCreatorInput struct {
 	UserId openapi_types.UUID `json:"userId"`
 }
+
+// LookupEmailsInput defines model for LookupEmailsInput.
+type LookupEmailsInput struct {
+	Emails []string `json:"emails"`
+}
+
+// LookupEmailsResult defines model for LookupEmailsResult.
+type LookupEmailsResult struct {
+	// Users Solo le email che corrispondono a un utente; le altre mancano.
+	Users []struct {
+		AvatarUrl *string                     `json:"avatarUrl"`
+		Email     string                      `json:"email"`
+		Id        openapi_types.UUID          `json:"id"`
+		Kind      LookupEmailsResultUsersKind `json:"kind"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
+type LookupEmailsResultUsersKind string
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -463,6 +506,9 @@ type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
 
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
+
+// LookupUsersByEmailJSONRequestBody defines body for LookupUsersByEmail for application/json ContentType.
+type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
 
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput

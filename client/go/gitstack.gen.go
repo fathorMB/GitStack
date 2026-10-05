@@ -18,6 +18,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for CodeUserKind.
+const (
+	CodeUserKindAgent CodeUserKind = "agent"
+	CodeUserKindHuman CodeUserKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the CodeUserKind enum.
+func (e CodeUserKind) Valid() bool {
+	switch e {
+	case CodeUserKindAgent:
+		return true
+	case CodeUserKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGrantInputSubjectType.
 const (
 	CreateGrantInputSubjectTypeTeam CreateGrantInputSubjectType = "team"
@@ -69,6 +87,33 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	case CurrentSessionAuthMethodPassword:
 		return true
 	case CurrentSessionAuthMethodToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FileDiffStatus.
+const (
+	Added    FileDiffStatus = "added"
+	Copied   FileDiffStatus = "copied"
+	Deleted  FileDiffStatus = "deleted"
+	Modified FileDiffStatus = "modified"
+	Renamed  FileDiffStatus = "renamed"
+)
+
+// Valid indicates whether the value is a known member of the FileDiffStatus enum.
+func (e FileDiffStatus) Valid() bool {
+	switch e {
+	case Added:
+		return true
+	case Copied:
+		return true
+	case Deleted:
+		return true
+	case Modified:
+		return true
+	case Renamed:
 		return true
 	default:
 		return false
@@ -186,6 +231,24 @@ func (e LicenseTemplate) Valid() bool {
 	case Mpl20:
 		return true
 	case Unlicense:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LookupEmailsResultUsersKind.
+const (
+	LookupEmailsResultUsersKindAgent LookupEmailsResultUsersKind = "agent"
+	LookupEmailsResultUsersKindHuman LookupEmailsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the LookupEmailsResultUsersKind enum.
+func (e LookupEmailsResultUsersKind) Valid() bool {
+	switch e {
+	case LookupEmailsResultUsersKindAgent:
+		return true
+	case LookupEmailsResultUsersKindHuman:
 		return true
 	default:
 		return false
@@ -357,6 +420,30 @@ func (e TokenScope) Valid() bool {
 	}
 }
 
+// Defines values for TreeEntryType.
+const (
+	Dir       TreeEntryType = "dir"
+	File      TreeEntryType = "file"
+	Submodule TreeEntryType = "submodule"
+	Symlink   TreeEntryType = "symlink"
+)
+
+// Valid indicates whether the value is a known member of the TreeEntryType enum.
+func (e TreeEntryType) Valid() bool {
+	switch e {
+	case Dir:
+		return true
+	case File:
+		return true
+	case Submodule:
+		return true
+	case Symlink:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserKind.
 const (
 	UserKindAgent UserKind = "agent"
@@ -402,6 +489,36 @@ type AddSshKeyInput struct {
 	Title     string `json:"title"`
 }
 
+// Blame defines model for Blame.
+type Blame struct {
+	Path   string       `json:"path"`
+	Ranges []BlameRange `json:"ranges"`
+	Ref    string       `json:"ref"`
+}
+
+// BlameRange defines model for BlameRange.
+type BlameRange struct {
+	Commit    CommitSummary `json:"commit"`
+	EndLine   int           `json:"endLine"`
+	StartLine int           `json:"startLine"`
+}
+
+// Branch defines model for Branch.
+type Branch struct {
+	Commit    CommitSummary `json:"commit"`
+	IsDefault bool          `json:"isDefault"`
+	Name      string        `json:"name"`
+
+	// Protected Protezione del branch principale (R9). Per il servizio git e' sempre false, la imposta core.
+	Protected bool `json:"protected"`
+}
+
+// BranchList defines model for BranchList.
+type BranchList struct {
+	Items []Branch `json:"items"`
+	Total int      `json:"total"`
+}
+
 // ChangePasswordInput defines model for ChangePasswordInput.
 type ChangePasswordInput struct {
 	CurrentPassword *string `json:"currentPassword,omitempty"`
@@ -421,6 +538,70 @@ type CheckPermissionInput struct {
 type CheckPermissionResult struct {
 	Allowed       bool          `json:"allowed"`
 	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
+}
+
+// CodeUser Utente GitStack che corrisponde all'email di un commit (confronto senza distinguere maiuscole con l'email di identity). `kind` da' il badge umano/agente.
+type CodeUser struct {
+	AvatarUrl *string            `json:"avatarUrl"`
+	Id        openapi_types.UUID `json:"id"`
+	Kind      CodeUserKind       `json:"kind"`
+
+	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Username Name `json:"username"`
+}
+
+// CodeUserKind defines model for CodeUser.Kind.
+type CodeUserKind string
+
+// CommitDetail defines model for CommitDetail.
+type CommitDetail struct {
+	Additions int           `json:"additions"`
+	Commit    CommitSummary `json:"commit"`
+	Deletions int           `json:"deletions"`
+	Files     []FileDiff    `json:"files"`
+
+	// FilesChanged Numero reale di file toccati, anche oltre i 300 elencati.
+	FilesChanged int `json:"filesChanged"`
+
+	// Truncated True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
+	Truncated bool `json:"truncated"`
+}
+
+// CommitList defines model for CommitList.
+type CommitList struct {
+	// HasMore Non c'e' un totale, contarlo costa un giro completo della storia.
+	HasMore bool            `json:"hasMore"`
+	Items   []CommitSummary `json:"items"`
+	Page    int             `json:"page"`
+	PerPage int             `json:"perPage"`
+}
+
+// CommitPerson Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+type CommitPerson struct {
+	Date  time.Time `json:"date"`
+	Email string    `json:"email"`
+	Name  string    `json:"name"`
+	User  *CodeUser `json:"user,omitempty"`
+}
+
+// CommitSummary defines model for CommitSummary.
+type CommitSummary struct {
+	// Author Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+	Author CommitPerson `json:"author"`
+
+	// Committer Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
+	Committer CommitPerson `json:"committer"`
+
+	// Message Messaggio completo (omesso nell'ultimo commit di una voce d'albero).
+	Message *string  `json:"message,omitempty"`
+	Parents []string `json:"parents"`
+	Sha     string   `json:"sha"`
+
+	// Subject Prima riga del messaggio.
+	Subject string `json:"subject"`
 }
 
 // CreateGrantInput defines model for CreateGrantInput.
@@ -603,6 +784,48 @@ type Error struct {
 	} `json:"error"`
 }
 
+// FileContent defines model for FileContent.
+type FileContent struct {
+	Binary bool `json:"binary"`
+
+	// Content Testo UTF-8; assente se `binary` (usare `raw`).
+	Content    *string       `json:"content,omitempty"`
+	LastCommit CommitSummary `json:"lastCommit"`
+	Name       string        `json:"name"`
+	Path       string        `json:"path"`
+	Ref        string        `json:"ref"`
+
+	// Sha Sha del blob.
+	Sha string `json:"sha"`
+
+	// Size Dimensione reale in byte, anche se troncato.
+	Size int64 `json:"size"`
+
+	// Truncated True se `size` supera 1 048 576 byte e `content` ne porta solo il primo megabyte.
+	Truncated bool `json:"truncated"`
+}
+
+// FileDiff defines model for FileDiff.
+type FileDiff struct {
+	Additions int  `json:"additions"`
+	Binary    bool `json:"binary"`
+	Deletions int  `json:"deletions"`
+
+	// OldPath Percorso precedente, per rinomine e copie.
+	OldPath *string `json:"oldPath,omitempty"`
+
+	// Patch Diff unificato (hunk), assente per i binari.
+	Patch  *string        `json:"patch,omitempty"`
+	Path   string         `json:"path"`
+	Status FileDiffStatus `json:"status"`
+
+	// Truncated True se il patch supera 1 MB o il limite totale di 20 000 righe e' gia' esaurito; `patch` e' parziale o assente.
+	Truncated bool `json:"truncated"`
+}
+
+// FileDiffStatus defines model for FileDiff.Status.
+type FileDiffStatus string
+
 // GitCreateRepoInput defines model for GitCreateRepoInput.
 type GitCreateRepoInput struct {
 	Author struct {
@@ -683,6 +906,19 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// LanguageShare defines model for LanguageShare.
+type LanguageShare struct {
+	Bytes   int64   `json:"bytes"`
+	Name    string  `json:"name"`
+	Percent float32 `json:"percent"`
+}
+
+// Languages defines model for Languages.
+type Languages struct {
+	Languages  []LanguageShare `json:"languages"`
+	TotalBytes int64           `json:"totalBytes"`
+}
+
 // LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
 type LicenseTemplate string
 
@@ -693,6 +929,31 @@ type LoginInput struct {
 	// Username Username oppure email.
 	Username string `json:"username"`
 }
+
+// LookupEmailsInput defines model for LookupEmailsInput.
+type LookupEmailsInput struct {
+	Emails []string `json:"emails"`
+}
+
+// LookupEmailsResult defines model for LookupEmailsResult.
+type LookupEmailsResult struct {
+	// Users Solo le email che corrispondono a un utente; le altre mancano.
+	Users []struct {
+		AvatarUrl *string                     `json:"avatarUrl"`
+		Email     string                      `json:"email"`
+		Id        openapi_types.UUID          `json:"id"`
+		Kind      LookupEmailsResultUsersKind `json:"kind"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// LookupEmailsResultUsersKind defines model for LookupEmailsResult.Users.Kind.
+type LookupEmailsResultUsersKind string
 
 // Name Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
@@ -964,6 +1225,23 @@ type SshKeyLookup struct {
 	User User `json:"user"`
 }
 
+// Tag defines model for Tag.
+type Tag struct {
+	Annotated bool          `json:"annotated"`
+	Commit    CommitSummary `json:"commit"`
+
+	// Message Messaggio del tag annotato.
+	Message  *string    `json:"message,omitempty"`
+	Name     string     `json:"name"`
+	TaggedAt *time.Time `json:"taggedAt,omitempty"`
+}
+
+// TagList defines model for TagList.
+type TagList struct {
+	Items []Tag `json:"items"`
+	Total int   `json:"total"`
+}
+
 // Team defines model for Team.
 type Team struct {
 	CreatedAt   *time.Time          `json:"createdAt,omitempty"`
@@ -1031,6 +1309,36 @@ type TokenList struct {
 
 // TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
 type TokenScope string
+
+// Tree defines model for Tree.
+type Tree struct {
+	CommitSha string      `json:"commitSha"`
+	Entries   []TreeEntry `json:"entries"`
+	Path      string      `json:"path"`
+
+	// Ref Il `ref` risolto (il branch principale se non indicato).
+	Ref string `json:"ref"`
+
+	// Truncated True se la cartella ha piu' di 1 000 voci e queste sono le prime 1 000.
+	Truncated bool `json:"truncated"`
+}
+
+// TreeEntry defines model for TreeEntry.
+type TreeEntry struct {
+	LastCommit CommitSummary `json:"lastCommit"`
+
+	// Mode Modo Git in ottale, es. `100644`.
+	Mode string `json:"mode"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+
+	// Size Byte, solo per i file.
+	Size *int64        `json:"size,omitempty"`
+	Type TreeEntryType `json:"type"`
+}
+
+// TreeEntryType defines model for TreeEntry.Type.
+type TreeEntryType string
 
 // UpdateGrantInput defines model for UpdateGrantInput.
 type UpdateGrantInput struct {
@@ -1139,6 +1447,24 @@ type VerifyCredentialResult struct {
 	Principal *Principal `json:"principal,omitempty"`
 }
 
+// CommitAuthorFilter defines model for CommitAuthorFilter.
+type CommitAuthorFilter = string
+
+// CommitPageParam defines model for CommitPageParam.
+type CommitPageParam = int
+
+// CommitPerPageParam defines model for CommitPerPageParam.
+type CommitPerPageParam = int
+
+// CommitShaParam defines model for CommitShaParam.
+type CommitShaParam = string
+
+// FilePathParam defines model for FilePathParam.
+type FilePathParam = string
+
+// GitRefParam defines model for GitRefParam.
+type GitRefParam = string
+
 // GitRepoIdParam defines model for GitRepoIdParam.
 type GitRepoIdParam = openapi_types.UUID
 
@@ -1158,8 +1484,14 @@ type OrgParam = Name
 // PageParam defines model for PageParam.
 type PageParam = int
 
+// PathParam defines model for PathParam.
+type PathParam = string
+
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// RefParam defines model for RefParam.
+type RefParam = string
 
 // RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
 //
@@ -1233,6 +1565,79 @@ type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
 
+// GitGetArchiveParams defines parameters for GitGetArchive.
+type GitGetArchiveParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+}
+
+// GitGetBlameParams defines parameters for GitGetBlame.
+type GitGetBlameParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GitGetCommitsParams defines parameters for GitGetCommits.
+type GitGetCommitsParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Author Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+	Author *CommitAuthorFilter `form:"author,omitempty" json:"author,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam       `form:"path,omitempty" json:"path,omitempty"`
+	Page *CommitPageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// PerPage Commit per pagina (default 30, massimo 100).
+	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// GitGetFileParams defines parameters for GitGetFile.
+type GitGetFileParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GitGetLanguagesParams defines parameters for GitGetLanguages.
+type GitGetLanguagesParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+}
+
+// GitGetRawParams defines parameters for GitGetRaw.
+type GitGetRawParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GitGetReadmeParams defines parameters for GitGetReadme.
+type GitGetReadmeParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// GitGetTreeParams defines parameters for GitGetTree.
+type GitGetTreeParams struct {
+	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
+	Ref GitRefParam `form:"ref" json:"ref"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
 // ListOrganizationsParams defines parameters for ListOrganizations.
 type ListOrganizationsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -1269,6 +1674,79 @@ type ListRepositoriesParams struct {
 type ListDeletedRepositoriesParams struct {
 	// Owner Filtra per nome dell'utente o dell'organizzazione proprietaria.
 	Owner *RepoOwnerFilter `form:"owner,omitempty" json:"owner,omitempty"`
+}
+
+// GetRepositoryArchiveParams defines parameters for GetRepositoryArchive.
+type GetRepositoryArchiveParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// GetRepositoryBlameParams defines parameters for GetRepositoryBlame.
+type GetRepositoryBlameParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GetRepositoryCommitsParams defines parameters for GetRepositoryCommits.
+type GetRepositoryCommitsParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Author Solo i commit il cui autore ha questo nome o email (senza distinguere maiuscole).
+	Author *CommitAuthorFilter `form:"author,omitempty" json:"author,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam       `form:"path,omitempty" json:"path,omitempty"`
+	Page *CommitPageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// PerPage Commit per pagina (default 30, massimo 100).
+	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// GetRepositoryFileParams defines parameters for GetRepositoryFile.
+type GetRepositoryFileParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GetRepositoryLanguagesParams defines parameters for GetRepositoryLanguages.
+type GetRepositoryLanguagesParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+}
+
+// GetRepositoryRawParams defines parameters for GetRepositoryRaw.
+type GetRepositoryRawParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso del file (stesse regole di `PathParam`, non vuoto).
+	Path FilePathParam `form:"path" json:"path"`
+}
+
+// GetRepositoryReadmeParams defines parameters for GetRepositoryReadme.
+type GetRepositoryReadmeParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
+}
+
+// GetRepositoryTreeParams defines parameters for GetRepositoryTree.
+type GetRepositoryTreeParams struct {
+	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
+	Ref *RefParam `form:"ref,omitempty" json:"ref,omitempty"`
+
+	// Path Percorso relativo alla radice del repo, con `/` come separatore, senza `/` iniziale e senza segmenti `.` o `..` (400 `invalid_path`). Assente o vuoto: la radice.
+	Path *PathParam `form:"path,omitempty" json:"path,omitempty"`
 }
 
 // ListResourcesParams defines parameters for ListResources.
@@ -1322,6 +1800,9 @@ type SetResourceAttributesJSONRequestBody = ResourceAttributesInput
 
 // GrantResourceCreatorJSONRequestBody defines body for GrantResourceCreator for application/json ContentType.
 type GrantResourceCreatorJSONRequestBody = GrantResourceCreatorInput
+
+// LookupUsersByEmailJSONRequestBody defines body for LookupUsersByEmail for application/json ContentType.
+type LookupUsersByEmailJSONRequestBody = LookupEmailsInput
 
 // VerifyCredentialJSONRequestBody defines body for VerifyCredential for application/json ContentType.
 type VerifyCredentialJSONRequestBody = VerifyCredentialInput
@@ -1541,15 +2022,92 @@ type ClientInterface interface {
 	// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
 	GitGetRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GitGetArchive Archivio ZIP di un ref (streaming) (per core)
+	//
+	// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/archive (the `GitGetArchive` operationId).
+	GitGetArchive(ctx context.Context, repoId GitRepoIdParam, params *GitGetArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetBlame Blame di un file (per core)
+	//
+	// Corrispondente interno di `getRepositoryBlame`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/blame (the `GitGetBlame` operationId).
+	GitGetBlame(ctx context.Context, repoId GitRepoIdParam, params *GitGetBlameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetBranches Branch del repo, con conteggi (per core)
+	//
+	// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/branches (the `GitGetBranches` operationId).
+	GitGetBranches(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetCommits Storico dei commit, paginato (per core)
+	//
+	// Corrispondente interno di `getRepositoryCommits`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits (the `GitGetCommits` operationId).
+	GitGetCommits(ctx context.Context, repoId GitRepoIdParam, params *GitGetCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetCommit Dettaglio di un commit con diff per file (per core)
+	//
+	// Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
+	GitGetCommit(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetFile Contenuto di un file (per core)
+	//
+	// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
+	GitGetFile(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetLanguages Lingue del repo (per core)
+	//
+	// Corrispondente interno di `getRepositoryLanguages`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/languages (the `GitGetLanguages` operationId).
+	GitGetLanguages(ctx context.Context, repoId GitRepoIdParam, params *GitGetLanguagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetRaw Contenuto grezzo di un file (streaming) (per core)
+	//
+	// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/raw (the `GitGetRaw` operationId).
+	GitGetRaw(ctx context.Context, repoId GitRepoIdParam, params *GitGetRawParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetReadme README di una cartella (per core)
+	//
+	// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/readme (the `GitGetReadme` operationId).
+	GitGetReadme(ctx context.Context, repoId GitRepoIdParam, params *GitGetReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GitRestoreRepo Ripristina un repo dal cestino (R2)
 	//
 	// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
 	GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GitGetTags Tag del repo, con conteggi (per core)
+	//
+	// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/tags (the `GitGetTags` operationId).
+	GitGetTags(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GitTrashRepo Sposta un repo nel cestino (R2)
 	//
 	// Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
 	GitTrashRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetTree Albero di una cartella con l'ultimo commit per voce (per core)
+	//
+	// Corrispondente interno di `getRepositoryTree`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
+	GitGetTree(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
 	//
@@ -1636,6 +2194,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /internal/ssh-keys/{fingerprint} (the `LookupSshKey` operationId).
 	LookupSshKey(ctx context.Context, fingerprint string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupUsersByEmailWithBody Trova gli utenti GitStack dalle email dei commit
+	//
+	// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+	LookupUsersByEmailWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LookupUsersByEmail Trova gli utenti GitStack dalle email dei commit
+	//
+	// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+	LookupUsersByEmail(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// VerifyCredentialWithBody Verifica una credenziale (per il gateway)
 	//
@@ -1887,6 +2463,83 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 	UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryArchive Archivio ZIP di un ref (streaming)
+	//
+	// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/archive (the `GetRepositoryArchive` operationId).
+	GetRepositoryArchive(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryBlame Blame di un file
+	//
+	// Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/blame (the `GetRepositoryBlame` operationId).
+	GetRepositoryBlame(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryBranches Branch del repo, con conteggi
+	//
+	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/branches (the `GetRepositoryBranches` operationId).
+	GetRepositoryBranches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryCommits Storico dei commit, paginato
+	//
+	// Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
+	GetRepositoryCommits(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryCommit Dettaglio di un commit con diff per file
+	//
+	// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
+	GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryFile Contenuto di un file
+	//
+	// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
+	GetRepositoryFile(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryLanguages Lingue del repo
+	//
+	// Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
+	GetRepositoryLanguages(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
+	//
+	// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
+	GetRepositoryRaw(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryReadme README di una cartella
+	//
+	// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
+	GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryTags Tag del repo, con conteggi
+	//
+	// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/tags (the `GetRepositoryTags` operationId).
+	GetRepositoryTags(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepositoryTree Albero di una cartella con l'ultimo commit per voce
+	//
+	// Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/tree (the `GetRepositoryTree` operationId).
+	GetRepositoryTree(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListResources Elenca le risorse
 	//
@@ -2339,6 +2992,159 @@ func (c *Client) GitGetRepo(ctx context.Context, repoId GitRepoIdParam, reqEdito
 	return c.Client.Do(req)
 }
 
+// GitGetArchive Archivio ZIP di un ref (streaming) (per core)
+//
+// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/archive (the `GitGetArchive` operationId).
+func (c *Client) GitGetArchive(ctx context.Context, repoId GitRepoIdParam, params *GitGetArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetArchiveRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetBlame Blame di un file (per core)
+//
+// Corrispondente interno di `getRepositoryBlame`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/blame (the `GitGetBlame` operationId).
+func (c *Client) GitGetBlame(ctx context.Context, repoId GitRepoIdParam, params *GitGetBlameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetBlameRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetBranches Branch del repo, con conteggi (per core)
+//
+// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+//
+// Corresponds with GET /internal/git/repos/{repoId}/branches (the `GitGetBranches` operationId).
+func (c *Client) GitGetBranches(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetBranchesRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetCommits Storico dei commit, paginato (per core)
+//
+// Corrispondente interno di `getRepositoryCommits`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits (the `GitGetCommits` operationId).
+func (c *Client) GitGetCommits(ctx context.Context, repoId GitRepoIdParam, params *GitGetCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetCommitsRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetCommit Dettaglio di un commit con diff per file (per core)
+//
+// Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
+func (c *Client) GitGetCommit(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetCommitRequest(c.Server, repoId, sha)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetFile Contenuto di un file (per core)
+//
+// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
+func (c *Client) GitGetFile(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetFileRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetLanguages Lingue del repo (per core)
+//
+// Corrispondente interno di `getRepositoryLanguages`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/languages (the `GitGetLanguages` operationId).
+func (c *Client) GitGetLanguages(ctx context.Context, repoId GitRepoIdParam, params *GitGetLanguagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetLanguagesRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetRaw Contenuto grezzo di un file (streaming) (per core)
+//
+// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/raw (the `GitGetRaw` operationId).
+func (c *Client) GitGetRaw(ctx context.Context, repoId GitRepoIdParam, params *GitGetRawParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetRawRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetReadme README di una cartella (per core)
+//
+// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/readme (the `GitGetReadme` operationId).
+func (c *Client) GitGetReadme(ctx context.Context, repoId GitRepoIdParam, params *GitGetReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetReadmeRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GitRestoreRepo Ripristina un repo dal cestino (R2)
 //
 // Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
@@ -2354,11 +3160,45 @@ func (c *Client) GitRestoreRepo(ctx context.Context, repoId GitRepoIdParam, reqE
 	return c.Client.Do(req)
 }
 
+// GitGetTags Tag del repo, con conteggi (per core)
+//
+// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+//
+// Corresponds with GET /internal/git/repos/{repoId}/tags (the `GitGetTags` operationId).
+func (c *Client) GitGetTags(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetTagsRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GitTrashRepo Sposta un repo nel cestino (R2)
 //
 // Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
 func (c *Client) GitTrashRepo(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGitTrashRepoRequest(c.Server, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetTree Albero di una cartella con l'ultimo commit per voce (per core)
+//
+// Corrispondente interno di `getRepositoryTree`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
+func (c *Client) GitGetTree(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetTreeRequest(c.Server, repoId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2545,6 +3385,44 @@ func (c *Client) GrantResourceCreator(ctx context.Context, resourceId openapi_ty
 // Corresponds with GET /internal/ssh-keys/{fingerprint} (the `LookupSshKey` operationId).
 func (c *Client) LookupSshKey(ctx context.Context, fingerprint string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLookupSshKeyRequest(c.Server, fingerprint)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupUsersByEmailWithBody Trova gli utenti GitStack dalle email dei commit
+//
+// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+func (c *Client) LookupUsersByEmailWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupUsersByEmailRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LookupUsersByEmail Trova gli utenti GitStack dalle email dei commit
+//
+// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+func (c *Client) LookupUsersByEmail(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLookupUsersByEmailRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3126,6 +4004,193 @@ func (c *Client) UpdateRepositoryWithBody(ctx context.Context, owner RepoOwnerPa
 // Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 func (c *Client) UpdateRepository(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateRepositoryRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryArchive Archivio ZIP di un ref (streaming)
+//
+// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/archive (the `GetRepositoryArchive` operationId).
+func (c *Client) GetRepositoryArchive(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryArchiveRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryBlame Blame di un file
+//
+// Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/blame (the `GetRepositoryBlame` operationId).
+func (c *Client) GetRepositoryBlame(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryBlameRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryBranches Branch del repo, con conteggi
+//
+// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/branches (the `GetRepositoryBranches` operationId).
+func (c *Client) GetRepositoryBranches(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryBranchesRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryCommits Storico dei commit, paginato
+//
+// Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
+func (c *Client) GetRepositoryCommits(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryCommitsRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryCommit Dettaglio di un commit con diff per file
+//
+// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
+func (c *Client) GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryCommitRequest(c.Server, owner, repo, sha)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryFile Contenuto di un file
+//
+// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
+func (c *Client) GetRepositoryFile(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryFileRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryLanguages Lingue del repo
+//
+// Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
+func (c *Client) GetRepositoryLanguages(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryLanguagesRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryRaw Contenuto grezzo di un file (streaming)
+//
+// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
+func (c *Client) GetRepositoryRaw(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryRawRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryReadme README di una cartella
+//
+// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
+func (c *Client) GetRepositoryReadme(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryReadmeRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryTags Tag del repo, con conteggi
+//
+// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/tags (the `GetRepositoryTags` operationId).
+func (c *Client) GetRepositoryTags(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryTagsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepositoryTree Albero di una cartella con l'ultimo commit per voce
+//
+// Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/tree (the `GetRepositoryTree` operationId).
+func (c *Client) GetRepositoryTree(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepositoryTreeRequest(c.Server, owner, repo, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4078,6 +5143,564 @@ func NewGitGetRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, 
 	return req, nil
 }
 
+// NewGitGetArchiveRequest constructs an http.Request for the GitGetArchive method
+func NewGitGetArchiveRequest(server string, repoId GitRepoIdParam, params *GitGetArchiveParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/archive", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetBlameRequest constructs an http.Request for the GitGetBlame method
+func NewGitGetBlameRequest(server string, repoId GitRepoIdParam, params *GitGetBlameParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/blame", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetBranchesRequest constructs an http.Request for the GitGetBranches method
+func NewGitGetBranchesRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/branches", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetCommitsRequest constructs an http.Request for the GitGetCommits method
+func NewGitGetCommitsRequest(server string, repoId GitRepoIdParam, params *GitGetCommitsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/commits", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Author != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "author", *params.Author, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetCommitRequest constructs an http.Request for the GitGetCommit method
+func NewGitGetCommitRequest(server string, repoId GitRepoIdParam, sha CommitShaParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/commits/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetFileRequest constructs an http.Request for the GitGetFile method
+func NewGitGetFileRequest(server string, repoId GitRepoIdParam, params *GitGetFileParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/contents", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetLanguagesRequest constructs an http.Request for the GitGetLanguages method
+func NewGitGetLanguagesRequest(server string, repoId GitRepoIdParam, params *GitGetLanguagesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/languages", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetRawRequest constructs an http.Request for the GitGetRaw method
+func NewGitGetRawRequest(server string, repoId GitRepoIdParam, params *GitGetRawParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/raw", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetReadmeRequest constructs an http.Request for the GitGetReadme method
+func NewGitGetReadmeRequest(server string, repoId GitRepoIdParam, params *GitGetReadmeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/readme", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGitRestoreRepoRequest constructs an http.Request for the GitRestoreRepo method
 func NewGitRestoreRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
 	var err error
@@ -4112,6 +5735,40 @@ func NewGitRestoreRepoRequest(server string, repoId GitRepoIdParam) (*http.Reque
 	return req, nil
 }
 
+// NewGitGetTagsRequest constructs an http.Request for the GitGetTags method
+func NewGitGetTagsRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/tags", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGitTrashRepoRequest constructs an http.Request for the GitTrashRepo method
 func NewGitTrashRepoRequest(server string, repoId GitRepoIdParam) (*http.Request, error) {
 	var err error
@@ -4139,6 +5796,75 @@ func NewGitTrashRepoRequest(server string, repoId GitRepoIdParam) (*http.Request
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetTreeRequest constructs an http.Request for the GitGetTree method
+func NewGitGetTreeRequest(server string, repoId GitRepoIdParam, params *GitGetTreeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/tree", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -4384,6 +6110,46 @@ func NewLookupSshKeyRequest(server string, fingerprint string) (*http.Request, e
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewLookupUsersByEmailRequest calls the generic LookupUsersByEmail builder with application/json body
+func NewLookupUsersByEmailRequest(server string, body LookupUsersByEmailJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLookupUsersByEmailRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLookupUsersByEmailRequestWithBody constructs an http.Request for the LookupUsersByEmail method, with any body, and a specified content type
+func NewLookupUsersByEmailRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/users/lookup-emails")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -5600,6 +7366,776 @@ func NewUpdateRepositoryRequestWithBody(server string, owner RepoOwnerParam, rep
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetRepositoryArchiveRequest constructs an http.Request for the GetRepositoryArchive method
+func NewGetRepositoryArchiveRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/archive", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryBlameRequest constructs an http.Request for the GetRepositoryBlame method
+func NewGetRepositoryBlameRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/blame", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryBranchesRequest constructs an http.Request for the GetRepositoryBranches method
+func NewGetRepositoryBranchesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/branches", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryCommitsRequest constructs an http.Request for the GetRepositoryCommits method
+func NewGetRepositoryCommitsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Author != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "author", *params.Author, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryCommitRequest constructs an http.Request for the GetRepositoryCommit method
+func NewGetRepositoryCommitRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryFileRequest constructs an http.Request for the GetRepositoryFile method
+func NewGetRepositoryFileRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/contents", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryLanguagesRequest constructs an http.Request for the GetRepositoryLanguages method
+func NewGetRepositoryLanguagesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/languages", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryRawRequest constructs an http.Request for the GetRepositoryRaw method
+func NewGetRepositoryRawRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/raw", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryReadmeRequest constructs an http.Request for the GetRepositoryReadme method
+func NewGetRepositoryReadmeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/readme", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryTagsRequest constructs an http.Request for the GetRepositoryTags method
+func NewGetRepositoryTagsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/tags", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepositoryTreeRequest constructs an http.Request for the GetRepositoryTree method
+func NewGetRepositoryTreeRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/tree", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Ref != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ref", *params.Ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -6830,6 +9366,87 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /internal/git/repos/{repoId} (the `GitGetRepo` operationId).
 	GitGetRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetRepoResponse, error)
 
+	// GitGetArchiveWithResponse Archivio ZIP di un ref (streaming) (per core)
+	//
+	// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/archive (the `GitGetArchive` operationId).
+	GitGetArchiveWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetArchiveParams, reqEditors ...RequestEditorFn) (*GitGetArchiveResponse, error)
+
+	// GitGetBlameWithResponse Blame di un file (per core)
+	//
+	// Corrispondente interno di `getRepositoryBlame`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/blame (the `GitGetBlame` operationId).
+	GitGetBlameWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetBlameParams, reqEditors ...RequestEditorFn) (*GitGetBlameResponse, error)
+
+	// GitGetBranchesWithResponse Branch del repo, con conteggi (per core)
+	//
+	// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/branches (the `GitGetBranches` operationId).
+	GitGetBranchesWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetBranchesResponse, error)
+
+	// GitGetCommitsWithResponse Storico dei commit, paginato (per core)
+	//
+	// Corrispondente interno di `getRepositoryCommits`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits (the `GitGetCommits` operationId).
+	GitGetCommitsWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetCommitsParams, reqEditors ...RequestEditorFn) (*GitGetCommitsResponse, error)
+
+	// GitGetCommitWithResponse Dettaglio di un commit con diff per file (per core)
+	//
+	// Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
+	GitGetCommitWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GitGetCommitResponse, error)
+
+	// GitGetFileWithResponse Contenuto di un file (per core)
+	//
+	// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
+	GitGetFileWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*GitGetFileResponse, error)
+
+	// GitGetLanguagesWithResponse Lingue del repo (per core)
+	//
+	// Corrispondente interno di `getRepositoryLanguages`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/languages (the `GitGetLanguages` operationId).
+	GitGetLanguagesWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetLanguagesParams, reqEditors ...RequestEditorFn) (*GitGetLanguagesResponse, error)
+
+	// GitGetRawWithResponse Contenuto grezzo di un file (streaming) (per core)
+	//
+	// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/raw (the `GitGetRaw` operationId).
+	GitGetRawWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetRawParams, reqEditors ...RequestEditorFn) (*GitGetRawResponse, error)
+
+	// GitGetReadmeWithResponse README di una cartella (per core)
+	//
+	// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/readme (the `GitGetReadme` operationId).
+	GitGetReadmeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetReadmeParams, reqEditors ...RequestEditorFn) (*GitGetReadmeResponse, error)
+
 	// GitRestoreRepoWithResponse Ripristina un repo dal cestino (R2)
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -6837,12 +9454,30 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/git/repos/{repoId}/restore (the `GitRestoreRepo` operationId).
 	GitRestoreRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitRestoreRepoResponse, error)
 
+	// GitGetTagsWithResponse Tag del repo, con conteggi (per core)
+	//
+	// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/tags (the `GitGetTags` operationId).
+	GitGetTagsWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetTagsResponse, error)
+
 	// GitTrashRepoWithResponse Sposta un repo nel cestino (R2)
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /internal/git/repos/{repoId}/trash (the `GitTrashRepo` operationId).
 	GitTrashRepoWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitTrashRepoResponse, error)
+
+	// GitGetTreeWithResponse Albero di una cartella con l'ultimo commit per voce (per core)
+	//
+	// Corrispondente interno di `getRepositoryTree`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
+	GitGetTreeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*GitGetTreeResponse, error)
 
 	// ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 	//
@@ -6933,6 +9568,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /internal/ssh-keys/{fingerprint} (the `LookupSshKey` operationId).
 	LookupSshKeyWithResponse(ctx context.Context, fingerprint string, reqEditors ...RequestEditorFn) (*LookupSshKeyResponse, error)
+
+	// LookupUsersByEmailWithBodyWithResponse Trova gli utenti GitStack dalle email dei commit
+	//
+	// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+	LookupUsersByEmailWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupUsersByEmailResponse, error)
+
+	// LookupUsersByEmailWithResponse Trova gli utenti GitStack dalle email dei commit
+	//
+	// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+	LookupUsersByEmailWithResponse(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUsersByEmailResponse, error)
 
 	// VerifyCredentialWithBodyWithResponse Verifica una credenziale (per il gateway)
 	//
@@ -7214,6 +9867,105 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /repos/{owner}/{repo} (the `UpdateRepository` operationId).
 	UpdateRepositoryWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateRepositoryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepositoryResponse, error)
+
+	// GetRepositoryArchiveWithResponse Archivio ZIP di un ref (streaming)
+	//
+	// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/archive (the `GetRepositoryArchive` operationId).
+	GetRepositoryArchiveWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams, reqEditors ...RequestEditorFn) (*GetRepositoryArchiveResponse, error)
+
+	// GetRepositoryBlameWithResponse Blame di un file
+	//
+	// Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/blame (the `GetRepositoryBlame` operationId).
+	GetRepositoryBlameWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams, reqEditors ...RequestEditorFn) (*GetRepositoryBlameResponse, error)
+
+	// GetRepositoryBranchesWithResponse Branch del repo, con conteggi
+	//
+	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/branches (the `GetRepositoryBranches` operationId).
+	GetRepositoryBranchesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryBranchesResponse, error)
+
+	// GetRepositoryCommitsWithResponse Storico dei commit, paginato
+	//
+	// Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
+	GetRepositoryCommitsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitsResponse, error)
+
+	// GetRepositoryCommitWithResponse Dettaglio di un commit con diff per file
+	//
+	// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
+	GetRepositoryCommitWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GetRepositoryCommitResponse, error)
+
+	// GetRepositoryFileWithResponse Contenuto di un file
+	//
+	// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
+	GetRepositoryFileWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*GetRepositoryFileResponse, error)
+
+	// GetRepositoryLanguagesWithResponse Lingue del repo
+	//
+	// Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
+	GetRepositoryLanguagesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*GetRepositoryLanguagesResponse, error)
+
+	// GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
+	//
+	// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
+	GetRepositoryRawWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*GetRepositoryRawResponse, error)
+
+	// GetRepositoryReadmeWithResponse README di una cartella
+	//
+	// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
+	GetRepositoryReadmeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*GetRepositoryReadmeResponse, error)
+
+	// GetRepositoryTagsWithResponse Tag del repo, con conteggi
+	//
+	// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/tags (the `GetRepositoryTags` operationId).
+	GetRepositoryTagsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryTagsResponse, error)
+
+	// GetRepositoryTreeWithResponse Albero di una cartella con l'ultimo commit per voce
+	//
+	// Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/tree (the `GetRepositoryTree` operationId).
+	GetRepositoryTreeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams, reqEditors ...RequestEditorFn) (*GetRepositoryTreeResponse, error)
 
 	// ListResourcesWithResponse Elenca le risorse
 	//
@@ -8091,6 +10843,613 @@ func (r GitGetRepoResponse) ContentType() string {
 	return ""
 }
 
+type GitGetArchiveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetArchiveResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetArchiveResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetArchiveResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetArchiveResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetArchiveResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetArchiveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetArchiveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetArchiveResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetBlameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Blame
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetBlameResponse) GetJSON200() *Blame {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetBlameResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetBlameResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetBlameResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetBlameResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetBlameResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetBlameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetBlameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetBlameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetBranchesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BranchList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetBranchesResponse) GetJSON200() *BranchList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetBranchesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetBranchesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetBranchesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetBranchesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetBranchesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetBranchesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetBranchesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetBranchesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetCommitsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CommitList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetCommitsResponse) GetJSON200() *CommitList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetCommitsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetCommitsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetCommitsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetCommitsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetCommitsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetCommitsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetCommitsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetCommitsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetCommitResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CommitDetail
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetCommitResponse) GetJSON200() *CommitDetail {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetCommitResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetCommitResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetCommitResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetCommitResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetCommitResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetCommitResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetCommitResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetCommitResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FileContent
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetFileResponse) GetJSON200() *FileContent {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetFileResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetFileResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetFileResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetFileResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetFileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetLanguagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Languages
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetLanguagesResponse) GetJSON200() *Languages {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetLanguagesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetLanguagesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetLanguagesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetLanguagesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetLanguagesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetLanguagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetLanguagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetLanguagesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetRawResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetRawResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetRawResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetRawResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetRawResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetRawResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetRawResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetRawResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetRawResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetReadmeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FileContent
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetReadmeResponse) GetJSON200() *FileContent {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetReadmeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetReadmeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetReadmeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetReadmeResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetReadmeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetReadmeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetReadmeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetReadmeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GitRestoreRepoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8146,6 +11505,75 @@ func (r GitRestoreRepoResponse) ContentType() string {
 	return ""
 }
 
+type GitGetTagsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TagList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetTagsResponse) GetJSON200() *TagList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetTagsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetTagsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetTagsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetTagsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetTagsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetTagsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetTagsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetTagsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GitTrashRepoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8195,6 +11623,75 @@ func (r GitTrashRepoResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GitTrashRepoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetTreeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Tree
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitGetTreeResponse) GetJSON200() *Tree {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetTreeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetTreeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetTreeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetTreeResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetTreeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetTreeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetTreeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetTreeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8595,6 +12092,68 @@ func (r LookupSshKeyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LookupSshKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LookupUsersByEmailResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LookupEmailsResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r LookupUsersByEmailResponse) GetJSON200() *LookupEmailsResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LookupUsersByEmailResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r LookupUsersByEmailResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r LookupUsersByEmailResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r LookupUsersByEmailResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LookupUsersByEmailResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LookupUsersByEmailResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LookupUsersByEmailResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -10433,6 +13992,828 @@ func (r UpdateRepositoryResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateRepositoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryArchiveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryArchiveResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryArchiveResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryArchiveResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryArchiveResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryArchiveResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryArchiveResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryArchiveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryArchiveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryArchiveResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryBlameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Blame
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryBlameResponse) GetJSON200() *Blame {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryBlameResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryBlameResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryBlameResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryBlameResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryBlameResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryBlameResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryBlameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryBlameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryBlameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryBranchesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BranchList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryBranchesResponse) GetJSON200() *BranchList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryBranchesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryBranchesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryBranchesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryBranchesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryBranchesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryBranchesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryBranchesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryBranchesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryBranchesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryCommitsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CommitList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryCommitsResponse) GetJSON200() *CommitList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryCommitsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryCommitsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryCommitsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryCommitsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryCommitsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryCommitsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryCommitsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryCommitsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryCommitsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryCommitResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CommitDetail
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryCommitResponse) GetJSON200() *CommitDetail {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryCommitResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryCommitResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryCommitResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryCommitResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryCommitResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryCommitResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryCommitResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryCommitResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryCommitResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FileContent
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryFileResponse) GetJSON200() *FileContent {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryFileResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryFileResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryFileResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryFileResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryFileResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryFileResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryLanguagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Languages
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryLanguagesResponse) GetJSON200() *Languages {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryLanguagesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryLanguagesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryLanguagesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryLanguagesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryLanguagesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryLanguagesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryLanguagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryLanguagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryLanguagesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryRawResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryRawResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryRawResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryRawResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryRawResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryRawResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryRawResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryRawResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryRawResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryRawResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryReadmeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FileContent
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryReadmeResponse) GetJSON200() *FileContent {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryReadmeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryReadmeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryReadmeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryReadmeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryReadmeResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryReadmeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryReadmeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryReadmeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryReadmeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryTagsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TagList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryTagsResponse) GetJSON200() *TagList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryTagsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryTagsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryTagsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryTagsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryTagsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryTagsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryTagsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryTagsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryTagsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepositoryTreeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Tree
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepositoryTreeResponse) GetJSON200() *Tree {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetRepositoryTreeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepositoryTreeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepositoryTreeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepositoryTreeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepositoryTreeResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepositoryTreeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepositoryTreeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepositoryTreeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepositoryTreeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -12281,6 +16662,141 @@ func (c *ClientWithResponses) GitGetRepoWithResponse(ctx context.Context, repoId
 	return ParseGitGetRepoResponse(rsp)
 }
 
+// GitGetArchiveWithResponse Archivio ZIP di un ref (streaming) (per core)
+//
+// Corrispondente interno di `getRepositoryArchive`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/archive (the `GitGetArchive` operationId).
+func (c *ClientWithResponses) GitGetArchiveWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetArchiveParams, reqEditors ...RequestEditorFn) (*GitGetArchiveResponse, error) {
+	rsp, err := c.GitGetArchive(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetArchiveResponse(rsp)
+}
+
+// GitGetBlameWithResponse Blame di un file (per core)
+//
+// Corrispondente interno di `getRepositoryBlame`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/blame (the `GitGetBlame` operationId).
+func (c *ClientWithResponses) GitGetBlameWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetBlameParams, reqEditors ...RequestEditorFn) (*GitGetBlameResponse, error) {
+	rsp, err := c.GitGetBlame(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetBlameResponse(rsp)
+}
+
+// GitGetBranchesWithResponse Branch del repo, con conteggi (per core)
+//
+// Corrispondente interno di `getRepositoryBranches`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/branches (the `GitGetBranches` operationId).
+func (c *ClientWithResponses) GitGetBranchesWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetBranchesResponse, error) {
+	rsp, err := c.GitGetBranches(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetBranchesResponse(rsp)
+}
+
+// GitGetCommitsWithResponse Storico dei commit, paginato (per core)
+//
+// Corrispondente interno di `getRepositoryCommits`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits (the `GitGetCommits` operationId).
+func (c *ClientWithResponses) GitGetCommitsWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetCommitsParams, reqEditors ...RequestEditorFn) (*GitGetCommitsResponse, error) {
+	rsp, err := c.GitGetCommits(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetCommitsResponse(rsp)
+}
+
+// GitGetCommitWithResponse Dettaglio di un commit con diff per file (per core)
+//
+// Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
+func (c *ClientWithResponses) GitGetCommitWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GitGetCommitResponse, error) {
+	rsp, err := c.GitGetCommit(ctx, repoId, sha, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetCommitResponse(rsp)
+}
+
+// GitGetFileWithResponse Contenuto di un file (per core)
+//
+// Corrispondente interno di `getRepositoryFile`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/contents (the `GitGetFile` operationId).
+func (c *ClientWithResponses) GitGetFileWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetFileParams, reqEditors ...RequestEditorFn) (*GitGetFileResponse, error) {
+	rsp, err := c.GitGetFile(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetFileResponse(rsp)
+}
+
+// GitGetLanguagesWithResponse Lingue del repo (per core)
+//
+// Corrispondente interno di `getRepositoryLanguages`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/languages (the `GitGetLanguages` operationId).
+func (c *ClientWithResponses) GitGetLanguagesWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetLanguagesParams, reqEditors ...RequestEditorFn) (*GitGetLanguagesResponse, error) {
+	rsp, err := c.GitGetLanguages(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetLanguagesResponse(rsp)
+}
+
+// GitGetRawWithResponse Contenuto grezzo di un file (streaming) (per core)
+//
+// Corrispondente interno di `getRepositoryRaw`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/raw (the `GitGetRaw` operationId).
+func (c *ClientWithResponses) GitGetRawWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetRawParams, reqEditors ...RequestEditorFn) (*GitGetRawResponse, error) {
+	rsp, err := c.GitGetRaw(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetRawResponse(rsp)
+}
+
+// GitGetReadmeWithResponse README di una cartella (per core)
+//
+// Corrispondente interno di `getRepositoryReadme`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/readme (the `GitGetReadme` operationId).
+func (c *ClientWithResponses) GitGetReadmeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetReadmeParams, reqEditors ...RequestEditorFn) (*GitGetReadmeResponse, error) {
+	rsp, err := c.GitGetReadme(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetReadmeResponse(rsp)
+}
+
 // GitRestoreRepoWithResponse Ripristina un repo dal cestino (R2)
 //
 // Returns a wrapper object for the known response body format(s).
@@ -12294,6 +16810,21 @@ func (c *ClientWithResponses) GitRestoreRepoWithResponse(ctx context.Context, re
 	return ParseGitRestoreRepoResponse(rsp)
 }
 
+// GitGetTagsWithResponse Tag del repo, con conteggi (per core)
+//
+// Corrispondente interno di `getRepositoryTags`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/tags (the `GitGetTags` operationId).
+func (c *ClientWithResponses) GitGetTagsWithResponse(ctx context.Context, repoId GitRepoIdParam, reqEditors ...RequestEditorFn) (*GitGetTagsResponse, error) {
+	rsp, err := c.GitGetTags(ctx, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetTagsResponse(rsp)
+}
+
 // GitTrashRepoWithResponse Sposta un repo nel cestino (R2)
 //
 // Returns a wrapper object for the known response body format(s).
@@ -12305,6 +16836,21 @@ func (c *ClientWithResponses) GitTrashRepoWithResponse(ctx context.Context, repo
 		return nil, err
 	}
 	return ParseGitTrashRepoResponse(rsp)
+}
+
+// GitGetTreeWithResponse Albero di una cartella con l'ultimo commit per voce (per core)
+//
+// Corrispondente interno di `getRepositoryTree`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
+func (c *ClientWithResponses) GitGetTreeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*GitGetTreeResponse, error) {
+	rsp, err := c.GitGetTree(ctx, repoId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetTreeResponse(rsp)
 }
 
 // ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
@@ -12455,6 +17001,36 @@ func (c *ClientWithResponses) LookupSshKeyWithResponse(ctx context.Context, fing
 		return nil, err
 	}
 	return ParseLookupSshKeyResponse(rsp)
+}
+
+// LookupUsersByEmailWithBodyWithResponse Trova gli utenti GitStack dalle email dei commit
+//
+// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+func (c *ClientWithResponses) LookupUsersByEmailWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LookupUsersByEmailResponse, error) {
+	rsp, err := c.LookupUsersByEmailWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupUsersByEmailResponse(rsp)
+}
+
+// LookupUsersByEmailWithResponse Trova gli utenti GitStack dalle email dei commit
+//
+// Per core (M-04): confronta le email, senza distinguere maiuscole, con `users.email` (unica su lower(email)). Massimo 100 email per chiamata; core la chiama una volta per pagina di storico, dettaglio o blame. Le email senza utente non compaiono nella risposta.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/users/lookup-emails (the `LookupUsersByEmail` operationId).
+func (c *ClientWithResponses) LookupUsersByEmailWithResponse(ctx context.Context, body LookupUsersByEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*LookupUsersByEmailResponse, error) {
+	rsp, err := c.LookupUsersByEmail(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLookupUsersByEmailResponse(rsp)
 }
 
 // VerifyCredentialWithBodyWithResponse Verifica una credenziale (per il gateway)
@@ -12934,6 +17510,171 @@ func (c *ClientWithResponses) UpdateRepositoryWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseUpdateRepositoryResponse(rsp)
+}
+
+// GetRepositoryArchiveWithResponse Archivio ZIP di un ref (streaming)
+//
+// ZIP dell'albero a `ref`, prodotto e inviato in streaming (nessun buffer in memoria). Content-Disposition `attachment` con nome `<repo>-<ref>.zip`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/archive (the `GetRepositoryArchive` operationId).
+func (c *ClientWithResponses) GetRepositoryArchiveWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryArchiveParams, reqEditors ...RequestEditorFn) (*GetRepositoryArchiveResponse, error) {
+	rsp, err := c.GetRepositoryArchive(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryArchiveResponse(rsp)
+}
+
+// GetRepositoryBlameWithResponse Blame di un file
+//
+// Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/blame (the `GetRepositoryBlame` operationId).
+func (c *ClientWithResponses) GetRepositoryBlameWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams, reqEditors ...RequestEditorFn) (*GetRepositoryBlameResponse, error) {
+	rsp, err := c.GetRepositoryBlame(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryBlameResponse(rsp)
+}
+
+// GetRepositoryBranchesWithResponse Branch del repo, con conteggi
+//
+// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/branches (the `GetRepositoryBranches` operationId).
+func (c *ClientWithResponses) GetRepositoryBranchesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryBranchesResponse, error) {
+	rsp, err := c.GetRepositoryBranches(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryBranchesResponse(rsp)
+}
+
+// GetRepositoryCommitsWithResponse Storico dei commit, paginato
+//
+// Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits (the `GetRepositoryCommits` operationId).
+func (c *ClientWithResponses) GetRepositoryCommitsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryCommitsParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitsResponse, error) {
+	rsp, err := c.GetRepositoryCommits(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryCommitsResponse(rsp)
+}
+
+// GetRepositoryCommitWithResponse Dettaglio di un commit con diff per file
+//
+// Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha} (the `GetRepositoryCommit` operationId).
+func (c *ClientWithResponses) GetRepositoryCommitWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GetRepositoryCommitResponse, error) {
+	rsp, err := c.GetRepositoryCommit(ctx, owner, repo, sha, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryCommitResponse(rsp)
+}
+
+// GetRepositoryFileWithResponse Contenuto di un file
+//
+// Contenuto di `path` a `ref` con dimensione, flag `binary` e ultimo commit (mockup 08). Oltre 1 MB (1 048 576 byte) `truncated` e' true e `content` porta solo i primi 1 MB; un file binario non porta `content` (usare `raw`). 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/contents (the `GetRepositoryFile` operationId).
+func (c *ClientWithResponses) GetRepositoryFileWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryFileParams, reqEditors ...RequestEditorFn) (*GetRepositoryFileResponse, error) {
+	rsp, err := c.GetRepositoryFile(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryFileResponse(rsp)
+}
+
+// GetRepositoryLanguagesWithResponse Lingue del repo
+//
+// Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/languages (the `GetRepositoryLanguages` operationId).
+func (c *ClientWithResponses) GetRepositoryLanguagesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryLanguagesParams, reqEditors ...RequestEditorFn) (*GetRepositoryLanguagesResponse, error) {
+	rsp, err := c.GetRepositoryLanguages(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryLanguagesResponse(rsp)
+}
+
+// GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
+//
+// Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria). Content-Type `application/octet-stream`, `Content-Length` quando noto. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/raw (the `GetRepositoryRaw` operationId).
+func (c *ClientWithResponses) GetRepositoryRawWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams, reqEditors ...RequestEditorFn) (*GetRepositoryRawResponse, error) {
+	rsp, err := c.GetRepositoryRaw(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryRawResponse(rsp)
+}
+
+// GetRepositoryReadmeWithResponse README di una cartella
+//
+// Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con gli stessi limiti di `contents`. 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/readme (the `GetRepositoryReadme` operationId).
+func (c *ClientWithResponses) GetRepositoryReadmeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryReadmeParams, reqEditors ...RequestEditorFn) (*GetRepositoryReadmeResponse, error) {
+	rsp, err := c.GetRepositoryReadme(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryReadmeResponse(rsp)
+}
+
+// GetRepositoryTagsWithResponse Tag del repo, con conteggi
+//
+// Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/tags (the `GetRepositoryTags` operationId).
+func (c *ClientWithResponses) GetRepositoryTagsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetRepositoryTagsResponse, error) {
+	rsp, err := c.GetRepositoryTags(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryTagsResponse(rsp)
+}
+
+// GetRepositoryTreeWithResponse Albero di una cartella con l'ultimo commit per voce
+//
+// Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. `ref` puo' essere branch, tag o sha; se manca vale il branch principale (R4). Un `ref` non valido risponde 400 `invalid_ref`, uno inesistente 404 `ref_not_found`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/tree (the `GetRepositoryTree` operationId).
+func (c *ClientWithResponses) GetRepositoryTreeWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryTreeParams, reqEditors ...RequestEditorFn) (*GetRepositoryTreeResponse, error) {
+	rsp, err := c.GetRepositoryTree(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepositoryTreeResponse(rsp)
 }
 
 // ListResourcesWithResponse Elenca le risorse
@@ -13892,6 +18633,478 @@ func ParseGitGetRepoResponse(rsp *http.Response) (*GitGetRepoResponse, error) {
 	return response, nil
 }
 
+// ParseGitGetArchiveResponse parses an HTTP response from a GitGetArchiveWithResponse call
+func ParseGitGetArchiveResponse(rsp *http.Response) (*GitGetArchiveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetArchiveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetBlameResponse parses an HTTP response from a GitGetBlameWithResponse call
+func ParseGitGetBlameResponse(rsp *http.Response) (*GitGetBlameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetBlameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Blame
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetBranchesResponse parses an HTTP response from a GitGetBranchesWithResponse call
+func ParseGitGetBranchesResponse(rsp *http.Response) (*GitGetBranchesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetBranchesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BranchList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetCommitsResponse parses an HTTP response from a GitGetCommitsWithResponse call
+func ParseGitGetCommitsResponse(rsp *http.Response) (*GitGetCommitsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetCommitsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CommitList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetCommitResponse parses an HTTP response from a GitGetCommitWithResponse call
+func ParseGitGetCommitResponse(rsp *http.Response) (*GitGetCommitResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetCommitResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CommitDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetFileResponse parses an HTTP response from a GitGetFileWithResponse call
+func ParseGitGetFileResponse(rsp *http.Response) (*GitGetFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FileContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetLanguagesResponse parses an HTTP response from a GitGetLanguagesWithResponse call
+func ParseGitGetLanguagesResponse(rsp *http.Response) (*GitGetLanguagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetLanguagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Languages
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetRawResponse parses an HTTP response from a GitGetRawWithResponse call
+func ParseGitGetRawResponse(rsp *http.Response) (*GitGetRawResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetRawResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetReadmeResponse parses an HTTP response from a GitGetReadmeWithResponse call
+func ParseGitGetReadmeResponse(rsp *http.Response) (*GitGetReadmeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetReadmeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FileContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGitRestoreRepoResponse parses an HTTP response from a GitRestoreRepoWithResponse call
 func ParseGitRestoreRepoResponse(rsp *http.Response) (*GitRestoreRepoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13935,6 +19148,60 @@ func ParseGitRestoreRepoResponse(rsp *http.Response) (*GitRestoreRepoResponse, e
 	return response, nil
 }
 
+// ParseGitGetTagsResponse parses an HTTP response from a GitGetTagsWithResponse call
+func ParseGitGetTagsResponse(rsp *http.Response) (*GitGetTagsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetTagsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TagList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGitTrashRepoResponse parses an HTTP response from a GitTrashRepoWithResponse call
 func ParseGitTrashRepoResponse(rsp *http.Response) (*GitTrashRepoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13951,6 +19218,60 @@ func ParseGitTrashRepoResponse(rsp *http.Response) (*GitTrashRepoResponse, error
 	switch {
 	case rsp.StatusCode == 204:
 		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetTreeResponse parses an HTTP response from a GitGetTreeWithResponse call
+func ParseGitGetTreeResponse(rsp *http.Response) (*GitGetTreeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetTreeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tree
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
@@ -14278,6 +19599,53 @@ func ParseLookupSshKeyResponse(rsp *http.Response) (*LookupSshKeyResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLookupUsersByEmailResponse parses an HTTP response from a LookupUsersByEmailWithResponse call
+func ParseLookupUsersByEmailResponse(rsp *http.Response) (*LookupUsersByEmailResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LookupUsersByEmailResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LookupEmailsResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
@@ -15789,6 +21157,663 @@ func ParseUpdateRepositoryResponse(rsp *http.Response) (*UpdateRepositoryRespons
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryArchiveResponse parses an HTTP response from a GetRepositoryArchiveWithResponse call
+func ParseGetRepositoryArchiveResponse(rsp *http.Response) (*GetRepositoryArchiveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryArchiveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryBlameResponse parses an HTTP response from a GetRepositoryBlameWithResponse call
+func ParseGetRepositoryBlameResponse(rsp *http.Response) (*GetRepositoryBlameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryBlameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Blame
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryBranchesResponse parses an HTTP response from a GetRepositoryBranchesWithResponse call
+func ParseGetRepositoryBranchesResponse(rsp *http.Response) (*GetRepositoryBranchesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryBranchesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BranchList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryCommitsResponse parses an HTTP response from a GetRepositoryCommitsWithResponse call
+func ParseGetRepositoryCommitsResponse(rsp *http.Response) (*GetRepositoryCommitsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryCommitsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CommitList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryCommitResponse parses an HTTP response from a GetRepositoryCommitWithResponse call
+func ParseGetRepositoryCommitResponse(rsp *http.Response) (*GetRepositoryCommitResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryCommitResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CommitDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryFileResponse parses an HTTP response from a GetRepositoryFileWithResponse call
+func ParseGetRepositoryFileResponse(rsp *http.Response) (*GetRepositoryFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FileContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryLanguagesResponse parses an HTTP response from a GetRepositoryLanguagesWithResponse call
+func ParseGetRepositoryLanguagesResponse(rsp *http.Response) (*GetRepositoryLanguagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryLanguagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Languages
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryRawResponse parses an HTTP response from a GetRepositoryRawWithResponse call
+func ParseGetRepositoryRawResponse(rsp *http.Response) (*GetRepositoryRawResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryRawResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryReadmeResponse parses an HTTP response from a GetRepositoryReadmeWithResponse call
+func ParseGetRepositoryReadmeResponse(rsp *http.Response) (*GetRepositoryReadmeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryReadmeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FileContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryTagsResponse parses an HTTP response from a GetRepositoryTagsWithResponse call
+func ParseGetRepositoryTagsResponse(rsp *http.Response) (*GetRepositoryTagsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryTagsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TagList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepositoryTreeResponse parses an HTTP response from a GetRepositoryTreeWithResponse call
+func ParseGetRepositoryTreeResponse(rsp *http.Response) (*GetRepositoryTreeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepositoryTreeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tree
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

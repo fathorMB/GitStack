@@ -57,3 +57,72 @@ identity usa `include-tags`; il gateway non lo espone mai):
 Id dei modelli (stabili): gitignore `go, node, python, java, dotnet, rust, cpp,
 terraform, ruby, php`; licenza `mit, apache-2.0, gpl-3.0, agpl-3.0, lgpl-3.0,
 mpl-2.0, bsd-2-clause, bsd-3-clause, unlicense`.
+
+## Letture del codice (M-04, GIT-80)
+
+Contratto in `api/openapi.yaml`: operazioni di lettura nel tag `repos` sotto
+`/repos/{owner}/{repo}` (albero `tree`, file `contents`, `raw`, `branches`,
+`tags`, `commits`, `commits/{sha}`, `blame`, `archive`, `languages`,
+`readme`), le corrispondenti interne nel tag `git-internal` sotto
+`/internal/git/repos/{repoId}/...` e, nel tag `internal` di identity,
+`POST /internal/users/lookup-emails`. Mockup 07–10.
+
+### Le letture passano da core
+
+Core risolve owner/nome → repoId, applica il permesso `read` e lo scope
+`read:resource` (D-B), tratta un repo eliminato come inesistente (404) e uno
+archiviato come leggibile; poi chiama il servizio git per repoId. Raw e ZIP
+passano in streaming (`io.Copy`, nessun buffer in memoria). Il gateway non
+instrada mai verso il servizio git (D-E resta valida) e il generatore del
+route table non cambia: le operazioni pubbliche sono servite da core come
+quelle di M-03, le interne non entrano nel route table.
+
+*Motivo:* un solo punto che applica i permessi e risolve i nomi, come per le
+API dei repo di M-03; il costo, un salto in più per raw e ZIP, è accettato.
+Le operazioni interne parlano solo per repoId, non conoscono utenti né
+permessi, e vogliono sempre un `ref` esplicito (il branch principale lo
+sostituisce core). Un repo che l'utente non può leggere risponde 404, non 403.
+
+### `ref`, errori
+
+`ref` può essere branch, tag o sha (completo o prefisso di almeno 7
+caratteri); se manca vale il branch principale (R4); se un nome è sia branch
+sia tag vince il branch. Errori: 401 senza credenziali; 404 per repo
+inesistente, eliminato o non leggibile, per `ref_not_found` e per un percorso
+inesistente; 400 `invalid_ref` per un ref sintatticamente non valido, 400
+`invalid_path` per un percorso con `.`/`..` o `/` iniziale.
+
+### Autore di un commit → utente GitStack
+
+L'email dell'autore (e del committer) si confronta, senza distinguere
+maiuscole, con `users.email` di identity, già unica su lower(email)
+(`0001_init_identity_schema.up.sql`). Se c'è corrispondenza la risposta porta
+`user {id, username, kind, avatarUrl}`, con `kind` `human` o `agent` (badge);
+altrimenti solo `name` ed `email` del commit e `user` è null. Core chiama
+`POST /internal/users/lookup-emails` (`{emails}`, massimo 100, `serviceAuth`)
+una volta per pagina di storico, dettaglio o blame; il servizio git non
+porta mai `user`.
+
+*Motivo:* l'email è l'unico legame che un commit porta con sé ed è già unica.
+**Come su GitHub, l'autore dichiarato in un commit non è una prova
+d'identità**: chiunque può scrivere in un commit l'email di un altro. Il
+badge indica «questa email appartiene a quell'utente», non «l'ha scritto
+lui»; nessuna decisione di sicurezza deve basarsi su di esso.
+
+### Limiti (costanti documentate, nel contratto come `maximum`/descrizioni)
+
+| Cosa | Limite | Oltre |
+|---|---|---|
+| vista di un file (`contents`, `readme`) | 1 MB (1 048 576 byte) | `truncated`: `content` ha il primo MB; `size` è quella reale; `raw` non ha limite |
+| diff di un commit | 300 file, 20 000 righe totali, 1 MB per file | `truncated` sul file o sulla risposta, patch omesso o parziale |
+| storico (`commits`) | pagina di default 30, massimo 100 | `hasMore`, senza totale (costerebbe un giro completo) |
+| albero (`tree`) | 1 000 voci per cartella | `truncated` |
+| blame | file di testo fino a 1 MB | 400 `blame_unavailable` |
+
+*Motivo:* tengono limitati memoria e tempo di una richiesta; i file più grandi
+si scaricano con `raw` o `archive`, che non bufferizzano.
+
+Stato: i contratti sono fissati da GIT-80; gli handler pubblici di core
+rispondono 501 fino a GIT-84, l'API interna del servizio git la scrivono GIT-81
+e GIT-82 (a mano, D-E) e `lookup-emails` in identity risponde 501 finché non
+è implementato.

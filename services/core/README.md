@@ -115,3 +115,7 @@ Migrazione `0002_repositories` (up/down in `internal/migrate/sql`).
   (Postgres reale con testcontainers): su/giù, stesso nome con owner diversi,
   stesso nome con lo stesso owner anche con `deleted_at`, `Repo` e `x.git`,
   unicità degli altri tipi.
+
+## Letture del codice (M-04)
+
+Le letture di un repo (albero, file, raw, branch, tag, storico, commit con diff, blame, ZIP, lingue, README) passano da core: risolve owner/nome → repoId, applica `read` e `read:resource`, poi chiama l'API interna del servizio git per repoId, con raw e ZIP in streaming; il gateway non parla mai col servizio git. Gli handler (`internal/httpserver/repos_code.go`) rispondono 501 fino a GIT-84. Motivo, errori, autore→utente e limiti: [docs/repos.md](../../docs/repos.md#letture-del-codice-m-04-git-80).
