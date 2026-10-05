@@ -15,3 +15,5 @@ export { PasswordInput, TextInput } from './TextField';
 export { ToastProvider, useToast } from './Toast';
 export { ErrorAlert } from './ErrorAlert';
 export { Logo } from './Logo';
+export { Markdown } from './Markdown';
+export type { MarkdownProps } from './Markdown';

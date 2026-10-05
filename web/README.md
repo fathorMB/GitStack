@@ -39,3 +39,19 @@ Il resto del CSS di `web/` (`src/styles/base.css`) usa sempre `var(--token)`, ma
 `web/Dockerfile`: build statica (stage Node) servita da `nginxinc/nginx-unprivileged` (stage runtime, utente non privilegiato `nginx`, porta 8080). Il template `deploy/nginx.conf.template` inoltra `/api/*` al gateway (`GATEWAY_UPSTREAM`, sovrascritto dal chart Helm di GIT-8) riscrivendolo su `/v1/*`, e fa da fallback SPA (`try_files ... /index.html`) per tutto il resto.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice e la motivazione nel README principale).
+
+## Markdown e evidenziazione della sintassi
+
+- `src/components/Markdown.tsx`: react-markdown + remark-gfm (tabelle, liste di
+  attività, autolink) + rehype-raw → rehype-sanitize (allowlist di default,
+  stile GitHub) → rehype-slug (ancore sui titoli, dopo la sanificazione).
+  Link e immagini relativi si risolvono con `basePath` (cartella del file) e le
+  funzioni `resolveLink`/`resolveImage`: il componente non costruisce URL da
+  solo. I link http(s) esterni hanno `rel="noopener noreferrer"`.
+- **Evidenziazione: lowlight** (highlight.js, set `common`), unica libreria sia
+  per il Markdown sia per la vista file (GIT-87): usare `highlightCode(code, lang)`
+  da `src/lib/highlight.tsx`. Perché: produce un albero hast, convertito in
+  elementi React (niente HTML da iniettare), è piccola da integrare e si carica
+  con `import()` dinamico: `corepack pnpm build` con il componente importato
+  mostra lowlight in un chunk separato dal bundle principale. I colori dei
+  token usano `--tk-*` di tokens.css (classi `.hljs-*` in components.css).
