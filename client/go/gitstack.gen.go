@@ -93,6 +93,27 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	}
 }
 
+// Defines values for FileDiffCollapseReason.
+const (
+	Generated FileDiffCollapseReason = "generated"
+	Large     FileDiffCollapseReason = "large"
+	Lock      FileDiffCollapseReason = "lock"
+)
+
+// Valid indicates whether the value is a known member of the FileDiffCollapseReason enum.
+func (e FileDiffCollapseReason) Valid() bool {
+	switch e {
+	case Generated:
+		return true
+	case Large:
+		return true
+	case Lock:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FileDiffStatus.
 const (
 	Added    FileDiffStatus = "added"
@@ -566,6 +587,15 @@ type CommitDetail struct {
 	// FilesChanged Numero reale di file toccati, anche oltre i 300 elencati.
 	FilesChanged int `json:"filesChanged"`
 
+	// IgnoreWhitespace Il diff e' stato calcolato ignorando gli spazi (`git diff -w`); i file che cambiano solo negli spazi non compaiono.
+	IgnoreWhitespace *bool `json:"ignoreWhitespace,omitempty"`
+
+	// ListOnly B6: oltre 300 file o 20 000 righe cambiate la risposta porta solo l'elenco dei file con righe aggiunte e tolte, senza `patch`.
+	ListOnly *bool `json:"listOnly,omitempty"`
+
+	// Tags Tag che puntano al commit (anche annotati), in ordine alfabetico.
+	Tags *[]string `json:"tags,omitempty"`
+
 	// Truncated True se i file sono oltre 300 o le righe di diff oltre 20 000 in totale.
 	Truncated bool `json:"truncated"`
 }
@@ -809,7 +839,13 @@ type FileContent struct {
 type FileDiff struct {
 	Additions int  `json:"additions"`
 	Binary    bool `json:"binary"`
-	Deletions int  `json:"deletions"`
+
+	// CollapseReason Perche' e' chiuso: `large` (piu' di 500 righe cambiate, aggiunte piu' tolte), `lock` (file di lock: package-lock.json, pnpm-lock.yaml, yarn.lock, go.sum, Cargo.lock, ...) o `generated` (file generato o minificato: *.min.js, *.min.css, *.pb.go, ...). Elenco completo nel README del servizio git; lock e generated vincono su large.
+	CollapseReason *FileDiffCollapseReason `json:"collapseReason,omitempty"`
+
+	// Collapsed B6: il file e' «chiuso di default» nella UI. Il patch c'e' comunque, se non e' stato omesso per i limiti.
+	Collapsed *bool `json:"collapsed,omitempty"`
+	Deletions int   `json:"deletions"`
 
 	// OldPath Percorso precedente, per rinomine e copie.
 	OldPath *string `json:"oldPath,omitempty"`
@@ -822,6 +858,9 @@ type FileDiff struct {
 	// Truncated True se il patch supera 1 MB o il limite totale di 20 000 righe e' gia' esaurito; `patch` e' parziale o assente.
 	Truncated bool `json:"truncated"`
 }
+
+// FileDiffCollapseReason Perche' e' chiuso: `large` (piu' di 500 righe cambiate, aggiunte piu' tolte), `lock` (file di lock: package-lock.json, pnpm-lock.yaml, yarn.lock, go.sum, Cargo.lock, ...) o `generated` (file generato o minificato: *.min.js, *.min.css, *.pb.go, ...). Elenco completo nel README del servizio git; lock e generated vincono su large.
+type FileDiffCollapseReason string
 
 // FileDiffStatus defines model for FileDiff.Status.
 type FileDiffStatus string
@@ -1479,6 +1518,9 @@ type GitRepoIdParam = openapi_types.UUID
 // GrantIdParam defines model for GrantIdParam.
 type GrantIdParam = openapi_types.UUID
 
+// IgnoreWhitespaceParam defines model for IgnoreWhitespaceParam.
+type IgnoreWhitespaceParam = bool
+
 // OidcProviderParam Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 //
 // Example: alice
@@ -1602,6 +1644,24 @@ type GitGetCommitsParams struct {
 
 	// PerPage Commit per pagina (default 30, massimo 100).
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// GitGetCommitParams defines parameters for GitGetCommit.
+type GitGetCommitParams struct {
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// GitGetCommitDiffParams defines parameters for GitGetCommitDiff.
+type GitGetCommitDiffParams struct {
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// GitGetCommitPatchParams defines parameters for GitGetCommitPatch.
+type GitGetCommitPatchParams struct {
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
 }
 
 // GitGetFileParams defines parameters for GitGetFile.
@@ -2072,7 +2132,21 @@ type ClientInterface interface {
 	// Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
-	GitGetCommit(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GitGetCommit(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetCommitDiff Diff completo di un commit come .diff, in streaming (per core)
+	//
+	// B6: `git diff --binary` del commit contro il primo genitore (contro l'albero vuoto per il commit iniziale), accettato da `git apply`. Content-Type `text/plain`, Content-Disposition `attachment` con nome `<sha12>.diff`, `X-Content-Type-Options: nosniff`. Nessun limite di righe e nessun buffer in memoria. Gli errori (400, 404) escono come JSON prima del primo byte; un errore a meta' interrompe la risposta.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/diff (the `GitGetCommitDiff` operationId).
+	GitGetCommitDiff(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitDiffParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitGetCommitPatch Patch di un commit in formato git format-patch, in streaming (per core)
+	//
+	// B6: come `gitGetCommitDiff`, ma con messaggio e autore in forma di email (`git format-patch --stdout`; per un commit di merge, contro il primo genitore). Nome `<sha12>.patch`. Accettato da `git apply` e `git am`.
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/patch (the `GitGetCommitPatch` operationId).
+	GitGetCommitPatch(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GitGetFile Contenuto di un file (per core)
 	//
@@ -3121,8 +3195,42 @@ func (c *Client) GitGetCommits(ctx context.Context, repoId GitRepoIdParam, param
 // Corrispondente interno di `getRepositoryCommit`: parla solo per repoId e non conosce utenti ne' permessi. `ref` e' sempre esplicito (lo risolve core). Gli autori non portano `user`: lo aggiunge core. Messaggio, autore e diff per file (mockup 10). Limiti: al massimo 300 file e 20 000 righe di diff in totale, e 1 MB per file; oltre, il file o la risposta sono marcati `truncated` e il patch e' omesso o parziale. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste.
 //
 // Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
-func (c *Client) GitGetCommit(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGitGetCommitRequest(c.Server, repoId, sha)
+func (c *Client) GitGetCommit(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetCommitRequest(c.Server, repoId, sha, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetCommitDiff Diff completo di un commit come .diff, in streaming (per core)
+//
+// B6: `git diff --binary` del commit contro il primo genitore (contro l'albero vuoto per il commit iniziale), accettato da `git apply`. Content-Type `text/plain`, Content-Disposition `attachment` con nome `<sha12>.diff`, `X-Content-Type-Options: nosniff`. Nessun limite di righe e nessun buffer in memoria. Gli errori (400, 404) escono come JSON prima del primo byte; un errore a meta' interrompe la risposta.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/diff (the `GitGetCommitDiff` operationId).
+func (c *Client) GitGetCommitDiff(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitDiffParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetCommitDiffRequest(c.Server, repoId, sha, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitGetCommitPatch Patch di un commit in formato git format-patch, in streaming (per core)
+//
+// B6: come `gitGetCommitDiff`, ma con messaggio e autore in forma di email (`git format-patch --stdout`; per un commit di merge, contro il primo genitore). Nome `<sha12>.patch`. Accettato da `git apply` e `git am`.
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/patch (the `GitGetCommitPatch` operationId).
+func (c *Client) GitGetCommitPatch(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitGetCommitPatchRequest(c.Server, repoId, sha, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5550,7 +5658,7 @@ func NewGitGetCommitsRequest(server string, repoId GitRepoIdParam, params *GitGe
 }
 
 // NewGitGetCommitRequest constructs an http.Request for the GitGetCommit method
-func NewGitGetCommitRequest(server string, repoId GitRepoIdParam, sha CommitShaParam) (*http.Request, error) {
+func NewGitGetCommitRequest(server string, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5580,6 +5688,169 @@ func NewGitGetCommitRequest(server string, repoId GitRepoIdParam, sha CommitShaP
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.IgnoreWhitespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ignoreWhitespace", *params.IgnoreWhitespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetCommitDiffRequest constructs an http.Request for the GitGetCommitDiff method
+func NewGitGetCommitDiffRequest(server string, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitDiffParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/commits/%s/diff", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.IgnoreWhitespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ignoreWhitespace", *params.IgnoreWhitespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitGetCommitPatchRequest constructs an http.Request for the GitGetCommitPatch method
+func NewGitGetCommitPatchRequest(server string, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitPatchParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "repoId", repoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/git/repos/%s/commits/%s/patch", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.IgnoreWhitespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ignoreWhitespace", *params.IgnoreWhitespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -9749,7 +10020,25 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
-	GitGetCommitWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GitGetCommitResponse, error)
+	GitGetCommitWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitParams, reqEditors ...RequestEditorFn) (*GitGetCommitResponse, error)
+
+	// GitGetCommitDiffWithResponse Diff completo di un commit come .diff, in streaming (per core)
+	//
+	// B6: `git diff --binary` del commit contro il primo genitore (contro l'albero vuoto per il commit iniziale), accettato da `git apply`. Content-Type `text/plain`, Content-Disposition `attachment` con nome `<sha12>.diff`, `X-Content-Type-Options: nosniff`. Nessun limite di righe e nessun buffer in memoria. Gli errori (400, 404) escono come JSON prima del primo byte; un errore a meta' interrompe la risposta.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/diff (the `GitGetCommitDiff` operationId).
+	GitGetCommitDiffWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitDiffParams, reqEditors ...RequestEditorFn) (*GitGetCommitDiffResponse, error)
+
+	// GitGetCommitPatchWithResponse Patch di un commit in formato git format-patch, in streaming (per core)
+	//
+	// B6: come `gitGetCommitDiff`, ma con messaggio e autore in forma di email (`git format-patch --stdout`; per un commit di merge, contro il primo genitore). Nome `<sha12>.patch`. Accettato da `git apply` e `git am`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/patch (the `GitGetCommitPatch` operationId).
+	GitGetCommitPatchWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitPatchParams, reqEditors ...RequestEditorFn) (*GitGetCommitPatchResponse, error)
 
 	// GitGetFileWithResponse Contenuto di un file (per core)
 	//
@@ -11560,6 +11849,130 @@ func (r GitGetCommitResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GitGetCommitResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetCommitDiffResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetCommitDiffResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetCommitDiffResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetCommitDiffResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetCommitDiffResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetCommitDiffResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetCommitDiffResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetCommitDiffResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetCommitDiffResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GitGetCommitPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GitGetCommitPatchResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GitGetCommitPatchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GitGetCommitPatchResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GitGetCommitPatchResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitGetCommitPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitGetCommitPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitGetCommitPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitGetCommitPatchResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -17425,12 +17838,42 @@ func (c *ClientWithResponses) GitGetCommitsWithResponse(ctx context.Context, rep
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /internal/git/repos/{repoId}/commits/{sha} (the `GitGetCommit` operationId).
-func (c *ClientWithResponses) GitGetCommitWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GitGetCommitResponse, error) {
-	rsp, err := c.GitGetCommit(ctx, repoId, sha, reqEditors...)
+func (c *ClientWithResponses) GitGetCommitWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitParams, reqEditors ...RequestEditorFn) (*GitGetCommitResponse, error) {
+	rsp, err := c.GitGetCommit(ctx, repoId, sha, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGitGetCommitResponse(rsp)
+}
+
+// GitGetCommitDiffWithResponse Diff completo di un commit come .diff, in streaming (per core)
+//
+// B6: `git diff --binary` del commit contro il primo genitore (contro l'albero vuoto per il commit iniziale), accettato da `git apply`. Content-Type `text/plain`, Content-Disposition `attachment` con nome `<sha12>.diff`, `X-Content-Type-Options: nosniff`. Nessun limite di righe e nessun buffer in memoria. Gli errori (400, 404) escono come JSON prima del primo byte; un errore a meta' interrompe la risposta.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/diff (the `GitGetCommitDiff` operationId).
+func (c *ClientWithResponses) GitGetCommitDiffWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitDiffParams, reqEditors ...RequestEditorFn) (*GitGetCommitDiffResponse, error) {
+	rsp, err := c.GitGetCommitDiff(ctx, repoId, sha, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetCommitDiffResponse(rsp)
+}
+
+// GitGetCommitPatchWithResponse Patch di un commit in formato git format-patch, in streaming (per core)
+//
+// B6: come `gitGetCommitDiff`, ma con messaggio e autore in forma di email (`git format-patch --stdout`; per un commit di merge, contro il primo genitore). Nome `<sha12>.patch`. Accettato da `git apply` e `git am`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/git/repos/{repoId}/commits/{sha}/patch (the `GitGetCommitPatch` operationId).
+func (c *ClientWithResponses) GitGetCommitPatchWithResponse(ctx context.Context, repoId GitRepoIdParam, sha CommitShaParam, params *GitGetCommitPatchParams, reqEditors ...RequestEditorFn) (*GitGetCommitPatchResponse, error) {
+	rsp, err := c.GitGetCommitPatch(ctx, repoId, sha, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitGetCommitPatchResponse(rsp)
 }
 
 // GitGetFileWithResponse Contenuto di un file (per core)
@@ -19634,6 +20077,100 @@ func ParseGitGetCommitResponse(rsp *http.Response) (*GitGetCommitResponse, error
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetCommitDiffResponse parses an HTTP response from a GitGetCommitDiffWithResponse call
+func ParseGitGetCommitDiffResponse(rsp *http.Response) (*GitGetCommitDiffResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetCommitDiffResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGitGetCommitPatchResponse parses an HTTP response from a GitGetCommitPatchWithResponse call
+func ParseGitGetCommitPatchResponse(rsp *http.Response) (*GitGetCommitPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitGetCommitPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
