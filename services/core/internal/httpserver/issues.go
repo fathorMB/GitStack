@@ -13,7 +13,6 @@ func issuesNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Issues non ancora disponibili.")
 }
 
-
 func (s *apiServer) LockIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
 	issuesNotImplemented(w)
 }

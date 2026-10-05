@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -107,11 +107,11 @@ func newSearchEnv(t *testing.T) (*issuesEnv, uuid.UUID) {
 	appID := e.repo("app", true)
 	e.id.grantWrite(appID, "bob")
 
-	e.open("app", "carol", "Crash all'avvio")                 // 1
-	e.open("app", "alice", "Documentazione mancante")          // 2
-	e.open("app", "carol", "Duplicato del crash")              // 3
-	e.open("app", "bob", "Idea futura")                        // 4
-	e.open("app", "carol", "Segreto interno")                  // 5 (nascosta)
+	e.open("app", "carol", "Crash all'avvio")         // 1
+	e.open("app", "alice", "Documentazione mancante") // 2
+	e.open("app", "carol", "Duplicato del crash")     // 3
+	e.open("app", "bob", "Idea futura")               // 4
+	e.open("app", "carol", "Segreto interno")         // 5 (nascosta)
 	e.sql(`INSERT INTO core.milestones (id, repo_id, number, title) VALUES (gen_random_uuid(), $1, 1, 'v1')`, appID)
 	e.sql(`UPDATE core.issues SET milestone_id = (SELECT id FROM core.milestones WHERE repo_id = $1) WHERE repo_id = $1 AND number = 1`, appID)
 	e.label(appID, 1, "bug")
