@@ -13,6 +13,9 @@ altre guide utente dedicate, il riferimento è
 `.lmbrain-lite/knowledge/vision.md`.
 
 `repos.md` (M-03/A) documenta scope, owner/visibilità e API interna dei repo.
+`issue-templates.md` (M-05/H, GIT-108) documenta i modelli di issue in
+`.gitstack/ISSUE_TEMPLATE/`: formato, front matter, comportamento e
+contratto API.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
 
