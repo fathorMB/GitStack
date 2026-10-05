@@ -4573,6 +4573,41 @@ export type SetResourceAttributesResponses = {
 
 export type SetResourceAttributesResponse = SetResourceAttributesResponses[keyof SetResourceAttributesResponses];
 
+export type PurgeResourceAccessData = {
+    body?: never;
+    path: {
+        resourceId: string;
+    };
+    query?: never;
+    url: '/internal/resources/{resourceId}';
+};
+
+export type PurgeResourceAccessErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type PurgeResourceAccessError = PurgeResourceAccessErrors[keyof PurgeResourceAccessErrors];
+
+export type PurgeResourceAccessResponses = {
+    /**
+     * Grant e attributi tolti.
+     */
+    204: void;
+};
+
+export type PurgeResourceAccessResponse = PurgeResourceAccessResponses[keyof PurgeResourceAccessResponses];
+
 export type ResolveOwnerData = {
     body?: never;
     path: {

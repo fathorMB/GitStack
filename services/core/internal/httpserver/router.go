@@ -32,6 +32,10 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	for _, opt := range opts {
 		opt(&o)
 	}
+	now := o.now
+	if now == nil {
+		now = time.Now
+	}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", healthz)
@@ -46,6 +50,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		repoIdentity: o.repoIdentity,
 		git:          o.git,
 		clone:        o.clone,
+		now:          now,
 	}
 
 	openapi.HandlerWithOptions(server, openapi.StdHTTPServerOptions{

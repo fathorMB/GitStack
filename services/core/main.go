@@ -21,8 +21,13 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
+	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
+	"github.com/fathorMB/GitStack/services/core/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// repoPurgeInterval: ogni quanto il job cancella i repo eliminati scaduti.
+const repoPurgeInterval = time.Hour
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -155,6 +160,8 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	defer nc.Close()
 
 	var routerOpts []httpserver.Option
+	var identityPurger repopurge.Access
+	var gitAPI gitclient.Git
 	if cfg.IdentityURL != "" {
 		identityURL, err := url.Parse(cfg.IdentityURL)
 		if err != nil || identityURL.Scheme == "" || identityURL.Host == "" {
@@ -162,13 +169,15 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 			return 1
 		}
 		idc := identityclient.New(identityURL, cfg.ServiceSecret, 5*time.Second)
+		identityPurger = idc
 		routerOpts = append(routerOpts, httpserver.WithCreatorGranter(idc), httpserver.WithReadableLister(idc), httpserver.WithRepoIdentity(idc))
 	} else {
 		logger.Warn("GITSTACK_IDENTITY_URL non impostata: POST e GET /resources e le operazioni sui repo risponderanno 503")
 	}
 
 	if gitURL != nil {
-		routerOpts = append(routerOpts, httpserver.WithGit(gitclient.New(gitURL, cfg.ServiceSecret, 30*time.Second)))
+		gitAPI = gitclient.New(gitURL, cfg.ServiceSecret, 30*time.Second)
+		routerOpts = append(routerOpts, httpserver.WithGit(gitAPI))
 	}
 	routerOpts = append(routerOpts,
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort}),
@@ -179,6 +188,15 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		Addr:              cfg.Addr,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	// Pulizia definitiva dei repo eliminati da più di 7 giorni (R2). Sicura con
+	// più repliche (FOR UPDATE SKIP LOCKED); parte solo con git e identity.
+	if gitAPI != nil && identityPurger != nil {
+		job := &repopurge.Job{Store: store.New(pool), Git: gitAPI, Identity: identityPurger, Log: logger}
+		go job.Run(ctx, repoPurgeInterval)
+	} else {
+		logger.Warn("git o identity non configurati: la pulizia dei repo eliminati non parte")
 	}
 
 	serveErr := make(chan error, 1)

@@ -1094,6 +1094,9 @@ type ServerInterface interface {
 	// ListReadableResources Risorse leggibili da un utente
 	// (POST /internal/permissions/readable-resources)
 	ListReadableResources(w http.ResponseWriter, r *http.Request)
+	// PurgeResourceAccess Toglie grant e attributi di una risorsa cancellata (per core)
+	// (DELETE /internal/resources/{resourceId})
+	PurgeResourceAccess(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
 	// SetResourceAttributes Imposta owner e visibilita' di una risorsa (per core)
 	// (PUT /internal/resources/{resourceId}/attributes)
 	SetResourceAttributes(w http.ResponseWriter, r *http.Request, resourceId openapi_types.UUID)
@@ -1429,6 +1432,32 @@ func (siw *ServerInterfaceWrapper) ListReadableResources(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListReadableResources(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PurgeResourceAccess operation middleware
+func (siw *ServerInterfaceWrapper) PurgeResourceAccess(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PurgeResourceAccess(w, r, resourceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2982,6 +3011,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/resources/{resourceId}/grants/creator", wrapper.GrantResourceCreator)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/ssh-keys/{fingerprint}", wrapper.LookupSshKey)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/internal/resources/{resourceId}/attributes", wrapper.SetResourceAttributes)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/internal/resources/{resourceId}", wrapper.PurgeResourceAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 

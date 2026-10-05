@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"time"
+
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
@@ -31,6 +33,8 @@ type apiServer struct {
 	repoIdentity identityclient.RepoIdentity
 	git          gitclient.Git
 	clone        CloneConfig
+	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
+	now func() time.Time
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)

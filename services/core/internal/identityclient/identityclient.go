@@ -259,3 +259,16 @@ func (c *Client) HasRole(ctx context.Context, userID, resourceID uuid.UUID, role
 }
 
 var _ RepoIdentity = (*Client)(nil)
+
+// PurgeResource implementa RepoIdentity: toglie grant e attributi di una
+// risorsa cancellata definitivamente (idempotente).
+func (c *Client) PurgeResource(ctx context.Context, resourceID uuid.UUID) error {
+	st, err := c.call(ctx, http.MethodDelete, "/internal/resources/"+resourceID.String(), nil, http.StatusNoContent, nil)
+	if err != nil {
+		return err
+	}
+	if st != http.StatusNoContent {
+		return fmt.Errorf("%w: la rimozione dei grant ha risposto %d", ErrUnavailable, st)
+	}
+	return nil
+}

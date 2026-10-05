@@ -2305,6 +2305,35 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/resources/{resourceId}:
+    parameters:
+      - name: resourceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: purgeResourceAccess
+      tags: [internal]
+      summary: Toglie grant e attributi di una risorsa cancellata (per core)
+      description: >
+        Per core (M-03/F): dopo la cancellazione definitiva di un repo (R2)
+        toglie tutti i grant (`resource_grants`) e gli attributi di owner e
+        visibilita' della risorsa. Idempotente: 204 anche se non c'era niente
+        da togliere.
+      security:
+        - serviceAuth: []
+      responses:
+        "204":
+          description: Grant e attributi tolti.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/owners/{name}:
     parameters:
       - name: name

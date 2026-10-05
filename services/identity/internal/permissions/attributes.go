@@ -88,3 +88,20 @@ func (s *Service) ResolveOwner(ctx context.Context, name string) (Owner, error) 
 	o.Type = OwnerType(t)
 	return o, nil
 }
+
+// PurgeResource toglie tutti i grant e gli attributi di una risorsa
+// cancellata definitivamente da core. Idempotente: senza righe non fa niente.
+func (s *Service) PurgeResource(ctx context.Context, resourceID uuid.UUID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("apertura della transazione non riuscita: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `DELETE FROM identity.resource_grants WHERE resource_id = $1`, resourceID); err != nil {
+		return fmt.Errorf("cancellazione dei grant non riuscita: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM identity.resource_attributes WHERE resource_id = $1`, resourceID); err != nil {
+		return fmt.Errorf("cancellazione degli attributi non riuscita: %w", err)
+	}
+	return tx.Commit(ctx)
+}
