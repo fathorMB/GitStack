@@ -13,14 +13,6 @@ func issuesNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Issues non ancora disponibili.")
 }
 
-func (s *apiServer) LockIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) UnlockIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
 func (s *apiServer) SetIssueAssignees(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
 	issuesNotImplemented(w)
 }
@@ -30,26 +22,6 @@ func (s *apiServer) SetIssueLabels(w http.ResponseWriter, _ *http.Request, _ ope
 }
 
 func (s *apiServer) SetIssueMilestone(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ListIssueComments(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam, _ openapi.ListIssueCommentsParams) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) CreateIssueComment(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) UpdateIssueComment(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam, _ openapi.IssueCommentIdParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) DeleteIssueComment(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam, _ openapi.IssueCommentIdParam) {
-	issuesNotImplemented(w)
-}
-
-func (s *apiServer) ListIssueCommentVersions(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam, _ openapi.IssueCommentIdParam) {
 	issuesNotImplemented(w)
 }
 

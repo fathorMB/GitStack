@@ -106,7 +106,7 @@ beforeEach(() => {
 });
 
 describe('CodeBrowser', () => {
-  it('mostra albero, ultimo commit, conteggi, About e niente Star/Watch/Issues', async () => {
+  it('mostra albero, ultimo commit, conteggi, About e niente Star/Watch, con la scheda Issues (M-05)', async () => {
     renderAt('/acme/api-gateway');
     const files = await screen.findByLabelText('Files');
     const rows = within(files).getAllByRole('link').map((a) => a.textContent);
@@ -122,7 +122,7 @@ describe('CodeBrowser', () => {
     expect(within(about).getByText(/License file/)).toBeInTheDocument();
     expect(screen.queryByText(/star/i)).toBeNull();
     expect(screen.queryByText(/watch/i)).toBeNull();
-    expect(screen.queryByText(/issues/i)).toBeNull();
+    expect(screen.getByRole('link', { name: /Issues/ })).toHaveAttribute('href', '/acme/api-gateway/issues');
     expect(fetchTree).toHaveBeenCalledWith('acme', 'api-gateway', 'main', '');
   });
 

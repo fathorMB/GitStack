@@ -33,8 +33,8 @@ type apiServer struct {
 	repoIdentity identityclient.RepoIdentity
 	// userAccess serve GET /users/{username}/access; nil = 503.
 	userAccess identityclient.UserAccessReader
-	git          gitclient.Git
-	clone        CloneConfig
+	git        gitclient.Git
+	clone      CloneConfig
 	// attachments: volume e limite degli allegati (I9); Disk nil = 503.
 	attachments AttachmentsConfig
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.

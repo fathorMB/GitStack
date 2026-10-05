@@ -138,7 +138,12 @@ func (s *apiServer) respondIssue(w http.ResponseWriter, ctx context.Context, sta
 	for k, val := range headers {
 		w.Header().Set(k, val)
 	}
-	writeJSON(w, status, v.issue(x))
+	iss, err := s.issueWithAttachments(ctx, ia, v, x)
+	if err != nil {
+		writeIssueFailure(w, "lettura degli allegati non riuscita", err)
+		return
+	}
+	writeJSON(w, status, iss)
 }
 
 func issueTitleError(title string) string {
@@ -290,6 +295,14 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 			return
 		}
 	}
+	if err := store.LinkAttachments(ctx, tx, ia.repo.ID, ia.userID, issueID, nil, attachmentIDs(in.AttachmentIds)); err != nil {
+		if errors.Is(err, store.ErrAttachmentNotLinkable) {
+			writeAttachmentNotLinkable(w)
+			return
+		}
+		writeIssueFailure(w, "collegamento degli allegati non riuscito", err)
+		return
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della issue non riuscito", err)
 		return
@@ -329,7 +342,12 @@ func (s *apiServer) GetIssue(w http.ResponseWriter, r *http.Request, owner opena
 		writeIssueFailure(w, "composizione della issue non riuscita", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, v.issue(x))
+	iss, err := s.issueWithAttachments(r.Context(), ia, v, x)
+	if err != nil {
+		writeIssueFailure(w, "lettura degli allegati non riuscita", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, iss)
 }
 
 // beginIssueWrite apre la transazione di una modifica: blocca il repo (R10)
@@ -382,8 +400,8 @@ func (s *apiServer) UpdateIssue(w http.ResponseWriter, r *http.Request, owner op
 	if !decodeIssueJSON(w, r, &in, false) {
 		return
 	}
-	if in.Title == nil && in.Body == nil {
-		writeError(w, http.StatusUnprocessableEntity, "validation_failed", "Serve almeno title o body.")
+	if in.Title == nil && in.Body == nil && (in.AttachmentIds == nil || len(*in.AttachmentIds) == 0) {
+		writeError(w, http.StatusUnprocessableEntity, "validation_failed", "Serve almeno title, body o attachmentIds.")
 		return
 	}
 	var newTitle string
@@ -446,6 +464,14 @@ func (s *apiServer) UpdateIssue(w http.ResponseWriter, r *http.Request, owner op
 				return
 			}
 		}
+	}
+	if err := store.LinkAttachments(ctx, tx, ia.repo.ID, ia.userID, x.ID, nil, attachmentIDs(in.AttachmentIds)); err != nil {
+		if errors.Is(err, store.ErrAttachmentNotLinkable) {
+			writeAttachmentNotLinkable(w)
+			return
+		}
+		writeIssueFailure(w, "collegamento degli allegati non riuscito", err)
+		return
 	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit della modifica non riuscito", err)
