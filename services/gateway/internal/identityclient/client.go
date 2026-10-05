@@ -53,6 +53,10 @@ type Caller struct {
 	// IsToken: la credenziale è un token personale (ha scope); false per le
 	// sessioni web, che non hanno scope.
 	IsToken bool
+	// CredentialID e TokenName: id della sessione o del token e, solo per i
+	// token, il suo nome.
+	CredentialID string
+	TokenName    string
 }
 
 // Client chiama POST /internal/verify di identity, autenticandosi con il
@@ -131,6 +135,12 @@ func (c *Client) Verify(ctx context.Context, credential string, kind Kind) (Resu
 		AuthMethod: string(p.AuthMethod),
 		ExpiresAt:  p.ExpiresAt,
 		IsToken:    p.AuthMethod == "token",
+	}
+	if p.CredentialId != nil {
+		res.Principal.CredentialID = p.CredentialId.String()
+	}
+	if p.TokenName != nil && res.Principal.IsToken {
+		res.Principal.TokenName = *p.TokenName
 	}
 	if p.MustChangePassword != nil {
 		res.Principal.MustChangePassword = *p.MustChangePassword

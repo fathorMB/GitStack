@@ -26,7 +26,7 @@ func TestClient_TokenAttivo(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotAuth, gotPath, gotCT = r.Header.Get("Authorization"), r.URL.Path, r.Header.Get("Content-Type")
 		_ = json.NewDecoder(r.Body).Decode(&in)
-		_, _ = w.Write([]byte(`{"active":true,"cacheTtlSeconds":30,"principal":{"userId":"11111111-1111-1111-1111-111111111111","username":"alice","kind":"human","isAdmin":true,"authMethod":"token","scopes":["read:user","write:org"],"expiresAt":"2030-01-01T00:00:00Z"}}`))
+		_, _ = w.Write([]byte(`{"active":true,"cacheTtlSeconds":30,"principal":{"userId":"11111111-1111-1111-1111-111111111111","username":"alice","kind":"human","isAdmin":true,"authMethod":"token","scopes":["read:user","write:org"],"credentialId":"44444444-4444-4444-4444-444444444444","tokenName":"ci-runner","expiresAt":"2030-01-01T00:00:00Z"}}`))
 	})
 	res, err := c.Verify(context.Background(), "gst_abc", KindToken)
 	if err != nil {
@@ -40,7 +40,7 @@ func TestClient_TokenAttivo(t *testing.T) {
 	}
 	p := res.Principal
 	if !res.Active || p.Username != "alice" || p.UserID != "11111111-1111-1111-1111-111111111111" || !p.IsAdmin ||
-		!p.IsToken || len(p.Scopes) != 2 || p.Scopes[1] != "write:org" || p.MustChangePassword || p.ExpiresAt == nil || res.TTL != 30*time.Second {
+		!p.IsToken || len(p.Scopes) != 2 || p.Scopes[1] != "write:org" || p.MustChangePassword || p.CredentialID != "44444444-4444-4444-4444-444444444444" || p.TokenName != "ci-runner" || p.ExpiresAt == nil || res.TTL != 30*time.Second {
 		t.Errorf("risultato = %+v", res)
 	}
 }
@@ -53,7 +53,7 @@ func TestClient_SessioneMustChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Active || !res.Principal.MustChangePassword || res.Principal.IsToken || len(res.Principal.Scopes) != 0 {
+	if !res.Active || !res.Principal.MustChangePassword || res.Principal.IsToken || res.Principal.TokenName != "" || len(res.Principal.Scopes) != 0 {
 		t.Errorf("risultato = %+v", res)
 	}
 }

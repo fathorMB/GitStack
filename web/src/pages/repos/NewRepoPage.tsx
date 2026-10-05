@@ -31,6 +31,7 @@ export function NewRepoPage() {
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<RepoVisibility>('private');
   const [readme, setReadme] = useState(false);
+  const [defaultLabels, setDefaultLabels] = useState(true);
   const [gitignore, setGitignore] = useState(false);
   const [gitignoreTemplate, setGitignoreTemplate] = useState<string>(GITIGNORE_TEMPLATES[0]);
   const [license, setLicense] = useState(false);
@@ -52,6 +53,7 @@ export function NewRepoPage() {
       name,
       visibility,
       readme,
+      defaultLabels,
       ...(description.trim() ? { description: description.trim() } : {}),
       ...(gitignore ? { gitignoreTemplate: gitignoreTemplate as CreateRepositoryInput['gitignoreTemplate'] } : {}),
       ...(license ? { licenseTemplate: licenseTemplate as CreateRepositoryInput['licenseTemplate'] } : {}),
@@ -178,6 +180,16 @@ export function NewRepoPage() {
               </FormField>
             ) : null}
           </div>
+        </fieldset>
+
+        <fieldset className="scope-set">
+          <legend>Issues</legend>
+          <Checkbox
+            label="Add default labels"
+            hint="bug, enhancement, documentation, question, duplicate, good first issue, agent-ready, needs-human."
+            checked={defaultLabels}
+            onCheckedChange={setDefaultLabels}
+          />
         </fieldset>
 
         <div className="row repo-form-foot">

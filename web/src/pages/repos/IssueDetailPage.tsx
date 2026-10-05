@@ -27,7 +27,7 @@ import {
   setHidden,
   setLocked,
 } from '../../lib/issuesApi';
-import type { Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, IssueUser, Label, Milestone, Role, TextVersion } from '../../lib/issuesApi';
+import type { Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, IssueUser, IssueViaToken, Label, Milestone, Role, TextVersion } from '../../lib/issuesApi';
 import type { Repository } from '../../lib/reposApi';
 import { permissions } from '../../lib/issuePerms';
 import { IssueEditor } from './IssueEditor';
@@ -116,6 +116,16 @@ function Avatar({ user }: { user: IssueUser }) {
 
 function AgentBadge({ user }: { user: IssueUser }) {
   return user.kind === 'agent' ? <span className="badge badge-agent">agent</span> : null;
+}
+
+// ViaToken: «via token <nome>» accanto all'autore (mockup 13); niente per le sessioni.
+function ViaToken({ via }: { via?: IssueViaToken }) {
+  if (!via) return null;
+  return (
+    <span className="muted" data-testid="via-token">
+      via token <span className="mono">{via.name}</span>
+    </span>
+  );
 }
 
 function StateBadge({ issue }: { issue: Issue }) {
@@ -253,6 +263,7 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
               <div className="cmt-h">
                 <b>{issue.author.username}</b>
                 <AgentBadge user={issue.author} />
+                <ViaToken via={issue.viaToken} />
                 <span className="muted">
                   opened {timeAgo(issue.createdAt)}
                   {issue.edited ? <> · <EditedMark admin={perm.admin} load={() => fetchIssueVersions(ref)} label="issue" /></> : null}
@@ -387,6 +398,7 @@ function CommentView({ c, issue, perm, me, ref0, act }: { c: IssueComment; issue
         <div className={mine ? 'cmt-h own' : 'cmt-h'}>
           <b>{c.author.username}</b>
           <AgentBadge user={c.author} />
+          <ViaToken via={c.viaToken} />
           <span className="muted">
             commented {timeAgo(c.createdAt)}
             {c.edited ? <> · <EditedMark admin={perm.admin} load={() => fetchCommentVersions(ref0, c.id)} label="comment" /></> : null}

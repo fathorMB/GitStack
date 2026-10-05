@@ -138,6 +138,32 @@ beforeEach(() => {
   vi.mocked(api.removeComment).mockResolvedValue();
 });
 
+describe('via token', () => {
+  it('mostra «via token <nome>» sul commento creato con un token e non su quello da sessione', async () => {
+    setup({
+      comments: [
+        comment('c1', user('build-agent', 'agent'), { viaToken: { id: 't1', name: 'ci-runner' } }),
+        comment('c2', user('mrossi')),
+      ],
+    });
+    expect(await screen.findByText('Text of c1')).toBeInTheDocument();
+    expect(within(screen.getByTestId('comment-c1')).getByTestId('via-token')).toHaveTextContent('via token ci-runner');
+    expect(within(screen.getByTestId('comment-c2')).queryByTestId('via-token')).not.toBeInTheDocument();
+  });
+
+  it("mostra «via token <nome>» accanto all'autore della issue", async () => {
+    setup({ issue: baseIssue({ author: user('build-agent', 'agent'), viaToken: { id: 't1', name: 'ci-runner' } }) });
+    expect(await screen.findByText('Pushing fails for ed25519 keys')).toBeInTheDocument();
+    expect(screen.getAllByTestId('via-token')[0]).toHaveTextContent('via token ci-runner');
+  });
+
+  it('niente «via token» per una issue aperta da sessione', async () => {
+    setup({});
+    expect(await screen.findByText('Pushing fails for ed25519 keys')).toBeInTheDocument();
+    expect(screen.queryByTestId('via-token')).not.toBeInTheDocument();
+  });
+});
+
 describe('cronologia', () => {
   it('mostra testo, commenti, eventi, badge agent e comment deleted; niente For agents', async () => {
     setup({

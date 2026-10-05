@@ -360,7 +360,7 @@ func (s *apiServer) runSearch(ctx context.Context, p searchParams) ([]searchRow,
 	for rows.Next() {
 		var x searchRow
 		err := rows.Scan(&x.ID, &x.Number, &x.Title, &x.Body, &x.State, &x.CloseReason, &x.DuplicateOf, &x.AuthorID,
-			&x.MilestoneID, &x.Locked, &x.Hidden, &x.Edited, &x.ClosedAt, &x.CreatedAt, &x.UpdatedAt, &x.CommentCount, &x.repo)
+			&x.MilestoneID, &x.Locked, &x.Hidden, &x.Edited, &x.ClosedAt, &x.CreatedAt, &x.UpdatedAt, &x.CommentCount, &x.ViaTokenID, &x.ViaTokenName, &x.repo)
 		if err != nil {
 			rows.Close()
 			return nil, 0, issueViews{}, err

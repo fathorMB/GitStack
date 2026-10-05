@@ -3,6 +3,11 @@ import {
   closeIssue,
   createIssue,
   createIssueComment,
+  createLabel,
+  createMilestone,
+  deleteLabel,
+  updateLabel,
+  updateMilestone,
   deleteIssueComment,
   getIssue,
   getIssueAttachment,
@@ -27,10 +32,10 @@ import {
   updateIssueComment,
   uploadIssueAttachment,
 } from '@gitstack/api-client';
-import type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueCommentList, IssueEvent, IssueEventList, TextVersion, IssueList, IssueSummary, IssueUser, Label, LabelList, Milestone, MilestoneList } from '@gitstack/api-client';
-import { API_BASE_URL, unwrap } from './http';
+import type { CreateLabelInput, CreateMilestoneInput, UpdateLabelInput, UpdateMilestoneInput, CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueCommentList, IssueEvent, IssueEventList, TextVersion, IssueList, IssueSummary, IssueUser, IssueViaToken, Label, LabelList, Milestone, MilestoneList } from '@gitstack/api-client';
+import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, TextVersion, IssueList, IssueSummary, IssueUser, Label, Milestone };
+export type { CreateIssueInput, IssueTemplate, User, Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent, TextVersion, IssueList, IssueSummary, IssueUser, IssueViaToken, Label, Milestone };
 
 export type IssueSort = 'created' | 'updated' | 'comments' | 'relevance';
 
@@ -172,4 +177,26 @@ export async function downloadAttachment(owner: string, repo: string, a: IssueAt
   link.download = a.filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+// ---- gestione di etichette e milestone (M-05/L, I5, I7) ----
+
+export async function addLabel(owner: string, repo: string, body: CreateLabelInput): Promise<Label> {
+  return unwrap(await createLabel({ baseUrl: API_BASE_URL, path: { owner, repo }, body }));
+}
+
+export async function editLabel(owner: string, repo: string, name: string, body: UpdateLabelInput): Promise<Label> {
+  return unwrap(await updateLabel({ baseUrl: API_BASE_URL, path: { owner, repo, name }, body }));
+}
+
+export async function removeLabel(owner: string, repo: string, name: string): Promise<void> {
+  unwrapEmpty(await deleteLabel({ baseUrl: API_BASE_URL, path: { owner, repo, name } }));
+}
+
+export async function addMilestone(owner: string, repo: string, body: CreateMilestoneInput): Promise<Milestone> {
+  return unwrap(await createMilestone({ baseUrl: API_BASE_URL, path: { owner, repo }, body }));
+}
+
+export async function editMilestone(owner: string, repo: string, milestoneNumber: number, body: UpdateMilestoneInput): Promise<Milestone> {
+  return unwrap(await updateMilestone({ baseUrl: API_BASE_URL, path: { owner, repo, milestoneNumber }, body }));
 }

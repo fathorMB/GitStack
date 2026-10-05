@@ -16,9 +16,44 @@ func TestSign_VettoreDiProva(t *testing.T) {
 		h.Get(HeaderScopes) != "read:user,write:org" || h.Get(HeaderTimestamp) != "1700000000" {
 		t.Fatalf("header = %v", h)
 	}
-	const want = "1f1fa6bc1164c65db6b0cc006ba0c317dcfcb6fe650ac53f93212229967ab7b8"
+	const want = "bd36809e19293e4b25d04bf84b6e31cf9862b44893a707744ca4611ede58a363"
 	if got := h.Get(HeaderSignature); got != want {
 		t.Fatalf("firma = %s, voluta %s", got, want)
+	}
+}
+
+func TestSign_VettoreDiProvaToken(t *testing.T) {
+	h := http.Header{}
+	Sign(h, "segreto", Identity{UserID: "11111111-1111-1111-1111-111111111111", Username: "alice", Scopes: []string{"read:user", "write:org"},
+		TokenID: "22222222-2222-2222-2222-222222222222", TokenName: "ci-runner"}, time.Unix(1700000000, 0))
+	if h.Get(HeaderTokenID) != "22222222-2222-2222-2222-222222222222" || h.Get(HeaderTokenName) != "ci-runner" {
+		t.Fatalf("header = %v", h)
+	}
+	const want = "2ad8821a340ec69859107a68d17cddb013c3613e5f55d52789beecca74585125"
+	if got := h.Get(HeaderSignature); got != want {
+		t.Fatalf("firma = %s, voluta %s", got, want)
+	}
+}
+
+func TestSign_SessioneSenzaToken(t *testing.T) {
+	h := http.Header{}
+	Sign(h, "s", Identity{UserID: "u", Username: "bob"}, time.Unix(1, 0))
+	for _, name := range []string{HeaderTokenID, HeaderTokenName} {
+		if v, ok := h[name]; !ok || v[0] != "" {
+			t.Errorf("%s di una sessione deve essere presente e vuoto: %v", name, h)
+		}
+	}
+}
+
+// Un client non può farsi riconoscere come token: gli header X-Gitstack-Token-*
+// che manda vengono tolti prima che il gateway scriva i propri.
+func TestStripClientHeaders_Token(t *testing.T) {
+	h := http.Header{}
+	h.Set(HeaderTokenID, "22222222-2222-2222-2222-222222222222")
+	h["x-gitstack-token-name"] = []string{"root"}
+	StripClientHeaders(h)
+	if len(h) != 0 {
+		t.Errorf("header rimasti: %v", h)
 	}
 }
 
