@@ -78,14 +78,12 @@ B1–B7 di `.prisma/knowledge/topics/browser-codice.md` (tabella regole→test i
 | `storico` | tutti i commit col merge a 2 genitori, badge agent/umano, paginazione, storico di `main.go` (2 commit), filtro per autore, storico a un tag |
 | `dettaglio_commit_B6` | `big.txt` chiuso (`large`), `package-lock.json` chiuso (`lock`), file piccolo aperto col patch; `path`, prefisso dello sha, `ignoreWhitespace`, merge, 301 file → `listOnly` senza patch; sha non esadecimale 400, inesistente 404 |
 | `diff_e_patch_scaricabili` | `.diff` e `.patch` completi (nessun file chiuso né troncato, anche i 301 file), `Content-Disposition` con lo sha, header di sicurezza |
-| `blame` | più commit e autore agente, 66 righe coperte; binario e file oltre 1 MB rifiutati (400) |
+| `blame` | più commit e autore agente, 66 righe coperte; binario e file oltre 1 MB rifiutati (400, codice `blame_unavailable`) |
 | `ricerca_e_elenco_file` | Search code senza distinguere maiuscole, massimo 100 risultati con `limitReached`, niente binari, `q` di 1 carattere 400; elenco file per Go to file |
-| `lingue` | byte e percentuali per lingua, in ordine decrescente (saltato finché `getRepositoryLanguages` risponde 501, GIT-117) |
+| `lingue` | byte e percentuali per lingua, in ordine decrescente (`getRepositoryLanguages`, GIT-117) |
 | `permessi` | per ogni lettura: proprietario 200; utente senza permesso su repo privato 404 identico a un repo inesistente; senza credenziali 401 (anche sul repo interno: raw e archivi compresi); token senza `read:resource` 403; repo interno letto da un altro utente; sessione web accettata, token inventato 401. Ogni caso negativo controlla che il corpo non porti nome o id del repo, nomi di file, contenuto, sha (interi e abbreviati), autori |
-| `ui_smoke` | Vitest + Testing Library + jsdom (`web/src/smoke`, lo strumento del resto di web/) contro questo stack: le pagine 07 (albero e README), 08 (file), 22 (blame), 09 (storico) e 10 (dettaglio commit) si caricano senza chiamate fallite né `console.error`. Senza node o senza `web/node_modules` è saltato; in CI (`GITSTACK_REQUIRE_UI_SMOKE=1`) è un errore |
+| `ui_smoke` | Vitest + Testing Library + jsdom (`web/src/smoke`, lo strumento del resto di web/) contro questo stack: le pagine 07 (albero e README), 08 (file), 22 (blame), 09 (storico), 10 (dettaglio commit), 23 (Tags: v1.0 col messaggio, v0.1 leggero) e i risultati di Search code (needle unica, via `VITE_SMOKE_NEEDLE`) si caricano senza chiamate fallite né `console.error`. Senza node o senza `web/node_modules` è saltato; in CI (`GITSTACK_REQUIRE_UI_SMOKE=1`) è un errore |
 
-Il contratto dice `blame_unavailable` per un blame impossibile, ma core oggi inoltra un 400 `invalid_request`: il test prova lo status.
-La pagina 23 (Tags) e quella dei risultati di Search code arrivano con GIT-94 e si aggiungono allo smoke quando sono su main.
 
 ## VM di test
 

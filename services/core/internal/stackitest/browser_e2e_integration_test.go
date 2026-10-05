@@ -661,8 +661,7 @@ func TestBrowserCodice(t *testing.T) {
 		}
 		for _, p := range []string{"blob.bin", "grande.txt", "media.txt"} {
 			r := b.get(P, "/blame?path="+p, alice)
-			// il contratto dice blame_unavailable, ma core oggi inoltra un 400 generico (invalid_request): si prova lo status
-			if r.status != 400 {
+			if r.status != 400 || !strings.Contains(string(r.body), "blame_unavailable") {
 				t.Errorf("blame di %s: %d %s", p, r.status, truncate(r.body))
 			}
 		}
@@ -730,9 +729,6 @@ func TestBrowserCodice(t *testing.T) {
 
 	t.Run("lingue", func(t *testing.T) {
 		r := b.get(P, "/languages", alice)
-		if r.status == http.StatusNotImplemented {
-			t.Skip("getRepositoryLanguages risponde ancora 501 (GIT-117): attivare quando è su main")
-		}
 		if r.status != 200 {
 			t.Fatalf("lingue: %d %s", r.status, truncate(r.body))
 		}
@@ -770,7 +766,7 @@ func TestBrowserCodice(t *testing.T) {
 
 // uiSmoke lancia il controllo di fumo della UI (web/src/smoke, Vitest con
 // Testing Library e jsdom: lo strumento del resto di web/) contro questo
-// stack: le pagine 07, 08, 22 (blame), 09 e 10 si caricano sul repo di prova senza
+// stack: le pagine 07, 08, 22 (blame), 09, 10, 23 (Tags) e i risultati di Search code si caricano sul repo di prova senza
 // errori. Serve node con pnpm e le dipendenze di web/ (corepack pnpm install
 // --frozen-lockfile): se mancano il sottotest è saltato, tranne con
 // GITSTACK_REQUIRE_UI_SMOKE=1 (la CI), dove è un errore.
@@ -800,6 +796,7 @@ func (b *browserEnv) uiSmoke(t *testing.T) {
 		"VITE_SMOKE_TOKEN="+b.tokens["alice"],
 		"VITE_SMOKE_REPO=alice/"+browserPrivate,
 		"VITE_SMOKE_SHA="+b.shaBig,
+		"VITE_SMOKE_NEEDLE="+needleUnique,
 		"CI=1",
 	)
 	out, err := cmd.CombinedOutput()
@@ -851,9 +848,7 @@ func (b *browserEnv) permissions(t *testing.T) {
 	}
 	for _, p := range reads {
 		priv, intl := browserPrivate, browserOpen
-		if r := b.get(priv, p, alice); r.status == http.StatusNotImplemented {
-			continue // lingue prima di GIT-117: coperto dal sottotest dedicato
-		} else if r.status != 200 {
+		if r := b.get(priv, p, alice); r.status != 200 {
 			t.Fatalf("%s: proprietario %d %s", p, r.status, truncate(r.body))
 		}
 		// utente senza permesso, repo privato: 404 come un repo che non c'è
