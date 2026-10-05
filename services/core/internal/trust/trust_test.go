@@ -169,3 +169,32 @@ func TestRequire(t *testing.T) {
 		t.Errorf("/health: %d", rec.Code)
 	}
 }
+
+// Round-trip su rete vera: Sign, una richiesta a un httptest.Server, Verify
+// sugli header ricevuti. Il gateway ripulisce i nomi (headerSafe) prima di
+// firmare, quindi qui i nomi sono quelli già puliti.
+func TestVerify_RoundTripHTTP(t *testing.T) {
+	for _, name := range []string{"ci-runner", "città", "ci x"} {
+		t.Run(name, func(t *testing.T) {
+			var ok bool
+			var got Identity
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				got, ok = Verify(r.Header, "segreto", t0)
+			}))
+			defer srv.Close()
+			req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			Sign(req.Header, "segreto", Identity{UserID: "u1", Username: "bot", TokenID: "t1", TokenName: name}, t0)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+			if !ok || got.TokenName != name {
+				t.Fatalf("Verify = %+v %v", got, ok)
+			}
+		})
+	}
+}

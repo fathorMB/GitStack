@@ -158,14 +158,16 @@ func Auth(cfg AuthConfig) Middleware {
 }
 
 // headerSafe toglie i caratteri di controllo (un a capo in un header non
-// passerebbe) dal nome del token prima di firmarlo.
+// passerebbe) e gli spazi iniziali e finali dal nome del token prima di
+// firmarlo: il server HTTP di Go toglie gli spazi ai bordi dei valori degli
+// header, e il MAC ricalcolato a valle non tornerebbe.
 func headerSafe(s string) string {
-	return strings.Map(func(r rune) rune {
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {
 			return -1
 		}
 		return r
-	}, s)
+	}, s))
 }
 
 // checkPermission applica il permesso su risorsa; ritorna false dopo aver
