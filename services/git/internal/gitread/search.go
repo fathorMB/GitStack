@@ -167,7 +167,7 @@ func (s *Service) SearchCode(ctx context.Context, repoID, ref, q string) (*CodeS
 	default:
 		var ge *gitrun.Error
 		// Uscita 1 senza messaggi: nessuna corrispondenza.
-		if !(errors.As(err, &ge) && ge.ExitCode == 1 && ge.Stderr == "") {
+		if !errors.As(err, &ge) || ge.ExitCode != 1 || ge.Stderr != "" {
 			return nil, err
 		}
 	}
