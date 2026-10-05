@@ -841,7 +841,7 @@ func (s *apiServer) ListIssueEvents(w http.ResponseWriter, r *http.Request, owne
 		return
 	}
 	rows, err := s.pool.Query(ctx, `SELECT id, type, actor_id, data, created_at FROM core.issue_events
-		WHERE issue_id = $1 ORDER BY created_at, id LIMIT $2 OFFSET $3`, x.ID, perPage, (page-1)*perPage)
+		WHERE issue_id = $1 ORDER BY seq LIMIT $2 OFFSET $3`, x.ID, perPage, (page-1)*perPage)
 	if err != nil {
 		writeIssueFailure(w, "lettura degli eventi non riuscita", err)
 		return

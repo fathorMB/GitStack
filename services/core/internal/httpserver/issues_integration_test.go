@@ -800,3 +800,42 @@ func TestIssues_CronologiaEPaginazione(t *testing.T) {
 	e.want(e.do(http.MethodGet, path+"/events?page=0", "carol", ""), http.StatusBadRequest, "invalid_page")
 	e.want(e.do(http.MethodGet, "/repos/alice/app/issues/99/events", "carol", ""), http.StatusNotFound, "not_found")
 }
+
+// La cronologia segue l'ordine di inserimento (seq), non created_at: con
+// l'orologio che torna indietro o timestamp uguali l'ordine non cambia.
+func TestIssues_CronologiaOrdinataPerSeqNonPerOrologio(t *testing.T) {
+	e := newIssuesEnv(t)
+	repoID := e.repo("app", true)
+	e.id.grantWrite(repoID, "bob")
+	n := e.open("app", "carol", "storia")
+	path := fmt.Sprintf("/repos/alice/app/issues/%d", n)
+	e.want(e.do(http.MethodPatch, path, "carol", `{"title":"storia 2"}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPost, path+"/close", "bob", `{}`), http.StatusOK, "")
+	e.want(e.do(http.MethodPost, path+"/reopen", "carol", ``), http.StatusOK, "")
+	e.want(e.do(http.MethodPut, path+"/hidden", "alice", `{"hidden":true}`), http.StatusOK, "")
+	want := []string{"opened", "renamed", "closed", "reopened", "hidden"}
+
+	check := func(label string) {
+		t.Helper()
+		if got := eventTypes(e.events("app", n, "alice")); !slices.Equal(got, want) {
+			t.Fatalf("%s: cronologia = %v, voluta %v", label, got, want)
+		}
+	}
+	check("orologio normale")
+	// Timestamp decrescenti: l'ultimo evento inserito ha il created_at piu' vecchio.
+	e.sql(`UPDATE core.issue_events SET created_at = now() - seq * interval '1 hour'
+		WHERE issue_id = (SELECT id FROM core.issues WHERE repo_id = $1 AND number = $2)`, repoID, n)
+	check("created_at decrescente")
+	// Timestamp tutti uguali.
+	e.sql(`UPDATE core.issue_events SET created_at = '2026-01-01T00:00:00Z'
+		WHERE issue_id = (SELECT id FROM core.issues WHERE repo_id = $1 AND number = $2)`, repoID, n)
+	check("created_at uguali")
+	// La paginazione usa lo stesso ordine.
+	rec := e.do(http.MethodGet, path+"/events?perPage=2&page=2", "alice", "")
+	e.want(rec, http.StatusOK, "")
+	var l openapi.IssueEventList
+	_ = json.Unmarshal(rec.Body.Bytes(), &l)
+	if got := eventTypes(l.Items); !slices.Equal(got, []string{"closed", "reopened"}) {
+		t.Fatalf("pagina 2 = %v", got)
+	}
+}
