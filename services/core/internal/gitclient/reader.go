@@ -68,15 +68,20 @@ func apiError(resp *http.Response, path string) error {
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 	switch resp.StatusCode {
 	case http.StatusNotFound, http.StatusBadRequest:
+		// Il servizio git risponde {"error":{"code":...,"message":...}}.
 		var body struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
+			Error struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
 		}
 		_ = json.Unmarshal(data, &body)
-		if body.Code == "" {
-			body.Code = map[int]string{http.StatusNotFound: "not_found", http.StatusBadRequest: "invalid_request"}[resp.StatusCode]
+		code, msg := body.Error.Code, body.Error.Message
+		if code == "" {
+			code = map[int]string{http.StatusNotFound: "not_found", http.StatusBadRequest: "invalid_request"}[resp.StatusCode]
+			msg = ""
 		}
-		return &APIError{Status: resp.StatusCode, Code: body.Code, Message: body.Message}
+		return &APIError{Status: resp.StatusCode, Code: code, Message: msg}
 	}
 	return fmt.Errorf("%w: GET %s ha risposto %d", ErrUnavailable, path, resp.StatusCode)
 }

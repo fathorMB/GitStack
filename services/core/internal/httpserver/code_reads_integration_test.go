@@ -68,6 +68,9 @@ func (g *readerGit) ReadJSON(_ context.Context, _ trust.Identity, _ uuid.UUID, p
 		return json.RawMessage(`{"languages":[{"name":"Go","bytes":90,"percent":90},{"name":"Shell","bytes":10,"percent":10}],"totalBytes":100}`), nil
 	case path == "search":
 		return json.RawMessage(`{"ref":"main","query":"q","results":[{"path":"a","line":1,"fragment":"x"}],"limitReached":false,"timedOut":false}`), nil
+	case path == "blame" && q.Get("path") == "bin.dat":
+		// Come git (writeErr): un binario non ha blame.
+		return nil, &gitclient.APIError{Status: 400, Code: "blame_unavailable", Message: "Blame non disponibile per i file binari."}
 	case path == "blame":
 		return json.RawMessage(`{"ref":"main","path":"a","ranges":[{"startLine":1,"endLine":1,"commit":` + commitJSON + `}]}`), nil
 	}
@@ -172,6 +175,17 @@ func TestCodeReads_Permessi(t *testing.T) {
 			e.want(e.do("GET", "/repos/alice/aperto-interno"+p, "bob", ""), 200)
 		})
 	}
+
+	t.Run("blame_binario_blame_unavailable", func(t *testing.T) {
+		rec := e.do("GET", "/repos/alice/aperto-interno/blame?path=bin.dat", "bob", "")
+		e.want(rec, 400)
+		var out struct {
+			Error struct{ Code, Message string }
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Error.Code != "blame_unavailable" || out.Error.Message == "" {
+			t.Errorf("atteso blame_unavailable: %v %s", err, rec.Body.String())
+		}
+	})
 
 	t.Run("files_e_search_instradamento", func(t *testing.T) {
 		e.want(e.do("GET", "/repos/alice/aperto-interno/files", "bob", ""), 200)
