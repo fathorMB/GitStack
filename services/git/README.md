@@ -32,7 +32,7 @@ Tag `git-internal` del contratto (D-E di GIT-63). Ogni chiamata richiede gli hea
 | Operazione | Esito |
 |---|---|
 | `POST /internal/git/repos` — `{repoId, name, description?, defaultBranch? (main), readme?, gitignoreTemplate?, licenseTemplate?, licenseHolder?, author {name,email}}` | 201 `{repoId, empty}`; 400 (UUID, modello sconosciuto, branch o autore non validi); 409 se esiste già (anche nel cestino) |
-| `GET /internal/git/repos/{repoId}` | 200 `{repoId, trashed, empty}` (`empty`: nessun ref sotto `refs/heads`); 404 |
+| `GET /internal/git/repos/{repoId}` | 200 `{repoId, trashed, empty, branches}` (`empty`: nessun ref sotto `refs/heads`; `branches`: i branch esistenti in ordine alfabetico, per il branch principale di core, R4); 404 |
 | `POST /internal/git/repos/{repoId}/trash` | 204; 404; 409 se è già nel cestino |
 | `POST /internal/git/repos/{repoId}/restore` | 204; 404; 409 se non è nel cestino |
 | `DELETE /internal/git/repos/{repoId}` | 204, solo dal cestino; 409 se il repo è attivo; 404 |

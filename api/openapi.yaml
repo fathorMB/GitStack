@@ -3216,6 +3216,12 @@ components:
         ssh:
           type: string
           example: ssh://git@git.example.com:2222/alice/my-app.git
+        sshShort:
+          type: string
+          description: >
+            Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo
+            quando la porta SSH dell'installazione e' 22.
+          example: git@git.example.com:alice/my-app.git
 
     Repository:
       type: object
@@ -3455,6 +3461,11 @@ components:
           type: boolean
         empty:
           type: boolean
+        branches:
+          type: array
+          description: Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
+          items:
+            type: string
 
   responses:
     TooManyRequests:

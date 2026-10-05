@@ -151,7 +151,7 @@ func TestMigration0002_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
 		t.Fatalf("down 0002: %v", err)
 	}
 	for _, tbl := range []string{"repositories", "repo_counters", "pull_requests"} {
@@ -171,5 +171,33 @@ func TestMigration0002_SaleEScende(t *testing.T) {
 
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
 		t.Fatalf("up 0002 dopo down: %v", err)
+	}
+}
+
+func TestMigration0003_OwnerNameSaleEScende(t *testing.T) {
+	pool, dsn := dbtest.NewPool(t)
+	ctx := context.Background()
+	hasCol := func() bool {
+		var ok bool
+		if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+			WHERE table_schema='core' AND table_name='repositories' AND column_name='owner_name')`).Scan(&ok); err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	if !hasCol() {
+		t.Fatal("owner_name dovrebbe esistere dopo le migrazioni")
+	}
+	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
+		t.Fatalf("down 0003: %v", err)
+	}
+	if hasCol() {
+		t.Fatal("owner_name non dovrebbe esistere dopo il down")
+	}
+	if err := migrate.Up(ctx, pool, dsn); err != nil {
+		t.Fatalf("up 0003 dopo down: %v", err)
+	}
+	if !hasCol() {
+		t.Fatal("owner_name dovrebbe tornare dopo up")
 	}
 }

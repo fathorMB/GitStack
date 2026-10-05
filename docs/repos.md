@@ -50,7 +50,7 @@ identity usa `include-tags`; il gateway non lo espone mai):
 
 - `POST /internal/git/repos` → 201 `{repoId, empty}` (409 se esiste, 400 per
   un modello sconosciuto);
-- `GET /internal/git/repos/{repoId}` → `{repoId, trashed, empty}`;
+- `GET /internal/git/repos/{repoId}` → `{repoId, trashed, empty, branches}` (`branches` aggiunto da GIT-67 per validare il branch principale, R4);
 - `POST .../trash` e `POST .../restore` → 204;
 - `DELETE /internal/git/repos/{repoId}` → 204, solo dal cestino, altrimenti 409.
 

@@ -33,6 +33,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
+	github.com/fathorMB/GitStack/pkg/names v0.0.0-20261005080521-b11140daae71
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect

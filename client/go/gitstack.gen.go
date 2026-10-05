@@ -636,9 +636,11 @@ type GitRepoCreated struct {
 
 // GitRepoState defines model for GitRepoState.
 type GitRepoState struct {
-	Empty   bool               `json:"empty"`
-	RepoId  openapi_types.UUID `json:"repoId"`
-	Trashed bool               `json:"trashed"`
+	// Branches Branch esistenti (`refs/heads`), in ordine alfabetico (R4).
+	Branches *[]string          `json:"branches,omitempty"`
+	Empty    bool               `json:"empty"`
+	RepoId   openapi_types.UUID `json:"repoId"`
+	Trashed  bool               `json:"trashed"`
 }
 
 // GitignoreTemplate Modello di `.gitignore` per il contenuto iniziale (R5).
@@ -822,6 +824,12 @@ type RepoCloneUrls struct {
 
 	// Ssh Example: ssh://git@git.example.com:2222/alice/my-app.git
 	Ssh string `json:"ssh"`
+
+	// SshShort Forma corta `git@<host>:<owner>/<repo>.git` (R7): presente solo quando la porta SSH dell'installazione e' 22.
+	//
+	//
+	// Example: git@git.example.com:alice/my-app.git
+	SshShort *string `json:"sshShort,omitempty"`
 }
 
 // RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.

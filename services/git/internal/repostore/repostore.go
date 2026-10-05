@@ -68,6 +68,8 @@ type Info struct {
 	Trashed bool
 	// Empty è true se sotto refs/heads non c'è nessun ref.
 	Empty bool
+	// Branches sono i nomi sotto refs/heads, in ordine alfabetico (R4).
+	Branches []string
 }
 
 // Store è l'archivio dei repo.
@@ -267,11 +269,17 @@ func (s *Store) Get(ctx context.Context, id string) (Info, error) {
 	default:
 		return Info{}, ErrNotFound
 	}
-	out, err := s.run(ctx, []string{"-C", dir}, nil, "for-each-ref", "--count=1", "--format=%(refname)", "refs/heads")
+	out, err := s.run(ctx, []string{"-C", dir}, nil, "for-each-ref", "--format=%(refname:lstrip=2)", "--sort=refname", "refs/heads")
 	if err != nil {
 		return Info{}, err
 	}
-	info.Empty = strings.TrimSpace(out) == ""
+	info.Branches = []string{}
+	for _, l := range strings.Split(out, "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			info.Branches = append(info.Branches, l)
+		}
+	}
+	info.Empty = len(info.Branches) == 0
 	return info, nil
 }
 
