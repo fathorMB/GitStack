@@ -54,9 +54,8 @@ né l'id del repo (`leakCheck`); dove serve controlla anche che `refs/heads/main
 | `repo_interno_leggibile_non_scrivibile` | repo `internal`: bob lo clona via HTTPS e SSH e lo legge via API, ma il push (HTTPS 403, SSH) è negato e il repo non cambia; chiave non registrata esclusa |
 | `R6_file_oltre_100MB` | file di 100 MB + 1 byte generato al volo: push rifiutato via HTTPS e SSH (`remote: gitstack: push rifiutato`, nome e byte), repo invariato; tolto il file il push passa |
 | `R9_branch_principale_protetto` | force-push ed eliminazione di `main` rifiutati via HTTPS e SSH; altri branch liberi; con `protectDefaultBranch=false` il force-push passa |
+| `evento_git_push_su_nats` | nats-server JetStream in-process; dopo un push HTTPS e uno SSH lo stream `GIT` ha due eventi `git.push` decodificati con `gitpush.Register`/`Registry.Decode` (repo, pusher, ref, before/after, commit); un push negato non pubblica niente |
 | `R10_repo_archiviato` | archiviato: si clona (HTTPS e SSH), il push è negato (403 / SSH) e il repo non cambia; riattivato si scrive di nuovo |
-
-**Non ancora coperto**: l'evento `git.push` ricevuto su NATS, in attesa del servizio git che lo pubblica (GIT-73).
 
 ## VM di test
 

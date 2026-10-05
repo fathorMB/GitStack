@@ -5,6 +5,7 @@ package stackitest
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -17,11 +18,16 @@ import (
 	"testing"
 	"time"
 
+	pkgevents "github.com/fathorMB/GitStack/pkg/events"
+	"github.com/fathorMB/GitStack/pkg/events/gitpush"
 	"github.com/fathorMB/GitStack/services/core/internal/dbtest"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 // Dati del repo "riservato" che nessun caso negativo deve far trapelare.
@@ -36,6 +42,7 @@ type gitEnv struct {
 	*stack
 	gitHTTP string // http://host:porta del servizio git (smart HTTP)
 	sshAddr string // host:porta del server SSH integrato
+	natsURL string // nats-server JetStream in-process, a cui il servizio git pubblica git.push
 	home    string // HOME isolata per i client git/ssh
 	cookies map[string]*http.Cookie
 	tokens  map[string]string // token read:resource+write:resource
@@ -73,6 +80,16 @@ func newGitEnv(t *testing.T) *gitEnv {
 	gatewayBin := build(t, "../../../gateway", "gateway")
 	gitBin := build(t, "../../../git", "git")
 
+	natsSrv, err := server.NewServer(&server.Options{Host: "127.0.0.1", Port: -1, JetStream: true, StoreDir: t.TempDir(), NoLog: true, NoSigs: true})
+	if err != nil {
+		t.Fatalf("avvio nats-server: %v", err)
+	}
+	go natsSrv.Start()
+	if !natsSrv.ReadyForConnections(10 * time.Second) {
+		t.Fatal("nats-server non pronto entro 10s")
+	}
+	t.Cleanup(natsSrv.Shutdown)
+
 	identityAddr, gatewayAddr, gitAddr, sshAddr := freeAddr(t), freeAddr(t), freeAddr(t), freeAddr(t)
 	_, sshPort, _ := net.SplitHostPort(sshAddr)
 	var port int
@@ -105,6 +122,7 @@ func newGitEnv(t *testing.T) *gitEnv {
 		"GITSTACK_GIT_ADDR="+gitAddr,
 		"GITSTACK_GIT_SSH_ADDR="+sshAddr,
 		"GITSTACK_GIT_DATA_DIR="+t.TempDir(),
+		"GITSTACK_GIT_NATS_URL="+natsSrv.ClientURL(),
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
 		"GITSTACK_CORE_URL="+coreSrv.URL,
 		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
@@ -115,6 +133,7 @@ func newGitEnv(t *testing.T) *gitEnv {
 		stack:   &stack{t: t, gateway: "http://" + gatewayAddr, core: coreSrv.URL},
 		gitHTTP: "http://" + gitAddr,
 		sshAddr: sshAddr,
+		natsURL: natsSrv.ClientURL(),
 		home:    t.TempDir(),
 		cookies: map[string]*http.Cookie{},
 		tokens:  map[string]string{},
@@ -658,4 +677,96 @@ func TestGitClientReale(t *testing.T) {
 		e.patchRepo("alice", "regole-r10", map[string]any{"archived": false})
 		e.mustGit(w, "", "push", "-q", "origin", "main")
 	})
+
+	t.Run("evento_git_push_su_nats", func(t *testing.T) {
+		e.createRepo("alice", "evento", "internal")
+		u := e.httpsURL("alice", e.tokens["alice"], "/alice/evento.git")
+		w := e.initWork(u, map[string]string{"uno.txt": "1\n"})
+		e.commitFile(w, "due.txt", "2\n", "secondo")
+		e.mustGit(w, "", "push", "-q", "origin", "main")
+		first := strings.TrimSpace(e.mustGit(w, "", "rev-parse", "HEAD"))
+
+		evs := e.pushEvents("alice/evento", 1)
+		p := evs[0]
+		if p.Repo.FullName != "alice/evento" || p.Repo.DefaultBranch != "main" || p.Pusher.Username != "alice" || len(p.Refs) != 1 {
+			t.Fatalf("evento HTTPS: %+v", p)
+		}
+		r := p.Refs[0]
+		if r.Ref != "refs/heads/main" || r.After != first || r.Before != strings.Repeat("0", 40) || r.Forced || !r.IsDefaultBranch || len(r.Commits) != 2 {
+			t.Errorf("ref HTTPS: %+v", r)
+		}
+
+		// un push via SSH: secondo evento, con before = after del primo
+		a := e.clone(e.sshURL("/alice/evento.git"), e.keys["alice"])
+		e.commitFile(a, "tre.txt", "3\n", "terzo")
+		e.mustGit(a, e.keys["alice"], "push", "-q", "origin", "main")
+		second := strings.TrimSpace(e.mustGit(a, "", "rev-parse", "HEAD"))
+		evs = e.pushEvents("alice/evento", 2)
+		r = evs[1].Refs[0]
+		if evs[1].Pusher.Username != "alice" || r.Before != first || r.After != second || len(r.Commits) != 1 || !strings.HasPrefix(r.Commits[0].Message, "terzo") {
+			t.Errorf("evento SSH: %+v", evs[1])
+		}
+
+		// un push negato (bob legge il repo interno ma non scrive) non pubblica niente
+		b := e.clone(e.httpsURL("bob", e.tokens["bob"], "/alice/evento.git"), "")
+		e.commitFile(b, "bob.txt", "b\n", "bob")
+		if out, err := e.git(b, "", "push", "origin", "main"); err == nil {
+			t.Fatalf("push di bob riuscito:\n%s", out)
+		}
+		time.Sleep(2 * time.Second)
+		if got := e.pushEvents("alice/evento", 2); len(got) != 2 {
+			t.Errorf("eventi dopo un push negato: %d, attesi 2", len(got))
+		}
+	})
+}
+
+// pushEvents legge dallo stream GIT gli eventi git.push di `fullName`, nell'ordine
+// di pubblicazione, ripetendo la lettura (l'evento esce dopo la risposta al client)
+// finché ne trova almeno `min` o scade il tempo. Ogni evento passa dal registro
+// di pkg/events con il Decoder di gitpush, come in un consumer vero.
+func (e *gitEnv) pushEvents(fullName string, min int) []gitpush.Payload {
+	e.t.Helper()
+	nc, err := nats.Connect(e.natsURL)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer nc.Close()
+	js, err := jetstream.New(nc)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	reg := pkgevents.NewRegistry()
+	gitpush.Register(reg)
+	var out []gitpush.Payload
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		out = out[:0]
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cons, err := js.CreateOrUpdateConsumer(ctx, "GIT", jetstream.ConsumerConfig{AckPolicy: jetstream.AckNonePolicy, FilterSubject: gitpush.Name})
+		cancel()
+		if err == nil {
+			batch, ferr := cons.Fetch(100, jetstream.FetchMaxWait(time.Second))
+			if ferr == nil {
+				for m := range batch.Messages() {
+					var env pkgevents.Envelope
+					if json.Unmarshal(m.Data(), &env) != nil {
+						continue
+					}
+					v, derr := reg.Decode(env)
+					if derr != nil {
+						e.t.Fatalf("decodifica dell'evento: %v", derr)
+					}
+					if p, ok := v.(gitpush.Payload); ok && p.Repo.FullName == fullName {
+						out = append(out, p)
+					}
+				}
+			}
+		}
+		if len(out) >= min {
+			return append([]gitpush.Payload(nil), out...)
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	e.t.Fatalf("eventi git.push di %s: %d, attesi almeno %d", fullName, len(out), min)
+	return nil
 }
