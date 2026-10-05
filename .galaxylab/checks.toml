@@ -173,3 +173,11 @@ name = "go-gofmt"
 run = "go run scripts/check-gofmt.go"
 timeout_s = 120
 paths = ["**/*.go", "scripts/check-gofmt.go"]
+
+[[check]]
+name = "go-standalone-build"
+# Build dei servizi con Dockerfile fuori dal workspace (GOWORK=off, -mod=readonly):
+# un go.sum incompleto nel workspace non si vede, nel Dockerfile sì (GIT-123).
+run = "go run scripts/check-standalone-build.go"
+timeout_s = 600
+paths = ["services/*/go.mod", "services/*/go.sum", "services/**/*.go", "pkg/**", "go.work", "go.work.sum", "scripts/check-standalone-build.go"]
