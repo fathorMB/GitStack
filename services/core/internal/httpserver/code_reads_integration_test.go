@@ -177,7 +177,9 @@ func TestCodeReads_Permessi(t *testing.T) {
 	t.Run("blame_binario_blame_unavailable", func(t *testing.T) {
 		rec := e.do("GET", "/repos/alice/aperto-interno/blame?path=bin.dat", "bob", "")
 		e.want(rec, 400)
-		var out struct{ Error struct{ Code, Message string } }
+		var out struct {
+			Error struct{ Code, Message string }
+		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Error.Code != "blame_unavailable" || out.Error.Message == "" {
 			t.Errorf("atteso blame_unavailable: %v %s", err, rec.Body.String())
 		}
