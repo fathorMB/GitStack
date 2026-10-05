@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { Bot, ChevronDown, Download, File as FileIcon, Folder, GitBranch, Search, Shield, Tag as TagIcon, Terminal } from 'lucide-react';
+import { Bot, ChevronDown, Download, File as FileIcon, Folder, GitBranch, History, Search, Shield, Tag as TagIcon, Terminal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -13,6 +13,7 @@ import {
   fetchLanguages,
   fetchReadme,
   fetchTags,
+  commitsHref,
   fetchTree,
   fuzzyFilter,
   languageColor,
@@ -26,7 +27,7 @@ import { describeError } from '../../lib/http';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 
-interface Refs {
+export interface Refs {
   branches: { items: Branch[]; total: number };
   tags: { items: Tag[]; total: number };
 }
@@ -69,6 +70,9 @@ function TreeView({ repo, refs, refName, path, defaultRef }: { repo: Repository;
             </Link>
           </span>
           <span className="sp" />
+          <Link className="btn" to={commitsHref(owner, name, refName, path)}>
+            <History size={16} aria-hidden="true" /> History
+          </Link>
           <GoToFile owner={owner} repo={name} refName={refName} />
           <SearchCode owner={owner} repo={name} refName={refName} />
           <CloneMenu repo={repo} refName={refName} />
@@ -248,7 +252,7 @@ function Languages({ owner, repo, refName }: { owner: string; repo: string; refN
 }
 
 // Selettore di branch e tag con ricerca (R4: parte dal branch principale).
-function RefSwitcher({ repo, refs, refName, defaultRef }: { repo: Repository; refs: Refs; refName: string; defaultRef: string }) {
+export function RefSwitcher({ repo, refs, refName, defaultRef, hrefFor }: { repo: Repository; refs: Refs; refName: string; defaultRef: string; hrefFor?: (name: string) => string }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<'branches' | 'tags'>(refs.tags.items.some((t) => t.name === refName) && !refs.branches.items.some((b) => b.name === refName) ? 'tags' : 'branches');
@@ -275,7 +279,7 @@ function RefSwitcher({ repo, refs, refName, defaultRef }: { repo: Repository; re
           </div>
           {names.length === 0 ? <p className="muted small">Nothing found.</p> : null}
           {names.map((n) => (
-            <Link key={n} className="pop-item" to={treeHref(owner, repo.name, n, '', defaultRef)} onClick={() => setOpen(false)}>
+            <Link key={n} className="pop-item" to={hrefFor ? hrefFor(n) : treeHref(owner, repo.name, n, '', defaultRef)} onClick={() => setOpen(false)}>
               <span className="mono">{n}</span>
               {n === defaultRef && kind === 'branches' ? <span className="badge">default</span> : null}
             </Link>

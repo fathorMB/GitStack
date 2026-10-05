@@ -322,3 +322,32 @@ ul.list{margin:0;padding:0;list-style:none}
 .blame-meta .row{gap:6px}
 .blame-meta .avatar{width:18px;height:18px;font-size:8px}
 .blame-code{flex:1;min-width:0;overflow:auto}
+
+/* Storico e dettaglio commit (mockup 09, 10), diff riusabile (B6) */
+.commit-day{font-size:13px;color:var(--text-muted);margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.commit-day:first-child{margin-top:0}
+.sha{font-family:var(--font-mono);font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:var(--r);color:var(--text-muted);background:var(--surface)}
+.diff{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:16px;background:var(--surface)}
+.diff-h{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:13px}
+.diff-toggle{all:unset;cursor:pointer;display:inline-flex;color:var(--text-muted)}
+.diff-toggle:focus-visible{box-shadow:var(--focus)}
+.diff-note{padding:10px 14px}
+.diffstat{display:inline-flex;gap:1px}.diffstat i{width:8px;height:8px;border-radius:1px;background:var(--surface-3)}.diffstat i.a{background:var(--success)}.diffstat i.d{background:var(--danger)}
+.dl{display:grid;grid-template-columns:48px 48px 1fr;font:12.5px/1.7 var(--font-mono)}
+.dl>div{padding:0 10px;white-space:pre}
+.dl .n{color:var(--text-subtle);text-align:right;user-select:none}
+.dl.hunk>div{background:var(--info-soft);color:var(--text-muted)}
+.dl.add>div{background:var(--diff-add)}.dl.add .n{background:var(--diff-add-strong)}
+.dl.del>div{background:var(--diff-del)}.dl.del .n{background:var(--diff-del-strong)}
+.dl.ctx>div{background:var(--code-bg)}
+.dl.span{grid-template-columns:1fr}
+.dsplit{overflow-x:auto}
+.dl2{display:grid;grid-template-columns:1fr 1fr;font:12.5px/1.7 var(--font-mono)}
+.dh{display:grid;grid-template-columns:48px 1fr;min-width:0}
+.dh>div{padding:0 10px;white-space:pre}
+.dh+.dh{border-left:1px solid var(--border)}
+.dh .n{color:var(--text-subtle);text-align:right;user-select:none}
+.dh.ctx>div,.dh.empty{background:var(--code-bg)}
+.dh.add>div{background:var(--diff-add)}.dh.add .n{background:var(--diff-add-strong)}
+.dh.del>div{background:var(--diff-del)}.dh.del .n{background:var(--diff-del-strong)}
+.btn-group{display:inline-flex;gap:6px}

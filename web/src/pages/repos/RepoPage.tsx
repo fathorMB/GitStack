@@ -6,6 +6,8 @@ import { fetchRepo } from '../../lib/reposApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { CodeBrowser } from './CodeBrowser';
+import { CommitPage } from './CommitPage';
+import { CommitsPage } from './CommitsPage';
 import { FileView } from './FileView';
 import type { FileMode } from './FileView';
 import { VisibilityBadge } from './ReposPage';
@@ -14,12 +16,14 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export function RepoPage({ mode = 'tree' }: { mode?: 'tree' | FileMode }) {
+export type RepoMode = 'tree' | 'commits' | 'commit' | FileMode;
+
+export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
   return <RepoPageInner key={`${owner}/${repo}`} owner={owner} repo={repo} splat={splat} mode={mode} />;
 }
 
-function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: string; splat: string; mode: 'tree' | FileMode }) {
+function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: string; splat: string; mode: RepoMode }) {
   const { data, loading, error } = useLoad(() => fetchRepo(owner, repo));
 
   // Link alle impostazioni solo a chi ha admin; un errore nel controllo lo nasconde.
@@ -59,7 +63,15 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
         <QuickSetup repo={data} />
       ) : (
         <div className="section-gap">
-          {mode === 'tree' ? <CodeBrowser repo={data} splat={splat} /> : <FileView repo={data} splat={splat} mode={mode} />}
+          {mode === 'tree' ? (
+            <CodeBrowser repo={data} splat={splat} />
+          ) : mode === 'commits' ? (
+            <CommitsPage repo={data} splat={splat} />
+          ) : mode === 'commit' ? (
+            <CommitPage repo={data} />
+          ) : (
+            <FileView repo={data} splat={splat} mode={mode} />
+          )}
         </div>
       )}
     </div>
