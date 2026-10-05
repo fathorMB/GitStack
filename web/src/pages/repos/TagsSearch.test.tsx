@@ -93,6 +93,10 @@ describe('pagina Tags (mockup 23)', () => {
     expect(within(rows[1]!).getByText('Lightweight tag (no message)')).toBeInTheDocument();
     expect(within(rows[1]!).queryByText('Latest')).toBeNull();
     expect(screen.getByText('2', { selector: '.counter' })).toBeInTheDocument();
+    const note = screen.getByRole('note');
+    expect(note).toHaveTextContent('/api/repos/acme/api/archive?ref=v0.4.2&format=tar.gz');
+    expect(note.textContent).not.toContain('/acme/api/archive/');
+    expect(note).toHaveTextContent('-o api-v0.4.2.tar.gz');
   });
 
   it('offre il download ZIP e tar.gz di ogni tag', async () => {

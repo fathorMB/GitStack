@@ -20,6 +20,7 @@ export function TagsPage({ repo }: { repo: Repository }) {
   const latest = sorted[0]?.name;
   const shown = sorted.filter((t) => t.name.toLowerCase().includes(q.trim().toLowerCase()));
   const example = sorted[0]?.name ?? 'v1.0.0';
+  const curl = `curl -H "Authorization: Bearer $TOKEN" -L -o ${name}-${example}.tar.gz '${window.location.origin}${archiveUrl(owner, name, example, 'tar.gz')}'`;
   return (
     <div className="stack" style={{ maxWidth: 980 }}>
       <div className="page-h row">
@@ -45,7 +46,7 @@ export function TagsPage({ repo }: { repo: Repository }) {
         <div>
           Downloads need you to be signed in, or an access token with read access:{' '}
           <span className="mono">
-            curl -H &quot;Authorization: Bearer $TOKEN&quot; -LO {window.location.origin}/{owner}/{name}/archive/{example}.tar.gz
+            {curl}
           </span>
         </div>
       </div>
