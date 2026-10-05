@@ -47,6 +47,11 @@ spec:
               value: /data
             - name: GITSTACK_GIT_LOG_LEVEL
               value: {{ .Values.git.env.logLevel | quote }}
+            # Smart HTTP (GIT-70): token e permessi da identity, owner/repo da core.
+            - name: GITSTACK_IDENTITY_URL
+              value: {{ include "gitstack.identity.url" . | quote }}
+            - name: GITSTACK_CORE_URL
+              value: {{ include "gitstack.core.url" . | quote }}
             - name: GITSTACK_IDENTITY_SERVICE_SECRET
               valueFrom:
                 secretKeyRef:

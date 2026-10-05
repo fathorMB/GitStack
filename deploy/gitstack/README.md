@@ -95,6 +95,10 @@ helm install gitstack deploy/gitstack \
 
 Il chart valida questi campi a `helm template`/`helm install` e si ferma con un errore chiaro se mancano.
 
+## Git via HTTPS: IngressRoute diretta al servizio git (GIT-70)
+
+Le richieste smart HTTP (`/<owner>/<repo>.git/info/refs`, `/git-upload-pack`, `/git-receive-pack`) non passano dal gateway: un `IngressRoute` Traefik (`templates/ingress-git.yaml`, `PathRegexp`, priorità alta) le manda direttamente al Service `<release>-git`, che autentica da sé (Basic auth, password = token personale, verificato da identity) e controlla i permessi. Motivo: il gateway risponde con sessioni/Bearer e errori JSON, non con `401 WWW-Authenticate: Basic` che git richiede, e un push non deve attraversare il suo proxy. `git.enabled=false` o `ingress.enabled=false` tolgono la rotta; dietro lo stesso host/TLS dell'Ingress. Il pod git riceve `GITSTACK_IDENTITY_URL` e `GITSTACK_CORE_URL`.
+
 ## Ingress: `/` verso web, `/api` verso gateway
 
 `gateway` espone `/healthz`, `/readyz` e `/v1/*` (non `/api/*`, vedi `services/gateway/README.md`). L'Ingress instrada `/api` verso `gateway` tramite un Middleware Traefik (`stripPrefix`, CRD `traefik.io/v1alpha1`, gruppo Traefik v3 — su k3s con Traefik v2 usa `traefik.containo.us/v1alpha1`) che toglie il prefisso `/api` prima di raggiungere il Service: `/api/healthz` arriva al gateway come `/healthz`, `/api/v1/...` come `/v1/...`.
@@ -103,7 +107,7 @@ Il chart valida questi campi a `helm template`/`helm install` e si ferma con un 
 
 ## Servizio git (GIT-74)
 
-Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Oggi il servizio espone solo l'API interna chiamata da core; smart HTTP (Ingress, GIT-70) e SSH (GIT-71) arrivano dopo. Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`).
+Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): SSH (GIT-71) arriva dopo. Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`).
 
 | Value | Default | Significato |
 |---|---|---|

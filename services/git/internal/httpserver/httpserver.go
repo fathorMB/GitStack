@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
+	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
 )
 
@@ -45,6 +46,8 @@ type Deps struct {
 	Content Content
 	Secret  string
 	Logger  *slog.Logger
+	// Git, se non nil, serve lo smart HTTP su /<owner>/<repo>.git/...
+	Git http.Handler
 	// Now è iniettabile per i test (nil = time.Now).
 	Now func() time.Time
 }
@@ -79,7 +82,18 @@ func NewRouter(d Deps) http.Handler {
 	api.HandleFunc("POST /internal/git/repos/{repoId}/restore", h.restore)
 	api.HandleFunc("DELETE /internal/git/repos/{repoId}", h.purge)
 	mux.Handle("/internal/", trust.Require(d.Secret, nil, d.Now)(api))
-	return mux
+	if d.Git == nil {
+		return mux
+	}
+	// Le rotte smart HTTP hanno owner e repo variabili: si riconoscono prima
+	// del mux, così un owner chiamato "internal" non collide con /internal/.
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if smarthttp.Match(r.URL.Path) {
+			d.Git.ServeHTTP(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
 }
 
 type handler struct{ Deps }
