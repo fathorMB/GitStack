@@ -107,7 +107,7 @@ Le richieste smart HTTP (`/<owner>/<repo>.git/info/refs`, `/git-upload-pack`, `/
 
 ## Servizio git (GIT-74)
 
-Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) si attiva con `git.ssh.enabled` (sotto). Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`). Dopo ogni push accettato (HTTPS o SSH) il servizio pubblica `git.push` sul NATS interno (`GITSTACK_GIT_NATS_URL`, GIT-73, schema in `docs/events.md`); con NATS giù i push restano accettati.
+Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) è attivo di default (`git.ssh.enabled`, sotto). Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`). Dopo ogni push accettato (HTTPS o SSH) il servizio pubblica `git.push` sul NATS interno (`GITSTACK_GIT_NATS_URL`, GIT-73, schema in `docs/events.md`); con NATS giù i push restano accettati.
 
 | Value | Default | Significato |
 |---|---|---|
@@ -116,7 +116,7 @@ Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fs
 | `git.containerPort`, `git.service.port` | `8080` | Porta HTTP (`GITSTACK_GIT_ADDR`) e del Service. |
 | `git.env.logLevel` | `info` | `GITSTACK_GIT_LOG_LEVEL`. |
 | `git.resources` | 25m / 32Mi, limite 256Mi | Risorse del container. |
-| `git.ssh.enabled` | `false` | Attiva il server SSH integrato del servizio git (GIT-71): crea il Service `<release>-git-ssh` (`LoadBalancer`, in k3s ServiceLB apre la porta sul nodo), la porta del container e il Secret della chiave host montato in `/etc/gitstack/ssh`. |
+| `git.ssh.enabled` | `true` | Server SSH integrato del servizio git (GIT-71): crea il Service `<release>-git-ssh` (`LoadBalancer`, in k3s ServiceLB apre la porta sul nodo), la porta del container e il Secret della chiave host montato in `/etc/gitstack/ssh`. |
 | `git.ssh.port` | `2222` | Porta SSH esposta (e `GITSTACK_CORE_SSH_PORT` di core). Mai la 22: l'installer non modifica l'sshd dell'host (R7). |
 | `git.ssh.hostKey.existingSecret` | vuoto | Secret esistente con la chiave `ssh_host_ed25519_key`; vuoto = generata una sola volta (`<release>-git-ssh-host-key`, `lookup` + `helm.sh/resource-policy: keep`, così i client non vedono mai "host key changed"). |
 | `core.env.publicUrl` | vuoto | `GITSTACK_CORE_PUBLIC_URL`, emesso solo se valorizzato. |
