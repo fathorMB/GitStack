@@ -8,6 +8,8 @@ import { useLoad } from '../../lib/useLoad';
 import { CodeBrowser } from './CodeBrowser';
 import { CommitPage } from './CommitPage';
 import { CommitsPage } from './CommitsPage';
+import { SearchPage } from './SearchPage';
+import { TagsPage } from './TagsPage';
 import { FileView } from './FileView';
 import type { FileMode } from './FileView';
 import { VisibilityBadge } from './ReposPage';
@@ -16,7 +18,7 @@ import { isRepoAdmin, loadMe } from './repoAdmin';
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
 // key sul repo: passando da /a/x a /b/y senza smontare la pagina i dati si ricaricano.
-export type RepoMode = 'tree' | 'commits' | 'commit' | FileMode;
+export type RepoMode = 'tree' | 'commits' | 'commit' | 'tags' | 'search' | FileMode;
 
 export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
   const { owner = '', repo = '', '*': splat = '' } = useParams();
@@ -67,6 +69,10 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
             <CodeBrowser repo={data} splat={splat} />
           ) : mode === 'commits' ? (
             <CommitsPage repo={data} splat={splat} />
+          ) : mode === 'tags' ? (
+            <TagsPage repo={data} />
+          ) : mode === 'search' ? (
+            <SearchPage repo={data} />
           ) : mode === 'commit' ? (
             <CommitPage repo={data} />
           ) : (

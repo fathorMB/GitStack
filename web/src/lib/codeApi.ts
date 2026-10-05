@@ -10,9 +10,10 @@ import {
   getRepositoryReadme,
   getRepositoryTags,
   getRepositoryTree,
+  searchRepositoryCode,
   listRepositoryFiles,
 } from '@gitstack/api-client';
-import type { Blame, BlameRange, Branch, CommitDetail, CommitList, CommitSummary, FileDiff, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry } from '@gitstack/api-client';
+import type { Blame, BlameRange, Branch, CodeSearchResult, CommitDetail, CommitList, CommitSummary, FileDiff, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry } from '@gitstack/api-client';
 import { API_BASE_URL, ApiError, unwrap } from './http';
 
 export type { Blame, BlameRange, Branch, CommitDetail, CommitList, CommitSummary, FileDiff, FileContent, FileList, LanguageShare, Languages, Tag, Tree, TreeEntry };
@@ -232,4 +233,25 @@ export function commitDownloadUrl(owner: string, repo: string, sha: string, form
 /** Storico dalla radice (tab Commits): /<owner>/<repo>/commits/<ref>. */
 export function commitsHref(owner: string, repo: string, ref: string, path = ""): string {
   return `/${owner}/${repo}/commits/${encodePath(ref)}${path ? `/${encodePath(path)}` : ""}`;
+}
+
+export type { CodeSearchHit, CodeSearchResult } from '@gitstack/api-client';
+
+/** Search code (B5): sottostringa letterale sul ref, al massimo 100 risultati. */
+export async function searchCode(owner: string, repo: string, q: string, ref: string): Promise<CodeSearchResult> {
+  return unwrap(await searchRepositoryCode({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { q, ref } }));
+}
+
+/** Pagina dei risultati: /<owner>/<repo>/search?q=&ref=. */
+export function searchHref(owner: string, repo: string, q: string, ref: string): string {
+  return `/${owner}/${repo}/search?q=${encodeURIComponent(q)}&ref=${encodeURIComponent(ref)}`;
+}
+
+/** Vista file alla riga della corrispondenza (#L<n>). */
+export function blobLineHref(owner: string, repo: string, ref: string, path: string, line: number): string {
+  return `${blobHref(owner, repo, ref, path)}#L${line}`;
+}
+
+export function tagsHref(owner: string, repo: string): string {
+  return `/${owner}/${repo}/tags`;
 }
