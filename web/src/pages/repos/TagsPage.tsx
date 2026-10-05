@@ -1,7 +1,7 @@
 import { Download, Info, Search, Tag as TagIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ErrorAlert } from '../../components';
+import { EmptyState, ErrorAlert } from '../../components';
 import { archiveUrl, commitHref, fetchTags } from '../../lib/codeApi';
 import type { Tag } from '../../lib/codeApi';
 import { timeAgo } from '../../lib/format';
@@ -32,7 +32,7 @@ export function TagsPage({ repo }: { repo: Repository }) {
           <input className="input" aria-label="Find a tag" placeholder="Find a tag…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </div>
-      {data.items.length === 0 ? <p className="muted">This repository has no tags.</p> : null}
+      {data.items.length === 0 ? <EmptyState icon={<TagIcon size={32} aria-hidden="true" />} title="No tags yet" description="Create a tag with git tag and publish it with git push origin --tags." /> : null}
       {data.items.length > 0 && shown.length === 0 ? <p className="muted">No tags match your search.</p> : null}
       {shown.length > 0 ? (
         <ul className="list" aria-label="Tags" style={{ listStyle: 'none', padding: 0 }}>

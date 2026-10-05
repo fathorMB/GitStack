@@ -118,7 +118,9 @@ describe('pagina Tags (mockup 23)', () => {
   it('senza tag lo dice', async () => {
     vi.mocked(fetchTags).mockResolvedValue({ items: [], total: 0 });
     renderAt('/acme/api/tags');
-    expect(await screen.findByText('This repository has no tags.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'No tags yet' })).toBeInTheDocument();
+    expect(screen.getByText('Create a tag with git tag and publish it with git push origin --tags.')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Tags' })).not.toBeInTheDocument();
   });
 });
 
