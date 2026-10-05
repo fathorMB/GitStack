@@ -464,6 +464,41 @@ diagnostica non è stata raccolta, es. VM irraggiungibile via SSH). Un'
 esecuzione con tutti i passi `[PASS]` sul commit di `main`, con questo zip
 allegato all'item, è il criterio "Verde sul ramo principale" di GIT-11.
 
+## Smoke della UI nel browser (GIT-152)
+
+`web/e2e/smoke.spec.ts` (Playwright, Chromium headless) prova la UI come la
+vede un utente, attraverso l'Ingress: apre `/login`, entra come `admin`,
+arriva alla pagina principale, apre la lista dei repo e **fallisce se una
+risposta `/api` è 4xx/5xx** (il 401 è ammesso solo prima del login). Gira nel
+job CI «Chart» (k3d, `http://localhost:8080`) e si lancia a mano anche contro la VM.
+Non è un test Vitest: `pnpm test` non lo vede.
+
+Dalla cartella `web/` di un checkout (serve Node 22 e `corepack pnpm`), una volta:
+
+```bash
+corepack pnpm install --frozen-lockfile
+corepack pnpm exec playwright install chromium   # su Linux: --with-deps chromium
+```
+
+Poi, contro la VM (l'IP lo stampa `e2e.ps1`; la password iniziale dell'admin è nel Secret):
+
+```bash
+# sulla VM: sudo k3s kubectl get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d
+E2E_BASE_URL=http://<ip della VM> \
+E2E_ADMIN_PASSWORD='<password iniziale>' \
+E2E_ADMIN_NEW_PASSWORD='<nuova password, almeno 12 caratteri>' \
+corepack pnpm e2e
+```
+
+| Variabile | Note |
+|---|---|
+| `E2E_BASE_URL` | Indirizzo dell'Ingress. Default `http://localhost:8080` (k3d in CI). |
+| `E2E_ADMIN_PASSWORD` | Password corrente dell'admin. Obbligatoria. |
+| `E2E_ADMIN_NEW_PASSWORD` | Serve solo se l'admin ha ancora la password iniziale: la UI impone il cambio e lo smoke lo esegue. **Cambia davvero la password dell'admin sulla VM**: dopo, `E2E_ADMIN_PASSWORD` è quella nuova (e un secondo giro non ha più bisogno di `E2E_ADMIN_NEW_PASSWORD`). Per ripartire da zero: `reset-vm.ps1`. |
+| `E2E_ADMIN_USERNAME` | Default `admin`. |
+
+Se fallisce, trace e screenshot sono in `web/e2e-results/` (`pnpm exec playwright show-trace <trace.zip>`); in CI il job li carica come artefatto `e2e-ui-trace`.
+
 ## Limiti noti e verifiche fatte in questa sessione (GIT-25)
 
 L'ambiente di questa sessione ha Hyper-V raggiungibile, diritti di

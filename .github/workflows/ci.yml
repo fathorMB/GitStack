@@ -455,6 +455,11 @@ jobs:
           docker build -f services/git/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
             services/git
+          # GIT-152: anche la UI, per lo smoke del browser attraverso l'Ingress
+          # (contesto: radice del monorepo, vedi web/Dockerfile).
+          docker build -f web/Dockerfile \
+            -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-web:${IMAGE_TAG}" \
+            .
 
       - name: Crea il cluster k3d
         run: |
@@ -537,26 +542,27 @@ jobs:
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
             "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
+            "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-web:${IMAGE_TAG}" \
             -c gitstack-ci
 
-      # web disattivato: la sua immagine arriva con GIT-7, in parallelo
-      # (vedi deploy/gitstack/README.md). imagePullPolicy: IfNotPresent nel
-      # chart evita che i pod ritentino un pull remoto per un tag mai
-      # pubblicato su un registry.
+      # GIT-152: web attivo (default del chart), con l'immagine costruita sopra:
+      # lo smoke del browser passa dall'Ingress e serve la UI vera.
+      # imagePullPolicy: IfNotPresent nel chart evita che i pod ritentino un
+      # pull remoto per un tag mai pubblicato su un registry.
       - name: helm install
         run: |
           helm install gitstack deploy/gitstack \
-            --set web.enabled=false \
             --set global.image.tag="${IMAGE_TAG}" \
             --wait --timeout 3m
 
-      - name: Attendi che gateway, identity, core e git siano Ready
+      - name: Attendi che gateway, identity, core, git e web siano Ready
         run: |
           kubectl get pods -o wide
           kubectl rollout status deployment/gitstack-gateway --timeout=120s
           kubectl rollout status deployment/gitstack-identity --timeout=120s
           kubectl rollout status deployment/gitstack-core --timeout=120s
           kubectl rollout status deployment/gitstack-git --timeout=120s
+          kubectl rollout status deployment/gitstack-web --timeout=120s
 
       # GIT-99: l'helm install usa il default di git.ssh.enabled (true, R7):
       # il Service <release>-git-ssh (LoadBalancer, ServiceLB) apre la 2222 sul
@@ -682,6 +688,53 @@ jobs:
             exit 1
           fi
           echo "OK: ${prefix}/auth/session 401 -> login admin 200 -> sessione 200 (via Ingress)"
+
+      # GIT-152: smoke della UI nel browser (Chromium headless) attraverso
+      # l'Ingress: /login, login admin con la password iniziale del Secret (la
+      # UI impone il cambio: E2E_ADMIN_NEW_PASSWORD), pagina principale, lista
+      # dei repo, nessuna risposta /api 4xx/5xx. Test in web/e2e/, fuori da
+      # vitest. Le password restano in variabili d'ambiente, mai stampate.
+      - name: Setup pnpm (smoke UI)
+        uses: pnpm/action-setup@v5
+        with:
+          package_json_file: web/package.json
+
+      - name: Setup Node (smoke UI)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Dipendenze di web/ e Chromium per Playwright
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: Smoke UI nel browser attraverso l'Ingress (pnpm e2e)
+        working-directory: web
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: |
+          set -euo pipefail
+          E2E_ADMIN_PASSWORD=$(kubectl get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d)
+          if [ -z "$E2E_ADMIN_PASSWORD" ]; then
+            echo "FALLITO: password iniziale vuota nel Secret gitstack-identity-admin" >&2
+            exit 1
+          fi
+          E2E_ADMIN_NEW_PASSWORD="e2e-$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)"
+          export E2E_ADMIN_PASSWORD E2E_ADMIN_NEW_PASSWORD
+          pnpm e2e
+
+      - name: Trace e screenshot dello smoke UI (solo se fallisce)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-ui-trace
+          path: web/e2e-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
       # GIT-21: ogni comando ha "|| true" perché questo step deve restare
       # utile anche quando l'API server del cluster è irraggiungibile (il
