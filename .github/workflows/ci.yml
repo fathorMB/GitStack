@@ -60,8 +60,24 @@ jobs:
       # demone Docker raggiungibile, che testcontainers usa per avviare
       # Postgres. Solo services/core: è l'unico modulo con test così
       # taggati.
+      # Test e2e del browser del codice (GIT-89, TestBrowserCodice in
+      # services/core/internal/stackitest): il sottotest ui_smoke lancia
+      # Vitest (web/src/smoke) contro lo stack vero, quindi servono node e le
+      # dipendenze di web/. GITSTACK_REQUIRE_UI_SMOKE=1 fa fallire il test, invece
+      # di saltarlo, se mancano.
+      - name: Setup Node (smoke UI del browser del codice)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Dipendenze di web/ (smoke UI del browser del codice)
+        working-directory: web
+        run: corepack pnpm install --frozen-lockfile
+
       - name: go test -tags=integration -race (services/core, Postgres reale via testcontainers)
         working-directory: services/core
+        env:
+          GITSTACK_REQUIRE_UI_SMOKE: "1"
         run: go test -tags=integration ./... -race
 
       # Tabella regole→test (GIT-115): ogni test citato in docs/rules-coverage.md
