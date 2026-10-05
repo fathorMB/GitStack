@@ -364,7 +364,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VERSION}" bash
-          k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --wait --timeout 120s
+          k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --port "2222:2222@loadbalancer" --wait --timeout 120s
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo
       # k3s riporti Ready, non che l'API server accetti già in modo stabile
@@ -461,6 +461,28 @@ jobs:
           kubectl rollout status deployment/gitstack-identity --timeout=120s
           kubectl rollout status deployment/gitstack-core --timeout=120s
           kubectl rollout status deployment/gitstack-git --timeout=120s
+
+      # GIT-99: l'helm install usa il default di git.ssh.enabled (true, R7):
+      # il Service <release>-git-ssh (LoadBalancer, ServiceLB) apre la 2222 sul
+      # nodo qualche secondo dopo il Ready, quindi polling con timeout.
+      - name: Verifica che il server SSH di git risponda sulla porta 2222 (ssh-keyscan)
+        run: |
+          set -euo pipefail
+          ok=""
+          for _ in $(seq 1 30); do
+            if ssh-keyscan -T 5 -p 2222 -t ed25519 localhost 2>/dev/null | grep -q 'ssh-ed25519'; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$ok" ]; then
+            echo "FALLITO: ssh-keyscan -p 2222 non ha restituito una chiave host ed25519 in tempo" >&2
+            kubectl get svc -o wide
+            kubectl logs deployment/gitstack-git --tail=100 || true
+            exit 1
+          fi
+          echo "OK: il server SSH di git risponde sulla porta 2222"
 
       - name: Verifica /healthz tramite l'Ingress Traefik (/api)
         run: |
