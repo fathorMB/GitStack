@@ -226,7 +226,7 @@ sudo gitstack restore --key-file chiave /srv/backup/gitstack-backup-….tar.gz.e
    `/downloads/ca.crt` è già la CA del backup, come `gitstack-tls fingerprint` e
    la catena servita su 443. I client che si fidavano della CA originale
    continuano a fidarsi. Se `ensure` fallisce, i dati sono già ripristinati: i
-   servizi sono riaccesi, il comando esce con codice 1 e dice di rilanciare
+   servizi sono riaccesi, il comando esce con codice 70 e dice di rilanciare
    `sudo gitstack-tls ensure`;
 7. riporta le repliche ai valori di prima e aspetta che i Deployment siano pronti.
 
