@@ -53,6 +53,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		clone:        o.clone,
 		attachments:  o.attachments,
 		hooks:        o.hooks,
+		emailEnabled: o.emailEnabled,
 		now:          now,
 	}
 
@@ -90,6 +91,7 @@ type routerOptions struct {
 	clone        CloneConfig
 	attachments  AttachmentsConfig
 	hooks        WebhookConfig
+	emailEnabled bool
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il

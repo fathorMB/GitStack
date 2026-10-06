@@ -39,6 +39,8 @@ type apiServer struct {
 	attachments AttachmentsConfig
 	// hooks: cifratura dei segreti e validazione degli indirizzi dei webhook.
 	hooks WebhookConfig
+	// emailEnabled: installazione con SMTP (preferenze email, C5).
+	emailEnabled bool
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
 	now func() time.Time
 }

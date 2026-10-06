@@ -35,6 +35,11 @@ spec:
     metadata:
       labels:
         {{- include "gitstack.componentLabels" (dict "root" $ "component" "core") | nindent 8 }}
+      {{- if and (include "gitstack.smtp.enabled" .) (not .Values.smtp.existingSecret) }}
+      annotations:
+        # Un cambio di smtp.* riavvia core: legge SMTP solo all'avvio.
+        checksum/smtp: {{ toJson .Values.smtp | sha256sum }}
+      {{- end }}
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -155,6 +160,44 @@ spec:
             {{- with .Values.egress.clusterCIDRs }}
             - name: GITSTACK_EGRESS_CLUSTER_CIDRS
               value: {{ join "," . | quote }}
+            {{- end }}
+            {{- if include "gitstack.smtp.enabled" . }}
+            # SMTP facoltativo (M-06/F, C5): senza smtp.host (o existingSecret)
+            # queste variabili non esistono e core manda solo notifiche in-app.
+            - name: GITSTACK_CORE_SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.smtp.secretName" . }}
+                  key: host
+            - name: GITSTACK_CORE_SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.smtp.secretName" . }}
+                  key: port
+                  optional: true
+            - name: GITSTACK_CORE_SMTP_SECURITY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.smtp.secretName" . }}
+                  key: security
+                  optional: true
+            - name: GITSTACK_CORE_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.smtp.secretName" . }}
+                  key: username
+                  optional: true
+            - name: GITSTACK_CORE_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.smtp.secretName" . }}
+                  key: password
+                  optional: true
+            - name: GITSTACK_CORE_SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.smtp.secretName" . }}
+                  key: from
             {{- end }}
             - name: GITSTACK_CORE_LOG_LEVEL
               value: {{ .Values.core.env.logLevel | quote }}

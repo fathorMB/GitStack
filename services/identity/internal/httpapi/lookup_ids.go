@@ -34,16 +34,24 @@ func (s *server) LookupUsersByIds(w http.ResponseWriter, r *http.Request) {
 	}
 	var out openapi.LookupIdsResult
 	out.Users = make([]struct {
+		Email    *string                          `json:"email,omitempty"`
 		Id       openapi_types.UUID               `json:"id"`
 		Kind     openapi.LookupIdsResultUsersKind `json:"kind"`
 		Username openapi.Name                     `json:"username"`
 	}, 0, len(found))
 	for _, m := range found {
-		out.Users = append(out.Users, struct {
+		var u struct {
+			Email    *string                          `json:"email,omitempty"`
 			Id       openapi_types.UUID               `json:"id"`
 			Kind     openapi.LookupIdsResultUsersKind `json:"kind"`
 			Username openapi.Name                     `json:"username"`
-		}{Id: openapi_types.UUID(m.ID), Kind: openapi.LookupIdsResultUsersKind(m.Kind), Username: m.Username})
+		}
+		u.Id, u.Kind, u.Username = openapi_types.UUID(m.ID), openapi.LookupIdsResultUsersKind(m.Kind), m.Username
+		if m.Email != "" {
+			email := m.Email
+			u.Email = &email
+		}
+		out.Users = append(out.Users, u)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

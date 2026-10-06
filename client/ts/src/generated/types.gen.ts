@@ -995,6 +995,11 @@ export type LookupIdsResult = {
         id: string;
         username: Name;
         kind: 'human' | 'agent';
+        /**
+         * Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+         *
+         */
+        email?: string;
     }>;
 };
 

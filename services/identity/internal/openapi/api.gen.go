@@ -627,8 +627,10 @@ type LookupIdsInput struct {
 // LookupIdsResult defines model for LookupIdsResult.
 type LookupIdsResult struct {
 	Users []struct {
-		Id   openapi_types.UUID       `json:"id"`
-		Kind LookupIdsResultUsersKind `json:"kind"`
+		// Email Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+		Email *string                  `json:"email,omitempty"`
+		Id    openapi_types.UUID       `json:"id"`
+		Kind  LookupIdsResultUsersKind `json:"kind"`
 
 		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 		//

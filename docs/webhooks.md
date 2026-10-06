@@ -272,7 +272,7 @@ I webhook li produce core dagli eventi di dominio (`docs/events.md`):
 transazionale di core (`core.event_outbox`), lo stesso da cui li pubblica il
 relay, per `issues`, `issue_comment` e `repository`. Le tabelle sono
 `core.webhooks` e `core.webhook_deliveries` (migrazione
-`0006_notifications_webhooks`; `0011_webhook_outbox` aggiunge il segno di
+`0006_notifications_webhooks`; `0012_webhook_outbox` aggiunge il segno di
 lettura dell'outbox). La coda delle consegne è la tabella stessa: le consegne
 `pending` sopravvivono al riavvio di core. I campi di `issue` e `comment` sono
 quelli di quando il motore elabora l'evento (di solito un secondo dopo): se la

@@ -10,15 +10,15 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 )
 
-// 0011 (GIT-135): webhooked_at sull'outbox. Gli eventi già presenti si
+// 0012 (GIT-135): webhooked_at sull'outbox. Gli eventi già presenti si
 // segnano elaborati (non generano consegne), i nuovi nascono da elaborare; il
 // down toglie colonna e indice e un nuovo up li ricrea.
-func TestMigration0011_SaleEScende(t *testing.T) {
+func TestMigration0012_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0011: %v", err)
+		t.Fatalf("down 0012: %v", err)
 	}
 	q := `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'core' AND table_name = 'event_outbox' AND column_name = 'webhooked_at')`
 	idx := `SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'core' AND indexname = 'event_outbox_unwebhooked')`
@@ -38,7 +38,7 @@ func TestMigration0011_SaleEScende(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
-		t.Fatalf("up 0011: %v", err)
+		t.Fatalf("up 0012: %v", err)
 	}
 	if err := pool.QueryRow(ctx, q).Scan(&has); err != nil || !has {
 		t.Fatalf("webhooked_at dopo il up: %v %v", has, err)

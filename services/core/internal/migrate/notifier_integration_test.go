@@ -17,7 +17,7 @@ func TestMigration0010_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
 		t.Fatalf("down 0010: %v", err)
 	}
 	var has bool
@@ -43,5 +43,27 @@ func TestMigration0010_SaleEScende(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM core.event_outbox WHERE notified_at IS NULL`).Scan(&fresh); err != nil || fresh != 1 {
 		t.Fatalf("eventi nuovi non letti = %d (%v)", fresh, err)
+	}
+}
+
+// 0011 (GIT-134): tentativi e fallimento definitivo dell'email di una
+// notifica; il down toglie le due colonne e la salita le riporta.
+func TestMigration0011_SaleEScende(t *testing.T) {
+	pool, dsn := dbtest.NewPool(t)
+	ctx := context.Background()
+
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+		t.Fatalf("down 0011: %v", err)
+	}
+	q := `SELECT count(*) FROM information_schema.columns WHERE table_schema = 'core' AND table_name = 'notifications' AND column_name IN ('email_attempts', 'email_failed_at')`
+	var n int
+	if err := pool.QueryRow(ctx, q).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("colonne dopo il down: %d %v", n, err)
+	}
+	if err := migrate.Up(ctx, pool, dsn); err != nil {
+		t.Fatalf("up 0011: %v", err)
+	}
+	if err := pool.QueryRow(ctx, q).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("colonne dopo l'up: %d %v", n, err)
 	}
 }

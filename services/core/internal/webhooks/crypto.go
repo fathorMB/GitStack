@@ -7,7 +7,7 @@
 //  1. Creazione delle consegne. Gli eventi di dominio issue.*, issue_comment.*
 //     e repository.* sono già nell'outbox transazionale (0009): il motore li
 //     legge da lì e, nella STESSA transazione in cui li segna elaborati
-//     (event_outbox.webhooked_at, 0011), scrive una riga pending in
+//     (event_outbox.webhooked_at, 0012), scrive una riga pending in
 //     core.webhook_deliveries per ogni webhook interessato. I push arrivano
 //     da NATS (git.push, consumer in internal/gitpush) e diventano righe
 //     pending allo stesso modo. L'indice unico (webhook_id, source_event_id)
