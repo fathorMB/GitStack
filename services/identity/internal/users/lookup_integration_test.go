@@ -31,7 +31,7 @@ func TestLookupByEmails(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("attesi 2 utenti (l'email ignota manca), ottenuti %+v", got)
 	}
-	if m := byEmail["alice@example.COM"]; m.Username != "alice" || m.Kind != "human" || m.Email != "alice@example.com" {
+	if m := byEmail["alice@example.COM"]; m.Username != "alice" || m.Kind != "human" || m.Email != "alice@example.COM" {
 		t.Errorf("alice: %+v", m)
 	}
 	if m := byEmail["BOTTY@agents.example.com"]; m.Username != "botty" || m.Kind != "agent" {
