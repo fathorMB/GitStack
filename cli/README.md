@@ -248,6 +248,21 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 
 `cli/internal/cmd/{search,blame,browse}/*_test.go`: gateway finto; `browse` prova `ParseArg` e `URL` (unitari) e che `--no-browser` stampi l'indirizzo. `services/core/internal/stackitest/gs_code_integration_test.go` (`TestGsCode`, tag `integration`): `gs` vero sullo stack completo con la storia di `TestBrowserCodice` (agente botty, file oltre 1 MB, binari): ricerca issue su tutta l'installazione con visibilità (carol non vede il privato), ricerca nel codice con il limite di 100, blame con badge agent, errori B4, storico con `--author` e `--ref`, URL di `browse`.
 
+## `gs skills` (GIT-170, M-07/I)
+
+Installa e aggiorna le skills per agenti di coding (formato Agent Skills, cartella `skills/`). Le skills arrivano dall'istanza: `gs` legge `<host>/downloads/index.json`, scarica `gs-skills.zip`, ne verifica lo sha256 e solo dopo scrive (checksum diverso = errore, nessun file scritto). Nessuna copia nel binario, nessun token (`/downloads` è pubblico); l'host segue G7 (`--hostname`).
+
+- `skills install`: riconosce gli agenti (`.claude/` → Claude Code; `.codex/` o `.agents/` → Codex, nel progetto o in home) oppure `--agent claude|codex` (ripetibile). Di default installa nel progetto (radice del repo git), con `--user` nella home. In ogni cartella scrive `.gs-skills-version`. Una cartella esistente non installata da gs si tocca solo con `--force`.
+- `skills update`: dove ci sono skills installate da gs (progetto, o home con `--user`) confronta lo sha256 di `.gs-skills-version` con `index.json` e reinstalla se differisce. Senza skills installate è un uso errato (exit 2).
+- `--agents-md` (progetto): aggiunge o sostituisce in `AGENTS.md` la sezione tra `<!-- gitstack-skills:start -->` e `<!-- gitstack-skills:end -->`; il resto resta byte per byte, il fine riga (LF/CRLF) è quello del file.
+
+| Agente | Progetto | Utente |
+|---|---|---|
+| Claude Code | `.claude/skills/<nome>/` | `~/.claude/skills/<nome>/` |
+| Codex | `.agents/skills/<nome>/` | `~/.agents/skills/<nome>/` |
+
+Test: `cli/internal/cmd/skills/` (`skills_test.go`: install, rilevamento, update, `--agents-md`, checksum; `skillsdoc_test.go`: frontmatter delle 5 SKILL.md e verifica che ogni `gs …` citato esista, con i suoi flag, e che `gs <cmd> --help` esca 0).
+
 ## Versione e build
 
 ```sh
