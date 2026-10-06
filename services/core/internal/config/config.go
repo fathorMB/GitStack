@@ -128,8 +128,8 @@ const (
 	envEgressAllow          = "GITSTACK_EGRESS_ALLOW"
 	envEgressDeny           = "GITSTACK_EGRESS_DENY"
 	envEgressClusterCIDRs   = "GITSTACK_EGRESS_CLUSTER_CIDRS"
-	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
-	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
+	envSSHHost              = "GITSTACK_CORE_SSH_HOST"
+	envSSHPort              = "GITSTACK_CORE_SSH_PORT"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"

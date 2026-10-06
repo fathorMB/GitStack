@@ -277,10 +277,6 @@ func (e *Engine) enqueue(ctx context.Context, tx pgx.Tx, targets []target, event
 // ---------------------------------------------------------------------------
 // Consegna
 
-type claimed struct {
-	id uuid.UUID
-}
-
 // DeliverDue prende in carico le consegne pending scadute e le invia (al più
 // Workers in parallelo). Ritorna quante ne ha tentate. Un errore del database
 // fa fermare il giro: le consegne prese restano affittate fino alla scadenza

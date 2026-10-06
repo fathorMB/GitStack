@@ -262,17 +262,17 @@ func (b *builder) issuePayload(ctx context.Context, tx pgx.Tx, p domainevents.Is
 		return &badEventError{err}
 	}
 	var (
-		number                                       int64
-		title, body, state                           string
-		closeReason                                  *string
-		duplicateOf                                  *int64
-		authorID                                     uuid.UUID
-		milestoneID                                  *uuid.UUID
-		locked                                       bool
-		createdAt, updatedAt                         time.Time
-		closedAt                                     *time.Time
-		msNumber                                     *int64
-		msTitle                                      *string
+		number               int64
+		title, body, state   string
+		closeReason          *string
+		duplicateOf          *int64
+		authorID             uuid.UUID
+		milestoneID          *uuid.UUID
+		locked               bool
+		createdAt, updatedAt time.Time
+		closedAt             *time.Time
+		msNumber             *int64
+		msTitle              *string
 	)
 	err = tx.QueryRow(ctx, `SELECT i.number, i.title, i.body, i.state, i.close_reason, i.duplicate_of, i.author_id, i.milestone_id,
 			i.locked, i.created_at, i.updated_at, i.closed_at, m.number, m.title
