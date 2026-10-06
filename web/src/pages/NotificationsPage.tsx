@@ -30,6 +30,7 @@ const REASON_LABEL: Record<NotificationReason, string> = {
   commit_linked: 'Commit',
   state_change: 'State change',
   webhook: 'Webhook',
+  mirror: 'Mirror',
 };
 
 function initials(name: string): string {
