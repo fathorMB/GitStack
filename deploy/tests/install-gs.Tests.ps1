@@ -3,7 +3,7 @@
 # istanza. Gira con Windows PowerShell 5.1 e con pwsh (CI Linux).
 #   powershell.exe -NoProfile -File deploy\tests\install-gs.Tests.ps1
 $ErrorActionPreference = 'Stop'
-$script = Join-Path $PSScriptRoot '..\..\web\deploy\install-gs.ps1'
+$script = Join-Path $PSScriptRoot '../../web/deploy/install-gs.ps1'
 $script = (Resolve-Path -LiteralPath $script).Path
 $failed = 0
 function Check([string]$name, [bool]$ok) {
@@ -19,10 +19,10 @@ Check 'solo ASCII, senza BOM (PowerShell 5.1)' (-not ($bytes | Where-Object { $_
 
 # 2. Server finto.
 $root = Join-Path ([IO.Path]::GetTempPath()) ("igs-" + [Guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path "$root\site\downloads" | Out-Null
+New-Item -ItemType Directory -Path "$root/site/downloads" | Out-Null
 $payload = [Text.Encoding]::ASCII.GetBytes('gs finto')
-[IO.File]::WriteAllBytes("$root\site\downloads\gs_windows_amd64.exe", $payload)
-$good = (Get-FileHash -Algorithm SHA256 -LiteralPath "$root\site\downloads\gs_windows_amd64.exe").Hash.ToLower()
+[IO.File]::WriteAllBytes("$root/site/downloads/gs_windows_amd64.exe", $payload)
+$good = (Get-FileHash -Algorithm SHA256 -LiteralPath "$root/site/downloads/gs_windows_amd64.exe").Hash.ToLower()
 
 $port = Get-Random -Minimum 20000 -Maximum 40000
 $listener = New-Object System.Net.HttpListener
@@ -40,7 +40,7 @@ $ps = [PowerShell]::Create()
         } else { $ctx.Response.StatusCode = 404 }
         $ctx.Response.Close()
     }
-}).AddArgument($listener).AddArgument("$root\site")
+}).AddArgument($listener).AddArgument("$root/site")
 $handle = $ps.BeginInvoke()
 
 $psExe = (Get-Process -Id $PID).Path
@@ -51,15 +51,15 @@ function Run-Installer([string]$dir) {
 }
 
 try {
-    "$good  gs_windows_amd64.exe" | Set-Content -Encoding ASCII "$root\site\downloads\SHA256SUMS"
-    $r = Run-Installer "$root\ok"
-    Check 'checksum corretto: installa' (($r.Code -eq 0) -and (Test-Path "$root\ok\gs.exe"))
+    "$good  gs_windows_amd64.exe" | Set-Content -Encoding ASCII "$root/site/downloads/SHA256SUMS"
+    $r = Run-Installer "$root/ok"
+    Check 'checksum corretto: installa' (($r.Code -eq 0) -and (Test-Path "$root/ok/gs.exe"))
 
-    ("0" * 64 + "  gs_windows_amd64.exe") | Set-Content -Encoding ASCII "$root\site\downloads\SHA256SUMS"
-    $r = Run-Installer "$root\bad"
+    ("0" * 64 + "  gs_windows_amd64.exe") | Set-Content -Encoding ASCII "$root/site/downloads/SHA256SUMS"
+    $r = Run-Installer "$root/bad"
     Check 'checksum sbagliato: fallisce' ($r.Code -ne 0)
     Check 'il messaggio parla del checksum' ($r.Out -match 'checksum SHA-256')
-    Check 'con checksum sbagliato non installa nulla' (-not (Test-Path "$root\bad\gs.exe"))
+    Check 'con checksum sbagliato non installa nulla' (-not (Test-Path "$root/bad/gs.exe"))
 }
 finally {
     $listener.Stop(); $listener.Close()
