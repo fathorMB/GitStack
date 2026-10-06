@@ -40,6 +40,21 @@ Il resto del CSS di `web/` (`src/styles/base.css`) usa sempre `var(--token)`, ma
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice e la motivazione nel README principale).
 
+## M-07: pagine per la CLI gs (percorsi e formato dell'indice)
+
+Percorsi della SPA letti da `gs auth login --web` (GIT-164) e dall'immagine web (GIT-171):
+
+- **Nuovo token precompilato**: `/settings/tokens/new` (richiede il login; dopo il login si torna allo stesso URL con la query intatta). Query string, tutte facoltative: `name` (testo), `scopes` (lista separata da virgole, dal catalogo TokenScope: read:user, write:user, read:org, write:org, admin:org, read:resource, write:resource), `expires` (giorni: 30, 90 o 365). Scope sconosciuti e scadenze non ammesse sono ignorati con un avviso che li nomina; l'utente conferma, il token non si crea da solo. Esempio: `/settings/tokens/new?name=gs&scopes=read:user,write:resource&expires=90`.
+- **Downloads**: `/downloads` (rotta SPA pubblica, senza slash finale, raggiungibile prima del login). I file stanno sotto `/downloads/` (con slash) e li serve l'immagine web: nginx deve lasciare `/downloads` al fallback SPA (attenzione al redirect automatico verso `/downloads/` quando esiste la cartella).
+
+Indice letto dalla pagina, `GET /downloads/index.json`:
+
+```json
+{"version":"sha-…","binaries":[{"os":"linux|darwin|windows","arch":"amd64|arm64","file":"gs_linux_amd64","url":"/downloads/gs_linux_amd64","sha256":"…","size":123}],"checksums":"/downloads/SHA256SUMS","skills":{"file":"gs-skills.zip","url":"/downloads/gs-skills.zip","sha256":"…"},"install":{"sh":"/install-gs.sh","ps1":"/install-gs.ps1"},"ca_cert":"/downloads/ca.crt"}
+```
+
+`ca_cert` è `null` senza CA propria; su windows il file è `gs_windows_amd64.exe`. I comandi mostrati usano `window.location.origin`: `curl -fsSL <origin>/install-gs.sh | sh` e `irm <origin>/install-gs.ps1 | iex`. Con l'indice assente o in errore la pagina mostra un messaggio e resta usabile.
+
 ## Markdown e evidenziazione della sintassi
 
 - `src/components/Markdown.tsx`: react-markdown + remark-gfm (tabelle, liste di

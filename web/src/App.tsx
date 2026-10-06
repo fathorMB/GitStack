@@ -4,6 +4,7 @@ import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
+import { DownloadsPage } from './pages/DownloadsPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
@@ -31,6 +32,8 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
+      {/* Pubblica (serve prima del login): CLI gs e skills, M-07/K. */}
+      <Route path="/downloads" element={<DownloadsPage />} />
       <Route
         path="/"
         element={
@@ -115,6 +118,7 @@ export function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="notifications" element={<NotificationSettingsPage />} />
         <Route path="tokens" element={<TokensPage />} />
+        <Route path="tokens/new" element={<TokensPage startCreating />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
         <Route path="deleted-repos" element={<DeletedReposPage />} />
       </Route>
