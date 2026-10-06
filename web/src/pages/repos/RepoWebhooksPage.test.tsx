@@ -19,7 +19,7 @@ vi.mock('../../lib/authApi', async (orig) => ({
 }));
 
 vi.mock('../../lib/orgsApi', () => ({
-  fetchOrgMembers: vi.fn().mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' }]),
+  fetchOrgMembers: vi.fn().mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner', createdAt: new Date().toISOString() }]),
 }));
 
 vi.mock('./repoAdmin', async (orig) => ({
@@ -88,7 +88,7 @@ describe('RepoWebhooksPage', () => {
     mockedDeliveries.mockResolvedValue({ items: [], page: 1, perPage: 20, total: 0 });
     mockedRedeliver.mockResolvedValue({} as never);
     mockedLoadMe.mockResolvedValue({ id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const });
-    mockedOrgMembers.mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' }]);
+    mockedOrgMembers.mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner', createdAt: new Date().toISOString() }]);
     vi.mocked(isRepoAdmin).mockResolvedValue(true);
     vi.mocked(mockedCreate).mockReset();
   });

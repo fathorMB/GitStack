@@ -53,8 +53,8 @@ describe('OrgWebhooksPage', () => {
     mockedFetchOrg.mockResolvedValue({ id: 'org-1', name: 'acme' });
     mockedFetchSession.mockResolvedValue({ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const } });
     mockedFetchMembers.mockResolvedValue([
-      { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' },
-      { user: { id: 'user-2', username: 'lbianchi', displayName: 'Luca Bianchi', kind: 'human' as const }, role: 'member' },
+      { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner', createdAt: new Date().toISOString() },
+      { user: { id: 'user-2', username: 'lbianchi', displayName: 'Luca Bianchi', kind: 'human' as const }, role: 'member', createdAt: new Date().toISOString() },
     ]);
     mockedFetch.mockResolvedValue({ items: [], page: 1, perPage: 50, total: 0 });
     mockedReactivate.mockResolvedValue({
@@ -75,11 +75,11 @@ describe('OrgWebhooksPage', () => {
     if (isOwner !== undefined) {
       if (isOwner) {
         mockedFetchMembers.mockResolvedValue([
-          { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' },
+          { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner', createdAt: new Date().toISOString() },
         ]);
       } else {
         mockedFetchMembers.mockResolvedValue([
-          { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'member' },
+          { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'member', createdAt: new Date().toISOString() },
         ]);
       }
     }
@@ -102,7 +102,7 @@ describe('OrgWebhooksPage', () => {
         disabledAt: null, disabledReason: undefined, failingSince: null,
         lastDelivery: { id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW },
         createdBy: null, createdAt: NOW, updatedAt: NOW,
-      } as Webhook,
+      } as unknown as Webhook,
     ], page: 1, perPage: 50, total: 1 });
     renderPage();
 
@@ -127,7 +127,7 @@ describe('OrgWebhooksPage', () => {
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
         disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
-      } as Webhook,
+      } as unknown as Webhook,
     ], page: 1, perPage: 50, total: 1 });
     renderPage();
 
@@ -144,7 +144,7 @@ describe('OrgWebhooksPage', () => {
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
         disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
-      } as Webhook,
+      } as unknown as Webhook,
     ], page: 1, perPage: 50, total: 1 });
     const user = userEvent.setup();
     renderPage();
@@ -200,7 +200,7 @@ describe('OrgWebhooksPage', () => {
         disabledAt: null, disabledReason: undefined, failingSince: null,
         lastDelivery: { id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW },
         createdBy: null, createdAt: NOW, updatedAt: NOW,
-      } as Webhook,
+      } as unknown as Webhook,
     ], page: 1, perPage: 50, total: 1 });
     mockedDeliveries.mockResolvedValue({
       items: [
@@ -250,7 +250,7 @@ describe('OrgWebhooksPage', () => {
         disabledAt: null, disabledReason: undefined, failingSince: null,
         lastDelivery: { id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW },
         createdBy: null, createdAt: NOW, updatedAt: NOW,
-      } as Webhook,
+      } as unknown as Webhook,
     ], page: 1, perPage: 50, total: 1 });
     mockedDeliveries.mockResolvedValue({
       items: [{ id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary],
