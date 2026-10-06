@@ -154,11 +154,15 @@ func TestStatusLastBackup(t *testing.T) {
 
 	// Caso 1: backup riuscito con --config
 	t.Run("success", func(t *testing.T) {
-		configDir := t.TempDir()
-		cfgPath := writeConfig(t, hostOf(srv), configDir)
+		dir := t.TempDir()
+		cfgPath := filepath.Join(dir, "config.yaml")
+		body := "version: 1\nhost: " + hostOf(srv) + "\n"
+		if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
 
 		// Scrivi lo stato di un backup riuscito
-		if err := backupstate.Write(configDir, backupstate.State{
+		if err := backupstate.Write(dir, backupstate.State{
 			Success: true,
 			Path:    "/var/backups/gitstack/backup-20261006T120000Z.tar.gz",
 			At:      time.Now().UTC(),
@@ -178,11 +182,15 @@ func TestStatusLastBackup(t *testing.T) {
 
 	// Caso 2: backup fallito (ultimo errore)
 	t.Run("failure", func(t *testing.T) {
-		configDir := t.TempDir()
-		cfgPath := writeConfig(t, hostOf(srv), configDir)
+		dir := t.TempDir()
+		cfgPath := filepath.Join(dir, "config.yaml")
+		body := "version: 1\nhost: " + hostOf(srv) + "\n"
+		if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
 
 		// Scrivi lo stato di un backup fallito
-		if err := backupstate.Write(configDir, backupstate.State{
+		if err := backupstate.Write(dir, backupstate.State{
 			Success: false,
 			Error:   "cluster non raggiungibile",
 			At:      time.Now().UTC(),
@@ -202,11 +210,15 @@ func TestStatusLastBackup(t *testing.T) {
 
 	// Caso 3: SENZA --config, usa variabile d'ambiente
 	t.Run("env-config", func(t *testing.T) {
-		configDir := t.TempDir()
-		cfgPath := writeConfig(t, hostOf(srv), configDir)
+		dir := t.TempDir()
+		cfgPath := filepath.Join(dir, "config.yaml")
+		body := "version: 1\nhost: " + hostOf(srv) + "\n"
+		if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
 
 		// Scrivi lo stato di un backup riuscito
-		if err := backupstate.Write(configDir, backupstate.State{
+		if err := backupstate.Write(dir, backupstate.State{
 			Success: true,
 			Path:    "/var/backups/gitstack/backup-env-20261006T120000Z.tar.gz",
 			At:      time.Now().UTC(),
