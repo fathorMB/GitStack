@@ -92,7 +92,7 @@ func TestRestorePublishesTLSAfterConfigAndRestartsWeb(t *testing.T) {
 	}
 	// ensure prima di riaccendere i servizi, restart del web dopo ensure e
 	// seguito dall'attesa del suo ready.
-	if !(pub < back && pub < rst) {
+	if pub >= back || pub >= rst {
 		t.Errorf("ordine sbagliato: %v", r.f.calls)
 	}
 	if r.f.calls[len(r.f.calls)-1] != "ready gs-web" || rst != len(r.f.calls)-2 {

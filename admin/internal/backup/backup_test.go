@@ -17,18 +17,18 @@ import (
 )
 
 type fakeCluster struct {
-	mu        sync.Mutex
-	replicas  map[string]int // per nome di Deployment
-	calls     []string
-	paths     map[string]string // pvc -> cartella
-	secrets   []Secret
-	applied   []string
-	dump      string
-	psqlIn    string
-	failDump  bool
-	failWait  bool
+	mu          sync.Mutex
+	replicas    map[string]int // per nome di Deployment
+	calls       []string
+	paths       map[string]string // pvc -> cartella
+	secrets     []Secret
+	applied     []string
+	dump        string
+	psqlIn      string
+	failDump    bool
+	failWait    bool
 	failRestart bool
-	ctxAtDump context.Context
+	ctxAtDump   context.Context
 }
 
 func (f *fakeCluster) note(s string) { f.mu.Lock(); f.calls = append(f.calls, s); f.mu.Unlock() }
