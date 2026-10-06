@@ -139,7 +139,10 @@ describe('NotificationsPage', () => {
     // "All" compare due volte (stato e motivo): il primo e' quello della casella.
     await user.click(within(screen.getByRole('group', { name: 'Inbox' })).getByRole('button', { name: 'All' }));
     await waitFor(() => expect(mockedList).toHaveBeenLastCalledWith('all', 'all'));
-    expect(await screen.findAllByTestId('notification')).toHaveLength(3);
+    const all = await screen.findAllByTestId('notification');
+    expect(all).toHaveLength(3);
+    expect(all[0]).toHaveClass('unread');
+    expect(all[2]).not.toHaveClass('unread');
     expect(screen.getByText('Issue closed by commit 4e1a9c0:')).toBeInTheDocument();
   });
 
