@@ -75,6 +75,7 @@ host: 10.0.0.5                   # nome o IP con cui si raggiunge GitStack (senz
 ssh_port: 2222                   # porta SSH del servizio git (mai la 22 dell'host)
 tls: internal                    # internal | custom | letsencrypt | insecure (assente = HTTP, installazioni precedenti)
 ca_cert: /etc/gitstack/tls/ca.crt  # solo con tls: internal; la chiave (ca.key) sta accanto, solo root
+chart_dir: /usr/local/share/gitstack/chart  # copia del chart Helm (serve a `config set host`)
 release: gitstack                # release Helm
 namespace: default               # namespace Kubernetes
 image_tag: sha-<commit>          # tag immagine installato (versione del server)
@@ -95,6 +96,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack status [--json] [--config F]` | versione, host, salute, ultimo backup | serve per leggere il config (0600) |
 | `gitstack backup [--dest D] [--key-file F] [--config F]` | archivio coerente di database, repo, allegati, Secret e configurazione | sì |
 | `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
+| `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
 | `gitstack version` | versione del binario | no |
 
 I comandi che cambiano lo stato dell'host (dai prossimi item) rifiutano di

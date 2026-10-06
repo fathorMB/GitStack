@@ -43,6 +43,8 @@ type App struct {
 	LookPath func(string) (string, error)
 	// NewCluster, se non nil, sostituisce il cluster kubectl (test di backup e restore).
 	NewCluster func(*config.Config) backup.Cluster
+	// LocalAddrs, se non nil, sostituisce gli indirizzi delle interfacce (test).
+	LocalAddrs func() []string
 }
 
 // NewApp è l'App di produzione.
@@ -73,6 +75,7 @@ func init() {
 		{name: "status", summary: "versione, host, salute dei servizi, ultimo backup", run: runStatus},
 		{name: "backup", summary: "archivio coerente di database, repo, allegati e configurazione", needsRoot: true, run: runBackup},
 		{name: "restore", summary: "ripristina un archivio su un'installazione pulita della stessa versione", needsRoot: true, run: runRestore},
+		{name: "config", summary: "config set host <nome>: cambia il nome dell'host (certificato, servizi, configurazione)", needsRoot: true, run: runConfig},
 		{name: "version", summary: "versione del binario", run: runVersion},
 	}
 }
