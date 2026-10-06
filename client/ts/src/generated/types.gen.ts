@@ -994,6 +994,33 @@ export type LookupIdsResult = {
     }>;
 };
 
+export type ResolveMentionsInput = {
+    names: Array<string>;
+};
+
+export type ResolveMentionsResult = {
+    users: Array<{
+        /**
+         * Il nome cosi' come e' stato chiesto.
+         */
+        name: string;
+        id: string;
+        username: Name;
+        kind: 'human' | 'agent';
+    }>;
+    teams: Array<{
+        /**
+         * Il nome `org/team` cosi' come e' stato chiesto.
+         */
+        name: string;
+        members: Array<{
+            id: string;
+            username: Name;
+            kind: 'human' | 'agent';
+        }>;
+    }>;
+};
+
 export type IssueState = 'open' | 'closed';
 
 /**
@@ -9800,6 +9827,39 @@ export type LookupUsersByIdsResponses = {
 };
 
 export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
+
+export type ResolveMentionsData = {
+    body: ResolveMentionsInput;
+    path?: never;
+    query?: never;
+    url: '/internal/mentions/resolve';
+};
+
+export type ResolveMentionsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ResolveMentionsError = ResolveMentionsErrors[keyof ResolveMentionsErrors];
+
+export type ResolveMentionsResponses = {
+    /**
+     * Utenti e team trovati.
+     */
+    200: ResolveMentionsResult;
+};
+
+export type ResolveMentionsResponse = ResolveMentionsResponses[keyof ResolveMentionsResponses];
 
 export type GitGetTreeData = {
     body?: never;
