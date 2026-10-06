@@ -134,4 +134,3 @@ func parseID(arg string) (gitstack.NotificationIdParam, error) {
 	}
 	return id, nil
 }
-
