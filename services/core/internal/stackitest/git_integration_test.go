@@ -25,6 +25,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -48,6 +49,10 @@ type gitEnv struct {
 	tokens  map[string]string // token read:resource+write:resource
 	roToken map[string]string // token solo read:resource
 	keys    map[string]string // file della chiave privata SSH
+
+	idc  *identityclient.Client // client di identity, per i motori in-process (M-06)
+	gitc *gitclient.Client      // client del servizio git
+	pool *pgxpool.Pool          // lo stesso database di core
 }
 
 func requireTools(t *testing.T) {
@@ -98,9 +103,10 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 	_, _ = fmt.Sscanf(sshPort, "%d", &port)
 
 	idc := identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second)
+	gitc := gitclient.New(mustURL(t, "http://"+gitAddr), serviceSecret, 30*time.Second)
 	routerOpts := append([]httpserver.Option{
 		httpserver.WithRepoIdentity(idc),
-		httpserver.WithGit(gitclient.New(mustURL(t, "http://"+gitAddr), serviceSecret, 30*time.Second)),
+		httpserver.WithGit(gitc),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "http://" + gitAddr, SSHHost: "127.0.0.1", SSHPort: port}),
 	}, opts...)
 	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret, routerOpts...))
@@ -142,6 +148,9 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 		tokens:  map[string]string{},
 		roToken: map[string]string{},
 		keys:    map[string]string{},
+		idc:     idc,
+		gitc:    gitc,
+		pool:    pool,
 	}
 	if err := os.WriteFile(filepath.Join(e.home, ".gitconfig"), nil, 0o600); err != nil {
 		t.Fatal(err)

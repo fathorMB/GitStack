@@ -105,6 +105,27 @@ Ogni caso negativo controlla che il corpo non porti titolo, testo, etichetta, no
 | `repo_archiviato_R10` | lettura sì, ogni scrittura 409 `archived` (incluso l'upload), riattivato si scrive di nuovo |
 | `ui_smoke` | `web/src/smoke/issues.smoke.test.tsx`: pagine 12 (lista), 13 (dettaglio) e 20 (nuova issue) con le rotte vere di App.tsx contro il gateway; come per il browser del codice, `GITSTACK_REQUIRE_UI_SMOKE=1` fa fallire invece di saltare |
 
+## Collegamenti, notifiche e webhook (`m06_integration_test.go`, `TestM06E2E`, M-06, GIT-141)
+
+Come sopra, più i pezzi che in produzione girano dentro core (main.go) e qui si avviano in-process: il consumer
+dei `git.push` (collegamento dei commit e webhook push, sul NATS embedded a cui pubblica il servizio git), il
+motore delle notifiche, il dispatcher delle email (SMTP finto: `mailertest`) e il motore dei webhook. I motori
+si azionano a mano (`Process`, `DeliverDue`) con un orologio iniettato, così le attese fra i tentativi non si
+aspettano davvero; il ricevitore dei webhook è un server HTTP finto (con mutex: la CI gira con `-race`).
+Utenti: alice (admin), bob (write su app, lib e vault), carol (write su app, read su lib), dave (solo interni),
+l'agente botty. `m06-vault` è privato: ogni caso negativo controlla che non trapelino né i dati del vault né i
+segreti dei webhook (`m06Leak`).
+
+| Sottotest | Cosa prova |
+|---|---|
+| `collegamenti_e_chiusura_via_commit` | `fixes #n` su un branch: solo collegamento; lo stesso commit sul principale: chiusura come completata, traccia `closed_by_commit` senza actor, notifica alla autrice; la issue riaperta non si richiude (C1, C2) |
+| `riferimento_tra_repo_con_e_senza_write` | `Closes owner/repo#n` chiude con write sul repo della issue, senza write resta il collegamento; chi non legge il repo privato non lascia tracce né notifiche (C1) |
+| `notifiche_partecipanti_assegnati_menzionati_watch_e_ignore` | menzionati, assegnati e partecipanti; niente notifica per le proprie azioni; Watch `all`, `ignore` e ritorno a `participating`; l'agente legge la casella via API; il vault non genera notifiche a chi non lo legge (C3, C4, I8) |
+| `email_secondo_le_preferenze` | default (menzioni e assegnazioni), preferenza spenta, mai agli agenti, un solo giro (C5) |
+| `webhook_firmati_tentativi_410_e_redeliver` | webhook di repo e di organizzazione firmati (HMAC), payload v1 di issues e push, segreto mai restituito, attesa di un minuto fra i tentativi, 410 che ferma, Redeliver di repo e di organizzazione, permessi (C6, C7) |
+| `destinazioni_ssrf_bloccate` | indirizzi interni rifiutati alla creazione e alla modifica (422 `url_not_allowed`, niente creato); un nome che risolve al loopback è bloccato alla consegna dal client vero, senza ritentare e senza aprire la connessione (C8) |
+| `conservazione_e_perdita_di_accesso` | le lette spariscono dopo 90 giorni, le non lette restano; perso l'accesso al vault, le sue notifiche spariscono (C9) |
+
 ## VM di test
 
 `deploy/test-vm/e2e.ps1` ha il passo e5: utente di prova con token e chiave SSH, repo creato via API, push e clone

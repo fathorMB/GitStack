@@ -193,10 +193,10 @@ func (e *issuesE2E) download(user, repo, id string) fullReply {
 	return rawGet(e.t, e.gateway+"/v1/repos/alice/"+repo+"/issue-attachments/"+id, hdr)
 }
 
-func newIssuesE2E(t *testing.T) *issuesE2E {
+func newIssuesE2E(t *testing.T, extra ...httpserver.Option) *issuesE2E {
 	t.Helper()
 	disk := &attachments.Disk{Dir: t.TempDir()}
-	g := newGitEnv(t, httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: disk, MaxBytes: 1 << 20}))
+	g := newGitEnv(t, append([]httpserver.Option{httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: disk, MaxBytes: 1 << 20})}, extra...)...)
 	e := &issuesE2E{gitEnv: g, userID: map[string]string{}}
 
 	// Utenti in più, creati dall'admin: dave (umano) e botty (agente).
@@ -216,7 +216,7 @@ func newIssuesE2E(t *testing.T) *issuesE2E {
 	b := e.gw("POST", "/users", map[string]any{"username": "botty", "kind": "agent", "email": "botty@agents.example.com"}, nil, admin)
 	want(t, b, 201, "")
 	e.userID["botty"], _ = b.json()["id"].(string)
-	for _, name := range []string{"bob"} {
+	for _, name := range []string{"bob", "carol"} {
 		r := e.gw("GET", "/users/"+name, nil, nil, admin)
 		want(t, r, 200, "")
 		e.userID[name], _ = r.json()["id"].(string)
