@@ -91,6 +91,9 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		Ref:        a.Getenv("GITSTACK_REF"),
 		Log:        a.Stdout,
 	}
+	if status.ServesCA(cfg) {
+		o.CheckCA = func(ctx context.Context) error { return status.CheckCA(ctx, cfg, nil) }
+	}
 	if a.TuneUpgrade != nil {
 		a.TuneUpgrade(o)
 	}

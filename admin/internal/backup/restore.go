@@ -214,6 +214,12 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 			}
 		}
 	}
+	if o.WaitServing != nil {
+		o.logf("attendo che l'Ingress risponda (/api/healthz, /downloads/ca.crt)")
+		if e := o.WaitServing(ctx); e != nil {
+			return errors.Join(tlsErr, &ServingError{Err: e})
+		}
+	}
 	return tlsErr
 }
 

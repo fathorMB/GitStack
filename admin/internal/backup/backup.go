@@ -79,6 +79,18 @@ func (e *RefusedError) Error() string { return e.Msg }
 
 func refused(format string, a ...any) error { return &RefusedError{fmt.Sprintf(format, a...)} }
 
+// ServingError: i dati sono ripristinati e i Deployment sono pronti, ma
+// l'istanza non risponde attraverso l'Ingress entro il timeout. Il chiamante
+// lo traduce in un codice di uscita dedicato.
+type ServingError struct{ Err error }
+
+func (e *ServingError) Error() string {
+	return "i dati sono ripristinati ma l'istanza non risponde attraverso l'Ingress: " + e.Err.Error() +
+		"\nControlla con: gitstack status"
+}
+
+func (e *ServingError) Unwrap() error { return e.Err }
+
 // Options sono gli ingressi di Backup e Restore.
 type Options struct {
 	Cfg     *config.Config
@@ -96,6 +108,10 @@ type Options struct {
 	// <release>-tls e il ConfigMap <release>-ca (gitstack-tls ensure).
 	// Impostato da internal/cli; nil = niente da fare.
 	PublishTLS func(ctx context.Context) error
+	// WaitServing, in restore, è l'ultimo passo prima del completamento:
+	// aspetta che l'istanza risponda attraverso l'Ingress (/api/healthz e
+	// /downloads/ca.crt) o scade con un errore. nil = nessuna attesa.
+	WaitServing func(ctx context.Context) error
 	// DestDir sostituisce cfg.Backup.Destination.
 	DestDir string
 	// Key è la chiave di cifratura (backup, opzionale) o di decifratura.
