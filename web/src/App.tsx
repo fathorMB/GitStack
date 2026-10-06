@@ -14,6 +14,7 @@ import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
 import { OrgsPage } from './pages/orgs/OrgsPage';
+import { NotificationSettingsPage } from './pages/settings/NotificationSettingsPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { SshKeysPage } from './pages/settings/SshKeysPage';
@@ -112,6 +113,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="profile" replace />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="notifications" element={<NotificationSettingsPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
         <Route path="deleted-repos" element={<DeletedReposPage />} />
