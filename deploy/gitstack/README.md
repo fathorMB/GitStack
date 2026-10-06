@@ -36,7 +36,9 @@ Grant al creatore (GIT-61): chi crea una risorsa con `POST /v1/resources` ne div
 
 Autenticazione nel gateway (GIT-54): ogni rotta di `/v1/*` ha la sua dichiarazione di sicurezza ricavata da `api/openapi.yaml` (pubblica con `security: []`, altrimenti sessione o token con gli scope di `x-required-scopes`). Senza credenziali valide il gateway risponde 401 `unauthenticated`, con un token senza scope 403 `insufficient_scope`, con identity irraggiungibile 503 `identity_unavailable` (mai fail open). Con `identity.enabled=false` il gateway non ha `GITSTACK_IDENTITY_URL`: le rotte pubbliche e i probe funzionano, ogni rotta autenticata risponde 503. Cache delle verifiche: `gateway.env.authCacheTTL` (default `30s`, esiti positivi, mai oltre la scadenza della credenziale) e `gateway.env.authCacheNegativeTTL` (default `5s`).
 
-Gateway: `gateway.env.trustedProxies` (`GITSTACK_GATEWAY_TRUSTED_PROXIES`, default `10.42.0.0/16`, la rete dei pod di k3s dove gira Traefik) indica i proxy di cui il gateway si fida per `X-Forwarded-For`.
+Gateway: `gateway.env.trustedProxies` (`GITSTACK_GATEWAY_TRUSTED_PROXIES`, default `10.42.0.0/16`, la rete dei pod di k3s dove gira Traefik) indica i proxy di cui il gateway si fida per `X-Forwarded-For` e per `X-Forwarded-Proto`.
+
+Cookie di sessione su HTTP e HTTPS (GIT-153): `gst_session` (e il cookie di logout e di stato OIDC) è `Secure` solo se la richiesta originale è HTTPS. Traefik imposta `X-Forwarded-Proto`, il gateway lo inoltra a identity solo se il peer è in `gateway.env.trustedProxies`, e identity lo crede solo se il gateway è in `identity.env.trustedProxies` (default `10.42.0.0/16` per entrambi: se cambi il CIDR del cluster, cambia tutte e due, altrimenti su HTTPS il cookie non sarebbe `Secure`). Su HTTP in chiaro il cookie non è `Secure`, altrimenti il browser lo scarta e il login non funziona. **Rischio**: finché non c'è HTTPS (N5) il cookie di sessione viaggia in chiaro sulla LAN. Il job CI k3d lo prova con un cookie jar che rispetta `Secure` (`scripts/check-browser-login.go`).
 
 Login OIDC (facoltativo, `identity.oidc.*`, GIT-39): con `identity.oidc.enabled=true` il chart imposta `GITSTACK_IDENTITY_OIDC_CONFIG_FILE`, `GITSTACK_IDENTITY_OIDC_ENC_KEY`, `GITSTACK_IDENTITY_OIDC_ENC_KEY_ID` e `GITSTACK_IDENTITY_PUBLIC_URL`. `identity.oidc.publicUrl` è obbligatorio (l'URL con cui il browser raggiunge GitStack; la redirect_uri da registrare presso il provider è `<publicUrl>/api/v1/auth/oidc/<slug>/callback`). I provider si danno in `identity.oidc.providers` (stesso formato del file di configurazione, vedi `docs/identity-oidc.md`) e finiscono in un Secret `<release>-identity-oidc` (chiave `oidc.json`) montato in `/etc/gitstack/oidc`; per tenere i client secret fuori dai values si crea il Secret a mano e si indica `identity.oidc.existingSecret`. La chiave di cifratura (32 byte in base64) la genera il chart una sola volta in `<release>-identity-oidc-key` (chiave `key`, `lookup` + `helm.sh/resource-policy: keep`) o si passa con `identity.oidc.encKey.existingSecret`; `identity.oidc.encKey.keyId` (default `k1`) va cambiato insieme alla chiave. Un cambio dei provider rilancia il pod (annotazione `checksum/oidc`). Con `enabled=false` (default) niente di tutto questo è renderizzato.
 
@@ -105,6 +107,21 @@ Le richieste smart HTTP (`/<owner>/<repo>.git/info/refs`, `/git-upload-pack`, `/
 
 `ingress.host` è vuoto di default (Traefik risponde su qualsiasi host, comodo senza DNS su un'installazione a IP fisso); impostalo per restringere l'Ingress a un hostname preciso.
 
+## HTTPS (N5, GIT-143)
+
+Il chart parla HTTP di default (job k3d della CI, `helm install` a mano); l'installer (`deploy/install.sh`) accende l'HTTPS con i valori `ingress.tls.*`:
+
+| Valore | Significato |
+|---|---|
+| `ingress.tls.enabled` | UI, API e git solo su `websecure` (443); senza `secretName` né `certResolver` il chart si ferma con un errore |
+| `ingress.tls.secretName` | Secret `kubernetes.io/tls` creato dall'installer (`gitstack-tls`): CA interna o certificato del cliente |
+| (TLSStore `default`) | con `secretName` il chart crea un `TLSStore` Traefik `default` nel namespace della release che punta a quel Secret: il certificato dell'installer vale anche per chi si collega per IP (senza SNI, Traefik altrimenti serve il suo "TRAEFIK DEFAULT CERT" perche' con ServiceLB l'indirizzo locale e' quello del pod). Non si crea con `certResolver` (`templates/tlsstore.yaml`) |
+| `ingress.tls.certResolver` | resolver ACME di Traefik (Let's Encrypt), nessun Secret |
+| `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (308) manda tutto a https (`templates/ingress-redirect.yaml`) |
+| `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/usr/share/nginx/html/downloads`, e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
+
+`core.env.publicUrl` e `identity.oidc.publicUrl` vanno impostati con l'URL https pubblico: l'installer lo fa. I servizi non lo usano per parlarsi (nomi dei Service). Traefik inoltra a gateway e identity con `X-Forwarded-Proto: https`. Dettagli per l'operatore: [`../../docs/tls.md`](../../docs/tls.md).
+
 ## Servizio git (GIT-74)
 
 Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) è attivo di default (`git.ssh.enabled`, sotto). Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`). Dopo ogni push accettato (HTTPS o SSH) il servizio pubblica `git.push` sul NATS interno (`GITSTACK_GIT_NATS_URL`, GIT-73, schema in `docs/events.md`); con NATS giù i push restano accettati.
@@ -139,8 +156,39 @@ Core tiene i file degli allegati su un PVC dedicato `<release>-attachments-data`
 | `core.attachments.maxBytes` | `10485760` | Limite per file (10 MiB), `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`: oltre, 413 `attachment_too_large`. |
 | `core.attachments.orphanTtl` | `24h` | Un allegato mai collegato a una issue o a un commento si elimina dopo questo tempo (`GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL`). |
 | `core.attachments.persistence.size`, `.storageClassName`, `.accessMode` | `5Gi`, vuoto, `ReadWriteOnce` | Il PVC. |
+| `core.webhookSecret.keyId` | `k1` | Id della chiave con cui core cifra i segreti dei webhook (`GITSTACK_WEBHOOK_SECRET_KEY_ID`); la chiave sta nel Secret `<release>-core-webhook-key` (chiave `key`, generata una volta, `helm.sh/resource-policy: keep`). Per ruotarla: nuova `key` e nuovo `keyId`, la vecchia in `oldKeys` (`k1:<chiave>`). |
+| `core.webhookSecret.existingSecret` | vuoto | Alternativa: Secret esistente con `key` (e, facoltativa, `oldKeys`). |
+| `egress.allow`, `egress.deny`, `egress.clusterCIDRs` | vuoti, `10.42.0.0/16` e `10.43.0.0/16` | Protezione SSRF delle consegne dei webhook (C8, `pkg/egress`): diventano `GITSTACK_EGRESS_ALLOW`, `_DENY` e `_CLUSTER_CIDRS` di core. |
 
 Il gateway applica `gateway.env.coreTimeout` (default `30s`, prima `5s`) all'intera richiesta verso core, upload compreso: 10 MB in 30 secondi richiedono circa 3 Mbit/s. Se alzi `core.attachments.maxBytes` alza anche il timeout, e `client_max_body_size`-simili di un proxy davanti a Traefik, se ce n'è uno.
+
+## Email delle notifiche: SMTP facoltativo (GIT-134, C5)
+
+L'SMTP è **facoltativo**. Con la sezione `smtp` vuota (default) GitStack manda solo notifiche in-app: nessun errore, nessun tentativo di invio, e la UI nasconde le opzioni email (`GET /user/notification-preferences` risponde `emailAvailable: false`). Con `smtp.host` valorizzato il chart crea il Secret `<release>-smtp` (chiavi `host`, `port`, `security`, `username`, `password`, `from`) e core lo legge come `GITSTACK_CORE_SMTP_*`; un cambio dei valori riavvia core (annotazione `checksum/smtp`).
+
+| Value | Default | Significato |
+|---|---|---|
+| `smtp.host` | vuoto | Server SMTP (`GITSTACK_CORE_SMTP_HOST`). Vuoto = email disattivate. |
+| `smtp.port` | `0` | `GITSTACK_CORE_SMTP_PORT`; `0` = la porta standard della protezione (`starttls` 587, `tls` 465, `none` 25). |
+| `smtp.security` | `starttls` | `starttls` (STARTTLS obbligatorio), `tls` (TLS implicito) o `none` (solo reti fidate: con `none` le credenziali non partono verso un host non locale). `GITSTACK_CORE_SMTP_SECURITY`. |
+| `smtp.username`, `smtp.password` | vuoti | Autenticazione PLAIN (`GITSTACK_CORE_SMTP_USER`, `GITSTACK_CORE_SMTP_PASSWORD`); vanno impostati insieme o per niente. |
+| `smtp.from` | vuoto | Mittente, es. `GitStack <noreply@example.com>` (`GITSTACK_CORE_SMTP_FROM`). Obbligatorio con `smtp.host`: senza, il chart si ferma. |
+| `smtp.existingSecret` | vuoto | Un Secret tuo con le stesse chiavi (obbligatorie `host` e `from`) invece dei values, per non tenere la password nel file dei values. |
+
+```sh
+helm upgrade --install gitstack deploy/gitstack \
+  --set smtp.host=smtp.example.com --set smtp.from='GitStack <noreply@example.com>' \
+  --set smtp.username=robot --set-string smtp.password="$SMTP_PASSWORD"
+```
+
+Come si comportano le email (regola C5):
+
+- **Per tipo.** Ogni utente sceglie, per ciascun motivo di notifica (`PUT /user/notification-preferences`), se riceve anche l'email. Default: sì per menzioni (`mentioned`) e assegnazioni (`assigned`), no per gli altri tipi.
+- **Raggruppamento: finestra di 10 secondi per issue.** La prima notifica per email di un utente su una issue fissa l'invio a 10 secondi dopo; quelle che arrivano nel frattempo per la stessa issue partono nella stessa email. Passata la finestra, la successiva apre una nuova email. La finestra è fissa (`notify.DefaultEmailWindow`), non un value del chart. Se l'utente legge o archivia la notifica prima dell'invio, l'email non parte.
+- **Link, nessuna risposta.** L'email contiene il link alla issue (`core.env.publicUrl` + `/<owner>/<repo>/issues/<n>`, quindi imposta `core.env.publicUrl`), `Auto-Submitted: auto-generated` e nessun `Reply-To`: non si risponde via email.
+- **Mai agli agenti.** Gli utenti `agent` ricevono le notifiche solo nella casella in-app (C4); le loro preferenze si salvano ma `emailAvailable` è `false`.
+- **Errori SMTP.** Un invio fallito si ritenta con attesa crescente (1 minuto, poi 2) per al massimo 3 tentativi in tutto; poi la notifica resta solo in-app e core scrive un log di errore (`email: invio non riuscito, tentativi esauriti`). Gli invii girano in un processo separato dal motore delle notifiche: un SMTP lento o giù non rallenta né blocca le notifiche in-app.
+- **Più repliche.** Un advisory lock su Postgres fa lavorare un solo dispatcher alla volta: nessuna email doppia.
 
 ## Probe di liveness/readiness
 

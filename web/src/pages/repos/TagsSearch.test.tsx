@@ -156,7 +156,8 @@ describe('risultati di Search code (B5)', () => {
   it('senza risultati lo dice', async () => {
     vi.mocked(searchCode).mockResolvedValue(result({ results: [] }));
     renderAt('/acme/api/search?q=nulla&ref=main');
-    expect(await screen.findByText(/No results for/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'No results for “nulla”' })).toBeInTheDocument();
+    expect(screen.getByText('Try a different search term or another branch or tag.')).toBeInTheDocument();
     expect(screen.queryByRole('status')).toBeNull();
   });
 

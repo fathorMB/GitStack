@@ -3750,7 +3750,7 @@ paths:
       description: >
         `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore,
         menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal
-        repo, tranne le menzioni dirette. Serve `read` sul repo.
+        repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
       requestBody:
         required: true
         content:
@@ -4745,6 +4745,39 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/orgs/{orgId}/owners:
+    parameters:
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listOrgOwners
+      tags: [internal]
+      summary: Elenca gli owner di un'organizzazione
+      description: >
+        Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un
+        webhook di organizzazione sono gli owner, e a loro va la notifica di
+        disattivazione (C7). Restituisce gli id utente degli owner; 404 se
+        l'organizzazione non esiste.
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Gli owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgOwnersResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/git/repos:
     post:
       operationId: gitCreateRepo
@@ -4913,6 +4946,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LookupIdsResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/mentions/resolve:
+    post:
+      operationId: resolveMentions
+      tags: [internal]
+      summary: Risolve le menzioni `@utente`, `@agente` e `@org/team`
+      description: >
+        Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati
+        nel testo di una issue o di un commento in utenti. Ogni nome e'
+        `utente` (persona o agente) oppure `org/team`; il confronto non
+        distingue maiuscole. Un nome che non e' un utente attivo o un team
+        esistente non compare nella risposta (resta testo). Un team si espande
+        in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo
+        100 nomi per chiamata.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveMentionsInput"
+      responses:
+        "200":
+          description: Utenti e team trovati.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveMentionsResult"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -7158,6 +7226,17 @@ components:
         name:
           $ref: "#/components/schemas/Name"
 
+    OrgOwnersResult:
+      type: object
+      additionalProperties: false
+      required: [owners]
+      properties:
+        owners:
+          type: array
+          items:
+            type: string
+            format: uuid
+
     GitCreateRepoInput:
       type: object
       additionalProperties: false
@@ -7763,6 +7842,73 @@ components:
               kind:
                 type: string
                 enum: [human, agent]
+              email:
+                type: string
+                description: >
+                  Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le
+                  notifiche email, mai per gli agenti). Assente senza email.
+    ResolveMentionsInput:
+      type: object
+      additionalProperties: false
+      required: [names]
+      properties:
+        names:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+            description: "`utente` oppure `org/team`, senza la chiocciola."
+    ResolveMentionsResult:
+      type: object
+      additionalProperties: false
+      required: [users, teams]
+      properties:
+        users:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, id, username, kind]
+            properties:
+              name:
+                type: string
+                description: Il nome cosi' come e' stato chiesto.
+              id:
+                type: string
+                format: uuid
+              username:
+                $ref: "#/components/schemas/Name"
+              kind:
+                type: string
+                enum: [human, agent]
+        teams:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, members]
+            properties:
+              name:
+                type: string
+                description: Il nome `org/team` cosi' come e' stato chiesto.
+              members:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, username, kind]
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    username:
+                      $ref: "#/components/schemas/Name"
+                    kind:
+                      type: string
+                      enum: [human, agent]
     IssueState:
       type: string
       enum: [open, closed]

@@ -48,6 +48,24 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 10
           {{- end }}
+          {{- if .Values.ingress.tls.caConfigMap }}
+          volumeMounts:
+            # Certificato della CA interna, scaricabile da /downloads/ca.crt
+            # (N5). Montato come cartella intera, non con subPath: un rinnovo
+            # del ConfigMap arriva al pod senza riavvio.
+            - name: ca
+              mountPath: /usr/share/nginx/html/downloads
+              readOnly: true
+          {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
+      {{- if .Values.ingress.tls.caConfigMap }}
+      volumes:
+        - name: ca
+          configMap:
+            name: {{ .Values.ingress.tls.caConfigMap }}
+            # Il ConfigMap lo crea l'installer (gitstack-tls): se manca il pod
+            # parte lo stesso e /downloads/ca.crt risponde 404.
+            optional: true
+      {{- end }}
 {{- end }}

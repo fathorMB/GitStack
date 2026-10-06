@@ -1,10 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { ToastProvider } from './components';
+import { InsecureHttpBanner, ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
 import { DeletedReposPage } from './pages/repos/DeletedReposPage';
@@ -13,6 +14,7 @@ import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
 import { OrgsPage } from './pages/orgs/OrgsPage';
+import { NotificationSettingsPage } from './pages/settings/NotificationSettingsPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { SshKeysPage } from './pages/settings/SshKeysPage';
@@ -24,6 +26,8 @@ import { AuthProvider, RequireAuth } from './routes/auth';
 // pagina interna di revisione del design system: fuori dalla sidebar.
 export function AppRoutes() {
   return (
+    <>
+    <InsecureHttpBanner />
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
@@ -43,6 +47,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Components">
               <ComponentsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Notifications">
+              <NotificationsPage />
             </AppShell>
           </RequireAuth>
         }
@@ -99,6 +113,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="profile" replace />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="notifications" element={<NotificationSettingsPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
         <Route path="deleted-repos" element={<DeletedReposPage />} />
@@ -276,6 +291,7 @@ export function AppRoutes() {
       />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </>
   );
 }
 

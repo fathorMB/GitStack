@@ -1,0 +1,54 @@
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.tls.redirect -}}
+{{- $fullname := include "gitstack.fullname" . -}}
+{{- $redirectName := printf "%s-redirect-https" $fullname -}}
+# N5 (GIT-143): la porta 80 reindirizza a 443 con un 308 permanente. Gli
+# Ingress e la rotta git stanno solo su "websecure" (vedi ingress.yaml e
+# ingress-git.yaml); su "web" c'e' solo questa IngressRoute. Con Let's Encrypt
+# (HTTP-01) il router interno di Traefik per /.well-known/acme-challenge ha
+# priorita' massima e non passa da qui.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $redirectName }}
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+    {{- with .Values.ingress.tls.redirectPort }}
+    port: {{ . | quote }}
+    {{- end }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullname }}-redirect
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - web
+  routes:
+    {{- if and .Values.web.enabled .Values.ingress.tls.caConfigMap }}
+    # Il certificato della CA si scarica anche in HTTP: serve proprio a
+    # fidarsi di HTTPS la prima volta (verifica l'impronta SHA-256 stampata
+    # dall'installer, docs/tls.md).
+    - kind: Rule
+      priority: 20000
+      match: >-
+        {{ if .Values.ingress.host }}Host(`{{ .Values.ingress.host }}`) && {{ end }}Path(`/downloads/ca.crt`)
+      services:
+        - name: {{ $fullname }}-web
+          port: {{ .Values.web.service.port }}
+    {{- end }}
+    - kind: Rule
+      priority: 1
+      match: >-
+        {{ if .Values.ingress.host }}Host(`{{ .Values.ingress.host }}`) && {{ end }}PathPrefix(`/`)
+      middlewares:
+        - name: {{ $redirectName }}
+      services:
+        - name: noop@internal
+          kind: TraefikService
+{{- end }}

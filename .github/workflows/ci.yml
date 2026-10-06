@@ -210,7 +210,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/test-vm/e2e/remote.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/test-vm/e2e/remote.sh scripts/*.sh
+
+      # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
+      # sistema non supportato, verifica del nome host. Senza root né VM.
+      - name: test del preflight
+        run: ./deploy/tests/preflight_test.sh
 
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
@@ -430,6 +435,32 @@ jobs:
 
       - name: helm lint
         run: helm lint deploy/gitstack
+
+      # HTTPS (N5, GIT-143): l'installazione di prova resta in HTTP (valori di
+      # default), ma i tre modi di accendere TLS devono almeno renderizzare, e
+      # senza Secret né resolver il chart deve fermarsi con un errore.
+      - name: helm template — HTTPS (CA interna, Let's Encrypt, valori incompleti)
+        run: |
+          set -euo pipefail
+          helm template gitstack deploy/gitstack --set ingress.tls.enabled=true --set ingress.tls.secretName=gitstack-tls --set ingress.tls.caConfigMap=gitstack-ca > /tmp/tls-internal.yaml
+          grep -q 'redirectScheme' /tmp/tls-internal.yaml
+          grep -q 'router.entrypoints: websecure' /tmp/tls-internal.yaml
+          grep -q 'Path(`/downloads/ca.crt`)' /tmp/tls-internal.yaml
+          # TLSStore di default: il certificato dell'installer vale anche per chi si collega per IP (senza SNI).
+          grep -q 'kind: TLSStore' /tmp/tls-internal.yaml
+          awk '/kind: TLSStore/{f=1} f&&/name: default/{n=1} f&&/secretName: gitstack-tls/{s=1} END{exit !(n&&s)}' /tmp/tls-internal.yaml
+          helm template gitstack deploy/gitstack --set ingress.tls.enabled=true --set ingress.tls.certResolver=letsencrypt > /tmp/tls-le.yaml
+          grep -q 'certResolver: "letsencrypt"' /tmp/tls-le.yaml
+          if grep -q 'kind: TLSStore' /tmp/tls-le.yaml; then echo "con certResolver il TLSStore non va creato" >&2; exit 1; fi
+          if helm template gitstack deploy/gitstack --set ingress.tls.enabled=true >/dev/null 2>&1; then
+            echo "tls.enabled senza secretName né certResolver doveva fallire" >&2
+            exit 1
+          fi
+          helm template gitstack deploy/gitstack > /tmp/tls-default.yaml
+          if grep -q 'redirectScheme' /tmp/tls-default.yaml || grep -q 'kind: TLSStore' /tmp/tls-default.yaml; then
+            echo "il default del chart deve restare HTTP, senza redirect né TLSStore" >&2
+            exit 1
+          fi
 
       # Le due copie del bootstrap SQL di identity (una nel servizio, una nel
       # chart: Helm non legge file fuori dal chart) devono restare identiche.
@@ -688,6 +719,31 @@ jobs:
             exit 1
           fi
           echo "OK: ${prefix}/auth/session 401 -> login admin 200 -> sessione 200 (via Ingress)"
+
+      # GIT-153: come un browser. curl rimanda anche un cookie Secure ricevuto
+      # su http; un cookie jar vero lo scarta (tranne che su localhost). Il
+      # programma usa http://gitstack.test:8080 (non loopback) e si collega a
+      # 127.0.0.1:8080: con gst_session sempre Secure il login dà 200 ma la
+      # sessione successiva 401 e il passo fallisce.
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+
+      - name: Login come un browser su HTTP (cookie jar che rispetta Secure)
+        run: |
+          set -euo pipefail
+          prefix=$(sed -n "s/^export const API_BASE_URL = '\([^']*\)';.*$/\1/p" web/src/lib/http.ts)
+          if [ -z "$prefix" ]; then
+            echo "FALLITO: API_BASE_URL non trovato in web/src/lib/http.ts" >&2
+            exit 1
+          fi
+          GITSTACK_PROBE_PASSWORD=$(kubectl get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d)
+          export GITSTACK_PROBE_PASSWORD
+          go run scripts/check-browser-login.go -addr 127.0.0.1:8080 -host gitstack.test:8080 -prefix "$prefix" || {
+            kubectl logs deployment/gitstack-gateway --tail=50 || true
+            kubectl logs deployment/gitstack-identity --tail=50 || true
+            exit 1
+          }
 
       # GIT-152: smoke della UI nel browser (Chromium headless) attraverso
       # l'Ingress: /login, login admin con la password iniziale del Secret (la

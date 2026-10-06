@@ -52,6 +52,8 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		git:          o.git,
 		clone:        o.clone,
 		attachments:  o.attachments,
+		hooks:        o.hooks,
+		emailEnabled: o.emailEnabled,
 		now:          now,
 	}
 
@@ -88,6 +90,8 @@ type routerOptions struct {
 	git          gitclient.Git
 	clone        CloneConfig
 	attachments  AttachmentsConfig
+	hooks        WebhookConfig
+	emailEnabled bool
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il
@@ -148,6 +152,12 @@ func WithCloneConfig(c CloneConfig) Option {
 // upload e download di allegati rispondono 503.
 func WithAttachments(c AttachmentsConfig) Option {
 	return func(o *routerOptions) { o.attachments = c }
+}
+
+// WithWebhooks imposta la cifratura dei segreti e il controllo degli indirizzi
+// dei webhook (M-06/G).
+func WithWebhooks(c WebhookConfig) Option {
+	return func(o *routerOptions) { o.hooks = c }
 }
 
 // WithClock sostituisce l'orologio con cui si controlla il timestamp della

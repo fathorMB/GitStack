@@ -19,6 +19,14 @@
       d. verifica che le immagini gateway/core/web esistano su ghcr.io per
          il tag "sha-<Ref>", poi installer di GIT-9 dal commit -Ref di main,
          nello stesso modo in cui lo userebbe il cliente (curl | sudo bash).
+      d3. HTTPS (N5, GIT-143): l'installer di default crea la CA interna.
+         Scarica /downloads/ca.crt via HTTP (la 80 lo serve senza redirect),
+         ne confronta l'impronta SHA-256 con `gitstack-tls fingerprint` sulla
+         VM, controlla che la 80 reindirizzi a https (308), che ca.key sia
+         0600 e che il timer di rinnovo sia attivo. Da qui in poi tutte le
+         chiamate sono HTTPS e si fidano SOLO di quella CA (callback del
+         processo, lib/tls.ps1: niente modifiche allo store del PC), anche
+         git (http.sslCAInfo).
       e. verifiche end-to-end: UI (dall'host Windows), /api/healthz,
          create+read della risorsa di prova via API, evento di prova
          pubblicato su JetStream (stream CORE, GIT-6). core pubblica
@@ -111,6 +119,7 @@ param(
 
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
 . (Join-Path $PSScriptRoot 'lib\http.ps1')
+. (Join-Path $PSScriptRoot 'lib\tls.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
@@ -421,9 +430,56 @@ function Main {
             Add-StepResult -Name 'c. requisiti minimi registrati nel log' -Ok $true
         }
 
+        # --- d3. HTTPS con la CA interna (N5, GIT-143) ---------------------
+        Write-Log "==> Passo d3: HTTPS con la CA interna (download di ca.crt, impronta, redirect 80->443) ..."
+        $d3Ok = $true
+        $d3Details = @()
+        $caPath = Join-Path $OutDir 'ca.crt'
+        $script:CaFingerprint = $null
+        try {
+            $caResp = Invoke-HttpRaw -Uri "http://$script:VmIp/downloads/ca.crt"
+            if ($caResp.StatusCode -ne 200 -or $caResp.Body -notmatch 'BEGIN CERTIFICATE') {
+                throw "GET http://<vm>/downloads/ca.crt: status $($caResp.StatusCode) (atteso 200 con un certificato PEM) $($caResp.Error)"
+            }
+            Set-Content -LiteralPath $caPath -Value $caResp.Body -Encoding ascii
+            $script:CaFingerprint = Get-CertSha256Fingerprint -Path $caPath
+            $fpVm = Invoke-VmSsh -Command 'sudo gitstack-tls fingerprint' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($fpVm.ExitCode -ne 0 -or $fpVm.StdOut.Trim() -ne $script:CaFingerprint) {
+                throw "l'impronta del ca.crt scaricato ($script:CaFingerprint) non e quella della VM ('$($fpVm.StdOut.Trim())' $($fpVm.StdErr))"
+            }
+            Set-GitStackCaTrust -CaPath $caPath
+        } catch {
+            $d3Ok = $false; $d3Details += $_.Exception.Message
+        }
+
+        # 80 -> 443: redirect permanente (curl.exe, per non seguirlo).
+        foreach ($p in @('/', '/api/healthz')) {
+            $rd = Invoke-ExternalCommand -FilePath 'curl.exe' -ArgumentList @('-s', '-o', 'NUL', '-w', '%{http_code} %{redirect_url}', "http://$script:VmIp$p") -TimeoutSeconds 30
+            $want = "https://$script:VmIp$p"
+            if ($rd.ExitCode -ne 0 -or $rd.StdOut.Trim() -ne "308 $want") {
+                $d3Ok = $false; $d3Details += "http://<vm>$p non reindirizza a $want con 308: '$($rd.StdOut.Trim())' $($rd.StdErr)"
+            }
+        }
+
+        $keyMode = Invoke-VmSsh -Command 'sudo stat -c "%a %U" /etc/gitstack/tls/ca.key' -TimeoutSeconds $SshCommandTimeoutSeconds
+        if ($keyMode.ExitCode -ne 0 -or $keyMode.StdOut.Trim() -ne '600 root') {
+            $d3Ok = $false; $d3Details += "ca.key atteso '600 root': '$($keyMode.StdOut.Trim())' $($keyMode.StdErr)"
+        }
+        $timer = Invoke-VmSsh -Command 'systemctl is-active gitstack-tls-renew.timer' -TimeoutSeconds $SshCommandTimeoutSeconds
+        if ($timer.ExitCode -ne 0 -or $timer.StdOut.Trim() -ne 'active') {
+            $d3Ok = $false; $d3Details += "gitstack-tls-renew.timer non attivo: '$($timer.StdOut.Trim())'"
+        }
+        # La chiave della CA non deve essere in Kubernetes (solo il certificato).
+        $caInK8s = Invoke-VmSsh -Command 'sudo k3s kubectl -n default get secret,configmap -o name' -TimeoutSeconds $SshCommandTimeoutSeconds
+        if ($caInK8s.ExitCode -ne 0 -or $caInK8s.StdOut -notmatch 'secret/gitstack-tls' -or $caInK8s.StdOut -notmatch 'configmap/gitstack-ca') {
+            $d3Ok = $false; $d3Details += "attesi secret/gitstack-tls e configmap/gitstack-ca: '$($caInK8s.StdOut.Trim())'"
+        }
+        Add-StepResult -Name 'd3. HTTPS: ca.crt scaricabile e con l impronta della VM, 80 reindirizzata a 443 (308), ca.key 0600, timer di rinnovo attivo' -Ok $d3Ok -Detail ($d3Details -join '; ')
+        if (-not $d3Ok) { return }
+
         # --- e. verifiche end-to-end -------------------------------------
-        Write-Log "==> Passo e: verifiche UI e /api/healthz ..."
-        $baseUrl = "http://$script:VmIp"
+        Write-Log "==> Passo e: verifiche UI e /api/healthz (HTTPS) ..."
+        $baseUrl = "https://$script:VmIp"
         $eOk = $true
         $eDetails = @()
 
@@ -651,8 +707,10 @@ function Main {
             $env:GIT_COMMITTER_NAME = 'E2E'; $env:GIT_COMMITTER_EMAIL = 'e2e@example.com'
             $knownHosts = (Join-Path $gitWork 'known_hosts') -replace '\\', '/'
             $env:GIT_SSH_COMMAND = "ssh -i $($sshKey -replace '\\', '/') -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=$knownHosts -o LogLevel=ERROR"
-            $gitBase = @('-c', 'credential.helper=', '-c', 'core.autocrlf=false')
-            $httpsUrl = "http://${gitUser}:$gitToken@$($script:VmIp)/$gitUser/$gitRepo.git"
+            # HTTPS: git si fida solo della CA interna scaricata in d3 (backend OpenSSL).
+            $caForGit = $caPath.Replace('\', '/')
+            $gitBase = @('-c', 'credential.helper=', '-c', 'core.autocrlf=false', '-c', 'http.sslBackend=openssl', '-c', "http.sslCAInfo=$caForGit")
+            $httpsUrl = "https://${gitUser}:$gitToken@$($script:VmIp)/$gitUser/$gitRepo.git"
             $sshUrl = "ssh://git@$($script:VmIp):$GitSshPort/$gitUser/$gitRepo.git"
 
             $e5Stage = 'push via HTTPS'
@@ -687,7 +745,7 @@ function Main {
             if (-not (Test-Path -LiteralPath (Join-Path $w1 'ssh.txt'))) { throw "il pull HTTPS non ha portato il commit spinto via SSH" }
 
             $e5Stage = 'accesso negato senza credenziali'
-            $anonUrl = "http://$($script:VmIp)/$gitUser/$gitRepo.git"
+            $anonUrl = "https://$($script:VmIp)/$gitUser/$gitRepo.git"
             $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('clone', '-q', $anonUrl, (Join-Path $gitWork 'anon'))) -TimeoutSeconds 60
             if ($r.ExitCode -eq 0) { throw "il clone senza credenziali e riuscito" }
             if (Test-Path -LiteralPath (Join-Path $gitWork 'anon\https.txt')) { throw "il clone senza credenziali ha portato dati del repo" }
@@ -875,6 +933,14 @@ function Main {
                 if ($activeAfter.StdOut.Trim() -ne $activeBefore.StdOut.Trim()) {
                     $fOk = $false; $fDetails += "il servizio k3s e stato riavviato/reinstallato (ActiveEnterTimestamp diverso: '$($activeBefore.StdOut.Trim())' -> '$($activeAfter.StdOut.Trim())')"
                 }
+            }
+        }
+        if ($fOk -and $script:CaFingerprint) {
+            # La CA e il suo certificato non cambiano a una riesecuzione: i client
+            # che si fidano gia della CA non devono rifare niente.
+            $fpAfter = Invoke-VmSsh -Command 'sudo gitstack-tls fingerprint' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($fpAfter.ExitCode -ne 0 -or $fpAfter.StdOut.Trim() -ne $script:CaFingerprint) {
+                $fOk = $false; $fDetails += "l'impronta della CA e cambiata dopo la seconda esecuzione: '$($fpAfter.StdOut.Trim())' (prima $script:CaFingerprint)"
             }
         }
         if ($fOk) {

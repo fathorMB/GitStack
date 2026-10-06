@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/fathorMB/GitStack/admin/internal/backup"
 	"github.com/fathorMB/GitStack/admin/internal/config"
 	"github.com/fathorMB/GitStack/admin/internal/status"
 )
@@ -40,6 +41,10 @@ type App struct {
 	HTTP    *http.Client
 	// LookPath, se non nil, sostituisce exec.LookPath nella ricerca di kubectl.
 	LookPath func(string) (string, error)
+	// NewCluster, se non nil, sostituisce il cluster kubectl (test di backup e restore).
+	NewCluster func(*config.Config) backup.Cluster
+	// LocalAddrs, se non nil, sostituisce gli indirizzi delle interfacce (test).
+	LocalAddrs func() []string
 }
 
 // NewApp è l'App di produzione.
@@ -68,6 +73,9 @@ var cmds []command
 func init() {
 	cmds = []command{
 		{name: "status", summary: "versione, host, salute dei servizi, ultimo backup", run: runStatus},
+		{name: "backup", summary: "archivio coerente di database, repo, allegati e configurazione", needsRoot: true, run: runBackup},
+		{name: "restore", summary: "ripristina un archivio su un'installazione pulita della stessa versione", needsRoot: true, run: runRestore},
+		{name: "config", summary: "config set host <nome>: cambia il nome dell'host (certificato, servizi, configurazione)", needsRoot: true, run: runConfig},
 		{name: "version", summary: "versione del binario", run: runVersion},
 	}
 }
@@ -111,7 +119,7 @@ func (a *App) usage(w io.Writer) {
 		_, _ = fmt.Fprintf(w, "  %-8s %s\n", c.name, c.summary)
 	}
 	_, _ = fmt.Fprintln(w, "\nOpzioni comuni: --config PERCORSO (o $"+envConfigPath+"), -h/--help.")
-	_, _ = fmt.Fprintln(w, "Codici di uscita: 0 ok, 1 non sano, 2 uso, 3 configurazione, 4 cluster, 5 serve root.")
+	_, _ = fmt.Fprintln(w, "Codici di uscita: 0 ok, 1 non sano, 2 uso, 3 configurazione, 4 cluster, 5 serve root, 6 rifiutato.")
 }
 
 func (a *App) errorf(format string, args ...any) {

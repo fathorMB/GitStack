@@ -2,7 +2,7 @@ import { Search } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, ErrorAlert } from '../../components';
+import { Button, EmptyState, ErrorAlert } from '../../components';
 import { blobLineHref, searchCode, searchHref } from '../../lib/codeApi';
 import type { CodeSearchHit } from '../../lib/codeApi';
 import type { Repository } from '../../lib/reposApi';
@@ -59,7 +59,7 @@ function Results({ owner, repo, q, refName }: { owner: string; repo: string; q: 
           The search timed out: the results are partial.
         </div>
       ) : null}
-      {data.results.length === 0 ? <p className="muted">No results for “{q}”.</p> : null}
+      {data.results.length === 0 ? <EmptyState icon={<Search size={32} aria-hidden="true" />} title={`No results for “${q}”`} description="Try a different search term or another branch or tag." /> : null}
       {[...byPath].map(([path, hits]) => (
         <section key={path} className="card" aria-label={path}>
           <div className="card-h mono">{path}</div>

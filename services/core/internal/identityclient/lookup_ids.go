@@ -33,6 +33,7 @@ func (c *Client) LookupUsers(ctx context.Context, ids []uuid.UUID) (map[uuid.UUI
 				ID       string `json:"id"`
 				Username string `json:"username"`
 				Kind     string `json:"kind"`
+				Email    string `json:"email"`
 			} `json:"users"`
 		}
 		st, err := c.call(ctx, http.MethodPost, "/internal/users/lookup-ids", map[string][]string{"ids": strs}, http.StatusOK, &res)
@@ -47,7 +48,7 @@ func (c *Client) LookupUsers(ctx context.Context, ids []uuid.UUID) (map[uuid.UUI
 			if perr != nil || (u.Kind != "human" && u.Kind != "agent") {
 				return nil, fmt.Errorf("%w: utente non valido", ErrUnavailable)
 			}
-			out[id] = CodeUser{ID: id, Username: u.Username, Kind: u.Kind}
+			out[id] = CodeUser{ID: id, Username: u.Username, Kind: u.Kind, Email: u.Email}
 		}
 	}
 	return out, nil

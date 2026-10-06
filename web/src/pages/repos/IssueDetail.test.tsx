@@ -8,6 +8,11 @@ import type { Repository } from '../../lib/reposApi';
 import { IssueDetailPage } from './IssueDetailPage';
 
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
+vi.mock('../../lib/notificationsApi', () => ({
+  fetchIssueSubscription: vi.fn().mockResolvedValue({ subscribed: true, reason: 'author' }),
+  subscribeToIssue: vi.fn(),
+  unsubscribeFromIssue: vi.fn(),
+}));
 vi.mock('../../lib/issuesApi', async (orig) => {
   const real = await orig<typeof import('../../lib/issuesApi')>();
   return {
@@ -38,6 +43,7 @@ vi.mock('../../lib/issuesApi', async (orig) => {
 
 import { fetchSession } from '../../lib/authApi';
 import * as api from '../../lib/issuesApi';
+import { fetchIssueSubscription } from '../../lib/notificationsApi';
 
 const repo = {
   id: 'r1',
@@ -95,6 +101,7 @@ interface Setup {
 }
 
 function setup(o: Setup = {}) {
+  vi.mocked(fetchIssueSubscription).mockResolvedValue({ subscribed: true, reason: 'author' });
   vi.mocked(fetchSession).mockResolvedValue({ user: { username: o.me ?? 'lbianchi', isAdmin: o.isAdmin ?? false } } as never);
   vi.mocked(api.fetchMyRole).mockResolvedValue(o.role === undefined ? 'read' : o.role);
   vi.mocked(api.fetchIssue).mockResolvedValue(o.issue ?? baseIssue());
@@ -185,7 +192,7 @@ describe('cronologia', () => {
     expect(screen.getByTestId('event-closed')).toHaveTextContent('closed this as duplicate of #12');
     expect(screen.getAllByText('Closed as duplicate of #12').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('event-referenced')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Unsubscribe/)).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Unsubscribe' })).toBeInTheDocument();
     expect(screen.queryByText(/Linked commits/)).not.toBeInTheDocument();
     expect(screen.queryByText(/For agents/)).not.toBeInTheDocument();
     expect(screen.queryByText(/gs issue view/)).not.toBeInTheDocument();

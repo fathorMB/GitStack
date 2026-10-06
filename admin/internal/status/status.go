@@ -9,6 +9,8 @@ package status
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -223,12 +225,42 @@ func imageTag(image string) string {
 	return image[i+1:]
 }
 
+// newAPIClient crea il client per /api/healthz. Con la CA interna (ca_cert) si
+// fida del suo certificato oltre alle CA di sistema; la verifica resta attiva.
+func newAPIClient(cfg *config.Config) (*http.Client, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	if cfg.CACert == "" {
+		return client, nil
+	}
+	pem, err := os.ReadFile(cfg.CACert)
+	if err != nil {
+		return nil, fmt.Errorf("certificato della CA %s: %w", cfg.CACert, err)
+	}
+	pool, err := x509.SystemCertPool()
+	if err != nil || pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if !pool.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("certificato della CA %s: nessun certificato PEM valido", cfg.CACert)
+	}
+	client.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}}
+	return client, nil
+}
+
 func (c *Collector) api(ctx context.Context, cfg *config.Config) (bool, string) {
 	client := c.HTTP
-	if client == nil {
-		client = &http.Client{Timeout: 5 * time.Second}
+	scheme := "http"
+	if cfg.TLS != "" && cfg.TLS != "insecure" {
+		scheme = "https"
 	}
-	url := "http://" + cfg.Host + "/api/healthz"
+	if client == nil {
+		var err error
+		client, err = newAPIClient(cfg)
+		if err != nil {
+			return false, err.Error()
+		}
+	}
+	url := scheme + "://" + cfg.Host + "/api/healthz"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return false, err.Error()
@@ -256,7 +288,7 @@ func lastBackup(dir string) string {
 	var newest string
 	var newestTime time.Time
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".") {
+		if strings.HasPrefix(e.Name(), ".") || strings.HasSuffix(e.Name(), ".sha256") {
 			continue
 		}
 		info, err := e.Info()

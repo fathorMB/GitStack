@@ -165,6 +165,42 @@ func (e RepoVisibility) Valid() bool {
 	}
 }
 
+// Defines values for ResolveMentionsResultTeamsMembersKind.
+const (
+	ResolveMentionsResultTeamsMembersKindAgent ResolveMentionsResultTeamsMembersKind = "agent"
+	ResolveMentionsResultTeamsMembersKindHuman ResolveMentionsResultTeamsMembersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the ResolveMentionsResultTeamsMembersKind enum.
+func (e ResolveMentionsResultTeamsMembersKind) Valid() bool {
+	switch e {
+	case ResolveMentionsResultTeamsMembersKindAgent:
+		return true
+	case ResolveMentionsResultTeamsMembersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResolveMentionsResultUsersKind.
+const (
+	ResolveMentionsResultUsersKindAgent ResolveMentionsResultUsersKind = "agent"
+	ResolveMentionsResultUsersKindHuman ResolveMentionsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the ResolveMentionsResultUsersKind enum.
+func (e ResolveMentionsResultUsersKind) Valid() bool {
+	switch e {
+	case ResolveMentionsResultUsersKindAgent:
+		return true
+	case ResolveMentionsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceRole.
 const (
 	Admin ResourceRole = "admin"
@@ -356,8 +392,10 @@ type LookupIdsInput struct {
 // LookupIdsResult defines model for LookupIdsResult.
 type LookupIdsResult struct {
 	Users []struct {
-		Id   openapi_types.UUID       `json:"id"`
-		Kind LookupIdsResultUsersKind `json:"kind"`
+		// Email Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+		Email *string                  `json:"email,omitempty"`
+		Id    openapi_types.UUID       `json:"id"`
+		Kind  LookupIdsResultUsersKind `json:"kind"`
 
 		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 		//
@@ -374,6 +412,11 @@ type LookupIdsResultUsersKind string
 //
 // Example: alice
 type Name = string
+
+// OrgOwnersResult defines model for OrgOwnersResult.
+type OrgOwnersResult struct {
+	Owners []openapi_types.UUID `json:"owners"`
+}
 
 // OwnerRef defines model for OwnerRef.
 type OwnerRef struct {
@@ -441,6 +484,49 @@ type RepoName = string
 
 // RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
 type RepoVisibility string
+
+// ResolveMentionsInput defines model for ResolveMentionsInput.
+type ResolveMentionsInput struct {
+	Names []string `json:"names"`
+}
+
+// ResolveMentionsResult defines model for ResolveMentionsResult.
+type ResolveMentionsResult struct {
+	Teams []struct {
+		Members []struct {
+			Id   openapi_types.UUID                    `json:"id"`
+			Kind ResolveMentionsResultTeamsMembersKind `json:"kind"`
+
+			// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+			//
+			//
+			// Example: alice
+			Username Name `json:"username"`
+		} `json:"members"`
+
+		// Name Il nome `org/team` cosi' come e' stato chiesto.
+		Name string `json:"name"`
+	} `json:"teams"`
+	Users []struct {
+		Id   openapi_types.UUID             `json:"id"`
+		Kind ResolveMentionsResultUsersKind `json:"kind"`
+
+		// Name Il nome cosi' come e' stato chiesto.
+		Name string `json:"name"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// ResolveMentionsResultTeamsMembersKind defines model for ResolveMentionsResult.Teams.Members.Kind.
+type ResolveMentionsResultTeamsMembersKind string
+
+// ResolveMentionsResultUsersKind defines model for ResolveMentionsResult.Users.Kind.
+type ResolveMentionsResultUsersKind string
 
 // ResourceAttributesInput defines model for ResourceAttributesInput.
 type ResourceAttributesInput struct {
@@ -626,6 +712,9 @@ type Unauthorized = Error
 
 // UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
+
+// ResolveMentionsJSONRequestBody defines body for ResolveMentions for application/json ContentType.
+type ResolveMentionsJSONRequestBody = ResolveMentionsInput
 
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput

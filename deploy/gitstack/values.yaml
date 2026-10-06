@@ -119,6 +119,16 @@ core:
     # con cui i client raggiungono GitStack e host mostrato negli URL di clone SSH.
     publicUrl: ""
     sshHost: ""
+  # Webhook (M-06/G): chiave con cui core cifra i segreti dei webhook
+  # (GITSTACK_WEBHOOK_SECRET_KEY, AES-256-GCM, 32 byte in esadecimale). Il chart
+  # la genera una sola volta in un Secret <release>-core-webhook-key (chiave
+  # `key`, helm.sh/resource-policy: keep); non si scrive nei values. Per ruotarla:
+  # nuova chiave in `key`, nuovo `keyId`, e la precedente in `oldKeys`
+  # (`k1:<chiave>`), che serve solo a decifrare. Alternativa: nome di un
+  # Secret esistente con le stesse chiavi.
+  webhookSecret:
+    existingSecret: ""
+    keyId: k1
   # Allegati di issue e commenti (M-05/G, I9). I file stanno su un PVC dedicato,
   # montato su `mountPath` (GITSTACK_CORE_ATTACHMENTS_DIR): va incluso nel backup (D19).
   # Il volume è ReadWriteOnce: con `enabled: true` core gira a UNA replica con
@@ -142,6 +152,28 @@ core:
       memory: 32Mi
     limits:
       memory: 128Mi
+
+# --- SMTP (facoltativo, M-06/F, C5) ------------------------------------------
+# Email di notifica (menzioni, assegnazioni, ...). Vuoto = disattivato: GitStack
+# manda solo notifiche in-app e la UI nasconde le opzioni email. Con `host`
+# valorizzato il chart crea il Secret `<release>-smtp` (chiavi host, port,
+# security, username, password, from) e core lo legge come GITSTACK_CORE_SMTP_*.
+# Per non tenere la password nei values, usa `existingSecret`: un Secret tuo con
+# quelle chiavi (obbligatorie: host e from; le altre facoltative).
+# Le email partono dopo una finestra di 10 secondi per issue (raggruppamento),
+# con al massimo 3 tentativi; mai agli utenti agent. Dettagli: README del chart.
+smtp:
+  host: ""
+  # 0 = porta standard della protezione scelta (starttls 587, tls 465, none 25).
+  port: 0
+  # starttls (default) | tls (TLS implicito) | none (solo reti fidate: le
+  # credenziali non partono in chiaro verso un host non locale).
+  security: starttls
+  username: ""
+  password: ""
+  # Mittente, es. "GitStack <noreply@example.com>". Obbligatorio con host.
+  from: ""
+  existingSecret: ""
 
 # --- identity ---------------------------------------------------------------
 # Utenti, sessioni, token e chiavi SSH (M-02). Usa lo schema dedicato
@@ -306,9 +338,9 @@ web:
 
 # --- egress (protezione SSRF, C8) ---------------------------------------
 # Impostazioni per le chiamate in uscita verso indirizzi dati dagli utenti
-# (webhook, pkg/egress). Solo dichiarate qui: il collegamento alle variabili
-# d'ambiente del servizio che le usa arriva con M-06/G. Voci: IP, CIDR,
-# nomi host ("hooks.example.com") o suffissi ("*.example.com").
+# (webhook, pkg/egress): core le legge da GITSTACK_EGRESS_ALLOW, _DENY e
+# _CLUSTER_CIDRS (elenchi separati da virgole). Voci: IP, CIDR, nomi host
+# ("hooks.example.com") o suffissi ("*.example.com").
 # Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster e le reti
 # speciali sono bloccati sempre: allow non sblocca mai loopback, link-local
 # e cluster (vedi pkg/egress/README.md).
@@ -427,6 +459,23 @@ ingress:
   # restringere l'Ingress a un nome host preciso.
   host: ""
   annotations: {}
+  # HTTPS (N5, GIT-143). Il default del chart resta HTTP (job k3d della CI, prove
+  # con helm install a mano): l'installer (deploy/install.sh) lo accende da solo,
+  # in tre modi (--tls internal, default; --tls letsencrypt; --tls-cert/--tls-key)
+  # e lo lascia spento solo con --insecure-http. Vedi docs/tls.md.
   tls:
     enabled: false
+    # Secret kubernetes.io/tls (tls.crt/tls.key) con il certificato servito da
+    # Traefik. Lo crea e lo rinnova l'installer (gitstack-tls) e il chart non lo
+    # genera: serve per CA interna e certificato del cliente. Vuoto con certResolver.
     secretName: ""
+    # Resolver ACME di Traefik (--tls letsencrypt): il certificato lo ottiene e
+    # lo rinnova Traefik (HTTP-01), nessun Secret.
+    certResolver: ""
+    # Con tls.enabled la porta 80 risponde con un redirect permanente a https
+    # (Middleware + IngressRoute su "web"). "" = porta 443 standard.
+    redirect: true
+    redirectPort: ""
+    # ConfigMap con la chiave ca.crt (la CA interna): web lo serve su
+    # /downloads/ca.crt, anche in HTTP, per fidarsi di HTTPS. Vuoto = nessun download.
+    caConfigMap: ""

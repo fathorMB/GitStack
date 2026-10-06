@@ -71,7 +71,11 @@ server è cifrato (README di `services/core`, sezione webhook).
 - Fino a **8 tentativi in circa 24 ore**, con attesa crescente fra l'uno e
   l'altro: subito, poi dopo 1 min, 5 min, 30 min, 2 h, 4 h, 8 h e 9 h (circa 23
   h 36 min dopo il primo). Un `4xx` diverso da `410` non si ritenta.
-- **`410 Gone`** ferma la consegna: nessun altro tentativo (stato `gone`).
+- Un webhook non attivo (disattivato dai fallimenti o in pausa con `active: false`)
+  non riceve più niente: le consegne già in coda si chiudono come `failed` con
+  `error` «webhook non attivo», senza richiesta e senza contare come fallimento.
+  Una *Redeliver* parte comunque.
+- **410 Gone** ferma la consegna: nessun altro tentativo (stato `gone`).
 - Dopo **3 giorni di fallimenti consecutivi** il webhook si disattiva
   (`active: false`, `disabledReason: consecutive_failures`) e chi lo ha creato
   (per un webhook di organizzazione, gli owner) riceve una notifica con motivo
@@ -262,8 +266,14 @@ Nella v1 non c'è l'azione di rinomina né di trasferimento (R3).
 
 ## Da dove nascono
 
-I webhook li produce core consumando gli eventi di dominio su NATS
-(`docs/events.md`): `git.push` per `push`, `issue.*` per `issues`,
-`issue_comment.*` per `issue_comment`, `repository.*` per `repository`.
-Le tabelle sono `core.webhooks` e `core.webhook_deliveries` (migrazione
-`0006_notifications_webhooks`).
+I webhook li produce core dagli eventi di dominio (`docs/events.md`):
+`git.push` (letto da NATS con il consumer durevole `core-webhooks-git`) per
+`push`; `issue.*`, `issue_comment.*` e `repository.*` dall'outbox
+transazionale di core (`core.event_outbox`), lo stesso da cui li pubblica il
+relay, per `issues`, `issue_comment` e `repository`. Le tabelle sono
+`core.webhooks` e `core.webhook_deliveries` (migrazione
+`0006_notifications_webhooks`; `0012_webhook_outbox` aggiunge il segno di
+lettura dell'outbox). La coda delle consegne è la tabella stessa: le consegne
+`pending` sopravvivono al riavvio di core. I campi di `issue` e `comment` sono
+quelli di quando il motore elabora l'evento (di solito un secondo dopo): se la
+issue cambia di nuovo nel frattempo, il payload mostra lo stato più recente.

@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -23,7 +24,7 @@ func linkedTo(t *testing.T, r *rig, subject string) (users.User, bool) {
 
 func TestStart_BuildsAuthorizationRequest(t *testing.T) {
 	r := newRig(t, nil)
-	res, err := r.svc.Start(context.Background(), "kc", "/repos")
+	res, err := r.svc.Start(context.Background(), "kc", "/repos", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,8 +49,15 @@ func TestStart_BuildsAuthorizationRequest(t *testing.T) {
 	if strings.Contains(c.Value, q.Get("state")) || strings.Contains(c.Value, q.Get("nonce")) {
 		t.Error("il cookie non è cifrato: contiene state o nonce in chiaro")
 	}
+	// Su HTTP il cookie di stato non è Secure; il resto è invariato.
+	if resHTTP, err := r.svc.Start(context.Background(), "kc", "/repos", false); err != nil || resHTTP.Cookie.Secure || !resHTTP.Cookie.HttpOnly || resHTTP.Cookie.SameSite != http.SameSiteLaxMode {
+		t.Errorf("cookie di stato su HTTP: %+v %v", resHTTP.Cookie, err)
+	}
+	if r.svc.ClearStateCookie("kc", false).Secure || !r.svc.ClearStateCookie("kc", true).Secure {
+		t.Error("ClearStateCookie non rispetta secure")
+	}
 	// Due start diversi non ripetono state, nonce e verifier.
-	res2, _ := r.svc.Start(context.Background(), "kc", "")
+	res2, _ := r.svc.Start(context.Background(), "kc", "", true)
 	u2, _ := url.Parse(res2.URL)
 	if u2.Query().Get("state") == q.Get("state") || u2.Query().Get("nonce") == q.Get("nonce") ||
 		u2.Query().Get("code_challenge") == q.Get("code_challenge") {
@@ -59,11 +67,11 @@ func TestStart_BuildsAuthorizationRequest(t *testing.T) {
 
 func TestStart_Errors(t *testing.T) {
 	r := newRig(t, nil)
-	if _, err := r.svc.Start(context.Background(), "altro", ""); !errors.Is(err, ErrDisabled) {
+	if _, err := r.svc.Start(context.Background(), "altro", "", true); !errors.Is(err, ErrDisabled) {
 		t.Errorf("provider sconosciuto: %v", err)
 	}
 	for _, bad := range []string{"https://evil.example", "//evil.example", "/\\evil", "relativo", "/a\r\nSet-Cookie: x=y", strings.Repeat("/a", 300)} {
-		if _, err := r.svc.Start(context.Background(), "kc", bad); !errors.Is(err, ErrInvalidRedirect) {
+		if _, err := r.svc.Start(context.Background(), "kc", bad, true); !errors.Is(err, ErrInvalidRedirect) {
 			t.Errorf("redirectTo %q accettato: %v", bad, err)
 		}
 	}
@@ -71,7 +79,7 @@ func TestStart_Errors(t *testing.T) {
 	r.repo.mu.Lock()
 	r.repo.enabled["kc"] = false
 	r.repo.mu.Unlock()
-	if _, err := r.svc.Start(context.Background(), "kc", ""); !errors.Is(err, ErrProviderNotFound) {
+	if _, err := r.svc.Start(context.Background(), "kc", "", true); !errors.Is(err, ErrProviderNotFound) {
 		t.Errorf("provider disabilitato: %v", err)
 	}
 }
@@ -264,7 +272,7 @@ func TestFinish_CodeAndPKCE(t *testing.T) {
 	t.Run("chiave di cifratura ruotata senza sync", func(t *testing.T) {
 		r := newRig(t, nil)
 		r.svc.cfg.KeyID = "k2"
-		if _, err := r.svc.Start(context.Background(), "kc", ""); err == nil {
+		if _, err := r.svc.Start(context.Background(), "kc", "", true); err == nil {
 			t.Error("con key id diverso il segreto non va decifrato")
 		}
 	})
@@ -475,7 +483,7 @@ func TestList(t *testing.T) {
 	if len(off.List()) != 0 {
 		t.Error("senza provider l'elenco è vuoto")
 	}
-	if _, err := off.Start(context.Background(), "kc", ""); !errors.Is(err, ErrDisabled) {
+	if _, err := off.Start(context.Background(), "kc", "", true); !errors.Is(err, ErrDisabled) {
 		t.Errorf("start su servizio spento: %v", err)
 	}
 }

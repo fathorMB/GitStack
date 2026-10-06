@@ -84,7 +84,7 @@ func TestMigration0004_SaleEScende(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 8); err != nil {
 		t.Fatalf("down 0004: %v", err)
 	}
 	for _, tbl := range issueTables {

@@ -145,14 +145,19 @@ func TestLogin(t *testing.T) {
 		t.Fatal("nessun Set-Cookie gst_session")
 	}
 	// Attributi del cookie letti dalla risposta.
-	if !ck.HttpOnly || !ck.Secure || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Value == "" || ck.Expires.IsZero() {
+	if !ck.HttpOnly || ck.Secure || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Value == "" || ck.Expires.IsZero() {
 		t.Fatalf("attributi del cookie errati: %+v", ck)
 	}
 	raw := r.Header.Get("Set-Cookie")
-	for _, a := range []string{"HttpOnly", "Secure", "SameSite=Lax", "Path=/"} {
+	for _, a := range []string{"HttpOnly", "SameSite=Lax", "Path=/"} {
 		if !strings.Contains(raw, a) {
 			t.Fatalf("Set-Cookie senza %q: %s", a, raw)
 		}
+	}
+	// Su HTTP (nessun proxy fidato) il cookie non è Secure, anche con
+	// X-Forwarded-Proto=https da un peer non fidato.
+	if strings.Contains(raw, "Secure") {
+		t.Fatalf("Set-Cookie Secure su HTTP: %s", raw)
 	}
 	// Corpo: CurrentSession, senza il valore del cookie né la password.
 	m := r.json()
@@ -256,7 +261,7 @@ func TestSessionAndLogout(t *testing.T) {
 			cleared = c
 		}
 	}
-	if cleared == nil || cleared.Value != "" || cleared.MaxAge >= 0 || !cleared.HttpOnly || !cleared.Secure || cleared.SameSite != http.SameSiteLaxMode || cleared.Path != "/" {
+	if cleared == nil || cleared.Value != "" || cleared.MaxAge >= 0 || !cleared.HttpOnly || cleared.Secure || cleared.SameSite != http.SameSiteLaxMode || cleared.Path != "/" {
 		t.Fatalf("cookie di logout errato: %+v", cleared)
 	}
 	errCode(t, e.do("GET", "/auth/session", nil, ck), 401, "unauthenticated")
@@ -501,5 +506,44 @@ func TestLoginIPFidato(t *testing.T) {
 	}
 	if got := try("203.0.113.2"); got != 401 {
 		t.Fatalf("altro client: %d, atteso 401 (non bloccato)", got)
+	}
+}
+
+// Secure solo se la richiesta originale è HTTPS: X-Forwarded-Proto=https
+// vale solo da un peer fidato.
+func TestCookieSecureDaProxyFidato(t *testing.T) {
+	pool, _ := dbtest.NewPool(t)
+	c := &clock{t: time.Now().UTC().Truncate(time.Microsecond)}
+	us := users.New(pool, c.now)
+	svc := &auth.Service{Users: us, Sessions: sessions.New(pool, c.now, time.Hour), Limiter: loginlimit.New(cfg, c.now)}
+	_, gw, _ := net.ParseCIDR("192.0.2.0/24")
+	h := httpapi.New(svc, nil, httpapi.WithTrustedProxies([]*net.IPNet{gw}))
+	if _, err := us.Create(context.Background(), users.CreateInput{Username: "alice", Email: "alice@example.com", DisplayName: "alice", Password: pw}); err != nil {
+		t.Fatal(err)
+	}
+	login := func(remote, proto string) *http.Cookie {
+		req := httptest.NewRequest("POST", "/auth/login", strings.NewReader(`{"username":"alice","password":"`+pw+`"}`))
+		req.RemoteAddr = remote
+		if proto != "" {
+			req.Header.Set("X-Forwarded-Proto", proto)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		for _, ck := range rec.Result().Cookies() {
+			if ck.Name == "gst_session" {
+				return ck
+			}
+		}
+		t.Fatalf("nessun cookie: %d %s", rec.Code, rec.Body.String())
+		return nil
+	}
+	if ck := login("192.0.2.10:1", "https"); !ck.Secure || !ck.HttpOnly || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" {
+		t.Errorf("proxy fidato con https: atteso Secure: %+v", ck)
+	}
+	if ck := login("192.0.2.10:1", "http"); ck.Secure {
+		t.Errorf("proxy fidato con http: Secure inatteso: %+v", ck)
+	}
+	if ck := login("198.51.100.5:1", "https"); ck.Secure {
+		t.Errorf("peer non fidato con https: Secure inatteso: %+v", ck)
 	}
 }

@@ -343,6 +343,10 @@ VHDX, ISO e le due cartelle della VM sono stati eliminati.
 
 Prova a mano di un commit non ancora pubblicato (checkout locale o ramo): costruire il binario Linux sull'host come in `admin/README.md`, copiarlo sulla VM con `scp` insieme al `.sha256` e lanciare `sudo ./install.sh --admin-binary ./gitstack-linux-amd64` dal checkout copiato sulla VM; poi `sudo gitstack status`.
 
+### HTTPS (N5, GIT-143)
+
+L'installazione di default è in HTTPS con la CA interna. `e2e.ps1` (passo d3) scarica `/downloads/ca.crt` in HTTP, ne confronta l'impronta SHA-256 con `sudo gitstack-tls fingerprint` sulla VM, controlla il redirect 80→443 (308, con `curl.exe`), `ca.key` `0600 root` e il timer di rinnovo, poi fa tutte le chiamate in HTTPS fidandosi **solo di quella CA** (`lib/tls.ps1`: callback di processo, nessuna modifica allo store certificati del PC) e `git` con `http.sslCAInfo`. Il callback si prova con `powershell.exe -NoProfile -File deploy	est-vm	ests	ls.Tests.ps1`. Per provare le altre modalità a mano sulla VM: `--tls-cert`/`--tls-key` (certificato di prova generato con openssl) e `--insecure-http`, vedi [`../../docs/tls.md`](../../docs/tls.md).
+
 ## Test end-to-end (GIT-11)
 
 `e2e.ps1` è il comando che il board lancia, da PowerShell **come

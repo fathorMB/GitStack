@@ -114,7 +114,7 @@ func kcStart(t *testing.T, h http.Handler, redirectTo string) (string, *http.Coo
 		t.Fatalf("start: %d %s", rec.Code, rec.Body.String())
 	}
 	c := cookieNamed(rec, oidc.StateCookieName)
-	if c == nil || !c.HttpOnly || !c.Secure || c.Path != "/api/v1/auth/oidc/"+kcSlug+"/callback" {
+	if c == nil || !c.HttpOnly || c.Secure || c.Path != "/api/v1/auth/oidc/"+kcSlug+"/callback" {
 		t.Fatalf("cookie di stato inatteso: %+v", c)
 	}
 	return rec.Header().Get("Location"), c
@@ -199,7 +199,7 @@ func TestKeycloak_LoginFlow(t *testing.T) {
 			t.Fatalf("callback: %d Location=%q body=%s", rec.Code, rec.Header().Get("Location"), rec.Body.String())
 		}
 		sess := cookieNamed(rec, auth.CookieName)
-		if sess == nil || !sess.HttpOnly || !sess.Secure {
+		if sess == nil || !sess.HttpOnly || sess.Secure {
 			t.Fatalf("cookie di sessione assente o non sicuro: %+v", sess)
 		}
 		if c := cookieNamed(rec, oidc.StateCookieName); c == nil || c.MaxAge >= 0 {

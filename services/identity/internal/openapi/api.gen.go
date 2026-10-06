@@ -246,6 +246,42 @@ func (e RepoVisibility) Valid() bool {
 	}
 }
 
+// Defines values for ResolveMentionsResultTeamsMembersKind.
+const (
+	ResolveMentionsResultTeamsMembersKindAgent ResolveMentionsResultTeamsMembersKind = "agent"
+	ResolveMentionsResultTeamsMembersKindHuman ResolveMentionsResultTeamsMembersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the ResolveMentionsResultTeamsMembersKind enum.
+func (e ResolveMentionsResultTeamsMembersKind) Valid() bool {
+	switch e {
+	case ResolveMentionsResultTeamsMembersKindAgent:
+		return true
+	case ResolveMentionsResultTeamsMembersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResolveMentionsResultUsersKind.
+const (
+	ResolveMentionsResultUsersKindAgent ResolveMentionsResultUsersKind = "agent"
+	ResolveMentionsResultUsersKindHuman ResolveMentionsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the ResolveMentionsResultUsersKind enum.
+func (e ResolveMentionsResultUsersKind) Valid() bool {
+	switch e {
+	case ResolveMentionsResultUsersKindAgent:
+		return true
+	case ResolveMentionsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceRole.
 const (
 	Admin ResourceRole = "admin"
@@ -591,8 +627,10 @@ type LookupIdsInput struct {
 // LookupIdsResult defines model for LookupIdsResult.
 type LookupIdsResult struct {
 	Users []struct {
-		Id   openapi_types.UUID       `json:"id"`
-		Kind LookupIdsResultUsersKind `json:"kind"`
+		// Email Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+		Email *string                  `json:"email,omitempty"`
+		Id    openapi_types.UUID       `json:"id"`
+		Kind  LookupIdsResultUsersKind `json:"kind"`
 
 		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 		//
@@ -643,6 +681,11 @@ type OrgMemberList struct {
 	Page    int         `json:"page"`
 	PerPage int         `json:"perPage"`
 	Total   int         `json:"total"`
+}
+
+// OrgOwnersResult defines model for OrgOwnersResult.
+type OrgOwnersResult struct {
+	Owners []openapi_types.UUID `json:"owners"`
 }
 
 // OrgRole `owner` gestisce organizzazione, team e membri; `member` no.
@@ -736,6 +779,49 @@ type RepoName = string
 
 // RepoVisibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
 type RepoVisibility string
+
+// ResolveMentionsInput defines model for ResolveMentionsInput.
+type ResolveMentionsInput struct {
+	Names []string `json:"names"`
+}
+
+// ResolveMentionsResult defines model for ResolveMentionsResult.
+type ResolveMentionsResult struct {
+	Teams []struct {
+		Members []struct {
+			Id   openapi_types.UUID                    `json:"id"`
+			Kind ResolveMentionsResultTeamsMembersKind `json:"kind"`
+
+			// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+			//
+			//
+			// Example: alice
+			Username Name `json:"username"`
+		} `json:"members"`
+
+		// Name Il nome `org/team` cosi' come e' stato chiesto.
+		Name string `json:"name"`
+	} `json:"teams"`
+	Users []struct {
+		Id   openapi_types.UUID             `json:"id"`
+		Kind ResolveMentionsResultUsersKind `json:"kind"`
+
+		// Name Il nome cosi' come e' stato chiesto.
+		Name string `json:"name"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// ResolveMentionsResultTeamsMembersKind defines model for ResolveMentionsResult.Teams.Members.Kind.
+type ResolveMentionsResultTeamsMembersKind string
+
+// ResolveMentionsResultUsersKind defines model for ResolveMentionsResult.Users.Kind.
+type ResolveMentionsResultUsersKind string
 
 // ResourceAttributesInput defines model for ResourceAttributesInput.
 type ResourceAttributesInput struct {
@@ -1137,6 +1223,9 @@ type ListUserTokensParams struct {
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
+// ResolveMentionsJSONRequestBody defines body for ResolveMentions for application/json ContentType.
+type ResolveMentionsJSONRequestBody = ResolveMentionsInput
+
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
@@ -1223,6 +1312,12 @@ type ServerInterface interface {
 	// GetCurrentSession Sessione corrente
 	// (GET /auth/session)
 	GetCurrentSession(w http.ResponseWriter, r *http.Request)
+	// ResolveMentions Risolve le menzioni `@utente`, `@agente` e `@org/team`
+	// (POST /internal/mentions/resolve)
+	ResolveMentions(w http.ResponseWriter, r *http.Request)
+	// ListOrgOwners Elenca gli owner di un'organizzazione
+	// (GET /internal/orgs/{orgId}/owners)
+	ListOrgOwners(w http.ResponseWriter, r *http.Request, orgId openapi_types.UUID)
 	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
 	// (GET /internal/owners/{name})
 	ResolveOwner(w http.ResponseWriter, r *http.Request, name string)
@@ -1522,6 +1617,46 @@ func (siw *ServerInterfaceWrapper) GetCurrentSession(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCurrentSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResolveMentions operation middleware
+func (siw *ServerInterfaceWrapper) ResolveMentions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolveMentions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrgOwners operation middleware
+func (siw *ServerInterfaceWrapper) ListOrgOwners(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "orgId" -------------
+	var orgId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgId", r.PathValue("orgId"), &orgId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrgOwners(w, r, orgId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3186,8 +3321,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/internal/resources/{resourceId}/attributes", wrapper.SetResourceAttributes)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/internal/resources/{resourceId}", wrapper.PurgeResourceAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/orgs/{orgId}/owners", wrapper.ListOrgOwners)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-ids", wrapper.LookupUsersByIds)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/mentions/resolve", wrapper.ResolveMentions)
 
 	return m
 }

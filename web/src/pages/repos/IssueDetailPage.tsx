@@ -31,6 +31,7 @@ import type { Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent
 import type { Repository } from '../../lib/reposApi';
 import { permissions } from '../../lib/issuePerms';
 import { IssueEditor } from './IssueEditor';
+import { IssueSubscriptionBox } from './IssueSubscriptionBox';
 import { loadMe } from './repoAdmin';
 
 interface Data {
@@ -823,6 +824,8 @@ function Sidebar({ data, perm, ref0, act }: { data: Data; perm: Perm; ref0: Ref;
           </p>
         </div>
       ) : null}
+
+      <IssueSubscriptionBox owner={ref0.owner} repo={ref0.repo} number={ref0.number} />
 
       {data.role === 'read' && !perm.write ? (
         <div className="side-sec" style={{ border: 0 }}>

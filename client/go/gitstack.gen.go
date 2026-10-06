@@ -744,6 +744,42 @@ func (e RepoWatchMode) Valid() bool {
 	}
 }
 
+// Defines values for ResolveMentionsResultTeamsMembersKind.
+const (
+	ResolveMentionsResultTeamsMembersKindAgent ResolveMentionsResultTeamsMembersKind = "agent"
+	ResolveMentionsResultTeamsMembersKindHuman ResolveMentionsResultTeamsMembersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the ResolveMentionsResultTeamsMembersKind enum.
+func (e ResolveMentionsResultTeamsMembersKind) Valid() bool {
+	switch e {
+	case ResolveMentionsResultTeamsMembersKindAgent:
+		return true
+	case ResolveMentionsResultTeamsMembersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResolveMentionsResultUsersKind.
+const (
+	ResolveMentionsResultUsersKindAgent ResolveMentionsResultUsersKind = "agent"
+	ResolveMentionsResultUsersKindHuman ResolveMentionsResultUsersKind = "human"
+)
+
+// Valid indicates whether the value is a known member of the ResolveMentionsResultUsersKind enum.
+func (e ResolveMentionsResultUsersKind) Valid() bool {
+	switch e {
+	case ResolveMentionsResultUsersKindAgent:
+		return true
+	case ResolveMentionsResultUsersKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceRole.
 const (
 	ResourceRoleAdmin ResourceRole = "admin"
@@ -2186,8 +2222,10 @@ type LookupIdsInput struct {
 // LookupIdsResult defines model for LookupIdsResult.
 type LookupIdsResult struct {
 	Users []struct {
-		Id   openapi_types.UUID       `json:"id"`
-		Kind LookupIdsResultUsersKind `json:"kind"`
+		// Email Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+		Email *string                  `json:"email,omitempty"`
+		Id    openapi_types.UUID       `json:"id"`
+		Kind  LookupIdsResultUsersKind `json:"kind"`
 
 		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 		//
@@ -2350,6 +2388,11 @@ type OrgMemberList struct {
 	Page    int         `json:"page"`
 	PerPage int         `json:"perPage"`
 	Total   int         `json:"total"`
+}
+
+// OrgOwnersResult defines model for OrgOwnersResult.
+type OrgOwnersResult struct {
+	Owners []openapi_types.UUID `json:"owners"`
 }
 
 // OrgRole `owner` gestisce organizzazione, team e membri; `member` no.
@@ -2529,6 +2572,49 @@ type RepositoryList struct {
 	PerPage int          `json:"perPage"`
 	Total   int          `json:"total"`
 }
+
+// ResolveMentionsInput defines model for ResolveMentionsInput.
+type ResolveMentionsInput struct {
+	Names []string `json:"names"`
+}
+
+// ResolveMentionsResult defines model for ResolveMentionsResult.
+type ResolveMentionsResult struct {
+	Teams []struct {
+		Members []struct {
+			Id   openapi_types.UUID                    `json:"id"`
+			Kind ResolveMentionsResultTeamsMembersKind `json:"kind"`
+
+			// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+			//
+			//
+			// Example: alice
+			Username Name `json:"username"`
+		} `json:"members"`
+
+		// Name Il nome `org/team` cosi' come e' stato chiesto.
+		Name string `json:"name"`
+	} `json:"teams"`
+	Users []struct {
+		Id   openapi_types.UUID             `json:"id"`
+		Kind ResolveMentionsResultUsersKind `json:"kind"`
+
+		// Name Il nome cosi' come e' stato chiesto.
+		Name string `json:"name"`
+
+		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+		//
+		//
+		// Example: alice
+		Username Name `json:"username"`
+	} `json:"users"`
+}
+
+// ResolveMentionsResultTeamsMembersKind defines model for ResolveMentionsResult.Teams.Members.Kind.
+type ResolveMentionsResultTeamsMembersKind string
+
+// ResolveMentionsResultUsersKind defines model for ResolveMentionsResult.Users.Kind.
+type ResolveMentionsResultUsersKind string
 
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
 type Resource struct {
@@ -3777,6 +3863,9 @@ type LoginJSONRequestBody = LoginInput
 // GitCreateRepoJSONRequestBody defines body for GitCreateRepo for application/json ContentType.
 type GitCreateRepoJSONRequestBody = GitCreateRepoInput
 
+// ResolveMentionsJSONRequestBody defines body for ResolveMentions for application/json ContentType.
+type ResolveMentionsJSONRequestBody = ResolveMentionsInput
+
 // CheckPermissionJSONRequestBody defines body for CheckPermission for application/json ContentType.
 type CheckPermissionJSONRequestBody = CheckPermissionInput
 
@@ -4199,6 +4288,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
 	GitGetTree(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResolveMentionsWithBody Risolve le menzioni `@utente`, `@agente` e `@org/team`
+	//
+	// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+	ResolveMentionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResolveMentions Risolve le menzioni `@utente`, `@agente` e `@org/team`
+	//
+	// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+	ResolveMentions(ctx context.Context, body ResolveMentionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOrgOwners Elenca gli owner di un'organizzazione
+	//
+	// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+	//
+	// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+	ListOrgOwners(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
 	//
@@ -5343,7 +5457,7 @@ type ClientInterface interface {
 
 	// SetRepoWatchWithBody Imposta il Watch del repo
 	//
-	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -5352,7 +5466,7 @@ type ClientInterface interface {
 
 	// SetRepoWatch Imposta il Watch del repo
 	//
-	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -6156,6 +6270,61 @@ func (c *Client) GitTrashRepo(ctx context.Context, repoId GitRepoIdParam, reqEdi
 // Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
 func (c *Client) GitGetTree(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGitGetTreeRequest(c.Server, repoId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResolveMentionsWithBody Risolve le menzioni `@utente`, `@agente` e `@org/team`
+//
+// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+func (c *Client) ResolveMentionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolveMentionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResolveMentions Risolve le menzioni `@utente`, `@agente` e `@org/team`
+//
+// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+func (c *Client) ResolveMentions(ctx context.Context, body ResolveMentionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolveMentionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOrgOwners Elenca gli owner di un'organizzazione
+//
+// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+//
+// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+func (c *Client) ListOrgOwners(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrgOwnersRequest(c.Server, orgId)
 	if err != nil {
 		return nil, err
 	}
@@ -8759,7 +8928,7 @@ func (c *Client) GetRepoWatch(ctx context.Context, owner RepoOwnerParam, repo Re
 
 // SetRepoWatchWithBody Imposta il Watch del repo
 //
-// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 //
 // Takes any type of body and a specified content type.
 //
@@ -8778,7 +8947,7 @@ func (c *Client) SetRepoWatchWithBody(ctx context.Context, owner RepoOwnerParam,
 
 // SetRepoWatch Imposta il Watch del repo
 //
-// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -10922,6 +11091,80 @@ func NewGitGetTreeRequest(server string, repoId GitRepoIdParam, params *GitGetTr
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewResolveMentionsRequest calls the generic ResolveMentions builder with application/json body
+func NewResolveMentionsRequest(server string, body ResolveMentionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewResolveMentionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewResolveMentionsRequestWithBody constructs an http.Request for the ResolveMentions method, with any body, and a specified content type
+func NewResolveMentionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/mentions/resolve")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListOrgOwnersRequest constructs an http.Request for the ListOrgOwners method
+func NewListOrgOwnersRequest(server string, orgId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgId", orgId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/orgs/%s/owners", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -19068,6 +19311,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /internal/git/repos/{repoId}/tree (the `GitGetTree` operationId).
 	GitGetTreeWithResponse(ctx context.Context, repoId GitRepoIdParam, params *GitGetTreeParams, reqEditors ...RequestEditorFn) (*GitGetTreeResponse, error)
 
+	// ResolveMentionsWithBodyWithResponse Risolve le menzioni `@utente`, `@agente` e `@org/team`
+	//
+	// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+	ResolveMentionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveMentionsResponse, error)
+
+	// ResolveMentionsWithResponse Risolve le menzioni `@utente`, `@agente` e `@org/team`
+	//
+	// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+	ResolveMentionsWithResponse(ctx context.Context, body ResolveMentionsJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveMentionsResponse, error)
+
+	// ListOrgOwnersWithResponse Elenca gli owner di un'organizzazione
+	//
+	// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+	ListOrgOwnersWithResponse(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListOrgOwnersResponse, error)
+
 	// ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 	//
 	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
@@ -20359,7 +20629,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetRepoWatchWithBodyWithResponse Imposta il Watch del repo
 	//
-	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -20368,7 +20638,7 @@ type ClientWithResponsesInterface interface {
 
 	// SetRepoWatchWithResponse Imposta il Watch del repo
 	//
-	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+	// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -22461,6 +22731,130 @@ func (r GitGetTreeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GitGetTreeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ResolveMentionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResolveMentionsResult
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ResolveMentionsResponse) GetJSON200() *ResolveMentionsResult {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ResolveMentionsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResolveMentionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ResolveMentionsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ResolveMentionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResolveMentionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResolveMentionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResolveMentionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListOrgOwnersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrgOwnersResult
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrgOwnersResponse) GetJSON200() *OrgOwnersResult {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrgOwnersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrgOwnersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListOrgOwnersResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrgOwnersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrgOwnersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrgOwnersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrgOwnersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -33664,6 +34058,51 @@ func (c *ClientWithResponses) GitGetTreeWithResponse(ctx context.Context, repoId
 	return ParseGitGetTreeResponse(rsp)
 }
 
+// ResolveMentionsWithBodyWithResponse Risolve le menzioni `@utente`, `@agente` e `@org/team`
+//
+// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+func (c *ClientWithResponses) ResolveMentionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveMentionsResponse, error) {
+	rsp, err := c.ResolveMentionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolveMentionsResponse(rsp)
+}
+
+// ResolveMentionsWithResponse Risolve le menzioni `@utente`, `@agente` e `@org/team`
+//
+// Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati nel testo di una issue o di un commento in utenti. Ogni nome e' `utente` (persona o agente) oppure `org/team`; il confronto non distingue maiuscole. Un nome che non e' un utente attivo o un team esistente non compare nella risposta (resta testo). Un team si espande in tutti i suoi membri attivi: chi vede il repo lo decide core. Massimo 100 nomi per chiamata.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
+func (c *ClientWithResponses) ResolveMentionsWithResponse(ctx context.Context, body ResolveMentionsJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveMentionsResponse, error) {
+	rsp, err := c.ResolveMentions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolveMentionsResponse(rsp)
+}
+
+// ListOrgOwnersWithResponse Elenca gli owner di un'organizzazione
+//
+// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+func (c *ClientWithResponses) ListOrgOwnersWithResponse(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListOrgOwnersResponse, error) {
+	rsp, err := c.ListOrgOwners(ctx, orgId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrgOwnersResponse(rsp)
+}
+
 // ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 //
 // Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
@@ -35825,7 +36264,7 @@ func (c *ClientWithResponses) GetRepoWatchWithResponse(ctx context.Context, owne
 
 // SetRepoWatchWithBodyWithResponse Imposta il Watch del repo
 //
-// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -35840,7 +36279,7 @@ func (c *ClientWithResponses) SetRepoWatchWithBodyWithResponse(ctx context.Conte
 
 // SetRepoWatchWithResponse Imposta il Watch del repo
 //
-// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, tranne le menzioni dirette. Serve `read` sul repo.
+// `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore, menzionato, iscritto); `all`: anche ogni nuova issue e commento del repo; `ignore`: nessuna notifica dal repo, nemmeno le menzioni dirette e le assegnazioni. Serve `read` sul repo.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -37839,6 +38278,100 @@ func ParseGitGetTreeResponse(rsp *http.Response) (*GitGetTreeResponse, error) {
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResolveMentionsResponse parses an HTTP response from a ResolveMentionsWithResponse call
+func ParseResolveMentionsResponse(rsp *http.Response) (*ResolveMentionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResolveMentionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResolveMentionsResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOrgOwnersResponse parses an HTTP response from a ListOrgOwnersWithResponse call
+func ParseListOrgOwnersResponse(rsp *http.Response) (*ListOrgOwnersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrgOwnersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrgOwnersResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized

@@ -170,6 +170,24 @@ func (s *server) clientIP(r *http.Request) string {
 	return peer.String()
 }
 
+// isSecure dice se la richiesta originale è HTTPS: connessione TLS diretta,
+// oppure X-Forwarded-Proto=https da un peer in GITSTACK_IDENTITY_TRUSTED_PROXIES
+// (stessa fiducia di clientIP). Da un peer non fidato l'header è ignorato.
+func (s *server) isSecure(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return false
+	}
+	peer := net.ParseIP(host)
+	if peer == nil || !s.trusted(peer) {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
+}
+
 func (s *server) trusted(ip net.IP) bool {
 	for _, n := range s.trustedProxies {
 		if n.Contains(ip) {
@@ -313,7 +331,7 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt))
+	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
 	exp := res.Session.ExpiresAt
 	writeJSON(w, http.StatusOK, openapi.CurrentSession{
 		User: toUser(res.User, true), AuthMethod: openapi.CurrentSessionAuthMethod("password"), ExpiresAt: &exp,
@@ -336,7 +354,7 @@ func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	http.SetCookie(w, auth.ClearCookie())
+	http.SetCookie(w, auth.ClearCookie(s.isSecure(r)))
 	w.WriteHeader(http.StatusNoContent)
 }
 
