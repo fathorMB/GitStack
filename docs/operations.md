@@ -80,7 +80,7 @@ the admin binary if they differ, without touching k3s or the data.
 | `--image-registry HOST` | `GITSTACK_IMAGE_REGISTRY` | (from chart) | Container registry for GitStack images. Useful for a mirror. |
 | `--admin-binary PATH\|URL` | `GITSTACK_ADMIN_BINARY` | (download from release) | Path or URL of the `gitstack` admin binary; its SHA-256 is verified. |
 | `--admin-sha256 HEX` | `GITSTACK_ADMIN_SHA256` | (from `<binary>.sha256`) | Expected SHA-256 of the admin binary. |
-| `--host NAME\|IP` | `GITSTACK_TLS_MODE` | (auto-detected) | Hostname or IP that clients use to reach GitStack. Repeatable — all values become SANs in the certificate. The first is the public URL. The installer resolves the name and verifies it points to a local address. |
+| `--host NAME\|IP` | — | (auto-detected) | Hostname or IP that clients use to reach GitStack. Repeatable — all values become SANs in the certificate. The first is the public URL. The installer resolves the name and verifies it points to a local address. |
 | `--tls internal` | `GITSTACK_TLS_MODE=internal` | `internal` | Internal CA (default). The installer generates a CA whose key stays on the host only. |
 | `--tls letsencrypt` | `GITSTACK_TLS_MODE=letsencrypt` | — | Public certificate from Let's Encrypt (HTTP-01 challenge). Requires `--host` pointing to a DNS name reachable on the internet on port 80. |
 | `--tls-cert FILE --tls-key FILE` | `GITSTACK_TLS_CERT`, `GITSTACK_TLS_KEY` | — | Client-supplied PEM certificate and key. |
@@ -227,14 +227,23 @@ You can override retention for a single run with `--retention`.
 ### Enabling the daily backup timer
 
 The installer enables a systemd timer (`gitstack-backup.timer`) that runs
-`gitstack backup` every day. The hour is configurable with the environment
+`sudo gitstack backup` every day. The hour is configurable with the environment
 variable `GITSTACK_BACKUP_TIMER_HOUR` (default `02`):
 
 ```sh
-sudo gitstack-backup.timer — every day at 02:00
+# Check the next scheduled run:
+systemctl list-timers gitstack-backup.timer
 ```
 
-To change the hour, edit the timer unit and reload systemd.
+The timer is configured in `/etc/systemd/system/gitstack-backup.timer` with
+`OnCalendar=*-*-* 02:00:00`. To change the hour, re-run the installer with
+the new value:
+
+```sh
+sudo GITSTACK_BACKUP_TIMER_HOUR=03 ./deploy/install.sh
+```
+
+Do not edit the timer unit manually: the installer overwrites it on re-run.
 
 To disable the timer:
 
@@ -244,190 +253,142 @@ sudo systemctl disable --now gitstack-backup.timer
 
 ### Copying backups off the machine
 
-Backups are regular files in the configured destination directory. You can
-copy them with `scp`, `rsync`, or any other tool:
+Backups are regular files in the configured destination directory. Use `rsync`
+to copy them to a separate disk or remote host:
 
 ```sh
-# From a remote machine:
-scp gitstack@homehub:/var/backups/gitstack/gitstack-backup-*.tar.gz ./local-backups/
+# To a backup disk mounted at /mnt/backup:
+rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* /mnt/backup/
 
-# With encryption key (if the backup was encrypted):
-scp gitstack@homehub:/var/backups/gitstack/chiaave.txt ./
+# To a remote host (with the key file kept separately):
+rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* gitstack@backup-server:/backups/gitstack/
 ```
 
-If you use a separate backup disk, mount it and copy archives to an external
-medium or a remote storage service.
-
+> **Keep the encryption key separate from the archive.** Store the key on a
+> different disk or off-site; never put it in the backup destination folder.
+> An encrypted archive without the key is unrecoverable.
 ---
 
 ## Restore
 
-`gitstack restore` restores an archive on a clean installation of the
-**same server version**. The database, repositories, attachments, secrets, and
-configuration files are restored to a coherent state.
+Restores a backup archive onto a GitStack installation. The archive must
+have been produced by `gitstack backup` from the **same server version**:
+the restore refuses the archive if the version tag inside does not match the
+installed version. The command overwrites the database, all Git repositories,
+the attachments directory, and the Secret data, then restarts the affected
+services.
 
-### Prerequisites
+### Steps
 
-1. GitStack must be installed on the target machine (run `deploy/install.sh`).
-2. The installed version must match the version in the backup archive
-   (`image_tag` in `config.yaml` must equal the archive's `version`).
-3. If the archive was encrypted, you need the key file.
+1. Stop the running instance (or target a clean install of the same version):
+   the restore replaces database tables and repository data in place.
 
-### Restoring a backup
+2. Run the restore command pointing at the archive:
 
-```sh
-sudo gitstack restore /var/backups/gitstack/gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
-```
+   ```sh
+   sudo gitstack restore /var/backups/gitstack/gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
+   ```
 
-**With an encrypted archive:**
+   **With an encrypted archive:**
 
-```sh
-sudo gitstack restore --key-file chiave.txt /var/backups/gitstack/gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
-```
+   ```sh
+   sudo gitstack restore --key-file /path/to/key.txt \
+     /var/backups/gitstack/gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
+   ```
 
-**Override the working directory (where the stage is created):**
+   **Override the backup destination directory** (where the archive lives)
+   from outside the config path:
 
-```sh
-sudo gitstack restore --dest /mnt/backup /path/to/backup.tar.gz
-```
+   ```sh
+   sudo gitstack restore --dest /mnt/backup/gitstack \
+     gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
+   ```
 
-### What happens during restore
+3. Wait for the command to finish. On success it prints:
 
-1. The archive is opened and its manifest is read and verified.
-2. The archive is extracted to a temporary stage directory in the destination
-   directory (mode `0700`).
-3. Each file is verified against the manifest (size and SHA-256).
-4. All services that use the database or volumes (`gateway`, `git`, `core`,
-   `identity`) are scaled to zero — they stay stopped until the restore is
-   complete.
-5. The database is restored: the `identity` and `core` schemas are dropped and
-   repopulated from `database.sql`.
-6. The Git repositories are restored from `git-data.tar` (the `git-data` volume
-   is emptied then repopulated).
-7. Attachments are restored from `attachments.tar` (if present).
-8. Kubernetes secrets are restored from `secrets.json` (the Postgres secret is
-   **not** restored — its password is the one from the new installation).
-9. Configuration files under `config/` are restored to `/etc/gitstack/`, except
-   the `config.yaml` itself (which remains the one from the new installation).
-10. The services are scaled back up and the installer waits for all of them to
-    become Ready.
+   ```
+   Restore completato: database, repo, allegati, Secret e configurazione ripristinati.
+   ```
 
-If any step fails, the services **stay stopped** (a half-restored database
-must not receive traffic) and the error message explains how to restart them
-manually. Restored SSH host keys prevent the "host key changed" warning for
-clients; existing sessions and tokens continue to work because identity finds
-its service secret and OIDC key again.
+4. Verify with `gitstack status` that all services are ready.
 
-### Known limitations
+### Exit codes
 
-- External Postgres (`postgres.enabled: false` in the chart values) is not
-  supported for restore (the dump comes from inside the Postgres pod).
-- Only `local-path` volumes (on-host folders) are supported.
+| Code | Meaning |
+|---|---|
+| `0` | Restore completed successfully |
+| `2` | Usage error: missing archive or invalid option |
+| `3` | Configuration file missing or unreadable |
+| `4` | Cannot reach the Kubernetes cluster |
+| `5` | Requires root (re-run with `sudo`) |
+| `6` | Restore refused — version mismatch, corrupted archive, or encrypted archive without `--key-file` |
+| `70` | Unexpected error |
 
-### Monthly restore drill
-
-We recommend running a restore drill at least once a month:
-
-1. Install GitStack version X, create test users, organizations, repositories
-   (with pushes via SSH), issues with attachments, and note the repository
-   SHAs (`git ls-remote`). Keep a reference clone.
-2. Run a backup: `sudo gitstack backup --key-file k`. Verify the archive
-   (`ls -l` — archive is `0600`, directory is `0700`, `.sha256` and
-   `manifest.json` exist; for an unencrypted archive: `tar -xzOf archive.tar.gz manifest.json`).
-3. Copy the archive off the machine.
-4. Clean the machine (uninstall k3s, remove `/var/lib/rancher`) and reinstall
-   the same version X.
-5. Restore: `sudo gitstack restore --key-file k archive.tar.gz`. After login,
-   verify that organizations, repositories, issues, attachments, and `git
-   clone` (HTTP and SSH, without a new host-key warning) match the references
-   from step 1.
+The source of the restore logic is `admin/internal/cli/backup.go`
+(`runRestore`, line 152). It is not in a separate `restore.go` file.
 
 ---
 
 ## Upgrade
 
-`gitstack upgrade` updates a GitStack installation to a newer version with
-automatic pre-backup, health check, and rollback on failure.
-
-### How it works
-
-The upgrade follows these steps:
-
-1. **Checks** (nothing changes if any check fails, exit code 6):
-   - The target version exists (GitHub API); it is not a downgrade (the
-     installed version is compared against the target: "behind" or diverged
-     histories are rejected — downgrade is not supported because database
-     migrations cannot be undone).
-   - GitStack is healthy right now.
-   - The `gitstack-linux-amd64` binary from the release `sha-<commit>` is
-     downloaded and its SHA-256 matches (V5).
-   - The `deploy/gitstack` chart from the target commit is downloaded.
-   - Every image the chart would use exists in its registry (verified via
-     `helm template` with current values).
-   - `--dry-run` stops here.
-
-2. **Pre-backup** using the same logic as `gitstack backup`
-   (`--dest`, `--key-file`).
-
-3. **`helm upgrade --wait`** of the downloaded chart, with the values chosen
-   at installation (`helm get values` re-applied to the new chart defaults
-   using `--reuse-values` would lose new keys). Migrations run on service
-   startup. Then waits for all services and the API to become healthy,
-   up to `--timeout` (default 10 minutes).
-
-4. If everything is healthy: atomic replacement of the binary
-   (`/usr/local/bin/gitstack`), the local chart copy (`chart_dir`), and
-   `image_tag` in the config.
-
-### Rollback
-
-If any step after the backup fails (including Ctrl-C or a mid-way error):
-
-1. The binary and the local chart copy are restored.
-2. `helm rollback` to the previous revision.
-3. **If migrations touched the database** (schema versions in
-   `identity.schema_migrations` and `core.schema_migrations` have changed
-   or are dirty, or unreadable), `gitstack restore` of the pre-backup is
-   performed. If the database was not touched, nothing is restored: data
-   written in the meantime is kept. With the restore, data written after
-   the backup during the upgrade is lost — the final message says so.
-
-The exit codes are:
-
-| Code | Meaning |
-|---|---|
-| 0 | Upgraded successfully, all services healthy |
-| 6 | Rejected by checks (nothing was modified) |
-| 7 | Upgrade failed, rollback succeeded |
-| 8 | Upgrade failed and rollback did not succeed: manual intervention needed |
-
-### Usage
+`gitstack upgrade` updates the GitStack Helm chart and the admin binary.
+It performs a **preventive backup** before touching anything, applies the
+migrations of the target chart, verifies the health of the services, and
+**rolls back automatically** if the post-upgrade health check fails.
+### Dry-run (recommended before any real upgrade)
 
 ```sh
-# Upgrade to the latest commit on main:
-sudo gitstack upgrade
-
-# Upgrade to a specific version or commit SHA:
-sudo gitstack upgrade --to sha-abc123def
-
-# Dry run (checks only, no changes):
 sudo gitstack upgrade --dry-run
-
-# With custom timeout, backup destination, and extra Helm values:
-sudo gitstack upgrade --to sha-abc123def --dest /mnt/backup/gitstack \
-  --timeout 20m --key-file chiave.txt \
-  --set gateway.replicaCount=2 --values extra-values.yaml
 ```
+
+Reports the target version, the commit SHA, and whether the services
+would be healthy after the upgrade — without making any change.
+
+### Full upgrade
+
+```sh
+sudo gitstack upgrade
+```
+
+Steps executed:
+
+1. **Backup** of the current state (same options as `gitstack backup`).
+2. **Pull** the target image and Helm chart (default: `main` branch of
+   `fathorMB/GitStack`; override with `--to`, `GITSTACK_REPO`, `GITSTACK_REF`).
+3. **Apply migrations** via `helm upgrade --install`.
+4. **Wait** for the services to become healthy (default timeout 5 min;
+   override with `--timeout`).
+5. **Health check** on gateway `/healthz` and on each service readiness.
+   If the check fails, a **rollback** to the previous chart revision is
+   triggered automatically.
+6. On success, prints the summary of changes; on rollback, prints the
+   rollback log and exits with code `7` (`ExitRolledBack`).
+
+### Options
+
+```sh
+sudo gitstack upgrade \
+  --to v0.2.0 \                         # target version tag or sha (default: latest on main)
+  --dest /mnt/backup/gitstack \         # override backup destination
+  --key-file /path/to/key.txt \         # encrypt the preventive backup
+  --timeout 10m \                       # max time for health checks (default: 5m)
+  --set service.gateway.replicas=2 \    # Helm --set override, repeatable
+  --values extra-values.yaml            # additional Helm values file, repeatable
+```
+
+Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
+`GITSTACK_REF` (default `main`).
 
 ### What happens if the upgrade fails
 
-- **Before the backup**: nothing is modified. Fix the cause and retry.
-- **After the backup but before `helm upgrade`**: the backup is preserved and
-  the binary is not changed.
-- **During or after `helm upgrade`** (the most likely failure point):
-  automatic rollback is attempted. If the rollback succeeds (exit 7) the
-  system is back to a healthy state with the old version. If the rollback
-  fails (exit 8), the message tells you the commands to finish manually.
+| Exit code | Outcome |
+|---|---|
+| `0` | Upgrade completed successfully |
+| `1` | Post-upgrade health check failed (services not ready) |
+| `2` | Usage error |
+| `6` | Upgrade refused (pre-checks failed, e.g. incompatible target) — nothing changed |
+| `7` | **Rolled back** — the previous state was restored automatically |
+| `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
 
 ---
 
@@ -435,149 +396,131 @@ sudo gitstack upgrade --to sha-abc123def --dest /mnt/backup/gitstack \
 
 ### `gitstack status`
 
+Reports the server version, the admin binary version, the host, the Helm
+release, the readiness of every service, the API reachability, the last
+backup timestamp, and an overall health line.
+
 ```sh
-gitstack status [--json] [--config PATH]
+sudo gitstack status
 ```
 
-Displays the version, host, service health, and last backup. Without
-`--json` it prints a human-readable report:
+Example output:
 
 ```
 GitStack
-  Versione server: sha-f4f3a2b
-  Versione gitstack: sha-f4f3a2b
+  Versione server: 0.1.0
+  Versione gitstack: 0.1.0
   Host: homehub.local (SSH git: porta 2222)
   Release: gitstack (namespace default)
 
 Servizi
-  core                         1/1 pronti  OK
-  gateway                      1/1 pronti  OK
-  git                          1/1 pronti  OK
-  identity                     1/1 pronti  OK
-  api (gateway /healthz)        OK (https://homehub.local/api/healthz: HTTP 200)
+  gateway                        1/1 pronti  OK
+  identity                       1/1 pronti  OK
+  core                           1/1 pronti  OK
+  api (gateway /healthz)         OK         OK
 
-Ultimo backup: ultimo successo: 2026-10-06 02:00:15 (/var/backups/gitstack/gitstack-backup-20261006T020015Z-sha-f4f3a2b.tar.gz)
+Ultimo backup: 2026-10-06T14:30:00Z (successo, gitstack-backup-...tar.gz)
 
 Stato: sano
 ```
 
-With `--json` it outputs a JSON object with `binary_version` and `report`
-fields.
-
-Exit codes:
-
-| Code | Meaning |
-|---|---|
-| 0 | All services and the API are healthy |
-| 1 | At least one service or the API is not healthy |
-| 2 | Usage error |
-| 3 | Configuration file missing or invalid |
-| 4 | The cluster cannot be queried |
-| 5 | Root required (only for commands that change state) |
-
-### Reading service status manually
+**JSON mode** (`--json`): produces structured output for scripting:
 
 ```sh
-# Kubernetes pods:
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl get pods -n default
-
-# Helm release:
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
-
-# API health from a client:
-curl -i https://homehub.local/api/healthz
-
-# Helm status:
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm status gitstack -n default
+sudo gitstack status --json
 ```
 
-### Reading the admin password
+The command reads `/etc/gitstack/config.yaml` (mode `0600`); run it
+under `sudo` or with `GITSTACK_CONFIG` pointing to an accessible file.
 
-```sh
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
-```
+Exit codes: `0` (all healthy), `1` (at least one service unhealthy),
+`4` (cannot query the cluster), `3` (configuration error).
 
-### Checking k3s logs
+### `gitstack version`
 
-```sh
-journalctl -u k3s -f
-```
-
-### Checking the last backup state
-
-The last backup result is stored in
-`/etc/gitstack/backup-state.json`:
-
-```json
-{
-  "success": true,
-  "path": "/var/backups/gitstack/gitstack-backup-20261006T020015Z-sha-f4f3a2b.tar.gz",
-  "at": "2026-10-06T02:00:15Z"
-}
-```
-
-On failure, the `error` field contains the error message.
-
-### Configuration file
-
-The installation configuration is at `/etc/gitstack/config.yaml` (mode
-`0600`):
-
-```yaml
-version: 1
-host: homehub.local
-ssh_port: 2222
-tls: internal
-ca_cert: /etc/gitstack/tls/ca.crt
-chart_dir: /usr/local/share/gitstack/chart
-release: gitstack
-namespace: default
-image_tag: sha-f4f3a2b
-kubeconfig: /etc/rancher/k3s/k3s.yaml
-backup:
-  destination: /var/backups/gitstack
-  retention: 7
-```
-
-### Changing the hostname
-
-If the hostname changes (for example after a network reconfiguration):
-
-```sh
-sudo gitstack config set host newname.local
-```
-
-This regenerates the certificate (internal CA mode), re-deploys the services
-with the new public URL, and updates the configuration file.
-
-### Version
+Prints only the admin binary version, without any config read. Does not
+require `sudo`:
 
 ```sh
 gitstack version
 ```
 
-Prints the binary version (normally the same as `image_tag` in the config,
-which is the commit tag of the deployed images).
+Output:
+
+```
+gitstack 0.1.0
+```
+
+### TLS diagnostics
+
+The script `deploy/gitstack/tls/gitstack-tls.sh` (installed as
+`/usr/local/bin/gitstack-tls`) supports:
+
+- `gitstack-tls fingerprint` — prints the CA certificate SHA-256 fingerprint
+- `gitstack-tls renew` — regenerates the server certificate (internal CA mode)
+
+Both need `sudo` on internal CA because they read/write under
+`/etc/gitstack/`.
 
 ---
 
-## Quick reference: most used commands
+## Quick reference
 
-| Command | Description |
+### Commands
+
+| Command | Needs `sudo`? | Purpose |
+|---|---|---|
+| `gitstack version` | no | Print the admin binary version |
+| `gitstack status [--json]` | yes* | Health report: services, API, last backup |
+| `gitstack backup` | yes | Create a coherent backup archive |
+| `gitstack backup --key-file KEYFILE` | yes | Same, encrypted with AES-256-GCM |
+| `gitstack restore ARCHIVE` | yes | Restore an archive (same version only) |
+| `gitstack restore --key-file KEYFILE ARCHIVE` | yes | Restore an encrypted archive |
+| `gitstack upgrade` | yes | Upgrade with preventive backup and automatic rollback |
+| `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
+| `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
+
+\* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),
+so it fails as a non-root user with a permission error.
+
+### Common flags
+
+| Flag | Applies to | Purpose |
+|---|---|---|
+| `--config PATH` | All commands | Override config file path (default: `/etc/gitstack/config.yaml`) |
+| `--dest DIR` | `backup`, `restore`, `upgrade` | Override the backup destination directory |
+| `--key-file FILE` | `backup`, `restore`, `upgrade` | Path to the AES-256-GCM encryption key |
+| `--to TAG\|SHA` | `upgrade` | Target version; default is latest on the `main` branch |
+| `--timeout D` | `upgrade` | Max time for health checks (default `5m`) |
+| `--set KEY=VAL` | `upgrade` | Helm value override, repeatable |
+| `--values FILE` | `upgrade` | Additional Helm values file, repeatable |
+| `--json` | `status` | Output in JSON format |
+| `--dry-run` | `upgrade` | Check readiness without making changes |
+
+### Exit codes summary
+
+| Code | Meaning |
 |---|---|
-| `sudo ./deploy/install.sh` | Install or reinstall GitStack |
-| `sudo gitstack status` | Check the health of the installation |
-| `sudo gitstack version` | Show the binary version |
-| `sudo gitstack backup` | Create a backup in the configured destination |
-| `sudo gitstack backup --key-file k` | Create an encrypted backup |
-| `sudo gitstack restore archive.tar.gz` | Restore an archive on the same version |
-| `sudo gitstack restore --key-file k archive.tar.gz` | Restore an encrypted archive |
-| `sudo gitstack upgrade` | Upgrade to the latest commit on main |
-| `sudo gitstack upgrade --dry-run` | Check if an upgrade would succeed |
-| `sudo gitstack config set host NAME` | Change the hostname (re-generates the certificate) |
-| `journalctl -u k3s -f` | Stream k3s logs |
+| `0` | Success (`status` = healthy, or command completed) |
+| `1` | `status` reports at least one unhealthy service |
+| `2` | Usage error (wrong command, missing argument) |
+| `3` | Configuration file missing or unreadable |
+| `4` | Cannot reach the Kubernetes cluster |
+| `5` | Command requires root (re-run with `sudo`) |
+| `6` | Refused: incompatible version, corrupted archive, or missing key |
+| `7` | Upgrade rolled back automatically |
+| `8` | Upgrade failed and rollback also failed — manual intervention needed |
+| `70` | Unexpected error |
+
+### Configuration files
+
+| Path | Purpose |
+|---|---|
+| `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
+| `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
+| `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
 
 ---
 
-*This guide is T-09 of milestone M-08 [c_8458909a21d9035f]. Commands and
-options are taken from the code on main (install.sh, admin/, config).*
+*Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
+decisioni D17–D19 [c_1d1d61aca3dea601]*
