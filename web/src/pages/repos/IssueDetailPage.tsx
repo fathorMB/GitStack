@@ -31,6 +31,8 @@ import type { Issue, IssueAttachment, IssueCloseReason, IssueComment, IssueEvent
 import type { Repository } from '../../lib/reposApi';
 import { permissions } from '../../lib/issuePerms';
 import { IssueEditor } from './IssueEditor';
+import { groupCommitEvents, linkedCommits } from '../../lib/issueLinks';
+import { ClosedByCommitEvent, LinkedCommitsBox, LinkedCommitsEvent, ReferencedFromEvent } from './IssueLinks';
 import { IssueSubscriptionBox } from './IssueSubscriptionBox';
 import { loadMe } from './repoAdmin';
 
@@ -172,10 +174,20 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
     for (const e of events) {
       // «opened» e' l'intestazione, «edited» e' il flag; i commenti eliminati sono nella cronologia dei commenti (M-06 per i riferimenti).
       if (e.type === 'opened' || e.type === 'edited' || e.type === 'referenced' || e.type === 'comment_deleted') continue;
-      items.push({ at: e.createdAt, node: <EventView key={`e-${e.id}`} e={e} /> });
+      if (e.type === 'commit_linked') continue; // raggruppati per push qui sotto
+      if (e.type === 'referenced_from') {
+        items.push({ at: e.createdAt, node: <ReferencedFromEvent key={`e-${e.id}`} e={e} /> });
+      } else if (e.type === 'closed_by_commit') {
+        items.push({ at: e.createdAt, node: <ClosedByCommitEvent key={`e-${e.id}`} e={e} repoFullName={`${owner}/${name}`} defaultBranch={repo.defaultBranch} /> });
+      } else {
+        items.push({ at: e.createdAt, node: <EventView key={`e-${e.id}`} e={e} /> });
+      }
+    }
+    for (const g of groupCommitEvents(events)) {
+      items.push({ at: g.at, node: <LinkedCommitsEvent key={`g-${g.id}`} group={g} repoFullName={`${owner}/${name}`} /> });
     }
     return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).map((i) => i.node);
-  }, [comments, events, issue, perm, me, ref, act]);
+  }, [comments, events, issue, perm, me, ref, act, owner, name, repo.defaultBranch]);
 
   const saveEdit = async () => {
     if (!title.trim()) return;
@@ -302,7 +314,7 @@ function Detail({ repo, data, act, actionError, number }: { repo: Repository; da
           {timeline}
           <CommentForm repo={repo} issue={issue} perm={perm} ref0={ref} act={act} />
         </div>
-        <Sidebar data={data} perm={perm} ref0={ref} act={act} />
+        <Sidebar data={data} perm={perm} ref0={ref} act={act} repoFullName={`${owner}/${name}`} />
       </div>
     </div>
   );
@@ -672,7 +684,7 @@ function CommentForm({ repo, issue, perm, ref0, act }: { repo: Repository; issue
   );
 }
 
-function Sidebar({ data, perm, ref0, act }: { data: Data; perm: Perm; ref0: Ref; act: Act }) {
+function Sidebar({ data, perm, ref0, act, repoFullName }: { data: Data; perm: Perm; ref0: Ref; act: Act; repoFullName: string }) {
   const { issue, labels, milestones } = data;
   const [edit, setEdit] = useState<'assignees' | 'labels' | 'milestone' | null>(null);
   const [assignee, setAssignee] = useState('');
@@ -801,6 +813,8 @@ function Sidebar({ data, perm, ref0, act }: { data: Data; perm: Perm; ref0: Ref;
           </select>
         ) : null}
       </div>
+
+      <LinkedCommitsBox commits={linkedCommits(data.events)} repoFullName={repoFullName} />
 
       {perm.admin ? (
         <div className="side-sec">
