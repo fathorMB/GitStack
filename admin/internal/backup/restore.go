@@ -174,18 +174,47 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 	}
 	o.logf("ripristinati %d file di configurazione (config.yaml resta quello della nuova installazione)", n)
 
+	// CA e certificato ripristinati su disco vanno anche nel cluster. Se
+	// fallisce, i dati sono già a posto: i servizi si riaccendono comunque e
+	// l'errore (alla fine) dice come rifare solo questo passo.
+	var tlsErr error
+	if o.PublishTLS != nil {
+		o.logf("riallineo CA e certificato nel cluster (Secret %s-tls, ConfigMap %s-ca)", o.Cfg.Release, o.Cfg.Release)
+		if e := o.PublishTLS(ctx); e != nil {
+			tlsErr = fmt.Errorf("i dati sono ripristinati ma CA e certificato non sono stati pubblicati nel cluster: %w\n"+
+				"I servizi sono stati riaccesi; rilancia: sudo gitstack-tls ensure", e)
+		}
+	}
+
 	o.logf("riavvio i servizi")
 	if e := scaleBack(); e != nil {
-		return failed(e)
+		return errors.Join(tlsErr, failed(e))
 	}
 	for _, c := range restoreStops {
 		if _, ok := saved[c]; ok {
 			if e := o.Cluster.WaitReady(ctx, o.deployment(c)); e != nil {
-				return fmt.Errorf("%s non è tornato pronto dopo il restore: %w", c, e)
+				return errors.Join(tlsErr, fmt.Errorf("%s non è tornato pronto dopo il restore: %w", c, e))
 			}
 		}
 	}
-	return nil
+	if o.PublishTLS != nil && tlsErr == nil {
+		// Il web monta il ConfigMap della CA come cartella: il kubelet lo
+		// aggiorna dopo circa un minuto. Il restart fa sì che
+		// /downloads/ca.crt sia già giusto quando il comando esce.
+		web := o.deployment("web")
+		if _, found, e := o.Cluster.Replicas(ctx, web); e != nil {
+			return fmt.Errorf("repliche di web: %w", e)
+		} else if found {
+			o.logf("riavvio il web per servire la CA ripristinata")
+			if e := o.Cluster.Restart(ctx, web); e != nil {
+				return fmt.Errorf("riavvio di web: %w (la CA è nel ConfigMap; il web la serve entro un minuto)", e)
+			}
+			if e := o.Cluster.WaitReady(ctx, web); e != nil {
+				return fmt.Errorf("web non è tornato pronto dopo il riavvio: %w", e)
+			}
+		}
+	}
+	return tlsErr
 }
 
 // extractVerified estrae le voci rimanenti in stage verificando che siano
@@ -273,6 +302,13 @@ func (o *Options) restoreSecrets(ctx context.Context, path string) error {
 	return nil
 }
 
+// keepOnRestore: file (relativi a ConfigDir) che descrivono la macchina di
+// oggi, non quella del backup, e restano quelli della nuova installazione:
+// tls.conf (nomi e IP per i SAN, modalità, release) e install.conf (host).
+// Così `gitstack-tls ensure` riemette il certificato per l'host attuale, ma
+// firmato dalla CA ripristinata.
+var keepOnRestore = map[string]bool{"tls/tls.conf": true, "tls/install.conf": true}
+
 // restoreConfig rimette i file di config/ in ConfigDir, tranne il file di
 // configurazione in uso. Ritorna quanti ne ha scritti.
 func (o *Options) restoreConfig(stage string, m *Manifest) (int, error) {
@@ -291,7 +327,7 @@ func (o *Options) restoreConfig(stage string, m *Manifest) (int, error) {
 			continue
 		}
 		rel := strings.TrimPrefix(f.Name, ConfigPrefix)
-		if rel == skip {
+		if rel == skip || keepOnRestore[rel] {
 			continue
 		}
 		dst, err := safeJoin(o.ConfigDir, rel)

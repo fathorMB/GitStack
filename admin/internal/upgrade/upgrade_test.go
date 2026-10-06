@@ -606,3 +606,5 @@ func TestFetchChartRejectsTraversal(t *testing.T) {
 		t.Error("percorso con .. accettato")
 	}
 }
+
+func (f *fakeCluster) Restart(context.Context, string) error { return nil }

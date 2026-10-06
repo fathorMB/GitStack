@@ -209,7 +209,26 @@ sudo gitstack restore --key-file chiave /srv/backup/gitstack-backup-….tar.gz.e
    ruolo `identity_app` la riallinea l'initContainer di identity dal Secret
    ripristinato) e rimette i file di `config/` in `/etc/gitstack`, **senza**
    sovrascrivere `config.yaml` (lo ha appena scritto l'installer);
-6. riporta le repliche ai valori di prima e aspetta che i Deployment siano pronti.
+6. **TLS e CA** (solo con `tls: internal` o `custom`; con `insecure` e
+   `letsencrypt` non si fa niente): i file di `/etc/gitstack/tls` (`ca.crt`,
+   `ca.key`, `server.crt`/`server.key`, `server.sans`) tornano quelli del
+   backup, ma `tls/tls.conf` e `tls/install.conf` **restano quelli della nuova
+   installazione**, perché descrivono la macchina di oggi (nomi e IP per i SAN,
+   host). Poi, prima di riaccendere i servizi, il restore lancia
+   `gitstack-tls ensure` senza opzioni: se i SAN di oggi differiscono da quelli
+   del backup, o il certificato non è firmato dalla CA ripristinata, il
+   certificato del server è riemesso **con la CA del backup**; altrimenti si
+   riusa quello ripristinato. `ensure` aggiorna il Secret `<release>-tls`
+   (Traefik lo rilegge da solo) e il ConfigMap `<release>-ca`. A servizi
+   riaccesi il restore fa un `rollout restart` del Deployment `<release>-web`
+   e ne aspetta il ready, perché il web monta il ConfigMap come cartella e il
+   kubelet lo aggiornerebbe solo dopo circa un minuto: all'uscita
+   `/downloads/ca.crt` è già la CA del backup, come `gitstack-tls fingerprint` e
+   la catena servita su 443. I client che si fidavano della CA originale
+   continuano a fidarsi. Se `ensure` fallisce, i dati sono già ripristinati: i
+   servizi sono riaccesi, il comando esce con codice 70 e dice di rilanciare
+   `sudo gitstack-tls ensure`;
+7. riporta le repliche ai valori di prima e aspetta che i Deployment siano pronti.
 
 Se un passo dopo l'arresto fallisce i servizi **restano fermi** (un database
 o dei repo a metà non devono ricevere traffico) e l'errore spiega come

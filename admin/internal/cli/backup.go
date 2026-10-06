@@ -148,6 +148,29 @@ func (a *App) backupStateWrite(cfgPath string, success bool, path string, err er
 	_ = backupstate.Write(cfgDir, s)
 }
 
+// publishTLS lancia `gitstack-tls ensure` sulla cartella tls ripristinata,
+// senza opzioni: nomi e IP vengono da tls.conf della nuova installazione, quindi
+// il certificato del server è riemesso (con la CA del backup) se i SAN o la
+// firma non combaciano.
+func (a *App) publishTLS(ctx context.Context, configDir string) error {
+	tlsDir := a.Getenv("GITSTACK_TLS_DIR")
+	if tlsDir == "" {
+		tlsDir = filepath.Join(configDir, "tls")
+	}
+	tlsBin := a.Getenv("GITSTACK_TLS_BIN")
+	if tlsBin == "" {
+		tlsBin = tlsToolPath
+	}
+	out, err := a.Runner.Run(ctx, []string{"GITSTACK_TLS_DIR=" + tlsDir}, tlsBin, "ensure")
+	if len(out) > 0 {
+		_, _ = a.Stdout.Write(out)
+	}
+	if err != nil {
+		return fmt.Errorf("gitstack-tls ensure: %w", err)
+	}
+	return nil
+}
+
 func runRestore(ctx context.Context, a *App, args []string) int {
 	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -197,6 +220,11 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	}
 	o := a.options(cfg, path, key)
 	o.Cluster, o.DestDir = cl, *dest
+	// Con TLS internal o custom la CA e il certificato ripristinati su disco
+	// vanno pubblicati nel cluster; con insecure e letsencrypt niente.
+	if cfg.TLS == "internal" || cfg.TLS == "custom" {
+		o.PublishTLS = func(ctx context.Context) error { return a.publishTLS(ctx, o.ConfigDir) }
+	}
 	if err := backup.Restore(ctx, o, archive); err != nil {
 		return a.backupFailure("restore", err)
 	}

@@ -91,6 +91,11 @@ type Options struct {
 	// ConfigFile è il file di configurazione in uso; non si sovrascrive in
 	// restore (l'installer lo ha già scritto per la nuova installazione).
 	ConfigFile string
+	// PublishTLS, in restore con TLS internal o custom, riallinea al
+	// certificato e alla CA ripristinati in ConfigDir/tls il Secret
+	// <release>-tls e il ConfigMap <release>-ca (gitstack-tls ensure).
+	// Impostato da internal/cli; nil = niente da fare.
+	PublishTLS func(ctx context.Context) error
 	// DestDir sostituisce cfg.Backup.Destination.
 	DestDir string
 	// Key è la chiave di cifratura (backup, opzionale) o di decifratura.
