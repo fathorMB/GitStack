@@ -256,7 +256,7 @@ func lastBackup(dir string) string {
 	var newest string
 	var newestTime time.Time
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".") {
+		if strings.HasPrefix(e.Name(), ".") || strings.HasSuffix(e.Name(), ".sha256") {
 			continue
 		}
 		info, err := e.Info()
