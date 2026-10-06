@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"regexp"
 	"sort"
@@ -308,9 +309,34 @@ func (s *apiServer) listIssueEventsFiltered(
 		return nil, 0, err
 	}
 
+	// C1, C2: il collegamento e la chiusura da commit di un altro repo li vede
+	// solo chi legge anche quel repo (filtro su commit.repositoryId, con
+	// cache per repo).
+	commitRepoOK := map[uuid.UUID]bool{}
 	var filtered []openapi.IssueEvent
 	for _, re := range rawEvents {
 		ev := re.ev
+
+		if (ev.Type == "commit_linked" || ev.Type == "closed_by_commit") && ev.Data != nil {
+			if c, ok := (*ev.Data)["commit"].(map[string]any); ok {
+				if idStr, _ := c["repositoryId"].(string); idStr != "" && idStr != ia.repo.ID.String() {
+					rid, err := uuid.Parse(idStr)
+					if err != nil {
+						continue
+					}
+					ok, seen := commitRepoOK[rid]
+					if !seen {
+						if ok, err = s.repoIdentity.HasRole(ctx, ia.userID, rid, "read"); err != nil {
+							return nil, 0, fmt.Errorf("permesso read sul repo del commit: %w", err)
+						}
+						commitRepoOK[rid] = ok
+					}
+					if !ok {
+						continue
+					}
+				}
+			}
+		}
 
 		if ev.Type == "referenced_from" && ev.Data != nil {
 			srcRepoIDStr, _ := (*ev.Data)["sourceRepoId"].(string)
@@ -358,6 +384,10 @@ func (s *apiServer) listIssueEventsFiltered(
 
 		if ev.Data != nil {
 			delete(*ev.Data, "sourceRepoId")
+			// repositoryId serve solo al filtro di accesso: non esce dall'API.
+			if c, ok := (*ev.Data)["commit"].(map[string]any); ok {
+				delete(c, "repositoryId")
+			}
 		}
 
 		result = append(result, ev)

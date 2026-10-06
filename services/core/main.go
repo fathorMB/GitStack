@@ -22,6 +22,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/gitpush"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
+	"github.com/fathorMB/GitStack/services/core/internal/issuelinks"
 	"github.com/fathorMB/GitStack/services/core/internal/mailer"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 	"github.com/fathorMB/GitStack/services/core/internal/notify"
@@ -218,8 +219,10 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// dall'outbox, scrive core.notifications e fa la conservazione delle
 	// lette (C9). Serve identity per sapere chi vede il repo (I8): senza,
 	// nessuna notifica (mai una notifica a chi potrebbe non leggere il repo).
+	var notifyEng *notify.Engine
 	if id, ok := repoLookup.(notify.Identity); ok {
 		eng := &notify.Engine{Pool: pool, Identity: id, Log: logger}
+		notifyEng = eng
 		// Email delle notifiche (M-06/F, C5): solo con un SMTP configurato.
 		// Senza, EmailWindow resta 0: nessuna notifica entra nella coda delle
 		// email e nessun invio viene tentato; restano le notifiche in-app.
@@ -269,20 +272,21 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if js, err := jetstream.New(nc); err != nil {
 		logger.Error("apertura di JetStream per i webhook push non riuscita: i push non generano webhook", "err", err)
 	} else {
-		go func() {
-			// Se NATS non è ancora raggiungibile il consumer si riprova.
-			for ctx.Err() == nil {
-				err := gitpush.Run(ctx, js, gitpush.DurableWebhooks, hooks.EnqueuePush, logger)
-				if err == nil || ctx.Err() != nil {
-					return
-				}
-				logger.Warn("consumer git.push dei webhook non avviato, si riprova", "err", err)
-				select {
-				case <-ctx.Done():
-				case <-time.After(5 * time.Second):
-				}
+		go runPushConsumer(ctx, js, gitpush.DurableWebhooks, hooks.EnqueuePush, logger)
+		// Commit collegati e chiusura con fixes #n (M-06/C, GIT-131): servono i
+		// permessi di identity; senza, nessun collegamento.
+		if id, ok := repoLookup.(issuelinks.Identity); ok {
+			linker := &issuelinks.Linker{Pool: pool, Identity: id, Log: logger}
+			if notifyEng != nil {
+				linker.Notifier = notifyEng
 			}
-		}()
+			if rd, ok := gitAPI.(gitclient.Reader); ok {
+				linker.Git = rd
+			}
+			go runPushConsumer(ctx, js, gitpush.DurableIssueLinks, linker.HandlePush, logger)
+		} else {
+			logger.Warn("identity non configurata: i commit non si collegano alle issues")
+		}
 	}
 
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
@@ -384,4 +388,20 @@ func parseCommand(args []string) (command, int, error) {
 		steps = n
 	}
 	return cmdMigrateDown, steps, nil
+}
+
+// runPushConsumer tiene acceso un consumer git.push: se NATS non è ancora
+// raggiungibile lo riprova ogni 5 secondi, finché ctx non finisce.
+func runPushConsumer(ctx context.Context, js jetstream.JetStream, durable string, h gitpush.Handler, logger *slog.Logger) {
+	for ctx.Err() == nil {
+		err := gitpush.Run(ctx, js, durable, h, logger)
+		if err == nil || ctx.Err() != nil {
+			return
+		}
+		logger.Warn("consumer git.push non avviato, si riprova", "durable", durable, "err", err)
+		select {
+		case <-ctx.Done():
+		case <-time.After(5 * time.Second):
+		}
+	}
 }
