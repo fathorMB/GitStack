@@ -118,9 +118,23 @@ Il chart parla HTTP di default (job k3d della CI, `helm install` a mano); l'inst
 | (TLSStore `default`) | con `secretName` il chart crea un `TLSStore` Traefik `default` nel namespace della release che punta a quel Secret: il certificato dell'installer vale anche per chi si collega per IP (senza SNI, Traefik altrimenti serve il suo "TRAEFIK DEFAULT CERT" perche' con ServiceLB l'indirizzo locale e' quello del pod). Non si crea con `certResolver` (`templates/tlsstore.yaml`) |
 | `ingress.tls.certResolver` | resolver ACME di Traefik (Let's Encrypt), nessun Secret |
 | `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (308) manda tutto a https (`templates/ingress-redirect.yaml`) |
-| `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/usr/share/nginx/html/downloads`, e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
+| `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/etc/gitstack/ca` e nginx lo serve su `/downloads/ca.crt` (i binari di `gs` stanno nell'immagine, vedi sotto), e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
 
 `core.env.publicUrl` e `identity.oidc.publicUrl` vanno impostati con l'URL https pubblico: l'installer lo fa. I servizi non lo usano per parlarsi (nomi dei Service). Traefik inoltra a gateway e identity con `X-Forwarded-Proto: https`. Dettagli per l'operatore: [`../../docs/tls.md`](../../docs/tls.md).
+
+## Download di gs e skills: `/downloads` (GIT-171, G6)
+
+L'immagine **web** contiene, costruiti in build da `scripts/build-gs-dist.sh`, i binari di `gs` (linux, darwin, windows x amd64, arm64; versione = tag dell'immagine, `sha-<commit>`), `SHA256SUMS`, `gs-skills.zip` (cartella `skills/`) e gli script di installazione: nessun accesso a internet a runtime. L'Ingress non cambia (`/` va a web, `/api` al gateway); l'nginx di web serve, in modo **pubblico** (servono per fare login):
+
+| Percorso | Contenuto |
+|---|---|
+| `/downloads/gs_<os>_<arch>` (`.exe` su windows) | binario |
+| `/downloads/SHA256SUMS`, `/downloads/gs-skills.zip` | checksum e skills |
+| `/downloads/index.json` | indice (versione, binari con sha256 e dimensione, skills, script, `ca_cert`) letto dalla UI |
+| `/downloads/ca.crt` | certificato pubblico della CA interna (N5), solo se il ConfigMap `ingress.tls.caConfigMap` esiste; `ca_cert` in `index.json` e null altrimenti (lo decide l'entrypoint all'avvio del pod) |
+| `/install-gs.sh`, `/install-gs.ps1` | script di installazione, con l'indirizzo dell'istanza scritto al posto del segnaposto `__GS_BASE_URL__` (da `X-Forwarded-Proto` e `Host`) |
+
+`/downloads` senza slash resta alla SPA. Installazione: `curl -fsSL https://<host>/install-gs.sh | sh` (Linux, macOS) o `irm https://<host>/install-gs.ps1 | iex` (Windows). Gli script verificano lo SHA-256 contro `SHA256SUMS` dell'istanza (protegge da download corrotti, non da un'istanza ostile) e falliscono se non coincide. Con la CA interna (N5), se il certificato non è ancora fidato, scaricano `/downloads/ca.crt` in HTTP (o con `GS_INSECURE=1`, `curl -k`, solo per questo file), ne **confrontano l'impronta SHA-256** con `GS_CA_SHA256` / `-CaSha256` (quella stampata dall'installer, `sudo gitstack-tls fingerprint`; da terminale chiedono conferma) e solo dopo la usano: su Linux/macOS la tengono in `~/.config/gitstack` e la danno a git per quell'host (nel sistema con `GS_TRUST_SYSTEM=1`, sudo), su Windows la importano in `Cert:\CurrentUser\Root`. Compromesso: il primo scaricamento dello script avviene prima di fidarsi della CA, quindi con `curl -k` o con la CA già installata dall'utente; il controllo dell'impronta è quello che chiude il buco. Copia nelle release: il job CI `gs-binaries` pubblica gli stessi byte nella release `sha-<commit>`.
 
 ## Servizio git (GIT-74)
 

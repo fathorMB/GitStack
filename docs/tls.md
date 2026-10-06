@@ -92,6 +92,8 @@ In HTTPS Traefik termina il TLS e inoltra al gateway e a identity con `X-Forward
    openssl x509 -in ca.crt -noout -fingerprint -sha256
    ```
 
+> **Con `gs`:** `install-gs.sh` e `install-gs.ps1` (GIT-171) fanno questi passaggi da soli: scaricano `ca.crt`, ne confrontano l'impronta con `GS_CA_SHA256` (`-CaSha256` su Windows) e solo allora la usano. Vedi `deploy/gitstack/README.md`, sezione «Download di gs e skills».
+
 ### Linux (Debian/Ubuntu)
 
 ```sh
