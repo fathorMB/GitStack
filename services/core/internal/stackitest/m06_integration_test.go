@@ -400,11 +400,11 @@ func m06Count(list []string, s string) int {
 // --- notifiche ----------------------------------------------------------------
 
 type m06Item struct {
-	ID         string `json:"id"`
-	Reason     string `json:"reason"`
-	Summary    string `json:"summary"`
-	Read       bool   `json:"read"`
-	Issue      *struct {
+	ID      string `json:"id"`
+	Reason  string `json:"reason"`
+	Summary string `json:"summary"`
+	Read    bool   `json:"read"`
+	Issue   *struct {
 		Number int64 `json:"number"`
 	} `json:"issue"`
 	Repository *struct {
@@ -515,7 +515,9 @@ func (e *m06Env) deliveries(call func(method, path string, body any) reply, base
 	return l.Items
 }
 
-func (e *m06Env) alice(method, path string, body any) reply { return e.api("alice", method, path, body) }
+func (e *m06Env) alice(method, path string, body any) reply {
+	return e.api("alice", method, path, body)
+}
 
 func m06Payload(t *testing.T, h m06Hit) map[string]any {
 	t.Helper()
