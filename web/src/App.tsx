@@ -5,6 +5,7 @@ import { AgentsPage } from './pages/admin/AgentsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { NewRepoPage } from "./pages/repos/NewRepoPage";
 import { DeletedReposPage } from './pages/repos/DeletedReposPage';
@@ -43,6 +44,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Components">
               <ComponentsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Notifications">
+              <NotificationsPage />
             </AppShell>
           </RequireAuth>
         }

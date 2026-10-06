@@ -46,3 +46,14 @@ describe('rotte del browser del codice', () => {
     expect(await screen.findByTestId('repo-page')).toHaveTextContent(mode);
   });
 });
+
+vi.mock('./pages/NotificationsPage', () => ({
+  NotificationsPage: () => <div data-testid="notifications-page" />,
+}));
+
+describe('rotta delle notifiche', () => {
+  it('/notifications apre il centro notifiche', async () => {
+    at('/notifications');
+    expect(await screen.findByTestId('notifications-page')).toBeInTheDocument();
+  });
+});
