@@ -18,3 +18,5 @@ Thumbs.db
 
 # Copia temporanea della spec scritta da go:generate (api/cmd/specdump)
 .openapi.spec.yaml
+e2e-results/
+playwright-report/

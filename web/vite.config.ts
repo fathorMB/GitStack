@@ -23,6 +23,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Gli smoke Playwright di e2e/ (GIT-152) non sono test Vitest: `pnpm e2e`.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
   },

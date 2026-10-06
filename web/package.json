@@ -13,6 +13,7 @@
     "lint:security": "eslint -c eslint.security.config.js src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e": "playwright test",
     "sync-tokens": "node scripts/sync-tokens.mjs",
     "check-tokens": "node scripts/sync-tokens.mjs && git diff --exit-code -- src/styles/tokens.css"
   },
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
