@@ -51,8 +51,8 @@ func TestOutputCapAndTimeoutAndStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pr.Close()
-	defer pw.Close()
+	defer func() { _ = pr.Close() }()
+	defer func() { _ = pw.Close() }()
 	slow := &Runner{Bin: r.Bin, Timeout: 200 * time.Millisecond}
 	if _, err := slow.Output(context.Background(), dir, pr, "hash-object", "--stdin"); err == nil {
 		t.Fatal("timeout atteso")
