@@ -75,7 +75,7 @@ var routes = map[string]reply{
 		`{"startLine":3,"endLine":3,"commit":` + commit("2222222222222222", "bot", agent) + `},` +
 		`{"startLine":4,"endLine":4,"commit":` + commit("3333333333333333", "esterno", anon) + `}]}`},
 	"/repos/acme/web/contents": {200, `{"path":"a.go","content":"uno\ndue\ntre\nquattro\n","binary":false,"display":"highlight"}`},
-	"/repos/acme/web/commits": {200, `{"items":[` + commit("2222222222222222", "modifica del bot", agent) + `,` + commit("1111111111111111", "primo", human) + `],"hasMore":true,"page":1,"perPage":30}`},
+	"/repos/acme/web/commits":  {200, `{"items":[` + commit("2222222222222222", "modifica del bot", agent) + `,` + commit("1111111111111111", "primo", human) + `],"hasMore":true,"page":1,"perPage":30}`},
 }
 
 func TestBlameMostraAutoreEBadgeAgent(t *testing.T) {
