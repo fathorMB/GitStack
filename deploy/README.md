@@ -38,7 +38,7 @@ Lo script li verifica in preflight prima di installare qualunque cosa (N1, confe
 | Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
 | Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |
 
-Sotto il minimo l'installer esce con exit 1 e il valore trovato; sotto il consigliato stampa `ATTENZIONE` e prosegue. L'SSD si legge da `/sys/class/block/<dev>/queue/rotational` (segue partizioni e device mapper); se non si capisce, avviso. Lo spazio per i repo è circa il doppio della loro dimensione: sui dischi piccoli pesa il consigliato.
+Sotto il minimo l'installer esce con exit 1 e il valore trovato; sotto il consigliato stampa `ATTENZIONE` e prosegue. L'SSD si legge da `/sys/class/block/<dev>/queue/rotational` (segue partizioni e device mapper); se non si capisce, avviso (un disco virtuale può dichiararsi rotazionale: è solo un avviso, come sulla VM di test). Lo spazio per i repo è circa il doppio della loro dimensione: sui dischi piccoli pesa il consigliato.
 
 Tutti i GB sono decimali (10⁹ byte), non GiB: una macchina con «8 GB» di RAM riporta qualche centinaio di MiB in meno in `/proc/meminfo` (memoria riservata a firmware/hypervisor), e un disco da 60 GiB dichiara oltre 64 GB, quindi i margini di partizionamento non fanno fallire la macchina di riferimento (la VM di GIT-12). Dimensione del filesystem e spazio libero sono due controlli distinti: lo spazio libero cala dopo k3s e le immagini, e il preflight gira a ogni avvio.
 
@@ -57,6 +57,7 @@ Per cambiare nome dopo l'installazione: `sudo gitstack config set host <nome>`. 
 Il caso reale di homehub: il router di casa (Sky) non permette record DNS locali, quindi la macchina si chiama `homehub.local`, risolto via mDNS.
 
 - **Sul server** serve `avahi-daemon` attivo e `libnss-mdns`: `sudo apt install avahi-daemon libnss-mdns`. Il nome è quello della macchina (`hostnamectl set-hostname homehub` → `homehub.local`). Verifica: `getent hosts homehub.local` deve dare l'IP della macchina, ed è lo stesso controllo del preflight.
+  avahi risponde con gli indirizzi di tutte le interfacce, anche quelle di k3s (`cni0`): il preflight accetta un qualunque indirizzo della macchina, l'IP principale è comunque nei SAN. Per limitarlo: `allow-interfaces=<interfaccia>` in `/etc/avahi/avahi-daemon.conf`.
 - **I client** devono supportare mDNS: Windows 10/11, macOS e Linux con `nss-mdns` lo fanno. Altrimenti si usa l'IP (nei SAN) o un nome nel DNS.
 - **Il certificato** (CA interna) ha `homehub.local` e l'IP come SAN: `openssl x509 -in /etc/gitstack/tls/server.crt -noout -ext subjectAltName`. Va installata la CA sui client come per ogni nome.
 - **I pod di k3s non risolvono `.local`** (CoreDNS non fa mDNS): niente nei servizi deve chiamare dall'interno del cluster il proprio indirizzo pubblico. Le chiamate fra servizi usano i nomi interni (`<release>-core`, ecc.); l'URL pubblico serve solo ai link e ai redirect che vede il client.
