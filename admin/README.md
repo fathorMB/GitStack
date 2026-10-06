@@ -96,6 +96,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack status [--json] [--config F]` | versione, host, salute, ultimo backup | serve per leggere il config (0600) |
 | `gitstack backup [--dest D] [--key-file F] [--config F]` | archivio coerente di database, repo, allegati, Secret e configurazione | sì |
 | `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
+| `gitstack upgrade [--to V] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
 | `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
 | `gitstack version` | versione del binario | no |
 
@@ -124,7 +125,9 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
 | 3 | configurazione assente, illeggibile o non valida |
 | 4 | status: il cluster non si può interrogare (kubectl assente, API server giù) |
 | 5 | serve root (anche: config non leggibile per permessi) |
-| 6 | backup/restore rifiutato con motivo (versione diversa, archivio corrotto, cifrato senza chiave o con chiave errata) |
+| 6 | backup/restore/upgrade rifiutato con motivo (upgrade: anche downgrade e destinazione non valida) (versione diversa, archivio corrotto, cifrato senza chiave o con chiave errata) |
+| 7 | upgrade fallito e tornato com'era (rollback riuscito) |
+| 8 | upgrade fallito e rollback NON riuscito: serve un intervento (il messaggio dice come) |
 | 70 | errore inatteso |
 
 Errori su stderr con prefisso `ERRORE:`, come `install.sh`.
@@ -249,3 +252,37 @@ go test ./admin/... -count=1        # dalla radice del repo
 
 I test usano un `kubectl` finto e un server HTTP di prova: non servono cluster
 né root.
+
+## Aggiornamento (D18)
+
+`sudo gitstack upgrade [--to <versione|sha>]` porta l'installazione alla destinazione
+(default: ultimo commit di `main` di `$GITSTACK_REPO`, default `fathorMB/GitStack`).
+L'aggiornamento di k3s è un altro compito (M-08).
+
+1. **Controlli** (niente cambia se uno fallisce, exit 6): la destinazione esiste
+   (API GitHub); **non è un downgrade** (confronto fra il commit installato e la
+   destinazione: «behind» o storie diverse sono rifiutate, il downgrade non è supportato
+   perché le migrazioni non si disfano); GitStack è sano adesso; il binario
+   `gitstack-linux-amd64` della release `sha-<commit>` si scarica e il suo SHA-256 torna
+   (V5); il chart `deploy/gitstack` del commit si scarica; ogni immagine che il chart
+   userebbe (da `helm template` con i valori attuali, quindi anche un mirror) esiste nel
+   suo registry. `--dry-run` si ferma qui.
+2. **Backup preventivo** con la stessa logica di `gitstack backup` (`--dest`, `--key-file`).
+3. **`helm upgrade --wait`** del chart scaricato, con i valori scelti all'installazione
+   (`helm get values`, riapplicati ai default del chart nuovo: `--reuse-values` perderebbe
+   le chiavi nuove) e `global.image.tag=<tag>`. Le migrazioni girano all'avvio dei servizi.
+   Poi aspetta che tutti i servizi e l'API siano sani, al massimo `--timeout` (default 10 m).
+4. Solo se tutto è sano: sostituzione atomica del binario (`/usr/local/bin/gitstack`), della
+   copia locale del chart (`chart_dir`) e di `image_tag` nel config.
+
+**Rollback automatico** (anche con Ctrl-C o errore a metà): ripristina binario e copia del
+chart, `helm rollback` alla revisione di prima e, **se le migrazioni hanno toccato il
+database** (versioni in `identity.schema_migrations` e `core.schema_migrations` cambiate o
+sporche, o non leggibili), `gitstack restore` del backup appena fatto. Se il database non è
+cambiato non si ripristina niente: i dati scritti nel frattempo restano. Con il restore, invece,
+i dati scritti dopo il backup durante l'aggiornamento si perdono: il messaggio finale lo dice.
+Alla fine il comando scrive cosa è successo e dov'è il backup; exit 7 se il rollback è
+riuscito, 8 se no (con i comandi per finire a mano).
+
+`--set` e `--values` passano valori aggiuntivi a helm (una prova di rollback si fa, per
+esempio, con un valore che impedisce a un servizio di diventare pronto).

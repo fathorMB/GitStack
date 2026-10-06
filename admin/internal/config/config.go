@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -156,4 +158,65 @@ func wrap(path string, err error) error {
 	default:
 		return fmt.Errorf("%w: %s: %v", ErrInvalid, path, err)
 	}
+}
+
+// SetFields cambia (o aggiunge in fondo) le chiavi di primo livello indicate,
+// conservando commenti e resto, e riscrive il file in modo atomico con modo
+// 0600. Nessuna chiave annidata: servono solo scalari.
+func SetFields(path string, fields map[string]string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(b), "\n")
+	done := map[string]bool{}
+	for i, l := range lines {
+		for k, v := range fields {
+			if strings.HasPrefix(l, k+":") {
+				lines[i] = k + ": " + v
+				done[k] = true
+			}
+		}
+	}
+	// Le chiavi nuove vanno prima della sezione backup (o in fondo): una
+	// riga di primo livello dopo `backup:` resterebbe comunque valida, ma
+	// così il file resta leggibile.
+	var extra []string
+	for _, k := range sortedKeys(fields) {
+		if !done[k] {
+			extra = append(extra, k+": "+fields[k])
+		}
+	}
+	if len(extra) > 0 {
+		for len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		lines = append(lines, extra...)
+		lines = append(lines, "")
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".config.*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err := tmp.WriteString(strings.Join(lines, "\n")); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
+}
+
+func sortedKeys(m map[string]string) []string {
+	ks := make([]string, 0, len(m))
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	return ks
 }
