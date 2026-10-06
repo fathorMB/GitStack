@@ -158,7 +158,6 @@ func TestStatusLastBackup(t *testing.T) {
 		cfgPath := writeConfig(t, hostOf(srv), configDir)
 
 		// Scrivi lo stato di un backup riuscito
-		state := "backupstate.State{Success: true, Path: \"/var/backups/gitstack/backup-20261006T120000Z.tar.gz\", At: time.Now()}"
 		if err := backupstate.Write(configDir, backupstate.State{
 			Success: true,
 			Path:    "/var/backups/gitstack/backup-20261006T120000Z.tar.gz",
