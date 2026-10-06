@@ -37,6 +37,7 @@ const issue = (n: number, o: Partial<IssueSummary> = {}): IssueSummary => ({
   labels: [],
   assignees: [],
   commentCount: 0,
+  linkedCommitCount: 0,
   createdAt: '2026-09-27T10:00:00Z',
   updatedAt: '2026-09-27T10:00:00Z',
   ...o,
@@ -95,7 +96,7 @@ describe('lista issues', () => {
 
   it('mostra il conteggio dei commit collegati solo quando ce ne sono', async () => {
     vi.mocked(fetchIssues).mockResolvedValue(
-      page([issue(41, { linkedCommitCount: 2 } as Partial<IssueSummary>), issue(36)]),
+      page([issue(41, { linkedCommitCount: 2 }), issue(36)]),
     );
     renderAt('/acme/api/issues');
     const row = await screen.findByTestId('issue-41');
