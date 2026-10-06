@@ -17,7 +17,6 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Operazioni del nucleo delle issues (M-05/C, GIT-103): creazione con il
@@ -321,6 +320,13 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 			return
 		}
 	}
+	// C1: riferimenti nel titolo/testo della issue (issue_references).
+	// Togliere un riferimento dal testo non cancella le tracce esistenti:
+	// come su GitHub, le righe in core.issue_references restano.
+	if err := s.processReferences(ctx, tx, fmt.Sprintf("%s/%s", ia.repo.OwnerName, ia.repo.Name), ia.userID, ia.repo.ID, number, issueID, nil, "issue", title, title+"\n"+body); err != nil {
+		writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
+		return
+	}
 	if err := store.LinkAttachments(ctx, tx, ia.repo.ID, ia.userID, issueID, nil, attachmentIDs(in.AttachmentIds)); err != nil {
 		if errors.Is(err, store.ErrAttachmentNotLinkable) {
 			writeAttachmentNotLinkable(w)
@@ -501,6 +507,22 @@ func (s *apiServer) UpdateIssue(w http.ResponseWriter, r *http.Request, owner op
 			}
 		}); err != nil {
 			writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+			return
+		}
+	}
+	// C1: riferimenti nel titolo/testo modificato (issue_references).
+	// Togliere un riferimento dal testo non cancella le tracce esistenti:
+	// come su GitHub, le righe in core.issue_references restano.
+	if titleChanged || bodyChanged {
+		effTitle, effBody := x.Title, x.Body
+		if in.Title != nil {
+			effTitle = newTitle
+		}
+		if in.Body != nil {
+			effBody = *in.Body
+		}
+		if err := s.processReferences(ctx, tx, fmt.Sprintf("%s/%s", ia.repo.OwnerName, ia.repo.Name), ia.userID, ia.repo.ID, number, x.ID, nil, "issue", effTitle, effTitle+"\n"+effBody); err != nil {
+			writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
 			return
 		}
 	}
@@ -752,7 +774,8 @@ func (s *apiServer) ListIssueVersions(w http.ResponseWriter, r *http.Request, ow
 }
 
 // ListIssueEvents implementa GET .../events: la cronologia in ordine
-// crescente.
+// crescente. Gli eventi referenced_from il cui repo sorgente il
+// chiamante non può leggere sono esclusi (P3, C1).
 func (s *apiServer) ListIssueEvents(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, number openapi.IssueNumberParam, params openapi.ListIssueEventsParams) {
 	page, perPage := defaultPage, defaultPerPage
 	if params.Page != nil {
@@ -778,73 +801,10 @@ func (s *apiServer) ListIssueEvents(w http.ResponseWriter, r *http.Request, owne
 	if !ok {
 		return
 	}
-	// C1: il collegamento e la chiusura da commit di un altro repo li vede solo
-	// chi legge anche quel repo.
-	hiddenRepos, err := s.unreadableCommitRepos(ctx, ia, x.ID)
-	if err != nil {
-		writeIssueFailure(w, "verifica dell'accesso ai repo dei commit non riuscita", err)
-		return
-	}
-	var total int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM core.issue_events WHERE issue_id = $1`+commitRepoFilter, x.ID, hiddenRepos).Scan(&total); err != nil {
-		writeIssueFailure(w, "conteggio degli eventi non riuscito", err)
-		return
-	}
-	rows, err := s.pool.Query(ctx, `SELECT id, type, actor_id, data, created_at FROM core.issue_events
-		WHERE issue_id = $1`+commitRepoFilter+` ORDER BY seq LIMIT $3 OFFSET $4`, x.ID, hiddenRepos, perPage, (page-1)*perPage)
+	items, total, err := s.listIssueEventsFiltered(ctx, s.pool, ia, x.ID, page, perPage)
 	if err != nil {
 		writeIssueFailure(w, "lettura degli eventi non riuscita", err)
 		return
-	}
-	var evs []openapi.IssueEvent
-	var actors []*uuid.UUID
-	var actorIDs []uuid.UUID
-	for rows.Next() {
-		var ev openapi.IssueEvent
-		var id uuid.UUID
-		var typ string
-		var actor *uuid.UUID
-		var raw []byte
-		if err := rows.Scan(&id, &typ, &actor, &raw, &ev.CreatedAt); err != nil {
-			rows.Close()
-			writeIssueFailure(w, "lettura degli eventi non riuscita", err)
-			return
-		}
-		ev.Id, ev.Type = openapi_types.UUID(id), openapi.IssueEventType(typ)
-		var data map[string]any
-		if err := json.Unmarshal(raw, &data); err != nil {
-			rows.Close()
-			writeIssueFailure(w, "dati dell'evento non validi", err)
-			return
-		}
-		// repositoryId serve solo al filtro di accesso: non esce dall'API.
-		if c, ok := data["commit"].(map[string]any); ok {
-			delete(c, "repositoryId")
-		}
-		ev.Data = &data
-		evs = append(evs, ev)
-		actors = append(actors, actor)
-		if actor != nil {
-			actorIDs = append(actorIDs, *actor)
-		}
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		writeIssueFailure(w, "lettura degli eventi non riuscita", err)
-		return
-	}
-	dir, err := s.resolveUsers(ctx, actorIDs)
-	if err != nil {
-		writeIssueFailure(w, "risoluzione degli utenti non riuscita", err)
-		return
-	}
-	items := make([]openapi.IssueEvent, 0, len(evs))
-	for i, ev := range evs {
-		if actors[i] != nil {
-			u := dir[*actors[i]]
-			ev.Actor = &u
-		}
-		items = append(items, ev)
 	}
 	writeJSON(w, http.StatusOK, openapi.IssueEventList{Items: items, Page: page, PerPage: perPage, Total: total})
 }
