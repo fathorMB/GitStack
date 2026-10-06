@@ -198,9 +198,10 @@ paths = ["services/*/go.mod", "services/*/go.sum", "services/**/*.go", "pkg/**",
 
 [[check]]
 name = "go-internal-versions"
-# I require interni (pkg/*, client/go) di ogni modulo devono puntare a una
-# pseudo-versione con lo stesso contenuto del workspace: le immagini si
-# costruiscono fuori dal workspace e altrimenti prendono codice vecchio (GIT-182).
+# I require interni (pkg/*, client/go) dei moduli con un Dockerfile (services/*,
+# costruiti con GOWORK=off) devono puntare a una pseudo-versione con lo stesso
+# contenuto del workspace: altrimenti l'immagine prende codice vecchio (GIT-182).
+# cli e admin si costruiscono nel workspace e sono saltati.
 run = "go run scripts/check-internal-versions.go"
 timeout_s = 300
 paths = ["**/go.mod", "pkg/**", "client/go/**", "api/**", "go.work", "scripts/check-internal-versions.go"]

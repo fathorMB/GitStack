@@ -57,8 +57,9 @@ jobs:
       - name: gofmt (file .go committati)
         run: go run scripts/check-gofmt.go
 
-      # Le immagini costruiscono ogni servizio fuori dal workspace: i require
-      # interni (pkg/*, client/go) devono puntare al contenuto del workspace (GIT-182).
+      # Le immagini costruiscono ogni servizio con un Dockerfile fuori dal workspace:
+      # i loro require interni (pkg/*, client/go) devono puntare al contenuto del
+      # workspace (GIT-182). cli e admin si costruiscono nel workspace: saltati.
       - name: require interni allineati al workspace
         run: go run scripts/check-internal-versions.go
 

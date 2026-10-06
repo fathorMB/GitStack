@@ -9,6 +9,10 @@
 // scritta nel go.mod, non dalla cartella locale. In CI e nei test il workspace
 // maschera il disallineamento.
 //
+// Si controllano SOLO i moduli che hanno un Dockerfile nella loro cartella
+// (services/*): gli altri (cli, admin, ...) si costruiscono nel workspace e
+// vengono saltati con una riga "skip".
+//
 // Per ogni require interno: si ricava l'hash12 dalla pseudo-versione, lo si
 // risolve con git rev-parse e si confronta la cartella del modulo a quel
 // commit con HEAD (git diff --quiet <hash> HEAD -- <cartella>). Un hash non
@@ -105,6 +109,10 @@ func main() {
 	for _, mp := range order {
 		m := parsed[mp]
 		from := mods[mp]
+		if _, err := os.Stat(filepath.Join(filepath.FromSlash(from.dir), "Dockerfile")); err != nil {
+			fmt.Printf("skip %s: nessun Dockerfile, si costruisce nel workspace\n", from.dir)
+			continue
+		}
 		for _, r := range m.Require {
 			if !strings.HasPrefix(r.Path, internalPrefix) {
 				continue

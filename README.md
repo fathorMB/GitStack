@@ -118,8 +118,9 @@ Per questo un item che cambia un `pkg/*` (o `client/go`) fa **due commit**:
 
 Il controllo è `go run scripts/check-internal-versions.go` (check
 `go-internal-versions` in `.galaxylab/checks.toml` e step del job Go di
-`ci.yml`, con `fetch-depth: 0`): per ogni `require` interno di ogni modulo di
-`go.work` confronta la cartella del modulo al commit della pseudo-versione con
+`ci.yml`, con `fetch-depth: 0`): per ogni `require` interno dei moduli di
+`go.work` che hanno un `Dockerfile` (i servizi; `cli` e `admin` si costruiscono
+nel workspace e sono saltati) confronta la cartella del modulo al commit della pseudo-versione con
 `HEAD`, e fallisce con il comando per correggere. Il job Chart (k3d) crea
 inoltre il repo `GitStack` attraverso l'Ingress, con l'immagine vera di core.
 
