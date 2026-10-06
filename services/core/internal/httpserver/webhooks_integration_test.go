@@ -594,6 +594,18 @@ func TestWebhooks_DisattivazioneDopoTreGiorniConNotifica(t *testing.T) {
 		list.Items[0].Webhook.Id.String() != hook || list.Items[0].Webhook.Scope != "repo" {
 		t.Fatalf("notifica di alice: %s", rec.Body.String())
 	}
+	// Disattivato: la consegna ancora pending non parte più, nemmeno alla scadenza.
+	sent := len(e.recv.requests())
+	e.clock.Advance(48 * time.Hour)
+	if got := e.run(); got != 1 {
+		t.Fatalf("la consegna pending va chiusa: %d", got)
+	}
+	if got := len(e.recv.requests()); got != sent {
+		t.Fatalf("un webhook disattivato ha ricevuto %d richieste", got-sent)
+	}
+	if ds := e.deliveries("app", hook); len(ds) != 1 || ds[0].Status != "failed" || ds[0].Error == nil || *ds[0].Error != "webhook non attivo" {
+		t.Fatalf("consegna dopo la disattivazione: %+v", ds)
+	}
 	// Chi non gestisce il webhook non riceve niente.
 	e.want(e.do(http.MethodGet, "/notifications?reason=webhook", "bob", ""), http.StatusOK, "")
 	_ = e.pool.QueryRow(context.Background(), `SELECT count(*) FROM core.notifications WHERE reason = 'webhook' AND user_id <> $1`, aliceID).Scan(&n)
@@ -615,6 +627,39 @@ func TestWebhooks_DisattivazioneDopoTreGiorniConNotifica(t *testing.T) {
 		t.Fatalf("dopo reactivate: %+v", w)
 	}
 	e.want(e.do(http.MethodPost, "/repos/alice/app/hooks/"+hook+"/reactivate", "alice", ""), http.StatusOK, "")
+}
+
+// Un webhook messo in pausa a mano non riceve le consegne già in coda; una
+// Redeliver sì. La chiusura non conta come fallimento.
+func TestWebhooks_PausaFermaLeConsegneInCoda(t *testing.T) {
+	e := newHookEnv(t)
+	e.repo("app", false)
+	hook := e.repoHook("app", fmt.Sprintf(`{"url":%q,"events":["issues"]}`, hookURL))
+	e.recv.status(http.StatusInternalServerError)
+	e.open("app", "alice", "Una")
+	e.run() // primo tentativo: 500, resta pending
+	sent := len(e.recv.requests())
+	e.want(e.do(http.MethodPatch, "/repos/alice/app/hooks/"+hook, "alice", `{"active":false}`), http.StatusOK, "")
+	failing := e.hook("app", hook).FailingSince
+	e.clock.Advance(2 * time.Minute)
+	e.run()
+	if got := len(e.recv.requests()); got != sent {
+		t.Fatalf("un webhook in pausa ha ricevuto %d richieste", got-sent)
+	}
+	ds := e.deliveries("app", hook)
+	if len(ds) != 1 || ds[0].Status != "failed" || ds[0].Error == nil || *ds[0].Error != "webhook non attivo" || ds[0].NextAttemptAt != nil {
+		t.Fatalf("consegna: %+v", ds)
+	}
+	if w := e.hook("app", hook); w.FailingSince == nil || failing == nil || !w.FailingSince.Equal(*failing) {
+		t.Fatalf("la chiusura non deve toccare il conto dei fallimenti: %+v", w.FailingSince)
+	}
+	// La Redeliver parte anche su un webhook in pausa.
+	e.recv.status(http.StatusOK)
+	e.want(e.do(http.MethodPost, "/repos/alice/app/hooks/"+hook+"/deliveries/"+ds[0].Id.String()+"/redeliver", "alice", ""), http.StatusAccepted, "")
+	e.run()
+	if got := len(e.recv.requests()); got != sent+1 {
+		t.Fatalf("la Redeliver non è partita: %d", got-sent)
+	}
 }
 
 // Un webhook di organizzazione disattivato avvisa tutti gli owner.

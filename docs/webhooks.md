@@ -71,7 +71,11 @@ server è cifrato (README di `services/core`, sezione webhook).
 - Fino a **8 tentativi in circa 24 ore**, con attesa crescente fra l'uno e
   l'altro: subito, poi dopo 1 min, 5 min, 30 min, 2 h, 4 h, 8 h e 9 h (circa 23
   h 36 min dopo il primo). Un `4xx` diverso da `410` non si ritenta.
-- **`410 Gone`** ferma la consegna: nessun altro tentativo (stato `gone`).
+- Un webhook non attivo (disattivato dai fallimenti o in pausa con `active: false`)
+  non riceve più niente: le consegne già in coda si chiudono come `failed` con
+  `error` «webhook non attivo», senza richiesta e senza contare come fallimento.
+  Una *Redeliver* parte comunque.
+- **410 Gone** ferma la consegna: nessun altro tentativo (stato `gone`).
 - Dopo **3 giorni di fallimenti consecutivi** il webhook si disattiva
   (`active: false`, `disabledReason: consecutive_failures`) e chi lo ha creato
   (per un webhook di organizzazione, gli owner) riceve una notifica con motivo
@@ -82,7 +86,7 @@ server è cifrato (README di `services/core`, sezione webhook).
   stesso payload con una nuova consegna e una firma ricalcolata.
 - **Protezione SSRF (C8)**: la rete aziendale è ammessa; sono sempre bloccati
   loopback, indirizzi interni del cluster e link-local (`169.254.0.0/16`),
-  controllati dopo la risoluzione DNS e a ogni redirect (al massimo 5, che si
+  controllati dopo la risoluzione DNS e a ogni redirect (al massimo 3, che si
   seguono). L'amministratore dell'installazione può aggiungere liste di
   destinazioni ammesse e vietate; le tre categorie fisse non si possono
   sbloccare. Un indirizzo bloccato dà 422 (`url_not_allowed`) alla creazione e,

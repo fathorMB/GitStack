@@ -13,12 +13,15 @@ import (
 // NewEgress costruisce il client delle consegne (pkg/egress, C8): l'unico modo
 // di uscire. Le liste vengono dai values del chart (egress.*). Voci non valide
 // fanno fallire l'avvio.
+// MaxRedirects: i redirect che si seguono (docs/webhooks.md).
+const MaxRedirects = 3
+
 func NewEgress(allow, deny, clusterCIDRs []string) (Doer, URLChecker, error) {
 	policy, err := egress.NewPolicy(egress.Config{Allow: allow, Deny: deny, ClusterCIDRs: clusterCIDRs})
 	if err != nil {
 		return nil, nil, fmt.Errorf("webhooks: policy di uscita non valida: %w", err)
 	}
-	return egress.NewClient(policy, egress.Options{Timeout: RequestTimeout}), CheckURL(policy), nil
+	return egress.NewClient(policy, egress.Options{Timeout: RequestTimeout, MaxRedirects: MaxRedirects}), CheckURL(policy), nil
 }
 
 // URLChecker valida l'indirizzo di un webhook alla creazione.

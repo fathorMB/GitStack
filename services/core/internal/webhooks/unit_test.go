@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -145,5 +146,34 @@ func TestCheckURL(t *testing.T) {
 	}
 	if err := chk("http://192.168.1.10/x"); err != nil {
 		t.Errorf("la rete aziendale è ammessa: %v", err)
+	}
+}
+
+// docs/webhooks.md: al massimo 3 redirect; il quarto non si segue.
+func TestNewEgress_TreRedirectAlMassimo(t *testing.T) {
+	d, _, err := NewEgress(nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, ok := d.(*http.Client)
+	if !ok {
+		t.Fatalf("il Doer è %T, atteso il client di pkg/egress", d)
+	}
+	if MaxRedirects != 3 {
+		t.Fatalf("MaxRedirects = %d", MaxRedirects)
+	}
+	req, _ := http.NewRequest(http.MethodPost, "https://hooks.example.com/b", nil)
+	via := func(n int) []*http.Request {
+		out := make([]*http.Request, n)
+		for i := range out {
+			out[i] = req
+		}
+		return out
+	}
+	if err := c.CheckRedirect(req, via(3)); err != nil {
+		t.Fatalf("il terzo redirect si segue: %v", err)
+	}
+	if err := c.CheckRedirect(req, via(4)); err == nil {
+		t.Fatal("il quarto redirect non deve seguirsi")
 	}
 }

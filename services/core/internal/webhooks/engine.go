@@ -343,14 +343,24 @@ func (e *Engine) attempt(ctx context.Context, id uuid.UUID) error {
 		prev       int
 		ct, nonce  []byte
 		keyID      *string
+		active     bool
+		redelivery *uuid.UUID
 	)
-	err := e.Pool.QueryRow(ctx, `SELECT d.webhook_id, w.url, d.event, d.payload, d.attempt, w.secret_ciphertext, w.secret_nonce, w.secret_key_id
+	err := e.Pool.QueryRow(ctx, `SELECT d.webhook_id, w.url, d.event, d.payload, d.attempt, w.secret_ciphertext, w.secret_nonce, w.secret_key_id,
+			w.active, d.redelivery_of
 		FROM core.webhook_deliveries d JOIN core.webhooks w ON w.id = d.webhook_id WHERE d.id = $1 AND d.status = 'pending'`, id).
-		Scan(&webhookID, &url, &event, &payload, &prev, &ct, &nonce, &keyID)
+		Scan(&webhookID, &url, &event, &payload, &prev, &ct, &nonce, &keyID, &active, &redelivery)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return nil // eliminata (webhook cancellato) o già chiusa
 	case err != nil:
+		return err
+	}
+	if !active && redelivery == nil {
+		// Disattivato (C7) o in pausa: le consegne già in coda non partono. Una
+		// Redeliver sì (contratto). Nessuna richiesta e nessun conto dei fallimenti.
+		_, err := e.Pool.Exec(ctx, `UPDATE core.webhook_deliveries SET status = 'failed', next_attempt_at = NULL,
+				error = 'webhook non attivo' WHERE id = $1 AND status = 'pending'`, id)
 		return err
 	}
 	secret := ""
