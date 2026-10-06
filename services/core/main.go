@@ -25,6 +25,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/issuelinks"
 	"github.com/fathorMB/GitStack/services/core/internal/mailer"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
+	"github.com/fathorMB/GitStack/services/core/internal/mirrors"
 	"github.com/fathorMB/GitStack/services/core/internal/notify"
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
@@ -269,10 +270,31 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		hooks.Managers = mgr
 	}
 	go hooks.Run(ctx)
+
+	// Mirror in push (V8, GIT-179): il push lo esegue il servizio git, core ha
+	// modello, coda, tentativi e la policy di uscita (C8). La credenziale usa lo
+	// stesso portachiavi dei segreti dei webhook.
+	mirrorEgress, err := mirrors.NewEgress(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs)
+	if err != nil {
+		logger.Error("configurazione non valida", "err", err)
+		return 1
+	}
+	routerOpts = append(routerOpts, httpserver.WithMirrors(httpserver.MirrorConfig{Keys: keys, Egress: mirrorEgress}))
+	mirrorEng := &mirrors.Engine{Pool: pool, Keys: keys, Egress: mirrorEgress, Log: logger}
+	if mgr, ok := repoLookup.(webhooks.Managers); ok {
+		mirrorEng.Managers = mgr
+	}
+	if pusher, ok := gitAPI.(gitclient.MirrorPusher); ok {
+		mirrorEng.Git = pusher
+		go mirrorEng.Run(ctx)
+	} else {
+		logger.Warn("git non configurato: i mirror in push non partono")
+	}
 	if js, err := jetstream.New(nc); err != nil {
 		logger.Error("apertura di JetStream per i webhook push non riuscita: i push non generano webhook", "err", err)
 	} else {
 		go runPushConsumer(ctx, js, gitpush.DurableWebhooks, hooks.EnqueuePush, logger)
+		go runPushConsumer(ctx, js, gitpush.DurableMirrors, mirrorEng.HandlePush, logger)
 		// Commit collegati e chiusura con fixes #n (M-06/C, GIT-131): servono i
 		// permessi di identity; senza, nessun collegamento.
 		if id, ok := repoLookup.(issuelinks.Identity); ok {

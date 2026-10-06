@@ -53,6 +53,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		clone:        o.clone,
 		attachments:  o.attachments,
 		hooks:        o.hooks,
+		mirrors:      o.mirrors,
 		emailEnabled: o.emailEnabled,
 		now:          now,
 	}
@@ -91,6 +92,7 @@ type routerOptions struct {
 	clone        CloneConfig
 	attachments  AttachmentsConfig
 	hooks        WebhookConfig
+	mirrors      MirrorConfig
 	emailEnabled bool
 }
 
@@ -152,6 +154,12 @@ func WithCloneConfig(c CloneConfig) Option {
 // upload e download di allegati rispondono 503.
 func WithAttachments(c AttachmentsConfig) Option {
 	return func(o *routerOptions) { o.attachments = c }
+}
+
+// WithMirrors imposta la cifratura del token e il controllo delle destinazioni
+// dei mirror in push (V8, GIT-179).
+func WithMirrors(c MirrorConfig) Option {
+	return func(o *routerOptions) { o.mirrors = c }
 }
 
 // WithWebhooks imposta la cifratura dei segreti e il controllo degli indirizzi

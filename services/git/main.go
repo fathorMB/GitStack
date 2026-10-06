@@ -19,6 +19,7 @@ import (
 	"github.com/fathorMB/GitStack/services/git/internal/access"
 	"github.com/fathorMB/GitStack/services/git/internal/config"
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
+	"github.com/fathorMB/GitStack/services/git/internal/mirrorpush"
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
@@ -111,6 +112,7 @@ func run(out io.Writer) int {
 		Handler: httpserver.NewRouter(httpserver.Deps{
 			Store:   store,
 			Reads:   gitread.New(runner, store.Dir),
+			Mirror:  &mirrorpush.Service{Run: runner, Dir: store.Dir},
 			Content: newContent(),
 			Secret:  cfg.ServiceSecret,
 			Logger:  logger,

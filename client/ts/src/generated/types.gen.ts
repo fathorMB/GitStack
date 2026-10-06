@@ -1422,10 +1422,10 @@ export type UpdateMilestoneInput = {
 };
 
 /**
- * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+ * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
  *
  */
-export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook';
+export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook' | 'mirror';
 
 export type NotificationRepo = {
     id: string;
@@ -1563,6 +1563,121 @@ export type WebhookScope = 'repo' | 'org';
  *
  */
 export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository';
+
+/**
+ * Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
+ *
+ */
+export type RepoMirrorState = 'pending' | 'syncing' | 'in_sync' | 'error' | 'diverged';
+
+export type RepoMirror = {
+    id: string;
+    /**
+     * Destinazione, `https://` senza credenziali.
+     */
+    url: string;
+    username: string;
+    /**
+     * Sempre `true`: il token non torna mai nelle risposte.
+     */
+    hasToken: boolean;
+    enabled: boolean;
+    state: RepoMirrorState;
+    /**
+     * Tentativi falliti consecutivi dall'ultimo successo.
+     */
+    attempts: number;
+    /**
+     * Quando e' previsto il prossimo tentativo; `null` se non c'e' niente in coda.
+     */
+    nextAttemptAt?: string | null;
+    lastAttemptAt?: string | null;
+    lastSuccessAt?: string | null;
+    /**
+     * Motivo dell'ultimo errore o della divergenza, senza credenziali; `null` dopo un successo.
+     */
+    lastError?: string | null;
+    /**
+     * Ref → SHA dell'ultimo push riuscito.
+     */
+    lastPushed: {
+        [key: string]: string;
+    };
+    createdBy?: IssueUser | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type RepoMirrorList = {
+    items: Array<RepoMirror>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreateRepoMirrorInput = {
+    /**
+     * `https://` senza credenziali, al massimo 2048 caratteri.
+     */
+    url: string;
+    /**
+     * Da 1 a 256 caratteri.
+     */
+    username: string;
+    /**
+     * Default `true`.
+     */
+    enabled?: boolean;
+};
+
+export type UpdateRepoMirrorInput = {
+    url?: string;
+    username?: string;
+    enabled?: boolean;
+};
+
+/**
+ * `success`: push riuscito (anche se tutto era gia' aggiornato); `error`: fallito, si ritenta; `diverged`: la destinazione ha una storia diversa, fermo; `blocked`: destinazione non ammessa dalla policy di uscita (C8), non si ritenta.
+ *
+ */
+export type RepoMirrorRunOutcome = 'success' | 'error' | 'diverged' | 'blocked';
+
+export type RepoMirrorRunRef = {
+    ref: string;
+    status: 'pushed' | 'up-to-date' | 'rejected' | 'error';
+    /**
+     * SHA locale del ref, per `pushed` e `up-to-date`.
+     */
+    sha?: string;
+    /**
+     * Motivo del rifiuto o dell'errore, es. `non-fast-forward`, `fetch first`, `already exists`.
+     */
+    reason?: string;
+};
+
+export type RepoMirrorRun = {
+    id: string;
+    startedAt: string;
+    finishedAt: string;
+    durationMs: number;
+    outcome: RepoMirrorRunOutcome;
+    /**
+     * Numero del tentativo (1 = il primo dopo un successo o una richiesta).
+     */
+    attempt: number;
+    /**
+     * Senza credenziali.
+     */
+    error?: string | null;
+    refs: Array<RepoMirrorRunRef>;
+};
+
+export type RepoMirrorRunList = {
+    items: Array<RepoMirrorRun>;
+    page: number;
+    perPage: number;
+    total: number;
+};
 
 export type Webhook = {
     id: string;
@@ -1942,6 +2057,35 @@ export type RepositoryListWritable = {
     total: number;
 };
 
+export type CreateRepoMirrorInputWritable = {
+    /**
+     * `https://` senza credenziali, al massimo 2048 caratteri.
+     */
+    url: string;
+    /**
+     * Da 1 a 256 caratteri.
+     */
+    username: string;
+    /**
+     * Token o password per la destinazione (da 1 a 512 caratteri); cifrato, non torna mai.
+     */
+    token: string;
+    /**
+     * Default `true`.
+     */
+    enabled?: boolean;
+};
+
+export type UpdateRepoMirrorInputWritable = {
+    url?: string;
+    username?: string;
+    /**
+     * Sostituisce il token; non si puo' togliere.
+     */
+    token?: string;
+    enabled?: boolean;
+};
+
 export type CreateWebhookInputWritable = {
     url: string;
     events: Array<WebhookEvent>;
@@ -2167,6 +2311,8 @@ export type NotificationStateFilter = 'unread' | 'read' | 'archived' | 'all';
  * Solo le notifiche di un repo, `owner/repo`.
  */
 export type NotificationRepoFilter = string;
+
+export type MirrorIdParam = string;
 
 export type WebhookIdParam = string;
 
@@ -8356,6 +8502,388 @@ export type SubscribeIssueResponses = {
 };
 
 export type SubscribeIssueResponse = SubscribeIssueResponses[keyof SubscribeIssueResponses];
+
+export type ListRepoMirrorsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/mirrors';
+};
+
+export type ListRepoMirrorsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListRepoMirrorsError = ListRepoMirrorsErrors[keyof ListRepoMirrorsErrors];
+
+export type ListRepoMirrorsResponses = {
+    /**
+     * Pagina di mirror.
+     */
+    200: RepoMirrorList;
+};
+
+export type ListRepoMirrorsResponse = ListRepoMirrorsResponses[keyof ListRepoMirrorsResponses];
+
+export type CreateRepoMirrorData = {
+    body: CreateRepoMirrorInputWritable;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/mirrors';
+};
+
+export type CreateRepoMirrorErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateRepoMirrorError = CreateRepoMirrorErrors[keyof CreateRepoMirrorErrors];
+
+export type CreateRepoMirrorResponses = {
+    /**
+     * Mirror creato.
+     */
+    201: RepoMirror;
+};
+
+export type CreateRepoMirrorResponse = CreateRepoMirrorResponses[keyof CreateRepoMirrorResponses];
+
+export type DeleteRepoMirrorData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        mirrorId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/mirrors/{mirrorId}';
+};
+
+export type DeleteRepoMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeleteRepoMirrorError = DeleteRepoMirrorErrors[keyof DeleteRepoMirrorErrors];
+
+export type DeleteRepoMirrorResponses = {
+    /**
+     * Mirror eliminato.
+     */
+    204: void;
+};
+
+export type DeleteRepoMirrorResponse = DeleteRepoMirrorResponses[keyof DeleteRepoMirrorResponses];
+
+export type GetRepoMirrorData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        mirrorId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/mirrors/{mirrorId}';
+};
+
+export type GetRepoMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetRepoMirrorError = GetRepoMirrorErrors[keyof GetRepoMirrorErrors];
+
+export type GetRepoMirrorResponses = {
+    /**
+     * Il mirror.
+     */
+    200: RepoMirror;
+};
+
+export type GetRepoMirrorResponse = GetRepoMirrorResponses[keyof GetRepoMirrorResponses];
+
+export type UpdateRepoMirrorData = {
+    body: UpdateRepoMirrorInputWritable;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        mirrorId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/mirrors/{mirrorId}';
+};
+
+export type UpdateRepoMirrorErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateRepoMirrorError = UpdateRepoMirrorErrors[keyof UpdateRepoMirrorErrors];
+
+export type UpdateRepoMirrorResponses = {
+    /**
+     * Mirror aggiornato.
+     */
+    200: RepoMirror;
+};
+
+export type UpdateRepoMirrorResponse = UpdateRepoMirrorResponses[keyof UpdateRepoMirrorResponses];
+
+export type SyncRepoMirrorData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        mirrorId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/mirrors/{mirrorId}/sync';
+};
+
+export type SyncRepoMirrorErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SyncRepoMirrorError = SyncRepoMirrorErrors[keyof SyncRepoMirrorErrors];
+
+export type SyncRepoMirrorResponses = {
+    /**
+     * Mirror in coda; lo stato aggiornato.
+     */
+    202: RepoMirror;
+};
+
+export type SyncRepoMirrorResponse = SyncRepoMirrorResponses[keyof SyncRepoMirrorResponses];
+
+export type ListRepoMirrorRunsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        mirrorId: string;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/mirrors/{mirrorId}/runs';
+};
+
+export type ListRepoMirrorRunsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListRepoMirrorRunsError = ListRepoMirrorRunsErrors[keyof ListRepoMirrorRunsErrors];
+
+export type ListRepoMirrorRunsResponses = {
+    /**
+     * Pagina di esecuzioni.
+     */
+    200: RepoMirrorRunList;
+};
+
+export type ListRepoMirrorRunsResponse = ListRepoMirrorRunsResponses[keyof ListRepoMirrorRunsResponses];
 
 export type ListRepoWebhooksData = {
     body?: never;

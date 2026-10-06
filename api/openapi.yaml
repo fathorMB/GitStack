@@ -88,6 +88,10 @@ tags:
     description: >
       Webhook di repo e di organizzazione, log delle consegne e Redeliver (M-06, regole C6-C8). Formato dei
       payload in docs/webhooks.md. Serviti da core.
+  - name: mirrors
+    description: >
+      Mirror in push di un repo verso un altro server Git in HTTPS (V8, GIT-179): branch principale e tag,
+      mai push forzato. Serviti da core, eseguiti dal servizio git.
   - name: git-internal
     description: >
       Interfaccia interna del servizio git verso core (creazione su disco,
@@ -3890,6 +3894,240 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /repos/{owner}/{repo}/mirrors:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listRepoMirrors
+      tags: [mirrors]
+      x-required-scopes: ["read:resource"]
+      summary: Elenca i mirror in push di un repo
+      description: >
+        Serve `admin` sul repo (V8); un repo che non si legge risponde 404, uno senza `admin` 403. Il token non
+        torna mai: `hasToken` dice solo che c'e'. Ogni mirror porta lo stato dell'ultimo tentativo (`state`,
+        `lastAttemptAt`, `lastError`, `lastPushed`). Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di mirror.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoMirrorList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: createRepoMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Crea un mirror in push di un repo
+      description: >
+        Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git
+        in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha
+        una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza
+        credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo
+        la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed`
+        (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente
+        e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei
+        webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503
+        `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso
+        `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRepoMirrorInput"
+      responses:
+        "201":
+          description: Mirror creato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoMirror"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/mirrors/{mirrorId}:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/MirrorIdParam"
+    get:
+      operationId: getRepoMirror
+      tags: [mirrors]
+      x-required-scopes: ["read:resource"]
+      summary: Legge un mirror in push (con il suo stato)
+      description: >
+        Serve `admin` sul repo (V8). E' l'operazione di stato: `state`, `lastAttemptAt`, `lastSuccessAt`,
+        `lastError` e `lastPushed` (ref → SHA spinti con l'ultimo push riuscito). Un mirror di un altro repo
+        risponde 404.
+      responses:
+        "200":
+          description: Il mirror.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoMirror"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateRepoMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica un mirror in push
+      description: >
+        Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non
+        si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror.
+        `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo.
+        Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRepoMirrorInput"
+      responses:
+        "200":
+          description: Mirror aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoMirror"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    delete:
+      operationId: deleteRepoMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Elimina un mirror in push
+      description: >
+        Serve `admin` sul repo (V8). Elimina anche il log delle esecuzioni. Non tocca la destinazione. Un repo
+        archiviato rifiuta la modifica con 409 `archived` (R10).
+      responses:
+        "204":
+          description: Mirror eliminato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/mirrors/{mirrorId}/sync:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/MirrorIdParam"
+    post:
+      operationId: syncRepoMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Sincronizza ora un mirror in push
+      description: >
+        Serve `admin` sul repo (V8). Mette il mirror in coda subito («Sincronizza ora»): risponde 202 e il push lo
+        esegue il worker, entro pochi secondi; si segue con `getRepoMirror` e `listRepoMirrorRuns`. Su un mirror
+        `diverged` o in `error` azzera i tentativi e riprova: il push resta non forzato, quindi se la destinazione
+        ha ancora una storia diversa il mirror torna `diverged`. Un mirror in pausa (`enabled: false`) risponde 409
+        `mirror_disabled`. Idempotente se il mirror e' gia' in coda. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+      responses:
+        "202":
+          description: Mirror in coda; lo stato aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoMirror"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/mirrors/{mirrorId}/runs:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/MirrorIdParam"
+    get:
+      operationId: listRepoMirrorRuns
+      tags: [mirrors]
+      x-required-scopes: ["read:resource"]
+      summary: Log delle ultime esecuzioni di un mirror in push
+      description: >
+        Serve `admin` sul repo (V8). Le ultime esecuzioni (al massimo 50 per mirror, 30 giorni), dalla piu'
+        recente. Ogni esecuzione dice l'esito, l'errore ripulito da credenziali e lo SHA di ogni ref.
+        Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di esecuzioni.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoMirrorRunList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /repos/{owner}/{repo}/hooks:
     parameters:
       - $ref: "#/components/parameters/RepoOwnerParam"
@@ -5928,6 +6166,13 @@ components:
       description: "Solo le notifiche di un repo, `owner/repo`."
       schema:
         type: string
+    MirrorIdParam:
+      name: mirrorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     WebhookIdParam:
       name: hookId
       in: path
@@ -8690,7 +8935,9 @@ components:
         `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata;
         `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`;
         `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue
-        seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+        seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7);
+        `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha
+        una storia diversa (V8).
       enum:
         - assigned
         - mentioned
@@ -8699,6 +8946,7 @@ components:
         - commit_linked
         - state_change
         - webhook
+        - mirror
     NotificationRepo:
       type: object
       additionalProperties: false
@@ -8854,6 +9102,7 @@ components:
             commit_linked: false
             state_change: false
             webhook: false
+            mirror: false
     UpdateNotificationPreferencesInput:
       type: object
       additionalProperties: false
@@ -8909,6 +9158,214 @@ components:
         assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato,
         eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
       enum: [push, issues, issue_comment, repository]
+    RepoMirrorState:
+      type: string
+      description: >
+        Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un
+        worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`:
+        l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa
+        crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta;
+        `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro
+        commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una
+        notifica `mirror`; riparte solo con `syncRepoMirror`.
+      enum: [pending, syncing, in_sync, error, diverged]
+    RepoMirror:
+      type: object
+      additionalProperties: false
+      required: [id, url, username, hasToken, enabled, state, attempts, lastPushed, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          description: Destinazione, `https://` senza credenziali.
+        username:
+          type: string
+        hasToken:
+          type: boolean
+          description: "Sempre `true`: il token non torna mai nelle risposte."
+        enabled:
+          type: boolean
+        state:
+          $ref: "#/components/schemas/RepoMirrorState"
+        attempts:
+          type: integer
+          description: Tentativi falliti consecutivi dall'ultimo successo.
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Quando e' previsto il prossimo tentativo; `null` se non c'e' niente in coda.
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSuccessAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+          description: Motivo dell'ultimo errore o della divergenza, senza credenziali; `null` dopo un successo.
+        lastPushed:
+          type: object
+          description: Ref → SHA dell'ultimo push riuscito.
+          additionalProperties:
+            type: string
+          example:
+            refs/heads/main: 4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4
+            refs/tags/v1.0.0: 9a8b7c6d5e4f30211203f4e5d6c7b8a998877665
+        createdBy:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 0b9d2c1e-6f7a-4c3d-9e8f-1a2b3c4d5e6f
+        url: https://github.com/example/gitstack.git
+        username: gitstack-mirror
+        hasToken: true
+        enabled: true
+        state: diverged
+        attempts: 0
+        nextAttemptAt: null
+        lastAttemptAt: "2026-10-06T19:30:12Z"
+        lastSuccessAt: "2026-10-06T18:02:44Z"
+        lastError: "refs/heads/main: rifiutato (non-fast-forward): la destinazione ha una storia diversa"
+        lastPushed:
+          refs/heads/main: 4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4
+        createdAt: "2026-10-01T08:00:00Z"
+        updatedAt: "2026-10-06T19:30:12Z"
+    RepoMirrorList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepoMirror"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    CreateRepoMirrorInput:
+      type: object
+      additionalProperties: false
+      required: [url, username, token]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: "`https://` senza credenziali, al massimo 2048 caratteri."
+        username:
+          type: string
+          description: Da 1 a 256 caratteri.
+        token:
+          type: string
+          writeOnly: true
+          description: Token o password per la destinazione (da 1 a 512 caratteri); cifrato, non torna mai.
+        enabled:
+          type: boolean
+          description: Default `true`.
+      example:
+        url: https://github.com/example/gitstack.git
+        username: gitstack-mirror
+        token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    UpdateRepoMirrorInput:
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+        username:
+          type: string
+        token:
+          type: string
+          writeOnly: true
+          description: Sostituisce il token; non si puo' togliere.
+        enabled:
+          type: boolean
+    RepoMirrorRunOutcome:
+      type: string
+      description: >
+        `success`: push riuscito (anche se tutto era gia' aggiornato); `error`: fallito, si ritenta;
+        `diverged`: la destinazione ha una storia diversa, fermo; `blocked`: destinazione non ammessa dalla
+        policy di uscita (C8), non si ritenta.
+      enum: [success, error, diverged, blocked]
+    RepoMirrorRunRef:
+      type: object
+      additionalProperties: false
+      required: [ref, status]
+      properties:
+        ref:
+          type: string
+          example: refs/heads/main
+        status:
+          type: string
+          enum: [pushed, up-to-date, rejected, error]
+        sha:
+          type: string
+          description: SHA locale del ref, per `pushed` e `up-to-date`.
+        reason:
+          type: string
+          description: Motivo del rifiuto o dell'errore, es. `non-fast-forward`, `fetch first`, `already exists`.
+    RepoMirrorRun:
+      type: object
+      additionalProperties: false
+      required: [id, startedAt, finishedAt, durationMs, outcome, attempt, refs]
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+        outcome:
+          $ref: "#/components/schemas/RepoMirrorRunOutcome"
+        attempt:
+          type: integer
+          description: Numero del tentativo (1 = il primo dopo un successo o una richiesta).
+        error:
+          type: string
+          nullable: true
+          description: Senza credenziali.
+        refs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepoMirrorRunRef"
+    RepoMirrorRunList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepoMirrorRun"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
     Webhook:
       type: object
       additionalProperties: false

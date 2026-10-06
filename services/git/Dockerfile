@@ -27,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/git-ser
 # chart, il PVC git-data).
 FROM alpine:3.22
 
-RUN apk add --no-cache git \
+RUN apk add --no-cache git ca-certificates \
     && adduser -D -u 10001 gitsvc \
     && mkdir -p /data \
     && chown gitsvc:gitsvc /data
