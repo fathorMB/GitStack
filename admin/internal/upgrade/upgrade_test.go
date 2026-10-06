@@ -190,7 +190,7 @@ func newWorld(t *testing.T) *world {
 	mustWrite(t, filepath.Join(w.chart, "Chart.yaml"), "name: gitstack\n")
 	mustWrite(t, filepath.Join(w.chart, "values.yaml"), "VECCHIO: 1\n")
 	mustWrite(t, filepath.Join(git, "r.git"), "OGGETTO")
-	mustWrite(t, w.cfgFile, "version: 1\nhost: h\nchart_dir: "+filepath.ToSlash(w.chart)+"\nimage_tag: sha-"+oldSHA+"\n")
+	mustWriteMode(t, w.cfgFile, 0o600, "version: 1\nhost: h\nchart_dir: "+filepath.ToSlash(w.chart)+"\nimage_tag: sha-"+oldSHA+"\n")
 
 	sum := sha256.Sum256([]byte(newBin))
 	w.srv = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -257,10 +257,17 @@ func newWorld(t *testing.T) *world {
 
 func mustWrite(t *testing.T, p, s string) {
 	t.Helper()
+	mustWriteMode(t, p, 0o644, s)
+}
+
+// mustWriteMode scrive il file con i permessi dati: config.Load su Unix
+// rifiuta un config.yaml diverso da 0600.
+func mustWriteMode(t *testing.T, p string, perm os.FileMode, s string) {
+	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte(s), perm); err != nil {
 		t.Fatal(err)
 	}
 }
