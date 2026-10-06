@@ -94,7 +94,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 |---|---|---|
 | `gitstack status [--json] [--config F]` | versione, host, salute, ultimo backup | serve per leggere il config (0600) |
 | `gitstack backup [--dest D] [--key-file F] [--config F]` | archivio coerente di database, repo, allegati, Secret e configurazione | sì |
-| `gitstack restore [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
+| `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
 | `gitstack version` | versione del binario | no |
 
 I comandi che cambiano lo stato dell'host (dai prossimi item) rifiutano di
