@@ -69,6 +69,13 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
 			pr.SetXForwarded()
+			// SetXForwarded scrive X-Forwarded-Proto dallo schema della
+			// connessione col gateway (http: Traefik parla in chiaro). Se il
+			// peer è un proxy fidato si conserva il valore che ha impostato,
+			// così identity sa se il client era su HTTPS.
+			if proto := forwardedProto(pr.In, o.trusted); proto != "" {
+				pr.Out.Header.Set("X-Forwarded-Proto", proto)
+			}
 			// Mai fidarsi del valore in ingresso: ogni X-Gitstack-* del client
 			// (identità inclusa) si cancella, poi il gateway scrive i propri.
 			trust.StripClientHeaders(pr.Out.Header)

@@ -245,7 +245,7 @@ func ValidRedirect(r string) bool {
 
 // Start prepara il redirect al provider (authorization code + PKCE S256,
 // state e nonce casuali) e il cookie cifrato con lo stato.
-func (s *Service) Start(ctx context.Context, slug, redirectTo string) (StartResult, error) {
+func (s *Service) Start(ctx context.Context, slug, redirectTo string, secure bool) (StartResult, error) {
 	if redirectTo == "" {
 		redirectTo = "/"
 	}
@@ -273,13 +273,13 @@ func (s *Service) Start(ctx context.Context, slug, redirectTo string) (StartResu
 		return StartResult{}, err
 	}
 	authURL := r.oa.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), gooidc.Nonce(nonce))
-	return StartResult{URL: authURL, Cookie: s.stateCookie(slug, value, int(StateTTL/time.Second))}, nil
+	return StartResult{URL: authURL, Cookie: s.stateCookie(slug, value, int(StateTTL/time.Second), secure)}, nil
 }
 
-func (s *Service) stateCookie(slug, value string, maxAge int) *http.Cookie {
+func (s *Service) stateCookie(slug, value string, maxAge int, secure bool) *http.Cookie {
 	c := &http.Cookie{
 		Name: StateCookieName, Value: value, Path: s.callbackPath(slug),
-		MaxAge: maxAge, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
+		MaxAge: maxAge, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	}
 	if maxAge < 0 {
 		c.Value = ""
@@ -289,8 +289,8 @@ func (s *Service) stateCookie(slug, value string, maxAge int) *http.Cookie {
 }
 
 // ClearStateCookie cancella il cookie di stato (a fine callback, riuscita o no).
-func (s *Service) ClearStateCookie(slug string) *http.Cookie {
-	return s.stateCookie(slug, "", -1)
+func (s *Service) ClearStateCookie(slug string, secure bool) *http.Cookie {
+	return s.stateCookie(slug, "", -1, secure)
 }
 
 // FinishInput sono i dati della callback.

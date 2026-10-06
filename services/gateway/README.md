@@ -45,7 +45,7 @@ Il progetto è in `services/identity/README.md` ("Come il gateway verifica sessi
 | `GITSTACK_GATEWAY_AUTH_CACHE_TTL` | no | `30s` | Durata in cache degli esiti positivi di verifica (mai oltre `expiresAt`) |
 | `GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL` | no | `5s` | Durata in cache degli esiti negativi |
 | `GITSTACK_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
-| `GITSTACK_GATEWAY_TRUSTED_PROXIES` | no | vuoto | CIDR separati da virgola dei proxy davanti al gateway (es. la rete di Traefik, `10.42.0.0/16`). Solo da questi peer si legge `X-Forwarded-For` per l'IP del client (ultimo indirizzo non fidato da destra); vuoto = nessuno fidato, l'IP è quello della connessione e `X-Forwarded-For` di un peer non fidato è ignorato  Il chart lo imposta da `gateway.env.trustedProxies` (default `10.42.0.0/16`) |
+| `GITSTACK_GATEWAY_TRUSTED_PROXIES` | no | vuoto | CIDR separati da virgola dei proxy davanti al gateway (es. la rete di Traefik, `10.42.0.0/16`). Solo da questi peer si legge `X-Forwarded-For` per l'IP del client (ultimo indirizzo non fidato da destra); vuoto = nessuno fidato, l'IP è quello della connessione e `X-Forwarded-For` di un peer non fidato è ignorato  Il chart lo imposta da `gateway.env.trustedProxies` (default `10.42.0.0/16`). Solo da questi peer il gateway conserva anche `X-Forwarded-Proto` (`http` o `https`) invece di sovrascriverlo con lo schema della propria connessione: identity lo usa per marcare `Secure` il cookie di sessione solo su HTTPS (GIT-153) |
 
 ### Sviluppo locale
 

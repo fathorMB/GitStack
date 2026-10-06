@@ -41,7 +41,7 @@ func (s *server) StartOidcLogin(w http.ResponseWriter, r *http.Request, provider
 			return
 		}
 	}
-	res, err := s.oidc.Start(r.Context(), provider, redirectTo)
+	res, err := s.oidc.Start(r.Context(), provider, redirectTo, s.isSecure(r))
 	switch {
 	case errors.Is(err, oidc.ErrDisabled), errors.Is(err, oidc.ErrProviderNotFound):
 		providerNotFound(w)
@@ -73,7 +73,7 @@ func (s *server) FinishOidcLogin(w http.ResponseWriter, r *http.Request, provide
 	})
 	// Il cookie di stato si cancella comunque: non serve più, riuscito o no.
 	if err == nil || !errors.Is(err, oidc.ErrDisabled) {
-		http.SetCookie(w, s.oidc.ClearStateCookie(provider))
+		http.SetCookie(w, s.oidc.ClearStateCookie(provider, s.isSecure(r)))
 	}
 	switch {
 	case errors.Is(err, oidc.ErrDisabled), errors.Is(err, oidc.ErrProviderNotFound):
@@ -92,7 +92,7 @@ func (s *server) FinishOidcLogin(w http.ResponseWriter, r *http.Request, provide
 		s.internal(w, r, err)
 		return
 	}
-	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt))
+	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, res.RedirectTo, http.StatusFound)
 }

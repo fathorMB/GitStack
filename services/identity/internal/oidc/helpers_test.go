@@ -392,7 +392,7 @@ func newRig(t *testing.T, mod func(p *Provider)) *rig {
 // callback con cookie e state giusti.
 func (r *rig) begin(redirectTo string) FinishInput {
 	r.t.Helper()
-	res, err := r.svc.Start(context.Background(), "kc", redirectTo)
+	res, err := r.svc.Start(context.Background(), "kc", redirectTo, true)
 	if err != nil {
 		r.t.Fatalf("Start: %v", err)
 	}

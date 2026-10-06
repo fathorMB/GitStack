@@ -159,22 +159,24 @@ func (s *Service) Session(ctx context.Context, sessionValue string) (Current, er
 	return Current{User: u, Session: sess, MustChange: must}, nil
 }
 
-// SessionCookie costruisce il cookie di sessione: HttpOnly, Secure,
-// SameSite=Lax, Path=/, con scadenza uguale a quella della sessione.
-func SessionCookie(value string, expires time.Time) *http.Cookie {
+// SessionCookie costruisce il cookie di sessione: HttpOnly, SameSite=Lax,
+// Path=/, con scadenza uguale a quella della sessione. Secure solo se la
+// richiesta originale è HTTPS (secure): su HTTP il browser scarterebbe il
+// cookie e il login non funzionerebbe.
+func SessionCookie(value string, expires time.Time, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     CookieName,
 		Value:    value,
 		Path:     "/",
 		Expires:  expires.UTC(),
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	}
 }
 
 // ClearCookie costruisce il cookie che cancella quello di sessione (logout).
-func ClearCookie() *http.Cookie {
+func ClearCookie(secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     CookieName,
 		Value:    "",
@@ -182,7 +184,7 @@ func ClearCookie() *http.Cookie {
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0).UTC(),
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	}
 }
