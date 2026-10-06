@@ -652,9 +652,6 @@ jobs:
           kubectl rollout status deployment/gitstack-git --timeout=120s
           kubectl rollout status deployment/gitstack-web --timeout=120s
 
-      # GIT-99: l'helm install usa il default di git.ssh.enabled (true, R7):
-      # il Service <release>-git-ssh (LoadBalancer, ServiceLB) apre la 2222 sul
-      # nodo qualche secondo dopo il Ready, quindi polling con timeout.
       # GIT-171: /downloads attraversa l'Ingress (web è già Ready): gs
       # scaricato dall'istanza, checksum da SHA256SUMS e `gs version` col tag
       # dell'immagine. Pubblico, senza token.
@@ -682,6 +679,9 @@ jobs:
           GS_INSTALL_DIR="${d}/bin" sh "${d}/install-gs.sh"
           "${d}/bin/gs" version | grep -F "${IMAGE_TAG}"
 
+      # GIT-99: l'helm install usa il default di git.ssh.enabled (true, R7):
+      # il Service <release>-git-ssh (LoadBalancer, ServiceLB) apre la 2222 sul
+      # nodo qualche secondo dopo il Ready, quindi polling con timeout.
       - name: Verifica che il server SSH di git risponda sulla porta 2222 (ssh-keyscan)
         run: |
           set -euo pipefail
