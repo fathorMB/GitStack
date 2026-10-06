@@ -2,7 +2,7 @@
 
 `gs`, la CLI Go di GitStack per persone e agenti (stile `gh`), su client generato dall'OpenAPI del gateway. Dettagli: [[M-07]] in `.lmbrain-lite/milestones/M-07.md`.
 
-Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version` e il provvisorio `gs api user`; gli altri gruppi (`auth`, `repo`, `issue`, ...) sono padri vuoti che gli item successivi riempiono.
+Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version`, `gs issue` (GIT-166) e il provvisorio `gs api user`; gli altri gruppi (`auth`, `repo`, ...) sono padri vuoti che gli item successivi riempiono.
 
 ## Licenza
 
@@ -53,7 +53,7 @@ hosts/<host>.yaml      user, git_protocol e, solo se non c'è il portachiavi, to
 
 Il `:` di `host:porta` nel nome file diventa `_`. File `0600` e cartelle `0700` su Unix; su Windows la DACL del file (e delle cartelle) è protetta e ha un'unica voce, per l'utente corrente (`os.WriteFile` con `0600` su Windows non protegge niente). La scrittura è atomica (file temporaneo accanto, poi rename). I test lo verificano (`internal/config`: modo su Unix, lettura della DACL su Windows).
 
-**Token.** L'interfaccia `config.TokenSource` ha oggi l'implementazione su file; `GS_TOKEN` ha sempre la precedenza. GIT-164 vi aggiunge il portachiavi dietro la stessa interfaccia.
+**Token.** L'interfaccia `config.TokenSource` ha due implementazioni: `KeyringTokens` (portachiavi di sistema via `github.com/zalando/go-keyring`, servizio `gs`, utente = host) e `FileTokens` (campo `token` di `hosts/<host>.yaml`, 0600). `KeyringTokens` usa il file come ripiego quando il portachiavi non c'è (nessun Secret Service, niente D-Bus) e legge anche un token già nel file. `GS_NO_KEYRING=1` disattiva il portachiavi. `GS_TOKEN` ha sempre la precedenza, ma vale solo per l'istanza scelta (`--hostname`, `GS_HOST`, o la predefinita). Il file host ha anche `host:`, il nome esatto dell'istanza (il nome del file perde i due punti).
 
 **Scelta dell'istanza** (`Factory.Host`), nell'ordine:
 
@@ -113,6 +113,45 @@ La mappatura è in `cmdutil.ExitCode`, dagli errori tipizzati (`APIError`, `Usag
 
 `cmdutil.ConfirmOrYes(io, yes, prompt, expected)`: con `--yes` procede; senza TTY in ingresso e senza `--yes` è un uso errato (exit 2) e non legge stdin; con TTY scrive il prompt su stderr e, se `expected` non è vuoto (per esempio `owner/repo`), vuole che venga riscritto identico, altrimenti accetta `y`/`yes`; una risposta diversa è `ErrCancelled` (exit 1).
 
+## `gs issue` (GIT-166, G4)
+
+Sottocomandi: `create`, `list` (`ls`), `view`, `edit`, `comment`, `close`, `reopen`, `lock`, `unlock`. Il repo è quello del remote `origin` o `-R owner/repo`. Chi li usa passa i numeri come `12` o `#12`. Le regole le applica l'API (I2, I3, I4, I11, R10): `gs` mostra l'errore e lo traduce nel codice di uscita.
+
+| Comando | Cosa fa | Flag principali |
+|---|---|---|
+| `create` | apre una issue; su stdout l'indirizzo web | `-t/--title` (obbligatorio, salvo un modello che lo propone), `-b/--body`, `-F/--body-file` (`-` = stdin), `-l/--label`, `-a/--assignee` (`@me`), `-m/--milestone` (numero o titolo), `-T/--template` (I11) |
+| `list` | elenca (default: aperte, `-L 30`) | `-s/--state open\|closed\|all`, `-l/--label` (tutte), `-a/--assignee` (utente, `@me`, `@agents`, `none`), `-A/--author` (utente, `@me`), `-m/--milestone` (numero, titolo, `none`), `-S/--search` (sintassi I10), `-L/--limit` |
+| `view <n>` | titolo, stato, etichette, assegnatari, milestone, testo | `-c/--comments`, `-w/--web` |
+| `edit <n>` | modifica | `-t`, `-b`, `-F`, `--add-label`, `--remove-label`, `--add-assignee`, `--remove-assignee`, `-m`, `--remove-milestone` |
+| `comment <n>` | commenta; su stdout l'indirizzo del commento | `-b`, `-F` (`-` = stdin) |
+| `close <n>` | chiude con un motivo (I2) | `-r/--reason completed\|"not planned"\|duplicate`, `-d/--duplicate-of <n>` (o `-r "duplicate #n"`), `-c/--comment` |
+| `reopen <n>` | riapre e azzera il motivo | `-c/--comment` |
+| `lock <n>` / `unlock <n>` | blocca o sblocca la discussione (I11, serve admin) | `lock -r/--reason` |
+
+- **Filtri e ricerca.** `list` passa all'API (`GET /repos/{owner}/{repo}/issues`) i filtri e `--search` così come sono: la sintassi I10 la interpreta il server (`pkg/issuequery`), quindi `gs`, UI e API danno gli stessi risultati. `--state` si manda solo se lo scrivi: senza, vale `is:open|closed` di `--search`, e se manca anche quello l'API mostra le aperte. Le etichette dei filtri si sommano (la issue le ha tutte).
+- **Modelli.** `create --template bug` legge `.gitstack/ISSUE_TEMPLATE/bug.md` dall'API (`GET .../issue-templates`): titolo, etichette (unite a quelle di `-l`) e testo precompilati, che `--title` e `--body` sovrascrivono. Se il modello non esiste, l'errore (exit 2) elenca quelli disponibili.
+- **Milestone.** `-m` accetta il numero o il titolo (senza distinguere maiuscole); un titolo sconosciuto è «non trovato» (exit 6).
+- **Repo archiviato (R10).** Ogni modifica risponde 409 `archived` e `gs` stampa «il repository owner/repo è archiviato (sola lettura): …» (exit 1). `list` e `view` funzionano.
+- **Codici di uscita.** Quelli di G3: l'API risponde 401 → 4, 403 (anche `insufficient_scope`, `locked`) → 5, 404 → 6 (un repo che non puoi leggere è 404, non 403), 409 e 422 → 1; flag e argomenti sbagliati, `duplicate` senza numero, `edit` senza modifiche → 2. Una issue già chiusa o già aperta è 409 (exit 1), non un successo silenzioso.
+- **I3.** L'autore chiude e riapre la propria issue anche con solo `read`; chi non ha `write` non gestisce quelle altrui (exit 5). Etichette, assegnatari e milestone chiedono `write`.
+
+### Campi di `--json`
+
+Sono quelli dello schema dell'API (camelCase), più `url` (pagina web). Un campo facoltativo assente è `null`. `--json` senza campi li elenca; un campo sconosciuto è un uso errato (exit 2).
+
+| Comando | Oggetto | Campi |
+|---|---|---|
+| `create`, `edit`, `close`, `reopen`, `lock`, `unlock` | `Issue` | `id`, `number`, `title`, `body`, `state` (`open`\|`closed`), `closeReason` (`completed`\|`not_planned`\|`duplicate`), `duplicateOf`, `author`, `viaToken`, `labels`, `assignees`, `milestone`, `locked`, `hidden`, `edited`, `commentCount`, `attachments`, `closedAt`, `createdAt`, `updatedAt`, `url` |
+| `view` | `Issue` | gli stessi, più `comments` (lista di commenti; si legge solo se richiesto con `--comments` o con `--json ...,comments`) |
+| `list` | lista di `IssueSummary` | `number`, `title`, `state`, `closeReason`, `author`, `labels`, `assignees`, `milestone`, `locked`, `commentCount`, `createdAt`, `updatedAt`, `url` (senza `body`) |
+| `comment` | `IssueComment` | `id`, `issueNumber`, `body`, `author`, `viaToken`, `edited`, `deleted`, `attachments`, `createdAt`, `updatedAt`, `url` |
+
+`author` e ogni elemento di `assignees` sono `{id, username, kind: human|agent, displayName}`; `labels`: `{id, name, color}`; `milestone`: `{number, title, state}`. Senza `--json`, `list` stampa una riga per issue (`#n`, stato con motivo per le chiuse, etichette, data di aggiornamento, titolo), con intestazione solo su TTY.
+
+### Test
+
+`cli/internal/cmd/issue/issue_test.go`: gateway finto, richieste e corpi verificati. `services/core/internal/stackitest/gs_issue_integration_test.go` (`TestGsIssue`, tag `integration`): il binario `gs` vero compilato con `go build` contro lo stack completo (gateway, identity, git, core, Postgres), con un proxy che mappa `/api/v1` su `/v1`. Prova ogni sottocomando, i tre motivi di chiusura, I3, il blocco, R10, l'accordo di `list` con l'API (stessi numeri con filtri e `--search`) e i codici 4, 5 e 6.
+
 ## Versione e build
 
 ```sh
@@ -131,3 +170,17 @@ I binari si costruiscono con `scripts/build-gs-dist.sh <cartella> <versione>`: `
 curl -fsSL https://<host>/install-gs.sh | sh        # Linux, macOS
 irm https://<host>/install-gs.ps1 | iex             # Windows
 ```
+
+## gs auth (GIT-164)
+
+| Comando | Cosa fa |
+|---|---|
+| `gs auth login [--hostname H] [--with-token] [--web]` | Chiede istanza e token (input nascosto), verifica il token con `GET /auth/session` e lo salva (portachiavi, altrimenti file 0600). `--with-token` legge il token da stdin. `--web` apre `https://<host>/settings/tokens/new?name=gs&scopes=read:user,read:org,read:resource,write:resource&expires=90` (percorso fissato in `web/README.md`) e poi chiede il token incollato. Un token rifiutato esce con 4 e non salva niente |
+| `gs auth status [--json campi]` | Per ogni istanza configurata (o `--hostname`): utente, sorgente del token (`keyring`, `file`, `GS_TOKEN`), scope, scadenza, stato (`ok`, `invalid`, `no_token`, `error`). Exit 4 se un token è scaduto, revocato o mancante; 1 se un'istanza non risponde |
+| `gs auth logout [--hostname H]` | Toglie token e configurazione dell'istanza (non revoca il token sul server) |
+| `gs auth setup-git [--hostname H]` | Scrive in `git config --global` `credential.<schema>://<host>.helper` = `!'<gs>' auth git-credential` per ogni istanza configurata |
+| `gs auth git-credential get` | Nascosto: il helper chiamato da git. Risponde `username` e `password` (il token) solo per l'istanza configurata con quello schema e host |
+
+Agenti e CI: `GS_HOST` e `GS_TOKEN` bastano, senza login né file; con `gs auth setup-git` anche git in HTTPS usa il token. Il token non va mai su stdout/stderr né nei log. Il controllo di versione contro `/meta` (G6, `internal/compat`) è collegato alla radice (`PersistentPreRunE`) e salta `version`, `help`, `completion` e `auth login|logout|setup-git|git-credential`.
+
+Test: `internal/cmd/auth` con portachiavi finto (`keyring.MockInit`, `MockInitWithError` per il ripiego su file); `setupgit_integration_test.go` (tag `integration`, serve `git`) compila il binario gs e clona in HTTPS con git vero da un `git http-backend` che pretende il token in Basic auth.

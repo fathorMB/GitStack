@@ -199,6 +199,9 @@ type issueViews struct {
 	rows   []issueRow
 	extras issueExtras
 	users  userDirectory
+	// commits: commit distinti collegati per issue, già filtrati per C1
+	// (riempito solo dalla lista e dalla ricerca).
+	commits map[uuid.UUID]int
 }
 
 func (s *apiServer) loadViews(ctx context.Context, q querier, rows []issueRow) (issueViews, error) {
@@ -310,6 +313,8 @@ func (v issueViews) summary(x issueRow) openapi.IssueSummary {
 		CommentCount: x.CommentCount,
 		CreatedAt:    x.CreatedAt,
 		UpdatedAt:    x.UpdatedAt,
+
+		LinkedCommitCount: v.commits[x.ID],
 	}
 }
 

@@ -131,7 +131,9 @@ func TestApiUserConGSHostETokenDaEnv(t *testing.T) {
 func TestHostnameFlagEIstanzaPredefinita(t *testing.T) {
 	var hits int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hits++
+		if !strings.HasSuffix(r.URL.Path, "/meta") {
+			hits++
+		}
 		if r.Header.Get("Authorization") != "Bearer gst_file" {
 			w.WriteHeader(401)
 			_, _ = io.WriteString(w, `{"error":{"code":"unauthenticated","message":"no"}}`)
@@ -236,5 +238,55 @@ func TestSenzaIstanzaNeToken(t *testing.T) {
 	var e struct{ Error struct{ Code string } }
 	if r.code != 4 || json.Unmarshal([]byte(r.errOut), &e) != nil || e.Error.Code != "not_authenticated" {
 		t.Errorf("%+v", r)
+	}
+}
+
+// Il controllo di versione (G6) è collegato alla radice: major diversa = exit 1,
+// minor diversa = avviso su stderr; version e auth login non lo eseguono.
+func TestCompatCollegata(t *testing.T) {
+	serverVersion := "v2.0.0"
+	var metaHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/meta") {
+			metaHits++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"server_version":"`+serverVersion+`","api_version":"v1"}`)
+			return
+		}
+		session(w, r)
+	}))
+	defer srv.Close()
+	run := func(version string, args ...string) result {
+		io_, _, out, errOut := cmdutil.Test()
+		fac := cmdutil.New(version, io_)
+		dir := t.TempDir()
+		fac.Getenv = func(k string) string {
+			switch k {
+			case config.EnvConfigDir:
+				return dir
+			case "GS_HOST":
+				return srv.URL
+			case "GS_TOKEN":
+				return "gst_x"
+			}
+			return ""
+		}
+		fac.Git = noGit{}
+		fac.HTTPClient = srv.Client
+		return result{Run(context.Background(), fac, args), out.String(), errOut.String()}
+	}
+	if r := run("v1.0.0", "api", "user"); r.code != 1 || !strings.Contains(r.errOut, "incompatibile") {
+		t.Errorf("major diversa: %+v", r)
+	}
+	serverVersion = "v1.2.0"
+	if r := run("v1.0.0", "api", "user"); r.code != 0 || !strings.Contains(r.errOut, "avviso") {
+		t.Errorf("minor diversa: %+v", r)
+	}
+	before := metaHits
+	if r := run("v1.0.0", "version"); r.code != 0 {
+		t.Errorf("version: %+v", r)
+	}
+	if metaHits != before {
+		t.Error("version non deve controllare il server")
 	}
 }

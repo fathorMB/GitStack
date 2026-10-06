@@ -6,9 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/fathorMB/GitStack/cli/internal/api"
 	apicmd "github.com/fathorMB/GitStack/cli/internal/cmd/api"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/auth"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/blame"
@@ -22,6 +27,7 @@ import (
 	"github.com/fathorMB/GitStack/cli/internal/cmd/skills"
 	"github.com/fathorMB/GitStack/cli/internal/cmd/version"
 	"github.com/fathorMB/GitStack/cli/internal/cmdutil"
+	"github.com/fathorMB/GitStack/cli/internal/compat"
 	"github.com/fathorMB/GitStack/cli/internal/output"
 )
 
@@ -36,6 +42,9 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE:          cmdutil.GroupRun,
+		PersistentPreRunE: func(c *cobra.Command, _ []string) error {
+			return checkCompat(c, f)
+		},
 		Args: func(c *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return cmdutil.UsageErrorf("comando sconosciuto %q per %q", args[0], c.CommandPath())
@@ -102,4 +111,37 @@ func jsonMode(c *cobra.Command) bool {
 		}
 	}
 	return false
+}
+
+// compatSkip sono i comandi che non toccano il server o che servono proprio
+// a rimettersi in sesto: niente controllo di versione (G6).
+var compatSkip = map[string]bool{
+	"version": true, "help": true, "completion": true, "__complete": true,
+	"auth login": true, "auth logout": true, "auth setup-git": true, "auth git-credential": true,
+}
+
+// compatTimeout limita la richiesta a /meta: il controllo non deve rallentare i comandi.
+const compatTimeout = 5 * time.Second
+
+// checkCompat confronta la versione di gs con quella del server dell'istanza
+// risolta (G6): versione diversa = avviso su stderr, maggiore diversa = errore.
+// Se l'istanza non si risolve il comando stesso darà l'errore giusto.
+func checkCompat(c *cobra.Command, f *cmdutil.Factory) error {
+	path := strings.TrimPrefix(c.CommandPath(), c.Root().Name()+" ")
+	if c == c.Root() || compatSkip[path] {
+		return nil
+	}
+	host, err := f.Host()
+	if err != nil {
+		return nil
+	}
+	cache := ""
+	if cfg, err := f.Config(); err == nil {
+		cache = filepath.Join(cfg.Path(), "compat.json")
+	}
+	hc := &http.Client{Timeout: compatTimeout}
+	if base := f.HTTPClient(); base != nil {
+		hc.Transport = base.Transport
+	}
+	return compat.Check(c.Context(), hc, api.BaseURL(host), f.Version, cache, f.IO.ErrOut)
 }
