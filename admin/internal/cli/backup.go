@@ -56,13 +56,7 @@ func readKey(path string) ([]byte, error) {
 }
 
 func (a *App) options(cfg *config.Config, cfgPath string, key []byte) *backup.Options {
-	dir := defaultConfigDir
-	if cfgPath != config.DefaultPath {
-		dir = filepath.Dir(cfgPath)
-	}
-	if v := a.Getenv("GITSTACK_CONFIG_DIR"); v != "" {
-		dir = v
-	}
+	dir := a.configDir(cfgPath)
 	abs, err := filepath.Abs(cfgPath)
 	if err != nil {
 		abs = cfgPath
@@ -150,13 +144,7 @@ func (a *App) backupStateWrite(cfgPath string, success bool, path string, err er
 	if err != nil {
 		s.Error = err.Error()
 	}
-	cfgDir := defaultConfigDir
-	if cfgPath != config.DefaultPath {
-		cfgDir = filepath.Dir(cfgPath)
-	}
-	if v := a.Getenv("GITSTACK_CONFIG_DIR"); v != "" {
-		cfgDir = v
-	}
+	cfgDir := a.configDir(cfgPath)
 	_ = backupstate.Write(cfgDir, s)
 }
 

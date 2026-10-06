@@ -111,8 +111,8 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
 - **API**: `GET http://<host>/api/healthz` (quello che vede un client).
 - **Versione del server**: il tag dell'immagine del gateway in esecuzione
   (se il cluster non risponde, `image_tag` del config).
-- **Ultimo backup**: «nessuno» se la cartella `backup.destination` non esiste
-  o è vuota; altrimenti la voce più recente (i `.sha256` non contano).
+- **Ultimo backup**: «nessuno» se il file `backup-state.json` non esiste nella cartella di configurazione;
+  altrimenti mostra data, percorso dell'archivio e (in caso di fallimento) il messaggio di errore.
 
 ### Codici di uscita
 
