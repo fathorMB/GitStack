@@ -251,6 +251,15 @@ func newM06Env(t *testing.T) *m06Env {
 	e.hooks = &webhooks.Engine{Pool: e.pool, Keys: keys, HTTP: &m06ToServer{base: u}, Users: e.idc, Managers: e.idc, Log: quiet, Now: e.clock.Now}
 	linker := &issuelinks.Linker{Pool: e.pool, Identity: e.idc, Notifier: e.notif, Git: e.gitc, Log: quiet}
 
+	// I motori impostano i default al primo uso: farlo qui, prima dei consumer,
+	// evita scritture concorrenti sugli stessi campi (la CI gira con -race).
+	if _, err := e.notif.PurgeRead(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.hooks.PurgeLog(context.Background(), e.clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+
 	nc, err := nats.Connect(e.natsURL)
 	if err != nil {
 		t.Fatal(err)
