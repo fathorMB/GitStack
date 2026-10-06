@@ -256,12 +256,24 @@ sudo systemctl disable --now gitstack-backup.timer
 Backups are regular files in the configured destination directory. Use `rsync`
 to copy them to a separate disk or remote host:
 
-```sh
-# To a backup disk mounted at /mnt/backup:
-rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* /mnt/backup/
+**To a backup disk mounted at `/mnt/backup` (on the server itself):**
 
-# To a remote host (with the key file kept separately):
-rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* gitstack@backup-server:/backups/gitstack/
+```sh
+sudo rsync -a /var/backups/gitstack/ /mnt/backup/gitstack/
+```
+
+**To a remote host (initiated from the server):**
+
+```sh
+rsync -avz /var/backups/gitstack/gitstack-backup-* \
+  gitstack@backup-server:/backups/gitstack/
+```
+
+**From a remote host to the server (pull):**
+
+```sh
+rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* \
+  ./backups/
 ```
 
 > **Keep the encryption key separate from the archive.** Store the key on a
@@ -280,20 +292,23 @@ services.
 
 ### Steps
 
-1. Stop the running instance (or target a clean install of the same version):
-   the restore replaces database tables and repository data in place.
+1. Make sure the instance is running and the server version matches the
+   archive version: the restore replaces database tables, Git repositories,
+   attachments, and Secret data in place. If the cluster is down (for
+   example k3s is stopped) the command exits with code `4` (cluster
+   unreachable).
 
 2. Run the restore command pointing at the archive:
 
    ```sh
-   sudo gitstack restore /var/backups/gitstack/gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
+   sudo gitstack restore /var/backups/gitstack/gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc
    ```
 
    **With an encrypted archive:**
 
    ```sh
-   sudo gitstack restore --key-file /path/to/key.txt \
-     /var/backups/gitstack/gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
+   sudo gitstack restore --key-file /root/gs.key \
+     /var/backups/gitstack/gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc
    ```
 
    **Override the backup destination directory** (where the archive lives)
@@ -301,16 +316,24 @@ services.
 
    ```sh
    sudo gitstack restore --dest /mnt/backup/gitstack \
-     gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz
+     gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc
    ```
 
 3. Wait for the command to finish. On success it prints:
 
    ```
+   archivio verificato: versione sha-... del 2026-10-06T15:46:27Z, 12 file
+   fermo i servizi: core, gateway, git, identity
+   ripristino del database (in una sola transazione)
+   ripristino dei repo (git-data)
+   ripristino degli allegati
+   ripristino dei Secret
+   ripristinati 7 file di configurazione (config.yaml resta quello della nuova installazione)
+   riavvio i servizi
    Restore completato: database, repo, allegati, Secret e configurazione ripristinati.
    ```
 
-4. Verify with `gitstack status` that all services are ready.
+4. Verify with `gitstack status` that all services are ready (exit code `0`).
 
 ### Exit codes
 
@@ -408,18 +431,22 @@ Example output:
 
 ```
 GitStack
-  Versione server: 0.1.0
-  Versione gitstack: 0.1.0
-  Host: homehub.local (SSH git: porta 2222)
+  Versione server: sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee
+  Versione gitstack: sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee
+  Host: 172.28.5.19 (SSH git: porta 2222)
   Release: gitstack (namespace default)
 
 Servizi
-  gateway                        1/1 pronti  OK
-  identity                       1/1 pronti  OK
-  core                           1/1 pronti  OK
-  api (gateway /healthz)         OK         OK
+  gitstack-core                1/1 pronti  OK
+  gitstack-gateway             1/1 pronti  OK
+  gitstack-git                 1/1 pronti  OK
+  gitstack-identity            1/1 pronti  OK
+  gitstack-nats                1/1 pronti  OK
+  gitstack-postgres            1/1 pronti  OK
+  gitstack-web                 1/1 pronti  OK
+  api (gateway /healthz)         OK (https://172.28.5.19/api/healthz: HTTP 200)
 
-Ultimo backup: 2026-10-06T14:30:00Z (successo, gitstack-backup-...tar.gz)
+Ultimo backup: ultimo successo: 2026-10-06 15:46:27 (/var/backups/gitstack/gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc)
 
 Stato: sano
 ```
@@ -448,7 +475,7 @@ gitstack version
 Output:
 
 ```
-gitstack 0.1.0
+gitstack sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee
 ```
 
 ### TLS diagnostics
