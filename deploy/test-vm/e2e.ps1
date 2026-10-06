@@ -64,6 +64,20 @@
       f2. (GIT-35) dopo la seconda esecuzione il Secret dell'admin ha stessa
          resourceVersion e stessi dati, e l'admin non e stato ricreato: la
          password iniziale non vale piu, quella cambiata in e3 si.
+      h. (GIT-148, DF/D) dati di prova (utente con token e chiave SSH,
+         organizzazione, repo con un commit via HTTPS e uno via SSH, issue con
+         allegato) e `sudo gitstack backup --key-file`: archivio cifrato
+         0600 in cartella 0700, copiato sull'host con SHA-256 uguale,
+         servizi di nuovo sani. Stampa la riga "Finestra di sola lettura".
+      i. (GIT-148, DF/D) reset al checkpoint clean, reinstallazione dello
+         stesso commit, `gitstack restore`: stessa CA, admin con la password
+         cambiata, dati e allegato identici, clone HTTPS e SSH uguali con la
+         chiave host verificata in modo rigido, `gitstack status` sano.
+      j. (GIT-148, DF/F) reset, installazione del commit precedente
+         (-PreviousRef, default: il primo genitore di -Ref), dati, restore
+         di un archivio di un'altra versione rifiutato (exit 6), `gitstack
+         upgrade --dry-run` e vero a -Ref, verifica di versione, backup
+         preventivo, CA, admin, dati e clone.
       g. SEMPRE (anche dopo un fallimento): raccolta della diagnostica
          dalla VM e uno zip in -OutDir. Riepilogo finale PASS/FAIL. Exit
          code diverso da zero se un passo e fallito.
@@ -80,6 +94,17 @@
     Salta il passo (a): riusa la VM nello stato in cui si trova. Solo per il
     debug di questo script: normalmente la VM viene sempre ripristinata al
     checkpoint 'clean' prima di ogni prova.
+
+.PARAMETER SkipBackupRestore
+    Salta i passi h e i (backup, reset, restore). Per il debug.
+
+.PARAMETER SkipUpgrade
+    Salta il passo j (upgrade dal commit precedente). Per il debug.
+
+.PARAMETER PreviousRef
+    Passo j: commit da installare prima dell'upgrade. Default: il primo
+    genitore di -Ref (API GitHub). Deve avere gia il comando `gitstack
+    upgrade` (GIT-147) e le immagini e il binario pubblicati dalla CI.
 
 .PARAMETER GitSshPort
     Passo (e5): porta SSH del servizio git sulla VM. Default 2222.
@@ -107,6 +132,9 @@ param(
     [string]$Ref,
     [string]$OutDir,
     [switch]$SkipReset,
+    [switch]$SkipBackupRestore,
+    [switch]$SkipUpgrade,
+    [string]$PreviousRef,
     [int]$ResetBootTimeoutSeconds = 300,
     [int]$SshTimeoutSeconds = 180,
     [int]$SshConnectTimeoutSeconds = 15,
@@ -120,6 +148,7 @@ param(
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
 . (Join-Path $PSScriptRoot 'lib\http.ps1')
 . (Join-Path $PSScriptRoot 'lib\tls.ps1')
+. (Join-Path $PSScriptRoot 'lib\phases.ps1')
 
 # --- Stato globale (risultati dei passi, file di log) ----------------------
 
@@ -290,6 +319,12 @@ function Main {
     }
     $script:KeyPath = $KeyPath
     $script:VmUser = $VmUser
+    $script:VmName = $VmName
+    $script:GitStackRepo = $GitStackRepo
+    $script:GitSshPort = $GitSshPort
+    $script:ResetBootTimeoutSeconds = $ResetBootTimeoutSeconds
+    $script:SshTimeoutSeconds = $SshTimeoutSeconds
+    $script:InstallTimeoutSeconds = $InstallTimeoutSeconds
     $script:SshConnectTimeoutSeconds = $SshConnectTimeoutSeconds
     $script:SshCommandTimeoutSeconds = $SshCommandTimeoutSeconds
 
@@ -298,6 +333,7 @@ function Main {
         $OutDir = Join-Path $env:LOCALAPPDATA "GitStack\e2e-runs\$timestamp"
     }
     New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+    $script:OutDir = $OutDir
     $script:LogFile = Join-Path $OutDir 'e2e.log'
     $script:KnownHostsPath = Join-Path $OutDir 'known_hosts'
     New-Item -ItemType File -Path $script:KnownHostsPath -Force | Out-Null
@@ -1000,6 +1036,35 @@ function Main {
             $f3Ok = $false; $f3Details += "gitstack status senza sudo: exit $($gsUser.ExitCode) (atteso 5, config root-only)"
         }
         Add-StepResult -Name 'f3. gitstack status con sudo: exit 0, Versione server sha-<Ref>, Host, Stato sano; senza sudo: exit 5' -Ok $f3Ok -Detail ($f3Details -join '; ')
+
+        # --- h, i. backup, restore su macchina pulita (GIT-148, DF/D) -----
+        if ($SkipBackupRestore) {
+            Write-Log "==> Passi h e i: saltati (-SkipBackupRestore)"
+        } elseif (-not $ck) {
+            Add-StepResult -Name 'h. backup e restore' -Ok $false -Detail "manca la sessione dell'admin (passo e3 fallito): impossibile creare i dati di prova"
+        } else {
+            Invoke-E2eBackupRestorePhase -BaseUrl $baseUrl -CaPath $caPath -AdminPassword $adminNewPassword -InstallRef $Ref
+        }
+
+        # --- j. upgrade dal commit precedente (GIT-148, DF/F) -------------
+        if ($SkipUpgrade) {
+            Write-Log "==> Passo j: saltato (-SkipUpgrade)"
+        } else {
+            $prev = $PreviousRef
+            try {
+                if (-not $prev) { $prev = Get-E2ePreviousCommit -Repo $GitStackRepo -Sha $Ref }
+                Write-Log "Commit precedente (per l'upgrade): $prev"
+                $missingPrev = @()
+                foreach ($svc in @('gitstack-gateway', 'gitstack-identity', 'gitstack-core', 'gitstack-web')) {
+                    if (-not (Test-GhcrImageExists -Owner $owner -Repo $svc -Tag "sha-$prev")) { $missingPrev += $svc }
+                }
+                if ($missingPrev.Count -gt 0) { throw "immagini mancanti su ghcr.io per sha-${prev}:$($missingPrev -join ', '). Indica un altro commit con -PreviousRef." }
+            } catch {
+                Add-StepResult -Name 'j. upgrade: commit precedente con le immagini pubblicate' -Ok $false -Detail $_.Exception.Message
+                $prev = $null
+            }
+            if ($prev) { Invoke-E2eUpgradePhase -InstallRef $Ref -PreviousRef $prev }
+        }
 
         $exitCode = 0
     } catch {
