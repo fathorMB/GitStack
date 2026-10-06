@@ -10,7 +10,7 @@ import { OrgWebhooksPage } from './OrgWebhooksPage';
 
 vi.mock('../../lib/authApi', async (orig) => ({
   ...(await orig<typeof import('../../lib/authApi')>()),
-  fetchSession: vi.fn().mockResolvedValue({ user: { username: 'mrossi', isAdmin: false, kind: 'human' as const } }),
+  fetchSession: vi.fn().mockResolvedValue({ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const } }),
 }));
 
 vi.mock('../../lib/orgsApi', async (orig) => ({
@@ -51,16 +51,16 @@ const NOW = new Date().toISOString();
 describe('OrgWebhooksPage', () => {
   beforeEach(() => {
     mockedFetchOrg.mockResolvedValue({ id: 'org-1', name: 'acme' });
-    mockedFetchSession.mockResolvedValue({ user: { username: 'mrossi', isAdmin: false, kind: 'human' as const } });
+    mockedFetchSession.mockResolvedValue({ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const } });
     mockedFetchMembers.mockResolvedValue([
-      { user: { username: 'mrossi' }, role: 'owner' },
-      { user: { username: 'lbianchi' }, role: 'member' },
+      { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' },
+      { user: { id: 'user-2', username: 'lbianchi', displayName: 'Luca Bianchi', kind: 'human' as const }, role: 'member' },
     ]);
     mockedFetch.mockResolvedValue({ items: [], page: 1, perPage: 50, total: 0 });
     mockedReactivate.mockResolvedValue({
       id: 'wh-2', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
       url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: true, hasSecret: false,
-      disabledAt: null, disabledReason: undefined, failingSince: null, lastDelivery: null,
+      disabledAt: null, disabledReason: undefined as any, failingSince: null, lastDelivery: null,
       createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
     });
     mockedDeliveries.mockResolvedValue({ items: [], page: 1, perPage: 20, total: 0 });
@@ -75,11 +75,11 @@ describe('OrgWebhooksPage', () => {
     if (isOwner !== undefined) {
       if (isOwner) {
         mockedFetchMembers.mockResolvedValue([
-          { user: { username: 'mrossi' }, role: 'owner' },
+          { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' },
         ]);
       } else {
         mockedFetchMembers.mockResolvedValue([
-          { user: { username: 'mrossi' }, role: 'member' },
+          { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'member' },
         ]);
       }
     }
@@ -125,7 +125,7 @@ describe('OrgWebhooksPage', () => {
       {
         id: 'wh-2', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
-        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'too_many_failures', failingSince: '2025-09-28T00:00:00Z',
+        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
       } as Webhook,
     ], page: 1, perPage: 50, total: 1 });
@@ -142,7 +142,7 @@ describe('OrgWebhooksPage', () => {
       {
         id: 'wh-2', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
-        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'too_many_failures', failingSince: '2025-09-28T00:00:00Z',
+        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
       } as Webhook,
     ], page: 1, perPage: 50, total: 1 });

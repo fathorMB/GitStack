@@ -19,13 +19,13 @@ vi.mock('../../lib/authApi', async (orig) => ({
 }));
 
 vi.mock('../../lib/orgsApi', () => ({
-  fetchOrgMembers: vi.fn().mockResolvedValue([{ user: { username: 'mrossi' }, role: 'owner' }]),
+  fetchOrgMembers: vi.fn().mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' }]),
 }));
 
 vi.mock('./repoAdmin', async (orig) => ({
   ...(await orig<typeof import('./repoAdmin')>()),
   isRepoAdmin: vi.fn().mockResolvedValue(true),
-  loadMe: vi.fn().mockResolvedValue({ username: 'mrossi', isAdmin: false, kind: 'human' as const }),
+  loadMe: vi.fn().mockResolvedValue({ id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const }),
 }));
 
 vi.mock('../../lib/webhooksApi', async (orig) => ({
@@ -87,8 +87,8 @@ describe('RepoWebhooksPage', () => {
     });
     mockedDeliveries.mockResolvedValue({ items: [], page: 1, perPage: 20, total: 0 });
     mockedRedeliver.mockResolvedValue({} as never);
-    mockedLoadMe.mockResolvedValue({ username: 'mrossi', isAdmin: false, kind: 'human' as const });
-    mockedOrgMembers.mockResolvedValue([{ user: { username: 'mrossi' }, role: 'owner' }]);
+    mockedLoadMe.mockResolvedValue({ id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const });
+    mockedOrgMembers.mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner' }]);
     vi.mocked(isRepoAdmin).mockResolvedValue(true);
     vi.mocked(mockedCreate).mockReset();
   });
@@ -142,7 +142,7 @@ describe('RepoWebhooksPage', () => {
       {
         id: 'wh-2', scope: 'repo', repository: { id: 'r-2', fullName: 'acme/api-gateway' }, organization: null,
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
-        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'too_many_failures', failingSince: '2025-09-28T00:00:00Z',
+        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
       } as Webhook,
     ], page: 1, perPage: 50, total: 1 });
@@ -159,7 +159,7 @@ describe('RepoWebhooksPage', () => {
       {
         id: 'wh-2', scope: 'repo', repository: { id: 'r-2', fullName: 'acme/api-gateway' }, organization: null,
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
-        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'too_many_failures', failingSince: '2025-09-28T00:00:00Z',
+        disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
       } as Webhook,
     ], page: 1, perPage: 50, total: 1 });
