@@ -1234,7 +1234,7 @@ enable_backup_timer() {
     warn "il binario ${ADMIN_BIN_PATH} non e' presente: il timer del backup non viene installato, pianifica a mano."
     return 0
   fi
-  local hour="${BACKUP_TIMER_HOUR:-02}"
+  local hour="${GITSTACK_BACKUP_TIMER_HOUR:-02}"
   case "${hour}" in
     ''|*[!0-9]*) fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${hour}' (solo un numero intero da 0 a 23)." ;;
   esac
