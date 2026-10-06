@@ -114,6 +114,27 @@ paths:
                 status: ok
                 version: "0.1.0"
 
+  /meta:
+    get:
+      operationId: getMeta
+      tags: [system]
+      summary: Versione del server
+      description: >
+        Versione dell'installazione e del contratto API, senza
+        autenticazione. Usato da gs per il controllo di compatibilita (G6).
+      security: []
+      responses:
+        "200":
+          description: Versioni del server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meta"
+              example:
+                server_version: "v0.1.0"
+                api_version: "0.1.0"
+
+
   /resources:
     get:
       operationId: listResources
@@ -5934,6 +5955,18 @@ components:
         version:
           type: string
           description: Versione del contratto API in esecuzione (`info.version`).
+
+    Meta:
+      type: object
+      additionalProperties: false
+      required: [server_version, api_version]
+      properties:
+        server_version:
+          type: string
+          description: Versione dell'installazione (tag dell'immagine del gateway).
+        api_version:
+          type: string
+          description: Versione del contratto API (`info.version`).
 
     Resource:
       type: object
