@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -134,6 +135,19 @@ func (a *App) configPath(flagValue string) string {
 		return p
 	}
 	return config.DefaultPath
+}
+
+// configDir calcola la directory della configurazione a partire dal path.
+// Usato da backup (per scrivere lo stato) e status (per leggerlo).
+func (a *App) configDir(path string) string {
+	dir := defaultConfigDir
+	if path != config.DefaultPath {
+		dir = filepath.Dir(path)
+	}
+	if v := a.Getenv("GITSTACK_CONFIG_DIR"); v != "" {
+		dir = v
+	}
+	return dir
 }
 
 // loadConfig carica la configurazione e traduce l'errore in codice di uscita.

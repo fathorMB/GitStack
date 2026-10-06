@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/fathorMB/GitStack/admin/internal/backup"
+	"github.com/fathorMB/GitStack/admin/internal/backupstate"
 	"github.com/fathorMB/GitStack/admin/internal/config"
 )
 
@@ -79,5 +81,110 @@ func TestRestoreUsageAndRoot(t *testing.T) {
 	a.Geteuid = func() int { return 1000 }
 	if code := a.Run(context.Background(), []string{"backup", "--config", cfg}); code != ExitNeedsRoot {
 		t.Errorf("senza root: %d", code)
+	}
+}
+
+// failCluster è un cluster che fallisce sempre (errore su Replicas).
+type failCluster struct{}
+
+func (f *failCluster) Replicas(_ context.Context, _ string) (int, bool, error) {
+	return 0, false, backup.ErrNotFound
+}
+func (f *failCluster) Scale(_ context.Context, _ string, _ int) error { return nil }
+func (f *failCluster) WaitStopped(_ context.Context, _ string) error  { return nil }
+func (f *failCluster) WaitReady(_ context.Context, _ string) error    { return nil }
+func (f *failCluster) PGExec(_ context.Context, _ io.Reader, w io.Writer, _ ...string) error {
+	return nil
+}
+func (f *failCluster) VolumePath(_ context.Context, _ string) (string, error) {
+	return "", backup.ErrNotFound
+}
+func (f *failCluster) Secrets(_ context.Context) ([]backup.Secret, error)   { return nil, nil }
+func (f *failCluster) ApplySecret(_ context.Context, _ backup.Secret) error { return nil }
+
+func TestBackupRetention(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	dest := t.TempDir()
+	// Due backup con retention=1 → resta uno.
+	for i := 0; i < 2; i++ {
+		git := t.TempDir()
+		_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
+		a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
+		if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "1"}); code != ExitOK {
+			t.Fatalf("backup %d: exit %d", i+1, code)
+		}
+	}
+	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
+	if len(ents) != 1 {
+		t.Errorf("dopo due backup con retention=1: %d archivi, volevo 1", len(ents))
+	}
+}
+
+func TestBackupRetentionNoPruneOnFail(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	dest := t.TempDir()
+	// Backup riuscito.
+	git := t.TempDir()
+	_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
+	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 1: exit %d", code)
+	}
+	// Simulo un backup fallito (cluster non disponibile): non deve cancellare.
+	a.NewCluster = func(*config.Config) backup.Cluster { return &failCluster{} }
+	// Backup fallito: l'exit code è ExitUnexpected (70, errore generico).
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitUnexpected {
+		t.Fatalf("backup 2: exit %d", code)
+	}
+	// Verifico che sia rimasto un solo backup (nessuna cancellazione).
+	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
+	if len(ents) != 1 {
+		t.Errorf("dopo backup fallito: %d archivi, volevo 1", len(ents))
+	}
+}
+
+func TestBackupStateFile(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	dest := t.TempDir()
+	configDir := filepath.Dir(cfg)
+	git := t.TempDir()
+	_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
+	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitOK {
+		t.Fatalf("backup exit %d", code)
+	}
+	// Lo stato deve esistere e riportare successo.
+	statePath := filepath.Join(configDir, "backup-state.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("leggere stato: %v", err)
+	}
+	var s backupstate.State
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("parse stato: %v", err)
+	}
+	if !s.Success {
+		t.Errorf("stato: wanted success=true, got false")
+	}
+	if s.At.IsZero() {
+		t.Error("stato: At zero")
+	}
+	// Backup fallito: lo stato deve riportare errore.
+	a.NewCluster = func(*config.Config) backup.Cluster { return &failCluster{} }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitUnexpected {
+		t.Fatalf("backup fallito: exit %d", code)
+	}
+	data, err = os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("leggere stato dopo fallimento: %v", err)
+	}
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("parse stato dopo fallimento: %v", err)
+	}
+	if s.Success {
+		t.Errorf("stato dopo fallimento: non volevo success=true")
+	}
+	if s.Error == "" {
+		t.Error("stato dopo fallimento: Error vuoto")
 	}
 }

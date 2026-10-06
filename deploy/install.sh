@@ -137,6 +137,8 @@ HOST_ARGS=()
 TLS_DIR="/etc/gitstack/tls"
 TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
+BACKUP_SYSTEMD_DIR="/etc/systemd/system"
+BACKUP_TIMER_HOUR="${GITSTACK_BACKUP_TIMER_HOUR:-02}"
 K3S_MANIFESTS_DIR="/var/lib/rancher/k3s/server/manifests"
 ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
 # Valorizzate da resolve_tls (nomi e IP dei SAN, host dell'URL pubblico, schema).
@@ -1222,6 +1224,46 @@ disable_renew_timer() {
   fi
 }
 
+# Timer systemd per il backup giornaliero. Orario configurabile con
+# GITSTACK_BACKUP_TIMER_HOUR (default 02).
+enable_backup_timer() {
+  if ! command -v systemctl >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
+    warn "systemd non disponibile: il backup automatico non e' attivo. Pianifica a mano '${ADMIN_BINARY:-gitstack}' backup."
+    return 0
+  fi
+  local hour="${BACKUP_TIMER_HOUR:-02}"
+  cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.service" <<EOF
+[Unit]
+Description=GitStack: backup giornaliero
+
+[Service]
+Type=oneshot
+ExecStart=${ADMIN_BINARY:-gitstack} backup
+EOF
+  cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" <<EOF
+[Unit]
+Description=GitStack: timer backup giornaliero
+
+[Timer]
+OnCalendar=*-*-* ${hour}:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+  systemctl daemon-reload
+  systemctl enable --now gitstack-backup.timer >/dev/null
+  log "Backup automatico attivo: gitstack-backup.timer (ogni giorno alle ${hour}:00)."
+}
+
+disable_backup_timer() {
+  if command -v systemctl >/dev/null 2>&1 && [ -f "${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" ]; then
+    systemctl disable --now gitstack-backup.timer >/dev/null 2>&1 || true
+    rm -f "${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" "${BACKUP_SYSTEMD_DIR}/gitstack-backup.service"
+    systemctl daemon-reload || true
+  fi
+}
+
 # Let's Encrypt: il Traefik di k3s e' un HelmChart; la sua configurazione si
 # estende con un HelmChartConfig (certificatesResolvers + storage persistente
 # per acme.json). k3s lo applica da solo.
@@ -1420,6 +1462,7 @@ main() {
   persist_chart "${chart_dir}"
   install_admin
   write_config "${image_tag}"
+  enable_backup_timer
 
   print_summary
 }
