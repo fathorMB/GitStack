@@ -81,8 +81,11 @@ type Keys interface {
 
 // RepoRef è il repo risolto da core.
 type RepoRef struct {
-	ID       string
-	Archived bool
+	ID string
+	// Owner e Name sono la forma canonica salvata da core (R11: l'indirizzo
+	// usato dal chiamante può avere altre maiuscole). Vuoti se core non li dà.
+	Owner, Name string
+	Archived    bool
 	// DefaultBranch e ProtectDefaultBranch sono il branch principale e la
 	// sua protezione (R9), come li dà core.
 	DefaultBranch        string

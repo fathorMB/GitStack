@@ -7000,11 +7000,13 @@ components:
     RepoName:
       type: string
       description: >
-        Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100
-        caratteri; non inizia con `.`; non finisce con `.git` (regola
-        applicata dal servizio, non esprimibile nel pattern). Le maiuscole
-        sono rifiutate. Unico per owner.
-      pattern: "^[a-z0-9_-][a-z0-9._-]{0,99}$"
+        Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`,
+        `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con
+        `.git` (regola applicata dal servizio, non esprimibile nel pattern).
+        Le maiuscole sono conservate come scritte; l'unicita' per owner e il
+        lookup non distinguono maiuscole e minuscole (`GitStack` e
+        `gitstack` sono lo stesso repo).
+      pattern: "^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$"
       minLength: 1
       maxLength: 100
       example: my-app

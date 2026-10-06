@@ -511,7 +511,7 @@ export type UserAccessList = {
 };
 
 /**
- * Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+ * Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
  *
  */
 export type RepoName = string;
