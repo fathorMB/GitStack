@@ -2,7 +2,7 @@
 
 `gs`, la CLI Go di GitStack per persone e agenti (stile `gh`), su client generato dall'OpenAPI del gateway. Dettagli: [[M-07]] in `.lmbrain-lite/milestones/M-07.md`.
 
-Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version`, `gs issue` (GIT-166) e il provvisorio `gs api user`; gli altri gruppi (`auth`, `repo`, ...) sono padri vuoti che gli item successivi riempiono.
+Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version`, `gs issue` (GIT-166) `gs notification` e `gs api` (GIT-169); gli altri gruppi (`auth`, `repo`, ...) sono padri vuoti che gli item successivi riempiono.
 
 ## Licenza
 
@@ -40,7 +40,7 @@ internal/api              client sul gateway (sopra client/go) e conversione deg
 
 Per aggiungere comandi a un gruppo si tocca solo `internal/cmd/<gruppo>/`: `root.go` registra già tutti i gruppi e non cambia più. `browse` e `blame` sono comandi foglia e finché non sono implementati escono con 2 («non ancora implementato»). I gruppi usano `cmdutil.GroupRun` come `RunE` (aiuto senza argomenti, exit 2 con un sottocomando sconosciuto) e `cmdutil.NoArgs` per i comandi senza argomenti, così l'uso errato esce sempre con 2.
 
-`gs api user` (GET `/auth/session`) è provvisorio: esercita configurazione, client, output ed exit code; GIT-169 lo sostituisce con `gs api <endpoint>`.
+`gs api <percorso>` (GIT-169) chiama l'API grezza; il vecchio `gs api user` provvisorio è sostituito (`gs api /auth/session` dà la stessa risposta).
 
 ## Configurazione e istanze (G7)
 
@@ -151,6 +151,29 @@ Sono quelli dello schema dell'API (camelCase), più `url` (pagina web). Un campo
 ### Test
 
 `cli/internal/cmd/issue/issue_test.go`: gateway finto, richieste e corpi verificati. `services/core/internal/stackitest/gs_issue_integration_test.go` (`TestGsIssue`, tag `integration`): il binario `gs` vero compilato con `go build` contro lo stack completo (gateway, identity, git, core, Postgres), con un proxy che mappa `/api/v1` su `/v1`. Prova ogni sottocomando, i tre motivi di chiusura, I3, il blocco, R10, l'accordo di `list` con l'API (stessi numeri con filtri e `--search`) e i codici 4, 5 e 6.
+
+## `gs notification` e `gs api` (GIT-169, G4, C4)
+
+**`gs notification`** è la casella dell'utente corrente, persona o agente (stessa API `/notifications`; ciclo C4: list, view, read).
+
+- `list` (`ls`): le non lette; `--all` anche le lette, `--archived` le archiviate; `--reason assigned,mentioned` (motivi: assigned, mentioned, participating, subscribed, commit_linked, state_change, webhook); `-R owner/repo` filtra per repo (nessun ripiego sul remote origin); `-L` limite (30). `--json`/`--jq` con i campi di `Notification` più `url` (pagina web della issue collegata): `id, reason, read, archived, event, summary, repository, issue, commentId, webhook, actor, createdAt, readAt, url`.
+- `read <id>` segna come letta (idempotente); `read --all` tutte le non lette, ristrette con `--reason` e `-R`. Con `--json` l'output di `--all` è `{"marked": n}`.
+- `view <id>` mostra motivo, evento, repo, issue collegata e URL; non segna come letta. `--web` apre la issue nel browser. Una notifica altrui è 404 (exit 6).
+
+**`gs api <percorso>`** è per quello che i comandi dedicati non coprono (organizzazioni, team, webhook, utenti, token agent). Il percorso è relativo a `/api/v1` e si risolve sull'istanza corrente (G7); `/orgs`, `orgs` e `/api/v1/orgs` sono la stessa chiamata, un indirizzo completo è un uso errato (exit 2).
+
+| Flag | Effetto |
+| --- | --- |
+| `-X, --method` | metodo; default GET, POST se ci sono campi o corpo |
+| `-f chiave=valore` | campo di testo |
+| `-F chiave=valore` | campo tipizzato: `true`, `false`, `null`, interi sono JSON; `@file` (o `@-` da stdin) legge il valore da file |
+| `--input file` | corpo da file o stdin (`-`), inviato così com'è; non si combina con -f/-F |
+| `-H 'Nome: valore'` | intestazione aggiuntiva |
+| `--paginate` | solo GET: segue `{items,page,perPage,total}` e stampa un solo array con tutti gli elementi |
+| `--jq` | filtra la risposta (con `--paginate`, l'array unito) |
+| `-i, --include` | stampa stato e intestazioni |
+
+Sui GET i campi diventano parametri di query (la query nel percorso si mantiene), sugli altri metodi un corpo JSON; `a[b]=1` annida, `a[]=x` costruisce un array. Un errore dell'API stampa il corpo della risposta su stdout, il messaggio su stderr (JSON con `--jq`) ed esce col codice di G3 (4, 5, 6 o 1). Esempio G4: `gs api -X POST /users/botty/tokens -f name=ci -F 'scopes[]=read:resource' -f expiresAt=2026-12-31T00:00:00Z --jq .token`.
 
 ## Versione e build
 
