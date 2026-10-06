@@ -72,12 +72,13 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	bo := a.options(cfg, path, key)
 	bo.DestDir = *dest
 	col := &status.Collector{Runner: a.Runner, HTTP: a.HTTP, LookPath: a.LookPath}
+	configDir := a.configDir(path)
 	o := &upgrade.Options{
 		Cfg:        cfg,
 		ConfigFile: bo.ConfigFile,
 		Cluster:    cl,
 		Runner:     a.Runner,
-		Health:     func(ctx context.Context) *status.Report { return col.Collect(ctx, cfg) },
+		Health:     func(ctx context.Context) *status.Report { return col.Collect(ctx, cfg, configDir) },
 		Backup:     *bo,
 		To:         *to,
 		DryRun:     *dry,
