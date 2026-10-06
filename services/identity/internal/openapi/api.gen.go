@@ -683,6 +683,11 @@ type OrgMemberList struct {
 	Total   int         `json:"total"`
 }
 
+// OrgOwnersResult defines model for OrgOwnersResult.
+type OrgOwnersResult struct {
+	Owners []openapi_types.UUID `json:"owners"`
+}
+
 // OrgRole `owner` gestisce organizzazione, team e membri; `member` no.
 type OrgRole string
 
@@ -1310,6 +1315,9 @@ type ServerInterface interface {
 	// ResolveMentions Risolve le menzioni `@utente`, `@agente` e `@org/team`
 	// (POST /internal/mentions/resolve)
 	ResolveMentions(w http.ResponseWriter, r *http.Request)
+	// ListOrgOwners Elenca gli owner di un'organizzazione
+	// (GET /internal/orgs/{orgId}/owners)
+	ListOrgOwners(w http.ResponseWriter, r *http.Request, orgId openapi_types.UUID)
 	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
 	// (GET /internal/owners/{name})
 	ResolveOwner(w http.ResponseWriter, r *http.Request, name string)
@@ -1623,6 +1631,32 @@ func (siw *ServerInterfaceWrapper) ResolveMentions(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ResolveMentions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOrgOwners operation middleware
+func (siw *ServerInterfaceWrapper) ListOrgOwners(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "orgId" -------------
+	var orgId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgId", r.PathValue("orgId"), &orgId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOrgOwners(w, r, orgId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3287,6 +3321,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/internal/resources/{resourceId}/attributes", wrapper.SetResourceAttributes)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/internal/resources/{resourceId}", wrapper.PurgeResourceAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/owners/{name}", wrapper.ResolveOwner)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/orgs/{orgId}/owners", wrapper.ListOrgOwners)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-ids", wrapper.LookupUsersByIds)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/mentions/resolve", wrapper.ResolveMentions)

@@ -404,11 +404,13 @@ Watch `ignore` non notifica, salvo le menzioni dirette. La notifica
 quando disattiva un webhook.
 
 Consumer durevoli (convenzione `<servizio>-<scopo>`; un consumer JetStream
-appartiene a uno stream, quindi si aggiunge il dominio): `core-notifier-issue`,
-`core-notifier-issue_comment` (notifiche), `core-webhooks-git`,
-`core-webhooks-issue`, `core-webhooks-issue_comment`,
-`core-webhooks-repository` (webhook) e `core-issue-linker` (su `git.push`).
-Nomi stabili: cambiarli riparte da zero.
+appartiene a uno stream, quindi si aggiunge il dominio): `core-webhooks-git`
+(webhook `push`, `internal/gitpush` in core) e `core-issue-linker` (su
+`git.push`). Le notifiche (GIT-133) e i webhook `issues`, `issue_comment` e
+`repository` (GIT-135) non usano consumer NATS: leggono gli eventi di dominio
+dall'outbox di core (`core.event_outbox`, con un segno di lettura ciascuno:
+`notified_at`, `webhooked_at`), nella stessa transazione in cui scrivono il loro
+risultato. Nomi stabili: cambiarli riparte da zero.
 
 ## Come si avvia NATS per i test
 

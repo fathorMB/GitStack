@@ -131,6 +131,36 @@ spec:
             - name: GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL
               value: {{ .Values.core.attachments.orphanTtl | quote }}
             {{- end }}
+            # Webhook (M-06/G): chiave di cifratura dei segreti (id per la
+            # rotazione; le chiavi precedenti, `id:chiave,...`, sono la chiave
+            # facoltativa `oldKeys` dello stesso Secret).
+            - name: GITSTACK_WEBHOOK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.core.webhookSecret.existingSecret | default (printf "%s-core-webhook-key" (include "gitstack.fullname" .)) }}
+                  key: key
+            - name: GITSTACK_WEBHOOK_SECRET_KEY_ID
+              value: {{ .Values.core.webhookSecret.keyId | quote }}
+            - name: GITSTACK_WEBHOOK_SECRET_OLD_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.core.webhookSecret.existingSecret | default (printf "%s-core-webhook-key" (include "gitstack.fullname" .)) }}
+                  key: oldKeys
+                  optional: true
+            # Protezione SSRF delle chiamate in uscita dei webhook (C8,
+            # pkg/egress): values `egress.*`.
+            {{- with .Values.egress.allow }}
+            - name: GITSTACK_EGRESS_ALLOW
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- with .Values.egress.deny }}
+            - name: GITSTACK_EGRESS_DENY
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- with .Values.egress.clusterCIDRs }}
+            - name: GITSTACK_EGRESS_CLUSTER_CIDRS
+              value: {{ join "," . | quote }}
+            {{- end }}
             {{- if include "gitstack.smtp.enabled" . }}
             # SMTP facoltativo (M-06/F, C5): senza smtp.host (o existingSecret)
             # queste variabili non esistono e core manda solo notifiche in-app.

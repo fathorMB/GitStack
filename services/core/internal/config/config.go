@@ -57,6 +57,22 @@ type Config struct {
 	// grant).
 	IdentityURL string
 
+	// WebhookSecretKey è la chiave (32 byte in esadecimale o base64) con cui si
+	// cifrano i segreti dei webhook (AES-256-GCM, migrazione 0006);
+	// WebhookSecretKeyID dice con quale chiave è cifrata una riga
+	// (rotazione) e WebhookSecretOldKeys elenca le chiavi precedenti
+	// (`id:chiave,id:chiave`), che servono solo a decifrare. Senza chiave i
+	// webhook si gestiscono ma non accettano un segreto (422). Mai loggate.
+	WebhookSecretKey     string
+	WebhookSecretKeyID   string
+	WebhookSecretOldKeys string
+
+	// Egress: liste dell'amministratore per le chiamate in uscita dei webhook
+	// (pkg/egress, C8; values.yaml egress.*). Voci separate da virgole.
+	EgressAllow        []string
+	EgressDeny         []string
+	EgressClusterCIDRs []string
+
 	// GitURL è la base URL interna del servizio git (GITSTACK_GIT_URL):
 	// core la chiama per creare i repo su disco (API interna firmata).
 	// Obbligatoria solo per "serve".
@@ -103,24 +119,30 @@ type Config struct {
 }
 
 const (
-	envAddr              = "GITSTACK_CORE_ADDR"
-	envDatabaseURL       = "GITSTACK_CORE_DB_URL"
-	envDBMaxConns        = "GITSTACK_CORE_DB_MAX_CONNS"
-	envMigrationsTimeout = "GITSTACK_CORE_MIGRATIONS_TIMEOUT"
-	envNatsURL           = "GITSTACK_CORE_NATS_URL"
-	envLogLevel          = "GITSTACK_CORE_LOG_LEVEL"
-	envServiceSecret     = "GITSTACK_IDENTITY_SERVICE_SECRET"
-	envIdentityURL       = "GITSTACK_IDENTITY_URL"
-	envGitURL            = "GITSTACK_GIT_URL"
-	envPublicURL         = "GITSTACK_CORE_PUBLIC_URL"
-	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
-	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
-	envSMTPHost          = "GITSTACK_CORE_SMTP_HOST"
-	envSMTPPort          = "GITSTACK_CORE_SMTP_PORT"
-	envSMTPSecurity      = "GITSTACK_CORE_SMTP_SECURITY"
-	envSMTPUser          = "GITSTACK_CORE_SMTP_USER"
-	envSMTPPassword      = "GITSTACK_CORE_SMTP_PASSWORD"
-	envSMTPFrom          = "GITSTACK_CORE_SMTP_FROM"
+	envAddr                 = "GITSTACK_CORE_ADDR"
+	envDatabaseURL          = "GITSTACK_CORE_DB_URL"
+	envDBMaxConns           = "GITSTACK_CORE_DB_MAX_CONNS"
+	envMigrationsTimeout    = "GITSTACK_CORE_MIGRATIONS_TIMEOUT"
+	envNatsURL              = "GITSTACK_CORE_NATS_URL"
+	envLogLevel             = "GITSTACK_CORE_LOG_LEVEL"
+	envServiceSecret        = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	envIdentityURL          = "GITSTACK_IDENTITY_URL"
+	envGitURL               = "GITSTACK_GIT_URL"
+	envPublicURL            = "GITSTACK_CORE_PUBLIC_URL"
+	envSSHHost              = "GITSTACK_CORE_SSH_HOST"
+	envSSHPort              = "GITSTACK_CORE_SSH_PORT"
+	envSMTPHost             = "GITSTACK_CORE_SMTP_HOST"
+	envSMTPPort             = "GITSTACK_CORE_SMTP_PORT"
+	envSMTPSecurity         = "GITSTACK_CORE_SMTP_SECURITY"
+	envSMTPUser             = "GITSTACK_CORE_SMTP_USER"
+	envSMTPPassword         = "GITSTACK_CORE_SMTP_PASSWORD"
+	envWebhookSecretKey     = "GITSTACK_WEBHOOK_SECRET_KEY"
+	envWebhookSecretKeyID   = "GITSTACK_WEBHOOK_SECRET_KEY_ID"
+	envWebhookSecretOldKeys = "GITSTACK_WEBHOOK_SECRET_OLD_KEYS"
+	envEgressAllow          = "GITSTACK_EGRESS_ALLOW"
+	envEgressDeny           = "GITSTACK_EGRESS_DENY"
+	envEgressClusterCIDRs   = "GITSTACK_EGRESS_CLUSTER_CIDRS"
+	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
@@ -212,6 +234,19 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(envPublicURL); ok {
 		cfg.PublicURL = strings.TrimRight(strings.TrimSpace(v), "/")
 	}
+	if v, ok := lookup(envWebhookSecretKey); ok {
+		cfg.WebhookSecretKey = strings.TrimSpace(v)
+	}
+	cfg.WebhookSecretKeyID = "k1"
+	if v, ok := lookup(envWebhookSecretKeyID); ok && strings.TrimSpace(v) != "" {
+		cfg.WebhookSecretKeyID = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envWebhookSecretOldKeys); ok {
+		cfg.WebhookSecretOldKeys = strings.TrimSpace(v)
+	}
+	cfg.EgressAllow = splitList(lookup, envEgressAllow)
+	cfg.EgressDeny = splitList(lookup, envEgressDeny)
+	cfg.EgressClusterCIDRs = splitList(lookup, envEgressClusterCIDRs)
 	if v, ok := lookup(envSSHHost); ok {
 		cfg.SSHHost = strings.TrimSpace(v)
 	}
@@ -263,6 +298,21 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// splitList legge un elenco separato da virgole (voci vuote scartate).
+func splitList(lookup func(string) (string, bool), key string) []string {
+	v, ok := lookup(key)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // loadSMTP legge GITSTACK_CORE_SMTP_*. Senza HOST l'SMTP è spento e le altre

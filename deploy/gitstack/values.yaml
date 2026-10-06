@@ -119,6 +119,16 @@ core:
     # con cui i client raggiungono GitStack e host mostrato negli URL di clone SSH.
     publicUrl: ""
     sshHost: ""
+  # Webhook (M-06/G): chiave con cui core cifra i segreti dei webhook
+  # (GITSTACK_WEBHOOK_SECRET_KEY, AES-256-GCM, 32 byte in esadecimale). Il chart
+  # la genera una sola volta in un Secret <release>-core-webhook-key (chiave
+  # `key`, helm.sh/resource-policy: keep); non si scrive nei values. Per ruotarla:
+  # nuova chiave in `key`, nuovo `keyId`, e la precedente in `oldKeys`
+  # (`k1:<chiave>`), che serve solo a decifrare. Alternativa: nome di un
+  # Secret esistente con le stesse chiavi.
+  webhookSecret:
+    existingSecret: ""
+    keyId: k1
   # Allegati di issue e commenti (M-05/G, I9). I file stanno su un PVC dedicato,
   # montato su `mountPath` (GITSTACK_CORE_ATTACHMENTS_DIR): va incluso nel backup (D19).
   # Il volume è ReadWriteOnce: con `enabled: true` core gira a UNA replica con
@@ -328,9 +338,9 @@ web:
 
 # --- egress (protezione SSRF, C8) ---------------------------------------
 # Impostazioni per le chiamate in uscita verso indirizzi dati dagli utenti
-# (webhook, pkg/egress). Solo dichiarate qui: il collegamento alle variabili
-# d'ambiente del servizio che le usa arriva con M-06/G. Voci: IP, CIDR,
-# nomi host ("hooks.example.com") o suffissi ("*.example.com").
+# (webhook, pkg/egress): core le legge da GITSTACK_EGRESS_ALLOW, _DENY e
+# _CLUSTER_CIDRS (elenchi separati da virgole). Voci: IP, CIDR, nomi host
+# ("hooks.example.com") o suffissi ("*.example.com").
 # Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster e le reti
 # speciali sono bloccati sempre: allow non sblocca mai loopback, link-local
 # e cluster (vedi pkg/egress/README.md).
