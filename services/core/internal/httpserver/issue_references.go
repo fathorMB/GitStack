@@ -141,12 +141,15 @@ type issueRef struct {
 // repo di destinazione, inserisce in core.issue_references e scrive
 // l'evento referenced_from.
 //
+// sourceRepoName è il nome "owner/name" del repo della issue/commento
+// che contiene il riferimento (usato nel campo source.repository dell'evento).
 // sourceID è l'ID della issue o del commento che contiene il riferimento.
 // sourceKind è "issue" o "pull_request".
 // sourceCommentID è nil se il riferimento è nel titolo/testo della issue.
 func (s *apiServer) processReferences(
 	ctx context.Context,
 	tx pgx.Tx,
+	sourceRepoName string,
 	actorID uuid.UUID,
 	sourceRepoID uuid.UUID,
 	sourceNumber int64,
@@ -185,14 +188,26 @@ func (s *apiServer) processReferences(
 	}
 
 	for _, ref := range refs {
+		// Auto-riferimento: stessa issue di origine e destinazione → skip.
+		// Stesso repo, stesso numero (rilevato prima dell'INSERT).
+		if ref.repoKey == "" && ref.number == sourceNumber {
+			continue
+		}
+
 		targetRepoID := repoMap[ref.repoKey]
 		if targetRepoID == uuid.Nil {
 			continue
 		}
 
-		commentArg := uuid.Nil
-		if sourceCommentID != nil {
-			commentArg = *sourceCommentID
+		// Auto-riferimento anche nella forma owner/repo#n.
+		if targetRepoID == sourceRepoID && ref.number == sourceNumber {
+			continue
+		}
+
+		// L'attore deve poter leggere il repo di destinazione.
+		canRead, err := s.repoIdentity.HasRole(ctx, actorID, targetRepoID, "read")
+		if err != nil || !canRead {
+			continue
 		}
 
 		tag, err := tx.Exec(ctx,
@@ -202,7 +217,7 @@ func (s *apiServer) processReferences(
 			ON CONFLICT (target_issue_id, source_kind, source_repo_id, source_number,
 				COALESCE(source_comment_id, '00000000-0000-0000-0000-000000000000'::uuid))
 			DO NOTHING`,
-			sourceKind, targetRepoID, ref.number, sourceCommentID,
+			sourceKind, sourceRepoID, sourceNumber, sourceCommentID,
 			actorID, targetRepoID, ref.number)
 		if err != nil {
 			slog.Default().Warn("inserimento riferimento non riuscito", "err", err)
@@ -213,27 +228,7 @@ func (s *apiServer) processReferences(
 			continue
 		}
 
-		canRead, err := s.repoIdentity.HasRole(ctx, actorID, targetRepoID, "read")
-		if err != nil {
-			slog.Default().Warn("verifica del permesso di lettura non riuscita", "err", err)
-			continue
-		}
-		if !canRead {
-			continue
-		}
-
-		if targetRepoID == sourceRepoID && ref.repoKey == "" && ref.number == sourceNumber {
-			_, _ = tx.Exec(ctx,
-				`DELETE FROM core.issue_references WHERE id = (
-					SELECT id FROM core.issue_references
-					WHERE target_issue_id = (SELECT id FROM core.issues WHERE repo_id = $1 AND number = $2)
-					AND source_kind = $3 AND source_repo_id = $4 AND source_number = $5
-					AND COALESCE(source_comment_id, '00000000-0000-0000-0000-000000000000'::uuid) = $6
-					ORDER BY created_at DESC LIMIT 1)`,
-				sourceRepoID, ref.number, sourceKind, sourceRepoID, ref.number, commentArg)
-			continue
-		}
-
+		// Trova la issue di destinazione.
 		var targetIssueID uuid.UUID
 		err = tx.QueryRow(ctx,
 			`SELECT id FROM core.issues WHERE repo_id = $1 AND number = $2`,
@@ -245,10 +240,11 @@ func (s *apiServer) processReferences(
 		refData := map[string]any{
 			"source": map[string]any{
 				"kind":       sourceKind,
-				"repository": ref.repoKey,
-				"number":     ref.number,
+				"repository": sourceRepoName,
+				"number":     sourceNumber,
 				"title":      sourceTitle,
 			},
+			"sourceRepoId": sourceRepoID.String(),
 		}
 		if sourceCommentID != nil {
 			refData["source"].(map[string]any)["commentId"] = sourceCommentID.String()
@@ -263,8 +259,9 @@ func (s *apiServer) processReferences(
 }
 
 // listIssueEventsFiltered legge tutti gli eventi della issue, filtra quelli
-// referenced_from il cui repo sorgente il chiamante non può leggere, e
-// applica la paginazione in Go. Rimuove sourceRepoId dai payload.
+// referenced_from il cui repo sorgente il chiamante non può leggere (filtro
+// su sourceRepoId, UUID), e applica la paginazione in Go. Rimuove
+// sourceRepoId dai payload.
 func (s *apiServer) listIssueEventsFiltered(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -316,23 +313,17 @@ func (s *apiServer) listIssueEventsFiltered(
 		ev := re.ev
 
 		if ev.Type == "referenced_from" && ev.Data != nil {
-			src, ok := (*ev.Data)["source"].(map[string]any)
-			if ok {
-				srcRepo, ok := src["repository"].(string)
-				if ok && srcRepo != "" {
-					parts := strings.SplitN(srcRepo, "/", 2)
-					if len(parts) == 2 {
-						repo, err := s.resources.GetRepoByName(ctx, parts[0], parts[1])
-						if err == nil {
-							canRead, _ := s.repoIdentity.HasRole(ctx, ia.userID, repo.ID, "read")
-							if !canRead {
-								continue
-							}
-						} else {
-							continue
-						}
-					}
-				}
+			srcRepoIDStr, _ := (*ev.Data)["sourceRepoId"].(string)
+			if srcRepoIDStr == "" {
+				continue // senza sourceRepoId, escluso
+			}
+			srcRepoID, err := uuid.Parse(srcRepoIDStr)
+			if err != nil {
+				continue
+			}
+			canRead, _ := s.repoIdentity.HasRole(ctx, ia.userID, srcRepoID, "read")
+			if !canRead {
+				continue
 			}
 		}
 

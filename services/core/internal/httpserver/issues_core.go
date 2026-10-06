@@ -323,7 +323,7 @@ func (s *apiServer) CreateIssue(w http.ResponseWriter, r *http.Request, owner op
 	// C1: riferimenti nel titolo/testo della issue (issue_references).
 	// Togliere un riferimento dal testo non cancella le tracce esistenti:
 	// come su GitHub, le righe in core.issue_references restano.
-	if err := s.processReferences(ctx, tx, ia.userID, ia.repo.ID, number, issueID, nil, "issue", title, title+body); err != nil {
+	if err := s.processReferences(ctx, tx, fmt.Sprintf("%s/%s", ia.repo.OwnerName, ia.repo.Name), ia.userID, ia.repo.ID, number, issueID, nil, "issue", title, title+"\n"+body); err != nil {
 		writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
 		return
 	}
@@ -514,7 +514,14 @@ func (s *apiServer) UpdateIssue(w http.ResponseWriter, r *http.Request, owner op
 	// Togliere un riferimento dal testo non cancella le tracce esistenti:
 	// come su GitHub, le righe in core.issue_references restano.
 	if titleChanged || bodyChanged {
-		if err := s.processReferences(ctx, tx, ia.userID, ia.repo.ID, number, x.ID, nil, "issue", newTitle, newTitle+(*in.Body)); err != nil {
+		effTitle, effBody := x.Title, x.Body
+		if in.Title != nil {
+			effTitle = newTitle
+		}
+		if in.Body != nil {
+			effBody = *in.Body
+		}
+		if err := s.processReferences(ctx, tx, fmt.Sprintf("%s/%s", ia.repo.OwnerName, ia.repo.Name), ia.userID, ia.repo.ID, number, x.ID, nil, "issue", effTitle, effTitle+"\n"+effBody); err != nil {
 			writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
 			return
 		}

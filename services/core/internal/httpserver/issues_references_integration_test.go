@@ -91,109 +91,85 @@ func TestIssues_RiferimentiC1(t *testing.T) {
 	})
 
 	// C1.3b: SORGENTE privata, destinazione leggibile da tutti.
-	// Alice scrive in alice/private una issue che cita alice/internal#n.
-	// Per alice l'evento sulla issue di destinazione c'è.
-	// Per carol (legge internal ma non private) l'evento non c'è e total è più basso.
-	_ = e.open("private", "alice", "issue sorgente privata")
-
+	// Alice scrive in alice/private una issue che cita alice-internal#n.
+	// Per alice l'evento c'è; per carol (legge internal, non private) no,
+	// e il total di carol è più basso di 1.
 	t.Run("sorgente_privata_visibile_da_owner", func(t *testing.T) {
-		// Alice cita in private una issue di alice-internal.
+		privN := e.open("private", "alice", "base privata")
 		rec := e.do(http.MethodPost, "/repos/alice/private/issues", "alice",
 			`{"title":"cita interno da privato","body":"vedi alice/alice-internal#`+itoa64(aliceN)+`"}`)
+		e.want(rec, http.StatusCreated, "")
 		privateSrcN := e.issue(rec).Number
+		if privateSrcN == privN {
+			t.Fatalf("numeri uguali")
+		}
 
-		// Alice vede l'evento su alice-internal#1 (sorgente privata che Alice legge).
-		evsAlice := e.events("alice-internal", aliceN, "alice")
-		foundAlice := false
-		for _, tp := range eventTypes(evsAlice) {
-			if tp == "referenced_from" {
-				foundAlice = true
+		get := func(user string) openapi.IssueEventList {
+			r := e.do(http.MethodGet, "/repos/alice/alice-internal/issues/"+itoa64(aliceN)+"/events", user, "")
+			e.want(r, http.StatusOK, "")
+			var l openapi.IssueEventList
+			if err := json.Unmarshal(r.Body.Bytes(), &l); err != nil {
+				t.Fatal(err)
 			}
+			return l
 		}
-		if !foundAlice {
-			t.Fatalf("alice non vede referenced_from su alice-internal#%d", aliceN)
-		}
-
-		// Bob non può leggere il repo private: non vede l'evento referenced_from
-		// da alice/private. Verifica che il total di alice sia > di bob (alice
-		// vede l'evento da private, bob no).
-		recAlice := e.do(http.MethodGet, "/repos/alice/alice-internal/issues/"+itoa64(aliceN)+"/events", "alice", "")
-		e.want(recAlice, http.StatusOK, "")
-		var listAlice openapi.IssueEventList
-		_ = json.Unmarshal(recAlice.Body.Bytes(), &listAlice)
-
-		recBob := e.do(http.MethodGet, "/repos/alice/alice-internal/issues/"+itoa64(aliceN)+"/events", "bob", "")
-		e.want(recBob, http.StatusOK, "")
-		var listBob openapi.IssueEventList
-		_ = json.Unmarshal(recBob.Body.Bytes(), &listBob)
-
-		aliceTotal := listAlice.Total
-		bobTotal := listBob.Total
-		if aliceTotal <= bobTotal {
-			t.Fatalf("total alice=%d non è > total bob=%d", aliceTotal, bobTotal)
-		}
-
-		// sourceRepoId non appare nella risposta.
-		for _, ev := range listAlice.Items {
-			if ev.Data != nil {
-				if _, ok := (*ev.Data)["sourceRepoId"]; ok {
-					t.Fatalf("sourceRepoId presente nel data di evento %s", ev.Type)
-				}
-			}
-		}
-
-		// Verifica data.source: repository = "alice/private", number = privateSrcN.
-		var foundSourceEvent bool
-		for _, ev := range listAlice.Items {
-			if ev.Type == "referenced_from" && ev.Data != nil {
-				src, ok := (*ev.Data)["source"].(map[string]any)
-				if !ok {
+		fromPrivate := func(l openapi.IssueEventList) int {
+			n := 0
+			for _, ev := range l.Items {
+				if ev.Type != "referenced_from" || ev.Data == nil {
 					continue
 				}
-				if repo, ok := src["repository"].(string); ok && repo == "alice/private" {
-					if number, ok := src["number"].(float64); ok && int64(number) == privateSrcN {
-						foundSourceEvent = true
-						if _, ok := src["commentId"]; ok {
-							t.Fatalf("commentId non dovrebbe essere presente per riferimenti su issue")
-						}
+				if _, ok := (*ev.Data)["sourceRepoId"]; ok {
+					t.Fatalf("sourceRepoId presente nella risposta")
+				}
+				src, _ := (*ev.Data)["source"].(map[string]any)
+				if src["repository"] == "alice/private" {
+					n++
+					if num, _ := src["number"].(float64); int64(num) != privateSrcN {
+						t.Fatalf("source.number = %v, voluto %d", src["number"], privateSrcN)
+					}
+					if _, ok := src["commentId"]; ok {
+						t.Fatalf("commentId presente per un riferimento da issue")
 					}
 				}
 			}
+			return n
 		}
-		if !foundSourceEvent {
-			t.Fatalf("non è stato trovato evento referenced_from con source.repository='alice/private'")
+		la, lc := get("alice"), get("carol")
+		if fromPrivate(la) != 1 {
+			t.Fatalf("alice dovrebbe vedere 1 evento da alice/private")
+		}
+		if fromPrivate(lc) != 0 {
+			t.Fatalf("carol non deve vedere tracce di alice/private")
+		}
+		if lc.Total != la.Total-1 {
+			t.Fatalf("total carol=%d, alice=%d: voluto alice-1", lc.Total, la.Total)
+		}
+		if len(lc.Items) != int(lc.Total) {
+			t.Fatalf("items carol=%d != total %d", len(lc.Items), lc.Total)
 		}
 	})
 
 	// C1.3c: sorgente interna → visibile a un altro utente autenticato.
 	t.Run("sorgente_interna_visibile_ad_altri", func(t *testing.T) {
-		// alice/alice-internal#1 (aliceN) è interna.
-		// Carol cita alice-internal#1 nel repo carol.
-		_ = e.do(http.MethodPost, "/repos/alice/carol/issues", "carol",
-			`{"title":"cita interna","body":"alice/alice-internal#`+itoa64(aliceN)+`"}`)
-
-		// Alice vede l'evento.
-		evsAlice := e.events("alice-internal", aliceN, "alice")
-		foundAlice := false
-		for _, tp := range eventTypes(evsAlice) {
-			if tp == "referenced_from" {
-				foundAlice = true
+		rec := e.do(http.MethodPost, "/repos/alice/internal/issues", "bob",
+			`{"title":"cita da interno","body":"alice/alice-internal#`+itoa64(aliceN)+`"}`)
+		e.want(rec, http.StatusCreated, "")
+		srcN := e.issue(rec).Number
+		for _, user := range []string{"alice", "carol"} {
+			found := false
+			for _, ev := range e.events("alice-internal", aliceN, user) {
+				if ev.Type != "referenced_from" || ev.Data == nil {
+					continue
+				}
+				src, _ := (*ev.Data)["source"].(map[string]any)
+				if src["repository"] == "alice/internal" && int64(src["number"].(float64)) == srcN {
+					found = true
+				}
 			}
-		}
-		if !foundAlice {
-			t.Fatalf("alice non vede referenced_from da sorgente interna")
-		}
-
-		// Carol vede l'evento.
-		evsCarol := e.events("alice-internal", aliceN, "carol")
-		foundCarol := false
-		for _, tp := range eventTypes(evsCarol) {
-			if tp == "referenced_from" {
-				foundCarol = true
+			if !found {
+				t.Fatalf("%s non vede referenced_from da sorgente interna", user)
 			}
-		}
-		if !foundCarol {
-			t.Fatalf("carol non vede referenced_from da sorgente interna")
 		}
 	})
 

@@ -290,7 +290,7 @@ func (s *apiServer) CreateIssueComment(w http.ResponseWriter, r *http.Request, o
 	// Togliere un riferimento dal testo non cancella le tracce esistenti:
 	// come su GitHub, le righe in core.issue_references restano.
 	commentID := id
-	if err := s.processReferences(ctx, tx, ia.userID, ia.repo.ID, x.Number, x.ID, &commentID, "issue", x.Title, in.Body); err != nil {
+	if err := s.processReferences(ctx, tx, fmt.Sprintf("%s/%s", ia.repo.OwnerName, ia.repo.Name), ia.userID, ia.repo.ID, x.Number, x.ID, &commentID, "issue", x.Title, in.Body); err != nil {
 		writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
 		return
 	}
@@ -382,7 +382,7 @@ func (s *apiServer) UpdateIssueComment(w http.ResponseWriter, r *http.Request, o
 		// Togliere un riferimento dal testo non cancella le tracce esistenti:
 		// come su GitHub, le righe in core.issue_references restano.
 		commentID := c.ID
-		if err := s.processReferences(ctx, tx, ia.userID, ia.repo.ID, x.Number, x.ID, &commentID, "issue", x.Title, in.Body); err != nil {
+		if err := s.processReferences(ctx, tx, fmt.Sprintf("%s/%s", ia.repo.OwnerName, ia.repo.Name), ia.userID, ia.repo.ID, x.Number, x.ID, &commentID, "issue", x.Title, in.Body); err != nil {
 			writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
 			return
 		}
