@@ -244,7 +244,7 @@ func TestIssuesE2E(t *testing.T) {
 	// Un modello nel repo interno, spinto con git vero (I11).
 	t.Run("preparazione_modelli", func(t *testing.T) {
 		work := e.initWork(e.httpsURL("alice", e.tokens["alice"], "/alice/"+I+".git"), map[string]string{
-			"README.md": "# prova\n",
+			"README.md":                       "# prova\n",
 			".gitstack/ISSUE_TEMPLATE/bug.md": "---\ntitle: Bug Report\nabout: Segnala un bug\nlabels:\n  - bug\n---\n\n## Passi per riprodurre\n",
 		})
 		e.mustGit(work, "", "push", "-q", "origin", "main")
