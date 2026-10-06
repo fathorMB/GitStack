@@ -33,8 +33,9 @@ func runStatus(ctx context.Context, a *App, args []string) int {
 		return code
 	}
 
+	path := a.configPath(*cfgPath)
 	col := &status.Collector{Runner: a.Runner, HTTP: a.HTTP, LookPath: a.LookPath}
-	rep := col.Collect(ctx, cfg)
+	rep := col.Collect(ctx, cfg, a.configDir(path))
 
 	if *asJSON {
 		enc := json.NewEncoder(a.Stdout)

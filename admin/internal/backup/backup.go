@@ -99,6 +99,8 @@ type Options struct {
 	Log io.Writer
 	// Now è l'orologio (test).
 	Now func() time.Time
+	// Retention sovrascrive cfg.Backup.Retention quando > 0.
+	Retention int
 }
 
 func (o *Options) logf(format string, a ...any) {
@@ -482,7 +484,8 @@ func writeArchive(dest, name string, st *stager, m *Manifest, key []byte) (strin
 	return final, sum, nil
 }
 
-// prune tiene gli ultimi cfg.Backup.Retention archivi.
+// prune tiene gli ultimi N archivi, dove N è cfg.Backup.Retention o
+// o.Retention se maggiore di zero.
 func (o *Options) prune(dest string) {
 	entries, err := os.ReadDir(dest)
 	if err != nil {
@@ -496,7 +499,11 @@ func (o *Options) prune(dest string) {
 		}
 	}
 	sort.Strings(names) // il nome contiene la data UTC: ordine cronologico
-	keep := max(o.Cfg.Backup.Retention, 1)
+	keep := o.Cfg.Backup.Retention
+	if o.Retention > 0 {
+		keep = o.Retention
+	}
+	keep = max(keep, 1)
 	for len(names) > keep {
 		_ = os.Remove(filepath.Join(dest, names[0]))
 		_ = os.Remove(filepath.Join(dest, names[0]) + ".sha256")

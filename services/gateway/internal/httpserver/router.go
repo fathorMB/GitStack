@@ -67,7 +67,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	signing := proxy.WithServiceSecret(cfg.IdentityServiceSecret)
 	toCore := proxy.ToCore(cfg.CoreURL, cfg.CoreTimeout, logger,
 		proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithDropCredentials(), proxy.WithClock(o.now))
-	server := &apiServer{proxy: toCore}
+	server := &apiServer{proxy: toCore, version: cfg.Version}
 
 	// Middlewares è applicato per ogni operazione generata, dal primo
 	// (interno, più vicino al gestore) all'ultimo (esterno): auth e

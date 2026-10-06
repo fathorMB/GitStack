@@ -2244,6 +2244,15 @@ type MarkedNotifications struct {
 	Marked int `json:"marked"`
 }
 
+// Meta defines model for Meta.
+type Meta struct {
+	// ApiVersion Versione del contratto API (`info.version`).
+	ApiVersion string `json:"api_version"`
+
+	// ServerVersion Versione dell'installazione (tag dell'immagine del gateway).
+	ServerVersion string `json:"server_version"`
+}
+
 // Milestone defines model for Milestone.
 type Milestone struct {
 	ClosedAt *time.Time `json:"closedAt,omitempty"`
@@ -4479,6 +4488,13 @@ type ClientInterface interface {
 	// Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 	VerifyCredential(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetMeta Versione del server
+	//
+	// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+	//
+	// Corresponds with GET /meta (the `GetMeta` operationId).
+	GetMeta(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteNotifications Elimina in blocco le notifiche
 	//
 	// Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
@@ -6680,6 +6696,23 @@ func (c *Client) VerifyCredentialWithBody(ctx context.Context, contentType strin
 // Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 func (c *Client) VerifyCredential(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyCredentialRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMeta Versione del server
+//
+// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+//
+// Corresponds with GET /meta (the `GetMeta` operationId).
+func (c *Client) GetMeta(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMetaRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -11607,6 +11640,33 @@ func NewVerifyCredentialRequestWithBody(server string, contentType string, body 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetMetaRequest constructs an http.Request for the GetMeta method
+func NewGetMetaRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/meta")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -19509,6 +19569,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 	VerifyCredentialWithResponse(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyCredentialResponse, error)
 
+	// GetMetaWithResponse Versione del server
+	//
+	// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /meta (the `GetMeta` operationId).
+	GetMetaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetaResponse, error)
+
 	// DeleteNotificationsWithResponse Elimina in blocco le notifiche
 	//
 	// Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
@@ -23565,6 +23634,47 @@ func (r VerifyCredentialResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VerifyCredentialResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetMetaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Meta
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMetaResponse) GetJSON200() *Meta {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMetaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMetaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMetaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMetaResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34388,6 +34498,21 @@ func (c *ClientWithResponses) VerifyCredentialWithResponse(ctx context.Context, 
 	return ParseVerifyCredentialResponse(rsp)
 }
 
+// GetMetaWithResponse Versione del server
+//
+// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /meta (the `GetMeta` operationId).
+func (c *ClientWithResponses) GetMetaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetaResponse, error) {
+	rsp, err := c.GetMeta(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMetaResponse(rsp)
+}
+
 // DeleteNotificationsWithResponse Elimina in blocco le notifiche
 //
 // Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si eliminano in blocco), con gli stessi filtri `reason` e `repo` dell'elenco (C9). Risponde 200 con il numero di notifiche eliminate.
@@ -38944,6 +39069,32 @@ func ParseVerifyCredentialResponse(rsp *http.Response) (*VerifyCredentialRespons
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMetaResponse parses an HTTP response from a GetMetaWithResponse call
+func ParseGetMetaResponse(rsp *http.Response) (*GetMetaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMetaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Meta
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 

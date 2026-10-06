@@ -11,6 +11,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/fathorMB/GitStack/admin/internal/backupstate"
 )
 
 type fakeRunner struct {
@@ -146,20 +149,98 @@ func TestStatusNoKubectl(t *testing.T) {
 }
 
 func TestStatusLastBackup(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("percorso di backup assoluto POSIX")
-	}
 	srv := healthServer(200)
 	defer srv.Close()
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "backup-1.tar"), []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	a, out, _ := newApp(&fakeRunner{out: kubectlJSON(1)}, srv)
-	a.Run(context.Background(), []string{"status", "--config", writeConfig(t, hostOf(srv), dir)})
-	if !strings.Contains(out.String(), "Ultimo backup: backup-1.tar (") {
-		t.Errorf("output inatteso:\n%s", out)
-	}
+
+	// Caso 1: backup riuscito con --config
+	t.Run("success", func(t *testing.T) {
+		dir := t.TempDir()
+		cfgPath := filepath.Join(dir, "config.yaml")
+		body := "version: 1\nhost: " + hostOf(srv) + "\n"
+		if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		// Scrivi lo stato di un backup riuscito
+		if err := backupstate.Write(dir, backupstate.State{
+			Success: true,
+			Path:    "/var/backups/gitstack/backup-20261006T120000Z.tar.gz",
+			At:      time.Now().UTC(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		a, out, _ := newApp(&fakeRunner{out: kubectlJSON(1)}, srv)
+		code := a.Run(context.Background(), []string{"status", "--config", cfgPath})
+		if code != ExitOK {
+			t.Fatalf("exit %d", code)
+		}
+		if !strings.Contains(out.String(), "ultimo successo:") || !strings.Contains(out.String(), "/var/backups/gitstack/") {
+			t.Errorf("output inatteso:\n%s", out)
+		}
+	})
+
+	// Caso 2: backup fallito (ultimo errore)
+	t.Run("failure", func(t *testing.T) {
+		dir := t.TempDir()
+		cfgPath := filepath.Join(dir, "config.yaml")
+		body := "version: 1\nhost: " + hostOf(srv) + "\n"
+		if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		// Scrivi lo stato di un backup fallito
+		if err := backupstate.Write(dir, backupstate.State{
+			Success: false,
+			Error:   "cluster non raggiungibile",
+			At:      time.Now().UTC(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		a, out, _ := newApp(&fakeRunner{out: kubectlJSON(1)}, srv)
+		code := a.Run(context.Background(), []string{"status", "--config", cfgPath})
+		if code != ExitOK {
+			t.Fatalf("exit %d", code)
+		}
+		if !strings.Contains(out.String(), "ultimo errore:") || !strings.Contains(out.String(), "cluster non raggiungibile") {
+			t.Errorf("output inatteso:\n%s", out)
+		}
+	})
+
+	// Caso 3: SENZA --config, usa variabile d'ambiente
+	t.Run("env-config", func(t *testing.T) {
+		dir := t.TempDir()
+		cfgPath := filepath.Join(dir, "config.yaml")
+		body := "version: 1\nhost: " + hostOf(srv) + "\n"
+		if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		// Scrivi lo stato di un backup riuscito
+		if err := backupstate.Write(dir, backupstate.State{
+			Success: true,
+			Path:    "/var/backups/gitstack/backup-env-20261006T120000Z.tar.gz",
+			At:      time.Now().UTC(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		a, out, _ := newApp(&fakeRunner{out: kubectlJSON(1)}, srv)
+		a.Getenv = func(k string) string {
+			if k == envConfigPath {
+				return cfgPath
+			}
+			return ""
+		}
+		code := a.Run(context.Background(), []string{"status"})
+		if code != ExitOK {
+			t.Fatalf("exit %d", code)
+		}
+		if !strings.Contains(out.String(), "ultimo successo:") || !strings.Contains(out.String(), "backup-env-") {
+			t.Errorf("output inatteso:\n%s", out)
+		}
+	})
 }
 
 func TestStatusJSON(t *testing.T) {
