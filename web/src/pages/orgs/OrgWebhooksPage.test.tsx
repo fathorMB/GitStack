@@ -58,11 +58,11 @@ describe('OrgWebhooksPage', () => {
     ]);
     mockedFetch.mockResolvedValue({ items: [], page: 1, perPage: 50, total: 0 });
     mockedReactivate.mockResolvedValue({
-      id: 'wh-2', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+      id: 'wh-2', scope: 'org', repository: null, organization: 'acme',
       url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: true, hasSecret: false,
-      disabledAt: null, disabledReason: undefined as any, failingSince: null, lastDelivery: null,
+      disabledAt: null, disabledReason: undefined, failingSince: null, lastDelivery: null,
       createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
-    });
+    } as unknown as Webhook);
     mockedDeliveries.mockResolvedValue({ items: [], page: 1, perPage: 20, total: 0 });
     mockedRedeliver.mockResolvedValue({} as never);
     vi.mocked(mockedCreate).mockReset();
@@ -123,7 +123,7 @@ describe('OrgWebhooksPage', () => {
   it('mostra webhook disattivato con pulsante Re-enable', async () => {
     mockedFetch.mockResolvedValue({ items: [
       {
-        id: 'wh-2', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+        id: 'wh-2', scope: 'org', repository: null, organization: 'acme',
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
         disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
@@ -140,7 +140,7 @@ describe('OrgWebhooksPage', () => {
   it('riattiva un webhook disattivato', async () => {
     mockedFetch.mockResolvedValue({ items: [
       {
-        id: 'wh-2', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+        id: 'wh-2', scope: 'org', repository: null, organization: 'acme',
         url: 'https://old-ci.acme.local/hooks/gitstack', events: ['push'], active: false, hasSecret: false,
         disabledAt: '2025-10-01T00:00:00Z', disabledReason: 'consecutive_failures' as const, failingSince: '2025-09-28T00:00:00Z',
         lastDelivery: null, createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
@@ -166,7 +166,7 @@ describe('OrgWebhooksPage', () => {
 
   it('mostra il form di creazione', async () => {
     mockedCreate.mockResolvedValue({
-      id: 'wh-new', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+      id: 'wh-new', scope: 'org', repository: null, organization: 'acme',
       url: 'https://new.example.com/hooks', events: ['push'], active: true, hasSecret: true,
       disabledAt: null, disabledReason: undefined, failingSince: null,
       lastDelivery: null, createdBy: null, createdAt: NOW, updatedAt: NOW,
@@ -273,7 +273,7 @@ describe('OrgWebhooksPage', () => {
 
   it('mostra il dialog del segreto dopo la creazione', async () => {
     mockedCreate.mockResolvedValue({
-      id: 'wh-new', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+      id: 'wh-new', scope: 'org', repository: null, organization: 'acme',
       url: 'https://new.example.com/hooks', events: ['push'], active: true, hasSecret: true,
       disabledAt: null, disabledReason: undefined, failingSince: null,
       lastDelivery: null, createdBy: null, createdAt: NOW, updatedAt: NOW,
