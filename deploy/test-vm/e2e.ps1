@@ -22,7 +22,7 @@
       d3. HTTPS (N5, GIT-143): l'installer di default crea la CA interna.
          Scarica /downloads/ca.crt via HTTP (la 80 lo serve senza redirect),
          ne confronta l'impronta SHA-256 con `gitstack-tls fingerprint` sulla
-         VM, controlla che la 80 reindirizzi a https (308), che ca.key sia
+         VM, controlla che la 80 reindirizzi a https (301 per GET, 308 per POST), che ca.key sia
          0600 e che il timer di rinnovo sia attivo. Da qui in poi tutte le
          chiamate sono HTTPS e si fidano SOLO di quella CA (callback del
          processo, lib/tls.ps1: niente modifiche allo store del PC), anche
@@ -492,9 +492,15 @@ function Main {
         foreach ($p in @('/', '/api/healthz')) {
             $rd = Invoke-ExternalCommand -FilePath 'curl.exe' -ArgumentList @('-s', '-o', 'NUL', '-w', '%{http_code} %{redirect_url}', "http://$script:VmIp$p") -TimeoutSeconds 30
             $want = "https://$script:VmIp$p"
-            if ($rd.ExitCode -ne 0 -or $rd.StdOut.Trim() -ne "308 $want") {
-                $d3Ok = $false; $d3Details += "http://<vm>$p non reindirizza a $want con 308: '$($rd.StdOut.Trim())' $($rd.StdErr)"
+            if ($rd.ExitCode -ne 0 -or $rd.StdOut.Trim() -ne "301 $want") {
+                $d3Ok = $false; $d3Details += "GET http://<vm>$p non reindirizza a $want con 301 (atteso 301, ricevuto): '$($rd.StdOut.Trim())' $($rd.StdErr)"
             }
+        }
+        # Gli altri metodi ricevono 308 (il metodo si conserva).
+        $rdPost = Invoke-ExternalCommand -FilePath 'curl.exe' -ArgumentList @('-s', '-o', 'NUL', '-w', '%{http_code} %{redirect_url}', '-X', 'POST', "http://$script:VmIp/api/healthz") -TimeoutSeconds 30
+        $wantPost = "https://$script:VmIp/api/healthz"
+        if ($rdPost.ExitCode -ne 0 -or $rdPost.StdOut.Trim() -ne "308 $wantPost") {
+            $d3Ok = $false; $d3Details += "POST http://<vm>/api/healthz non reindirizza a $wantPost con 308 (atteso 308, ricevuto): '$($rdPost.StdOut.Trim())' $($rdPost.StdErr)"
         }
 
         $keyMode = Invoke-VmSsh -Command 'sudo stat -c "%a %U" /etc/gitstack/tls/ca.key' -TimeoutSeconds $SshCommandTimeoutSeconds
@@ -510,7 +516,7 @@ function Main {
         if ($caInK8s.ExitCode -ne 0 -or $caInK8s.StdOut -notmatch 'secret/gitstack-tls' -or $caInK8s.StdOut -notmatch 'configmap/gitstack-ca') {
             $d3Ok = $false; $d3Details += "attesi secret/gitstack-tls e configmap/gitstack-ca: '$($caInK8s.StdOut.Trim())'"
         }
-        Add-StepResult -Name 'd3. HTTPS: ca.crt scaricabile e con l impronta della VM, 80 reindirizzata a 443 (308), ca.key 0600, timer di rinnovo attivo' -Ok $d3Ok -Detail ($d3Details -join '; ')
+        Add-StepResult -Name 'd3. HTTPS: ca.crt scaricabile e con l impronta della VM, 80 reindirizzata a 443 (301 GET, 308 POST), ca.key 0600, timer di rinnovo attivo' -Ok $d3Ok -Detail ($d3Details -join '; ')
         if (-not $d3Ok) { return }
 
         # --- e. verifiche end-to-end -------------------------------------

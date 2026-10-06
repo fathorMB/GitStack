@@ -11,7 +11,7 @@ Di default `deploy/install.sh` installa GitStack in HTTPS. Questa pagina spiega 
 | Certificato del cliente | `--tls-cert FILE --tls-key FILE` | quello fornito (PEM) |
 | Solo HTTP | `--insecure-http` | nessuno: solo prove locali, la UI mostra un avviso |
 
-In tutte le modalità con TLS Traefik serve la 443 e reindirizza la 80 alla 443 (308 permanente). Fa eccezione `/downloads/ca.crt` (solo con la CA interna), servito anche in HTTP perché serve proprio a fidarsi di HTTPS la prima volta. Gli URL pubblici di core (indirizzi di clone, link nelle email) diventano `https://<host>`: `core.env.publicUrl` e `identity.oidc.publicUrl` li imposta l'installer.
+In tutte le modalità con TLS Traefik serve la 443 e reindirizza la 80 alla 443 (redirect permanente: 301 per GET/HEAD, 308 per gli altri metodi (Traefik redirectScheme)). Fa eccezione `/downloads/ca.crt` (solo con la CA interna), servito anche in HTTP perché serve proprio a fidarsi di HTTPS la prima volta. Gli URL pubblici di core (indirizzi di clone, link nelle email) diventano `https://<host>`: `core.env.publicUrl` e `identity.oidc.publicUrl` li imposta l'installer.
 
 `--host NOME|IP` (ripetibile) sceglie i nomi che finiscono nei SAN del certificato; il primo è quello dell'URL pubblico. Senza `--host` i SAN sono: nome breve dell'host, `<nome>.local`, nome completo se diverso, e l'IP principale; l'URL pubblico è l'IP. L'IP principale è sempre fra i SAN, anche con `--host`. Esempio per un server raggiunto via mDNS (avahi):
 
