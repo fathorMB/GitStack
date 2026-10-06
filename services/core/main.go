@@ -19,6 +19,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/db"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
+	"github.com/fathorMB/GitStack/services/core/internal/gitpush"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
@@ -26,7 +27,9 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 // repoPurgeInterval: ogni quanto il job cancella i repo eliminati scaduti.
@@ -217,6 +220,50 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		go (&notify.Engine{Pool: pool, Identity: id, Log: logger}).Run(ctx)
 	} else {
 		logger.Warn("identity non configurata: il motore delle notifiche non parte")
+	}
+
+	// Webhook (M-06/G, GIT-135): consegna firmata con coda persistente (la
+	// tabella core.webhook_deliveries), uscita solo da pkg/egress (C8). Le
+	// consegne pending sopravvivono a un riavvio: il motore le riprende.
+	keys, err := webhooks.NewKeyring(cfg.WebhookSecretKeyID, cfg.WebhookSecretKey, cfg.WebhookSecretOldKeys)
+	if err != nil {
+		logger.Error("configurazione non valida", "err", err)
+		return 1
+	}
+	if !keys.Enabled() {
+		logger.Warn("GITSTACK_WEBHOOK_SECRET_KEY non impostata: i webhook con segreto rispondono 503")
+	}
+	hookHTTP, hookCheck, err := webhooks.NewEgress(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs)
+	if err != nil {
+		logger.Error("configurazione non valida", "err", err)
+		return 1
+	}
+	routerOpts = append(routerOpts, httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys, CheckURL: hookCheck}))
+	hooks := &webhooks.Engine{Pool: pool, Keys: keys, HTTP: hookHTTP, Log: logger}
+	if look, ok := repoLookup.(webhooks.Users); ok {
+		hooks.Users = look
+	}
+	if mgr, ok := repoLookup.(webhooks.Managers); ok {
+		hooks.Managers = mgr
+	}
+	go hooks.Run(ctx)
+	if js, err := jetstream.New(nc); err != nil {
+		logger.Error("apertura di JetStream per i webhook push non riuscita: i push non generano webhook", "err", err)
+	} else {
+		go func() {
+			// Se NATS non è ancora raggiungibile il consumer si riprova.
+			for ctx.Err() == nil {
+				err := gitpush.Run(ctx, js, gitpush.DurableWebhooks, hooks.EnqueuePush, logger)
+				if err == nil || ctx.Err() != nil {
+					return
+				}
+				logger.Warn("consumer git.push dei webhook non avviato, si riprova", "err", err)
+				select {
+				case <-ctx.Done():
+				case <-time.After(5 * time.Second):
+				}
+			}
+		}()
 	}
 
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)

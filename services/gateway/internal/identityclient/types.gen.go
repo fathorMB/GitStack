@@ -411,6 +411,11 @@ type LookupIdsResultUsersKind string
 // Example: alice
 type Name = string
 
+// OrgOwnersResult defines model for OrgOwnersResult.
+type OrgOwnersResult struct {
+	Owners []openapi_types.UUID `json:"owners"`
+}
+
 // OwnerRef defines model for OwnerRef.
 type OwnerRef struct {
 	Id openapi_types.UUID `json:"id"`

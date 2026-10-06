@@ -82,7 +82,7 @@ server è cifrato (README di `services/core`, sezione webhook).
   stesso payload con una nuova consegna e una firma ricalcolata.
 - **Protezione SSRF (C8)**: la rete aziendale è ammessa; sono sempre bloccati
   loopback, indirizzi interni del cluster e link-local (`169.254.0.0/16`),
-  controllati dopo la risoluzione DNS e a ogni redirect (al massimo 3, che si
+  controllati dopo la risoluzione DNS e a ogni redirect (al massimo 5, che si
   seguono). L'amministratore dell'installazione può aggiungere liste di
   destinazioni ammesse e vietate; le tre categorie fisse non si possono
   sbloccare. Un indirizzo bloccato dà 422 (`url_not_allowed`) alla creazione e,
@@ -262,8 +262,14 @@ Nella v1 non c'è l'azione di rinomina né di trasferimento (R3).
 
 ## Da dove nascono
 
-I webhook li produce core consumando gli eventi di dominio su NATS
-(`docs/events.md`): `git.push` per `push`, `issue.*` per `issues`,
-`issue_comment.*` per `issue_comment`, `repository.*` per `repository`.
-Le tabelle sono `core.webhooks` e `core.webhook_deliveries` (migrazione
-`0006_notifications_webhooks`).
+I webhook li produce core dagli eventi di dominio (`docs/events.md`):
+`git.push` (letto da NATS con il consumer durevole `core-webhooks-git`) per
+`push`; `issue.*`, `issue_comment.*` e `repository.*` dall'outbox
+transazionale di core (`core.event_outbox`), lo stesso da cui li pubblica il
+relay, per `issues`, `issue_comment` e `repository`. Le tabelle sono
+`core.webhooks` e `core.webhook_deliveries` (migrazione
+`0006_notifications_webhooks`; `0011_webhook_outbox` aggiunge il segno di
+lettura dell'outbox). La coda delle consegne è la tabella stessa: le consegne
+`pending` sopravvivono al riavvio di core. I campi di `issue` e `comment` sono
+quelli di quando il motore elabora l'evento (di solito un secondo dopo): se la
+issue cambia di nuovo nel frattempo, il payload mostra lo stato più recente.

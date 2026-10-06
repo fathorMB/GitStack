@@ -635,6 +635,10 @@ export type OwnerRef = {
     name: Name;
 };
 
+export type OrgOwnersResult = {
+    owners: Array<string>;
+};
+
 export type GitCreateRepoInput = {
     repoId: string;
     name: RepoName;
@@ -9568,6 +9572,41 @@ export type ResolveOwnerResponses = {
 };
 
 export type ResolveOwnerResponse = ResolveOwnerResponses[keyof ResolveOwnerResponses];
+
+export type ListOrgOwnersData = {
+    body?: never;
+    path: {
+        orgId: string;
+    };
+    query?: never;
+    url: '/internal/orgs/{orgId}/owners';
+};
+
+export type ListOrgOwnersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOrgOwnersError = ListOrgOwnersErrors[keyof ListOrgOwnersErrors];
+
+export type ListOrgOwnersResponses = {
+    /**
+     * Gli owner.
+     */
+    200: OrgOwnersResult;
+};
+
+export type ListOrgOwnersResponse = ListOrgOwnersResponses[keyof ListOrgOwnersResponses];
 
 export type GitCreateRepoData = {
     body: GitCreateRepoInput;
