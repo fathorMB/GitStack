@@ -86,7 +86,7 @@ func Check(ctx context.Context, httpClient *http.Client, baseURL, clientVersion,
 			ErrMajorMismatch, clientVersion, serverVersion, hostOf(base))
 	}
 	if stderr != nil {
-		fmt.Fprintf(stderr, "avviso: gs è %s ma il server è %s: aggiorna gs da %s/downloads\n",
+		_, _ = fmt.Fprintf(stderr, "avviso: gs è %s ma il server è %s: aggiorna gs da %s/downloads\n",
 			clientVersion, serverVersion, hostOf(base))
 	}
 	return nil
