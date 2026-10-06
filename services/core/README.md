@@ -100,7 +100,7 @@ Migrazione `0002_repositories` (up/down in `internal/migrate/sql`).
   righe `type='repo'`).
 - **Vincoli in tabella.** `owner_type IN ('user','organization')`; `owner_id`
   è l'id in identity, senza FK fra schemi (sono database/schema separati);
-  `name ~ '^[a-z0-9_-][a-z0-9._-]{0,99}$' AND name NOT LIKE '%.git'` (R11);
+  `name ~ '^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$' AND name NOT ILIKE '%.git'` (R11, migrazione 0013) e unicità per owner su `lower(name)`, anche per i repo nel cestino;
   `visibility IN ('private','internal')` default `private` (P7);
   `default_branch` default `main` (R4); `protect_default_branch` default
   `true` (R9); `archived_at` (R10) e `deleted_at` (R2) NULL.

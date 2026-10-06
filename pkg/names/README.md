@@ -6,11 +6,11 @@ organizzazioni (che condividono un unico spazio di nomi). Usato da identity
 
 ## ValidateRepoName (R11)
 
-- solo minuscole `a-z`, cifre, `-`, `_` e `.`;
+- lettere `a-z` e `A-Z`, cifre, `-`, `_` e `.`;
 - da 1 a 100 caratteri;
 - non inizia con `.`;
-- non finisce con `.git`;
-- le maiuscole sono rifiutate, non convertite.
+- non finisce con `.git` (in qualsiasi combinazione di maiuscole);
+- le maiuscole sono conservate come scritte: l'unicità per owner e la ricerca non le distinguono (GIT-178, indice su `lower(name)` in core).
 
 Ogni regola ha il suo errore esportato, da confrontare con `errors.Is`:
 `ErrEmpty`, `ErrTooLong`, `ErrInvalidChar`, `ErrLeadingDot`, `ErrGitSuffix`.

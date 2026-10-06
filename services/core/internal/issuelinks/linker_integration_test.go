@@ -672,3 +672,31 @@ func (w *testLogWriter) Write(p []byte) (int, error) {
 	}
 	return len(p), nil
 }
+
+// R11 rivista (GIT-178): il repo si chiama `GitStack` e un riferimento in
+// qualsiasi combinazione di maiuscole lo risolve, da un altro repo (C1) e dal
+// repo stesso (C1/C2).
+func TestNomeRepoConMaiuscole_RiferimentiRisolvono(t *testing.T) {
+	e := newEnv(t)
+	gs := e.addRepo("alice", "GitStack", false)
+	e.id.set(gs, users["alice"], "admin")
+	fromOther := e.addIssue(gs, 1)
+	sameRepo := e.addIssue(gs, 2)
+	plain := e.addIssue(gs, 3)
+
+	// C1: da un altro repo, riferimento in minuscolo.
+	e.push(e.app, "alice/app", "alice", ref("main", true, commit("fixes alice/gitstack#1")))
+	// C1/C2: dal repo stesso, con il nome canonico e con una forma diversa nell'evento.
+	e.push(gs, "alice/GITSTACK", "alice", ref("main", true, commit("Closes alice/GITSTACK#2")))
+	e.push(gs, "alice/gitstack", "alice", ref("main", true, commit("Resolves #3")))
+	e.settle()
+
+	for name, iss := range map[string]uuid.UUID{"altro repo, minuscolo": fromOther, "stesso repo, maiuscolo": sameRepo, "stesso repo, #n": plain} {
+		if st, reason := e.state(iss); st != "closed" || reason != "completed" {
+			t.Errorf("%s: stato=%s reason=%s", name, st, reason)
+		}
+		if e.links(iss) != 1 || e.events(iss, "closed_by_commit") != 1 {
+			t.Errorf("%s: link=%d closed_by_commit=%d", name, e.links(iss), e.events(iss, "closed_by_commit"))
+		}
+	}
+}

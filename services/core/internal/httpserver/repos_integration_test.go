@@ -355,7 +355,7 @@ func TestRepos_Creazione(t *testing.T) {
 	})
 
 	t.Run("nome_non_valido_400", func(t *testing.T) {
-		for _, name := range []string{"Maiuscole", "x.git", ".nascosto", "con spazio", "", strings.Repeat("a", 101), "a/b"} {
+		for _, name := range []string{"x.git", "x.GIT", ".Nascosto", "caffè", "con spazio", "", strings.Repeat("a", 101), "a/b"} {
 			body, _ := json.Marshal(map[string]string{"owner": "alice", "name": name})
 			e.want(e.do(http.MethodPost, "/repos", "alice", string(body)), http.StatusBadRequest)
 		}
@@ -367,6 +367,35 @@ func TestRepos_Creazione(t *testing.T) {
 		e.want(e.do(http.MethodPost, "/repos", "alice", `{"owner":"alice","name":"my-app"}`), http.StatusConflict)
 		// Stesso nome con un altro owner: va.
 		e.create("bob", `{"owner":"bob","name":"my-app"}`)
+	})
+
+	// R11 rivista (GIT-178): il nome conserva le maiuscole, l'unicità per
+	// owner e ogni lookup ignorano la differenza.
+	t.Run("nome_con_maiuscole_R11", func(t *testing.T) {
+		r := e.create("alice", `{"owner":"alice","name":"GitStack"}`)
+		if r.Name != "GitStack" || r.FullName != "alice/GitStack" || !strings.Contains(r.CloneUrls.Https, "/alice/GitStack.git") {
+			t.Fatalf("repo = %+v", r)
+		}
+		for _, dup := range []string{"gitstack", "GITSTACK", "gitStack", "GitStack"} {
+			body, _ := json.Marshal(map[string]string{"owner": "alice", "name": dup})
+			e.want(e.do(http.MethodPost, "/repos", "alice", string(body)), http.StatusConflict)
+		}
+		// Un altro owner può usare lo stesso nome, con le sue maiuscole.
+		if o := e.create("bob", `{"owner":"bob","name":"GITSTACK"}`); o.Name != "GITSTACK" {
+			t.Fatalf("nome di bob = %q", o.Name)
+		}
+		// Ogni forma dell'indirizzo risolve il repo e risponde con il nome salvato.
+		for _, p := range []string{"alice/GitStack", "alice/gitstack", "alice/GITSTACK", "ALICE/gitStack"} {
+			got := decodeRepo(t, e.do(http.MethodGet, "/repos/"+p, "alice", ""))
+			if got.Name != "GitStack" || got.FullName != "alice/GitStack" {
+				t.Fatalf("GET %s: %q %q", p, got.Name, got.FullName)
+			}
+		}
+		e.want(e.do(http.MethodGet, "/repos/alice/gitstack-2", "alice", ""), http.StatusNotFound)
+		// Nel cestino il nome resta occupato anche con un'altra maiuscola (R2).
+		e.want(e.do(http.MethodDelete, "/repos/alice/gitstack", "alice", ""), http.StatusNoContent)
+		e.want(e.do(http.MethodPost, "/repos", "alice", `{"owner":"alice","name":"GITSTACK"}`), http.StatusConflict)
+		e.want(e.do(http.MethodGet, "/repos/alice/GitStack", "alice", ""), http.StatusNotFound)
 	})
 
 	t.Run("owner_inesistente_404", func(t *testing.T) {

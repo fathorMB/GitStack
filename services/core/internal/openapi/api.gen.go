@@ -1212,7 +1212,7 @@ type CreateRepositoryInput struct {
 	// LicenseTemplate Modello di licenza per il contenuto iniziale (R5).
 	LicenseTemplate *LicenseTemplate `json:"licenseTemplate,omitempty"`
 
-	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	// Name Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 	//
 	//
 	// Example: my-app
@@ -1260,7 +1260,7 @@ type DeletedRepository struct {
 	DeletedAt time.Time          `json:"deletedAt"`
 	Id        openapi_types.UUID `json:"id"`
 
-	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	// Name Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 	//
 	//
 	// Example: my-app
@@ -1816,7 +1816,7 @@ type RepoCloneUrls struct {
 	SshShort *string `json:"sshShort,omitempty"`
 }
 
-// RepoName Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+// RepoName Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 //
 // Example: my-app
 type RepoName = string
@@ -1869,7 +1869,7 @@ type Repository struct {
 	// Id Id della risorsa (`type=repo`) in core.
 	Id *openapi_types.UUID `json:"id,omitempty"`
 
-	// Name Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+	// Name Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 	//
 	//
 	// Example: my-app
@@ -2378,7 +2378,7 @@ type RefAndPathParam = string
 // RefParam defines model for RefParam.
 type RefParam = string
 
-// RepoNameParam Nome di un repo (R11): minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono rifiutate. Unico per owner.
+// RepoNameParam Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 //
 // Example: my-app
 type RepoNameParam = RepoName
