@@ -42,17 +42,24 @@ Risoluzione (registry più override per componente, criterio 7 di GIT-8):
 - tag: component.image.tag, altrimenti global.image.tag, altrimenti Chart.AppVersion
 */}}
 {{- define "gitstack.image" -}}
-{{- $root := .root -}}
 {{- $comp := .component -}}
-{{- $registry := $comp.image.registry | default $root.Values.global.image.registry -}}
-{{- $tag := $comp.image.tag -}}
+{{- $registry := $comp.image.registry | default .root.Values.global.image.registry -}}
+{{- printf "%s/%s:%s" $registry $comp.image.repository (include "gitstack.imageTag" .) -}}
+{{- end -}}
+
+{{/*
+Tag effettivo di un componente (stessa risoluzione di gitstack.image): quello
+che legge `gitstack status` e che il gateway riporta in GET /v1/meta.
+*/}}
+{{- define "gitstack.imageTag" -}}
+{{- $tag := .component.image.tag -}}
 {{- if not $tag -}}
-{{- $tag = $root.Values.global.image.tag -}}
+{{- $tag = .root.Values.global.image.tag -}}
 {{- end -}}
 {{- if not $tag -}}
-{{- $tag = $root.Chart.AppVersion -}}
+{{- $tag = .root.Chart.AppVersion -}}
 {{- end -}}
-{{- printf "%s/%s:%s" $registry $comp.image.repository $tag -}}
+{{- $tag -}}
 {{- end -}}
 
 {{/*

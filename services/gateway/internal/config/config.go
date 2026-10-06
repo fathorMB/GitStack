@@ -51,6 +51,11 @@ type Config struct {
 	// negativo (credenziale non attiva).
 	AuthCacheNegativeTTL time.Duration
 
+	// Version è la versione dell'installazione (tag dell'immagine del
+	// gateway, impostato dal chart in GITSTACK_VERSION), riportata da
+	// GET /v1/meta. "dev" se assente.
+	Version string
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -66,6 +71,7 @@ const (
 	envCoreURL     = "GITSTACK_CORE_URL"
 	envCoreTimeout = "GITSTACK_CORE_TIMEOUT"
 	envLogLevel    = "GITSTACK_LOG_LEVEL"
+	envVersion     = "GITSTACK_VERSION"
 
 	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
 	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
@@ -109,6 +115,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 		IdentityTimeout: defaultIdentityTimeout,
 		LogLevel:        defaultLogLevel,
+		Version:         "dev",
 
 		AuthCacheTTL:         defaultAuthCacheTTL,
 		AuthCacheNegativeTTL: defaultAuthCacheNegativeTTL,
@@ -116,6 +123,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = v
+	}
+
+	if v, ok := lookup(envVersion); ok && strings.TrimSpace(v) != "" {
+		cfg.Version = strings.TrimSpace(v)
 	}
 
 	coreURLRaw, ok := lookup(envCoreURL)

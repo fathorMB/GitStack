@@ -12,6 +12,17 @@ export type Health = {
     version: string;
 };
 
+export type Meta = {
+    /**
+     * Versione dell'installazione (tag dell'immagine del gateway).
+     */
+    server_version: string;
+    /**
+     * Versione del contratto API (`info.version`).
+     */
+    api_version: string;
+};
+
 /**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
@@ -2172,6 +2183,22 @@ export type GetHealthResponses = {
 };
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+
+export type GetMetaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/meta';
+};
+
+export type GetMetaResponses = {
+    /**
+     * Versioni del server.
+     */
+    200: Meta;
+};
+
+export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
 
 export type ListResourcesData = {
     body?: never;
