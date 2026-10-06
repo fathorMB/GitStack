@@ -2,7 +2,7 @@
 
 `gs`, la CLI Go di GitStack per persone e agenti (stile `gh`), su client generato dall'OpenAPI del gateway. Dettagli: [[M-07]] in `.lmbrain-lite/milestones/M-07.md`.
 
-Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version`, `gs issue` (GIT-166), `gs repo` (GIT-165), `gs notification` e `gs api` (GIT-169), `gs search`, `gs browse` e `gs blame` (GIT-168); gli altri gruppi (`auth`, `repo`, ...) sono padri vuoti che gli item successivi riempiono.
+Stato: fondamenta di M-07 (GIT-162): albero dei comandi, client sul gateway, configurazione multi-istanza, livello di output e codici di uscita. Comandi veri: `gs version`, `gs issue` (GIT-166), `gs repo` (GIT-165), `gs label` e `gs milestone` (GIT-167), `gs notification` e `gs api` (GIT-169), `gs search`, `gs browse` e `gs blame` (GIT-168), `gs skills` (GIT-170); gli altri gruppi (`auth`, `repo`, ...) sono padri vuoti che gli item successivi riempiono.
 
 ## Licenza
 
@@ -193,6 +193,78 @@ Sono quelli dello schema `Repository` dell'API (camelCase), più `url` (pagina w
 
 `cli/internal/cmd/repo/repo_test.go`: gateway finto, richieste e corpi verificati, conferme G8 con e senza TTY. `services/core/internal/stackitest/gs_repo_integration_test.go` (`TestGsRepo`, tag `integration`): il binario `gs` vero contro lo stack completo, con `git` e `ssh` veri per `clone`. Prova create (privato di default, contenuto iniziale su `main`, owner organizzazione), list, view, clone HTTPS e SSH, edit, archive (push rifiutato, R10), delete, restore, la conferma G8 (senza TTY exit 2, `--yes`) e i codici 4, 5 e 6.
 
+## `gs label` (GIT-167, G4)
+
+Sottocomandi: `list` (`ls`), `create`, `edit`, `delete`. Il repo è quello del remote `origin` o `-R owner/repo`. Le regole le applica l'API (I3, I5): `gs` mostra l'errore e lo traduce nel codice di uscita.
+
+| Comando | Cosa fa | Flag principali |
+|---|---|---|
+| `list` | elenca le etichette del repo (default: `-L 30`) | `-L/--limit` |
+| `create <nome>` | crea un'etichetta; richiede `--color` | `-c/--color` (obbligatorio, esadecimale 6 cifre), `-d/--description` |
+| `edit <nome>` | modifica un'etichetta esistente | `-n/--name`, `-c/--color`, `-d/--description` (almeno uno) |
+| `delete <nome>` | elimina un'etichetta; le issue che la usano restano | `-y/--yes` (senza terminale obbligatorio) |
+
+- **Nome.** È unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`), 1-50 caratteri, senza `/`, virgole o caratteri di controllo.
+- **Conferma G8.** `delete` chiede di riscrivere il nome dell'etichetta. Con `--yes`/`-y` procede senza chiedere. Senza terminale in ingresso e senza `--yes` esce con 2 senza leggere stdin e senza chiamare l'API; con terminale, un testo diverso annulla (exit 1).
+- **Convalida del colore.** Deve essere esadecimale a sei cifre (0-9, a-f, A-F); un valore non valido è un uso errato (exit 2).
+- **Codici di uscita.** Quelli di G3: 401 → 4, 403 → 5, 404 → 6, 409 → 1; flag e argomenti sbagliati, `edit` senza modifiche, nome o colore non validi → 2.
+
+### Campi di `--json` (label)
+
+Sono quelli dello schema `Label` dell'API (camelCase), più `url` (pagina web). `--json` senza campi li elenca; un campo sconosciuto è un uso errato (exit 2). Valgono per `list`, `create` ed `edit` (`list` è una lista di oggetti).
+
+| Campo | Contenuto |
+|---|---|
+| `id` | UUID della risorsa label |
+| `name`, `color` | nome ed esadecimale a sei cifre |
+| `description` | testo, `""` se vuoto |
+| `openIssues` | numero di issue aperte con l'etichetta |
+| `url` | pagina web dell'etichetta nel repo |
+
+### Test
+
+`cli/internal/cmd/label/label_test.go`: gateway finto, richieste e corpi verificati, conferme G8 con e senza TTY. `services/core/internal/stackitest/gs_label_milestone_integration_test.go` (`TestGsLabel`, tag `integration`): il binario `gs` vero contro lo stack completo. Prova list, create (con validazione colore e nome), edit, delete (conferma G8: senza TTY exit 2, `--yes`).
+
+## `gs milestone` (GIT-167, G4)
+
+Sottocomandi: `list` (`ls`), `view`, `create`, `edit`, `close`, `reopen`, `delete`. Il repo è quello del remote `origin` o `-R owner/repo`. Chi li usa passa i numeri come `12` o `#12`. Le regole le applica l'API (I7): `gs` mostra l'errore e lo traduce nel codice di uscita.
+
+| Comando | Cosa fa | Flag principali |
+|---|---|---|
+| `list` | elenca le milestone del repo (default: aperte, `-L 30`) | `-s/--state open\|closed\|all`, `-L/--limit` |
+| `view <n>` | titolo, stato, descrizione, scadenza, avanzamento | `--json` |
+| `create <titolo>` | crea una milestone; su stdout l'indirizzo web | `-t/--title` (obbligatorio), `-d/--description`, `-D/--due-on` (AAAA-MM-GG) |
+| `edit <n>` | modifica una milestone | `-t/--title`, `-d/--description`, `-D/--due-on`, `--remove-due-on` (almeno uno) |
+| `close <n>` | chiude una milestone; le issue aperte restano ma non contano | — |
+| `reopen <n>` | riapre una milestone chiusa | — |
+| `delete <n>` | elimina una milestone; le issue collegate restano | `-y/--yes` (senza terminale obbligatorio) |
+
+- **Avanzamento.** Calcolato come `closedIssues / (openIssues + closedIssues)` in percentuale. Con zero issue, mostra `0%`. Appare nella tabella di `list` e nel view.
+- **Data di scadenza.** Formato AAAA-MM-GG. `edit` può toglierla con `--remove-due-on` (alternativo a `--due-on`, exit 2 se usati insieme).
+- **Conferma G8.** `delete` chiede di riscrivere il numero della milestone. Con `--yes`/`-y` procede senza chiedere. Senza terminale in ingresso e senza `--yes` esce con 2 senza leggere stdin e senza chiamare l'API; con terminale, un testo diverso annulla (exit 1).
+- **Codici di uscita.** Quelli di G3: 401 → 4, 403 → 5, 404 → 6, 409 e 422 → 1; flag e argomenti sbagliati, `edit` senza modifiche, `--due-on` e `--remove-due-on` insieme → 2.
+
+### Campi di `--json` (milestone)
+
+Sono quelli dello schema `Milestone` dell'API (camelCase), più `url` (pagina web) e `progress` (avanzamento). `--json` senza campi li elenca; un campo sconosciuto è un uso errato (exit 2). Valgono per `list`, `view`, `create`, `edit`, `close` e `reopen` (`list` è una lista di oggetti).
+
+| Campo | Contenuto |
+|---|---|
+| `id` | UUID della risorsa milestone |
+| `number` | numero nella sequenza del repo |
+| `title`, `description` | testo e descrizione, `""` se vuoto |
+| `state` | `open` o `closed` |
+| `dueOn` | data di scadenza (AAAA-MM-GG), `null` se assente |
+| `openIssues`, `closedIssues` | numero di issue aperte e chiuse |
+| `closedAt` | data di chiusura, `null` se aperta |
+| `createdAt`, `updatedAt` | date |
+| `url` | pagina web della milestone nel repo |
+| `progress` | avanzamento (es. `75%`), calcolato da `closedIssues` e `openIssues` |
+
+### Test
+
+`cli/internal/cmd/milestone/milestone_test.go`: gateway finto, richieste e corpi verificati, conferme G8 con e senza TTY. `services/core/internal/stackitest/gs_label_milestone_integration_test.go` (`TestGsMilestone`, tag `integration`): il binario `gs` vero contro lo stack completo. Prova list (con filtro `--state`), view, create (con validazione titolo e data), edit, close, reopen, delete (conferma G8: senza TTY exit 2, `--yes`).
+
 ## `gs notification` e `gs api` (GIT-169, G4, C4)
 
 **`gs notification`** è la casella dell'utente corrente, persona o agente (stessa API `/notifications`; ciclo C4: list, view, read).
@@ -239,6 +311,10 @@ Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token se
 |---|---|---|
 | `search issues` | lista | `repo` (`owner/nome`), `number`, `title`, `state`, `closeReason`, `author`, `labels`, `assignees`, `milestone`, `locked`, `commentCount`, `createdAt`, `updatedAt`, `url` |
 | `search code` | oggetto | `query`, `ref`, `limitReached`, `timedOut`, `results` (lista di `{path, line, fragment, url}`) |
+| `label list` | lista | `id`, `name`, `color`, `description`, `openIssues`, `url` |
+| `label create`, `label edit` | oggetto | `id`, `name`, `color`, `description`, `openIssues`, `url` |
+| `milestone list` | lista | `id`, `number`, `title`, `description`, `state`, `dueOn`, `openIssues`, `closedIssues`, `closedAt`, `createdAt`, `updatedAt`, `url`, `progress` |
+| `milestone view`, `milestone create`, `milestone edit`, `milestone close`, `milestone reopen` | oggetto | `id`, `number`, `title`, `description`, `state`, `dueOn`, `openIssues`, `closedIssues`, `closedAt`, `createdAt`, `updatedAt`, `url`, `progress` |
 | `blame` | oggetto | `path`, `ref`, `ranges` (`{startLine, endLine, commit}`; l'autore del commit ha `user.kind` `human`\|`agent` se riconosciuto), `url` |
 | `blame --history` | lista di `CommitSummary` | `sha`, `subject`, `message`, `author`, `committer`, `parents`, `url` |
 
