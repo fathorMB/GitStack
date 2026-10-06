@@ -128,6 +128,7 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	cfgPath := fs.String("config", "", configFlagUsage)
+	dest := fs.String("dest", "", "cartella dei backup, dove lavora lo stage (default backup.destination del config)")
 	keyFile := fs.String("key-file", "", "file con la chiave per decifrare l'archivio")
 	// Flag e archivio in qualsiasi ordine: l'archivio è l'unico argomento.
 	var archive string
@@ -149,7 +150,7 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 		rest = fs.Args()[1:]
 	}
 	if archive == "" {
-		a.errorf("restore: manca l'archivio. Uso: gitstack restore [--key-file F] <archivio>")
+		a.errorf("restore: manca l'archivio. Uso: gitstack restore [--dest D] [--key-file F] <archivio>")
 		return ExitUsage
 	}
 	path := a.configPath(*cfgPath)
@@ -171,7 +172,7 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 		return ExitCluster
 	}
 	o := a.options(cfg, path, key)
-	o.Cluster = cl
+	o.Cluster, o.DestDir = cl, *dest
 	if err := backup.Restore(ctx, o, archive); err != nil {
 		return a.backupFailure("restore", err)
 	}

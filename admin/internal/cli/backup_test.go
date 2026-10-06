@@ -55,7 +55,7 @@ func TestBackupRestoreCommands(t *testing.T) {
 		t.Fatalf("archivi: %v", ents)
 	}
 	// stessa versione: ok, con l'archivio prima o dopo le opzioni
-	if code := a.Run(context.Background(), []string{"restore", ents[0], "--config", cfg}); code != ExitOK {
+	if code := a.Run(context.Background(), []string{"restore", ents[0], "--config", cfg, "--dest", dest}); code != ExitOK {
 		t.Errorf("restore exit %d", code)
 	}
 	// versione diversa: rifiutato
@@ -63,7 +63,7 @@ func TestBackupRestoreCommands(t *testing.T) {
 	_ = errb
 	var stderr strings.Builder
 	b.Stderr = &stderr
-	if code := b.Run(context.Background(), []string{"restore", "--config", errb, ents[0]}); code != ExitRefused {
+	if code := b.Run(context.Background(), []string{"restore", "--config", errb, "--dest", dest, ents[0]}); code != ExitRefused {
 		t.Errorf("restore su versione diversa: exit %d, atteso %d", code, ExitRefused)
 	}
 	if !strings.Contains(stderr.String(), "versione diversa") {
