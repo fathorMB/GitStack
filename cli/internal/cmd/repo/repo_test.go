@@ -119,8 +119,8 @@ const (
 		`"cloneUrls":{"https":"https://git.example.com/acme/web.git","ssh":"ssh://git@git.example.com:2222/acme/web.git"},` +
 		`"createdAt":"2026-10-01T10:00:00Z","updatedAt":"2026-10-02T10:00:00Z"}`
 
-	session      = `{"authMethod":"token","mustChangePassword":false,"user":{"username":"alice","displayName":"Alice","kind":"human"}}`
-	deletedList  = `{"items":[{"id":"00000000-0000-0000-0000-0000000000d1","name":"web","owner":{"name":"acme","type":"organization"},` +
+	session     = `{"authMethod":"token","mustChangePassword":false,"user":{"username":"alice","displayName":"Alice","kind":"human"}}`
+	deletedList = `{"items":[{"id":"00000000-0000-0000-0000-0000000000d1","name":"web","owner":{"name":"acme","type":"organization"},` +
 		`"deletedAt":"2026-10-03T10:00:00Z","purgeAt":"2026-10-10T10:00:00Z"}]}`
 )
 
