@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -109,12 +110,13 @@ func (g *fakeGit) OpenStream(context.Context, trust.Identity, uuid.UUID, string,
 }
 
 type env struct {
-	t    *testing.T
-	pool *pgxpool.Pool
-	js   jetstream.JetStream
-	id   *fakeIdentity
-	git  *fakeGit
-	eng  *notify.Engine
+	published atomic.Int64 // messaggi pubblicati (ogni publish conta, anche lo stesso evento due volte)
+	t         *testing.T
+	pool      *pgxpool.Pool
+	js        jetstream.JetStream
+	id        *fakeIdentity
+	git       *fakeGit
+	eng       *notify.Engine
 
 	app, other, priv uuid.UUID
 }
@@ -200,10 +202,11 @@ func newEnv(t *testing.T) *env {
 	// alice scrive anche nei repo altrui che le servono.
 	e.id.set(e.app, users["alice"], "admin")
 
-	linker := &issuelinks.Linker{Pool: pool, Identity: e.id, Notifier: e.eng, Git: e.git, Log: slog.Default()}
+	log := testLogger(t)
+	linker := &issuelinks.Linker{Pool: pool, Identity: e.id, Notifier: e.eng, Git: e.git, Log: log}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	go func() { _ = gitpush.Run(ctx, e.js, gitpush.DurableIssueLinks, linker.HandlePush, slog.Default()) }()
+	go func() { _ = gitpush.Run(ctx, e.js, gitpush.DurableIssueLinks, linker.HandlePush, log) }()
 	return e
 }
 
@@ -245,6 +248,7 @@ func (e *env) publish(env pkgevents.Envelope) {
 	for {
 		_, err := e.js.Publish(context.Background(), pkggitpush.Name, data)
 		if err == nil {
+			e.published.Add(1)
 			return
 		}
 		if time.Now().After(deadline) {
@@ -254,23 +258,26 @@ func (e *env) publish(env pkgevents.Envelope) {
 	}
 }
 
-// settle aspetta che il consumer abbia elaborato i messaggi pubblicati.
+// settle aspetta che il consumer abbia confermato (Ack) tutti i messaggi
+// pubblicati: AckFloor.Stream è l'ultima sequenza dello stream confermata senza
+// buchi, e ogni publish senza Nats-Msg-Id è un messaggio nuovo, quindi vale
+// esattamente il numero dei publish. Un messaggio in riconsegna dopo un Nak non
+// è né pending né ack pending, ma non fa salire l'AckFloor: non si scambia per
+// finito. Una riconsegna per errore del handler fa fallire il test (logger).
 func (e *env) settle() {
 	e.t.Helper()
-	deadline := time.Now().Add(15 * time.Second)
+	want := uint64(e.published.Load())
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		cons, err := e.js.Consumer(context.Background(), "GIT", gitpush.DurableIssueLinks)
 		if err == nil {
-			if info, err := cons.Info(context.Background()); err == nil && info.NumPending == 0 && info.NumAckPending == 0 && info.Delivered.Consumer > 0 {
-				time.Sleep(200 * time.Millisecond)
-				if info, err := cons.Info(context.Background()); err == nil && info.NumAckPending == 0 {
-					return
-				}
+			if info, err := cons.Info(context.Background()); err == nil && info.AckFloor.Stream >= want && info.NumAckPending == 0 {
+				return
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
-	e.t.Fatal("timeout: il consumer non ha finito")
+	e.t.Fatalf("timeout: il consumer non ha confermato %d messaggi", want)
 }
 
 func (e *env) count(q string, args ...any) int {
@@ -629,4 +636,39 @@ func TestIdempotenza_StessoEventoDueVolte(t *testing.T) {
 	if st, _ := e.state(b); st != "open" {
 		t.Fatal("#31 è solo citata")
 	}
+}
+
+// testLogger scrive nel log del test e lo fa fallire se il handler restituisce
+// un errore ("gestione non riuscita, si ritenta") o il Linker segnala un
+// problema: un errore trasformato in riconsegna non deve passare inosservato.
+// Dopo la fine del test i log si scartano (il consumer si ferma a Cleanup).
+func testLogger(t *testing.T) *slog.Logger {
+	t.Helper()
+	w := &testLogWriter{t: t}
+	t.Cleanup(func() {
+		w.mu.Lock()
+		w.done = true
+		w.mu.Unlock()
+	})
+	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelWarn}))
+}
+
+type testLogWriter struct {
+	t    *testing.T
+	mu   sync.Mutex
+	done bool
+}
+
+func (w *testLogWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.done {
+		return len(p), nil
+	}
+	line := strings.TrimSpace(string(p))
+	w.t.Log(line)
+	if strings.Contains(line, "gestione non riuscita") || strings.Contains(line, "level=ERROR") {
+		w.t.Errorf("il handler ha segnalato un errore: %s", line)
+	}
+	return len(p), nil
 }
