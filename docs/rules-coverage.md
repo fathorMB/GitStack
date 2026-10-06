@@ -75,7 +75,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 
 | Id | Regola | Test | Stato | Cosa manca |
 |---|---|---|---|---|
-| C1 | Riferimenti tra repo | | da compilare | |
+| C1 | Riferimenti tra repo | `services/core/internal/httpserver/issues_references_integration_test.go#TestIssues_RiferimentiC1` | coperta | |
 | C2 | Chiusura via commit | | da compilare | |
 | C3 | Chi segue cosa | `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_PartecipantiEMotiviC3`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_SubscribeUnsubscribe`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_WatchDelRepoC3`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_NessunaNotificaPerLeProprieAzioniAncheViaToken`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_MenzioniEVisibilitaI8`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_ElaborazioneIdempotenteEOrdine` | parziale | Notifiche per i commit collegati: il motivo `commit_linked` è previsto ma il produttore è di M-06/C (GIT-131). |
 | C4 | Agenti: stessa casella delle persone | `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_AgentiLeggonoLaCasellaViaApiC4`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_CasellaApi` | parziale | `gs notification list --json` (M-06/F). |
