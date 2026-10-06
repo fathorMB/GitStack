@@ -14,6 +14,8 @@ import { RepoPage } from "./pages/repos/RepoPage";
 import { ReposPage } from "./pages/repos/ReposPage";
 import { OrgPage } from './pages/orgs/OrgPage';
 import { OrgsPage } from './pages/orgs/OrgsPage';
+import { OrgWebhooksPage } from './pages/orgs/OrgWebhooksPage';
+import { RepoWebhooksPage } from './pages/repos/RepoWebhooksPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
 import { SettingsLayout } from './pages/settings/SettingsLayout';
 import { SshKeysPage } from './pages/settings/SshKeysPage';
@@ -283,6 +285,26 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Repository settings">
               <RepoSettingsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/:owner/:repo/webhooks"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Webhooks">
+              <RepoWebhooksPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/orgs/:org/webhooks"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Webhooks">
+              <OrgWebhooksPage />
             </AppShell>
           </RequireAuth>
         }
