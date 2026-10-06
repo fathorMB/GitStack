@@ -286,6 +286,14 @@ func (s *apiServer) CreateIssueComment(w http.ResponseWriter, r *http.Request, o
 		writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
 		return
 	}
+	// C1: riferimenti nel commento (issue_references).
+	// Togliere un riferimento dal testo non cancella le tracce esistenti:
+	// come su GitHub, le righe in core.issue_references restano.
+	commentID := id
+	if err := s.processReferences(ctx, tx, ia.userID, ia.repo.ID, x.Number, x.ID, &commentID, "issue", x.Title, in.Body); err != nil {
+		writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
+		return
+	}
 	if err := tx.Commit(ctx); err != nil {
 		writeIssueFailure(w, "commit del commento non riuscito", err)
 		return
@@ -368,6 +376,14 @@ func (s *apiServer) UpdateIssueComment(w http.ResponseWriter, r *http.Request, o
 			domainevents.Comment{ID: c.ID.String(), AuthorID: c.AuthorID.String(), Body: in.Body},
 			&domainevents.CommentChanges{Body: &domainevents.From{From: c.Body}}); err != nil {
 			writeIssueFailure(w, "scrittura dell'evento non riuscita", err)
+			return
+		}
+		// C1: riferimenti nel commento modificato (issue_references).
+		// Togliere un riferimento dal testo non cancella le tracce esistenti:
+		// come su GitHub, le righe in core.issue_references restano.
+		commentID := c.ID
+		if err := s.processReferences(ctx, tx, ia.userID, ia.repo.ID, x.Number, x.ID, &commentID, "issue", x.Title, in.Body); err != nil {
+			writeIssueFailure(w, "elaborazione dei riferimenti non riuscita", err)
 			return
 		}
 	}
