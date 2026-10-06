@@ -117,7 +117,7 @@ Il chart parla HTTP di default (job k3d della CI, `helm install` a mano); l'inst
 | `ingress.tls.secretName` | Secret `kubernetes.io/tls` creato dall'installer (`gitstack-tls`): CA interna o certificato del cliente |
 | (TLSStore `default`) | con `secretName` il chart crea un `TLSStore` Traefik `default` nel namespace della release che punta a quel Secret: il certificato dell'installer vale anche per chi si collega per IP (senza SNI, Traefik altrimenti serve il suo "TRAEFIK DEFAULT CERT" perche' con ServiceLB l'indirizzo locale e' quello del pod). Non si crea con `certResolver` (`templates/tlsstore.yaml`) |
 | `ingress.tls.certResolver` | resolver ACME di Traefik (Let's Encrypt), nessun Secret |
-| `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (308) manda tutto a https (`templates/ingress-redirect.yaml`) |
+| `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (redirect permanente: 301 per GET/HEAD, 308 per gli altri metodi (Traefik redirectScheme)) manda tutto a https (`templates/ingress-redirect.yaml`) |
 | `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/etc/gitstack/ca` e nginx lo serve su `/downloads/ca.crt` (i binari di `gs` stanno nell'immagine, vedi sotto), e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
 
 `core.env.publicUrl` e `identity.oidc.publicUrl` vanno impostati con l'URL https pubblico: l'installer lo fa. I servizi non lo usano per parlarsi (nomi dei Service). Traefik inoltra a gateway e identity con `X-Forwarded-Proto: https`. Dettagli per l'operatore: [`../../docs/tls.md`](../../docs/tls.md).
