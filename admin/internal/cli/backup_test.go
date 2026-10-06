@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -203,4 +204,76 @@ func TestBackupStateFile(t *testing.T) {
 	if s.Error == "" {
 		t.Error("stato dopo fallimento: Error vuoto")
 	}
+}
+
+func (s *stubCluster) Restart(context.Context, string) error { return nil }
+
+func (f *failCluster) Restart(_ context.Context, _ string) error { return nil }
+
+func TestRestorePublishesTLSOnlyForInternalAndCustom(t *testing.T) {
+	for _, tc := range []struct {
+		tls  string
+		want bool
+	}{{"internal", true}, {"custom", true}, {"insecure", false}, {"letsencrypt", false}} {
+		t.Run(tc.tls, func(t *testing.T) {
+			a, cfg := backupApp(t, "sha-aaa")
+			if err := os.WriteFile(cfg, []byte("version: 1\nhost: h\ntls: "+tc.tls+"\nimage_tag: sha-aaa\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			dest := t.TempDir()
+			if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitOK {
+				t.Fatalf("backup exit %d", code)
+			}
+			ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
+			if len(ents) != 1 {
+				t.Fatalf("archivi: %v", ents)
+			}
+			rr := &recRunner{}
+			a.Runner = rr
+			a.Getenv = func(string) string { return "" }
+			if code := a.Run(context.Background(), []string{"restore", "--config", cfg, "--dest", dest, ents[0]}); code != ExitOK {
+				t.Fatalf("restore exit %d", code)
+			}
+			c := rr.find("gitstack-tls")
+			if !tc.want {
+				if c != nil {
+					t.Fatalf("tls %s: nessun ensure atteso, c'è %+v", tc.tls, c)
+				}
+				return
+			}
+			if c == nil || len(c.args) != 1 || c.args[0] != "ensure" {
+				t.Fatalf("atteso gitstack-tls ensure, chiamate: %+v", rr.calls)
+			}
+			wantEnv := "GITSTACK_TLS_DIR=" + filepath.Join(filepath.Dir(cfg), "tls")
+			if len(c.env) != 1 || c.env[0] != wantEnv {
+				t.Errorf("env = %v, atteso %s", c.env, wantEnv)
+			}
+		})
+	}
+}
+
+func TestRestoreTLSEnsureFailureExitsNonZero(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	_ = os.WriteFile(cfg, []byte("version: 1\nhost: h\ntls: internal\nimage_tag: sha-aaa\n"), 0o600)
+	dest := t.TempDir()
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitOK {
+		t.Fatalf("backup exit %d", code)
+	}
+	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
+	a.Runner = failTLSRunner{}
+	a.Getenv = func(string) string { return "" }
+	var stderr strings.Builder
+	a.Stderr = &stderr
+	if code := a.Run(context.Background(), []string{"restore", "--config", cfg, "--dest", dest, ents[0]}); code != ExitUnexpected {
+		t.Errorf("exit %d, atteso %d", code, ExitUnexpected)
+	}
+	if !strings.Contains(stderr.String(), "sudo gitstack-tls ensure") {
+		t.Errorf("manca il comando da rilanciare: %s", stderr.String())
+	}
+}
+
+type failTLSRunner struct{}
+
+func (failTLSRunner) Run(context.Context, []string, string, ...string) ([]byte, error) {
+	return []byte("openssl: errore"), errors.New("exit status 1")
 }

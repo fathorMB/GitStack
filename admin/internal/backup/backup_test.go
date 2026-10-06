@@ -27,6 +27,7 @@ type fakeCluster struct {
 	psqlIn    string
 	failDump  bool
 	failWait  bool
+	failRestart bool
 	ctxAtDump context.Context
 }
 
@@ -112,7 +113,7 @@ func newEnv(t *testing.T) *env {
 	write(filepath.Join(conf, "config.yaml"), "version: 1\n")
 	write(filepath.Join(conf, "ca", "ca.key"), "CHIAVE-CA")
 	f := &fakeCluster{
-		replicas: map[string]int{"gs-gateway": 2, "gs-git": 1, "gs-core": 1, "gs-identity": 1},
+		replicas: map[string]int{"gs-gateway": 2, "gs-git": 1, "gs-core": 1, "gs-identity": 1, "gs-web": 1},
 		paths:    map[string]string{"gs-git-data": git, "gs-attachments-data": att},
 		secrets: []Secret{
 			{Name: "gs-postgres", Raw: []byte(`{"name":"pg"}`)},
@@ -390,4 +391,12 @@ func TestSafeJoin(t *testing.T) {
 	if p, err := safeJoin("/r", "a/b/"); err != nil || filepath.ToSlash(p) != "/r/a/b" {
 		t.Errorf("%q, %v", p, err)
 	}
+}
+
+func (f *fakeCluster) Restart(_ context.Context, d string) error {
+	f.note("restart " + d)
+	if f.failRestart {
+		return errors.New("restart fallito")
+	}
+	return nil
 }
