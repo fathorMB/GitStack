@@ -137,6 +137,7 @@ HOST_ARGS=()
 TLS_DIR="/etc/gitstack/tls"
 TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
+BACKUP_SYSTEMD_DIR="/etc/systemd/system"
 K3S_MANIFESTS_DIR="/var/lib/rancher/k3s/server/manifests"
 ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
 # Valorizzate da resolve_tls (nomi e IP dei SAN, host dell'URL pubblico, schema).
@@ -209,7 +210,7 @@ GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1, GITSTACK_FORCE=1, GITSTACK_T
 (internal|letsencrypt|insecure), GITSTACK_TLS_CERT, GITSTACK_TLS_KEY,
 GITSTACK_TLS_EMAIL, GITSTACK_ADMIN_BINARY,
 GITSTACK_ADMIN_SHA256, GITSTACK_ADMIN_REQUIRED=1, GITSTACK_BACKUP_DIR,
-GITSTACK_BACKUP_RETENTION.
+GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02).
 EOF
 }
 
@@ -1222,6 +1223,57 @@ disable_renew_timer() {
   fi
 }
 
+# Timer systemd per il backup giornaliero. Orario configurabile con
+# GITSTACK_BACKUP_TIMER_HOUR (default 02).
+enable_backup_timer() {
+  if ! command -v systemctl >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
+    warn "systemd non disponibile: il backup automatico non e' attivo. Pianifica a mano '${ADMIN_BIN_PATH}' backup."
+    return 0
+  fi
+  if [ ! -x "${ADMIN_BIN_PATH}" ]; then
+    warn "il binario ${ADMIN_BIN_PATH} non e' presente: il timer del backup non viene installato, pianifica a mano."
+    return 0
+  fi
+  local hour="${GITSTACK_BACKUP_TIMER_HOUR:-02}"
+  case "${hour}" in
+    ''|*[!0-9]*) fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${hour}' (solo un numero intero da 0 a 23)." ;;
+  esac
+  if [ "$((10#${hour}))" -lt 0 ] || [ "$((10#${hour}))" -gt 23 ]; then
+    fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${hour}' (solo un numero intero da 0 a 23)."
+  fi
+  cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.service" <<EOF
+[Unit]
+Description=GitStack: backup giornaliero
+After=k3s.service
+
+[Service]
+Type=oneshot
+ExecStart=${ADMIN_BIN_PATH} backup
+EOF
+  cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" <<EOF
+[Unit]
+Description=GitStack: timer backup giornaliero
+
+[Timer]
+OnCalendar=*-*-* ${hour}:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+  systemctl daemon-reload
+  systemctl enable --now gitstack-backup.timer >/dev/null
+  log "Backup automatico attivo: gitstack-backup.timer (ogni giorno alle ${hour}:00)."
+}
+
+disable_backup_timer() {
+  if command -v systemctl >/dev/null 2>&1 && [ -f "${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" ]; then
+    systemctl disable --now gitstack-backup.timer >/dev/null 2>&1 || true
+    rm -f "${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" "${BACKUP_SYSTEMD_DIR}/gitstack-backup.service"
+    systemctl daemon-reload || true
+  fi
+}
+
 # Let's Encrypt: il Traefik di k3s e' un HelmChart; la sua configurazione si
 # estende con un HelmChartConfig (certificatesResolvers + storage persistente
 # per acme.json). k3s lo applica da solo.
@@ -1420,6 +1472,7 @@ main() {
   persist_chart "${chart_dir}"
   install_admin
   write_config "${image_tag}"
+  enable_backup_timer
 
   print_summary
 }
