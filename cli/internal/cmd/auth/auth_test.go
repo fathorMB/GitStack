@@ -230,7 +230,7 @@ func TestLoginSenzaPortachiaviUsaIlFileSoloUtente(t *testing.T) {
 	// E si rilegge con lo stesso TokenSource.
 	e2 := e
 	e2.vars["GS_HOST"] = srv.URL
-	if r := e2.run("api", "user"); r.code != 0 {
+	if r := e2.run("api", "/auth/session"); r.code != 0 {
 		t.Errorf("api user con token da file: %+v", r)
 	}
 }
@@ -241,7 +241,7 @@ func TestGSTokenEGSHostSenzaConfigurazione(t *testing.T) {
 	e.client = srv.Client
 	e.vars["GS_HOST"] = srv.URL
 	e.vars["GS_TOKEN"] = secret
-	if r := e.run("api", "user"); r.code != 0 || !strings.Contains(r.out, "ci-bot") {
+	if r := e.run("api", "/auth/session"); r.code != 0 || !strings.Contains(r.out, "ci-bot") {
 		t.Fatalf("api user: %+v", r)
 	}
 	if _, err := os.Stat(filepath.Join(e.dir, "hosts")); err == nil {
@@ -251,7 +251,7 @@ func TestGSTokenEGSHostSenzaConfigurazione(t *testing.T) {
 	if err := keyring.Set(config.KeyringService, srv.URL, "vecchio"); err != nil {
 		t.Fatal(err)
 	}
-	if r := e.run("api", "user"); r.code != 0 || !strings.Contains(r.out, "ci-bot") {
+	if r := e.run("api", "/auth/session"); r.code != 0 || !strings.Contains(r.out, "ci-bot") {
 		t.Fatalf("precedenza: %+v", r)
 	}
 	// status senza configurazione.

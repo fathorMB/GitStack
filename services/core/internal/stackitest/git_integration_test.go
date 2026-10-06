@@ -25,6 +25,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
+	"github.com/fathorMB/GitStack/services/core/internal/notify"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -48,6 +49,8 @@ type gitEnv struct {
 	tokens  map[string]string // token read:resource+write:resource
 	roToken map[string]string // token solo read:resource
 	keys    map[string]string // file della chiave privata SSH
+	// notifier elabora loutbox di core in notifiche (in produzione lo fa il processo core).
+	notifier *notify.Engine
 }
 
 func requireTools(t *testing.T) {
@@ -133,15 +136,16 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 	waitTCP(t, sshAddr)
 
 	e := &gitEnv{
-		stack:   &stack{t: t, gateway: "http://" + gatewayAddr, core: coreSrv.URL},
-		gitHTTP: "http://" + gitAddr,
-		sshAddr: sshAddr,
-		natsURL: natsSrv.ClientURL(),
-		home:    t.TempDir(),
-		cookies: map[string]*http.Cookie{},
-		tokens:  map[string]string{},
-		roToken: map[string]string{},
-		keys:    map[string]string{},
+		stack:    &stack{t: t, gateway: "http://" + gatewayAddr, core: coreSrv.URL},
+		gitHTTP:  "http://" + gitAddr,
+		sshAddr:  sshAddr,
+		natsURL:  natsSrv.ClientURL(),
+		home:     t.TempDir(),
+		cookies:  map[string]*http.Cookie{},
+		tokens:   map[string]string{},
+		roToken:  map[string]string{},
+		keys:     map[string]string{},
+		notifier: &notify.Engine{Pool: pool, Identity: idc},
 	}
 	if err := os.WriteFile(filepath.Join(e.home, ".gitconfig"), nil, 0o600); err != nil {
 		t.Fatal(err)
