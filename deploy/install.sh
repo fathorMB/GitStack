@@ -138,11 +138,6 @@ TLS_DIR="/etc/gitstack/tls"
 TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
 BACKUP_SYSTEMD_DIR="/etc/systemd/system"
-BACKUP_TIMER_HOUR="${GITSTACK_BACKUP_TIMER_HOUR:-02}"
-case "${BACKUP_TIMER_HOUR}" in
-  *[!0-9]*) fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${BACKUP_TIMER_HOUR}' (solo un numero intero da 0 a 23)." ;;
-  *) [ "${BACKUP_TIMER_HOUR}" -ge 0 ] && [ "${BACKUP_TIMER_HOUR}" -le 23 ] || fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${BACKUP_TIMER_HOUR}' (solo un numero intero da 0 a 23)." ;;
-esac
 K3S_MANIFESTS_DIR="/var/lib/rancher/k3s/server/manifests"
 ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
 # Valorizzate da resolve_tls (nomi e IP dei SAN, host dell'URL pubblico, schema).
@@ -1240,6 +1235,12 @@ enable_backup_timer() {
     return 0
   fi
   local hour="${BACKUP_TIMER_HOUR:-02}"
+  case "${hour}" in
+    ''|*[!0-9]*) fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${hour}' (solo un numero intero da 0 a 23)." ;;
+  esac
+  if [ "$((10#${hour}))" -lt 0 ] || [ "$((10#${hour}))" -gt 23 ]; then
+    fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${hour}' (solo un numero intero da 0 a 23)."
+  fi
   cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.service" <<EOF
 [Unit]
 Description=GitStack: backup giornaliero
