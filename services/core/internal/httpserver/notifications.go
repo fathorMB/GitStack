@@ -14,30 +14,6 @@ func notificationsNotImplemented(w http.ResponseWriter) {
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Notifiche e webhook non ancora disponibili.")
 }
 
-func (s *apiServer) DeleteNotifications(w http.ResponseWriter, _ *http.Request, _ openapi.DeleteNotificationsParams) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) ListNotifications(w http.ResponseWriter, _ *http.Request, _ openapi.ListNotificationsParams) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) MarkAllNotificationsRead(w http.ResponseWriter, _ *http.Request, _ openapi.MarkAllNotificationsReadParams) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) DeleteNotification(w http.ResponseWriter, _ *http.Request, _ openapi.NotificationIdParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) GetNotification(w http.ResponseWriter, _ *http.Request, _ openapi.NotificationIdParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) UpdateNotification(w http.ResponseWriter, _ *http.Request, _ openapi.NotificationIdParam) {
-	notificationsNotImplemented(w)
-}
-
 func (s *apiServer) ListOrgWebhooks(w http.ResponseWriter, _ *http.Request, _ openapi.OrgParam, _ openapi.ListOrgWebhooksParams) {
 	notificationsNotImplemented(w)
 }
@@ -107,30 +83,6 @@ func (s *apiServer) RedeliverRepoWebhookDelivery(w http.ResponseWriter, _ *http.
 }
 
 func (s *apiServer) ReactivateRepoWebhook(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.WebhookIdParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) UnsubscribeIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) GetIssueSubscription(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) SubscribeIssue(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.IssueNumberParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) ResetRepoWatch(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) GetRepoWatch(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) SetRepoWatch(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
 	notificationsNotImplemented(w)
 }
 

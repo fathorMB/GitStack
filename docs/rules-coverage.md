@@ -66,7 +66,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 | I5 | Etichette predefinite | | da compilare | |
 | I6 | Fino a 10 assegnatari con `write` | | da compilare | |
 | I7 | Milestone per repo | | da compilare | |
-| I8 | Menzioni rispettose della visibilità | | da compilare | |
+| I8 | Menzioni rispettose della visibilità | `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_MenzioniEVisibilitaI8`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_PerditaDiAccessoC9`<br>`services/core/internal/notify/mentions_test.go#TestParseMentions`<br>`services/identity/internal/users/mentions_integration_test.go#TestResolveMentions` | coperta | |
 | I9 | Allegati protetti | | da compilare | |
 | I10 | Ricerca con sintassi GitHub | | da compilare | |
 | I11 | Blocco e modelli sì, trasferimento no | `services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_SenzaCartella`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_UnModello`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_PiuModelliOrdinati`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_ModelloMalformatoSaltato`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_ModelloSenzaFrontMatter`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_SoloMarkdownNonSaltati`<br>`services/core/internal/httpserver/issue_templates_integration_test.go#TestIssueTemplates_Permessi` | coperta | |
@@ -77,13 +77,13 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 |---|---|---|---|---|
 | C1 | Riferimenti tra repo | | da compilare | |
 | C2 | Chiusura via commit | | da compilare | |
-| C3 | Chi segue cosa | | da compilare | |
-| C4 | Agenti: stessa casella delle persone | | da compilare | |
+| C3 | Chi segue cosa | `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_PartecipantiEMotiviC3`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_SubscribeUnsubscribe`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_WatchDelRepoC3`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_NessunaNotificaPerLeProprieAzioniAncheViaToken`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_MenzioniEVisibilitaI8`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_ElaborazioneIdempotenteEOrdine` | parziale | Notifiche per i commit collegati: il motivo `commit_linked` è previsto ma il produttore è di M-06/C (GIT-131). |
+| C4 | Agenti: stessa casella delle persone | `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_AgentiLeggonoLaCasellaViaApiC4`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_CasellaApi` | parziale | `gs notification list --json` (M-06/F) e «niente email agli agenti» (C5, GIT-134). |
 | C5 | Email | | da compilare | |
 | C6 | Webhook | | da compilare | |
 | C7 | Consegna | | da compilare | |
 | C8 | Protezione SSRF | | da compilare | |
-| C9 | Conservazione notifiche | | da compilare | |
+| C9 | Conservazione notifiche | `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_ConservazioneC9`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_PerditaDiAccessoC9`<br>`services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_CasellaApi` | coperta | |
 
 ## G — CLI `gs` e skills (`cli-gs-skills.md`)
 

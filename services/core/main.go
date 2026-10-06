@@ -22,6 +22,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
+	"github.com/fathorMB/GitStack/services/core/internal/notify"
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
@@ -207,6 +208,16 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 	go relay.Run(ctx)
+
+	// Motore delle notifiche in-app (M-06/E, GIT-133): legge gli eventi
+	// dall'outbox, scrive core.notifications e fa la conservazione delle
+	// lette (C9). Serve identity per sapere chi vede il repo (I8): senza,
+	// nessuna notifica (mai una notifica a chi potrebbe non leggere il repo).
+	if id, ok := repoLookup.(notify.Identity); ok {
+		go (&notify.Engine{Pool: pool, Identity: id, Log: logger}).Run(ctx)
+	} else {
+		logger.Warn("identity non configurata: il motore delle notifiche non parte")
+	}
 
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
 

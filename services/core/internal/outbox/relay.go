@@ -270,13 +270,14 @@ func fillUserTypes(payload []byte, kinds map[uuid.UUID]string) ([]byte, error) {
 	return json.Marshal(top)
 }
 
-// cleanup toglie le righe inviate da più di Retention (al massimo una volta all'ora).
+// cleanup toglie le righe inviate (e già lette dal motore delle notifiche, 0010)
+// da più di Retention (al massimo una volta all'ora).
 func (r *Relay) cleanup(ctx context.Context) {
 	if time.Since(r.lastCleanup) < time.Hour {
 		return
 	}
 	r.lastCleanup = time.Now()
-	if _, err := r.Pool.Exec(ctx, `DELETE FROM core.event_outbox WHERE sent_at IS NOT NULL
+	if _, err := r.Pool.Exec(ctx, `DELETE FROM core.event_outbox WHERE sent_at IS NOT NULL AND notified_at IS NOT NULL
 		AND sent_at < clock_timestamp() - make_interval(secs => $1)`, r.Retention.Seconds()); err != nil && ctx.Err() == nil {
 		r.Log.Warn("outbox: pulizia delle righe inviate non riuscita", "err", err)
 	}
