@@ -73,6 +73,10 @@ type Options struct {
 	// Health restituisce lo stato dei servizi (status.Collector.Collect).
 	Health func(ctx context.Context) *status.Report
 	HTTP   *http.Client
+	// CheckCA verifica che /downloads/ca.crt risponda attraverso l'Ingress
+	// (un solo tentativo); waitHealthy lo ripete dopo che i servizi sono
+	// sani. nil = non si controlla (insecure e letsencrypt non la servono).
+	CheckCA func(ctx context.Context) error
 	// Backup è il modello delle opzioni di backup (Cfg, ConfigDir, Key, Log,
 	// DestDir): Run vi aggiunge il Cluster.
 	Backup backup.Options
@@ -195,9 +199,19 @@ func (o *Options) waitHealthy(ctx context.Context, d time.Duration) error {
 	for {
 		rep := o.health(ctx)
 		if rep.Healthy() {
-			return nil
+			if o.CheckCA == nil {
+				return nil
+			}
+			cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			err := o.CheckCA(cctx)
+			cancel()
+			if err == nil {
+				return nil
+			}
+			last = "CA: " + err.Error()
+		} else {
+			last = describeUnhealthy(rep)
 		}
-		last = describeUnhealthy(rep)
 		if time.Now().After(deadline) {
 			return fmt.Errorf("i servizi non sono sani dopo %s: %s", d.Round(time.Second), last)
 		}

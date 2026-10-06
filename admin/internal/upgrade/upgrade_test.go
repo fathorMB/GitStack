@@ -608,3 +608,42 @@ func TestFetchChartRejectsTraversal(t *testing.T) {
 }
 
 func (f *fakeCluster) Restart(context.Context, string) error { return nil }
+
+// Servizi sani ma /downloads/ca.crt ancora 502 (Ingress non aggiornato):
+// l'upgrade non è riuscito e va in rollback del chart.
+func TestCAUnavailableRollsBack(t *testing.T) {
+	w := newWorld(t)
+	w.o.CheckCA = func(context.Context) error {
+		if w.helm.rolled {
+			return nil
+		}
+		return errors.New("http://h/downloads/ca.crt: HTTP 502")
+	}
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != RolledBack {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if !strings.Contains(res.Reason, "ca.crt") {
+		t.Errorf("motivo: %q", res.Reason)
+	}
+}
+
+// Dopo qualche 502 la CA torna e l'upgrade riesce.
+func TestCARecoversUpgradeSucceeds(t *testing.T) {
+	w := newWorld(t)
+	w.o.Timeout = 2 * time.Second
+	n := 0
+	w.o.CheckCA = func(context.Context) error {
+		if n++; n <= 2 {
+			return errors.New("HTTP 502")
+		}
+		return nil
+	}
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if n < 3 {
+		t.Errorf("CheckCA chiamato %d volte", n)
+	}
+}

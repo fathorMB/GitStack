@@ -41,6 +41,7 @@ func backupApp(t *testing.T, tag string) (*App, string) {
 	git := t.TempDir()
 	_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
 	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
+	a.CheckServing = func(context.Context, *config.Config) error { return nil }
 	cfg := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(cfg, []byte("version: 1\nhost: h\nimage_tag: "+tag+"\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -167,6 +168,7 @@ func TestBackupStateFile(t *testing.T) {
 	git := t.TempDir()
 	_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
 	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
+	a.CheckServing = func(context.Context, *config.Config) error { return nil }
 	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitOK {
 		t.Fatalf("backup exit %d", code)
 	}
