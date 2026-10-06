@@ -1,7 +1,7 @@
 {{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.tls.redirect -}}
 {{- $fullname := include "gitstack.fullname" . -}}
 {{- $redirectName := printf "%s-redirect-https" $fullname -}}
-# N5 (GIT-143): la porta 80 reindirizza a 443 con un 308 permanente. Gli
+# N5 (GIT-143): la porta 80 reindirizza a 443 con un redirect permanente: 301 per GET/HEAD, 308 per gli altri metodi (Traefik redirectScheme). Gli
 # Ingress e la rotta git stanno solo su "websecure" (vedi ingress.yaml e
 # ingress-git.yaml); su "web" c'e' solo questa IngressRoute. Con Let's Encrypt
 # (HTTP-01) il router interno di Traefik per /.well-known/acme-challenge ha
