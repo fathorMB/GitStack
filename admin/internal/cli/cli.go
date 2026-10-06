@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/fathorMB/GitStack/admin/internal/backup"
 	"github.com/fathorMB/GitStack/admin/internal/config"
@@ -46,6 +47,8 @@ type App struct {
 	NewCluster func(*config.Config) backup.Cluster
 	// LocalAddrs, se non nil, sostituisce gli indirizzi delle interfacce (test).
 	LocalAddrs func() []string
+	// Now, se non nil, sovrascrive l'orologio di backup (test).
+	Now func() time.Time
 }
 
 // NewApp è l'App di produzione.

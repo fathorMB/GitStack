@@ -139,6 +139,10 @@ TLS_BIN_PATH="/usr/local/sbin/gitstack-tls"
 TLS_SYSTEMD_DIR="/etc/systemd/system"
 BACKUP_SYSTEMD_DIR="/etc/systemd/system"
 BACKUP_TIMER_HOUR="${GITSTACK_BACKUP_TIMER_HOUR:-02}"
+case "${BACKUP_TIMER_HOUR}" in
+  *[!0-9]*) fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${BACKUP_TIMER_HOUR}' (solo un numero intero da 0 a 23)." ;;
+  *) [ "${BACKUP_TIMER_HOUR}" -ge 0 ] && [ "${BACKUP_TIMER_HOUR}" -le 23 ] || fail "GITSTACK_BACKUP_TIMER_HOUR non valida: '${BACKUP_TIMER_HOUR}' (solo un numero intero da 0 a 23)." ;;
+esac
 K3S_MANIFESTS_DIR="/var/lib/rancher/k3s/server/manifests"
 ACME_MANIFEST="${K3S_MANIFESTS_DIR}/gitstack-traefik-letsencrypt.yaml"
 # Valorizzate da resolve_tls (nomi e IP dei SAN, host dell'URL pubblico, schema).
@@ -211,7 +215,7 @@ GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1, GITSTACK_FORCE=1, GITSTACK_T
 (internal|letsencrypt|insecure), GITSTACK_TLS_CERT, GITSTACK_TLS_KEY,
 GITSTACK_TLS_EMAIL, GITSTACK_ADMIN_BINARY,
 GITSTACK_ADMIN_SHA256, GITSTACK_ADMIN_REQUIRED=1, GITSTACK_BACKUP_DIR,
-GITSTACK_BACKUP_RETENTION.
+GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02).
 EOF
 }
 
@@ -1228,17 +1232,22 @@ disable_renew_timer() {
 # GITSTACK_BACKUP_TIMER_HOUR (default 02).
 enable_backup_timer() {
   if ! command -v systemctl >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
-    warn "systemd non disponibile: il backup automatico non e' attivo. Pianifica a mano '${ADMIN_BINARY:-gitstack}' backup."
+    warn "systemd non disponibile: il backup automatico non e' attivo. Pianifica a mano '${ADMIN_BIN_PATH}' backup."
+    return 0
+  fi
+  if [ ! -x "${ADMIN_BIN_PATH}" ]; then
+    warn "il binario ${ADMIN_BIN_PATH} non e' presente: il timer del backup non viene installato, pianifica a mano."
     return 0
   fi
   local hour="${BACKUP_TIMER_HOUR:-02}"
   cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.service" <<EOF
 [Unit]
 Description=GitStack: backup giornaliero
+After=k3s.service
 
 [Service]
 Type=oneshot
-ExecStart=${ADMIN_BINARY:-gitstack} backup
+ExecStart=${ADMIN_BIN_PATH} backup
 EOF
   cat >"${BACKUP_SYSTEMD_DIR}/gitstack-backup.timer" <<EOF
 [Unit]

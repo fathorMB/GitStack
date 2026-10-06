@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fathorMB/GitStack/admin/internal/backup"
 	"github.com/fathorMB/GitStack/admin/internal/backupstate"
@@ -105,41 +106,56 @@ func (f *failCluster) ApplySecret(_ context.Context, _ backup.Secret) error { re
 func TestBackupRetention(t *testing.T) {
 	a, cfg := backupApp(t, "sha-aaa")
 	dest := t.TempDir()
-	// Due backup con retention=1 → resta uno.
-	for i := 0; i < 2; i++ {
-		git := t.TempDir()
-		_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
-		a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
-		if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "1"}); code != ExitOK {
-			t.Fatalf("backup %d: exit %d", i+1, code)
-		}
+	// Tre backup con retention=2 → restano 2 (i più recenti).
+	a.Now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 1: exit %d", code)
+	}
+	a.Now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 1, 0, time.UTC) }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 2: exit %d", code)
+	}
+	a.Now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 2, 0, time.UTC) }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 3: exit %d", code)
 	}
 	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
-	if len(ents) != 1 {
-		t.Errorf("dopo due backup con retention=1: %d archivi, volevo 1", len(ents))
+	if len(ents) != 2 {
+		t.Fatalf("dopo tre backup con retention=2: %d archivi, volevo 2", len(ents))
+	}
+	// I due più recenti: i nomi sono ordinati per data UTC nel prefisso.
+	names := make([]string, len(ents))
+	for i, e := range ents {
+		names[i] = filepath.Base(e)
+	}
+	// Il più vecchio (primo) deve essere stato eliminato.
+	if strings.Contains(names[0], "00002") {
+		t.Errorf("il backup più vecchio (00002) è ancora presente: %v", names)
+	}
+	if !strings.Contains(names[1], "00002") {
+		t.Errorf("manca il backup più recente: %v", names)
 	}
 }
 
 func TestBackupRetentionNoPruneOnFail(t *testing.T) {
 	a, cfg := backupApp(t, "sha-aaa")
 	dest := t.TempDir()
-	// Backup riuscito.
-	git := t.TempDir()
-	_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
-	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
-	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
-		t.Fatalf("backup 1: exit %d", code)
-	}
-	// Simulo un backup fallito (cluster non disponibile): non deve cancellare.
+	// Creo due archivi come se fossero già presenti.
+	archive1 := filepath.Join(dest, "gitstack-backup-20260101T000000Z-sha-aaa.tar.gz")
+	_ = os.WriteFile(archive1, []byte("archivio 1"), 0o600)
+	_ = os.WriteFile(archive1+".sha256", []byte("aaaa  gitstack-backup-20260101T000000Z-sha-aaa.tar.gz\n"), 0o600)
+	archive2 := filepath.Join(dest, "gitstack-backup-20260101T000001Z-sha-aaa.tar.gz")
+	_ = os.WriteFile(archive2, []byte("archivio 2"), 0o600)
+	_ = os.WriteFile(archive2+".sha256", []byte("bbbb  gitstack-backup-20260101T000001Z-sha-aaa.tar.gz\n"), 0o600)
+
+	// Backup fallito con retention=1: non deve cancellare nessuno dei due.
 	a.NewCluster = func(*config.Config) backup.Cluster { return &failCluster{} }
-	// Backup fallito: l'exit code è ExitUnexpected (70, errore generico).
-	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitUnexpected {
-		t.Fatalf("backup 2: exit %d", code)
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "1"}); code != ExitUnexpected {
+		t.Fatalf("backup fallito: exit %d", code)
 	}
-	// Verifico che sia rimasto un solo backup (nessuna cancellazione).
 	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
-	if len(ents) != 1 {
-		t.Errorf("dopo backup fallito: %d archivi, volevo 1", len(ents))
+	if len(ents) != 2 {
+		t.Errorf("dopo backup fallito con retention=1: %d archivi, volevo 2", len(ents))
 	}
 }
 

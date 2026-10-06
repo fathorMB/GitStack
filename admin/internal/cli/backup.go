@@ -119,6 +119,9 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 	if *retention > 0 {
 		o.Retention = *retention
 	}
+	if a.Now != nil {
+		o.Now = a.Now
+	}
 	res, err := backup.Backup(ctx, o)
 	if err != nil {
 		code := a.backupFailure("backup", err)
