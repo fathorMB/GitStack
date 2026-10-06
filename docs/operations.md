@@ -301,7 +301,7 @@ services.
 2. Run the restore command pointing at the archive:
 
    ```sh
-   sudo gitstack restore /var/backups/gitstack/gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc
+   sudo gitstack restore /var/backups/gitstack/gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz
    ```
 
    **With an encrypted archive:**
@@ -316,7 +316,7 @@ services.
 
    ```sh
    sudo gitstack restore --dest /mnt/backup/gitstack \
-     gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc
+     gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz
    ```
 
 3. Wait for the command to finish. On success it prints:
@@ -347,9 +347,6 @@ services.
 | `6` | Restore refused — version mismatch, corrupted archive, or encrypted archive without `--key-file` |
 | `70` | Unexpected error |
 
-The source of the restore logic is `admin/internal/cli/backup.go`
-(`runRestore`, line 152). It is not in a separate `restore.go` file.
-
 ---
 
 ## Upgrade
@@ -364,8 +361,18 @@ migrations of the target chart, verifies the health of the services, and
 sudo gitstack upgrade --dry-run
 ```
 
-Reports the target version, the commit SHA, and whether the services
-would be healthy after the upgrade — without making any change.
+Runs only the checks — target version, no downgrade, current health,
+binary with checksum, chart, and images — without modifying anything.
+On success, exit `0`, summary includes the target version and
+image count.
+
+On this VM, the commit of `main` has no published release:
+
+```
+upgrade rifiutato: checksum del binario non disponibile: GET https://github.com/fathorMB/GitStack/releases/download/sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee/gitstack-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.sha256: HTTP 404 / Niente è stato modificato.
+```
+
+Exit code `6` (`ExitRefused`), nothing changed.
 
 ### Full upgrade
 
@@ -375,29 +382,44 @@ sudo gitstack upgrade
 
 Steps executed:
 
-1. **Backup** of the current state (same options as `gitstack backup`).
-2. **Pull** the target image and Helm chart (default: `main` branch of
-   `fathorMB/GitStack`; override with `--to`, `GITSTACK_REPO`, `GITSTACK_REF`).
-3. **Apply migrations** via `helm upgrade --install`.
-4. **Wait** for the services to become healthy (default timeout 5 min;
+1. **Checks** (same as dry-run): target version, no downgrade, current
+   health, binary with checksum, chart and images exist. If any check
+   fails, exit `6` (`ExitRefused`), nothing changed.
+2. **Preventive backup** of the current state (same options as
+   `gitstack backup`).
+3. **Helm upgrade** of the chart (migrations run when services start),
+   then wait for all services to become healthy (default timeout 10 min;
    override with `--timeout`).
-5. **Health check** on gateway `/healthz` and on each service readiness.
-   If the check fails, a **rollback** to the previous chart revision is
-   triggered automatically.
-6. On success, prints the summary of changes; on rollback, prints the
-   rollback log and exits with code `7` (`ExitRolledBack`).
+4. **Local substitution**: replace the admin binary, the local copy of
+   the chart, and `image_tag` in the config — in the order they can be
+   undone.
+
+**Rollback** (triggered on step 3 failure):
+
+1. Restore the previous binary and chart copy.
+2. Run `helm rollback` to the previous release revision.
+3. If the migrations touched the database (schema versions changed),
+   run `gitstack restore` with the preventive backup just created.
+
+On rollback success, exit `7` (`ExitRolledBack`); on rollback failure,
+exit `8` (`ExitBroken`) with manual intervention instructions.
 
 ### Options
 
 ```sh
-sudo gitstack upgrade \
-  --to v0.2.0 \                         # target version tag or sha (default: latest on main)
-  --dest /mnt/backup/gitstack \         # override backup destination
-  --key-file /path/to/key.txt \         # encrypt the preventive backup
-  --timeout 10m \                       # max time for health checks (default: 5m)
-  --set service.gateway.replicas=2 \    # Helm --set override, repeatable
-  --values extra-values.yaml            # additional Helm values file, repeatable
+sudo gitstack upgrade --to v0.2.0 --dest /mnt/backup/gitstack \
+  --key-file /root/gs.key --timeout 10m \
+  --set service.gateway.replicas=2 --values extra-values.yaml
 ```
+
+| Flag | Purpose | Default |
+|---|---|---|
+| `--to TAG\|SHA` | Target version: tag or commit SHA | latest on `main` |
+| `--dest DIR` | Override backup destination directory | `backup.destination` from config |
+| `--key-file FILE` | Path to AES-256-GCM encryption key | none (unencrypted backup) |
+| `--timeout D` | Max time for service health checks | `10m` |
+| `--set KEY=VAL` | Helm value override | — (repeatable) |
+| `--values FILE` | Additional Helm values file | — (repeatable) |
 
 Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 `GITSTACK_REF` (default `main`).
@@ -407,11 +429,12 @@ Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 | Exit code | Outcome |
 |---|---|
 | `0` | Upgrade completed successfully |
-| `1` | Post-upgrade health check failed (services not ready) |
-| `2` | Usage error |
-| `6` | Upgrade refused (pre-checks failed, e.g. incompatible target) — nothing changed |
-| `7` | **Rolled back** — the previous state was restored automatically |
+| `2` | Usage error (wrong option, missing argument, too-short timeout) |
+| `4` | Cannot reach the Kubernetes cluster |
+| `6` | Upgrade refused (incompatible target, downgrade, health check, missing binary checksum) — nothing changed |
+| `7` | **Rolled back** — the upgrade failed and the previous state was restored automatically |
 | `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
+| `70` | Unexpected error (backup, network, or other unrecoverable failure) |
 
 ---
 
@@ -518,7 +541,7 @@ so it fails as a non-root user with a permission error.
 | `--dest DIR` | `backup`, `restore`, `upgrade` | Override the backup destination directory |
 | `--key-file FILE` | `backup`, `restore`, `upgrade` | Path to the AES-256-GCM encryption key |
 | `--to TAG\|SHA` | `upgrade` | Target version; default is latest on the `main` branch |
-| `--timeout D` | `upgrade` | Max time for health checks (default `5m`) |
+| `--timeout D` | `upgrade` | Max time for health checks (default `10m`) |
 | `--set KEY=VAL` | `upgrade` | Helm value override, repeatable |
 | `--values FILE` | `upgrade` | Additional Helm values file, repeatable |
 | `--json` | `status` | Output in JSON format |
@@ -537,7 +560,7 @@ so it fails as a non-root user with a permission error.
 | `6` | Refused: incompatible version, corrupted archive, or missing key |
 | `7` | Upgrade rolled back automatically |
 | `8` | Upgrade failed and rollback also failed — manual intervention needed |
-| `70` | Unexpected error |
+| `70` | Unexpected error (backup failure, network, unrecoverable) |
 
 ### Configuration files
 
