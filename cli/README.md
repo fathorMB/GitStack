@@ -53,7 +53,7 @@ hosts/<host>.yaml      user, git_protocol e, solo se non c'è il portachiavi, to
 
 Il `:` di `host:porta` nel nome file diventa `_`. File `0600` e cartelle `0700` su Unix; su Windows la DACL del file (e delle cartelle) è protetta e ha un'unica voce, per l'utente corrente (`os.WriteFile` con `0600` su Windows non protegge niente). La scrittura è atomica (file temporaneo accanto, poi rename). I test lo verificano (`internal/config`: modo su Unix, lettura della DACL su Windows).
 
-**Token.** L'interfaccia `config.TokenSource` ha oggi l'implementazione su file; `GS_TOKEN` ha sempre la precedenza. GIT-164 vi aggiunge il portachiavi dietro la stessa interfaccia.
+**Token.** L'interfaccia `config.TokenSource` ha due implementazioni: `KeyringTokens` (portachiavi di sistema via `github.com/zalando/go-keyring`, servizio `gs`, utente = host) e `FileTokens` (campo `token` di `hosts/<host>.yaml`, 0600). `KeyringTokens` usa il file come ripiego quando il portachiavi non c'è (nessun Secret Service, niente D-Bus) e legge anche un token già nel file. `GS_NO_KEYRING=1` disattiva il portachiavi. `GS_TOKEN` ha sempre la precedenza, ma vale solo per l'istanza scelta (`--hostname`, `GS_HOST`, o la predefinita). Il file host ha anche `host:`, il nome esatto dell'istanza (il nome del file perde i due punti).
 
 **Scelta dell'istanza** (`Factory.Host`), nell'ordine:
 
@@ -131,3 +131,17 @@ I binari si costruiscono con `scripts/build-gs-dist.sh <cartella> <versione>`: `
 curl -fsSL https://<host>/install-gs.sh | sh        # Linux, macOS
 irm https://<host>/install-gs.ps1 | iex             # Windows
 ```
+
+## gs auth (GIT-164)
+
+| Comando | Cosa fa |
+|---|---|
+| `gs auth login [--hostname H] [--with-token] [--web]` | Chiede istanza e token (input nascosto), verifica il token con `GET /auth/session` e lo salva (portachiavi, altrimenti file 0600). `--with-token` legge il token da stdin. `--web` apre `https://<host>/settings/tokens/new?name=gs&scopes=read:user,read:org,read:resource,write:resource&expires=90` (percorso fissato in `web/README.md`) e poi chiede il token incollato. Un token rifiutato esce con 4 e non salva niente |
+| `gs auth status [--json campi]` | Per ogni istanza configurata (o `--hostname`): utente, sorgente del token (`keyring`, `file`, `GS_TOKEN`), scope, scadenza, stato (`ok`, `invalid`, `no_token`, `error`). Exit 4 se un token è scaduto, revocato o mancante; 1 se un'istanza non risponde |
+| `gs auth logout [--hostname H]` | Toglie token e configurazione dell'istanza (non revoca il token sul server) |
+| `gs auth setup-git [--hostname H]` | Scrive in `git config --global` `credential.<schema>://<host>.helper` = `!'<gs>' auth git-credential` per ogni istanza configurata |
+| `gs auth git-credential get` | Nascosto: il helper chiamato da git. Risponde `username` e `password` (il token) solo per l'istanza configurata con quello schema e host |
+
+Agenti e CI: `GS_HOST` e `GS_TOKEN` bastano, senza login né file; con `gs auth setup-git` anche git in HTTPS usa il token. Il token non va mai su stdout/stderr né nei log. Il controllo di versione contro `/meta` (G6, `internal/compat`) è collegato alla radice (`PersistentPreRunE`) e salta `version`, `help`, `completion` e `auth login|logout|setup-git|git-credential`.
+
+Test: `internal/cmd/auth` con portachiavi finto (`keyring.MockInit`, `MockInitWithError` per il ripiego su file); `setupgit_integration_test.go` (tag `integration`, serve `git`) compila il binario gs e clona in HTTPS con git vero da un `git http-backend` che pretende il token in Basic auth.

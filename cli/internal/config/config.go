@@ -25,6 +25,7 @@ const EnvConfigDir = "GS_CONFIG_DIR"
 
 // HostConfig è la configurazione di una istanza.
 type HostConfig struct {
+	Host        string `yaml:"host,omitempty"` // nome esatto dell'istanza (il nome del file perde i due punti)
 	User        string `yaml:"user,omitempty"`
 	GitProtocol string `yaml:"git_protocol,omitempty"`
 	Token       string `yaml:"token,omitempty"`
@@ -97,6 +98,7 @@ func (c *Config) Host(host string) (hc HostConfig, ok bool, err error) {
 // SaveHost scrive la configurazione di una istanza e la rende predefinita
 // (default_host = ultima istanza configurata).
 func (c *Config) SaveHost(host string, hc HostConfig) error {
+	hc.Host = host
 	if err := c.writeYAML(c.HostPath(host), hc); err != nil {
 		return err
 	}
@@ -138,6 +140,10 @@ func (c *Config) Hosts() ([]string, error) {
 	var out []string
 	for _, e := range ents {
 		if n, ok := strings.CutSuffix(e.Name(), ".yaml"); ok && !e.IsDir() {
+			var hc HostConfig
+			if err := readYAML(filepath.Join(c.dir, "hosts", e.Name()), &hc); err == nil && hc.Host != "" {
+				n = hc.Host
+			}
 			out = append(out, n)
 		}
 	}
