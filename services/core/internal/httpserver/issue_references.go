@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/fathorMB/GitStack/services/core/internal/openapi"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // extractReferences analizza un testo e ritorna i riferimenti a issue
