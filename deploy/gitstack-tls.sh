@@ -157,7 +157,9 @@ ensure_ca() {
 # se non e' firmato dalla CA corrente o se l'elenco dei SAN e' cambiato.
 server_cert_needs_issue() {
   local crt="${TLS_DIR}/server.crt" key="${TLS_DIR}/server.key"
-  [ -f "${crt}" ] && [ -f "${key}" ] || return 0
+  if [ ! -f "${crt}" ] || [ ! -f "${key}" ]; then
+    return 0
+  fi
   [ -f "${TLS_DIR}/server.sans" ] || return 0
   [ "$(cat "${TLS_DIR}/server.sans")" = "$(san_list)" ] || return 0
   openssl x509 -in "${crt}" -noout -checkend $((RENEW_BEFORE_DAYS * 86400)) >/dev/null || return 0
@@ -201,7 +203,9 @@ EOF
 # un certificato scaduto, che altrimenti Traefik servirebbe in silenzio.
 check_custom() {
   local crt="${TLS_DIR}/custom.crt" key="${TLS_DIR}/custom.key"
-  [ -f "${crt}" ] && [ -f "${key}" ] || fail "certificato del cliente mancante: servono ${crt} e ${key}."
+  if [ ! -f "${crt}" ] || [ ! -f "${key}" ]; then
+    fail "certificato del cliente mancante: servono ${crt} e ${key}."
+  fi
   openssl x509 -in "${crt}" -noout >/dev/null 2>&1 || fail "${crt} non e' un certificato PEM valido."
   local a b
   a="$(openssl x509 -in "${crt}" -noout -pubkey | openssl pkey -pubin -outform DER | openssl dgst -sha256)"

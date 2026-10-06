@@ -854,8 +854,9 @@ resolve_tls() {
   saved_email="$(read_kv "${conf}" EMAIL)"
 
   if [ -n "${GITSTACK_TLS_CERT}" ] || [ -n "${GITSTACK_TLS_KEY}" ]; then
-    [ -n "${GITSTACK_TLS_CERT}" ] && [ -n "${GITSTACK_TLS_KEY}" ] \
-      || fail "--tls-cert e --tls-key vanno passati insieme."
+    if [ -z "${GITSTACK_TLS_CERT}" ] || [ -z "${GITSTACK_TLS_KEY}" ]; then
+      fail "--tls-cert e --tls-key vanno passati insieme."
+    fi
     case "${GITSTACK_TLS_MODE}" in
       ''|internal|custom) GITSTACK_TLS_MODE="custom" ;;
       *) fail "--tls-cert/--tls-key non si combinano con --tls ${GITSTACK_TLS_MODE} / --insecure-http." ;;
