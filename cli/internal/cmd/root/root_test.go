@@ -77,11 +77,9 @@ func TestUsoErrato(t *testing.T) {
 			t.Errorf("%v: exit %d, atteso 2 (%q)", args, r.code, r.errOut)
 		}
 	}
-	// Le foglie non ancora implementate escono 2.
-	for _, g := range []string{"browse", "blame"} {
-		if r := gs(t, nil, g); r.code != 2 || !strings.Contains(r.errOut, "non ancora implementato") {
-			t.Errorf("%s: %+v", g, r)
-		}
+	// blame senza il file è un uso errato.
+	if r := gs(t, nil, "blame"); r.code != 2 || !strings.Contains(r.errOut, "serve il percorso del file") {
+		t.Errorf("blame: %+v", r)
 	}
 }
 

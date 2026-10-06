@@ -1,6 +1,13 @@
-// Package search è il gruppo `gs search`. Per ora solo il comando padre: i
-// sottocomandi arrivano con gli item successivi di M-07, che toccano solo
-// questa cartella.
+// Package search è il gruppo `gs search` (G4): `issues` cerca su tutta
+// l'installazione con la sintassi I10 (GET /search/issues) e `code` cerca un
+// testo nel codice di un repo (B5, GET /repos/{owner}/{repo}/search, al
+// massimo 100 risultati).
+//
+// Output JSON: `issues` stampa una lista di IssueSummary con `repo`
+// (`owner/nome`) e `url`; `code` stampa un oggetto con i campi di
+// CodeSearchResult (`query`, `ref`, `limitReached`, `timedOut`, `results`);
+// ogni risultato ha `path`, `line`, `fragment` e `url`. I campi sono
+// elencati in IssueFields e CodeFields e documentati in cli/README.md.
 package search
 
 import (
@@ -11,11 +18,12 @@ import (
 
 // NewCmd restituisce il comando padre `gs search`.
 func NewCmd(f *cmdutil.Factory) *cobra.Command {
-	_ = f
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Cerca repository, issue e codice",
+		Short: "Cerca issue e codice",
 		Args:  cmdutil.NoArgs,
 		RunE:  cmdutil.GroupRun,
 	}
+	cmd.AddCommand(newIssuesCmd(f), newCodeCmd(f))
+	return cmd
 }

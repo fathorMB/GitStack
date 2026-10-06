@@ -38,7 +38,7 @@ internal/output           tabelle, --json, --jq, errore JSON
 internal/api              client sul gateway (sopra client/go) e conversione degli errori
 ```
 
-Per aggiungere comandi a un gruppo si tocca solo `internal/cmd/<gruppo>/`: `root.go` registra già tutti i gruppi e non cambia più. `browse` e `blame` sono comandi foglia e finché non sono implementati escono con 2 («non ancora implementato»). I gruppi usano `cmdutil.GroupRun` come `RunE` (aiuto senza argomenti, exit 2 con un sottocomando sconosciuto) e `cmdutil.NoArgs` per i comandi senza argomenti, così l'uso errato esce sempre con 2.
+Per aggiungere comandi a un gruppo si tocca solo `internal/cmd/<gruppo>/`: `root.go` registra già tutti i gruppi e non cambia più. `browse` e `blame` sono comandi foglia. I gruppi usano `cmdutil.GroupRun` come `RunE` (aiuto senza argomenti, exit 2 con un sottocomando sconosciuto) e `cmdutil.NoArgs` per i comandi senza argomenti, così l'uso errato esce sempre con 2.
 
 `gs api user` (GET `/auth/session`) è provvisorio: esercita configurazione, client, output ed exit code; GIT-169 lo sostituisce con `gs api <endpoint>`.
 
@@ -151,6 +151,38 @@ Sono quelli dello schema dell'API (camelCase), più `url` (pagina web). Un campo
 ### Test
 
 `cli/internal/cmd/issue/issue_test.go`: gateway finto, richieste e corpi verificati. `services/core/internal/stackitest/gs_issue_integration_test.go` (`TestGsIssue`, tag `integration`): il binario `gs` vero compilato con `go build` contro lo stack completo (gateway, identity, git, core, Postgres), con un proxy che mappa `/api/v1` su `/v1`. Prova ogni sottocomando, i tre motivi di chiusura, I3, il blocco, R10, l'accordo di `list` con l'API (stessi numeri con filtri e `--search`) e i codici 4, 5 e 6.
+
+## `gs search`, `gs browse`, `gs blame` (GIT-168, G4)
+
+Il repo è quello del remote `origin` o `-R owner/repo`; l'istanza e il token seguono G7. Le regole le applica l'API: `gs` mostra l'errore e lo traduce nel codice di uscita (un repo che non puoi leggere è 404 → 6).
+
+| Comando | Cosa fa | Flag principali |
+|---|---|---|
+| `search issues <query>` | cerca issue su tutta l'installazione (`GET /search/issues`, I10), nei soli repo leggibili; tabella `REPO # STATO AGGIORNATA TITOLO` | `--sort created\|updated\|comments\|relevance`, `-L/--limit` (30) |
+| `search code <testo>` | cerca un testo nel codice del repo (`GET /repos/{owner}/{repo}/search`, B5): `percorso:riga: frammento` | `--ref` (default: branch principale) |
+| `blame <file>` | per ogni riga: commit, autore (con badge `[agent]` se l'email è di un utente agent), data, numero e testo | `--ref` |
+| `blame --history <file>` | **storico del file** (B4): i commit che lo toccano, dal più recente; `COMMIT DATA AUTORE OGGETTO` | `--ref`, `--author` (nome o email), `-L/--limit` (30) |
+| `browse [percorso[:riga] \| numero]` | apre la UI: repo, file (`#L<riga>`), cartella (`percorso/`), issue (`12` o `#12`) | `-b/--branch`, `--history`, `--blame`, `--issues`, `-n/--no-browser` |
+
+- **Sintassi di `search issues`.** È quella di I10 (`is:`, `reason:`, `label:`, `assignee:` con `@me` e `@agents`, `author:`, `milestone:`, `no:`, `repo:`, `org:`, testo libero), interpretata dal server come per `gs issue list --search`; più parole sono una sola query. Se i risultati sono più di quelli mostrati (`-L`), `gs` lo dice su stderr («Mostrate N issue su M»). Una query non interpretabile è 422 (exit 1).
+- **Limite di 100 in `search code` (B5).** Il server restituisce al massimo 100 risultati e interrompe dopo 10 secondi. Quando succede `gs` lo scrive su stderr («Risultati limitati ai primi 100: ce ne sono altri…», «Ricerca interrotta dopo 10 secondi…») e in `--json` valgono `limitReached` / `timedOut`: l'elenco su stdout resta pulito. Il testo da cercare ha da 2 a 256 caratteri (altrimenti exit 2, senza rete).
+- **Blame e storico (B4).** Un file binario o oltre 1 MB non ha il blame: l'API risponde 400 `blame_unavailable` e `gs` esce 1 con «blame non disponibile per <file>: il file è binario o supera 1 MB (B4)». Il testo delle righe si legge dal file allo stesso ref (non serve con `--json`). Lo storico nel terminale è `gs blame --history <file>`; nel browser `gs browse --history <file>` (pagina commits del file). `--author` e `-L` valgono solo con `--history`.
+- **`browse`.** Senza `-b` il ref è il branch principale del repo (una chiamata a `GET /repos/{owner}/{repo}`; con `-b` o per issue e `--issues` niente rete). Gli indirizzi sono quelli della UI (`web/src/App.tsx`): `/o/r`, `/o/r/tree/<ref>[/<dir>]`, `/o/r/blob/<ref>/<file>#L<n>`, `/o/r/blame/<ref>/<file>`, `/o/r/commits/<ref>[/<file>]`, `/o/r/issues[/<n>]`; i segmenti sono codificati. Con `--no-browser` l'indirizzo va su stdout e il browser non si apre; altrimenti `gs` scrive «Apro <url> nel browser» su stderr. `--history`, `--blame` e `--issues` sono alternativi (exit 2).
+
+### Campi di `--json`
+
+| Comando | Oggetto | Campi |
+|---|---|---|
+| `search issues` | lista | `repo` (`owner/nome`), `number`, `title`, `state`, `closeReason`, `author`, `labels`, `assignees`, `milestone`, `locked`, `commentCount`, `createdAt`, `updatedAt`, `url` |
+| `search code` | oggetto | `query`, `ref`, `limitReached`, `timedOut`, `results` (lista di `{path, line, fragment, url}`) |
+| `blame` | oggetto | `path`, `ref`, `ranges` (`{startLine, endLine, commit}`; l'autore del commit ha `user.kind` `human`\|`agent` se riconosciuto), `url` |
+| `blame --history` | lista di `CommitSummary` | `sha`, `subject`, `message`, `author`, `committer`, `parents`, `url` |
+
+`blame --json` accetta l'unione dei campi di blame e storico; quelli dell'altra modalità non compaiono.
+
+### Test
+
+`cli/internal/cmd/{search,blame,browse}/*_test.go`: gateway finto; `browse` prova `ParseArg` e `URL` (unitari) e che `--no-browser` stampi l'indirizzo. `services/core/internal/stackitest/gs_code_integration_test.go` (`TestGsCode`, tag `integration`): `gs` vero sullo stack completo con la storia di `TestBrowserCodice` (agente botty, file oltre 1 MB, binari): ricerca issue su tutta l'installazione con visibilità (carol non vede il privato), ricerca nel codice con il limite di 100, blame con badge agent, errori B4, storico con `--author` e `--ref`, URL di `browse`.
 
 ## Versione e build
 
