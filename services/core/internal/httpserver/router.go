@@ -52,6 +52,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		git:          o.git,
 		clone:        o.clone,
 		attachments:  o.attachments,
+		emailEnabled: o.emailEnabled,
 		now:          now,
 	}
 
@@ -88,6 +89,7 @@ type routerOptions struct {
 	git          gitclient.Git
 	clone        CloneConfig
 	attachments  AttachmentsConfig
+	emailEnabled bool
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il

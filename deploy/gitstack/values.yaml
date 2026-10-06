@@ -143,6 +143,28 @@ core:
     limits:
       memory: 128Mi
 
+# --- SMTP (facoltativo, M-06/F, C5) ------------------------------------------
+# Email di notifica (menzioni, assegnazioni, ...). Vuoto = disattivato: GitStack
+# manda solo notifiche in-app e la UI nasconde le opzioni email. Con `host`
+# valorizzato il chart crea il Secret `<release>-smtp` (chiavi host, port,
+# security, username, password, from) e core lo legge come GITSTACK_CORE_SMTP_*.
+# Per non tenere la password nei values, usa `existingSecret`: un Secret tuo con
+# quelle chiavi (obbligatorie: host e from; le altre facoltative).
+# Le email partono dopo una finestra di 10 secondi per issue (raggruppamento),
+# con al massimo 3 tentativi; mai agli utenti agent. Dettagli: README del chart.
+smtp:
+  host: ""
+  # 0 = porta standard della protezione scelta (starttls 587, tls 465, none 25).
+  port: 0
+  # starttls (default) | tls (TLS implicito) | none (solo reti fidate: le
+  # credenziali non partono in chiaro verso un host non locale).
+  security: starttls
+  username: ""
+  password: ""
+  # Mittente, es. "GitStack <noreply@example.com>". Obbligatorio con host.
+  from: ""
+  existingSecret: ""
+
 # --- identity ---------------------------------------------------------------
 # Utenti, sessioni, token e chiavi SSH (M-02). Usa lo schema dedicato
 # "identity" (D6) dello stesso database di core, con un ruolo Postgres

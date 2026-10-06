@@ -85,11 +85,3 @@ func (s *apiServer) RedeliverRepoWebhookDelivery(w http.ResponseWriter, _ *http.
 func (s *apiServer) ReactivateRepoWebhook(w http.ResponseWriter, _ *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.WebhookIdParam) {
 	notificationsNotImplemented(w)
 }
-
-func (s *apiServer) GetNotificationPreferences(w http.ResponseWriter, _ *http.Request) {
-	notificationsNotImplemented(w)
-}
-
-func (s *apiServer) UpdateNotificationPreferences(w http.ResponseWriter, _ *http.Request) {
-	notificationsNotImplemented(w)
-}

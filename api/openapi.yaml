@@ -7798,6 +7798,11 @@ components:
               kind:
                 type: string
                 enum: [human, agent]
+              email:
+                type: string
+                description: >
+                  Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le
+                  notifiche email, mai per gli agenti). Assente senza email.
     ResolveMentionsInput:
       type: object
       additionalProperties: false

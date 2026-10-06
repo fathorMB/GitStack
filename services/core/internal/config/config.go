@@ -6,10 +6,13 @@ package config
 
 import (
 	"fmt"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fathorMB/GitStack/services/core/internal/mailer"
 )
 
 // Config è la configurazione di core, interamente da variabili d'ambiente.
@@ -89,6 +92,11 @@ type Config struct {
 	// tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL, default 24h).
 	AttachmentOrphanTTL time.Duration
 
+	// SMTP è la configurazione delle email di notifica (M-06/F, C5): tutte le
+	// variabili GITSTACK_CORE_SMTP_*. Facoltativa: con SMTP.Host vuoto (default)
+	// GitStack manda solo notifiche in-app e non tenta nessun invio.
+	SMTP mailer.Config
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
@@ -107,6 +115,12 @@ const (
 	envPublicURL         = "GITSTACK_CORE_PUBLIC_URL"
 	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
 	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
+	envSMTPHost          = "GITSTACK_CORE_SMTP_HOST"
+	envSMTPPort          = "GITSTACK_CORE_SMTP_PORT"
+	envSMTPSecurity      = "GITSTACK_CORE_SMTP_SECURITY"
+	envSMTPUser          = "GITSTACK_CORE_SMTP_USER"
+	envSMTPPassword      = "GITSTACK_CORE_SMTP_PASSWORD"
+	envSMTPFrom          = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
@@ -232,6 +246,8 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 
+	errs = loadSMTP(lookup, &cfg, errs)
+
 	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {
 		level := strings.ToLower(strings.TrimSpace(v))
 		switch level {
@@ -247,6 +263,48 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// loadSMTP legge GITSTACK_CORE_SMTP_*. Senza HOST l'SMTP è spento e le altre
+// variabili si ignorano (nessun errore: le notifiche restano in-app).
+func loadSMTP(lookup func(string) (string, bool), cfg *Config, errs []string) []string {
+	get := func(k string) string {
+		v, _ := lookup(k)
+		return strings.TrimSpace(v)
+	}
+	host := get(envSMTPHost)
+	if host == "" {
+		return errs
+	}
+	s := mailer.Config{Host: host, Security: mailer.SecurityStartTLS, Username: get(envSMTPUser), From: get(envSMTPFrom)}
+	if v, ok := lookup(envSMTPPassword); ok {
+		s.Password = v // la password non si taglia
+	}
+	switch sec := strings.ToLower(get(envSMTPSecurity)); sec {
+	case "":
+	case "tls", "starttls", "none":
+		s.Security = mailer.Security(sec)
+	default:
+		errs = append(errs, fmt.Sprintf("%s non è valido: %q (tls|starttls|none)", envSMTPSecurity, sec))
+	}
+	s.Port = mailer.DefaultPort(s.Security)
+	if v := get(envSMTPPort); v != "" {
+		if n, err := strconv.Atoi(v); err != nil || n < 1 || n > 65535 {
+			errs = append(errs, fmt.Sprintf("%s non è una porta valida (1-65535): %q", envSMTPPort, v))
+		} else {
+			s.Port = n
+		}
+	}
+	if s.From == "" {
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria quando %s è impostata", envSMTPFrom, envSMTPHost))
+	} else if _, err := mail.ParseAddress(s.From); err != nil {
+		errs = append(errs, fmt.Sprintf("%s non è un indirizzo valido: %q", envSMTPFrom, s.From))
+	}
+	if (s.Username == "") != (s.Password == "") {
+		errs = append(errs, fmt.Sprintf("%s e %s vanno impostate insieme (o nessuna dei due)", envSMTPUser, envSMTPPassword))
+	}
+	cfg.SMTP = s
+	return errs
 }
 
 func parsePositiveInt32(v string) (int32, error) {

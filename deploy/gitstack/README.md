@@ -159,6 +159,34 @@ Core tiene i file degli allegati su un PVC dedicato `<release>-attachments-data`
 
 Il gateway applica `gateway.env.coreTimeout` (default `30s`, prima `5s`) all'intera richiesta verso core, upload compreso: 10 MB in 30 secondi richiedono circa 3 Mbit/s. Se alzi `core.attachments.maxBytes` alza anche il timeout, e `client_max_body_size`-simili di un proxy davanti a Traefik, se ce n'è uno.
 
+## Email delle notifiche: SMTP facoltativo (GIT-134, C5)
+
+L'SMTP è **facoltativo**. Con la sezione `smtp` vuota (default) GitStack manda solo notifiche in-app: nessun errore, nessun tentativo di invio, e la UI nasconde le opzioni email (`GET /user/notification-preferences` risponde `emailAvailable: false`). Con `smtp.host` valorizzato il chart crea il Secret `<release>-smtp` (chiavi `host`, `port`, `security`, `username`, `password`, `from`) e core lo legge come `GITSTACK_CORE_SMTP_*`; un cambio dei valori riavvia core (annotazione `checksum/smtp`).
+
+| Value | Default | Significato |
+|---|---|---|
+| `smtp.host` | vuoto | Server SMTP (`GITSTACK_CORE_SMTP_HOST`). Vuoto = email disattivate. |
+| `smtp.port` | `0` | `GITSTACK_CORE_SMTP_PORT`; `0` = la porta standard della protezione (`starttls` 587, `tls` 465, `none` 25). |
+| `smtp.security` | `starttls` | `starttls` (STARTTLS obbligatorio), `tls` (TLS implicito) o `none` (solo reti fidate: con `none` le credenziali non partono verso un host non locale). `GITSTACK_CORE_SMTP_SECURITY`. |
+| `smtp.username`, `smtp.password` | vuoti | Autenticazione PLAIN (`GITSTACK_CORE_SMTP_USER`, `GITSTACK_CORE_SMTP_PASSWORD`); vanno impostati insieme o per niente. |
+| `smtp.from` | vuoto | Mittente, es. `GitStack <noreply@example.com>` (`GITSTACK_CORE_SMTP_FROM`). Obbligatorio con `smtp.host`: senza, il chart si ferma. |
+| `smtp.existingSecret` | vuoto | Un Secret tuo con le stesse chiavi (obbligatorie `host` e `from`) invece dei values, per non tenere la password nel file dei values. |
+
+```sh
+helm upgrade --install gitstack deploy/gitstack \
+  --set smtp.host=smtp.example.com --set smtp.from='GitStack <noreply@example.com>' \
+  --set smtp.username=robot --set-string smtp.password="$SMTP_PASSWORD"
+```
+
+Come si comportano le email (regola C5):
+
+- **Per tipo.** Ogni utente sceglie, per ciascun motivo di notifica (`PUT /user/notification-preferences`), se riceve anche l'email. Default: sì per menzioni (`mentioned`) e assegnazioni (`assigned`), no per gli altri tipi.
+- **Raggruppamento: finestra di 10 secondi per issue.** La prima notifica per email di un utente su una issue fissa l'invio a 10 secondi dopo; quelle che arrivano nel frattempo per la stessa issue partono nella stessa email. Passata la finestra, la successiva apre una nuova email. La finestra è fissa (`notify.DefaultEmailWindow`), non un value del chart. Se l'utente legge o archivia la notifica prima dell'invio, l'email non parte.
+- **Link, nessuna risposta.** L'email contiene il link alla issue (`core.env.publicUrl` + `/<owner>/<repo>/issues/<n>`, quindi imposta `core.env.publicUrl`), `Auto-Submitted: auto-generated` e nessun `Reply-To`: non si risponde via email.
+- **Mai agli agenti.** Gli utenti `agent` ricevono le notifiche solo nella casella in-app (C4); le loro preferenze si salvano ma `emailAvailable` è `false`.
+- **Errori SMTP.** Un invio fallito si ritenta con attesa crescente (1 minuto, poi 2) per al massimo 3 tentativi in tutto; poi la notifica resta solo in-app e core scrive un log di errore (`email: invio non riuscito, tentativi esauriti`). Gli invii girano in un processo separato dal motore delle notifiche: un SMTP lento o giù non rallenta né blocca le notifiche in-app.
+- **Più repliche.** Un advisory lock su Postgres fa lavorare un solo dispatcher alla volta: nessuna email doppia.
+
 ## Probe di liveness/readiness
 
 Tutti i servizi Go (`gateway`, `identity`, `core`, `git`) hanno probe HTTP su `/healthz` (liveness) e `/readyz` (readiness), come da convenzione dei rispettivi README. `web` ha le stesse probe su `/healthz` per coerenza (disattivabili con `web.probes.enabled: false` se GIT-7 non le implementa da subito). `postgres` e `nats` hanno probe non-HTTP (`pg_isready`, endpoint di monitor `/healthz` di NATS).

@@ -18,6 +18,9 @@ type CodeUser struct {
 	Username  string
 	Kind      string // human | agent
 	AvatarURL *string
+	// Email è valorizzata solo da LookupUsers (POST /internal/users/lookup-ids)
+	// e solo se l'utente ne ha una; le notifiche email (C5) la usano.
+	Email string
 }
 
 // EmailLookup collega le email dei commit agli utenti

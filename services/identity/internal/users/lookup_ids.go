@@ -11,6 +11,8 @@ type IDMatch struct {
 	ID       uuid.UUID
 	Username string
 	Kind     string
+	// Email è vuota se l'utente non ne ha una.
+	Email string
 }
 
 // LookupByIDs trova gli utenti con quegli id. Gli id senza utente non
@@ -21,7 +23,7 @@ func (s *Service) LookupByIDs(ctx context.Context, ids []uuid.UUID) ([]IDMatch, 
 		return nil, nil
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, username, kind FROM identity.users WHERE id = ANY($1)`, ids)
+		SELECT id, username, kind, COALESCE(email, '') FROM identity.users WHERE id = ANY($1)`, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +31,7 @@ func (s *Service) LookupByIDs(ctx context.Context, ids []uuid.UUID) ([]IDMatch, 
 	var out []IDMatch
 	for rows.Next() {
 		var m IDMatch
-		if err := rows.Scan(&m.ID, &m.Username, &m.Kind); err != nil {
+		if err := rows.Scan(&m.ID, &m.Username, &m.Kind, &m.Email); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
