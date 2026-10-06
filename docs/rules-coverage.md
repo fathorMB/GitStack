@@ -106,7 +106,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 | N2 | Sistemi | | da compilare | |
 | N3 | Nodi | | da compilare | |
 | N4 | Rete | | da compilare | |
-| N5 | TLS | | da compilare | |
+| N5 | TLS: HTTPS di default con CA interna, Let's Encrypt o certificato del cliente; `--insecure-http` con avviso | `admin/internal/status/api_test.go#TestAPI_HTTPSConCAInterna`<br>`admin/internal/status/api_test.go#TestAPI_InsecureResta_HTTP`<br>`web/src/components/InsecureHttpBanner.test.tsx#http su un host di rete` | parziale | Installazione, CA, redirect 80→443, `--tls-cert` e `--insecure-http` si provano con `deploy/test-vm/e2e.ps1` sulla VM (lanciato dal board) e a mano su `deploy/gitstack-tls.sh`, non in CI; Let's Encrypt non ha una prova reale. |
 | N6 | Nome host | | da compilare | |
 
 ## W — Windows via WSL2 di prova (`installazione-e-deploy.md`)

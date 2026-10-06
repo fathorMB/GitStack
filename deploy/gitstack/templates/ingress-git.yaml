@@ -13,6 +13,10 @@ metadata:
   labels:
     {{- include "gitstack.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.ingress.tls.enabled }}
+  entryPoints:
+    - websecure
+  {{- end }}
   routes:
     - kind: Rule
       priority: 10000
@@ -23,6 +27,11 @@ spec:
           port: {{ .Values.git.service.port }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
+    {{- if .Values.ingress.tls.secretName }}
     secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+    {{- with .Values.ingress.tls.certResolver }}
+    certResolver: {{ . | quote }}
+    {{- end }}
   {{- end }}
 {{- end }}

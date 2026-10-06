@@ -1,6 +1,9 @@
 {{- if .Values.ingress.enabled -}}
 {{- $fullname := include "gitstack.fullname" . -}}
 {{- $middlewareName := printf "%s-strip-api" $fullname -}}
+{{- if and .Values.ingress.tls.enabled (not .Values.ingress.tls.secretName) (not .Values.ingress.tls.certResolver) -}}
+{{- fail "ingress.tls.enabled=true: serve ingress.tls.secretName (Secret kubernetes.io/tls) oppure ingress.tls.certResolver (Let's Encrypt)." -}}
+{{- end -}}
 {{- if .Values.gateway.enabled }}
 # Il gateway espone /healthz, /readyz e /v1/* (non /api/*): questo
 # Middleware Traefik toglie il prefisso "/api" dell'Ingress prima di
@@ -31,18 +34,26 @@ metadata:
     {{- if .Values.gateway.enabled }}
     traefik.ingress.kubernetes.io/router.middlewares: {{ printf "%s-%s@kubernetescrd" .Release.Namespace $middlewareName }}
     {{- end }}
+    {{- if .Values.ingress.tls.enabled }}
+    # N5: UI e API solo su 443 (websecure); la 80 la gestisce ingress-redirect.yaml.
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    {{- with .Values.ingress.tls.certResolver }}
+    traefik.ingress.kubernetes.io/router.tls.certresolver: {{ . | quote }}
+    {{- end }}
+    {{- end }}
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.ingress.tls.enabled }}
+  {{- if and .Values.ingress.tls.enabled .Values.ingress.tls.secretName }}
   tls:
-    - hosts:
-        {{- if .Values.ingress.host }}
+    - secretName: {{ .Values.ingress.tls.secretName }}
+      {{- if .Values.ingress.host }}
+      hosts:
         - {{ .Values.ingress.host | quote }}
-        {{- end }}
-      secretName: {{ .Values.ingress.tls.secretName }}
+      {{- end }}
   {{- end }}
   rules:
     - {{- if .Values.ingress.host }}

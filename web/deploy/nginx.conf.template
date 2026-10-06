@@ -20,6 +20,16 @@ server {
         return 200 "ok";
     }
 
+    # Certificato della CA interna (N5, GIT-143): il chart monta il ConfigMap
+    # <release>-ca (chiave ca.crt) in /usr/share/nginx/html/downloads. Senza
+    # il file (installazione con certificato del cliente o Let's Encrypt) la
+    # risposta e' 404, non il fallback SPA con un 200 HTML.
+    location ^~ /downloads/ {
+        try_files $uri =404;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options "nosniff";
+    }
+
     # ^~: il prefisso /api/ vince sulla location regex del raw qui sotto, così
     # /api/<x>/raw/... non viene scambiato per un raw di file.
     location ^~ /api/ {

@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { ToastProvider } from './components';
+import { InsecureHttpBanner, ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
@@ -25,6 +25,8 @@ import { AuthProvider, RequireAuth } from './routes/auth';
 // pagina interna di revisione del design system: fuori dalla sidebar.
 export function AppRoutes() {
   return (
+    <>
+    <InsecureHttpBanner />
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
@@ -287,6 +289,7 @@ export function AppRoutes() {
       />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </>
   );
 }
 
