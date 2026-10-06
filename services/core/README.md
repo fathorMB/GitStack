@@ -241,7 +241,7 @@ Test: `internal/migrate/notifications_integration_test.go` (vincoli, unicità, c
 
 ## Motore delle notifiche in-app (M-06/E, GIT-133)
 
-Regole C3, C4, C9 e I8. Codice in `internal/notify` (motore e conservazione) e in `internal/httpserver/notifications_inbox.go` e `notifications_watch.go` (casella, Watch, iscrizioni). I webhook (GIT-135) e le preferenze email (GIT-134) restano 501.
+Regole C3, C4, C9 e I8. Codice in `internal/notify` (motore e conservazione) e in `internal/httpserver/notifications_inbox.go` e `notifications_watch.go` (casella, Watch, iscrizioni). I webhook (GIT-135) restano 501; le preferenze e le email sono qui sotto (GIT-134).
 
 **Scelta: l'outbox, non NATS e non la transazione della richiesta.** Gli eventi `issue.*` e `issue_comment.*` sono già nell'outbox (`core.event_outbox`, 0009), scritti nella transazione della modifica. Il motore li legge da lì e scrive `core.notifications` nella stessa transazione in cui li segna elaborati (`notified_at`, migrazione `0010`): niente notifiche perse o doppie, anche con NATS fermo o dopo un riavvio, e la richiesta HTTP non dipende da identity per notificare. Un *flag per riga* e non un cursore su `seq`, perché due transazioni possono confermare fuori ordine. Un advisory lock serializza i giri fra le repliche. Un errore (identity giù) annulla il lotto, che si ritenta; un evento illeggibile si segna e si scarta con un log. Gli eventi già nell'outbox alla `0010` non generano notifiche. La pulizia dell'outbox elimina solo righe inviate **e** lette dal motore.
 
@@ -254,3 +254,23 @@ Regole C3, C4, C9 e I8. Codice in `internal/notify` (motore e conservazione) e i
 **Conservazione e accesso (C9).** `Engine.PurgeRead(ctx, now)` elimina le lette da più di 90 giorni (`ReadRetention`), con l'orologio passato come argomento; idempotente, le non lette restano; `Run` la lancia ogni ora. In lettura, `scopeFor` verifica con identity che l'utente legga ancora i repo delle sue notifiche, elimina quelle dei repo che non legge più e nasconde quelle di issue nascoste a chi non è admin: nessuna risposta contiene dati di un repo non leggibile. Identity non raggiungibile = 503, mai una casella non filtrata.
 
 Test: `internal/notify/mentions_test.go`; d'integrazione (`-tags integration`, Postgres): `internal/httpserver/notifications_integration_test.go`, `internal/migrate/notifier_integration_test.go`; in identity `internal/users/mentions_integration_test.go` e `internal/httpapi/mentions_integration_test.go`.
+
+## Email facoltative via SMTP (M-06/F, GIT-134, C5)
+
+**Facoltative.** Senza `GITSTACK_CORE_SMTP_HOST` (default) core non apre nessuna connessione SMTP, non mette niente in coda e non scrive errori: restano le notifiche in-app. `GET /user/notification-preferences` risponde allora `emailAvailable: false` (anche per un utente agent) e la UI nasconde le opzioni. Il chart popola le variabili da un Secret: vedi `deploy/gitstack/README.md`.
+
+| Variabile | Default | Significato |
+|---|---|---|
+| `GITSTACK_CORE_SMTP_HOST` | vuota | Server SMTP; vuota = email spente (le altre si ignorano). |
+| `GITSTACK_CORE_SMTP_PORT` | 587 (`starttls`), 465 (`tls`), 25 (`none`) | Porta. |
+| `GITSTACK_CORE_SMTP_SECURITY` | `starttls` | `starttls`, `tls` o `none`. Con `starttls` un server senza STARTTLS è un errore, mai un invio in chiaro. |
+| `GITSTACK_CORE_SMTP_USER`, `GITSTACK_CORE_SMTP_PASSWORD` | vuote | Autenticazione PLAIN; vanno insieme. `net/smtp` rifiuta le credenziali su un canale non cifrato verso un host non locale. |
+| `GITSTACK_CORE_SMTP_FROM` | — | Mittente, obbligatorio con l'host. |
+
+**Come funziona.** Il motore (`Engine.insert`), quando scrive la notifica in-app, controlla la preferenza dell'utente per quel tipo (`core.notification_preferences`; senza riga: sì per `mentioned` e `assigned`) e, se vuole l'email, fissa `email_due_at`. Il raggruppamento sta lì: la prima notifica di un utente su una issue vale `EmailWindow` (**10 secondi**, `notify.DefaultEmailWindow`), le altre per la stessa issue ereditano lo stesso orario e partono nella stessa email. `EmailDispatcher` (`internal/notify/email.go`) gira in una goroutine a parte, con connessioni sue: prende le righe dovute, le raggruppa per utente e issue, risolve email e tipo in identity (`POST /internal/users/lookup-ids`, che ora restituisce anche `email`, se c'è) e manda un messaggio per gruppo con `internal/mailer`. **Nessuna email agli agenti**, a chi non ha un indirizzo, né a chi ha già letto o archiviato la notifica prima dell'invio (la coda si svuota senza inviare). Un advisory lock fra le repliche evita invii doppi.
+
+**Errori.** Un invio fallito si ritenta con attesa crescente (1 minuto, 2) per al massimo 3 tentativi (`email_attempts`, migrazione `0011`); all'ultimo la notifica resta solo in-app (`email_failed_at`) e si scrive un log di errore. Se identity non risponde i tentativi non si consumano. L'SMTP non è mai nella transazione del motore: un server lento o giù non blocca né ritarda le notifiche in-app.
+
+**Messaggio.** Testo UTF-8 (quoted-printable), oggetto `[owner/repo] titolo (#n)`, una riga per aggiornamento, link a `GITSTACK_CORE_PUBLIC_URL/owner/repo/issues/n`, `Auto-Submitted: auto-generated`, nessun `Reply-To`: non si risponde via email. L'oggetto non può iniettare intestazioni.
+
+Test: `internal/mailer/mailer_test.go` e `internal/config/config_smtp_test.go` (senza Docker, con il server SMTP finto `internal/mailer/mailertest`); d'integrazione `internal/httpserver/notifications_email_integration_test.go` e `internal/migrate/notifier_integration_test.go#TestMigration0011_SaleEScende`.

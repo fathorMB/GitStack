@@ -21,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
+	"github.com/fathorMB/GitStack/services/core/internal/mailer"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 	"github.com/fathorMB/GitStack/services/core/internal/notify"
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
@@ -188,6 +189,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		routerOpts = append(routerOpts, httpserver.WithGit(gitAPI))
 	}
 	routerOpts = append(routerOpts,
+		httpserver.WithEmail(cfg.SMTP.Enabled()),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort, SSHOff: !cfg.SSHEnabled}),
 	)
 	var disk *attachments.Disk
@@ -214,7 +216,24 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// lette (C9). Serve identity per sapere chi vede il repo (I8): senza,
 	// nessuna notifica (mai una notifica a chi potrebbe non leggere il repo).
 	if id, ok := repoLookup.(notify.Identity); ok {
-		go (&notify.Engine{Pool: pool, Identity: id, Log: logger}).Run(ctx)
+		eng := &notify.Engine{Pool: pool, Identity: id, Log: logger}
+		// Email delle notifiche (M-06/F, C5): solo con un SMTP configurato.
+		// Senza, EmailWindow resta 0: nessuna notifica entra nella coda delle
+		// email e nessun invio viene tentato; restano le notifiche in-app.
+		if cfg.SMTP.Enabled() {
+			users, uok := repoLookup.(notify.Users)
+			if !uok {
+				logger.Warn("identity non supporta la ricerca degli utenti: le email non partono")
+			} else {
+				eng.EmailWindow = notify.DefaultEmailWindow
+				go (&notify.EmailDispatcher{Pool: pool, Users: users, Mail: &mailer.Mailer{Cfg: cfg.SMTP},
+					PublicURL: cfg.PublicURL, Log: logger}).Run(ctx)
+				logger.Info("email delle notifiche attive", "smtp_host", cfg.SMTP.Host, "smtp_port", cfg.SMTP.Port, "security", string(cfg.SMTP.Security), "window", notify.DefaultEmailWindow.String())
+			}
+		} else {
+			logger.Info("SMTP non configurato: solo notifiche in-app")
+		}
+		go eng.Run(ctx)
 	} else {
 		logger.Warn("identity non configurata: il motore delle notifiche non parte")
 	}
