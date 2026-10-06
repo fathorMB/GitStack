@@ -21,6 +21,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # check-internal-versions risolve gli hash delle pseudo-versioni (GIT-182).
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -53,6 +56,11 @@ jobs:
       # golangci-lint non controlla gofmt (GIT-119).
       - name: gofmt (file .go committati)
         run: go run scripts/check-gofmt.go
+
+      # Le immagini costruiscono ogni servizio fuori dal workspace: i require
+      # interni (pkg/*, client/go) devono puntare al contenuto del workspace (GIT-182).
+      - name: require interni allineati al workspace
+        run: go run scripts/check-internal-versions.go
 
       - name: go test -race (per modulo)
         run: bash scripts/go-each.sh go test ./... -race
@@ -834,6 +842,47 @@ jobs:
             kubectl logs deployment/gitstack-identity --tail=50 || true
             exit 1
           }
+
+      # GIT-182: smoke sull'immagine vera di core. Un repo con maiuscole
+      # (`GitStack`) deve nascere con 201 e name conservato (R11, GIT-178): se
+      # le immagini costruite fuori dal workspace usano un pkg/names vecchio,
+      # core risponde 4xx "repository name may only contain lowercase...".
+      # L'admin deve cambiare la password prima di ogni altra chiamata: la
+      # cambia, crea il repo e rimette quella iniziale del Secret, così i passi
+      # successivi (smoke UI) trovano lo stato di prima.
+      - name: Smoke - crea un repo con maiuscole tramite l'Ingress (GIT-182)
+        run: |
+          set -euo pipefail
+          prefix=$(sed -n "s/^export const API_BASE_URL = '\([^']*\)';.*$/\1/p" web/src/lib/http.ts)
+          base="http://localhost:8080${prefix}"
+          jar=$(mktemp)
+          trap 'rm -f "$jar"' EXIT
+          pw=$(kubectl get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d)
+          tmp="smoke-$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"
+          code=$(jq -n --arg p "$pw" '{username: "admin", password: $p}' \
+            | curl -s -o /tmp/smoke-login.body -w '%{http_code}' -c "$jar" -X POST -H 'content-type: application/json' -d @- "${base}/auth/login" || true)
+          if [ "$code" != "200" ]; then
+            echo "FALLITO: login admin: status ${code}, corpo '$(head -c 200 /tmp/smoke-login.body)'" >&2
+            exit 1
+          fi
+          change() {
+            code=$(jq -n --arg c "$1" --arg n "$2" '{currentPassword: $c, newPassword: $n}' \
+              | curl -s -o /tmp/smoke-pw.body -w '%{http_code}' -b "$jar" -c "$jar" -X PUT -H 'content-type: application/json' -d @- "${base}/users/admin/password" || true)
+            if [ "$code" != "204" ]; then
+              echo "FALLITO: cambio password: status ${code}, corpo '$(head -c 200 /tmp/smoke-pw.body)'" >&2
+              exit 1
+            fi
+          }
+          change "$pw" "$tmp"
+          code=$(curl -s -o /tmp/smoke-repo.body -w '%{http_code}' -b "$jar" -X POST -H 'content-type: application/json' \
+            -d '{"owner":"admin","name":"GitStack"}' "${base}/repos" || true)
+          change "$tmp" "$pw"
+          if [ "$code" != "201" ] || ! jq -e '.name == "GitStack"' /tmp/smoke-repo.body >/dev/null; then
+            echo "FALLITO: POST ${prefix}/repos name=GitStack: status ${code} (atteso 201, name GitStack), corpo '$(head -c 300 /tmp/smoke-repo.body)'" >&2
+            kubectl logs deployment/gitstack-core --tail=50 || true
+            exit 1
+          fi
+          echo "OK: repo GitStack creato (201) con le maiuscole conservate"
 
       # GIT-152: smoke della UI nel browser (Chromium headless) attraverso
       # l'Ingress: /login, login admin con la password iniziale del Secret (la

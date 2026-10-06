@@ -91,6 +91,38 @@ Dopo aver aggiunto un modulo al workspace o cambiato una dipendenza, lancia
 non solo quelli del modulo toccato. Dettagli: `api/README.md`,
 `client/README.md`.
 
+## Cambiare un pkg/* o client/go
+
+Le immagini dei servizi si costruiscono fuori dal workspace (`GOWORK=off`,
+vedi i `Dockerfile`): un servizio prende `pkg/*` e `client/go` dalla
+pseudo-versione scritta nel suo `go.mod`, non dalla cartella locale. In CI e
+nei test il workspace nasconde un disallineamento (GIT-182: GIT-178 aveva
+cambiato `pkg/names` senza bump e non era attivo nell'immagine di core).
+Per questo un item che cambia un `pkg/*` (o `client/go`) fa **due commit**:
+
+1. il primo cambia il pacchetto (e solo quello);
+2. il secondo porta i `go.mod` che lo richiedono alla pseudo-versione del
+   primo, per ogni modulo con un `require` su quel pacchetto:
+
+   ```sh
+   cd services/core   # e gli altri moduli che lo richiedono
+   GOWORK=off go get github.com/fathorMB/GitStack/pkg/names@<hash del primo commit>
+   GOWORK=off go mod tidy
+   cd ../.. && go work sync && ./scripts/check-api-generated.sh
+   ```
+
+   Il commit del primo passo deve essere già su GitHub quando si fa `go get`
+   (il bump si può quindi fare davvero solo dopo il reintegro del primo, oppure
+   in un secondo item). Dopo un rebase gli hash cambiano: rifai il bump.
+   Il reintegro conserva i commit dell'item (merge, non squash).
+
+Il controllo è `go run scripts/check-internal-versions.go` (check
+`go-internal-versions` in `.galaxylab/checks.toml` e step del job Go di
+`ci.yml`, con `fetch-depth: 0`): per ogni `require` interno di ogni modulo di
+`go.work` confronta la cartella del modulo al commit della pseudo-versione con
+`HEAD`, e fallisce con il comando per correggere. Il job Chart (k3d) crea
+inoltre il repo `GitStack` attraverso l'Ingress, con l'immagine vera di core.
+
 ## CI
 
 `.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-24.04`) gira su

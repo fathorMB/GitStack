@@ -195,3 +195,12 @@ name = "go-standalone-build"
 run = "go run scripts/check-standalone-build.go"
 timeout_s = 600
 paths = ["services/*/go.mod", "services/*/go.sum", "services/**/*.go", "pkg/**", "go.work", "go.work.sum", "scripts/check-standalone-build.go"]
+
+[[check]]
+name = "go-internal-versions"
+# I require interni (pkg/*, client/go) di ogni modulo devono puntare a una
+# pseudo-versione con lo stesso contenuto del workspace: le immagini si
+# costruiscono fuori dal workspace e altrimenti prendono codice vecchio (GIT-182).
+run = "go run scripts/check-internal-versions.go"
+timeout_s = 300
+paths = ["**/go.mod", "pkg/**", "client/go/**", "api/**", "go.work", "scripts/check-internal-versions.go"]
