@@ -1,0 +1,18 @@
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled .Values.ingress.tls.secretName -}}
+# N5 (GIT-143): certificato di default di Traefik = quello dell'installer.
+# Chi apre https://<IP>/ non manda SNI (RFC 6066): Traefik allora confronta i
+# certificati con l'indirizzo locale della connessione, che con ServiceLB (DNAT)
+# e' l'IP del pod Traefik e non quello della macchina, quindi non trova niente
+# e servirebbe il suo "TRAEFIK DEFAULT CERT". Con questo TLSStore il certificato
+# del Secret vale per qualsiasi nome o IP. Il Secret sta nello stesso namespace
+# del TLSStore. Con certResolver (Let's Encrypt) non serve e non si crea.
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  defaultCertificate:
+    secretName: {{ .Values.ingress.tls.secretName }}
+{{- end }}

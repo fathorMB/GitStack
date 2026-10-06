@@ -75,6 +75,10 @@ Questa modalità è documentata e implementata ma non è stata provata con un'em
 
 Solo per prove locali: nessun TLS, nessun redirect, URL pubblici `http://`. La UI mostra in cima un avviso («Connessione non protetta») quando la pagina è servita in HTTP su un host non locale (`localhost`, `127.x`, `::1` non lo fanno scattare). Il cookie di sessione è `Secure` solo se il gateway sa che la richiesta è arrivata in HTTPS (vedi sotto).
 
+## Accesso per IP: TLSStore di default
+
+Un client che apre `https://<IP>/` non manda SNI (RFC 6066). In quel caso Traefik confronta i certificati con l'indirizzo locale della connessione, che su k3s con ServiceLB (DNAT) è l'IP del pod Traefik (10.42.x.y) e non quello della macchina: non trova niente e serve il suo «TRAEFIK DEFAULT CERT», rifiutato dai client. Per questo il chart crea (con `ingress.tls.secretName`) un `TLSStore` chiamato `default` nel namespace della release, con `defaultCertificate.secretName` = il Secret dell'installer: il certificato vale per qualsiasi nome e IP. Con Let's Encrypt (`certResolver`) non serve e non si crea. Verifica sul server: `openssl s_client -connect <IP>:443 </dev/null 2>/dev/null | openssl x509 -noout -issuer` deve dare `O = GitStack` (senza `-servername`).
+
 ## Header `X-Forwarded-Proto`
 
 In HTTPS Traefik termina il TLS e inoltra al gateway e a identity con `X-Forwarded-Proto: https` (lo imposta da solo in base alla connessione reale, e non si fida di quello inviato dal client perché l'entrypoint non ha `forwardedHeaders.trustedIPs`). Gateway e identity si fidano di questo header solo da peer nella rete dei pod (`GITSTACK_GATEWAY_TRUSTED_PROXIES`, `GITSTACK_IDENTITY_TRUSTED_PROXIES`, default `10.42.0.0/16`): è la condizione perché il cookie di sessione esca `Secure`.

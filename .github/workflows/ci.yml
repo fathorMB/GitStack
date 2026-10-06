@@ -441,13 +441,19 @@ jobs:
           grep -q 'redirectScheme' /tmp/tls-internal.yaml
           grep -q 'router.entrypoints: websecure' /tmp/tls-internal.yaml
           grep -q 'Path(`/downloads/ca.crt`)' /tmp/tls-internal.yaml
-          helm template gitstack deploy/gitstack --set ingress.tls.enabled=true --set ingress.tls.certResolver=letsencrypt | grep -q 'certResolver: "letsencrypt"'
+          # TLSStore di default: il certificato dell'installer vale anche per chi si collega per IP (senza SNI).
+          grep -q 'kind: TLSStore' /tmp/tls-internal.yaml
+          awk '/kind: TLSStore/{f=1} f&&/name: default/{n=1} f&&/secretName: gitstack-tls/{s=1} END{exit !(n&&s)}' /tmp/tls-internal.yaml
+          helm template gitstack deploy/gitstack --set ingress.tls.enabled=true --set ingress.tls.certResolver=letsencrypt > /tmp/tls-le.yaml
+          grep -q 'certResolver: "letsencrypt"' /tmp/tls-le.yaml
+          if grep -q 'kind: TLSStore' /tmp/tls-le.yaml; then echo "con certResolver il TLSStore non va creato" >&2; exit 1; fi
           if helm template gitstack deploy/gitstack --set ingress.tls.enabled=true >/dev/null 2>&1; then
             echo "tls.enabled senza secretName né certResolver doveva fallire" >&2
             exit 1
           fi
-          if helm template gitstack deploy/gitstack | grep -q 'redirectScheme'; then
-            echo "il default del chart deve restare HTTP, senza redirect" >&2
+          helm template gitstack deploy/gitstack > /tmp/tls-default.yaml
+          if grep -q 'redirectScheme' /tmp/tls-default.yaml || grep -q 'kind: TLSStore' /tmp/tls-default.yaml; then
+            echo "il default del chart deve restare HTTP, senza redirect né TLSStore" >&2
             exit 1
           fi
 
