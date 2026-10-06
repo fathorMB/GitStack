@@ -472,3 +472,33 @@ func TestRilevamentoAgenti(t *testing.T) {
 		t.Errorf("file: %v", got)
 	}
 }
+
+// TestPacchettoVero comprime la vera cartella skills/ come fa
+// scripts/build-gs-dist.sh (percorsi relativi, README e LICENSE in radice) e
+// controlla che il pacchetto si legga: 5 skills, ognuna con SKILL.md.
+func TestPacchettoVero(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..", "skills")
+	files := map[string]string{}
+	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, p)
+		files[filepath.ToSlash(rel)] = string(b)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := unzipSkills(makeZip(t, files))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(b.Names) != 5 {
+		t.Errorf("skills: %v", b.Names)
+	}
+}
