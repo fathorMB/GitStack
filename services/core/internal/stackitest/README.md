@@ -84,6 +84,26 @@ B1–B7 di `.prisma/knowledge/topics/browser-codice.md` (tabella regole→test i
 | `permessi` | per ogni lettura: proprietario 200; utente senza permesso su repo privato 404 identico a un repo inesistente; senza credenziali 401 (anche sul repo interno: raw e archivi compresi); token senza `read:resource` 403; repo interno letto da un altro utente; sessione web accettata, token inventato 401. Ogni caso negativo controlla che il corpo non porti nome o id del repo, nomi di file, contenuto, sha (interi e abbreviati), autori |
 | `ui_smoke` | Vitest + Testing Library + jsdom (`web/src/smoke`, lo strumento del resto di web/) contro questo stack: le pagine 07 (albero e README), 08 (file), 22 (blame), 09 (storico), 10 (dettaglio commit), 23 (Tags: v1.0 col messaggio, v0.1 leggero) e i risultati di Search code (needle unica, via `VITE_SMOKE_NEEDLE`) si caricano senza chiamate fallite né `console.error`. Senza node o senza `web/node_modules` è saltato; in CI (`GITSTACK_REQUIRE_UI_SMOKE=1`) è un errore |
 
+## Issues (`issues_e2e_integration_test.go`, `TestIssuesE2E`, GIT-113)
+
+Stesso stack di `TestGitClientReale` (`newGitEnv`, con in più il volume degli allegati), solo via API del
+gateway. Utenti: `alice` (admin), `bob` (write), `carol` (read sul repo interno, nessun grant sul privato),
+`dave` (read sul privato), `botty` (agente con write). Repo `iss-int` (internal) e `iss-priv` (private).
+Ogni caso negativo controlla che il corpo non porti titolo, testo, etichetta, nome file, nome o id del repo privato (`issueLeak`).
+
+| Sottotest | Cosa prova |
+| --- | --- |
+| `ciclo_di_vita` | I1, I3–I7: apertura con solo read, commenti, etichette predefinite e nuova, milestone con avanzamento, assegnazione a un agente, modifica del titolo solo dell'autore, cronologia, versioni solo admin |
+| `chiusura_con_ogni_motivo_e_riapertura` | I2: completed, not_planned, duplicate; doppia chiusura e doppia riapertura 409, motivo incoerente 422; filtro per stato |
+| `issue_non_eliminabili_I4` | nessuna rotta DELETE sulla issue, che resta leggibile |
+| `permessi_I3` | read, write e admin su repo interno e privato; 404 identico a un repo inesistente per chi non lo legge, su ogni rotta; 401 senza credenziali; token di sola lettura |
+| `blocco_I11` | blocco solo admin, commenta solo chi ha write, idempotenza, sblocco |
+| `issue_nascosta_I4` | nascosta: 404 per chi non è admin su ogni rotta, assente da elenco e ricerca (repo e globale) |
+| `allegati_I9` | upload e download con sessione o token, mai anonimi; tipo dai byte; limite di dimensione; repo privato e issue nascosta: 404 senza nome file |
+| `modelli_I11` | modelli letti dal repo (push con git vero), 404 sul privato, nessuna rotta di trasferimento |
+| `ricerca_I10` | qualificatori nel repo e globali; il repo privato non trapela né nel testo, né nelle etichette, né nel `total`; testo malizioso trattato come testo |
+| `repo_archiviato_R10` | lettura sì, ogni scrittura 409 `archived` (incluso l'upload), riattivato si scrive di nuovo |
+| `ui_smoke` | `web/src/smoke/issues.smoke.test.tsx`: pagine 12 (lista), 13 (dettaglio) e 20 (nuova issue) con le rotte vere di App.tsx contro il gateway; come per il browser del codice, `GITSTACK_REQUIRE_UI_SMOKE=1` fa fallire invece di saltare |
 
 ## VM di test
 
