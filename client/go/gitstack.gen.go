@@ -2078,18 +2078,21 @@ type IssueSubscriptionReason string
 
 // IssueSummary Issue negli elenchi: senza testo.
 type IssueSummary struct {
-	Assignees    []IssueUser        `json:"assignees"`
-	Author       IssueUser          `json:"author"`
-	CloseReason  *IssueCloseReason  `json:"closeReason,omitempty"`
-	CommentCount int                `json:"commentCount"`
-	CreatedAt    time.Time          `json:"createdAt"`
-	Labels       []IssueLabelRef    `json:"labels"`
-	Locked       *bool              `json:"locked,omitempty"`
-	Milestone    *IssueMilestoneRef `json:"milestone,omitempty"`
-	Number       int64              `json:"number"`
-	State        IssueState         `json:"state"`
-	Title        string             `json:"title"`
-	UpdatedAt    time.Time          `json:"updatedAt"`
+	Assignees    []IssueUser       `json:"assignees"`
+	Author       IssueUser         `json:"author"`
+	CloseReason  *IssueCloseReason `json:"closeReason,omitempty"`
+	CommentCount int               `json:"commentCount"`
+	CreatedAt    time.Time         `json:"createdAt"`
+	Labels       []IssueLabelRef   `json:"labels"`
+
+	// LinkedCommitCount Commit distinti collegati (commit_linked, closed_by_commit) che il chiamante può vedere.
+	LinkedCommitCount int                `json:"linkedCommitCount"`
+	Locked            *bool              `json:"locked,omitempty"`
+	Milestone         *IssueMilestoneRef `json:"milestone,omitempty"`
+	Number            int64              `json:"number"`
+	State             IssueState         `json:"state"`
+	Title             string             `json:"title"`
+	UpdatedAt         time.Time          `json:"updatedAt"`
 }
 
 // IssueTemplate defines model for IssueTemplate.

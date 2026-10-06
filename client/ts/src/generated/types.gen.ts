@@ -1142,6 +1142,10 @@ export type IssueSummary = {
     milestone?: IssueMilestoneRef | null;
     locked?: boolean;
     commentCount: number;
+    /**
+     * Commit distinti collegati (commit_linked, closed_by_commit) che il chiamante può vedere.
+     */
+    linkedCommitCount: number;
     createdAt: string;
     updatedAt: string;
 };
