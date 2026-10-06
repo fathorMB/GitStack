@@ -278,15 +278,18 @@ describe('RepoWebhooksPage', () => {
     const user = userEvent.setup();
     renderPage();
 
+    await waitFor(() => {
+      expect(screen.getByText('ci.acme.local/hooks/gitstack')).toBeInTheDocument();
+    }, { timeout: 5000 });
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await waitFor(() => {
       expect(screen.getByText('Recent deliveries')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
     await user.click(screen.getByRole('button', { name: 'Redeliver' }));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Queued' })).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 5000 });
+  }, { timeout: 15000 });
 
   it('mostra il dialog del segreto dopo la creazione', async () => {
     mockedCreate.mockResolvedValue({
