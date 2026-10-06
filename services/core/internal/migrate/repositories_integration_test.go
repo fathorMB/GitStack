@@ -69,12 +69,12 @@ func TestRepositories_Vincoli(t *testing.T) {
 	err = insertRepo(pool, newResource(t, pool, "repo", "alice/app3"), alice, "app")
 	wantCode(t, err, "23505")
 
-	// R11: maiuscole, '.git', iniziale '.', lunghezza.
-	for _, bad := range []string{"Repo", "x.git", ".hidden", "", "a b", repeat("a", 101)} {
+	// R11 (rivista da GIT-178): '.git' in qualsiasi maiuscola, iniziale '.', lunghezza.
+	for _, bad := range []string{"x.git", "x.GIT", "X.Git", ".hidden", "", "a b", "caffè", repeat("a", 101)} {
 		err := insertRepo(pool, newResource(t, pool, "repo", "bad/"+uuid.NewString()), alice, bad)
 		wantCode(t, err, "23514")
 	}
-	for _, ok := range []string{"_x", "-x", "a.b_c-d", repeat("a", 100), "x.github"} {
+	for _, ok := range []string{"_x", "-x", "a.b_c-d", repeat("a", 100), "x.github", "Repo", "GitStack", "A1"} {
 		if err := insertRepo(pool, newResource(t, pool, "repo", "ok/"+uuid.NewString()), alice, ok); err != nil {
 			t.Fatalf("nome %q dovrebbe essere ammesso: %v", ok, err)
 		}
@@ -151,7 +151,7 @@ func TestMigration0002_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 11); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 12); err != nil {
 		t.Fatalf("down 0002: %v", err)
 	}
 	for _, tbl := range []string{"repositories", "repo_counters", "pull_requests"} {
@@ -188,7 +188,7 @@ func TestMigration0003_OwnerNameSaleEScende(t *testing.T) {
 	if !hasCol() {
 		t.Fatal("owner_name dovrebbe esistere dopo le migrazioni")
 	}
-	if err := migrate.Down(ctx, pool, dsn, 10); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 11); err != nil {
 		t.Fatalf("down 0003: %v", err)
 	}
 	if hasCol() {

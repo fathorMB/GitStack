@@ -158,7 +158,7 @@ func inboxWhere(sc inboxScope, f inboxFilter) (string, []any) {
 	}
 	if f.hasRepo {
 		args = append(args, f.repoOwner, f.repoName)
-		where += fmt.Sprintf(" AND r.owner_name = $%d AND r.name = $%d", len(args)-1, len(args))
+		where += fmt.Sprintf(" AND lower(r.owner_name) = lower($%d) AND lower(r.name) = lower($%d)", len(args)-1, len(args))
 	}
 	return where, args
 }

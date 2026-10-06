@@ -102,7 +102,10 @@ describe('validateRepoName (R11)', () => {
     ['billing-service', ''],
     ['_x.y-1', ''],
     ['', 'Enter a name.'],
-    ['Repo', 'Start'],
+    ['GitStack', ''],
+    ['GITSTACK', ''],
+    ['Repo.GIT', '.git'],
+    ['.Repo', 'Start'],
     ['a'.repeat(101), 'at most 100'],
     ['a b', 'Use only'],
     ['x.git', '.git'],
@@ -206,6 +209,15 @@ describe('RepoPage', () => {
     await u.click(within(box).getByRole('button', { name: 'Copy' }));
     expect(await within(box).findByText('Copied')).toBeInTheDocument();
     expect(box.textContent).toContain('gs repo clone acme/api-gateway');
+  });
+
+  it('R11: un indirizzo con altre maiuscole porta alla forma canonica del nome', async () => {
+    vi.mocked(fetchRepo).mockResolvedValue(
+      repo({ empty: true, name: 'GitStack', fullName: 'acme/GitStack' }),
+    );
+    renderAt('/acme/gitstack');
+    expect(await screen.findByRole('heading', { level: 1, name: /GitStack/ })).toBeInTheDocument();
+    await waitFor(() => expect(fetchRepo).toHaveBeenLastCalledWith('acme', 'GitStack'));
   });
 
   it('repo non vuoto: niente quick setup, parte il browser del codice', async () => {

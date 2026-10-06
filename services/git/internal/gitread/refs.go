@@ -164,7 +164,7 @@ type Archive struct {
 	dir    string
 }
 
-var repoNameRE = regexp.MustCompile(`^[a-z0-9_-][a-z0-9._-]{0,99}$`)
+var repoNameRE = regexp.MustCompile(`^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$`)
 
 var slugRE = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
 
@@ -186,7 +186,7 @@ func (s *Service) PrepareArchive(ctx context.Context, repoID, ref, format, name 
 	default:
 		return nil, fmt.Errorf("%w: format", ErrInvalidInput)
 	}
-	if !repoNameRE.MatchString(name) || strings.HasSuffix(name, ".git") {
+	if !repoNameRE.MatchString(name) || strings.HasSuffix(strings.ToLower(name), ".git") {
 		return nil, fmt.Errorf("%w: name", ErrInvalidInput)
 	}
 	sha, err := gitref.Resolve(ctx, s.run, dir, ref)

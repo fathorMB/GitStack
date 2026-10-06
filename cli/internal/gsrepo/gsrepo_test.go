@@ -21,6 +21,9 @@ func TestParseRemote(t *testing.T) {
 		{"ssh://git@git.acme.test/acme/api.git", Remote{"git.acme.test", "acme", "api"}},
 		{"ssh://git@git.acme.test:2222/acme/api.git", Remote{"git.acme.test", "acme", "api"}},
 		{"ssh://git@GIT.Acme.test:2222/acme/my.repo.git\n", Remote{"git.acme.test", "acme", "my.repo"}},
+		// R11: le maiuscole del nome del repo si conservano come scritte.
+		{"https://git.acme.test/acme/GitStack.git", Remote{"git.acme.test", "acme", "GitStack"}},
+		{"ssh://git@git.acme.test:2222/acme/GITSTACK.git", Remote{"git.acme.test", "acme", "GITSTACK"}},
 	}
 	for _, c := range cases {
 		got, err := ParseRemote(c.in)
@@ -73,6 +76,10 @@ func TestOriginRemote(t *testing.T) {
 func TestParseRepoFlag(t *testing.T) {
 	o, r, err := ParseRepoFlag(" acme/api ")
 	if err != nil || o != "acme" || r != "api" {
+		t.Fatalf("%s/%s %v", o, r, err)
+	}
+	// R11: --repo conserva le maiuscole del nome.
+	if o, r, err := ParseRepoFlag("acme/GitStack"); err != nil || o != "acme" || r != "GitStack" {
 		t.Fatalf("%s/%s %v", o, r, err)
 	}
 	for _, in := range []string{"", "acme", "a/b/c", "/b"} {

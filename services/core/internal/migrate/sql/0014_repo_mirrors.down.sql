@@ -1,4 +1,4 @@
--- Rollback di 0013: via i mirror e le loro notifiche.
+-- Rollback di 0014: via i mirror e le loro notifiche.
 DELETE FROM core.notifications WHERE reason = 'mirror';
 DELETE FROM core.notification_preferences WHERE reason = 'mirror';
 ALTER TABLE core.notifications DROP CONSTRAINT IF EXISTS notifications_mirror_matches_reason;

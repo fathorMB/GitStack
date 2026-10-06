@@ -11,11 +11,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// 0013 (GIT-179): mirror in push. Vincoli (stato, unicità di repo+url, token
+// 0014 (GIT-179): mirror in push. Vincoli (stato, unicità di repo+url, token
 // cifrato obbligatorio), notifica `mirror` legata al mirror, cascata
 // dall'eliminazione del repo e down che toglie tutto (anche le notifiche
 // `mirror` e il vincolo sui motivi) prima di un nuovo up.
-func TestMigration0013_SaleEScende(t *testing.T) {
+func TestMigration0014_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
@@ -90,7 +90,7 @@ func TestMigration0013_SaleEScende(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("down 0013: %v", err)
+		t.Fatalf("down 0014: %v", err)
 	}
 	for _, tbl := range []string{"repo_mirrors", "repo_mirror_runs"} {
 		if tableExists(t, pool, tbl) {
