@@ -31,7 +31,29 @@ COPY web web
 WORKDIR /src/web
 RUN pnpm run build
 
-# --- Stage 2: runtime -------------------------------------------------------
+# --- Stage 2: binari di gs e skills (GIT-171, G6) ------------------------
+# I 6 binari (linux/darwin/windows x amd64/arm64), SHA256SUMS, gs-skills.zip e
+# index.json si costruiscono qui, con lo stesso script del job CI
+# gs-binaries (scripts/build-gs-dist.sh): l'istanza li serve su /downloads
+# senza internet a runtime. Serve il workspace Go (go.work e i suoi moduli):
+# cli dipende da client/go e dai pkg/* in locale.
+FROM golang:1.26-alpine AS gs
+RUN apk add --no-cache bash zip
+WORKDIR /src
+COPY go.work go.work.sum ./
+COPY admin admin
+COPY api api
+COPY cli cli
+COPY client client
+COPY pkg pkg
+COPY services services
+COPY skills skills
+COPY scripts/build-gs-dist.sh scripts/build-gs-dist.sh
+# Versione di gs = tag immagine (sha-<commit>), passata dal job registry.
+ARG VERSION=dev
+RUN bash scripts/build-gs-dist.sh /out "${VERSION}"
+
+# --- Stage 3: runtime -------------------------------------------------------
 # Immagine nginx ufficiale già pensata per girare senza privilegi
 # (nginxinc/nginx-unprivileged: utente "nginx", porta >1024, nessuna
 # directory che richieda root in scrittura): stesso principio dei binari
@@ -40,6 +62,15 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine
 
 COPY web/deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/web/dist /usr/share/nginx/html
+
+# /downloads: binari, checksum e skills; index.json fuori dalla cartella
+# (lo copia in /tmp l'entrypoint, che vi aggiunge ca_cert se l'istanza ha una
+# CA interna). Gli script di installazione stanno nella radice: l'nginx vi
+# scrive l'indirizzo dell'istanza (vedi nginx.conf.template).
+COPY --from=gs /out/gs_* /out/SHA256SUMS /out/gs-skills.zip /usr/share/nginx/html/downloads/
+COPY --from=gs /out/index.json /usr/share/gitstack/downloads-index.json
+COPY web/deploy/install-gs.sh web/deploy/install-gs.ps1 /usr/share/nginx/html/
+COPY --chmod=755 web/deploy/30-gs-index.sh /docker-entrypoint.d/30-gs-index.sh
 
 # Sovrascritto dal chart Helm di GIT-8 con l'indirizzo del Service k3s del
 # gateway; qui solo un default utile per `docker run` locale.

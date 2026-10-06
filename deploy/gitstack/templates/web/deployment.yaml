@@ -54,7 +54,7 @@ spec:
             # (N5). Montato come cartella intera, non con subPath: un rinnovo
             # del ConfigMap arriva al pod senza riavvio.
             - name: ca
-              mountPath: /usr/share/nginx/html/downloads
+              mountPath: /etc/gitstack/ca
               readOnly: true
           {{- end }}
           resources:

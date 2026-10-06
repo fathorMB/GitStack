@@ -210,12 +210,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/test-vm/e2e/remote.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/test-vm/e2e/remote.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
       - name: test del preflight
         run: ./deploy/tests/preflight_test.sh
+
+      # GIT-171: install-gs.sh e install-gs.ps1 verificano lo SHA-256 e
+      # falliscono se non coincide (server finto locale, nessuna istanza).
+      - name: test di install-gs.sh (checksum)
+        run: ./deploy/tests/install_gs_test.sh
+
+      - name: test di install-gs.ps1 (parser e checksum)
+        shell: pwsh
+        run: ./deploy/tests/install-gs.Tests.ps1
 
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
@@ -277,6 +286,8 @@ jobs:
           - service: web
             context: .
             dockerfile: web/Dockerfile
+            # GIT-171: versione di gs = tag immagine; solo web costruisce gs.
+            build_args: VERSION=sha-${{ github.sha }}
     env:
       # Parametro, non hard-coded nei Dockerfile: così il chart di GIT-8
       # potrà puntare a un mirror (vedi M-08, air-gapped).
@@ -335,6 +346,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -391,6 +403,50 @@ jobs:
               --prerelease --target "${GITHUB_SHA}" \
               --title "${IMAGE_TAG}" \
               --notes "Build del commit ${GITHUB_SHA}: comando gitstack per install.sh (non è una release di prodotto)."
+          fi
+
+  # CLI gs (cli/, GIT-171, G6): i 6 binari (linux, darwin, windows x amd64,
+  # arm64) con versione sha-<commit>, SHA256SUMS e gs-skills.zip come asset
+  # della release sha-<commit>, la STESSA delle immagini e di admin-binary
+  # (copia pubblica, G6). Gli stessi byte stanno nell'immagine web, costruita
+  # con lo stesso scripts/build-gs-dist.sh e servita su /downloads. Stesse
+  # condizioni e needs di admin-binary: gira SOLO dopo il merge.
+  gs-binaries:
+    name: gs — build e pubblicazione dei binari
+    needs: [go, ts, security]
+    if: >-
+      !cancelled() && needs.go.result == 'success' && needs.ts.result == 'success'
+      && (needs.security.result == 'success' || needs.security.result == 'skipped')
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+
+      - name: Build dei 6 binari, SHA256SUMS e skills
+        run: ./scripts/build-gs-dist.sh dist-gs "${IMAGE_TAG}"
+
+      - name: Pubblica gli asset nella release sha-<commit>
+        working-directory: dist-gs
+        run: |
+          assets=(gs_* SHA256SUMS gs-skills.zip)
+          if gh release view "${IMAGE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${IMAGE_TAG}" "${assets[@]}" --clobber
+          else
+            gh release create "${IMAGE_TAG}" "${assets[@]}" \
+              --prerelease --target "${GITHUB_SHA}" \
+              --title "${IMAGE_TAG}" \
+              --notes "Build del commit ${GITHUB_SHA}: CLI gs e skills (non è una release di prodotto)."
           fi
 
   # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
@@ -489,6 +545,7 @@ jobs:
           # GIT-152: anche la UI, per lo smoke del browser attraverso l'Ingress
           # (contesto: radice del monorepo, vedi web/Dockerfile).
           docker build -f web/Dockerfile \
+            --build-arg "VERSION=${IMAGE_TAG}" \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-web:${IMAGE_TAG}" \
             .
 
@@ -598,6 +655,33 @@ jobs:
       # GIT-99: l'helm install usa il default di git.ssh.enabled (true, R7):
       # il Service <release>-git-ssh (LoadBalancer, ServiceLB) apre la 2222 sul
       # nodo qualche secondo dopo il Ready, quindi polling con timeout.
+      # GIT-171: /downloads attraversa l'Ingress (web è già Ready): gs
+      # scaricato dall'istanza, checksum da SHA256SUMS e `gs version` col tag
+      # dell'immagine. Pubblico, senza token.
+      - name: Scarica gs da /downloads, verifica il checksum e lancia gs version
+        run: |
+          set -euo pipefail
+          base=http://localhost:8080/downloads
+          d="$(mktemp -d)"
+          curl -fsS "${base}/SHA256SUMS" -o "${d}/SHA256SUMS"
+          curl -fsS "${base}/gs_linux_amd64" -o "${d}/gs_linux_amd64"
+          (cd "${d}" && grep ' gs_linux_amd64$' SHA256SUMS | sha256sum -c -)
+          chmod +x "${d}/gs_linux_amd64"
+          "${d}/gs_linux_amd64" version | tee "${d}/version.txt"
+          grep -F "${IMAGE_TAG}" "${d}/version.txt"
+          # Indice, skills e CA: senza CA interna ca_cert è null e ca.crt dà 404.
+          curl -fsS "${base}/index.json" | grep -F "\"version\":\"${IMAGE_TAG}\"" | grep -F '"ca_cert":null'
+          curl -fsS "${base}/gs-skills.zip" -o "${d}/gs-skills.zip"
+          (cd "${d}" && grep ' gs-skills.zip$' SHA256SUMS | sha256sum -c -)
+          code=$(curl -s -o /dev/null -w '%{http_code}' "${base}/ca.crt")
+          [ "${code}" = 404 ] || { echo "ca.crt: atteso 404, ricevuto ${code}"; exit 1; }
+          # install-gs.sh servito con l'indirizzo dell'istanza, e installa gs.
+          curl -fsS http://localhost:8080/install-gs.sh -o "${d}/install-gs.sh"
+          grep -F 'http://localhost:8080' "${d}/install-gs.sh"
+          if grep -F '__GS_BASE_URL__' "${d}/install-gs.sh"; then exit 1; fi
+          GS_INSTALL_DIR="${d}/bin" sh "${d}/install-gs.sh"
+          "${d}/bin/gs" version | grep -F "${IMAGE_TAG}"
+
       - name: Verifica che il server SSH di git risponda sulla porta 2222 (ssh-keyscan)
         run: |
           set -euo pipefail
