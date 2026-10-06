@@ -560,7 +560,7 @@ func (o *Options) apply(ctx context.Context, t *Target, st *state, newChart, cha
 }
 
 func tail(s string) string {
-	s = strings.TrimSpace(s)
+	s = dropHelmNoise(s)
 	if len(s) > 1500 {
 		return "…" + s[len(s)-1500:]
 	}
@@ -693,4 +693,16 @@ func atomicCopy(src, dst string, mode os.FileMode) error {
 		return err
 	}
 	return nil
+}
+
+// dropHelmNoise toglie gli avvisi sul permesso del kubeconfig che helm
+// stampa a ogni comando e che coprono il vero errore.
+func dropHelmNoise(s string) string {
+	var keep []string
+	for _, l := range strings.Split(s, "\n") {
+		if !strings.HasPrefix(l, "WARNING: Kubernetes configuration file is") {
+			keep = append(keep, l)
+		}
+	}
+	return strings.TrimSpace(strings.Join(keep, "\n"))
 }
