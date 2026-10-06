@@ -200,7 +200,7 @@ func (s *Service) env(in Input) []string {
 	env := []string{
 		"GIT_CONFIG_COUNT=1",
 		"GIT_CONFIG_KEY_0=http.extraHeader",
-		"GIT_CONFIG_VALUE_0=Authorization: Basic "+cred,
+		"GIT_CONFIG_VALUE_0=Authorization: Basic " + cred,
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_ASKPASS=",
 		"SSH_ASKPASS=",

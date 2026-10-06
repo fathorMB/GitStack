@@ -227,4 +227,3 @@ func Relevant(p gitpush.Payload) bool {
 	}
 	return false
 }
-

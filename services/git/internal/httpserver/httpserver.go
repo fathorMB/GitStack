@@ -49,8 +49,8 @@ type Deps struct {
 	Reads   *gitread.Service // letture sulla storia (nil = rotte non montate)
 	// Mirror esegue i mirror in push (GIT-179); nil = rotta non montata.
 	Mirror *mirrorpush.Service
-	Secret  string
-	Logger  *slog.Logger
+	Secret string
+	Logger *slog.Logger
 	// Git, se non nil, serve lo smart HTTP su /<owner>/<repo>.git/...
 	Git http.Handler
 	// Now è iniettabile per i test (nil = time.Now).
