@@ -406,3 +406,11 @@ ul.list{margin:0;padding:0;list-style:none}
 @media (max-width:900px){.issue-grid{grid-template-columns:1fr}}
 .notif .list-row{align-items:flex-start}
 .notif .unread{box-shadow:inset 3px 0 0 var(--accent)}
+.public-page{min-height:100vh;background:var(--bg)}
+.public-page .topbar{padding:0 20px}
+.downloads-page{max-width:980px;margin:0 auto;padding:24px 20px}
+.downloads-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.downloads-grid .card{min-width:0}
+.os-name{width:120px;flex:none}
+.tk-c{color:var(--text-subtle)}
+.scope-warn{margin-bottom:12px}

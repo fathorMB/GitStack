@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { Check, Key, Plus } from 'lucide-react';
+import { AlertTriangle, Check, Key, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { FormEvent } from 'react';
 import {
   Button,
@@ -17,6 +18,7 @@ import {
 import { TOKEN_SCOPES, createPersonalToken, fetchTokens, revokePersonalToken } from '../../lib/accessApi';
 import type { CreatedToken, Token, TokenScope } from '../../lib/accessApi';
 import { describeError } from '../../lib/http';
+import { parseTokenPrefill } from '../../lib/tokenPrefill';
 import { daysFromNow, formatDate, usedText } from '../../lib/format';
 import { useLoad } from '../../lib/useLoad';
 
@@ -30,15 +32,22 @@ const EXPIRATIONS = [
 // Token personali (mockup 14 "Access tokens"): elenco, creazione con scope e
 // scadenza, valore mostrato una sola volta in un dialog (vive solo nello
 // stato del componente: chiuso il dialog non e' piu' recuperabile), revoca.
-export function TokensPage() {
+//
+// Con startCreating (rotta /settings/tokens/new) il modulo si apre gia' compilato
+// dalla query string (name, scopes, expires): l'utente conferma, niente si crea
+// da solo.
+export function TokensPage({ startCreating = false }: { startCreating?: boolean }) {
   const { data, setData, loading, error } = useLoad(fetchTokens);
   const { toast } = useToast();
   const tokens = data ?? [];
+  const [searchParams] = useSearchParams();
+  const [prefill] = useState(() => (startCreating ? parseTokenPrefill(searchParams) : null));
+  const [warnings, setWarnings] = useState<string[]>(prefill?.warnings ?? []);
 
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('');
-  const [days, setDays] = useState('90');
-  const [scopes, setScopes] = useState<TokenScope[]>([]);
+  const [creating, setCreating] = useState(startCreating);
+  const [name, setName] = useState(prefill?.name ?? '');
+  const [days, setDays] = useState(prefill?.days ?? '90');
+  const [scopes, setScopes] = useState<TokenScope[]>(prefill?.scopes ?? []);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<CreatedToken | null>(null);
@@ -52,6 +61,7 @@ export function TokensPage() {
     setDays('90');
     setScopes([]);
     setFormError(null);
+    setWarnings([]);
   }
 
   function toggleScope(scope: TokenScope, on: boolean) {
@@ -124,6 +134,15 @@ export function TokensPage() {
         <form className="card section-gap" onSubmit={(e) => void handleCreate(e)} noValidate aria-label="New token">
           <div className="card-h">New token</div>
           <div className="card-b stack form-stack">
+            {warnings.map((w) => (
+              <div key={w} className="alert alert-warning" role="status">
+                <AlertTriangle size={16} aria-hidden="true" />
+                <div>{w}</div>
+              </div>
+            ))}
+            {prefill && (prefill.name || prefill.scopes.length > 0) ? (
+              <p className="small muted">Suggested by the gs CLI: review the values and confirm.</p>
+            ) : null}
             {formError ? <ErrorAlert message={formError} /> : null}
             <div className="row form-row">
               <div className="grow">
