@@ -73,15 +73,15 @@ Rieseguire `install.sh` è sicuro:
 
 ### A fine installazione
 
-Lo script stampa l'URL della UI (`http://<ip-macchina>/`), l'URL di salute dell'API (`http://<ip-macchina>/api/healthz`) e i comandi per verificare lo stato: `kubectl get pods`, `helm status`, `curl` sull'health endpoint, `journalctl -u k3s`.
+Lo script stampa l'URL della UI (`https://<ip-macchina>/`, o il nome di `--host`), l'URL di salute dell'API (`/api/healthz`), le istruzioni per fidarsi della CA interna con la sua impronta SHA-256 e i comandi per verificare lo stato: `kubectl get pods`, `helm status`, `curl` sull'health endpoint, `journalctl -u k3s`.
 
 ### Comando `gitstack` e configurazione
 
 L'installer scrive `/etc/gitstack/config.yaml` (root-only, `0600`) e installa in `/usr/local/bin/gitstack` il comando di amministrazione (`admin/`, GIT-142) con il checksum SHA-256 verificato (`--admin-binary`, `--admin-sha256`; se non c'è un binario pubblicato lo salta con un avviso). Dopo l'installazione: `sudo gitstack status`. Formato del file, build e codici di uscita: [`../admin/README.md`](../admin/README.md).
 
-### Sicurezza: CA interna, certificati, utente admin
+### Sicurezza: HTTPS, CA interna, utente admin
 
-CA interna e certificati non sono ancora implementati in v0: l'installazione parla HTTP in chiaro sull'IP della macchina. Completamento previsto in M-02/M-08 [c_8458909a21d9035f].
+**HTTPS (N5, GIT-143).** Senza opzioni l'installer crea una CA interna (chiave in `/etc/gitstack/tls/ca.key`, solo root, mai in Kubernetes) e un certificato per il nome dell'host e il suo IP; Traefik serve la 443 e reindirizza la 80. Il certificato della CA si scarica da `/downloads/ca.crt`. Opzioni: `--host NOME|IP` (SAN e URL pubblico, es. `homehub.local`), `--tls letsencrypt` (+ `--tls-email`), `--tls-cert`/`--tls-key` (certificato del cliente), `--insecure-http` (solo prove locali, con avviso nella UI). Il rinnovo del certificato interno è automatico (`gitstack-tls-renew.timer`, ogni notte, a meno di 30 giorni dalla scadenza). Procedura per fidarsi della CA su Linux, macOS e Windows, rinnovo, Let's Encrypt: [`../docs/tls.md`](../docs/tls.md). Lo script `gitstack-tls.sh` (installato in `/usr/local/sbin/gitstack-tls`) fa CA, emissione e rinnovo.
 
 **Utente admin (GIT-35).** Al primo avvio, su un database senza nessun amministratore, `identity` crea l'utente `admin`. La password iniziale la genera il chart una sola volta nel Secret `<release>-identity-admin` (`helm.sh/resource-policy: keep`): l'installer non la stampa mai, mostra solo il comando per leggerla:
 
@@ -93,8 +93,8 @@ Al primo login la password va cambiata: finché non lo fai ogni altra chiamata r
 
 ### Opzioni principali
 
-`install.sh --help` le elenca tutte. Le più usate: `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--values`/`--set` (valori Helm aggiuntivi, es. `postgres.enabled=false` per un Postgres esterno del cliente — vedi `gitstack/README.md`).
+`install.sh --help` le elenca tutte. Le più usate: `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi, es. `postgres.enabled=false` per un Postgres esterno del cliente — vedi `gitstack/README.md`).
 
 ### Verifica in CI
 
-`.github/workflows/ci.yml`, job `shellcheck`: `shellcheck deploy/install.sh` (e gli altri script di shell del repository). Non verifica un'installazione reale (serve un sistema con systemd, non disponibile nei runner container-based): quella si fa sulla VM di `test-vm/` (GIT-12) o su una VM/container Ubuntu 24.04 usa e getta, vedi il riepilogo dell'item GIT-9.
+`.github/workflows/ci.yml`, job `shellcheck`: `shellcheck deploy/install.sh deploy/gitstack-tls.sh` (e gli altri script di shell del repository). Non verifica un'installazione reale (serve un sistema con systemd, non disponibile nei runner container-based): quella si fa sulla VM di `test-vm/` (GIT-12) o su una VM/container Ubuntu 24.04 usa e getta, vedi il riepilogo dell'item GIT-9.

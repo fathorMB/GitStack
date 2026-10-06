@@ -105,6 +105,20 @@ Le richieste smart HTTP (`/<owner>/<repo>.git/info/refs`, `/git-upload-pack`, `/
 
 `ingress.host` è vuoto di default (Traefik risponde su qualsiasi host, comodo senza DNS su un'installazione a IP fisso); impostalo per restringere l'Ingress a un hostname preciso.
 
+## HTTPS (N5, GIT-143)
+
+Il chart parla HTTP di default (job k3d della CI, `helm install` a mano); l'installer (`deploy/install.sh`) accende l'HTTPS con i valori `ingress.tls.*`:
+
+| Valore | Significato |
+|---|---|
+| `ingress.tls.enabled` | UI, API e git solo su `websecure` (443); senza `secretName` né `certResolver` il chart si ferma con un errore |
+| `ingress.tls.secretName` | Secret `kubernetes.io/tls` creato dall'installer (`gitstack-tls`): CA interna o certificato del cliente |
+| `ingress.tls.certResolver` | resolver ACME di Traefik (Let's Encrypt), nessun Secret |
+| `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (308) manda tutto a https (`templates/ingress-redirect.yaml`) |
+| `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/usr/share/nginx/html/downloads`, e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
+
+`core.env.publicUrl` e `identity.oidc.publicUrl` vanno impostati con l'URL https pubblico: l'installer lo fa. I servizi non lo usano per parlarsi (nomi dei Service). Traefik inoltra a gateway e identity con `X-Forwarded-Proto: https`. Dettagli per l'operatore: [`../../docs/tls.md`](../../docs/tls.md).
+
 ## Servizio git (GIT-74)
 
 Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fsGroup: 10001` per l'utente dell'immagine) con il PVC `<release>-git-data` su `/data` e un Service HTTP interno `<release>-git:8080`. Il servizio espone l'API interna chiamata da core e lo smart HTTP di git (GIT-70, sotto): l'SSH (GIT-71) è attivo di default (`git.ssh.enabled`, sotto). Il segreto di servizio è lo stesso di core e identity (`GITSTACK_IDENTITY_SERVICE_SECRET` da `secretKeyRef`). Dopo ogni push accettato (HTTPS o SSH) il servizio pubblica `git.push` sul NATS interno (`GITSTACK_GIT_NATS_URL`, GIT-73, schema in `docs/events.md`); con NATS giù i push restano accettati.

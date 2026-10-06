@@ -427,6 +427,23 @@ ingress:
   # restringere l'Ingress a un nome host preciso.
   host: ""
   annotations: {}
+  # HTTPS (N5, GIT-143). Il default del chart resta HTTP (job k3d della CI, prove
+  # con helm install a mano): l'installer (deploy/install.sh) lo accende da solo,
+  # in tre modi (--tls internal, default; --tls letsencrypt; --tls-cert/--tls-key)
+  # e lo lascia spento solo con --insecure-http. Vedi docs/tls.md.
   tls:
     enabled: false
+    # Secret kubernetes.io/tls (tls.crt/tls.key) con il certificato servito da
+    # Traefik. Lo crea e lo rinnova l'installer (gitstack-tls) e il chart non lo
+    # genera: serve per CA interna e certificato del cliente. Vuoto con certResolver.
     secretName: ""
+    # Resolver ACME di Traefik (--tls letsencrypt): il certificato lo ottiene e
+    # lo rinnova Traefik (HTTP-01), nessun Secret.
+    certResolver: ""
+    # Con tls.enabled la porta 80 risponde con un redirect permanente a https
+    # (Middleware + IngressRoute su "web"). "" = porta 443 standard.
+    redirect: true
+    redirectPort: ""
+    # ConfigMap con la chiave ca.crt (la CA interna): web lo serve su
+    # /downloads/ca.crt, anche in HTTP, per fidarsi di HTTPS. Vuoto = nessun download.
+    caConfigMap: ""

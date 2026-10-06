@@ -73,6 +73,8 @@ Un file leggibile da gruppo o altri viene rifiutato. Percorso alternativo:
 version: 1                       # versione dello schema
 host: 10.0.0.5                   # nome o IP con cui si raggiunge GitStack (senza schema)
 ssh_port: 2222                   # porta SSH del servizio git (mai la 22 dell'host)
+tls: internal                    # internal | custom | letsencrypt | insecure (assente = HTTP, installazioni precedenti)
+ca_cert: /etc/gitstack/tls/ca.crt  # solo con tls: internal; la chiave (ca.key) sta accanto, solo root
 release: gitstack                # release Helm
 namespace: default               # namespace Kubernetes
 image_tag: sha-<commit>          # tag immagine installato (versione del server)
