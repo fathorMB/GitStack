@@ -69,3 +69,9 @@ func writeHealth(w http.ResponseWriter, status int, healthStatus openapi.HealthS
 		Version: CoreVersion,
 	})
 }
+
+// GetMeta: GET /meta è risposto dal gateway (versione dell'installazione);
+// core non la serve e, se raggiunto direttamente, risponde 404.
+func (s *apiServer) GetMeta(w http.ResponseWriter, r *http.Request) {
+	http.NotFound(w, r)
+}

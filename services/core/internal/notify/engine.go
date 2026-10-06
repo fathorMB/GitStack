@@ -75,6 +75,12 @@ type Engine struct {
 	ReadRetention time.Duration
 	// PurgeEvery: ogni quanto Run lancia PurgeRead; default 1 ora.
 	PurgeEvery time.Duration
+	// EmailWindow è la finestra di raggruppamento delle email (C5): la prima
+	// notifica per email di un utente su una issue fissa l'invio a EmailWindow
+	// dopo, e quelle che arrivano nel frattempo per la stessa issue partono
+	// nella stessa email. Zero (default) = email spente: nessuna notifica
+	// viene messa in coda per l'invio (SMTP non configurato).
+	EmailWindow time.Duration
 }
 
 // DefaultReadRetention è la conservazione delle notifiche lette (C9).
@@ -572,6 +578,12 @@ func (e *Engine) insert(ctx context.Context, tx pgx.Tx, o occurrence, cands map[
 		if !ok {
 			continue
 		}
+		emailOn := false
+		if e.EmailWindow > 0 {
+			if err := tx.QueryRow(ctx, emailPrefSQL, u, cands[u]).Scan(&emailOn); err != nil {
+				return fmt.Errorf("preferenze email: %w", err)
+			}
+		}
 		var issueID *uuid.UUID
 		if o.issueID != uuid.Nil {
 			issueID = &o.issueID
@@ -579,15 +591,32 @@ func (e *Engine) insert(ctx context.Context, tx pgx.Tx, o occurrence, cands map[
 		// Se il repo o la issue sono spariti nel frattempo (eliminazione
 		// definitiva) non c'è nulla da notificare.
 		if _, err := tx.Exec(ctx, `INSERT INTO core.notifications
-				(id, user_id, reason, repo_id, issue_id, comment_id, actor_id, event_name, data, created_at)
-			SELECT $1, $2, $3, r.resource_id, i.id, c.id, $7, $8, $9, clock_timestamp()
+				(id, user_id, reason, repo_id, issue_id, comment_id, actor_id, event_name, data, created_at, email_due_at)
+			SELECT $1, $2, $3, r.resource_id, i.id, c.id, $7, $8, $9, clock_timestamp(),
+				`+emailDueSQL+`
 			FROM core.repositories r
 			LEFT JOIN core.issues i ON i.id = $5 AND i.repo_id = r.resource_id
 			LEFT JOIN core.issue_comments c ON c.id = $6
 			WHERE r.resource_id = $4 AND ($5::uuid IS NULL OR i.id IS NOT NULL)`,
-			uuid.New(), u, cands[u], o.repoID, issueID, o.commentID, actor, o.name, data); err != nil {
+			uuid.New(), u, cands[u], o.repoID, issueID, o.commentID, actor, o.name, data, emailOn, e.EmailWindow.Seconds()); err != nil {
 			return fmt.Errorf("scrittura della notifica: %w", err)
 		}
 	}
 	return nil
 }
+
+// emailPrefSQL: se l'utente vuole l'email per quel tipo (C5). Nessuna riga =
+// default: sì per menzioni e assegnazioni, no per gli altri tipi.
+const emailPrefSQL = `SELECT COALESCE(
+	(SELECT email_enabled FROM core.notification_preferences WHERE user_id = $1::uuid AND reason = $2::text),
+	$2::text IN ('mentioned', 'assigned'))`
+
+// emailDueSQL: quando parte l'email di una notifica nuova (C5). Con l'email
+// attiva ($10) e un'altra email già in attesa per la stessa issue e lo stesso
+// utente, la nuova ne eredita l'orario (stessa email); altrimenti si aspetta la
+// finestra ($11, secondi). NULL = nessuna email.
+const emailDueSQL = `CASE WHEN $10::boolean THEN COALESCE(
+	(SELECT min(q.email_due_at) FROM core.notifications q
+		WHERE q.user_id = $2::uuid AND $5::uuid IS NOT NULL AND q.issue_id = $5::uuid
+		AND q.email_due_at IS NOT NULL AND q.email_sent_at IS NULL),
+	clock_timestamp() + $11::float8 * interval '1 second') END`

@@ -12,6 +12,17 @@ export type Health = {
     version: string;
 };
 
+export type Meta = {
+    /**
+     * Versione dell'installazione (tag dell'immagine del gateway).
+     */
+    server_version: string;
+    /**
+     * Versione del contratto API (`info.version`).
+     */
+    api_version: string;
+};
+
 /**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
@@ -635,6 +646,10 @@ export type OwnerRef = {
     name: Name;
 };
 
+export type OrgOwnersResult = {
+    owners: Array<string>;
+};
+
 export type GitCreateRepoInput = {
     repoId: string;
     name: RepoName;
@@ -991,6 +1006,11 @@ export type LookupIdsResult = {
         id: string;
         username: Name;
         kind: 'human' | 'agent';
+        /**
+         * Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+         *
+         */
+        email?: string;
     }>;
 };
 
@@ -2163,6 +2183,22 @@ export type GetHealthResponses = {
 };
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+
+export type GetMetaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/meta';
+};
+
+export type GetMetaResponses = {
+    /**
+     * Versioni del server.
+     */
+    200: Meta;
+};
+
+export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
 
 export type ListResourcesData = {
     body?: never;
@@ -9568,6 +9604,41 @@ export type ResolveOwnerResponses = {
 };
 
 export type ResolveOwnerResponse = ResolveOwnerResponses[keyof ResolveOwnerResponses];
+
+export type ListOrgOwnersData = {
+    body?: never;
+    path: {
+        orgId: string;
+    };
+    query?: never;
+    url: '/internal/orgs/{orgId}/owners';
+};
+
+export type ListOrgOwnersErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOrgOwnersError = ListOrgOwnersErrors[keyof ListOrgOwnersErrors];
+
+export type ListOrgOwnersResponses = {
+    /**
+     * Gli owner.
+     */
+    200: OrgOwnersResult;
+};
+
+export type ListOrgOwnersResponse = ListOrgOwnersResponses[keyof ListOrgOwnersResponses];
 
 export type GitCreateRepoData = {
     body: GitCreateRepoInput;

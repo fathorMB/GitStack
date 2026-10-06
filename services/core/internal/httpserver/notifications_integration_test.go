@@ -41,6 +41,17 @@ type notifyIdentity struct {
 	calls   int
 }
 
+// LookupUsers aggiunge l'email (nome@example.com) a ogni utente, bot compresi:
+// il motore non deve mai scrivere agli agenti anche se un indirizzo c'è.
+func (f *notifyIdentity) LookupUsers(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]identityclient.CodeUser, error) {
+	out, err := f.issuesIdentity.LookupUsers(ctx, ids)
+	for id, u := range out {
+		u.Email = u.Username + "@example.com"
+		out[id] = u
+	}
+	return out, err
+}
+
 func (f *notifyIdentity) revoke(repo uuid.UUID, user string) {
 	f.rmu.Lock()
 	defer f.rmu.Unlock()
@@ -103,7 +114,10 @@ type notifyEnv struct {
 	eng *notify.Engine
 }
 
-func newNotifyEnv(t *testing.T) *notifyEnv {
+func newNotifyEnv(t *testing.T) *notifyEnv { return newNotifyEnvEmail(t, false) }
+
+// newNotifyEnvEmail: con smtp il router sa che c'è un SMTP (WithEmail, C5).
+func newNotifyEnvEmail(t *testing.T, smtp bool) *notifyEnv {
 	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	base := &issuesIdentity{fakeIdentity: newFakeIdentity(), writers: map[uuid.UUID][]string{}}
@@ -114,7 +128,8 @@ func newNotifyEnv(t *testing.T) *notifyEnv {
 	e := &issuesEnv{t: t, pool: pool, id: base}
 	e.router = httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(nid), httpserver.WithReadableLister(nid), httpserver.WithGit(newFakeGit()),
-		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}))
+		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "https://git.example.com"}),
+		httpserver.WithEmail(smtp))
 	return &notifyEnv{issuesEnv: e, nid: nid, eng: &notify.Engine{Pool: pool, Identity: nid}}
 }
 

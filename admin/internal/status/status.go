@@ -18,11 +18,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/admin/internal/backupstate"
 	"github.com/fathorMB/GitStack/admin/internal/config"
 )
 
@@ -107,7 +107,7 @@ type Collector struct {
 // Collect interroga cluster, API e cartella dei backup. Un cluster
 // irraggiungibile non è un errore di Collect: finisce in Report.ClusterError
 // perché lo stato (API ok, cluster no) resti visibile.
-func (c *Collector) Collect(ctx context.Context, cfg *config.Config) *Report {
+func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir string) *Report {
 	r := &Report{
 		Host:      cfg.Host,
 		SSHPort:   cfg.SSHPort,
@@ -121,7 +121,7 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config) *Report {
 	r.Services = svcs
 	r.ServerVersion = serverVersion(svcs, cfg)
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
-	r.LastBackup = lastBackup(cfg.Backup.Destination)
+	r.LastBackup = lastBackupState(configDir)
 	return r
 }
 
@@ -277,30 +277,19 @@ func (c *Collector) api(ctx context.Context, cfg *config.Config) (bool, string) 
 	return true, url + ": HTTP 200"
 }
 
-// lastBackup è «nessuno» se la cartella dei backup non esiste o è vuota.
-// Il formato dei backup lo definisce il comando `gitstack backup` (GIT-145):
-// finché non arriva, si riporta la voce più recente della cartella.
-func lastBackup(dir string) string {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
+// lastBackupState legge il file di stato dell'ultimo backup e lo
+// formatta per la stampa. Se il file non esiste, ritorna «nessuno».
+func lastBackupState(configDir string) string {
+	if configDir == "" {
+		configDir = "/etc/gitstack"
+	}
+	s := backupstate.Read(configDir)
+	if s.At.IsZero() {
 		return "nessuno"
 	}
-	var newest string
-	var newestTime time.Time
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".") || strings.HasSuffix(e.Name(), ".sha256") {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		if newest == "" || info.ModTime().After(newestTime) {
-			newest, newestTime = filepath.Base(e.Name()), info.ModTime()
-		}
+	at := s.At.Format("2006-01-02 15:04:05")
+	if s.Success {
+		return fmt.Sprintf("ultimo successo: %s (%s)", at, s.Path)
 	}
-	if newest == "" {
-		return "nessuno"
-	}
-	return fmt.Sprintf("%s (%s)", newest, newestTime.UTC().Format(time.RFC3339))
+	return fmt.Sprintf("ultimo errore: %s — %s", at, s.Error)
 }

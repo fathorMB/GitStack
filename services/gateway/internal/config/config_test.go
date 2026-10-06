@@ -186,3 +186,14 @@ func TestLoad_AuthSecretECache(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_Version(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{envCoreURL: "http://core:8080"}))
+	if err != nil || cfg.Version != "dev" {
+		t.Errorf("senza env: Version = %q, err %v, voluto dev", cfg.Version, err)
+	}
+	cfg, err = load(lookupFrom(map[string]string{envCoreURL: "http://core:8080", envVersion: " v1.2.3 "}))
+	if err != nil || cfg.Version != "v1.2.3" {
+		t.Errorf("con env: Version = %q, err %v, voluto v1.2.3", cfg.Version, err)
+	}
+}

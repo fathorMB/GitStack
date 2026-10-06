@@ -218,7 +218,7 @@ func TestSicurezza_RotteDiCoreServite(t *testing.T) {
 	table, _ := security.NewTable(security.Routes)
 	param := regexp.MustCompile(`\{[^}]+\}`)
 	for _, r := range security.Routes {
-		if r.Service != security.ServiceCore {
+		if r.Service != security.ServiceCore || r.OperationID == "getMeta" { // getMeta lo risponde il gateway
 			continue
 		}
 		e := newEnv(t, allowAll())
@@ -253,6 +253,7 @@ func TestAuth_TabellaDiRotte(t *testing.T) {
 	}{
 		// rotte `security: []`: senza credenziali
 		{"health", func() *http.Request { return httptest.NewRequest("GET", "/v1/health", nil) }, 204, "", "core"},
+		{"meta", func() *http.Request { return httptest.NewRequest("GET", "/v1/meta", nil) }, 200, "", ""},
 		{"login", func() *http.Request { return httptest.NewRequest("POST", "/v1/auth/login", nil) }, 204, "", "identity"},
 		{"provider OIDC: elenco", func() *http.Request { return httptest.NewRequest("GET", "/v1/auth/oidc/providers", nil) }, 204, "", "identity"},
 		{"provider OIDC: start", func() *http.Request { return httptest.NewRequest("GET", "/v1/auth/oidc/kc/start", nil) }, 204, "", "identity"},

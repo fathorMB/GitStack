@@ -27,6 +27,8 @@ spec:
             - name: http
               containerPort: {{ .Values.gateway.containerPort }}
           env:
+            - name: GITSTACK_VERSION
+              value: {{ include "gitstack.imageTag" (dict "root" $ "component" .Values.gateway) | quote }}
             - name: GITSTACK_GATEWAY_ADDR
               value: {{ printf ":%d" (.Values.gateway.containerPort | int) | quote }}
             - name: GITSTACK_CORE_URL

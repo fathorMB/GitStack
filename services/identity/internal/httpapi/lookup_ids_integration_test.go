@@ -4,7 +4,6 @@ package httpapi_test
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 )
 
@@ -29,8 +28,9 @@ func TestLookupUsersByIdsOverHTTP(t *testing.T) {
 	if u["id"] != aliceID || u["username"] != "alice" || u["kind"] != "human" {
 		t.Fatalf("utente: %s", r.body)
 	}
-	if strings.Contains(string(r.body), "email") {
-		t.Fatalf("la risposta non deve esporre l'email: %s", r.body)
+	// M-06/F (C5): core manda le notifiche email e la chiede qui; l'operazione è interna (segreto di servizio).
+	if u["email"] != "alice@example.com" {
+		t.Fatalf("manca l'email dell'utente: %s", r.body)
 	}
 
 	errCode(t, e.do("POST", "/internal/users/lookup-ids", map[string]any{"ids": []string{}}, nil, bearer(secret)...), 400, "bad_request")

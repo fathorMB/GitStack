@@ -6,10 +6,13 @@ package config
 
 import (
 	"fmt"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fathorMB/GitStack/services/core/internal/mailer"
 )
 
 // Config è la configurazione di core, interamente da variabili d'ambiente.
@@ -54,6 +57,22 @@ type Config struct {
 	// grant).
 	IdentityURL string
 
+	// WebhookSecretKey è la chiave (32 byte in esadecimale o base64) con cui si
+	// cifrano i segreti dei webhook (AES-256-GCM, migrazione 0006);
+	// WebhookSecretKeyID dice con quale chiave è cifrata una riga
+	// (rotazione) e WebhookSecretOldKeys elenca le chiavi precedenti
+	// (`id:chiave,id:chiave`), che servono solo a decifrare. Senza chiave i
+	// webhook si gestiscono ma non accettano un segreto (422). Mai loggate.
+	WebhookSecretKey     string
+	WebhookSecretKeyID   string
+	WebhookSecretOldKeys string
+
+	// Egress: liste dell'amministratore per le chiamate in uscita dei webhook
+	// (pkg/egress, C8; values.yaml egress.*). Voci separate da virgole.
+	EgressAllow        []string
+	EgressDeny         []string
+	EgressClusterCIDRs []string
+
 	// GitURL è la base URL interna del servizio git (GITSTACK_GIT_URL):
 	// core la chiama per creare i repo su disco (API interna firmata).
 	// Obbligatoria solo per "serve".
@@ -89,24 +108,41 @@ type Config struct {
 	// tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL, default 24h).
 	AttachmentOrphanTTL time.Duration
 
+	// SMTP è la configurazione delle email di notifica (M-06/F, C5): tutte le
+	// variabili GITSTACK_CORE_SMTP_*. Facoltativa: con SMTP.Host vuoto (default)
+	// GitStack manda solo notifiche in-app e non tenta nessun invio.
+	SMTP mailer.Config
+
 	// LogLevel è il livello minimo dei log strutturati ("debug", "info",
 	// "warn", "error").
 	LogLevel string
 }
 
 const (
-	envAddr              = "GITSTACK_CORE_ADDR"
-	envDatabaseURL       = "GITSTACK_CORE_DB_URL"
-	envDBMaxConns        = "GITSTACK_CORE_DB_MAX_CONNS"
-	envMigrationsTimeout = "GITSTACK_CORE_MIGRATIONS_TIMEOUT"
-	envNatsURL           = "GITSTACK_CORE_NATS_URL"
-	envLogLevel          = "GITSTACK_CORE_LOG_LEVEL"
-	envServiceSecret     = "GITSTACK_IDENTITY_SERVICE_SECRET"
-	envIdentityURL       = "GITSTACK_IDENTITY_URL"
-	envGitURL            = "GITSTACK_GIT_URL"
-	envPublicURL         = "GITSTACK_CORE_PUBLIC_URL"
-	envSSHHost           = "GITSTACK_CORE_SSH_HOST"
-	envSSHPort           = "GITSTACK_CORE_SSH_PORT"
+	envAddr                 = "GITSTACK_CORE_ADDR"
+	envDatabaseURL          = "GITSTACK_CORE_DB_URL"
+	envDBMaxConns           = "GITSTACK_CORE_DB_MAX_CONNS"
+	envMigrationsTimeout    = "GITSTACK_CORE_MIGRATIONS_TIMEOUT"
+	envNatsURL              = "GITSTACK_CORE_NATS_URL"
+	envLogLevel             = "GITSTACK_CORE_LOG_LEVEL"
+	envServiceSecret        = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	envIdentityURL          = "GITSTACK_IDENTITY_URL"
+	envGitURL               = "GITSTACK_GIT_URL"
+	envPublicURL            = "GITSTACK_CORE_PUBLIC_URL"
+	envSSHHost              = "GITSTACK_CORE_SSH_HOST"
+	envSSHPort              = "GITSTACK_CORE_SSH_PORT"
+	envSMTPHost             = "GITSTACK_CORE_SMTP_HOST"
+	envSMTPPort             = "GITSTACK_CORE_SMTP_PORT"
+	envSMTPSecurity         = "GITSTACK_CORE_SMTP_SECURITY"
+	envSMTPUser             = "GITSTACK_CORE_SMTP_USER"
+	envSMTPPassword         = "GITSTACK_CORE_SMTP_PASSWORD"
+	envWebhookSecretKey     = "GITSTACK_WEBHOOK_SECRET_KEY"
+	envWebhookSecretKeyID   = "GITSTACK_WEBHOOK_SECRET_KEY_ID"
+	envWebhookSecretOldKeys = "GITSTACK_WEBHOOK_SECRET_OLD_KEYS"
+	envEgressAllow          = "GITSTACK_EGRESS_ALLOW"
+	envEgressDeny           = "GITSTACK_EGRESS_DENY"
+	envEgressClusterCIDRs   = "GITSTACK_EGRESS_CLUSTER_CIDRS"
+	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
@@ -198,6 +234,19 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(envPublicURL); ok {
 		cfg.PublicURL = strings.TrimRight(strings.TrimSpace(v), "/")
 	}
+	if v, ok := lookup(envWebhookSecretKey); ok {
+		cfg.WebhookSecretKey = strings.TrimSpace(v)
+	}
+	cfg.WebhookSecretKeyID = "k1"
+	if v, ok := lookup(envWebhookSecretKeyID); ok && strings.TrimSpace(v) != "" {
+		cfg.WebhookSecretKeyID = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envWebhookSecretOldKeys); ok {
+		cfg.WebhookSecretOldKeys = strings.TrimSpace(v)
+	}
+	cfg.EgressAllow = splitList(lookup, envEgressAllow)
+	cfg.EgressDeny = splitList(lookup, envEgressDeny)
+	cfg.EgressClusterCIDRs = splitList(lookup, envEgressClusterCIDRs)
 	if v, ok := lookup(envSSHHost); ok {
 		cfg.SSHHost = strings.TrimSpace(v)
 	}
@@ -232,6 +281,8 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 
+	errs = loadSMTP(lookup, &cfg, errs)
+
 	if v, ok := lookup(envLogLevel); ok && strings.TrimSpace(v) != "" {
 		level := strings.ToLower(strings.TrimSpace(v))
 		switch level {
@@ -247,6 +298,63 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// splitList legge un elenco separato da virgole (voci vuote scartate).
+func splitList(lookup func(string) (string, bool), key string) []string {
+	v, ok := lookup(key)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// loadSMTP legge GITSTACK_CORE_SMTP_*. Senza HOST l'SMTP è spento e le altre
+// variabili si ignorano (nessun errore: le notifiche restano in-app).
+func loadSMTP(lookup func(string) (string, bool), cfg *Config, errs []string) []string {
+	get := func(k string) string {
+		v, _ := lookup(k)
+		return strings.TrimSpace(v)
+	}
+	host := get(envSMTPHost)
+	if host == "" {
+		return errs
+	}
+	s := mailer.Config{Host: host, Security: mailer.SecurityStartTLS, Username: get(envSMTPUser), From: get(envSMTPFrom)}
+	if v, ok := lookup(envSMTPPassword); ok {
+		s.Password = v // la password non si taglia
+	}
+	switch sec := strings.ToLower(get(envSMTPSecurity)); sec {
+	case "":
+	case "tls", "starttls", "none":
+		s.Security = mailer.Security(sec)
+	default:
+		errs = append(errs, fmt.Sprintf("%s non è valido: %q (tls|starttls|none)", envSMTPSecurity, sec))
+	}
+	s.Port = mailer.DefaultPort(s.Security)
+	if v := get(envSMTPPort); v != "" {
+		if n, err := strconv.Atoi(v); err != nil || n < 1 || n > 65535 {
+			errs = append(errs, fmt.Sprintf("%s non è una porta valida (1-65535): %q", envSMTPPort, v))
+		} else {
+			s.Port = n
+		}
+	}
+	if s.From == "" {
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria quando %s è impostata", envSMTPFrom, envSMTPHost))
+	} else if _, err := mail.ParseAddress(s.From); err != nil {
+		errs = append(errs, fmt.Sprintf("%s non è un indirizzo valido: %q", envSMTPFrom, s.From))
+	}
+	if (s.Username == "") != (s.Password == "") {
+		errs = append(errs, fmt.Sprintf("%s e %s vanno impostate insieme (o nessuna dei due)", envSMTPUser, envSMTPPassword))
+	}
+	cfg.SMTP = s
+	return errs
 }
 
 func parsePositiveInt32(v string) (int32, error) {

@@ -9,6 +9,7 @@ import type { Qualifier } from '../../lib/issueQuery';
 import { countIssues, fetchIssues, fetchLabels, fetchMilestones } from '../../lib/issuesApi';
 import type { IssueList, IssueSort, IssueSummary, IssueUser, Label, Milestone } from '../../lib/issuesApi';
 import type { Repository } from '../../lib/reposApi';
+import { LinkedCommitsCount } from './IssueLinks';
 import { useLoad } from '../../lib/useLoad';
 
 const SORTS: { value: IssueSort; label: string }[] = [
@@ -270,6 +271,7 @@ function IssueRow({ issue, base }: { issue: IssueSummary; base: string }) {
               <Flag size={13} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> {issue.milestone.title}
             </>
           ) : null}
+          <LinkedCommitsCount count={(issue as IssueSummary & { linkedCommitCount?: number }).linkedCommitCount ?? 0} />
         </div>
       </div>
       <span className="iright row" style={{ gap: 8 }}>

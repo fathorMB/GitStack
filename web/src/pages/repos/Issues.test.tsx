@@ -93,6 +93,16 @@ describe('lista issues', () => {
     expect(vi.mocked(fetchIssues).mock.calls[0][2]).toBe('is:open');
   });
 
+  it('mostra il conteggio dei commit collegati solo quando ce ne sono', async () => {
+    vi.mocked(fetchIssues).mockResolvedValue(
+      page([issue(41, { linkedCommitCount: 2 } as Partial<IssueSummary>), issue(36)]),
+    );
+    renderAt('/acme/api/issues');
+    const row = await screen.findByTestId('issue-41');
+    expect(within(row).getByTestId('linked-commit-count')).toHaveTextContent('2 linked commits');
+    expect(within(screen.getByTestId('issue-36')).queryByTestId('linked-commit-count')).not.toBeInTheDocument();
+  });
+
   it('usa icone diverse per completed e per not_planned/duplicate', async () => {
     vi.mocked(fetchIssues).mockResolvedValue(
       page([

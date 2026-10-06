@@ -2,13 +2,16 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fathorMB/GitStack/admin/internal/backup"
+	"github.com/fathorMB/GitStack/admin/internal/backupstate"
 	"github.com/fathorMB/GitStack/admin/internal/config"
 )
 
@@ -79,5 +82,125 @@ func TestRestoreUsageAndRoot(t *testing.T) {
 	a.Geteuid = func() int { return 1000 }
 	if code := a.Run(context.Background(), []string{"backup", "--config", cfg}); code != ExitNeedsRoot {
 		t.Errorf("senza root: %d", code)
+	}
+}
+
+// failCluster è un cluster che fallisce sempre (errore su Replicas).
+type failCluster struct{}
+
+func (f *failCluster) Replicas(_ context.Context, _ string) (int, bool, error) {
+	return 0, false, backup.ErrNotFound
+}
+func (f *failCluster) Scale(_ context.Context, _ string, _ int) error { return nil }
+func (f *failCluster) WaitStopped(_ context.Context, _ string) error  { return nil }
+func (f *failCluster) WaitReady(_ context.Context, _ string) error    { return nil }
+func (f *failCluster) PGExec(_ context.Context, _ io.Reader, w io.Writer, _ ...string) error {
+	return nil
+}
+func (f *failCluster) VolumePath(_ context.Context, _ string) (string, error) {
+	return "", backup.ErrNotFound
+}
+func (f *failCluster) Secrets(_ context.Context) ([]backup.Secret, error)   { return nil, nil }
+func (f *failCluster) ApplySecret(_ context.Context, _ backup.Secret) error { return nil }
+
+func TestBackupRetention(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	dest := t.TempDir()
+	// Tre backup con retention=2 → restano 2 (i più recenti).
+	a.Now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 1: exit %d", code)
+	}
+	a.Now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 1, 0, time.UTC) }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 2: exit %d", code)
+	}
+	a.Now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 2, 0, time.UTC) }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "2"}); code != ExitOK {
+		t.Fatalf("backup 3: exit %d", code)
+	}
+	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
+	if len(ents) != 2 {
+		t.Fatalf("dopo tre backup con retention=2: %d archivi, volevo 2", len(ents))
+	}
+	// I due più recenti: i nomi sono ordinati per data UTC nel prefisso.
+	names := make([]string, len(ents))
+	for i, e := range ents {
+		names[i] = filepath.Base(e)
+	}
+	// Il più vecchio (primo) deve essere stato eliminato.
+	if strings.Contains(names[0], "00002") {
+		t.Errorf("il backup più vecchio (00002) è ancora presente: %v", names)
+	}
+	if !strings.Contains(names[1], "00002") {
+		t.Errorf("manca il backup più recente: %v", names)
+	}
+}
+
+func TestBackupRetentionNoPruneOnFail(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	dest := t.TempDir()
+	// Creo due archivi come se fossero già presenti.
+	archive1 := filepath.Join(dest, "gitstack-backup-20260101T000000Z-sha-aaa.tar.gz")
+	_ = os.WriteFile(archive1, []byte("archivio 1"), 0o600)
+	_ = os.WriteFile(archive1+".sha256", []byte("aaaa  gitstack-backup-20260101T000000Z-sha-aaa.tar.gz\n"), 0o600)
+	archive2 := filepath.Join(dest, "gitstack-backup-20260101T000001Z-sha-aaa.tar.gz")
+	_ = os.WriteFile(archive2, []byte("archivio 2"), 0o600)
+	_ = os.WriteFile(archive2+".sha256", []byte("bbbb  gitstack-backup-20260101T000001Z-sha-aaa.tar.gz\n"), 0o600)
+
+	// Backup fallito con retention=1: non deve cancellare nessuno dei due.
+	a.NewCluster = func(*config.Config) backup.Cluster { return &failCluster{} }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--retention", "1"}); code != ExitUnexpected {
+		t.Fatalf("backup fallito: exit %d", code)
+	}
+	ents, _ := filepath.Glob(filepath.Join(dest, "gitstack-backup-*.tar.gz"))
+	if len(ents) != 2 {
+		t.Errorf("dopo backup fallito con retention=1: %d archivi, volevo 2", len(ents))
+	}
+}
+
+func TestBackupStateFile(t *testing.T) {
+	a, cfg := backupApp(t, "sha-aaa")
+	dest := t.TempDir()
+	configDir := filepath.Dir(cfg)
+	git := t.TempDir()
+	_ = os.WriteFile(filepath.Join(git, "f"), []byte("x"), 0o600)
+	a.NewCluster = func(*config.Config) backup.Cluster { return &stubCluster{git: git} }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitOK {
+		t.Fatalf("backup exit %d", code)
+	}
+	// Lo stato deve esistere e riportare successo.
+	statePath := filepath.Join(configDir, "backup-state.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("leggere stato: %v", err)
+	}
+	var s backupstate.State
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("parse stato: %v", err)
+	}
+	if !s.Success {
+		t.Errorf("stato: wanted success=true, got false")
+	}
+	if s.At.IsZero() {
+		t.Error("stato: At zero")
+	}
+	// Backup fallito: lo stato deve riportare errore.
+	a.NewCluster = func(*config.Config) backup.Cluster { return &failCluster{} }
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest}); code != ExitUnexpected {
+		t.Fatalf("backup fallito: exit %d", code)
+	}
+	data, err = os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("leggere stato dopo fallimento: %v", err)
+	}
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("parse stato dopo fallimento: %v", err)
+	}
+	if s.Success {
+		t.Errorf("stato dopo fallimento: non volevo success=true")
+	}
+	if s.Error == "" {
+		t.Error("stato dopo fallimento: Error vuoto")
 	}
 }

@@ -2,11 +2,14 @@ package httpserver
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/fathorMB/GitStack/services/gateway/internal/config"
 )
 
 func TestHealthz_RitornaOkESchemaDelContratto(t *testing.T) {
@@ -54,5 +57,24 @@ func TestReadyz_Unitario(t *testing.T) {
 	handlerGiu(rec2, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	if rec2.Code != http.StatusServiceUnavailable {
 		t.Fatalf("con core giù: status = %d, voluto 503", rec2.Code)
+	}
+}
+
+func TestMeta_VersioneDellInstallazione(t *testing.T) {
+	cfg := config.Config{CoreURL: &url.URL{Scheme: "http", Host: "core:8080"}, CoreTimeout: time.Second, Version: "v1.2.3"}
+	rec := httptest.NewRecorder()
+	NewRouter(cfg, slog.New(slog.DiscardHandler)).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/meta", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, voluto 200: %s", rec.Code, rec.Body)
+	}
+	var body struct {
+		ServerVersion string `json:"server_version"`
+		APIVersion    string `json:"api_version"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.ServerVersion != "v1.2.3" || body.APIVersion != GatewayVersion {
+		t.Errorf("corpo = %+v", body)
 	}
 }

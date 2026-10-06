@@ -3,6 +3,7 @@ module github.com/fathorMB/GitStack/services/core
 go 1.26.2
 
 require (
+	github.com/fathorMB/GitStack/pkg/egress v0.0.0-20261005212733-bd568d173cca
 	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf
 	github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa
 	github.com/golang-migrate/migrate/v4 v4.18.3

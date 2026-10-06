@@ -2,7 +2,9 @@ package config
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -62,5 +64,29 @@ func TestLoadNotFound(t *testing.T) {
 	_, err := Load(filepath.Join(t.TempDir(), "nope.yaml"))
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("atteso ErrNotFound, ottenuto %v", err)
+	}
+}
+
+func TestSetFields(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "c.yaml")
+	if err := os.WriteFile(p, []byte("# nota\nversion: 1\nhost: h\nimage_tag: sha-a\nbackup:\n  retention: 3\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetFields(p, map[string]string{"image_tag": "sha-b", "chart_dir": "/x/chart"}); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(p)
+	s := string(b)
+	for _, want := range []string{"# nota", "image_tag: sha-b", "chart_dir: /x/chart", "  retention: 3"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("manca %q in:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "sha-a") {
+		t.Error("valore vecchio rimasto")
+	}
+	c, err := Parse(b, "t")
+	if err != nil || c.ImageTag != "sha-b" || c.ChartDir != "/x/chart" {
+		t.Errorf("riletto: %+v %v", c, err)
 	}
 }

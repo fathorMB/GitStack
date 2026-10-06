@@ -2222,8 +2222,10 @@ type LookupIdsInput struct {
 // LookupIdsResult defines model for LookupIdsResult.
 type LookupIdsResult struct {
 	Users []struct {
-		Id   openapi_types.UUID       `json:"id"`
-		Kind LookupIdsResultUsersKind `json:"kind"`
+		// Email Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le notifiche email, mai per gli agenti). Assente senza email.
+		Email *string                  `json:"email,omitempty"`
+		Id    openapi_types.UUID       `json:"id"`
+		Kind  LookupIdsResultUsersKind `json:"kind"`
 
 		// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
 		//
@@ -2240,6 +2242,15 @@ type LookupIdsResultUsersKind string
 type MarkedNotifications struct {
 	// Marked Quante notifiche sono passate da non letta a letta.
 	Marked int `json:"marked"`
+}
+
+// Meta defines model for Meta.
+type Meta struct {
+	// ApiVersion Versione del contratto API (`info.version`).
+	ApiVersion string `json:"api_version"`
+
+	// ServerVersion Versione dell'installazione (tag dell'immagine del gateway).
+	ServerVersion string `json:"server_version"`
 }
 
 // Milestone defines model for Milestone.
@@ -2386,6 +2397,11 @@ type OrgMemberList struct {
 	Page    int         `json:"page"`
 	PerPage int         `json:"perPage"`
 	Total   int         `json:"total"`
+}
+
+// OrgOwnersResult defines model for OrgOwnersResult.
+type OrgOwnersResult struct {
+	Owners []openapi_types.UUID `json:"owners"`
 }
 
 // OrgRole `owner` gestisce organizzazione, team e membri; `member` no.
@@ -4300,6 +4316,13 @@ type ClientInterface interface {
 	// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
 	ResolveMentions(ctx context.Context, body ResolveMentionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListOrgOwners Elenca gli owner di un'organizzazione
+	//
+	// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+	//
+	// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+	ListOrgOwners(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ResolveOwner Risolve il nome di un utente o di un'organizzazione
 	//
 	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
@@ -4464,6 +4487,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 	VerifyCredential(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMeta Versione del server
+	//
+	// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+	//
+	// Corresponds with GET /meta (the `GetMeta` operationId).
+	GetMeta(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteNotifications Elimina in blocco le notifiche
 	//
@@ -6304,6 +6334,23 @@ func (c *Client) ResolveMentions(ctx context.Context, body ResolveMentionsJSONRe
 	return c.Client.Do(req)
 }
 
+// ListOrgOwners Elenca gli owner di un'organizzazione
+//
+// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+//
+// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+func (c *Client) ListOrgOwners(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrgOwnersRequest(c.Server, orgId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ResolveOwner Risolve il nome di un utente o di un'organizzazione
 //
 // Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
@@ -6649,6 +6696,23 @@ func (c *Client) VerifyCredentialWithBody(ctx context.Context, contentType strin
 // Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 func (c *Client) VerifyCredential(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyCredentialRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMeta Versione del server
+//
+// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+//
+// Corresponds with GET /meta (the `GetMeta` operationId).
+func (c *Client) GetMeta(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMetaRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -11110,6 +11174,40 @@ func NewResolveMentionsRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
+// NewListOrgOwnersRequest constructs an http.Request for the ListOrgOwners method
+func NewListOrgOwnersRequest(server string, orgId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgId", orgId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/orgs/%s/owners", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewResolveOwnerRequest constructs an http.Request for the ResolveOwner method
 func NewResolveOwnerRequest(server string, name string) (*http.Request, error) {
 	var err error
@@ -11542,6 +11640,33 @@ func NewVerifyCredentialRequestWithBody(server string, contentType string, body 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetMetaRequest constructs an http.Request for the GetMeta method
+func NewGetMetaRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/meta")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -19264,6 +19389,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /internal/mentions/resolve (the `ResolveMentions` operationId).
 	ResolveMentionsWithResponse(ctx context.Context, body ResolveMentionsJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveMentionsResponse, error)
 
+	// ListOrgOwnersWithResponse Elenca gli owner di un'organizzazione
+	//
+	// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+	ListOrgOwnersWithResponse(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListOrgOwnersResponse, error)
+
 	// ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 	//
 	// Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
@@ -19434,6 +19568,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /internal/verify (the `VerifyCredential` operationId).
 	VerifyCredentialWithResponse(ctx context.Context, body VerifyCredentialJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyCredentialResponse, error)
+
+	// GetMetaWithResponse Versione del server
+	//
+	// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /meta (the `GetMeta` operationId).
+	GetMetaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetaResponse, error)
 
 	// DeleteNotificationsWithResponse Elimina in blocco le notifiche
 	//
@@ -22725,6 +22868,68 @@ func (r ResolveMentionsResponse) ContentType() string {
 	return ""
 }
 
+type ListOrgOwnersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrgOwnersResult
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrgOwnersResponse) GetJSON200() *OrgOwnersResult {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrgOwnersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrgOwnersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListOrgOwnersResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrgOwnersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrgOwnersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrgOwnersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrgOwnersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ResolveOwnerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23429,6 +23634,47 @@ func (r VerifyCredentialResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VerifyCredentialResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetMetaResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Meta
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMetaResponse) GetJSON200() *Meta {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMetaResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMetaResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMetaResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMetaResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -33952,6 +34198,21 @@ func (c *ClientWithResponses) ResolveMentionsWithResponse(ctx context.Context, b
 	return ParseResolveMentionsResponse(rsp)
 }
 
+// ListOrgOwnersWithResponse Elenca gli owner di un'organizzazione
+//
+// Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un webhook di organizzazione sono gli owner, e a loro va la notifica di disattivazione (C7). Restituisce gli id utente degli owner; 404 se l'organizzazione non esiste.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/orgs/{orgId}/owners (the `ListOrgOwners` operationId).
+func (c *ClientWithResponses) ListOrgOwnersWithResponse(ctx context.Context, orgId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListOrgOwnersResponse, error) {
+	rsp, err := c.ListOrgOwners(ctx, orgId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrgOwnersResponse(rsp)
+}
+
 // ResolveOwnerWithResponse Risolve il nome di un utente o di un'organizzazione
 //
 // Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama cosi', 404 se il nome non esiste.
@@ -34235,6 +34496,21 @@ func (c *ClientWithResponses) VerifyCredentialWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseVerifyCredentialResponse(rsp)
+}
+
+// GetMetaWithResponse Versione del server
+//
+// Versione dell'installazione e del contratto API, senza autenticazione. Usato da gs per il controllo di compatibilita (G6).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /meta (the `GetMeta` operationId).
+func (c *ClientWithResponses) GetMetaWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetaResponse, error) {
+	rsp, err := c.GetMeta(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMetaResponse(rsp)
 }
 
 // DeleteNotificationsWithResponse Elimina in blocco le notifiche
@@ -38201,6 +38477,53 @@ func ParseResolveMentionsResponse(rsp *http.Response) (*ResolveMentionsResponse,
 	return response, nil
 }
 
+// ParseListOrgOwnersResponse parses an HTTP response from a ListOrgOwnersWithResponse call
+func ParseListOrgOwnersResponse(rsp *http.Response) (*ListOrgOwnersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrgOwnersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrgOwnersResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseResolveOwnerResponse parses an HTTP response from a ResolveOwnerWithResponse call
 func ParseResolveOwnerResponse(rsp *http.Response) (*ResolveOwnerResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -38746,6 +39069,32 @@ func ParseVerifyCredentialResponse(rsp *http.Response) (*VerifyCredentialRespons
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMetaResponse parses an HTTP response from a GetMetaWithResponse call
+func ParseGetMetaResponse(rsp *http.Response) (*GetMetaResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMetaResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Meta
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 

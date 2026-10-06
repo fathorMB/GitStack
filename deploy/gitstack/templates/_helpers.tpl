@@ -42,17 +42,24 @@ Risoluzione (registry più override per componente, criterio 7 di GIT-8):
 - tag: component.image.tag, altrimenti global.image.tag, altrimenti Chart.AppVersion
 */}}
 {{- define "gitstack.image" -}}
-{{- $root := .root -}}
 {{- $comp := .component -}}
-{{- $registry := $comp.image.registry | default $root.Values.global.image.registry -}}
-{{- $tag := $comp.image.tag -}}
+{{- $registry := $comp.image.registry | default .root.Values.global.image.registry -}}
+{{- printf "%s/%s:%s" $registry $comp.image.repository (include "gitstack.imageTag" .) -}}
+{{- end -}}
+
+{{/*
+Tag effettivo di un componente (stessa risoluzione di gitstack.image): quello
+che legge `gitstack status` e che il gateway riporta in GET /v1/meta.
+*/}}
+{{- define "gitstack.imageTag" -}}
+{{- $tag := .component.image.tag -}}
 {{- if not $tag -}}
-{{- $tag = $root.Values.global.image.tag -}}
+{{- $tag = .root.Values.global.image.tag -}}
 {{- end -}}
 {{- if not $tag -}}
-{{- $tag = $root.Chart.AppVersion -}}
+{{- $tag = .root.Chart.AppVersion -}}
 {{- end -}}
-{{- printf "%s/%s:%s" $registry $comp.image.repository $tag -}}
+{{- $tag -}}
 {{- end -}}
 
 {{/*
@@ -144,4 +151,20 @@ Nome del Secret con la chiave host SSH (chiave ssh_host_ed25519_key).
 */}}
 {{- define "gitstack.git.sshHostKeySecret" -}}
 {{- .Values.git.ssh.hostKey.existingSecret | default (printf "%s-git-ssh-host-key" (include "gitstack.fullname" .)) -}}
+{{- end -}}
+
+{{/*
+SMTP facoltativo (M-06/F, C5): attivo se smtp.host o smtp.existingSecret sono
+valorizzati; altrimenti core manda solo notifiche in-app. Stampa "true" o niente.
+*/}}
+{{- define "gitstack.smtp.enabled" -}}
+{{- if or .Values.smtp.host .Values.smtp.existingSecret -}}true{{- end -}}
+{{- end -}}
+
+{{/*
+Secret con la configurazione SMTP (chiavi host, port, security, username,
+password, from): generato dal chart o dato con smtp.existingSecret.
+*/}}
+{{- define "gitstack.smtp.secretName" -}}
+{{- .Values.smtp.existingSecret | default (printf "%s-smtp" (include "gitstack.fullname" .)) -}}
 {{- end -}}

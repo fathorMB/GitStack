@@ -1672,6 +1672,15 @@ type MarkedNotifications struct {
 	Marked int `json:"marked"`
 }
 
+// Meta defines model for Meta.
+type Meta struct {
+	// ApiVersion Versione del contratto API (`info.version`).
+	ApiVersion string `json:"api_version"`
+
+	// ServerVersion Versione dell'installazione (tag dell'immagine del gateway).
+	ServerVersion string `json:"server_version"`
+}
+
 // Milestone defines model for Milestone.
 type Milestone struct {
 	ClosedAt *time.Time `json:"closedAt,omitempty"`
@@ -2794,6 +2803,9 @@ type ServerInterface interface {
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// GetMeta Versione del server
+	// (GET /meta)
+	GetMeta(w http.ResponseWriter, r *http.Request)
 	// DeleteNotifications Elimina in blocco le notifiche
 	// (DELETE /notifications)
 	DeleteNotifications(w http.ResponseWriter, r *http.Request, params DeleteNotificationsParams)
@@ -3089,6 +3101,20 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMeta operation middleware
+func (siw *ServerInterfaceWrapper) GetMeta(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMeta(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7658,6 +7684,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/meta", wrapper.GetMeta)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources", wrapper.ListResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources", wrapper.CreateResource)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/resources/{resourceId}", wrapper.DeleteResource)

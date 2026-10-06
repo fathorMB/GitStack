@@ -13,6 +13,7 @@ export interface SelectProps {
   options: SelectOption[];
   placeholder?: string;
   disabled?: boolean;
+  'aria-label'?: string;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
 }

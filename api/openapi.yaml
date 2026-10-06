@@ -114,6 +114,27 @@ paths:
                 status: ok
                 version: "0.1.0"
 
+  /meta:
+    get:
+      operationId: getMeta
+      tags: [system]
+      summary: Versione del server
+      description: >
+        Versione dell'installazione e del contratto API, senza
+        autenticazione. Usato da gs per il controllo di compatibilita (G6).
+      security: []
+      responses:
+        "200":
+          description: Versioni del server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meta"
+              example:
+                server_version: "v0.1.0"
+                api_version: "0.1.0"
+
+
   /resources:
     get:
       operationId: listResources
@@ -4745,6 +4766,39 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/orgs/{orgId}/owners:
+    parameters:
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listOrgOwners
+      tags: [internal]
+      summary: Elenca gli owner di un'organizzazione
+      description: >
+        Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un
+        webhook di organizzazione sono gli owner, e a loro va la notifica di
+        disattivazione (C7). Restituisce gli id utente degli owner; 404 se
+        l'organizzazione non esiste.
+      security:
+        - serviceAuth: []
+      responses:
+        "200":
+          description: Gli owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgOwnersResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/git/repos:
     post:
       operationId: gitCreateRepo
@@ -5901,6 +5955,18 @@ components:
         version:
           type: string
           description: Versione del contratto API in esecuzione (`info.version`).
+
+    Meta:
+      type: object
+      additionalProperties: false
+      required: [server_version, api_version]
+      properties:
+        server_version:
+          type: string
+          description: Versione dell'installazione (tag dell'immagine del gateway).
+        api_version:
+          type: string
+          description: Versione del contratto API (`info.version`).
 
     Resource:
       type: object
@@ -7193,6 +7259,17 @@ components:
         name:
           $ref: "#/components/schemas/Name"
 
+    OrgOwnersResult:
+      type: object
+      additionalProperties: false
+      required: [owners]
+      properties:
+        owners:
+          type: array
+          items:
+            type: string
+            format: uuid
+
     GitCreateRepoInput:
       type: object
       additionalProperties: false
@@ -7798,6 +7875,11 @@ components:
               kind:
                 type: string
                 enum: [human, agent]
+              email:
+                type: string
+                description: >
+                  Email dell'utente, se ne ha una (M-06/F, C5: core la usa per le
+                  notifiche email, mai per gli agenti). Assente senza email.
     ResolveMentionsInput:
       type: object
       additionalProperties: false

@@ -19,14 +19,19 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/db"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
 	"github.com/fathorMB/GitStack/services/core/internal/gitclient"
+	"github.com/fathorMB/GitStack/services/core/internal/gitpush"
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
+	"github.com/fathorMB/GitStack/services/core/internal/issuelinks"
+	"github.com/fathorMB/GitStack/services/core/internal/mailer"
 	"github.com/fathorMB/GitStack/services/core/internal/migrate"
 	"github.com/fathorMB/GitStack/services/core/internal/notify"
 	"github.com/fathorMB/GitStack/services/core/internal/outbox"
 	"github.com/fathorMB/GitStack/services/core/internal/repopurge"
 	"github.com/fathorMB/GitStack/services/core/internal/store"
+	"github.com/fathorMB/GitStack/services/core/internal/webhooks"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 // repoPurgeInterval: ogni quanto il job cancella i repo eliminati scaduti.
@@ -188,6 +193,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		routerOpts = append(routerOpts, httpserver.WithGit(gitAPI))
 	}
 	routerOpts = append(routerOpts,
+		httpserver.WithEmail(cfg.SMTP.Enabled()),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort, SSHOff: !cfg.SSHEnabled}),
 	)
 	var disk *attachments.Disk
@@ -213,10 +219,74 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// dall'outbox, scrive core.notifications e fa la conservazione delle
 	// lette (C9). Serve identity per sapere chi vede il repo (I8): senza,
 	// nessuna notifica (mai una notifica a chi potrebbe non leggere il repo).
+	var notifyEng *notify.Engine
 	if id, ok := repoLookup.(notify.Identity); ok {
-		go (&notify.Engine{Pool: pool, Identity: id, Log: logger}).Run(ctx)
+		eng := &notify.Engine{Pool: pool, Identity: id, Log: logger}
+		notifyEng = eng
+		// Email delle notifiche (M-06/F, C5): solo con un SMTP configurato.
+		// Senza, EmailWindow resta 0: nessuna notifica entra nella coda delle
+		// email e nessun invio viene tentato; restano le notifiche in-app.
+		if cfg.SMTP.Enabled() {
+			users, uok := repoLookup.(notify.Users)
+			if !uok {
+				logger.Warn("identity non supporta la ricerca degli utenti: le email non partono")
+			} else {
+				eng.EmailWindow = notify.DefaultEmailWindow
+				go (&notify.EmailDispatcher{Pool: pool, Users: users, Mail: &mailer.Mailer{Cfg: cfg.SMTP},
+					PublicURL: cfg.PublicURL, Log: logger}).Run(ctx)
+				logger.Info("email delle notifiche attive", "smtp_host", cfg.SMTP.Host, "smtp_port", cfg.SMTP.Port, "security", string(cfg.SMTP.Security), "window", notify.DefaultEmailWindow.String())
+			}
+		} else {
+			logger.Info("SMTP non configurato: solo notifiche in-app")
+		}
+		go eng.Run(ctx)
 	} else {
 		logger.Warn("identity non configurata: il motore delle notifiche non parte")
+	}
+
+	// Webhook (M-06/G, GIT-135): consegna firmata con coda persistente (la
+	// tabella core.webhook_deliveries), uscita solo da pkg/egress (C8). Le
+	// consegne pending sopravvivono a un riavvio: il motore le riprende.
+	keys, err := webhooks.NewKeyring(cfg.WebhookSecretKeyID, cfg.WebhookSecretKey, cfg.WebhookSecretOldKeys)
+	if err != nil {
+		logger.Error("configurazione non valida", "err", err)
+		return 1
+	}
+	if !keys.Enabled() {
+		logger.Warn("GITSTACK_WEBHOOK_SECRET_KEY non impostata: i webhook con segreto rispondono 503")
+	}
+	hookHTTP, hookCheck, err := webhooks.NewEgress(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs)
+	if err != nil {
+		logger.Error("configurazione non valida", "err", err)
+		return 1
+	}
+	routerOpts = append(routerOpts, httpserver.WithWebhooks(httpserver.WebhookConfig{Keys: keys, CheckURL: hookCheck}))
+	hooks := &webhooks.Engine{Pool: pool, Keys: keys, HTTP: hookHTTP, Log: logger}
+	if look, ok := repoLookup.(webhooks.Users); ok {
+		hooks.Users = look
+	}
+	if mgr, ok := repoLookup.(webhooks.Managers); ok {
+		hooks.Managers = mgr
+	}
+	go hooks.Run(ctx)
+	if js, err := jetstream.New(nc); err != nil {
+		logger.Error("apertura di JetStream per i webhook push non riuscita: i push non generano webhook", "err", err)
+	} else {
+		go runPushConsumer(ctx, js, gitpush.DurableWebhooks, hooks.EnqueuePush, logger)
+		// Commit collegati e chiusura con fixes #n (M-06/C, GIT-131): servono i
+		// permessi di identity; senza, nessun collegamento.
+		if id, ok := repoLookup.(issuelinks.Identity); ok {
+			linker := &issuelinks.Linker{Pool: pool, Identity: id, Log: logger}
+			if notifyEng != nil {
+				linker.Notifier = notifyEng
+			}
+			if rd, ok := gitAPI.(gitclient.Reader); ok {
+				linker.Git = rd
+			}
+			go runPushConsumer(ctx, js, gitpush.DurableIssueLinks, linker.HandlePush, logger)
+		} else {
+			logger.Warn("identity non configurata: i commit non si collegano alle issues")
+		}
 	}
 
 	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
@@ -318,4 +388,20 @@ func parseCommand(args []string) (command, int, error) {
 		steps = n
 	}
 	return cmdMigrateDown, steps, nil
+}
+
+// runPushConsumer tiene acceso un consumer git.push: se NATS non è ancora
+// raggiungibile lo riprova ogni 5 secondi, finché ctx non finisce.
+func runPushConsumer(ctx context.Context, js jetstream.JetStream, durable string, h gitpush.Handler, logger *slog.Logger) {
+	for ctx.Err() == nil {
+		err := gitpush.Run(ctx, js, durable, h, logger)
+		if err == nil || ctx.Err() != nil {
+			return
+		}
+		logger.Warn("consumer git.push non avviato, si riprova", "durable", durable, "err", err)
+		select {
+		case <-ctx.Done():
+		case <-time.After(5 * time.Second):
+		}
+	}
 }

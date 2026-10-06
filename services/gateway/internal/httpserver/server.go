@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/fathorMB/GitStack/services/gateway/internal/openapi"
@@ -14,13 +15,22 @@ import (
 // cambia, il generato cambia, e questo file smette di compilare finché non
 // lo si adegua.
 type apiServer struct {
-	proxy http.Handler
+	proxy   http.Handler
+	version string // versione dell'installazione (GITSTACK_VERSION)
 }
 
 var _ openapi.ServerInterface = (*apiServer)(nil)
 
 func (s *apiServer) GetHealth(w http.ResponseWriter, r *http.Request) {
 	s.proxy.ServeHTTP(w, r)
+}
+
+// GetMeta risponde il gateway stesso, senza passare da core: la versione
+// dell'installazione è quella dell'immagine del gateway.
+func (s *apiServer) GetMeta(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(openapi.Meta{ServerVersion: s.version, ApiVersion: GatewayVersion})
 }
 
 func (s *apiServer) ListResources(w http.ResponseWriter, r *http.Request, _ openapi.ListResourcesParams) {

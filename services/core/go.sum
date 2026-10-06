@@ -50,6 +50,8 @@ github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 h1:PRxIJD8XjimM5aT
 github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936/go.mod h1:ttYvX5qlB+mlV1okblJqcSMtR4c52UKxDiX9GRBS8+Q=
 github.com/ebitengine/purego v0.8.4 h1:CF7LEKg5FFOsASUj0+QwaXf8Ht6TlFxg09+S9wz0omw=
 github.com/ebitengine/purego v0.8.4/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
+github.com/fathorMB/GitStack/pkg/egress v0.0.0-20261005212733-bd568d173cca h1:xgfYOPjni9L57RaPKNkLaft+a8LS1qzl4wCp/B+G9Wg=
+github.com/fathorMB/GitStack/pkg/egress v0.0.0-20261005212733-bd568d173cca/go.mod h1:KREi/4z7wT0KJ/TUOjsm1FAKqGkcH8pbgmyvp/FtEO0=
 github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf h1:/cEF+DPLPsU6jFftFQLJLZDJbvtjFYd1zPLbU5BFuc4=
 github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf/go.mod h1:c+JPb4jEG9bYHyOulDUfUuhJ6w3EZyVzVsCfDwqCk4E=
 github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa h1:Ma5hyCTSmm1lsPwP/2M0LZR+O+t5gyQScyf6UiHxdxg=

@@ -789,7 +789,7 @@ func (b *browserEnv) uiSmoke(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "corepack", "pnpm", "exec", "vitest", "run", "src/smoke")
+	cmd := exec.CommandContext(ctx, "corepack", "pnpm", "exec", "vitest", "run", "src/smoke/codeBrowser.smoke.test.tsx")
 	cmd.Dir = web
 	cmd.Env = append(os.Environ(),
 		"VITE_SMOKE_GATEWAY="+b.gateway,

@@ -390,6 +390,8 @@ Parametri principali (tutti con un default sensato):
 | `-Ref` | SHA corrente di `origin/main`, risolto con `git ls-remote` e stampato | Commit da provare. |
 | `-OutDir` | `%LOCALAPPDATA%\GitStack\e2e-runs\<timestamp>` | Log, diagnostica della VM e `known_hosts` isolato; a fine esecuzione anche `<OutDir>.zip`. |
 | `-GitSshPort` | `2222` | Passo (e5): porta SSH del servizio git sulla VM. |
+| `-PreviousRef` | primo genitore di `-Ref` (API GitHub) | Passo j (GIT-148): commit da installare prima dell'upgrade. Deve avere gia `gitstack upgrade` (GIT-147) e immagini e binario pubblicati dalla CI. |
+| `-SkipBackupRestore` / `-SkipUpgrade` | (assenti) | Saltano i passi h-i e j. Solo per il debug: una prova valida li esegue tutti. |
 | `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
 | `-JetStreamPollAttempts` / `-JetStreamPollIntervalSeconds` | `6` / `5` | Passo (e): letture del conteggio JetStream dopo la create, ogni N secondi, finché supera la baseline (fino a 30s in totale di default). |
 
@@ -408,6 +410,10 @@ esecuzione verde sono **8 righe `[PASS]`** (7 nell'output reale di Atlas del 28/
 [PASS] e. UI, /api/healthz, create+read risorsa di prova, evento JetStream
 [PASS] e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto
 [PASS] f. idempotenza (seconda esecuzione, k3s non reinstallato, password invariata, healthz OK)
+... (d3, e3-e7, f2, f3 come sopra)
+[PASS] h. dati di prova ... e gitstack backup cifrato ...
+[PASS] i. reset, reinstallazione della stessa versione, gitstack restore ...
+[PASS] j. upgrade: installazione del commit precedente, dati, ... gitstack upgrade ...
 RISULTATO: VERDE
 ```
 
@@ -447,9 +453,64 @@ Cosa controlla ciascun passo:
 - **f.** idempotenza: seconda esecuzione (`installer-run2.log`) -> exit 0,
   hash della password di Postgres invariato, `ActiveEnterTimestamp` di
   `k3s` invariato, `/api/healthz` ancora 200.
+- **h.** (GIT-148, DF/D) sullo stato appena provato crea i dati di prova
+  (`New-E2eDataset` in `lib/phases.ps1`): utente con token e chiave SSH,
+  organizzazione, repo privato con un commit via HTTPS e uno via SSH, issue
+  con un allegato di testo (caricato con `curl.exe`). Poi `sudo gitstack
+  backup --key-file` con una chiave generata sulla VM. Controlla: archivio
+  `*.tar.gz.enc` `0600 root` in `/var/backups/gitstack` `0700`, `.sha256`
+  accanto, archivio e chiave copiati sull'host (`<OutDir>\backup-restore`)
+  con lo stesso SHA-256, servizi di nuovo sani e dati ancora intatti dopo la
+  finestra di sola lettura. Nel log e nell'output compare la riga
+  «Finestra di sola lettura»: **riportala** nel README di `admin/` (oggi
+  dice «non misurata»). Non verifica dall'host i 503 durante la finestra.
+- **i.** (GIT-148, DF/D) reset al checkpoint `clean`, reinstallazione dello
+  **stesso** commit, copia di archivio e chiave sulla VM e `gitstack
+  restore`. Verifica: `/api/healthz` ok; la CA dopo il restore ha la stessa
+  impronta di prima (la sua chiave sta nel backup) e HTTPS si fida ancora di
+  lei; l'admin accede con la password cambiata prima del backup (non con
+  quella della nuova installazione); `Test-E2eDataset`: login dell'utente,
+  token di prima ancora valido, tree del repo, organizzazione, issue,
+  allegato con lo stesso SHA-256, `git clone` via HTTPS e via SSH con lo
+  stesso HEAD, gli stessi file e `git fsck` pulito. Il clone SSH usa
+  `StrictHostKeyChecking=yes` sul `known_hosts` registrato prima del
+  backup: se la chiave host non fosse ripristinata fallirebbe («host key
+  changed»). Se l'IP della VM cambia con il reset, il `known_hosts` si
+  riscrive sul nuovo IP tenendo la stessa chiave. Infine `gitstack status`:
+  versione `sha-<Ref>` e «Stato: sano». Log in `backup-restore\restore.log`.
+- **j.** (GIT-148, DF/F) reset, installazione del **commit precedente**
+  (`installer-precedente.log`), admin e dati di prova su quella versione,
+  poi: `gitstack restore` dell'archivio della fase h (versione diversa) deve
+  uscire con **6** senza fermare niente (README di `admin/`, punto 5);
+  `gitstack upgrade --to <Ref> --dry-run` (exit 0); `gitstack upgrade --to
+  <Ref>` (exit 0; 7 = rollback riuscito, 8 = rollback fallito). Dopo:
+  healthz, `gitstack status` con `sha-<Ref>` e sano, almeno un backup
+  preventivo in `/var/backups/gitstack`, CA invariata, admin con la sua
+  password, dati e clone intatti, UI. Log in `upgrade\` (`upgrade.log`,
+  `upgrade-dry-run.log`). L'upgrade scarica il binario e il chart del
+  commit da GitHub (API senza token: ~60 richieste/ora per IP) e le immagini
+  da ghcr.io.
 - **g.** (sempre, anche dopo un fallimento) diagnostica raccolta dalla VM
   (`journalctl -u k3s`, `kubectl get all -A`, describe/log dei pod, eventi,
   `helm status`, `df`/`free`) in `<OutDir>\vm-diagnostics\`.
+
+Durata: con h, i e j la prova fa tre installazioni complete (la prima, la
+reinstallazione del restore e quella del commit precedente) piu un upgrade:
+conta circa un'ora, non i pochi minuti di prima. I passi h, i e j non dipendono
+l'uno dall'altro per il reset (ognuno riparte dal checkpoint `clean`), ma h
+vuole la sessione dell'admin di e3 e i raggiunge lo stato solo se h ha prodotto
+l'archivio.
+
+**Comando da lanciare per la prova completa** (terminale amministratore, dalla
+radice del checkout):
+
+```powershell
+.\deploy\test-vm\e2e.ps1
+```
+
+Con `-Ref` e `-PreviousRef` si fissano i due commit, per esempio per un
+commit del ramo gia pubblicato dalla CI. Test dei pezzi puri, senza VM:
+`powershell.exe -NoProfile -File deploy\test-vm\tests\phases.Tests.ps1`.
 
 Esiste anche una riga `[FAIL] preparazione: copia di .../remote.sh sulla
 VM`, ma solo se ssh/scp verso la VM non funziona: in un'esecuzione verde

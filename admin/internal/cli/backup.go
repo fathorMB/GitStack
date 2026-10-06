@@ -10,8 +10,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fathorMB/GitStack/admin/internal/backup"
+	"github.com/fathorMB/GitStack/admin/internal/backupstate"
 	"github.com/fathorMB/GitStack/admin/internal/config"
 )
 
@@ -54,13 +56,7 @@ func readKey(path string) ([]byte, error) {
 }
 
 func (a *App) options(cfg *config.Config, cfgPath string, key []byte) *backup.Options {
-	dir := defaultConfigDir
-	if cfgPath != config.DefaultPath {
-		dir = filepath.Dir(cfgPath)
-	}
-	if v := a.Getenv("GITSTACK_CONFIG_DIR"); v != "" {
-		dir = v
-	}
+	dir := a.configDir(cfgPath)
 	abs, err := filepath.Abs(cfgPath)
 	if err != nil {
 		abs = cfgPath
@@ -84,6 +80,7 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 	cfgPath := fs.String("config", "", configFlagUsage)
 	dest := fs.String("dest", "", "cartella di destinazione (default backup.destination del config)")
 	keyFile := fs.String("key-file", "", "file con la chiave per cifrare l'archivio (AES-256-GCM); senza, l'archivio non è cifrato")
+	retention := fs.Int("retention", 0, "numero di backup da conservare (default: backup.retention del config)")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
 		if err == nil {
 			err = fmt.Errorf("argomento inatteso: %s", fs.Arg(0))
@@ -107,21 +104,48 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 	}
 	cl, err := a.cluster(cfg)
 	if err != nil {
+		a.backupStateWrite(path, false, "", err)
 		a.errorf("backup: %v", err)
 		return ExitCluster
 	}
 	o := a.options(cfg, path, key)
 	o.Cluster, o.DestDir = cl, *dest
+	if *retention > 0 {
+		o.Retention = *retention
+	}
+	if a.Now != nil {
+		o.Now = a.Now
+	}
 	res, err := backup.Backup(ctx, o)
 	if err != nil {
-		return a.backupFailure("backup", err)
+		code := a.backupFailure("backup", err)
+		a.backupStateWrite(path, false, "", err)
+		return code
 	}
 	_, _ = fmt.Fprintf(a.Stdout, "Backup completato: %s\n  SHA-256: %s\n  Versione: %s\n  Finestra di sola lettura: %.1f s\n",
 		res.Path, res.SHA256, res.Manifest.Version, res.Window.Seconds())
 	if key == nil {
 		_, _ = fmt.Fprintln(a.Stdout, "  Archivio NON cifrato (root-only 0600): contiene le chiavi dell'installazione. Usa --key-file per cifrarlo.")
 	}
+	a.backupStateWrite(path, true, res.Path, nil)
 	return ExitOK
+}
+
+// backupStateWrite scrive il file di stato dell'ultimo backup.
+// Non fallisce se la scrittura non è possibile: il comando comunque
+// segnala l'errore al terminale.
+func (a *App) backupStateWrite(cfgPath string, success bool, path string, err error) {
+	s := backupstate.State{
+		Success: success,
+		Path:    path,
+		Error:   "",
+		At:      time.Now().UTC(),
+	}
+	if err != nil {
+		s.Error = err.Error()
+	}
+	cfgDir := a.configDir(cfgPath)
+	_ = backupstate.Write(cfgDir, s)
 }
 
 func runRestore(ctx context.Context, a *App, args []string) int {

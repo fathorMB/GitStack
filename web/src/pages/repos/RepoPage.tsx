@@ -20,6 +20,7 @@ import { FileView } from './FileView';
 import type { FileMode } from './FileView';
 import { VisibilityBadge } from './ReposPage';
 import { isRepoAdmin, loadMe } from './repoAdmin';
+import { RepoWatchSelect } from './RepoWatchSelect';
 
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
@@ -81,6 +82,7 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
         <VisibilityBadge visibility={data.visibility} />
         {data.archived ? <span className="badge badge-archived">Archived</span> : null}
         <span className="sp" />
+        <RepoWatchSelect owner={data.owner.name} repo={data.name} />
         {admin ? <Link to={`/${data.owner.name}/${data.name}/settings`}>Settings</Link> : null}
       </div>
       {data.description ? <p className="muted">{data.description}</p> : null}

@@ -1,4 +1,4 @@
-import { Key, Trash2, Terminal, User as UserIcon } from 'lucide-react';
+import { Bell, Key, Trash2, Terminal, User as UserIcon } from 'lucide-react';
 import { NavLink, Outlet, useOutletContext } from 'react-router-dom';
 import { ErrorAlert } from '../../components';
 import { fetchSession } from '../../lib/authApi';
@@ -36,6 +36,10 @@ export function SettingsLayout() {
         <NavLink to="/settings/profile">
           <UserIcon size={16} aria-hidden="true" />
           Profile
+        </NavLink>
+        <NavLink to="/settings/notifications">
+          <Bell size={16} aria-hidden="true" />
+          Notifications
         </NavLink>
         <div className="grp">Access</div>
         <NavLink to="/settings/tokens">

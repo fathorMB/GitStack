@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components';
 import { ApiError } from '../../lib/http';
@@ -30,11 +31,13 @@ const existing = {
   lastUsedAt: null,
 };
 
-function renderPage() {
+function renderPage(entry = '/settings/tokens', startCreating = false) {
   return render(
-    <ToastProvider>
-      <TokensPage />
-    </ToastProvider>,
+    <MemoryRouter initialEntries={[entry]}>
+      <ToastProvider>
+        <TokensPage startCreating={startCreating} />
+      </ToastProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -107,5 +110,36 @@ describe('TokensPage', () => {
     mockedList.mockRejectedValue(new ApiError({ error: { code: 'insufficient_scope', message: 'Missing scope read:user.' } }, 403));
     renderPage();
     expect(await screen.findByRole('alert')).toHaveTextContent("You don't have permission to do this. Missing scope read:user.");
+  });
+  it('/settings/tokens/new: modulo aperto e precompilato da nome, scope e scadenza', async () => {
+    mockedCreate.mockResolvedValue({ ...existing, id: 't-3', name: 'gs', scopes: ['read:user', 'write:resource'], token: 'gst_X' });
+    const user = userEvent.setup();
+    renderPage('/settings/tokens/new?name=gs&scopes=read:user,write:resource&expires=30', true);
+    const form = await screen.findByRole('form', { name: 'New token' });
+    expect(within(form).getByLabelText('Name')).toHaveValue('gs');
+    expect(screen.getByRole('checkbox', { name: 'read:user' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'write:resource' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'read:org' })).not.toBeChecked();
+    expect(screen.queryByRole('status', { name: '' })).toBeNull();
+    // Niente si crea da solo: serve la conferma dell'utente.
+    expect(mockedCreate).not.toHaveBeenCalled();
+    await user.click(within(form).getByRole('button', { name: 'Generate token' }));
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
+    expect(mockedCreate.mock.calls[0]?.[0]).toMatchObject({ name: 'gs', scopes: ['read:user', 'write:resource'] });
+  }, 15000);
+
+  it('scope sconosciuti e scadenza non ammessa: ignorati con avviso che li nomina', async () => {
+    renderPage('/settings/tokens/new?name=gs&scopes=repo,read:user,issues&expires=7', true);
+    const form = await screen.findByRole('form', { name: 'New token' });
+    expect(within(form).getByText(/Ignored unknown scopes: repo, issues/)).toBeInTheDocument();
+    expect(within(form).getByText(/Ignored expiration "7"/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'read:user' })).toBeChecked();
+    expect(screen.getAllByRole('checkbox').filter((c) => (c as HTMLInputElement).getAttribute('aria-checked') === 'true')).toHaveLength(1);
+  }, 15000);
+
+  it('senza startCreating la query string non apre il modulo', async () => {
+    renderPage('/settings/tokens?scopes=read:user');
+    await screen.findByText('laptop-cli');
+    expect(screen.queryByRole('form', { name: 'New token' })).not.toBeInTheDocument();
   });
 });
