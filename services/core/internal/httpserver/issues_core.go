@@ -778,13 +778,20 @@ func (s *apiServer) ListIssueEvents(w http.ResponseWriter, r *http.Request, owne
 	if !ok {
 		return
 	}
+	// C1: il collegamento e la chiusura da commit di un altro repo li vede solo
+	// chi legge anche quel repo.
+	hiddenRepos, err := s.unreadableCommitRepos(ctx, ia, x.ID)
+	if err != nil {
+		writeIssueFailure(w, "verifica dell'accesso ai repo dei commit non riuscita", err)
+		return
+	}
 	var total int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM core.issue_events WHERE issue_id = $1`, x.ID).Scan(&total); err != nil {
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM core.issue_events WHERE issue_id = $1`+commitRepoFilter, x.ID, hiddenRepos).Scan(&total); err != nil {
 		writeIssueFailure(w, "conteggio degli eventi non riuscito", err)
 		return
 	}
 	rows, err := s.pool.Query(ctx, `SELECT id, type, actor_id, data, created_at FROM core.issue_events
-		WHERE issue_id = $1 ORDER BY seq LIMIT $2 OFFSET $3`, x.ID, perPage, (page-1)*perPage)
+		WHERE issue_id = $1`+commitRepoFilter+` ORDER BY seq LIMIT $3 OFFSET $4`, x.ID, hiddenRepos, perPage, (page-1)*perPage)
 	if err != nil {
 		writeIssueFailure(w, "lettura degli eventi non riuscita", err)
 		return
@@ -809,6 +816,10 @@ func (s *apiServer) ListIssueEvents(w http.ResponseWriter, r *http.Request, owne
 			rows.Close()
 			writeIssueFailure(w, "dati dell'evento non validi", err)
 			return
+		}
+		// repositoryId serve solo al filtro di accesso: non esce dall'API.
+		if c, ok := data["commit"].(map[string]any); ok {
+			delete(c, "repositoryId")
 		}
 		ev.Data = &data
 		evs = append(evs, ev)

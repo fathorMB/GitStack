@@ -21,6 +21,9 @@ import (
 // docs/events.md: i nomi sono stabili, cambiarli riparte da zero).
 const (
 	DurableWebhooks = "core-webhooks-git"
+	// DurableIssueLinks: collegamento commit↔issue e chiusura con fixes #n
+	// (M-06/C, internal/issuelinks).
+	DurableIssueLinks = "core-issue-linker"
 )
 
 // Handler gestisce un git.push. Un errore fa ritentare il messaggio (Nak con
