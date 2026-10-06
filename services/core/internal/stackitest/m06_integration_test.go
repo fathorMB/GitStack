@@ -14,6 +14,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -1135,6 +1138,9 @@ func TestM06E2E(t *testing.T) {
 		}
 	})
 
+	// --- UI: pagine 05 e 21 sullo stack vero, con le notifiche di alice ---------
+	t.Run("ui_smoke", func(t *testing.T) { e.uiSmoke(t) })
+
 	// --- C9: conservazione -------------------------------------------------------
 	t.Run("conservazione_e_perdita_di_accesso", func(t *testing.T) {
 		// bob ha una notifica del vault (assegnazione) e una dell'app.
@@ -1193,4 +1199,45 @@ func m06Delivery(ds []openapi.WebhookDeliverySummary, id string) (openapi.Webhoo
 		}
 	}
 	return openapi.WebhookDeliverySummary{}, false
+}
+
+// uiSmoke lancia il controllo di fumo della UI sulle pagine 05 (centro
+// notifiche) e 21 (impostazioni delle notifiche): web/src/smoke/m06.smoke.test.tsx,
+// Vitest con le pagine vere di App.tsx contro il gateway vero. Senza corepack o
+// node_modules è saltato, a meno di GITSTACK_REQUIRE_UI_SMOKE (impostata in CI).
+func (e *m06Env) uiSmoke(t *testing.T) {
+	skip := func(why string) {
+		if os.Getenv("GITSTACK_REQUIRE_UI_SMOKE") != "" {
+			t.Fatalf("smoke UI richiesto ma non eseguibile: %s", why)
+		}
+		t.Skip(why)
+	}
+	web, err := filepath.Abs("../../../../web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := exec.LookPath("corepack"); err != nil {
+		skip("corepack non è nel PATH")
+	}
+	if _, err := os.Stat(filepath.Join(web, "node_modules")); err != nil {
+		skip("web/node_modules manca: corepack pnpm install --frozen-lockfile")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "corepack", "pnpm", "exec", "vitest", "run", "src/smoke/m06.smoke.test.tsx")
+	cmd.Dir = web
+	cmd.Env = append(os.Environ(),
+		"VITE_SMOKE_GATEWAY="+e.gateway,
+		"VITE_SMOKE_TOKEN="+e.tokens["alice"],
+		"CI=1",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("smoke UI: %v\n%s", err, out)
+	}
+	plain := ansiRe.ReplaceAllString(string(out), "")
+	if strings.Contains(plain, "skipped") || strings.Contains(plain, "failed") || !strings.Contains(plain, "passed") {
+		t.Fatalf("smoke UI: test saltati, falliti o non eseguiti:\n%s", out)
+	}
+	t.Logf("smoke UI:\n%s", out)
 }
