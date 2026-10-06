@@ -75,7 +75,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 
 | Id | Regola | Test | Stato | Cosa manca |
 |---|---|---|---|---|
-| C1 | Riferimenti tra repo | | da compilare | |
+| C1 | Riferimenti tra repo | `services/core/internal/httpserver/issues_references_integration_test.go#TestIssues_RiferimentiC1` | coperta | |
 | C2 | Chiusura via commit | | da compilare | |
 | C3 | Chi segue cosa | | da compilare | |
 | C4 | Agenti: stessa casella delle persone | | da compilare | |
