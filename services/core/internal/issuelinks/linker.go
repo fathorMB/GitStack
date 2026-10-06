@@ -395,7 +395,7 @@ func (r *pushRun) closeIssue(ctx context.Context, t *target, issueID uuid.UUID, 
 	if t.archived {
 		return nil // R10: sola lettura, resta il collegamento
 	}
-	if t.repoInfo.id != r.cur.id {
+	if t.id != r.cur.id {
 		ok, err := r.write(ctx, t)
 		if err != nil {
 			return err
