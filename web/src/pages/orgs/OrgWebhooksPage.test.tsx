@@ -50,8 +50,8 @@ const NOW = new Date().toISOString();
 
 describe('OrgWebhooksPage', () => {
   beforeEach(() => {
-    mockedFetchOrg.mockResolvedValue({ id: 'org-1', name: 'acme' });
-    mockedFetchSession.mockResolvedValue({ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const } });
+    mockedFetchOrg.mockResolvedValue({ id: 'org-1', name: 'acme', createdAt: '2025-01-01T00:00:00Z' });
+    mockedFetchSession.mockResolvedValue({ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const }, authMethod: 'password', mustChangePassword: false });
     mockedFetchMembers.mockResolvedValue([
       { user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner', createdAt: new Date().toISOString() },
       { user: { id: 'user-2', username: 'lbianchi', displayName: 'Luca Bianchi', kind: 'human' as const }, role: 'member', createdAt: new Date().toISOString() },
@@ -97,7 +97,7 @@ describe('OrgWebhooksPage', () => {
   it('mostra la lista webhook attivi dell\'organizzazione', async () => {
     mockedFetch.mockResolvedValue({ items: [
       {
-        id: 'wh-1', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+        id: 'wh-1', scope: 'org', repository: null, organization: 'acme',
         url: 'https://ci.acme.local/hooks/gitstack', events: ['push', 'issues'], active: true, hasSecret: true,
         disabledAt: null, disabledReason: undefined, failingSince: null,
         lastDelivery: { id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW },
@@ -195,7 +195,7 @@ describe('OrgWebhooksPage', () => {
   it('mostra consegne recenti con Redeliver', async () => {
     mockedFetch.mockResolvedValue({ items: [
       {
-        id: 'wh-1', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+        id: 'wh-1', scope: 'org', repository: null, organization: 'acme',
         url: 'https://ci.acme.local/hooks/gitstack', events: ['push', 'issues'], active: true, hasSecret: true,
         disabledAt: null, disabledReason: undefined, failingSince: null,
         lastDelivery: { id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW },
@@ -245,7 +245,7 @@ describe('OrgWebhooksPage', () => {
   it('mostra il messaggio di successo per Redeliver', async () => {
     mockedFetch.mockResolvedValue({ items: [
       {
-        id: 'wh-1', scope: 'org', repository: null, organization: { id: 'org-1', name: 'acme' },
+        id: 'wh-1', scope: 'org', repository: null, organization: 'acme',
         url: 'https://ci.acme.local/hooks/gitstack', events: ['push', 'issues'], active: true, hasSecret: true,
         disabledAt: null, disabledReason: undefined, failingSince: null,
         lastDelivery: { id: 'd-1', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW },
