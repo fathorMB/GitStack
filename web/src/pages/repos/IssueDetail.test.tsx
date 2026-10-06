@@ -193,7 +193,7 @@ describe('cronologia', () => {
     expect(screen.getAllByText('Closed as duplicate of #12').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('event-referenced')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Unsubscribe' })).toBeInTheDocument();
-    expect(screen.queryByText(/Linked commits/)).not.toBeInTheDocument();
+    expect(screen.getByText('Linked commits')).toBeInTheDocument();
     expect(screen.queryByText(/For agents/)).not.toBeInTheDocument();
     expect(screen.queryByText(/gs issue view/)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /New issue/ })).toHaveAttribute('href', '/acme/api/issues/new');
@@ -556,6 +556,31 @@ describe('varianti del mockup 13', () => {
     const alert = b.closest('.alert') as HTMLElement;
     expect(alert).not.toHaveTextContent(/Hidden by/);
     expect(within(alert).queryByRole('button', { name: 'Unhide issue' })).not.toBeInTheDocument();
+  });
+
+  it('M-06: cronologia e barra laterale con riferimenti, commit collegati e chiusura da commit', async () => {
+    const c = (sha: string, subject: string, ref = 'refs/heads/fix') => ({ sha, repository: 'acme/api', subject, ref, authorName: 'B' });
+    setup({
+      issue: baseIssue({ state: 'closed', closeReason: 'completed' }),
+      events: [
+        event('r1', 'referenced_from', { source: { kind: 'issue', repository: 'acme/web', number: 7, title: 'Docs' } }, user('mrossi'), '2026-10-04T11:00:00Z'),
+        event('k1', 'commit_linked', { commit: c('c81f3e2aaaa', 'test(ssh)') }, user('build-agent', 'agent'), '2026-10-04T12:00:00Z'),
+        event('k2', 'commit_linked', { commit: c('4e1a9c0bbbb', 'fix(ssh)') }, user('build-agent', 'agent'), '2026-10-04T12:00:03Z'),
+        event('x1', 'closed_by_commit', { commit: c('4e1a9c0bbbb', 'fix(ssh)', 'refs/heads/main'), reason: 'completed' }, null as unknown as IssueUser, '2026-10-04T12:00:10Z'),
+      ],
+    });
+    expect(await screen.findByTestId('event-referenced_from')).toHaveTextContent('referenced this issue from acme/web#7');
+    expect(screen.getByTestId('event-commit_linked')).toHaveTextContent('pushed 2 commits referencing this issue');
+    expect(screen.getByTestId('event-closed_by_commit')).toHaveTextContent('Closed as completed by commit 4e1a9c0 on main');
+    expect(within(screen.getByTestId('linked-commits-box')).getAllByRole('link')).toHaveLength(2);
+  });
+
+  it('M-06: senza collegamenti nessun evento e riquadro vuoto', async () => {
+    setup();
+    expect(await screen.findByText('No linked commits')).toBeInTheDocument();
+    expect(screen.queryByTestId('event-referenced_from')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('event-commit_linked')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('event-closed_by_commit')).not.toBeInTheDocument();
   });
 
   it('archived: avvisi in testata e in fondo, nessun editor, chiusura, Edit ne New issue; nota Read access', async () => {
