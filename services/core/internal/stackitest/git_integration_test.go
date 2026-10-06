@@ -72,7 +72,9 @@ func waitTCP(t *testing.T, addr string) {
 	t.Fatalf("nessuno ascolta su %s", addr)
 }
 
-func newGitEnv(t *testing.T) *gitEnv {
+// newGitEnv avvia lo stack; opts sono opzioni aggiuntive del router di core
+// (per esempio WithAttachments).
+func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 	t.Helper()
 	requireTools(t)
 	pool, dsn := dbtest.NewPool(t)
@@ -96,11 +98,12 @@ func newGitEnv(t *testing.T) *gitEnv {
 	_, _ = fmt.Sscanf(sshPort, "%d", &port)
 
 	idc := identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second)
-	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret,
+	routerOpts := append([]httpserver.Option{
 		httpserver.WithRepoIdentity(idc),
 		httpserver.WithGit(gitclient.New(mustURL(t, "http://"+gitAddr), serviceSecret, 30*time.Second)),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "http://" + gitAddr, SSHHost: "127.0.0.1", SSHPort: port}),
-	))
+	}, opts...)
+	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret, routerOpts...))
 	t.Cleanup(coreSrv.Close)
 
 	start(t, "identity", identityBin, identityAddr,
