@@ -366,10 +366,11 @@ binary with checksum, chart, and images — without modifying anything.
 On success, exit `0`, summary includes the target version and
 image count.
 
-On this VM, the commit of `main` has no published release:
+When the target commit has no published release yet:
 
 ```
-upgrade rifiutato: checksum del binario non disponibile: GET https://github.com/fathorMB/GitStack/releases/download/sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee/gitstack-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.sha256: HTTP 404 / Niente è stato modificato.
+ERRORE: upgrade rifiutato: checksum del binario non disponibile: https://github.com/fathorMB/GitStack/releases/download/sha-fc0a16ecc4018ea81a4f71f7d96089668cf3a8b0/gitstack-linux-amd64.sha256: HTTP 404
+Niente è stato modificato.
 ```
 
 Exit code `6` (`ExitRefused`), nothing changed.
