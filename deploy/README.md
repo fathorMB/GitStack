@@ -22,27 +22,46 @@ curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/insta
 
 ### Distribuzioni supportate
 
-Solo **Ubuntu Server 24.04 LTS x86_64** in M-01. Debian e RHEL arrivano con M-08/T-01 [c_8458909a21d9035f]. WSL2 (Windows) arriva anch'esso con M-08.
+Solo **Ubuntu Server 24.04 LTS x86_64** (N2 [c_d345922b89557a3f]). Su un altro sistema (anche Ubuntu 22.04 o Pop!_OS, che arrivano con M-08 [c_8458909a21d9035f]) il preflight stampa «non supportato» e si ferma: si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware. Debian, RHEL e WSL2 arrivano con M-08.
 
-### Requisiti minimi
+### Requisiti: due profili (N1)
 
-Soglia provvisoria (decisione di Atlas), da rivedere con M-08 [c_8458909a21d9035f]. Lo script li verifica in preflight prima di installare qualunque cosa, e si ferma con un messaggio chiaro (valore trovato / minimo richiesto) se non sono rispettati:
+Lo script li verifica in preflight prima di installare qualunque cosa (N1, confermati il 2026-10-05 [c_d345922b89557a3f]):
 
-| Requisito | Minimo |
-|---|---|
-| Sistema operativo | Ubuntu Server 24.04 LTS, architettura x86_64 |
-| CPU | 4 vCPU |
-| RAM | 8 GB |
-| Disco | macchina con almeno 60 GB di disco (sul filesystem che ospiterà i dati di k3s: `/var/lib/rancher` se esiste già, altrimenti `/`); il preflight verifica in concreto ≥55 GB di filesystem e ≥20 GB liberi — vedi sotto |
-| Accesso | root o sudo |
-| Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile — non è un vincolo air-gapped, quello arriva con M-08) |
-| Porte libere | 80, 443, 6443 (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) |
+| Requisito | Profilo minimo: si ferma | Profilo consigliato: solo avviso |
+|---|---|---|
+| CPU | 4 vCPU | 8 vCPU |
+| RAM | 8 GB | 16 GB |
+| Disco | filesystem di almeno 60 GB **e** almeno 20 GB liberi, sul filesystem che ospita `/var/lib/rancher` (se non esiste ancora, `/`) | 200 GB su SSD (fino a circa 100 utenti) |
+| Sistema | Ubuntu Server 24.04 LTS, x86_64 | |
+| Accesso | root o sudo | |
+| Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
+| Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |
 
-I controlli RAM usano GB decimali (10⁹ byte), non GiB: una macchina con "8 GB" di RAM nominali riporta spesso qualche centinaio di MiB in meno in `/proc/meminfo` per memoria riservata a firmware/hypervisor — con i GiB il controllo fallirebbe quasi sempre anche su una macchina conforme.
+Sotto il minimo l'installer esce con exit 1 e il valore trovato; sotto il consigliato stampa `ATTENZIONE` e prosegue. L'SSD si legge da `/sys/class/block/<dev>/queue/rotational` (segue partizioni e device mapper); se non si capisce, avviso (un disco virtuale può dichiararsi rotazionale: è solo un avviso, come sulla VM di test). Lo spazio per i repo è circa il doppio della loro dimensione: sui dischi piccoli pesa il consigliato.
 
-Per il disco il preflight non richiede "60 GB liberi": su un disco *da* 60 GB (il profilo minimo, uguale al disco della VM di GIT-12), dopo il sistema operativo lo spazio libero è per costruzione sotto i 60 GB, e cala ulteriormente dopo k3s e le immagini di GitStack — anche alle esecuzioni successive, perché il preflight gira a ogni avvio dello script. Controlla quindi due soglie più realistiche, entrambe in GB decimali: la dimensione del filesystem (**≥55 GB**, con margine per l'overhead di partizionamento/boot rispetto ai 60 GB nominali) e lo spazio libero (**≥20 GB**, sufficiente per k3s, le immagini di GitStack e i volumi di Postgres/NATS). Verificato simulando in un container Ubuntu 24.04 un disco ext4 da 60 GiB (come quello di GIT-12): il filesystem risultante è ~63 GB decimali con ~60 GB liberi appena formattato, ben sopra entrambe le soglie.
+Tutti i GB sono decimali (10⁹ byte), non GiB: una macchina con «8 GB» di RAM riporta qualche centinaio di MiB in meno in `/proc/meminfo` (memoria riservata a firmware/hypervisor), e un disco da 60 GiB dichiara oltre 64 GB, quindi i margini di partizionamento non fanno fallire la macchina di riferimento (la VM di GIT-12). Dimensione del filesystem e spazio libero sono due controlli distinti: lo spazio libero cala dopo k3s e le immagini, e il preflight gira a ogni avvio.
 
-Per saltare i controlli (solo su una macchina già verificata a mano): `--skip-preflight` o `GITSTACK_SKIP_PREFLIGHT=1`. Non è mai attivo di default.
+Per saltare tutti i controlli (solo su una macchina già verificata a mano): `--skip-preflight` o `GITSTACK_SKIP_PREFLIGHT=1`. Non è mai attivo di default.
+
+### Nome host (N6)
+
+`--host NOME|IP` (ripetibile) dice con quale nome i client raggiungono GitStack: il primo è nell'URL pubblico (clone, link nelle email, OIDC), tutti finiscono nei SAN del certificato, che include sempre anche l'IP principale. Senza `--host` si usa il nome completo della macchina (`hostname -f`) se risolve a un suo indirizzo, altrimenti l'IP, con un avviso.
+
+Il preflight verifica che il nome risolva a un indirizzo della macchina e **avvisa** (senza fermarsi) se no: nome che non risolve, che risolve altrove o solo a loopback. La verifica passa dal resolver di sistema (`getent hosts`), non da un server DNS, quindi vale anche per i nomi `.local`.
+
+Per cambiare nome dopo l'installazione: `sudo gitstack config set host <nome>`. Rigenera il certificato (`gitstack-tls ensure`, stessa CA, SAN col nuovo nome e gli IP già presenti), aggiorna gli URL pubblici dei servizi con `helm upgrade --reuse-values` sulla copia locale del chart (`/usr/local/share/gitstack/chart`, `chart_dir` in `config.yaml`), poi `host:` di `config.yaml` e le scelte salvate per le riesecuzioni di `install.sh`. Avvisa che gli indirizzi di clone e i link nelle email già inviate puntano al nome vecchio (`git remote set-url` per i clone esistenti). Per Let's Encrypt il nome deve essere pubblico; con `--insecure-http` non c'è certificato.
+
+#### Nomi `.local` (mDNS)
+
+Il caso reale di homehub: il router di casa (Sky) non permette record DNS locali, quindi la macchina si chiama `homehub.local`, risolto via mDNS.
+
+- **Sul server** serve `avahi-daemon` attivo e `libnss-mdns`: `sudo apt install avahi-daemon libnss-mdns`. Il nome è quello della macchina (`hostnamectl set-hostname homehub` → `homehub.local`). Verifica: `getent hosts homehub.local` deve dare l'IP della macchina, ed è lo stesso controllo del preflight.
+  avahi risponde con gli indirizzi di tutte le interfacce, anche quelle di k3s (`cni0`): il preflight accetta un qualunque indirizzo della macchina, l'IP principale è comunque nei SAN. Per limitarlo: `allow-interfaces=<interfaccia>` in `/etc/avahi/avahi-daemon.conf`.
+- **I client** devono supportare mDNS: Windows 10/11, macOS e Linux con `nss-mdns` lo fanno. Altrimenti si usa l'IP (nei SAN) o un nome nel DNS.
+- **Il certificato** (CA interna) ha `homehub.local` e l'IP come SAN: `openssl x509 -in /etc/gitstack/tls/server.crt -noout -ext subjectAltName`. Va installata la CA sui client come per ogni nome.
+- **I pod di k3s non risolvono `.local`** (CoreDNS non fa mDNS): niente nei servizi deve chiamare dall'interno del cluster il proprio indirizzo pubblico. Le chiamate fra servizi usano i nomi interni (`<release>-core`, ecc.); l'URL pubblico serve solo ai link e ai redirect che vede il client.
+- Un nome `.local` non è accettato con `--tls letsencrypt` (non è un nome pubblico).
 
 ### k3s e Traefik v3
 
@@ -93,8 +112,8 @@ Al primo login la password va cambiata: finché non lo fai ogni altra chiamata r
 
 ### Opzioni principali
 
-`install.sh --help` le elenca tutte. Le più usate: `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi, es. `postgres.enabled=false` per un Postgres esterno del cliente — vedi `gitstack/README.md`).
+`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi, es. `postgres.enabled=false` per un Postgres esterno del cliente — vedi `gitstack/README.md`).
 
 ### Verifica in CI
 
-`.github/workflows/ci.yml`, job `shellcheck`: `shellcheck deploy/install.sh deploy/gitstack-tls.sh` (e gli altri script di shell del repository). Non verifica un'installazione reale (serve un sistema con systemd, non disponibile nei runner container-based): quella si fa sulla VM di `test-vm/` (GIT-12) o su una VM/container Ubuntu 24.04 usa e getta, vedi il riepilogo dell'item GIT-9.
+`.github/workflows/ci.yml`, job `shellcheck`: `shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh` (e gli altri script di shell del repository), poi `deploy/tests/preflight_test.sh`: prova i profili di N1, il sistema non supportato e la verifica del nome senza root né VM (le letture di CPU, RAM, disco, DNS sono funzioni che il test ridefinisce). Non verifica un'installazione reale (serve un sistema con systemd, non disponibile nei runner container-based): quella si fa sulla VM di `test-vm/` (GIT-12) o su una VM/container Ubuntu 24.04 usa e getta, vedi il riepilogo dell'item GIT-9.

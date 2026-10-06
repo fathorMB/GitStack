@@ -34,6 +34,9 @@ type Config struct {
 	// CACert è il certificato della CA interna (solo con tls: internal): i
 	// comandi che parlano con GitStack in HTTPS si fidano di questo.
 	CACert string `yaml:"ca_cert"`
+	// ChartDir è la copia locale del chart Helm, scritta da install.sh: serve
+	// a `gitstack config set host` per aggiornare i servizi.
+	ChartDir string `yaml:"chart_dir"`
 	// Release è il nome della release Helm.
 	Release string `yaml:"release"`
 	// Namespace è il namespace Kubernetes della release.
