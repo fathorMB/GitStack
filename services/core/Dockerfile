@@ -1,31 +1,34 @@
 # syntax=docker/dockerfile:1
 #
-# Immagine di core. Contesto di build: questa cartella (services/core), non
-# la radice del monorepo: il modulo Go di core non dipende da altri moduli
-# del workspace (parla con Postgres via pgx, in futuro con NATS via la
-# libreria di GIT-6), quindi il modulo si compila da solo.
+# Immagine del servizio core. Contesto di build: la RADICE del monorepo
+# (GIT-184); i moduli interni (pkg/*) si compilano dalle sorgenti locali.
 #
-#   docker build -f services/core/Dockerfile services/core
+#   docker build -f services/core/Dockerfile .
 #
-# Il tag e il push nel registry interno li fa il job `registry` (GIT-2): non
-# è compito di questa immagine.
+# Il tag e il push nel registry li fa il job `registry` di ci.yml.
 
 # --- Stage 1: build -----------------------------------------------------
 FROM golang:1.26-alpine AS build
 
+# Contesto di build: la RADICE del monorepo (GIT-184). I moduli interni
+# (pkg/*, client/go) si compilano dalle sorgenti locali del commit, non dalla
+# pseudo-versione del go.mod: scripts/docker-local-replace.sh scrive i replace.
+#   docker build -f services/core/Dockerfile .
 WORKDIR /src
+COPY pkg ./pkg
+COPY scripts/docker-local-replace.sh ./scripts/docker-local-replace.sh
 
-# Livello di cache separato per i moduli: cambia solo quando cambiano
-# go.mod/go.sum, non a ogni modifica del codice. go.sum include anche le
-# dipendenze usate solo dai test d'integrazione (testcontainers-go, build
-# tag "integration"): non finiscono nel binario (il codice che le importa
-# non è raggiungibile da main), ma "go mod download" le scarica comunque.
-COPY go.mod go.sum ./
-RUN for i in 1 2 3 4 5; do go mod download && exit 0; echo "go mod download: tentativo $i fallito" >&2; sleep $((i*5)); done; exit 1
+WORKDIR /src/services/core
 
-COPY . .
+# Livello di cache separato per i moduli di terze parti.
+COPY services/core/go.mod services/core/go.sum ./
+RUN sh /src/scripts/docker-local-replace.sh /src \
+    && for i in 1 2 3 4 5; do go mod download && exit 0; echo "go mod download: tentativo $i fallito" >&2; sleep $((i*5)); done; exit 1
 
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/core .
+COPY services/core/ .
+
+RUN sh /src/scripts/docker-local-replace.sh /src \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/core .
 
 # --- Stage 2: runtime ----------------------------------------------------
 # distroless "static", non "base": il binario è staticamente linkato

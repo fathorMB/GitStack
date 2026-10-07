@@ -190,18 +190,17 @@ paths = ["**/*.go", "scripts/check-gofmt.go"]
 
 [[check]]
 name = "go-standalone-build"
-# Build dei servizi con Dockerfile fuori dal workspace (GOWORK=off, -mod=readonly):
+# Build dei servizi come nel Dockerfile (sorgenti locali dei pkg/*, GOWORK=off, -mod=readonly):
 # un go.sum incompleto nel workspace non si vede, nel Dockerfile sì (GIT-123).
 run = "go run scripts/check-standalone-build.go"
 timeout_s = 600
-paths = ["services/*/go.mod", "services/*/go.sum", "services/**/*.go", "pkg/**", "go.work", "go.work.sum", "scripts/check-standalone-build.go"]
+paths = ["services/*/go.mod", "services/*/go.sum", "services/**/*.go", "services/*/Dockerfile", "pkg/**", "scripts/docker-local-replace.sh", "go.work", "go.work.sum", "scripts/check-standalone-build.go"]
 
 [[check]]
 name = "go-internal-versions"
-# I require interni (pkg/*, client/go) dei moduli con un Dockerfile (services/*,
-# costruiti con GOWORK=off) devono puntare a una pseudo-versione con lo stesso
-# contenuto del workspace: altrimenti l'immagine prende codice vecchio (GIT-182).
-# cli e admin si costruiscono nel workspace e sono saltati.
+# I Dockerfile dei servizi (services/*) e i workflow devono costruire con contesto
+# la radice e con le sorgenti locali dei moduli interni (pkg/*): cosi' un cambio a
+# un pkg/* e' un commit solo (GIT-184, dopo GIT-182). cli e admin sono saltati.
 run = "go run scripts/check-internal-versions.go"
 timeout_s = 300
-paths = ["**/go.mod", "pkg/**", "client/go/**", "api/**", "go.work", "scripts/check-internal-versions.go"]
+paths = ["**/go.mod", "services/*/Dockerfile", ".github/workflows/*.yml", "scripts/docker-local-replace.sh", "go.work", "scripts/check-internal-versions.go"]

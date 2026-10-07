@@ -1,32 +1,32 @@
 //go:build ignore
 
-// check-internal-versions verifica che ogni modulo del workspace che richiede
-// un altro modulo interno (github.com/fathorMB/GitStack/...) lo richieda a una
-// pseudo-versione il cui contenuto coincide con quello del workspace (GIT-182).
+// check-internal-versions verifica che le immagini dei servizi usino le
+// sorgenti LOCALI dei moduli interni (github.com/fathorMB/GitStack/pkg/*,
+// client/go) e non la pseudo-versione scritta nel loro go.mod (GIT-184, dopo
+// GIT-182).
 //
-// Perche': i Dockerfile costruiscono ogni servizio fuori dal workspace
-// (GOWORK=off), quindi l'immagine prende pkg/* e client/go dalla versione
-// scritta nel go.mod, non dalla cartella locale. In CI e nei test il workspace
-// maschera il disallineamento.
+// Perche': cosi' un item che cambia un pkg/* e' un commit solo, senza bump dei
+// go.mod, e l'immagine contiene comunque il codice del commit. Il nome del
+// file e del check (go-internal-versions) resta quello di GIT-182.
 //
-// Si controllano SOLO i moduli che hanno un Dockerfile nella loro cartella
-// (services/*): gli altri (cli, admin, ...) si costruiscono nel workspace e
-// vengono saltati con una riga "skip".
+// Per ogni servizio (modulo del workspace con un Dockerfile nella cartella):
+//  1. il Dockerfile COPIA da contesto la cartella di ogni modulo interno che
+//     il go.mod richiede (anche come antenato, es. "COPY pkg ./pkg");
+//  2. il Dockerfile usa scripts/docker-local-replace.sh e ogni RUN con
+//     "go mod download" o "go build" lo ha prima (stesso RUN o RUN precedente);
+//  3. ogni voce dei workflow .github/workflows/*.yml che costruisce quel
+//     Dockerfile ha per contesto la radice (context: . nella matrix,
+//     "docker build -f <Dockerfile> ... ." negli script).
 //
-// Per ogni require interno: si ricava l'hash12 dalla pseudo-versione, lo si
-// risolve con git rev-parse e si confronta la cartella del modulo a quel
-// commit con HEAD (git diff --quiet <hash> HEAD -- <cartella>). Un hash non
-// trovato in git e' un errore (serve fetch-depth: 0 in CI). I moduli si
-// ricavano da `go work edit -json`. Si lancia dalla radice del repo:
+// I moduli si ricavano da `go work edit -json`; i moduli senza Dockerfile (cli,
+// admin, ...) si costruiscono nel workspace e sono saltati. Si lancia dalla
+// radice del repo:
 //
 //	go run scripts/check-internal-versions.go
-//
-// Per correggere: nel modulo che fallisce, dopo il commit che cambia il
-// pacchetto, `GOWORK=off go get <modulo>@<hash del commit>` e
-// `GOWORK=off go mod tidy`, poi `go work sync`.
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -37,18 +37,13 @@ import (
 	"strings"
 )
 
-const internalPrefix = "github.com/fathorMB/GitStack/"
+const (
+	internalPrefix = "github.com/fathorMB/GitStack/"
+	replaceScript  = "docker-local-replace.sh"
+)
 
-type modInfo struct {
-	path string // percorso del modulo
-	dir  string // cartella relativa alla radice, con /
-}
-
-var pseudoRe = regexp.MustCompile(`-([0-9a-f]{12})$`)
-
-func run(dir string, name string, args ...string) ([]byte, error) {
+func run(name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(name, args...)
-	cmd.Dir = dir
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -63,8 +58,196 @@ func fatal(err error) {
 	os.Exit(2)
 }
 
+// instruction e' un'istruzione di Dockerfile con le continuazioni unite.
+type instruction struct {
+	op   string // in maiuscolo
+	args string
+}
+
+func readDockerfile(path string) ([]instruction, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var out []instruction
+	var cur string
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	for sc.Scan() {
+		l := strings.TrimRight(sc.Text(), "\r")
+		t := strings.TrimSpace(l)
+		if cur == "" && (t == "" || strings.HasPrefix(t, "#")) {
+			continue
+		}
+		if strings.HasSuffix(l, "\\") {
+			cur += strings.TrimSuffix(l, "\\") + " "
+			continue
+		}
+		cur += l
+		fields := strings.Fields(cur)
+		cur = ""
+		if len(fields) == 0 {
+			continue
+		}
+		out = append(out, instruction{
+			op:   strings.ToUpper(fields[0]),
+			args: strings.Join(fields[1:], " "),
+		})
+	}
+	return out, sc.Err()
+}
+
+// covers dice se la sorgente COPY src copre la cartella dir (src uguale o antenato).
+func covers(src, dir string) bool {
+	src = strings.Trim(filepath.ToSlash(src), "/")
+	src = strings.TrimPrefix(src, "./")
+	if src == "." || src == "" {
+		return true
+	}
+	return dir == src || strings.HasPrefix(dir, src+"/")
+}
+
+// checkDockerfile ritorna i problemi di un Dockerfile di servizio.
+func checkDockerfile(path string, needDirs []string) []string {
+	ins, err := readDockerfile(path)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	var problems []string
+	var srcs []string
+	for _, i := range ins {
+		if i.op != "COPY" {
+			continue
+		}
+		var args []string
+		from := false
+		for _, a := range strings.Fields(i.args) {
+			if strings.HasPrefix(a, "--from") {
+				from = true
+			}
+			if !strings.HasPrefix(a, "--") {
+				args = append(args, a)
+			}
+		}
+		if from || len(args) < 2 {
+			continue
+		}
+		srcs = append(srcs, args[:len(args)-1]...)
+	}
+	for _, d := range needDirs {
+		ok := false
+		for _, s := range srcs {
+			if covers(s, d) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			problems = append(problems, fmt.Sprintf("il go.mod richiede il modulo interno %s ma nessuna COPY ne porta le sorgenti nell'immagine", d))
+		}
+	}
+	// Lo script dei replace deve essere nell'immagine e girare prima di
+	// "go mod download" e "go build".
+	copiesScript := false
+	for _, s := range srcs {
+		if covers(s, "scripts/"+replaceScript) {
+			copiesScript = true
+		}
+	}
+	if !copiesScript {
+		problems = append(problems, "nessuna COPY di scripts/"+replaceScript)
+	}
+	replaced := false
+	for _, i := range ins {
+		if i.op != "RUN" {
+			continue
+		}
+		// Posizione del replace e dei comandi Go dentro la stessa riga RUN.
+		r := strings.Index(i.args, replaceScript)
+		g := -1
+		for _, kw := range []string{"go mod download", "go build"} {
+			if p := strings.Index(i.args, kw); p >= 0 && (g < 0 || p < g) {
+				g = p
+			}
+		}
+		if g >= 0 && !replaced && (r < 0 || r > g) {
+			problems = append(problems, "un RUN con go mod download/go build gira senza i replace verso le sorgenti locali ("+replaceScript+" prima)")
+		}
+		if r >= 0 {
+			replaced = true
+		}
+	}
+	if !replaced {
+		problems = append(problems, "nessun RUN usa "+replaceScript+": la build prenderebbe i moduli interni dalle pseudo-versioni")
+	}
+	return problems
+}
+
+var dockerBuildRe = regexp.MustCompile(`docker\s+build\b`)
+
+// checkWorkflow cerca nei workflow le build dei Dockerfile dei servizi.
+func checkWorkflow(path string, dockerfiles []string) []string {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	text := strings.ReplaceAll(string(b), "\r\n", "\n")
+	lines := strings.Split(text, "\n")
+	var problems []string
+	lastContext := ""
+	lastContextLine := 0
+	// Statement di shell con le continuazioni "\" unite.
+	var stmt string
+	stmtLine := 0
+	flush := func() {
+		if stmt == "" {
+			return
+		}
+		if dockerBuildRe.MatchString(stmt) {
+			for _, df := range dockerfiles {
+				if !strings.Contains(stmt, df) {
+					continue
+				}
+				fields := strings.Fields(stmt)
+				ctx := strings.Trim(fields[len(fields)-1], `"'`)
+				if ctx != "." {
+					problems = append(problems, fmt.Sprintf("%s:%d: docker build di %s con contesto %q invece della radice (.)", path, stmtLine, df, ctx))
+				}
+			}
+		}
+		stmt = ""
+	}
+	for n, l := range lines {
+		t := strings.TrimSpace(l)
+		if strings.HasPrefix(t, "context:") {
+			lastContext = strings.Trim(strings.TrimSpace(strings.TrimPrefix(t, "context:")), `"'`)
+			lastContextLine = n + 1
+		}
+		if strings.HasPrefix(t, "dockerfile:") {
+			df := strings.Trim(strings.TrimSpace(strings.TrimPrefix(t, "dockerfile:")), `"'`)
+			for _, d := range dockerfiles {
+				if df == d && lastContext != "." {
+					problems = append(problems, fmt.Sprintf("%s:%d: matrix di %s con context %q (riga %d) invece della radice (.)", path, n+1, d, lastContext, lastContextLine))
+				}
+			}
+		}
+		if stmt == "" {
+			stmtLine = n + 1
+		}
+		if strings.HasSuffix(t, "\\") {
+			stmt += strings.TrimSuffix(t, "\\") + " "
+			continue
+		}
+		stmt += t
+		flush()
+	}
+	flush()
+	return problems
+}
+
 func main() {
-	out, err := run(".", "go", "work", "edit", "-json")
+	out, err := run("go", "work", "edit", "-json")
 	if err != nil {
 		fatal(fmt.Errorf("go work edit -json (si lancia dalla radice del repo): %w", err))
 	}
@@ -80,18 +263,14 @@ func main() {
 
 	type goMod struct {
 		Module  struct{ Path string }
-		Require []struct {
-			Path     string
-			Version  string
-			Indirect bool
-		}
+		Require []struct{ Path string }
 	}
-	mods := map[string]modInfo{}
+	dirOf := map[string]string{} // path modulo -> cartella
 	parsed := map[string]goMod{}
 	var order []string
 	for _, u := range work.Use {
 		dir := filepath.ToSlash(filepath.Clean(u.DiskPath))
-		o, err := run(".", "go", "mod", "edit", "-json", filepath.Join(dir, "go.mod"))
+		o, err := run("go", "mod", "edit", "-json", filepath.Join(dir, "go.mod"))
 		if err != nil {
 			fatal(err)
 		}
@@ -99,60 +278,49 @@ func main() {
 		if err := json.Unmarshal(o, &m); err != nil {
 			fatal(err)
 		}
-		mods[m.Module.Path] = modInfo{path: m.Module.Path, dir: dir}
+		dirOf[m.Module.Path] = dir
 		parsed[m.Module.Path] = m
 		order = append(order, m.Module.Path)
 	}
 
 	failed := 0
-	checked := 0
+	var dockerfiles []string
 	for _, mp := range order {
-		m := parsed[mp]
-		from := mods[mp]
-		if _, err := os.Stat(filepath.Join(filepath.FromSlash(from.dir), "Dockerfile")); err != nil {
-			fmt.Printf("skip %s: nessun Dockerfile, si costruisce nel workspace\n", from.dir)
+		dir := dirOf[mp]
+		df := dir + "/Dockerfile"
+		if _, err := os.Stat(filepath.FromSlash(df)); err != nil {
+			fmt.Printf("skip %s: nessun Dockerfile, si costruisce nel workspace\n", dir)
 			continue
 		}
-		for _, r := range m.Require {
-			if !strings.HasPrefix(r.Path, internalPrefix) {
-				continue
+		dockerfiles = append(dockerfiles, df)
+		var need []string
+		for _, r := range parsed[mp].Require {
+			if d, ok := dirOf[r.Path]; ok && strings.HasPrefix(r.Path, internalPrefix) {
+				need = append(need, d)
 			}
-			dep, ok := mods[r.Path]
-			if !ok {
-				continue // modulo interno non nel workspace
+		}
+		if ps := checkDockerfile(filepath.FromSlash(df), need); len(ps) > 0 {
+			for _, p := range ps {
+				fmt.Printf("FAIL %s: %s\n", df, p)
 			}
-			checked++
-			sm := pseudoRe.FindStringSubmatch(r.Version)
-			if sm == nil {
-				fmt.Printf("FAIL %s: require %s %s non e' una pseudo-versione\n", from.dir, r.Path, r.Version)
-				failed++
-				continue
-			}
-			// Niente "^{commit}": con un git avviato tramite cmd.exe il ^ viene mangiato.
-			full, err := run(".", "git", "rev-parse", "--verify", "--quiet", sm[1])
-			if err != nil {
-				fmt.Printf("FAIL %s: require %s %s: commit %s non trovato in git (in CI serve fetch-depth: 0)\n",
-					from.dir, r.Path, r.Version, sm[1])
-				failed++
-				continue
-			}
-			hash := strings.TrimSpace(string(full))
-			cmd := exec.Command("git", "diff", "--quiet", hash, "HEAD", "--", dep.dir)
-			if err := cmd.Run(); err != nil {
-				latest, _ := run(".", "git", "log", "-1", "--format=%h", "HEAD", "--", dep.dir)
-				fmt.Printf("FAIL %s: require %s %s (commit %s) ha contenuto diverso da %s/ del workspace.\n"+
-					"     Atteso il commit %s. Correggi: cd %s && GOWORK=off go get %s@%s && GOWORK=off go mod tidy\n",
-					from.dir, r.Path, r.Version, sm[1], dep.dir,
-					strings.TrimSpace(string(latest)), from.dir, r.Path, strings.TrimSpace(string(latest)))
-				failed++
-				continue
-			}
-			fmt.Printf("ok   %s -> %s %s\n", from.dir, dep.dir, sm[1])
+			failed++
+		} else {
+			fmt.Printf("ok   %s: sorgenti locali di %v\n", df, need)
+		}
+	}
+	if len(dockerfiles) == 0 {
+		fatal(fmt.Errorf("nessun modulo del workspace ha un Dockerfile"))
+	}
+	wfs, _ := filepath.Glob(filepath.Join(".github", "workflows", "*.yml"))
+	for _, wf := range wfs {
+		for _, p := range checkWorkflow(filepath.ToSlash(wf), dockerfiles) {
+			fmt.Println("FAIL", p)
+			failed++
 		}
 	}
 	if failed > 0 {
-		fmt.Printf("check-internal-versions: %d require interni non allineati al workspace\n", failed)
+		fmt.Printf("check-internal-versions: %d problemi: le immagini non usano le sorgenti locali dei moduli interni\n", failed)
 		os.Exit(1)
 	}
-	fmt.Printf("check-internal-versions: %d require interni allineati\n", checked)
+	fmt.Printf("check-internal-versions: %d Dockerfile con sorgenti locali, workflow con contesto radice\n", len(dockerfiles))
 }

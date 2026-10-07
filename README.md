@@ -93,36 +93,32 @@ non solo quelli del modulo toccato. Dettagli: `api/README.md`,
 
 ## Cambiare un pkg/* o client/go
 
-Le immagini dei servizi si costruiscono fuori dal workspace (`GOWORK=off`,
-vedi i `Dockerfile`): un servizio prende `pkg/*` e `client/go` dalla
-pseudo-versione scritta nel suo `go.mod`, non dalla cartella locale. In CI e
-nei test il workspace nasconde un disallineamento (GIT-182: GIT-178 aveva
-cambiato `pkg/names` senza bump e non era attivo nell'immagine di core).
-Per questo un item che cambia un `pkg/*` (o `client/go`) fa **due commit**:
+Un cambio a `pkg/*` (o `client/go`) è **un commit solo**: niente bump dei
+`go.mod`. I `Dockerfile` dei servizi hanno per contesto la radice del repo
+(`docker build -f services/<svc>/Dockerfile .`), copiano `pkg/` e lanciano
+`scripts/docker-local-replace.sh`, che scrive in `go.mod` un `replace` verso
+le sorgenti locali di ogni modulo interno (la lista si ricava dalle cartelle).
+L'immagine contiene quindi sempre il codice del commit, qualunque
+pseudo-versione dica il `require` (GIT-184; prima, GIT-182, serviva un secondo
+commit con `go get <modulo>@<hash>`).
 
-1. il primo cambia il pacchetto (e solo quello);
-2. il secondo porta i `go.mod` che lo richiedono alla pseudo-versione del
-   primo, per ogni modulo con un `require` su quel pacchetto:
+Se un servizio comincia a richiedere un modulo interno nuovo, il suo
+`Dockerfile` deve copiarne la cartella (oggi `COPY pkg ./pkg`).
 
-   ```sh
-   cd services/core   # e gli altri moduli che lo richiedono
-   GOWORK=off go get github.com/fathorMB/GitStack/pkg/names@<hash del primo commit>
-   GOWORK=off go mod tidy
-   cd ../.. && go work sync && ./scripts/check-api-generated.sh
-   ```
+I controlli (in `.galaxylab/checks.toml` e nel job Go di `ci.yml`):
 
-   Il commit del primo passo deve essere già su GitHub quando si fa `go get`
-   (il bump si può quindi fare davvero solo dopo il reintegro del primo, oppure
-   in un secondo item). Dopo un rebase gli hash cambiano: rifai il bump.
-   Il reintegro conserva i commit dell'item (merge, non squash).
+- `go run scripts/check-internal-versions.go` (`go-internal-versions`) fallisce
+  se un `Dockerfile` di servizio non copia le sorgenti dei moduli interni che il
+  suo `go.mod` richiede, se un `RUN` con `go mod download`/`go build` gira
+  senza `docker-local-replace.sh`, o se un workflow (`context:` della matrix,
+  `docker build -f`) costruisce un servizio con un contesto diverso dalla radice.
+- `go run scripts/check-standalone-build.go` (`go-standalone-build`) copia in
+  una cartella temporanea solo ciò che il `Dockerfile` copia, applica lo stesso
+  script e compila con `GOWORK=off` e `-mod=readonly`: un `go.sum` incompleto
+  si vede come nell'immagine.
 
-Il controllo è `go run scripts/check-internal-versions.go` (check
-`go-internal-versions` in `.galaxylab/checks.toml` e step del job Go di
-`ci.yml`, con `fetch-depth: 0`): per ogni `require` interno dei moduli di
-`go.work` che hanno un `Dockerfile` (i servizi; `cli` e `admin` si costruiscono
-nel workspace e sono saltati) confronta la cartella del modulo al commit della pseudo-versione con
-`HEAD`, e fallisce con il comando per correggere. Il job Chart (k3d) crea
-inoltre il repo `GitStack` attraverso l'Ingress, con l'immagine vera di core.
+Il job Chart (k3d) crea inoltre il repo `GitStack` attraverso l'Ingress, con
+l'immagine vera di core.
 
 ## CI
 

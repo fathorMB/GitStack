@@ -22,7 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          # check-internal-versions risolve gli hash delle pseudo-versioni (GIT-182).
           fetch-depth: 0
 
       - name: Setup Go
@@ -57,10 +56,10 @@ jobs:
       - name: gofmt (file .go committati)
         run: go run scripts/check-gofmt.go
 
-      # Le immagini costruiscono ogni servizio con un Dockerfile fuori dal workspace:
-      # i loro require interni (pkg/*, client/go) devono puntare al contenuto del
-      # workspace (GIT-182). cli e admin si costruiscono nel workspace: saltati.
-      - name: require interni allineati al workspace
+      # Le immagini dei servizi si costruiscono con contesto la radice e con le
+      # sorgenti locali dei moduli interni (pkg/*): un Dockerfile o un workflow che
+      # non lo fa e' rosso (GIT-184). cli e admin si costruiscono nel workspace.
+      - name: immagini con le sorgenti locali dei moduli interni
         run: go run scripts/check-internal-versions.go
 
       - name: go test -race (per modulo)
@@ -287,16 +286,16 @@ jobs:
       matrix:
         include:
           - service: gateway
-            context: services/gateway
+            context: .
             dockerfile: services/gateway/Dockerfile
           - service: identity
-            context: services/identity
+            context: .
             dockerfile: services/identity/Dockerfile
           - service: git
-            context: services/git
+            context: .
             dockerfile: services/git/Dockerfile
           - service: core
-            context: services/core
+            context: .
             dockerfile: services/core/Dockerfile
           - service: web
             context: .
@@ -547,16 +546,16 @@ jobs:
           set -euo pipefail
           docker build -f services/gateway/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-gateway:${IMAGE_TAG}" \
-            services/gateway
+            .
           docker build -f services/identity/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-identity:${IMAGE_TAG}" \
-            services/identity
+            .
           docker build -f services/core/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-core:${IMAGE_TAG}" \
-            services/core
+            .
           docker build -f services/git/Dockerfile \
             -t "ghcr.io/${{ steps.owner.outputs.owner }}/gitstack-git:${IMAGE_TAG}" \
-            services/git
+            .
           # GIT-152: anche la UI, per lo smoke del browser attraverso l'Ingress
           # (contesto: radice del monorepo, vedi web/Dockerfile).
           docker build -f web/Dockerfile \

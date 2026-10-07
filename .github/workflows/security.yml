@@ -274,16 +274,16 @@ jobs:
       matrix:
         include:
           - service: gateway
-            context: services/gateway
+            context: .
             dockerfile: services/gateway/Dockerfile
           - service: identity
-            context: services/identity
+            context: .
             dockerfile: services/identity/Dockerfile
           - service: core
-            context: services/core
+            context: .
             dockerfile: services/core/Dockerfile
           - service: git
-            context: services/git
+            context: .
             dockerfile: services/git/Dockerfile
           - service: web
             context: .
