@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/fathorMB/GitStack/pkg/egress v0.0.0-20261005212733-bd568d173cca
-	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005121822-50b2d69296bf
+	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005233751-afbf7986d1ad
 	github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
@@ -35,7 +35,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
-	github.com/fathorMB/GitStack/pkg/names v0.0.0-20261005080521-b11140daae71
+	github.com/fathorMB/GitStack/pkg/names v0.0.0-20261006192302-f307180f2163
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
