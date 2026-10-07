@@ -867,6 +867,7 @@ jobs:
             exit 1
           fi
           change() {
+            local code
             code=$(jq -n --arg c "$1" --arg n "$2" '{currentPassword: $c, newPassword: $n}' \
               | curl -s -o /tmp/smoke-pw.body -w '%{http_code}' -b "$jar" -c "$jar" -X PUT -H 'content-type: application/json' -d @- "${base}/users/admin/password" || true)
             if [ "$code" != "204" ]; then
