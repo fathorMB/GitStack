@@ -24,6 +24,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -185,6 +186,29 @@ func checkOne(df, dir string) error {
 	// Dockerfile (il replace si scrive prima del download/build).
 	if err := run("sh", filepath.ToSlash(filepath.Join(tmp, "scripts", "docker-local-replace.sh")), filepath.ToSlash(tmp)); err != nil {
 		return err
+	}
+	// Ogni require interno deve essere sostituito da un replace locale: se il
+	// Dockerfile non copia il modulo, lo script non lo trova e la build
+	// scaricherebbe la pseudo-versione (codice vecchio) senza errori.
+	out, err := exec.Command("go", "mod", "edit", "-json", filepath.Join(svc, "go.mod")).Output()
+	if err != nil {
+		return err
+	}
+	var gm struct {
+		Require []struct{ Path string }
+		Replace []struct{ Old struct{ Path string } }
+	}
+	if err := json.Unmarshal(out, &gm); err != nil {
+		return err
+	}
+	replaced := map[string]bool{}
+	for _, r := range gm.Replace {
+		replaced[r.Old.Path] = true
+	}
+	for _, r := range gm.Require {
+		if strings.HasPrefix(r.Path, "github.com/fathorMB/GitStack/") && !replaced[r.Path] {
+			return fmt.Errorf("il require interno %s non ha un replace verso le sorgenti locali (il Dockerfile non le copia?)", r.Path)
+		}
 	}
 	return run("go", "build", "./...")
 }
