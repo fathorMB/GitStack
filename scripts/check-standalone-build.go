@@ -184,7 +184,13 @@ func checkOne(df, dir string) error {
 	}
 	// go mod edit modifica go.mod: per -mod=readonly e' il comportamento del
 	// Dockerfile (il replace si scrive prima del download/build).
-	if err := run("sh", filepath.ToSlash(filepath.Join(tmp, "scripts", "docker-local-replace.sh")), filepath.ToSlash(tmp)); err != nil {
+	if _, lookErr := exec.LookPath("sh"); lookErr == nil {
+		if err := run("sh", filepath.ToSlash(filepath.Join(tmp, "scripts", "docker-local-replace.sh")), filepath.ToSlash(tmp)); err != nil {
+			return err
+		}
+	} else if err := localReplaceGo(tmp, run); err != nil {
+		// Senza sh (host Windows senza Git Bash nel PATH): stessa logica dello
+		// script, in Go.
 		return err
 	}
 	// Ogni require interno deve essere sostituito da un replace locale: se il
@@ -211,4 +217,31 @@ func checkOne(df, dir string) error {
 		}
 	}
 	return run("go", "build", "./...")
+}
+
+// localReplaceGo replica scripts/docker-local-replace.sh: un replace verso la
+// cartella locale per ogni modulo in pkg/* e client/go.
+func localReplaceGo(root string, run func(name string, args ...string) error) error {
+	gomods, _ := filepath.Glob(filepath.Join(root, "pkg", "*", "go.mod"))
+	gomods = append(gomods, filepath.Join(root, "client", "go", "go.mod"))
+	for _, gm := range gomods {
+		b, err := os.ReadFile(gm)
+		if err != nil {
+			continue
+		}
+		var mod string
+		for _, l := range strings.Split(string(b), "\n") {
+			if strings.HasPrefix(l, "module ") {
+				mod = strings.TrimSpace(strings.TrimPrefix(l, "module "))
+				break
+			}
+		}
+		if mod == "" {
+			continue
+		}
+		if err := run("go", "mod", "edit", "-replace", mod+"="+filepath.Dir(gm)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
