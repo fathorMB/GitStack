@@ -16,7 +16,9 @@
 //     "go mod download" o "go build" lo ha prima (stesso RUN o RUN precedente);
 //  3. ogni voce dei workflow .github/workflows/*.yml che costruisce quel
 //     Dockerfile ha per contesto la radice (context: . nella matrix,
-//     "docker build -f <Dockerfile> ... ." negli script).
+//     "docker build -f <Dockerfile> ... ." negli script);
+//  4. nel Makefile (sviluppo locale: make dev-up, dev-redeploy) CONTEXT_<svc>
+//     di quel servizio, se definita, vale ".".
 //
 // I moduli si ricavano da `go work edit -json`; i moduli senza Dockerfile (cli,
 // admin, ...) si costruiscono nel workspace e sono saltati. Si lancia dalla
@@ -246,6 +248,35 @@ func checkWorkflow(path string, dockerfiles []string) []string {
 	return problems
 }
 
+var makeContextRe = regexp.MustCompile(`^CONTEXT_([A-Za-z0-9_]+)\s*[:?]?=\s*(\S*)`)
+
+// checkMakefile controlla che CONTEXT_<svc> di ogni servizio con Dockerfile
+// (cartella services/<svc>) sia la radice.
+func checkMakefile(path string, dockerfiles []string) []string {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return []string{err.Error()}
+	}
+	svcs := map[string]string{}
+	for _, df := range dockerfiles {
+		svcs[filepath.Base(filepath.Dir(filepath.FromSlash(df)))] = df
+	}
+	var problems []string
+	for n, l := range strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n") {
+		m := makeContextRe.FindStringSubmatch(l)
+		if m == nil {
+			continue
+		}
+		if df, ok := svcs[m[1]]; ok && m[2] != "." {
+			problems = append(problems, fmt.Sprintf("%s:%d: CONTEXT_%s := %s invece della radice (.) per %s", path, n+1, m[1], m[2], df))
+		}
+	}
+	return problems
+}
+
 func main() {
 	out, err := run("go", "work", "edit", "-json")
 	if err != nil {
@@ -318,9 +349,13 @@ func main() {
 			failed++
 		}
 	}
+	for _, p := range checkMakefile("Makefile", dockerfiles) {
+		fmt.Println("FAIL", p)
+		failed++
+	}
 	if failed > 0 {
 		fmt.Printf("check-internal-versions: %d problemi: le immagini non usano le sorgenti locali dei moduli interni\n", failed)
 		os.Exit(1)
 	}
-	fmt.Printf("check-internal-versions: %d Dockerfile con sorgenti locali, workflow con contesto radice\n", len(dockerfiles))
+	fmt.Printf("check-internal-versions: %d Dockerfile con sorgenti locali, workflow e Makefile con contesto radice\n", len(dockerfiles))
 }

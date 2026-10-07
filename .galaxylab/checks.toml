@@ -203,4 +203,4 @@ name = "go-internal-versions"
 # un pkg/* e' un commit solo (GIT-184, dopo GIT-182). cli e admin sono saltati.
 run = "go run scripts/check-internal-versions.go"
 timeout_s = 300
-paths = ["**/go.mod", "services/*/Dockerfile", ".github/workflows/*.yml", "scripts/docker-local-replace.sh", "go.work", "scripts/check-internal-versions.go"]
+paths = ["**/go.mod", "services/*/Dockerfile", ".github/workflows/*.yml", "Makefile", "scripts/docker-local-replace.sh", "go.work", "scripts/check-internal-versions.go"]
