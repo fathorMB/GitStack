@@ -158,7 +158,9 @@ func TestNATSIrraggiungibile(t *testing.T) {
 
 	start := time.Now()
 	p.Done()
-	if d := time.Since(start); d > 200*time.Millisecond {
+	// Aspettare NATS costerebbe almeno i due tentativi da 300 ms: 500 ms separa
+	// i due casi anche sotto carico (con 200 ms cadeva a 210 ms in CI/motore).
+	if d := time.Since(start); d > 500*time.Millisecond {
 		t.Fatalf("Done non deve aspettare NATS: %v", d)
 	}
 	wait(t, n) // i tentativi finiscono, l'errore va nel log, nessun panic
