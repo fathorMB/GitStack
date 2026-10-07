@@ -602,6 +602,7 @@ const (
 	NotificationReasonAssigned      NotificationReason = "assigned"
 	NotificationReasonCommitLinked  NotificationReason = "commit_linked"
 	NotificationReasonMentioned     NotificationReason = "mentioned"
+	NotificationReasonMirror        NotificationReason = "mirror"
 	NotificationReasonParticipating NotificationReason = "participating"
 	NotificationReasonStateChange   NotificationReason = "state_change"
 	NotificationReasonSubscribed    NotificationReason = "subscribed"
@@ -616,6 +617,8 @@ func (e NotificationReason) Valid() bool {
 	case NotificationReasonCommitLinked:
 		return true
 	case NotificationReasonMentioned:
+		return true
+	case NotificationReasonMirror:
 		return true
 	case NotificationReasonParticipating:
 		return true
@@ -699,6 +702,81 @@ func (e PrincipalKind) Valid() bool {
 	case PrincipalKindAgent:
 		return true
 	case PrincipalKindHuman:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoMirrorRunOutcome.
+const (
+	RepoMirrorRunOutcomeBlocked  RepoMirrorRunOutcome = "blocked"
+	RepoMirrorRunOutcomeDiverged RepoMirrorRunOutcome = "diverged"
+	RepoMirrorRunOutcomeError    RepoMirrorRunOutcome = "error"
+	RepoMirrorRunOutcomeSuccess  RepoMirrorRunOutcome = "success"
+)
+
+// Valid indicates whether the value is a known member of the RepoMirrorRunOutcome enum.
+func (e RepoMirrorRunOutcome) Valid() bool {
+	switch e {
+	case RepoMirrorRunOutcomeBlocked:
+		return true
+	case RepoMirrorRunOutcomeDiverged:
+		return true
+	case RepoMirrorRunOutcomeError:
+		return true
+	case RepoMirrorRunOutcomeSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoMirrorRunRefStatus.
+const (
+	RepoMirrorRunRefStatusError    RepoMirrorRunRefStatus = "error"
+	RepoMirrorRunRefStatusPushed   RepoMirrorRunRefStatus = "pushed"
+	RepoMirrorRunRefStatusRejected RepoMirrorRunRefStatus = "rejected"
+	RepoMirrorRunRefStatusUpToDate RepoMirrorRunRefStatus = "up-to-date"
+)
+
+// Valid indicates whether the value is a known member of the RepoMirrorRunRefStatus enum.
+func (e RepoMirrorRunRefStatus) Valid() bool {
+	switch e {
+	case RepoMirrorRunRefStatusError:
+		return true
+	case RepoMirrorRunRefStatusPushed:
+		return true
+	case RepoMirrorRunRefStatusRejected:
+		return true
+	case RepoMirrorRunRefStatusUpToDate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RepoMirrorState.
+const (
+	RepoMirrorStateDiverged RepoMirrorState = "diverged"
+	RepoMirrorStateError    RepoMirrorState = "error"
+	RepoMirrorStateInSync   RepoMirrorState = "in_sync"
+	RepoMirrorStatePending  RepoMirrorState = "pending"
+	RepoMirrorStateSyncing  RepoMirrorState = "syncing"
+)
+
+// Valid indicates whether the value is a known member of the RepoMirrorState enum.
+func (e RepoMirrorState) Valid() bool {
+	switch e {
+	case RepoMirrorStateDiverged:
+		return true
+	case RepoMirrorStateError:
+		return true
+	case RepoMirrorStateInSync:
+		return true
+	case RepoMirrorStatePending:
+		return true
+	case RepoMirrorStateSyncing:
 		return true
 	default:
 		return false
@@ -947,22 +1025,22 @@ func (e WebhookDisabledReason) Valid() bool {
 
 // Defines values for WebhookDeliveryStatus.
 const (
-	Failed  WebhookDeliveryStatus = "failed"
-	Gone    WebhookDeliveryStatus = "gone"
-	Pending WebhookDeliveryStatus = "pending"
-	Success WebhookDeliveryStatus = "success"
+	WebhookDeliveryStatusFailed  WebhookDeliveryStatus = "failed"
+	WebhookDeliveryStatusGone    WebhookDeliveryStatus = "gone"
+	WebhookDeliveryStatusPending WebhookDeliveryStatus = "pending"
+	WebhookDeliveryStatusSuccess WebhookDeliveryStatus = "success"
 )
 
 // Valid indicates whether the value is a known member of the WebhookDeliveryStatus enum.
 func (e WebhookDeliveryStatus) Valid() bool {
 	switch e {
-	case Failed:
+	case WebhookDeliveryStatusFailed:
 		return true
-	case Gone:
+	case WebhookDeliveryStatusGone:
 		return true
-	case Pending:
+	case WebhookDeliveryStatusPending:
 		return true
-	case Success:
+	case WebhookDeliveryStatusSuccess:
 		return true
 	default:
 		return false
@@ -1563,6 +1641,21 @@ type CreateOrganizationInput struct {
 	//
 	// Example: alice
 	Name Name `json:"name"`
+}
+
+// CreateRepoMirrorInput Example: {"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-mirror"}
+type CreateRepoMirrorInput struct {
+	// Enabled Default `true`.
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Token Token o password per la destinazione (da 1 a 512 caratteri); cifrato, non torna mai.
+	Token *string `json:"token,omitempty"`
+
+	// Url `https://` senza credenziali, al massimo 2048 caratteri.
+	Url string `json:"url"`
+
+	// Username Da 1 a 256 caratteri.
+	Username string `json:"username"`
 }
 
 // CreateRepositoryInput defines model for CreateRepositoryInput.
@@ -2309,7 +2402,7 @@ type Notification struct {
 	Read   bool               `json:"read"`
 	ReadAt *time.Time         `json:"readAt,omitempty"`
 
-	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
 	Reason     NotificationReason `json:"reason"`
 	Repository *NotificationRepo  `json:"repository,omitempty"`
 
@@ -2343,14 +2436,14 @@ type NotificationList struct {
 type NotificationPreferences struct {
 	// Email Per ogni tipo (`NotificationReason`) se arriva anche una email. Sono sempre presenti tutti i tipi.
 	//
-	// Example: {"assigned":true,"commit_linked":false,"mentioned":true,"participating":false,"state_change":false,"subscribed":false,"webhook":false}
+	// Example: {"assigned":true,"commit_linked":false,"mentioned":true,"mirror":false,"participating":false,"state_change":false,"subscribed":false,"webhook":false}
 	Email map[string]bool `json:"email"`
 
 	// EmailAvailable `false` senza SMTP configurato o per un agente: le email non partono (C4, C5).
 	EmailAvailable bool `json:"emailAvailable"`
 }
 
-// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7).
+// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
 type NotificationReason string
 
 // NotificationRepo defines model for NotificationRepo.
@@ -2508,6 +2601,95 @@ type RepoCloneUrls struct {
 	// Example: git@git.example.com:alice/my-app.git
 	SshShort *string `json:"sshShort,omitempty"`
 }
+
+// RepoMirror Example: {"attempts":0,"createdAt":"2026-10-01T08:00:00Z","enabled":true,"hasToken":true,"id":"0b9d2c1e-6f7a-4c3d-9e8f-1a2b3c4d5e6f","lastAttemptAt":"2026-10-06T19:30:12Z","lastError":"refs/heads/main: rifiutato (non-fast-forward): la destinazione ha una storia diversa","lastPushed":{"refs/heads/main":"4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4"},"lastSuccessAt":"2026-10-06T18:02:44Z","nextAttemptAt":null,"state":"diverged","updatedAt":"2026-10-06T19:30:12Z","url":"https://github.com/example/gitstack.git","username":"gitstack-mirror"}
+type RepoMirror struct {
+	// Attempts Tentativi falliti consecutivi dall'ultimo successo.
+	Attempts  int        `json:"attempts"`
+	CreatedAt time.Time  `json:"createdAt"`
+	CreatedBy *IssueUser `json:"createdBy,omitempty"`
+	Enabled   bool       `json:"enabled"`
+
+	// HasToken Sempre `true`: il token non torna mai nelle risposte.
+	HasToken      bool               `json:"hasToken"`
+	Id            openapi_types.UUID `json:"id"`
+	LastAttemptAt *time.Time         `json:"lastAttemptAt,omitempty"`
+
+	// LastError Motivo dell'ultimo errore o della divergenza, senza credenziali; `null` dopo un successo.
+	LastError *string `json:"lastError,omitempty"`
+
+	// LastPushed Ref → SHA dell'ultimo push riuscito.
+	//
+	// Example: {"refs/heads/main":"4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4","refs/tags/v1.0.0":"9a8b7c6d5e4f30211203f4e5d6c7b8a998877665"}
+	LastPushed    map[string]string `json:"lastPushed"`
+	LastSuccessAt *time.Time        `json:"lastSuccessAt,omitempty"`
+
+	// NextAttemptAt Quando e' previsto il prossimo tentativo; `null` se non c'e' niente in coda.
+	NextAttemptAt *time.Time `json:"nextAttemptAt,omitempty"`
+
+	// State Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
+	State     RepoMirrorState `json:"state"`
+	UpdatedAt time.Time       `json:"updatedAt"`
+
+	// Url Destinazione, `https://` senza credenziali.
+	Url      string `json:"url"`
+	Username string `json:"username"`
+}
+
+// RepoMirrorList defines model for RepoMirrorList.
+type RepoMirrorList struct {
+	Items   []RepoMirror `json:"items"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+	Total   int          `json:"total"`
+}
+
+// RepoMirrorRun defines model for RepoMirrorRun.
+type RepoMirrorRun struct {
+	// Attempt Numero del tentativo (1 = il primo dopo un successo o una richiesta).
+	Attempt    int `json:"attempt"`
+	DurationMs int `json:"durationMs"`
+
+	// Error Senza credenziali.
+	Error      *string            `json:"error,omitempty"`
+	FinishedAt time.Time          `json:"finishedAt"`
+	Id         openapi_types.UUID `json:"id"`
+
+	// Outcome `success`: push riuscito (anche se tutto era gia' aggiornato); `error`: fallito, si ritenta; `diverged`: la destinazione ha una storia diversa, fermo; `blocked`: destinazione non ammessa dalla policy di uscita (C8), non si ritenta.
+	Outcome   RepoMirrorRunOutcome `json:"outcome"`
+	Refs      []RepoMirrorRunRef   `json:"refs"`
+	StartedAt time.Time            `json:"startedAt"`
+}
+
+// RepoMirrorRunList defines model for RepoMirrorRunList.
+type RepoMirrorRunList struct {
+	Items   []RepoMirrorRun `json:"items"`
+	Page    int             `json:"page"`
+	PerPage int             `json:"perPage"`
+	Total   int             `json:"total"`
+}
+
+// RepoMirrorRunOutcome `success`: push riuscito (anche se tutto era gia' aggiornato); `error`: fallito, si ritenta; `diverged`: la destinazione ha una storia diversa, fermo; `blocked`: destinazione non ammessa dalla policy di uscita (C8), non si ritenta.
+type RepoMirrorRunOutcome string
+
+// RepoMirrorRunRef defines model for RepoMirrorRunRef.
+type RepoMirrorRunRef struct {
+	// Reason Motivo del rifiuto o dell'errore, es. `non-fast-forward`, `fetch first`, `already exists`.
+	Reason *string `json:"reason,omitempty"`
+
+	// Ref Example: refs/heads/main
+	Ref string `json:"ref"`
+
+	// Sha SHA locale del ref, per `pushed` e `up-to-date`.
+	Sha    *string                `json:"sha,omitempty"`
+	Status RepoMirrorRunRefStatus `json:"status"`
+}
+
+// RepoMirrorRunRefStatus defines model for RepoMirrorRunRef.Status.
+type RepoMirrorRunRefStatus string
+
+// RepoMirrorState Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
+type RepoMirrorState string
 
 // RepoName Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 //
@@ -2933,6 +3115,16 @@ type UpdateOrganizationInput struct {
 	DisplayName *string `json:"displayName,omitempty"`
 }
 
+// UpdateRepoMirrorInput defines model for UpdateRepoMirrorInput.
+type UpdateRepoMirrorInput struct {
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Token Sostituisce il token; non si puo' togliere.
+	Token    *string `json:"token,omitempty"`
+	Url      *string `json:"url,omitempty"`
+	Username *string `json:"username,omitempty"`
+}
+
 // UpdateRepositoryInput defines model for UpdateRepositoryInput.
 type UpdateRepositoryInput struct {
 	Archived             *bool   `json:"archived,omitempty"`
@@ -3298,6 +3490,9 @@ type MilestoneNumberParam = int64
 
 // MilestoneStateFilter defines model for MilestoneStateFilter.
 type MilestoneStateFilter string
+
+// MirrorIdParam defines model for MirrorIdParam.
+type MirrorIdParam = openapi_types.UUID
 
 // NotificationIdParam defines model for NotificationIdParam.
 type NotificationIdParam = openapi_types.UUID
@@ -3773,6 +3968,18 @@ type ListMilestonesParams struct {
 // ListMilestonesParamsState defines parameters for ListMilestones.
 type ListMilestonesParamsState string
 
+// ListRepoMirrorsParams defines parameters for ListRepoMirrors.
+type ListRepoMirrorsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListRepoMirrorRunsParams defines parameters for ListRepoMirrorRuns.
+type ListRepoMirrorRunsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryRawParams defines parameters for GetRepositoryRaw.
 type GetRepositoryRawParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -3985,6 +4192,12 @@ type CreateMilestoneJSONRequestBody = CreateMilestoneInput
 
 // UpdateMilestoneJSONRequestBody defines body for UpdateMilestone for application/json ContentType.
 type UpdateMilestoneJSONRequestBody = UpdateMilestoneInput
+
+// CreateRepoMirrorJSONRequestBody defines body for CreateRepoMirror for application/json ContentType.
+type CreateRepoMirrorJSONRequestBody = CreateRepoMirrorInput
+
+// UpdateRepoMirrorJSONRequestBody defines body for UpdateRepoMirror for application/json ContentType.
+type UpdateRepoMirrorJSONRequestBody = UpdateRepoMirrorInput
 
 // SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
 type SetRepoWatchJSONRequestBody = SetRepoWatchInput
@@ -5417,6 +5630,77 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
 	UpdateMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepoMirrors Elenca i mirror in push di un repo
+	//
+	// Serve `admin` sul repo (V8); un repo che non si legge risponde 404, uno senza `admin` 403. Il token non torna mai: `hasToken` dice solo che c'e'. Ogni mirror porta lo stato dell'ultimo tentativo (`state`, `lastAttemptAt`, `lastError`, `lastPushed`). Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/mirrors (the `ListRepoMirrors` operationId).
+	ListRepoMirrors(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoMirrorsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepoMirrorWithBody Crea un mirror in push di un repo
+	//
+	// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+	CreateRepoMirrorWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepoMirror Crea un mirror in push di un repo
+	//
+	// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+	CreateRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRepoMirror Elimina un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Elimina anche il log delle esecuzioni. Non tocca la destinazione. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/mirrors/{mirrorId} (the `DeleteRepoMirror` operationId).
+	DeleteRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepoMirror Legge un mirror in push (con il suo stato)
+	//
+	// Serve `admin` sul repo (V8). E' l'operazione di stato: `state`, `lastAttemptAt`, `lastSuccessAt`, `lastError` e `lastPushed` (ref → SHA spinti con l'ultimo push riuscito). Un mirror di un altro repo risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId} (the `GetRepoMirror` operationId).
+	GetRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepoMirrorWithBody Modifica un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+	UpdateRepoMirrorWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRepoMirror Modifica un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+	UpdateRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, body UpdateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepoMirrorRuns Log delle ultime esecuzioni di un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Le ultime esecuzioni (al massimo 50 per mirror, 30 giorni), dalla piu' recente. Ogni esecuzione dice l'esito, l'errore ripulito da credenziali e lo SHA di ogni ref. Paginazione come `GET /repos`.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId}/runs (the `ListRepoMirrorRuns` operationId).
+	ListRepoMirrorRuns(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, params *ListRepoMirrorRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SyncRepoMirror Sincronizza ora un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Mette il mirror in coda subito («Sincronizza ora»): risponde 202 e il push lo esegue il worker, entro pochi secondi; si segue con `getRepoMirror` e `listRepoMirrorRuns`. Su un mirror `diverged` o in `error` azzera i tentativi e riprova: il push resta non forzato, quindi se la destinazione ha ancora una storia diversa il mirror torna `diverged`. Un mirror in pausa (`enabled: false`) risponde 409 `mirror_disabled`. Idempotente se il mirror e' gia' in coda. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
+	SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	//
@@ -8816,6 +9100,167 @@ func (c *Client) UpdateMilestoneWithBody(ctx context.Context, owner RepoOwnerPar
 // Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
 func (c *Client) UpdateMilestone(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateMilestoneRequest(c.Server, owner, repo, milestoneNumber, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepoMirrors Elenca i mirror in push di un repo
+//
+// Serve `admin` sul repo (V8); un repo che non si legge risponde 404, uno senza `admin` 403. Il token non torna mai: `hasToken` dice solo che c'e'. Ogni mirror porta lo stato dell'ultimo tentativo (`state`, `lastAttemptAt`, `lastError`, `lastPushed`). Paginazione come `GET /repos`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/mirrors (the `ListRepoMirrors` operationId).
+func (c *Client) ListRepoMirrors(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoMirrorsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepoMirrorsRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRepoMirrorWithBody Crea un mirror in push di un repo
+//
+// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+func (c *Client) CreateRepoMirrorWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepoMirrorRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRepoMirror Crea un mirror in push di un repo
+//
+// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+func (c *Client) CreateRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepoMirrorRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteRepoMirror Elimina un mirror in push
+//
+// Serve `admin` sul repo (V8). Elimina anche il log delle esecuzioni. Non tocca la destinazione. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/mirrors/{mirrorId} (the `DeleteRepoMirror` operationId).
+func (c *Client) DeleteRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepoMirrorRequest(c.Server, owner, repo, mirrorId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRepoMirror Legge un mirror in push (con il suo stato)
+//
+// Serve `admin` sul repo (V8). E' l'operazione di stato: `state`, `lastAttemptAt`, `lastSuccessAt`, `lastError` e `lastPushed` (ref → SHA spinti con l'ultimo push riuscito). Un mirror di un altro repo risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId} (the `GetRepoMirror` operationId).
+func (c *Client) GetRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepoMirrorRequest(c.Server, owner, repo, mirrorId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepoMirrorWithBody Modifica un mirror in push
+//
+// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+func (c *Client) UpdateRepoMirrorWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepoMirrorRequestWithBody(c.Server, owner, repo, mirrorId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateRepoMirror Modifica un mirror in push
+//
+// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+func (c *Client) UpdateRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, body UpdateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRepoMirrorRequest(c.Server, owner, repo, mirrorId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListRepoMirrorRuns Log delle ultime esecuzioni di un mirror in push
+//
+// Serve `admin` sul repo (V8). Le ultime esecuzioni (al massimo 50 per mirror, 30 giorni), dalla piu' recente. Ogni esecuzione dice l'esito, l'errore ripulito da credenziali e lo SHA di ogni ref. Paginazione come `GET /repos`.
+//
+// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId}/runs (the `ListRepoMirrorRuns` operationId).
+func (c *Client) ListRepoMirrorRuns(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, params *ListRepoMirrorRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRepoMirrorRunsRequest(c.Server, owner, repo, mirrorId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SyncRepoMirror Sincronizza ora un mirror in push
+//
+// Serve `admin` sul repo (V8). Mette il mirror in coda subito («Sincronizza ora»): risponde 202 e il push lo esegue il worker, entro pochi secondi; si segue con `getRepoMirror` e `listRepoMirrorRuns`. Su un mirror `diverged` o in `error` azzera i tentativi e riprova: il push resta non forzato, quindi se la destinazione ha ancora una storia diversa il mirror torna `diverged`. Un mirror in pausa (`enabled: false`) risponde 409 `mirror_disabled`. Idempotente se il mirror e' gia' in coda. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
+func (c *Client) SyncRepoMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSyncRepoMirrorRequest(c.Server, owner, repo, mirrorId)
 	if err != nil {
 		return nil, err
 	}
@@ -17071,6 +17516,432 @@ func NewUpdateMilestoneRequestWithBody(server string, owner RepoOwnerParam, repo
 	return req, nil
 }
 
+// NewListRepoMirrorsRequest constructs an http.Request for the ListRepoMirrors method
+func NewListRepoMirrorsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoMirrorsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateRepoMirrorRequest calls the generic CreateRepoMirror builder with application/json body
+func NewCreateRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoMirrorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRepoMirrorRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreateRepoMirrorRequestWithBody constructs an http.Request for the CreateRepoMirror method, with any body, and a specified content type
+func NewCreateRepoMirrorRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteRepoMirrorRequest constructs an http.Request for the DeleteRepoMirror method
+func NewDeleteRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "mirrorId", mirrorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRepoMirrorRequest constructs an http.Request for the GetRepoMirror method
+func NewGetRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "mirrorId", mirrorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateRepoMirrorRequest calls the generic UpdateRepoMirror builder with application/json body
+func NewUpdateRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, body UpdateRepoMirrorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateRepoMirrorRequestWithBody(server, owner, repo, mirrorId, "application/json", bodyReader)
+}
+
+// NewUpdateRepoMirrorRequestWithBody constructs an http.Request for the UpdateRepoMirror method, with any body, and a specified content type
+func NewUpdateRepoMirrorRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "mirrorId", mirrorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListRepoMirrorRunsRequest constructs an http.Request for the ListRepoMirrorRuns method
+func NewListRepoMirrorRunsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, params *ListRepoMirrorRunsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "mirrorId", mirrorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors/%s/runs", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSyncRepoMirrorRequest constructs an http.Request for the SyncRepoMirror method
+func NewSyncRepoMirrorRequest(server string, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "mirrorId", mirrorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/mirrors/%s/sync", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetRepositoryRawRequest constructs an http.Request for the GetRepositoryRaw method
 func NewGetRepositoryRawRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams) (*http.Request, error) {
 	var err error
@@ -20626,6 +21497,87 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /repos/{owner}/{repo}/milestones/{milestoneNumber} (the `UpdateMilestone` operationId).
 	UpdateMilestoneWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, milestoneNumber MilestoneNumberParam, body UpdateMilestoneJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMilestoneResponse, error)
+
+	// ListRepoMirrorsWithResponse Elenca i mirror in push di un repo
+	//
+	// Serve `admin` sul repo (V8); un repo che non si legge risponde 404, uno senza `admin` 403. Il token non torna mai: `hasToken` dice solo che c'e'. Ogni mirror porta lo stato dell'ultimo tentativo (`state`, `lastAttemptAt`, `lastError`, `lastPushed`). Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/mirrors (the `ListRepoMirrors` operationId).
+	ListRepoMirrorsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoMirrorsParams, reqEditors ...RequestEditorFn) (*ListRepoMirrorsResponse, error)
+
+	// CreateRepoMirrorWithBodyWithResponse Crea un mirror in push di un repo
+	//
+	// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+	CreateRepoMirrorWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoMirrorResponse, error)
+
+	// CreateRepoMirrorWithResponse Crea un mirror in push di un repo
+	//
+	// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+	CreateRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoMirrorResponse, error)
+
+	// DeleteRepoMirrorWithResponse Elimina un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Elimina anche il log delle esecuzioni. Non tocca la destinazione. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/mirrors/{mirrorId} (the `DeleteRepoMirror` operationId).
+	DeleteRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*DeleteRepoMirrorResponse, error)
+
+	// GetRepoMirrorWithResponse Legge un mirror in push (con il suo stato)
+	//
+	// Serve `admin` sul repo (V8). E' l'operazione di stato: `state`, `lastAttemptAt`, `lastSuccessAt`, `lastError` e `lastPushed` (ref → SHA spinti con l'ultimo push riuscito). Un mirror di un altro repo risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId} (the `GetRepoMirror` operationId).
+	GetRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*GetRepoMirrorResponse, error)
+
+	// UpdateRepoMirrorWithBodyWithResponse Modifica un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+	UpdateRepoMirrorWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepoMirrorResponse, error)
+
+	// UpdateRepoMirrorWithResponse Modifica un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+	UpdateRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, body UpdateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepoMirrorResponse, error)
+
+	// ListRepoMirrorRunsWithResponse Log delle ultime esecuzioni di un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Le ultime esecuzioni (al massimo 50 per mirror, 30 giorni), dalla piu' recente. Ogni esecuzione dice l'esito, l'errore ripulito da credenziali e lo SHA di ogni ref. Paginazione come `GET /repos`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId}/runs (the `ListRepoMirrorRuns` operationId).
+	ListRepoMirrorRunsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, params *ListRepoMirrorRunsParams, reqEditors ...RequestEditorFn) (*ListRepoMirrorRunsResponse, error)
+
+	// SyncRepoMirrorWithResponse Sincronizza ora un mirror in push
+	//
+	// Serve `admin` sul repo (V8). Mette il mirror in coda subito («Sincronizza ora»): risponde 202 e il push lo esegue il worker, entro pochi secondi; si segue con `getRepoMirror` e `listRepoMirrorRuns`. Su un mirror `diverged` o in `error` azzera i tentativi e riprova: il push resta non forzato, quindi se la destinazione ha ancora una storia diversa il mirror torna `diverged`. Un mirror in pausa (`enabled: false`) risponde 409 `mirror_disabled`. Idempotente se il mirror e' gia' in coda. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
+	SyncRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*SyncRepoMirrorResponse, error)
 
 	// GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
 	//
@@ -30858,6 +31810,552 @@ func (r UpdateMilestoneResponse) ContentType() string {
 	return ""
 }
 
+type ListRepoMirrorsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepoMirrorList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepoMirrorsResponse) GetJSON200() *RepoMirrorList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListRepoMirrorsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepoMirrorsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepoMirrorsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepoMirrorsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListRepoMirrorsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepoMirrorsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepoMirrorsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepoMirrorsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepoMirrorsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateRepoMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *RepoMirror
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON201() *RepoMirror {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateRepoMirrorResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateRepoMirrorResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateRepoMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRepoMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRepoMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateRepoMirrorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteRepoMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteRepoMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteRepoMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteRepoMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteRepoMirrorResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteRepoMirrorResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteRepoMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepoMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepoMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteRepoMirrorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRepoMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepoMirror
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRepoMirrorResponse) GetJSON200() *RepoMirror {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetRepoMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetRepoMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetRepoMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRepoMirrorResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRepoMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepoMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepoMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRepoMirrorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateRepoMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepoMirror
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON200() *RepoMirror {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateRepoMirrorResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateRepoMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateRepoMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateRepoMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateRepoMirrorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListRepoMirrorRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepoMirrorRunList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListRepoMirrorRunsResponse) GetJSON200() *RepoMirrorRunList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListRepoMirrorRunsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListRepoMirrorRunsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListRepoMirrorRunsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListRepoMirrorRunsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListRepoMirrorRunsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListRepoMirrorRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRepoMirrorRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRepoMirrorRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRepoMirrorRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SyncRepoMirrorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *RepoMirror
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r SyncRepoMirrorResponse) GetJSON202() *RepoMirror {
+	return r.JSON202
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SyncRepoMirrorResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SyncRepoMirrorResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SyncRepoMirrorResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SyncRepoMirrorResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SyncRepoMirrorResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SyncRepoMirrorResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SyncRepoMirrorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SyncRepoMirrorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SyncRepoMirrorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetRepositoryRawResponse200Headers the declared response headers of an HTTP 200 response for GetRepositoryRaw
 type GetRepositoryRawResponse200Headers struct {
 	ContentDisposition    *string
@@ -36268,6 +37766,141 @@ func (c *ClientWithResponses) UpdateMilestoneWithResponse(ctx context.Context, o
 		return nil, err
 	}
 	return ParseUpdateMilestoneResponse(rsp)
+}
+
+// ListRepoMirrorsWithResponse Elenca i mirror in push di un repo
+//
+// Serve `admin` sul repo (V8); un repo che non si legge risponde 404, uno senza `admin` 403. Il token non torna mai: `hasToken` dice solo che c'e'. Ogni mirror porta lo stato dell'ultimo tentativo (`state`, `lastAttemptAt`, `lastError`, `lastPushed`). Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/mirrors (the `ListRepoMirrors` operationId).
+func (c *ClientWithResponses) ListRepoMirrorsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListRepoMirrorsParams, reqEditors ...RequestEditorFn) (*ListRepoMirrorsResponse, error) {
+	rsp, err := c.ListRepoMirrors(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepoMirrorsResponse(rsp)
+}
+
+// CreateRepoMirrorWithBodyWithResponse Crea un mirror in push di un repo
+//
+// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+func (c *ClientWithResponses) CreateRepoMirrorWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoMirrorResponse, error) {
+	rsp, err := c.CreateRepoMirrorWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepoMirrorResponse(rsp)
+}
+
+// CreateRepoMirrorWithResponse Crea un mirror in push di un repo
+//
+// Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git in HTTPS, a ogni push su quei ref e su richiesta (`sync`), SEMPRE senza push forzato: se la destinazione ha una storia diversa il mirror si ferma (`state: diverged`) e non sovrascrive mai. `url` e' `https://` senza credenziali nell'indirizzo; sempre bloccati loopback, indirizzi interni del cluster e link-local anche dopo la risoluzione DNS, e le destinazioni vietate dall'amministratore (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono la credenziale per la destinazione (per GitHub: utente e token personale con permesso di scrittura): il token e' cifrato (AES-256-GCM, come i segreti dei webhook) e non torna mai nelle risposte. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`. Un mirror attivo parte subito con una prima sincronizzazione. Lo stesso `url` due volte sullo stesso repo: 409 `conflict`. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/mirrors (the `CreateRepoMirror` operationId).
+func (c *ClientWithResponses) CreateRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoMirrorResponse, error) {
+	rsp, err := c.CreateRepoMirror(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepoMirrorResponse(rsp)
+}
+
+// DeleteRepoMirrorWithResponse Elimina un mirror in push
+//
+// Serve `admin` sul repo (V8). Elimina anche il log delle esecuzioni. Non tocca la destinazione. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/mirrors/{mirrorId} (the `DeleteRepoMirror` operationId).
+func (c *ClientWithResponses) DeleteRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*DeleteRepoMirrorResponse, error) {
+	rsp, err := c.DeleteRepoMirror(ctx, owner, repo, mirrorId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepoMirrorResponse(rsp)
+}
+
+// GetRepoMirrorWithResponse Legge un mirror in push (con il suo stato)
+//
+// Serve `admin` sul repo (V8). E' l'operazione di stato: `state`, `lastAttemptAt`, `lastSuccessAt`, `lastError` e `lastPushed` (ref → SHA spinti con l'ultimo push riuscito). Un mirror di un altro repo risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId} (the `GetRepoMirror` operationId).
+func (c *ClientWithResponses) GetRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*GetRepoMirrorResponse, error) {
+	rsp, err := c.GetRepoMirror(ctx, owner, repo, mirrorId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepoMirrorResponse(rsp)
+}
+
+// UpdateRepoMirrorWithBodyWithResponse Modifica un mirror in push
+//
+// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+func (c *ClientWithResponses) UpdateRepoMirrorWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRepoMirrorResponse, error) {
+	rsp, err := c.UpdateRepoMirrorWithBody(ctx, owner, repo, mirrorId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepoMirrorResponse(rsp)
+}
+
+// UpdateRepoMirrorWithResponse Modifica un mirror in push
+//
+// Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non si puo' togliere: il mirror non funzionerebbe). Cambiare `url` azzera lo stato e rimette in coda il mirror. `enabled: false` mette in pausa il mirror (nessun push, nemmeno su richiesta) senza eliminarlo. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/mirrors/{mirrorId} (the `UpdateRepoMirror` operationId).
+func (c *ClientWithResponses) UpdateRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, body UpdateRepoMirrorJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRepoMirrorResponse, error) {
+	rsp, err := c.UpdateRepoMirror(ctx, owner, repo, mirrorId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRepoMirrorResponse(rsp)
+}
+
+// ListRepoMirrorRunsWithResponse Log delle ultime esecuzioni di un mirror in push
+//
+// Serve `admin` sul repo (V8). Le ultime esecuzioni (al massimo 50 per mirror, 30 giorni), dalla piu' recente. Ogni esecuzione dice l'esito, l'errore ripulito da credenziali e lo SHA di ogni ref. Paginazione come `GET /repos`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/mirrors/{mirrorId}/runs (the `ListRepoMirrorRuns` operationId).
+func (c *ClientWithResponses) ListRepoMirrorRunsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, params *ListRepoMirrorRunsParams, reqEditors ...RequestEditorFn) (*ListRepoMirrorRunsResponse, error) {
+	rsp, err := c.ListRepoMirrorRuns(ctx, owner, repo, mirrorId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRepoMirrorRunsResponse(rsp)
+}
+
+// SyncRepoMirrorWithResponse Sincronizza ora un mirror in push
+//
+// Serve `admin` sul repo (V8). Mette il mirror in coda subito («Sincronizza ora»): risponde 202 e il push lo esegue il worker, entro pochi secondi; si segue con `getRepoMirror` e `listRepoMirrorRuns`. Su un mirror `diverged` o in `error` azzera i tentativi e riprova: il push resta non forzato, quindi se la destinazione ha ancora una storia diversa il mirror torna `diverged`. Un mirror in pausa (`enabled: false`) risponde 409 `mirror_disabled`. Idempotente se il mirror e' gia' in coda. Un repo archiviato rifiuta la modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync (the `SyncRepoMirror` operationId).
+func (c *ClientWithResponses) SyncRepoMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam, reqEditors ...RequestEditorFn) (*SyncRepoMirrorResponse, error) {
+	rsp, err := c.SyncRepoMirror(ctx, owner, repo, mirrorId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSyncRepoMirrorResponse(rsp)
 }
 
 // GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
@@ -45035,6 +46668,450 @@ func ParseUpdateMilestoneResponse(rsp *http.Response) (*UpdateMilestoneResponse,
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepoMirrorsResponse parses an HTTP response from a ListRepoMirrorsWithResponse call
+func ParseListRepoMirrorsResponse(rsp *http.Response) (*ListRepoMirrorsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepoMirrorsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoMirrorList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRepoMirrorResponse parses an HTTP response from a CreateRepoMirrorWithResponse call
+func ParseCreateRepoMirrorResponse(rsp *http.Response) (*CreateRepoMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRepoMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest RepoMirror
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRepoMirrorResponse parses an HTTP response from a DeleteRepoMirrorWithResponse call
+func ParseDeleteRepoMirrorResponse(rsp *http.Response) (*DeleteRepoMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepoMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepoMirrorResponse parses an HTTP response from a GetRepoMirrorWithResponse call
+func ParseGetRepoMirrorResponse(rsp *http.Response) (*GetRepoMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepoMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoMirror
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateRepoMirrorResponse parses an HTTP response from a UpdateRepoMirrorWithResponse call
+func ParseUpdateRepoMirrorResponse(rsp *http.Response) (*UpdateRepoMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateRepoMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoMirror
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListRepoMirrorRunsResponse parses an HTTP response from a ListRepoMirrorRunsWithResponse call
+func ParseListRepoMirrorRunsResponse(rsp *http.Response) (*ListRepoMirrorRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRepoMirrorRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoMirrorRunList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSyncRepoMirrorResponse parses an HTTP response from a SyncRepoMirrorWithResponse call
+func ParseSyncRepoMirrorResponse(rsp *http.Response) (*SyncRepoMirrorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SyncRepoMirrorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest RepoMirror
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

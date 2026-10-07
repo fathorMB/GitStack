@@ -186,3 +186,51 @@ func firstArg(a []string) string {
 	}
 	return a[0]
 }
+
+// Result è l'esito di un comando lanciato con RunEnv: stdout e stderr
+// completi (entro il tetto) e il codice di uscita.
+type Result struct {
+	Stdout   []byte
+	Stderr   []byte
+	ExitCode int
+}
+
+// RunEnv esegue `git --git-dir=gitDir pre... args...` con l'ambiente ripulito
+// (Env) più extraEnv, un timeout esplicito e senza mai dare un errore per un
+// codice di uscita diverso da zero: chi chiama legge Result (un push
+// rifiutato esce con 1 ma il suo stdout porcelain è l'esito). L'errore è non
+// nil solo se il processo non è partito, è scaduto il tempo o l'output supera
+// il tetto. Serve ai comandi che parlano con un server remoto: le credenziali
+// passano da extraEnv, mai da argv.
+func (r *Runner) RunEnv(ctx context.Context, gitDir string, timeout time.Duration, extraEnv []string, args ...string) (Result, error) {
+	if timeout <= 0 {
+		timeout = r.timeout()
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	cmd := r.command(ctx, gitDir, args)
+	cmd.Env = append(cmd.Env, extraEnv...)
+	out := &limitedBuffer{max: r.maxOutput()}
+	errb := &limitedBuffer{max: r.maxOutput()}
+	cmd.Stdout, cmd.Stderr = out, errb
+	// Un figlio (git-remote-https) può tenere aperte le pipe dopo la kill: senza
+	// WaitDelay Run aspetterebbe oltre il timeout.
+	cmd.WaitDelay = 3 * time.Second
+	err := cmd.Run()
+	res := Result{Stdout: out.buf.Bytes(), Stderr: errb.buf.Bytes()}
+	if err == nil {
+		return res, nil
+	}
+	if ctx.Err() != nil {
+		return res, &Error{Cmd: firstArg(args), ExitCode: -1, Err: ctx.Err()}
+	}
+	var ee *exec.ExitError
+	if errors.As(err, &ee) && !out.exceeded && !errb.exceeded {
+		res.ExitCode = ee.ExitCode()
+		return res, nil
+	}
+	if out.exceeded || errb.exceeded {
+		return res, ErrOutputTooLarge
+	}
+	return res, &Error{Cmd: firstArg(args), ExitCode: -1, Err: err}
+}
