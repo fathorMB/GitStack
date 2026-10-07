@@ -20,6 +20,14 @@ vi.mock('../../lib/reposApi', async (orig) => ({
   fetchDeletedRepos: vi.fn(),
   restoreRepo: vi.fn(),
 }));
+vi.mock('../../lib/mirrorsApi', () => ({
+  fetchMirrors: vi.fn().mockResolvedValue([]),
+  fetchMirrorRuns: vi.fn().mockResolvedValue([]),
+  addMirror: vi.fn(),
+  editMirror: vi.fn(),
+  removeMirror: vi.fn(),
+  syncMirror: vi.fn(),
+}));
 vi.mock('../../lib/orgsApi', () => ({ fetchOrgMembers: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 
