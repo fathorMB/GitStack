@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -214,9 +215,18 @@ func newRig(t *testing.T) *rig {
 	r.git(r.work, "clone", "--bare", r.work, r.src)
 	r.git(filepath.Dir(r.dest), "init", "--bare", "-b", "main", r.dest)
 
-	gitBin, _ := exec.LookPath("git")
+	// git-http-backend si lancia direttamente dalla exec-path: il `git` del PATH
+	// può essere un wrapper che senza il suo ambiente non parte.
+	out, err := exec.Command("git", "--exec-path").Output()
+	if err != nil {
+		t.Fatalf("git --exec-path: %v", err)
+	}
+	backendPath := filepath.Join(strings.TrimSpace(string(out)), "git-http-backend")
+	if runtime.GOOS == "windows" {
+		backendPath += ".exe"
+	}
 	backend := &cgi.Handler{
-		Path: gitBin, Args: []string{"http-backend"}, InheritEnv: []string{"PATH", "SystemRoot", "TEMP", "TMP", "HOME", "USERPROFILE"},
+		Path: backendPath, InheritEnv: []string{"PATH", "SystemRoot", "TEMP", "TMP", "HOME", "USERPROFILE"},
 		Env: []string{"GIT_PROJECT_ROOT=" + filepath.Dir(r.dest), "GIT_HTTP_EXPORT_ALL=1", "REMOTE_USER=" + user,
 			"GIT_CONFIG_GLOBAL=" + os.DevNull, "GIT_CONFIG_NOSYSTEM=1"},
 	}
