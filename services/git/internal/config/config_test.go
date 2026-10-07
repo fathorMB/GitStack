@@ -59,6 +59,13 @@ func TestLoad_SSH(t *testing.T) {
 	if err != nil || cfg.NatsURL != "nats://nats:4222" {
 		t.Fatalf("NATS: %+v, %v", cfg, err)
 	}
+	if cfg.MirrorCAFile != "" {
+		t.Fatalf("CA dei mirror non configurata di default: %q", cfg.MirrorCAFile)
+	}
+	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvMirrorCAFile: " /etc/gitstack/mirror-ca/ca.crt "}))
+	if err != nil || cfg.MirrorCAFile != "/etc/gitstack/mirror-ca/ca.crt" {
+		t.Fatalf("CA dei mirror: %+v, %v", cfg, err)
+	}
 	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvSSHAddr: "OFF"}))
 	if err != nil || cfg.SSHAddr != "" {
 		t.Fatalf("off: %+v, %v", cfg, err)

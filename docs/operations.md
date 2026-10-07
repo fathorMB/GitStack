@@ -1,7 +1,7 @@
 # Operations Guide — GitStack
 
-> **Scope:** This guide covers installation, backup, restore, upgrade, and
-> diagnostics of a GitStack instance deployed on a single Linux host with k3s.
+> **Scope:** This guide covers installation, backup, restore, upgrade, push
+> mirrors, and diagnostics of a GitStack instance deployed on a single Linux host with k3s.
 > It is written for operators who manage the machine directly (for example the
 > `homehub` appliance described in M-08 [c_8458909a21d9035f]).
 
@@ -436,6 +436,89 @@ Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 | `7` | **Rolled back** — the upgrade failed and the previous state was restored automatically |
 | `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
 | `70` | Unexpected error (backup, network, or other unrecoverable failure) |
+
+---
+
+## Mirror
+
+A repository can be mirrored to another Git server over HTTPS (GitHub, or a second GitStack). On every push to the **default branch** or to a **tag**, and whenever you press **Sync now**, GitStack pushes the default branch and all tags to the remote. Other branches are not mirrored.
+
+A mirror **never forces**: it never overwrites a branch or a tag on the remote and never deletes a ref there. If the remote has a different history, the mirror stops (see [If a mirror stops: divergence](#if-a-mirror-stops-divergence)).
+
+Managing mirrors needs the `admin` role on the repository. You find them under the repository's **Settings → Mirrors** (**Add mirror**), or through the API (`/api/v1/repos/{owner}/{repo}/mirrors`). The token is stored encrypted and is never shown again.
+
+### Mirroring to GitHub
+
+1. On GitHub, create an **empty** repository (no README, no licence, no `.gitignore`). A repository that already has commits has a different history, and the first push would stop as divergent.
+2. Create a **fine-grained personal access token** (GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens):
+   - *Repository access*: **Only select repositories**, and pick just that repository.
+   - *Repository permissions*: **Contents: Read and write**. Nothing else — GitHub adds *Metadata: Read-only* by itself. No account permissions.
+   - Set an expiration date and note it down: when the token expires, the mirror goes to `error` and stays there until you replace the token.
+3. In GitStack, open the repository's **Settings → Mirrors → Add mirror** and fill in:
+   - *URL*: `https://github.com/OWNER/REPO.git` (no credentials, no query).
+   - *Username*: your GitHub user name.
+   - *Token*: the token from step 2.
+
+The same through the API (the token is only ever sent in this request):
+
+```bash
+curl -fsS -X POST "https://gitstack.example.com/api/v1/repos/alice/app/mirrors" \
+  -H "Authorization: Bearer $GITSTACK_TOKEN" -H "Content-Type: application/json" \
+  -d '{"url":"https://github.com/alice/app.git","username":"alice","token":"'"$GITHUB_TOKEN"'"}'
+```
+
+The first push starts right away. The mirror is healthy when its state is **In sync**; `GET .../mirrors/{id}/runs` (and the run log in the UI) lists every attempt with the result for each ref.
+
+Notes:
+
+- If the default branch is **protected** on GitHub, GitHub may refuse the push (`protected branch hook declined`). That is a refusal, not a divergence: the mirror goes to `error` and retries. Allow the push on that branch, or do not protect it.
+- Creating a mirror answers `503 mirror_secrets_unavailable` if the installation has no secret encryption key (`GITSTACK_WEBHOOK_SECRET_KEY`, the same one used for webhook secrets).
+
+### States and retries
+
+| State | Meaning |
+|---|---|
+| `pending` | A push is queued (never pushed yet, or something new to push). |
+| `syncing` | A push is running. |
+| `in_sync` | The remote has what the last successful push sent. |
+| `error` | The last attempt failed (network, credential, refusal by the remote…). It retries after 30 s, 2 min, 10 min, 1 h, 3 h, then every 6 h. |
+| `diverged` | The remote has a different history. **Stopped**: no automatic retries. |
+
+The last error is shown in the UI and as `lastError` in the API, without any credential.
+
+### Destinations on a private network or with a private CA
+
+- **Egress policy.** Like webhooks, mirror destinations go through the egress protection (`egress.*` in the chart values). Loopback, link-local and the cluster networks are always blocked. A server on your LAN is allowed by default; if you set `egress.allow`, only what it lists is allowed, so add the destination's address (an IP/CIDR, or a host name). A blocked destination ends in a `blocked` run and is not retried.
+- **Private CA.** Git trusts the system CAs. For a destination with a certificate from a private CA (for example a second GitStack with its internal CA) put the CA in a ConfigMap and point the chart at it:
+
+  ```bash
+  kubectl create configmap mirror-ca --from-file=ca.crt=/path/to/ca.crt
+  helm upgrade gitstack <chart> --reuse-values --set git.mirror.caConfigMap=mirror-ca
+  ```
+
+  The file **replaces** the system CAs for mirror pushes only. If the same installation also mirrors to GitHub, the file must contain the public CAs as well as yours (for example `cat /etc/ssl/certs/ca-certificates.crt your-ca.crt`).
+
+### If a mirror stops: divergence
+
+A mirror becomes **Diverged** when the remote cannot take the push without overwriting something: the remote branch has commits GitStack does not have (someone pushed there), or a tag with the same name already points to a different commit. GitStack stops, leaves the remote untouched, and notifies the repository's admins (notification reason `mirror`).
+
+To resolve it, first decide which side is right, look at the run log to see which refs were refused, then:
+
+- **The remote has commits you want to keep.** Bring them into GitStack, then sync:
+
+  ```bash
+  git clone https://gitstack.example.com/alice/app.git && cd app
+  git remote add mirror https://github.com/alice/app.git
+  git fetch mirror
+  git merge mirror/main        # or rebase your work on it
+  git push origin main
+  ```
+
+  GitStack now contains the remote's commits, so the next push is a plain fast-forward.
+- **The remote is wrong** (an accidental commit, a test tag). Remove it on the remote — reset the branch there, or delete the tag (`git push mirror :refs/tags/v1.0`). The mirror never does this for you.
+- **A tag points to the wrong commit on one side.** Delete the tag on the side that is wrong and recreate it where it should be.
+
+Then press **Sync now** (or `POST /api/v1/repos/{owner}/{repo}/mirrors/{id}/sync`, which answers `202`). The mirror pushes again and, if nothing else is different, goes back to **In sync**. A mirror stays `diverged` until you do: new pushes to GitStack do not restart it.
 
 ---
 
