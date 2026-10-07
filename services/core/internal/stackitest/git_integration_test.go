@@ -26,6 +26,7 @@ import (
 	"github.com/fathorMB/GitStack/services/core/internal/httpserver"
 	"github.com/fathorMB/GitStack/services/core/internal/identityclient"
 	"github.com/fathorMB/GitStack/services/core/internal/notify"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -51,6 +52,8 @@ type gitEnv struct {
 	keys    map[string]string // file della chiave privata SSH
 	// notifier elabora loutbox di core in notifiche (in produzione lo fa il processo core).
 	notifier *notify.Engine
+	// pool è il database di core, per i motori che girano in-process nei test (mirror).
+	pool *pgxpool.Pool
 }
 
 func requireTools(t *testing.T) {
@@ -146,6 +149,7 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 		roToken:  map[string]string{},
 		keys:     map[string]string{},
 		notifier: &notify.Engine{Pool: pool, Identity: idc},
+		pool:     pool,
 	}
 	if err := os.WriteFile(filepath.Join(e.home, ".gitconfig"), nil, 0o600); err != nil {
 		t.Fatal(err)

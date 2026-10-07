@@ -63,6 +63,14 @@
          con GS_HOST/GS_TOKEN: repo create, clone, issue create, commit con
          `fixes #n` e push, issue chiusa, notifiche lette e `gs api` su un
          endpoint admin (e2e/gs-cycle.sh; log in gs-cycle.log).
+      e9. mirror in push (GIT-181): sul repo di e5 crea un mirror via API verso
+         un repo bare servito via HTTPS sulla VM (git http-backend dietro
+         mirror-dest.py, certificato e CA della VM, porta 8443), con il
+         servizio git che si fida della CA per i soli mirror e core con
+         egress.allow sull'IP della VM (cablaggio tolto a fine passo).
+         Verifica main uguale dopo il primo push e, dopo un push nuovo con un
+         tag, main e tag con gli SHA della sorgente. Niente container: sulla VM
+         c'e solo k3s e un pod avrebbe un IP del cluster, bloccato da C8.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -1002,6 +1010,133 @@ function Main {
             $e8Details += "[$e8Stage] $($_.Exception.Message)"
         }
         Add-StepResult -Name 'e8. gs da /downloads (install-gs.sh, checksum) e ciclo con GS_HOST/GS_TOKEN: repo, clone, issue, fixes #n, notifiche, gs api admin' -Ok $e8Ok -Detail ($e8Details -join '; ')
+        # --- e9. mirror in push verso un repo bare sulla VM (GIT-181) -----
+        # Sul repo di e5 si crea un mirror via API verso un repo bare servito
+        # via HTTPS sulla VM (git http-backend, certificato e CA della VM).
+        # Il servizio git si fida della CA per i soli mirror e core ammette
+        # l'indirizzo della destinazione (egress.allow): lo fa remote.sh, e a
+        # fine passo lo toglie. Si verifica che il primo push porti main e che
+        # un push nuovo con un tag arrivi con gli stessi SHA (via git.push).
+        Write-Log "==> Passo e9: mirror in push verso un repo bare sulla VM (SHA di main e di un tag uguali) ..."
+        $e9Ok = $true
+        $e9Details = @()
+        $e9Stage = 'preparazione'
+        $e9Port = 8443
+        $e9Started = $false
+        $e9Wired = $false
+        $e9MirrorUrl = $null
+        $e9Bearer = $null
+        $savedEnv9 = @{}
+        foreach ($n in 'GIT_TERMINAL_PROMPT', 'GCM_INTERACTIVE', 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL') {
+            $savedEnv9[$n] = [Environment]::GetEnvironmentVariable($n)
+        }
+        try {
+            if (-not $e5Ok) { throw 'e5 non riuscito' }
+            $env:GIT_TERMINAL_PROMPT = '0'
+            $env:GCM_INTERACTIVE = 'never'
+            $env:GIT_AUTHOR_NAME = 'E2E'; $env:GIT_AUTHOR_EMAIL = 'e2e@example.com'
+            $env:GIT_COMMITTER_NAME = 'E2E'; $env:GIT_COMMITTER_EMAIL = 'e2e@example.com'
+            $e9Bearer = @{ Authorization = "Bearer $gitToken" }
+            $destUser = 'mirror-bot'
+            $destToken = 'e2e-' + [guid]::NewGuid().ToString('N')
+
+            $e9Stage = 'destinazione sulla VM'
+            $cpDest = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\mirror-dest.py') -RemotePath '/tmp/gitstack-e2e/mirror-dest.py' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($cpDest.ExitCode -ne 0) { throw "copia di mirror-dest.py: exit $($cpDest.ExitCode) $($cpDest.StdErr)" }
+            $e9Started = $true
+            $startDest = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-start', "$e9Port", $destUser, $destToken) -TimeoutSeconds 90
+            if ($startDest.ExitCode -ne 0) { throw "mirror-dest-start: exit $($startDest.ExitCode) $($startDest.StdOut) $($startDest.StdErr)" }
+
+            $e9Stage = 'fiducia nella CA e egress.allow'
+            $e9Wired = $true
+            $wire = Invoke-RemoteHelper -RemoteArgs @('mirror-enable', 'gitstack', 'default', $script:VmIp) -TimeoutSeconds 600
+            if ($wire.ExitCode -ne 0) { throw "mirror-enable: exit $($wire.ExitCode) $($wire.StdOut) $($wire.StdErr)" }
+            $apiBack = $false
+            for ($i = 1; $i -le 24; $i++) {
+                $probe = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/$gitUser/$gitRepo/mirrors" -Headers $e9Bearer
+                if ($probe.StatusCode -eq 200) { $apiBack = $true; break }
+                Start-Sleep -Seconds 5
+            }
+            if (-not $apiBack) { throw "l'API dei mirror non risponde 200 dopo il riavvio di core (ultimo status $($probe.StatusCode))" }
+
+            $e9Stage = 'creazione del mirror'
+            $mirrorsUrl = "$baseUrl/api/v1/repos/$gitUser/$gitRepo/mirrors"
+            $destUrl = "https://$($script:VmIp):$e9Port/mirror.git"
+            $mkMirror = Invoke-HttpRaw -Uri $mirrorsUrl -Method 'POST' -Headers $e9Bearer -Body (@{ url = $destUrl; username = $destUser; token = $destToken } | ConvertTo-Json)
+            if ($mkMirror.StatusCode -ne 201) { throw "POST /mirrors: status $($mkMirror.StatusCode), corpo '$($mkMirror.Body)' $($mkMirror.Error)" }
+            if ($mkMirror.Body.Contains($destToken)) { throw "il token della destinazione compare nella risposta del POST /mirrors" }
+            $e9MirrorId = ($mkMirror.Body | ConvertFrom-Json).id
+            if (-not $e9MirrorId) { throw "POST /mirrors: risposta senza 'id'" }
+            $e9MirrorUrl = "$mirrorsUrl/$e9MirrorId"
+
+            $e9Stage = 'primo push (main)'
+            $mirrorState = ''
+            $mirrorErr = ''
+            for ($i = 1; $i -le 24; $i++) {
+                $getMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
+                if ($getMirror.StatusCode -eq 200) {
+                    $mj = $getMirror.Body | ConvertFrom-Json
+                    $mirrorState = [string]$mj.state
+                    $mirrorErr = [string]$mj.lastError
+                    if ($mirrorState -eq 'in_sync' -or $mirrorState -eq 'diverged') { break }
+                }
+                Start-Sleep -Seconds 5
+            }
+            if ($mirrorState -ne 'in_sync') { throw "stato del mirror '$mirrorState' (atteso in_sync) dopo il primo push: $mirrorErr" }
+            $lsMain = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('ls-remote', $httpsUrl, 'refs/heads/main')) -TimeoutSeconds 60
+            if ($lsMain.ExitCode -ne 0 -or $lsMain.StdOut.Trim() -notmatch '^([0-9a-f]{40})\s') { throw "ls-remote del repo sorgente: exit $($lsMain.ExitCode) $($lsMain.StdOut) $($lsMain.StdErr)" }
+            $srcMain = $Matches[1]
+            $dstMain = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30).StdOut.Trim()
+            if ($dstMain -ne $srcMain) { throw "main sulla destinazione '$dstMain', sulla sorgente '$srcMain'" }
+
+            $e9Stage = 'push nuovo con un tag (via git.push)'
+            Set-Content -LiteralPath (Join-Path $w1 'mirror.txt') -Value 'per il mirror' -Encoding ascii
+            foreach ($g in @(
+                    @('-C', $w1, 'add', '-A'),
+                    @('-C', $w1, 'commit', '-q', '-m', 'push per il mirror'),
+                    @('-C', $w1, 'tag', 'v-e2e-mirror'),
+                    @('-C', $w1, 'push', '-q', 'origin', 'main', 'v-e2e-mirror'))) {
+                $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 120
+                if ($r.ExitCode -ne 0) { throw "git $($g[2]) per il mirror: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            }
+            $newMain = (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'HEAD')) -TimeoutSeconds 30).StdOut.Trim()
+            $newTag = (Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w1, 'rev-parse', 'refs/tags/v-e2e-mirror')) -TimeoutSeconds 30).StdOut.Trim()
+            if ($newMain -notmatch '^[0-9a-f]{40}$' -or $newTag -notmatch '^[0-9a-f]{40}$') { throw "SHA locali non leggibili: main '$newMain', tag '$newTag'" }
+            $arrived = $false
+            $dstMain2 = ''
+            $dstTag2 = ''
+            for ($i = 1; $i -le 24; $i++) {
+                $dstMain2 = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/heads/main') -TimeoutSeconds 30).StdOut.Trim()
+                $dstTag2 = (Invoke-RemoteHelper -RemoteArgs @('mirror-dest-ref', 'refs/tags/v-e2e-mirror') -TimeoutSeconds 30).StdOut.Trim()
+                if ($dstMain2 -eq $newMain -and $dstTag2 -eq $newTag) { $arrived = $true; break }
+                Start-Sleep -Seconds 5
+            }
+            if (-not $arrived) { throw "dopo 2 minuti la destinazione ha main '$dstMain2' e tag '$dstTag2'; attesi '$newMain' e '$newTag'" }
+            $finalMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
+            if ($finalMirror.StatusCode -ne 200 -or $finalMirror.Body.Contains($destToken)) { throw "GET del mirror: status $($finalMirror.StatusCode) oppure il token compare nel corpo" }
+        } catch {
+            $e9Ok = $false
+            $e9Details += "[$e9Stage] $($_.Exception.Message)"
+            if ($e9Started) {
+                $dbgRefs = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-refs') -TimeoutSeconds 30
+                $e9Details += "ref sulla destinazione: $($dbgRefs.StdOut.Trim() -replace '\s+', ' ')"
+            }
+            if ($e9MirrorUrl) {
+                $dbgMirror = Invoke-HttpRaw -Uri $e9MirrorUrl -Headers $e9Bearer
+                $e9Details += "mirror: $($dbgMirror.Body)"
+            }
+        } finally {
+            # Pulizia: mirror, cablaggio e server di prova, anche dopo un fallimento.
+            try {
+                if ($e9MirrorUrl) { Invoke-HttpRaw -Uri $e9MirrorUrl -Method 'DELETE' -Headers $e9Bearer | Out-Null }
+                if ($e9Wired) { Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null }
+                if ($e9Started) { Invoke-RemoteHelper -RemoteArgs @('mirror-dest-stop') -TimeoutSeconds 30 | Out-Null }
+            } catch {
+                Write-Log "e9: pulizia non completata: $($_.Exception.Message)"
+            }
+            foreach ($n in $savedEnv9.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv9[$n]) }
+        }
+        Add-StepResult -Name 'e9. mirror in push (GIT-181): repo bare HTTPS sulla VM con la CA della VM, main e un tag con gli stessi SHA della sorgente' -Ok $e9Ok -Detail ($e9Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."

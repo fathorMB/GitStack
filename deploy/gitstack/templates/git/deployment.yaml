@@ -71,9 +71,19 @@ spec:
                 secretKeyRef:
                   name: {{ include "gitstack.serviceSecret.name" . }}
                   key: secret
+            # CA privata per le destinazioni dei mirror in push (GIT-181).
+            {{- if .Values.git.mirror.caConfigMap }}
+            - name: GITSTACK_GIT_MIRROR_CA_FILE
+              value: /etc/gitstack/mirror-ca/ca.crt
+            {{- end }}
           volumeMounts:
             - name: data
               mountPath: /data
+            {{- if .Values.git.mirror.caConfigMap }}
+            - name: mirror-ca
+              mountPath: /etc/gitstack/mirror-ca
+              readOnly: true
+            {{- end }}
             {{- if .Values.git.ssh.enabled }}
             - name: ssh-host-key
               mountPath: /etc/gitstack/ssh
@@ -97,6 +107,11 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "gitstack.fullname" . }}-git-data
+        {{- if .Values.git.mirror.caConfigMap }}
+        - name: mirror-ca
+          configMap:
+            name: {{ .Values.git.mirror.caConfigMap | quote }}
+        {{- end }}
         {{- if .Values.git.ssh.enabled }}
         - name: ssh-host-key
           secret:
