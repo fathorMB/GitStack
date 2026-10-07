@@ -71,15 +71,15 @@ In CI (`.github/workflows/ci.yml`, job `go`) gira dopo `go test ./... -race`: `u
 
 ### Immagine Docker
 
-`Dockerfile` multi-stage (build Go + distroless statico). Il contesto di build è questa cartella, non la radice del monorepo:
+`Dockerfile` multi-stage (build Go + distroless statico). Il contesto di build è la radice del monorepo (copia `pkg/` e usa le sorgenti locali dei moduli interni, GIT-184):
 
 ```
-docker build -f services/core/Dockerfile services/core
+docker build -f services/core/Dockerfile .
 ```
 
 Il tag e il push nel registry interno sono compito del job `registry` (GIT-2), non di questo Dockerfile. Il comando di default del container (`ENTRYPOINT ["/usr/local/bin/core"]`, nessun argomento) applica le migrazioni e avvia il server; per un job dedicato che applichi solo le migrazioni, sovrascrivere il comando con `["core", "migrate", "up"]`.
 
-Build verificata end-to-end (entrambi gli stage) con un demone Docker reale disponibile in questa sessione: `docker build -f services/core/Dockerfile services/core` produce l'immagine; avviarla senza configurazione (`docker run --rm <immagine>`) fallisce in modo pulito con un log JSON strutturato che segnala `GITSTACK_CORE_DB_URL` mancante, come atteso.
+Build verificata end-to-end (entrambi gli stage) con un demone Docker reale disponibile in questa sessione: `docker build -f services/core/Dockerfile .` produce l'immagine; avviarla senza configurazione (`docker run --rm <immagine>`) fallisce in modo pulito con un log JSON strutturato che segnala `GITSTACK_CORE_DB_URL` mancante, come atteso.
 
 ## M-03/A (GIT-63): schema dei repo e modello dati per le PR
 
