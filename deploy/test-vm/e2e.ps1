@@ -58,6 +58,11 @@
       e7. prefisso API della UI (GIT-151): legge API_BASE_URL da
          web/src/lib/http.ts e, con quel prefisso, verifica sessione 401
          JSON, login admin e sessione 200 col cookie (la UI passa di li).
+      e8. gs (GIT-173, M-07/L): sulla VM install-gs.sh scarica gs da
+         /downloads (impronta della CA e checksum SHA256SUMS verificati), poi
+         con GS_HOST/GS_TOKEN: repo create, clone, issue create, commit con
+         `fixes #n` e push, issue chiusa, notifiche lette e `gs api` su un
+         endpoint admin (e2e/gs-cycle.sh; log in gs-cycle.log).
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -944,6 +949,59 @@ function Main {
             }
         }
         Add-StepResult -Name 'e7. prefisso API della UI (letto da web/src/lib/http.ts): sessione 401 JSON, login admin, sessione 200 col cookie' -Ok $e7Ok -Detail ($e7Details -join '; ')
+
+        # --- e8. gs da /downloads: installazione, checksum e ciclo (GIT-173, M-07/L) ---
+        # Sulla VM (Linux): install-gs.sh scarica gs da /downloads (impronta
+        # della CA verificata, checksum di SHA256SUMS), poi con GS_HOST/GS_TOKEN
+        # fa repo create, clone, issue create, commit con `fixes #n` e push,
+        # issue chiusa, notifiche lette e `gs api` su un endpoint admin
+        # (e2e/gs-cycle.sh). L'utente di prova e il suo token sono quelli di e5.
+        Write-Log "==> Passo e8: gs da /downloads (install-gs.sh, checksum) e ciclo repo/issue/push/notifiche/api ..."
+        $e8Ok = $true
+        $e8Details = @()
+        $e8Stage = 'preparazione'
+        try {
+            if (-not $e5Ok -or -not $gitToken -or -not $gitUser) { throw 'e5 non riuscito: manca l''utente di prova con il token' }
+            if (-not $script:CaFingerprint) { throw 'manca l''impronta della CA (passo d3 fallito)' }
+            if (-not $ck) { throw "manca la sessione dell'admin (passo e3 fallito)" }
+
+            $e8Stage = 'utente agente e token admin'
+            $agentName = "e2eagent$suffix"
+            $mkAgent = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Method 'POST' -Cookie $ck -Body (@{ username = $agentName; kind = 'agent'; email = "$agentName@agents.example.com" } | ConvertTo-Json)
+            if ($mkAgent.StatusCode -ne 201) { throw "creazione utente agente: status $($mkAgent.StatusCode), corpo '$($mkAgent.Body)' $($mkAgent.Error)" }
+            $e8Expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
+            $mkAdminTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-gs-admin'; scopes = @('read:user', 'write:user'); expiresAt = $e8Expires } | ConvertTo-Json)
+            if ($mkAdminTok.StatusCode -ne 201) { throw "token dell'admin: status $($mkAdminTok.StatusCode) $($mkAdminTok.Body)" }
+            $adminGsToken = ($mkAdminTok.Body | ConvertFrom-Json).token
+            if (-not $adminGsToken) { throw "token dell'admin: risposta senza 'token'" }
+
+            $e8Stage = 'copia di gs-cycle.sh sulla VM'
+            $mk8 = Invoke-VmSsh -Command 'mkdir -p /tmp/gitstack-e2e' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($mk8.ExitCode -ne 0) { throw "mkdir sulla VM: exit $($mk8.ExitCode) $($mk8.StdErr)" }
+            $cp8 = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\gs-cycle.sh') -RemotePath '/tmp/gitstack-e2e/gs-cycle.sh' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($cp8.ExitCode -ne 0) { throw "scp di gs-cycle.sh: exit $($cp8.ExitCode) $($cp8.StdErr)" }
+
+            $e8Stage = 'ciclo di gs sulla VM'
+            # I segreti viaggiano nell'ambiente del comando remoto, mai negli argomenti stampati nel log.
+            $e8Env = @(
+                "GS_VM_IP='$($script:VmIp)'", "GS_CA_SHA256='$($script:CaFingerprint)'",
+                "GS_USER_TOKEN='$gitToken'", "GS_ADMIN_TOKEN='$adminGsToken'",
+                "GS_USER_NAME='$gitUser'", "GS_REPO_NAME='gs-ciclo-$suffix'", "GS_AGENT_NAME='$agentName'"
+            ) -join ' '
+            $run8 = Invoke-VmSsh -Command "$e8Env bash /tmp/gitstack-e2e/gs-cycle.sh" -TimeoutSeconds 600
+            Set-Content -LiteralPath (Join-Path $OutDir 'gs-cycle.log') -Value ($run8.StdOut + "`n" + $run8.StdErr) -Encoding utf8
+            if ($run8.ExitCode -ne 0 -or $run8.StdOut -notmatch 'GS-CYCLE-DONE') {
+                $failLine = ($run8.StdOut -split "`n" | Where-Object { $_ -match '^STEP FAIL' } | Select-Object -First 1)
+                throw "gs-cycle.sh: exit $($run8.ExitCode) $failLine $($run8.StdErr)"
+            }
+            foreach ($stepName in 'install', 'checksum', 'version', 'auth_status', 'repo_create', 'clone', 'issue_create', 'push', 'issue_chiusa', 'notification', 'gs_api_admin') {
+                if ($run8.StdOut -notmatch "STEP ok $stepName\b") { throw "manca il passo '$stepName' nell'output di gs-cycle.sh" }
+            }
+        } catch {
+            $e8Ok = $false
+            $e8Details += "[$e8Stage] $($_.Exception.Message)"
+        }
+        Add-StepResult -Name 'e8. gs da /downloads (install-gs.sh, checksum) e ciclo con GS_HOST/GS_TOKEN: repo, clone, issue, fixes #n, notifiche, gs api admin' -Ok $e8Ok -Detail ($e8Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."
