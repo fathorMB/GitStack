@@ -197,6 +197,13 @@ func (r *rig) git(dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// set modifica i campi letti dall'handler del server sotto r.mu: il server è già avviato.
+func (r *rig) set(f func()) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	f()
+}
+
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
@@ -399,7 +406,7 @@ func TestPush_DestinazioneDivergente_NienteForce(t *testing.T) {
 
 func TestPush_ErroreDelServerNonPerdeIlToken(t *testing.T) {
 	r := newRig(t)
-	r.reject = "rifiutato"
+	r.set(func() { r.reject = "rifiutato" })
 	var logs bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	res, err := r.svc.Push(context.Background(), "repo", r.in)
@@ -423,8 +430,10 @@ func TestPush_ErroreDelServerNonPerdeIlToken(t *testing.T) {
 
 func TestPush_UnSoloPushPerMirror(t *testing.T) {
 	r := newRig(t)
-	r.hold = make(chan struct{})
-	r.seen = make(chan struct{}, 1)
+	r.set(func() {
+		r.hold = make(chan struct{})
+		r.seen = make(chan struct{}, 1)
+	})
 	done := make(chan error, 1)
 	go func() {
 		_, err := r.svc.Push(context.Background(), "repo", r.in)
@@ -454,7 +463,7 @@ func TestPush_UnSoloPushPerMirror(t *testing.T) {
 
 func TestPush_TimeoutEBloccoDelDNS(t *testing.T) {
 	r := newRig(t)
-	r.hold = make(chan struct{})
+	r.set(func() { r.hold = make(chan struct{}) })
 	r.svc.Timeout = 2 * time.Second
 	start := time.Now()
 	res, err := r.svc.Push(context.Background(), "repo", r.in)
