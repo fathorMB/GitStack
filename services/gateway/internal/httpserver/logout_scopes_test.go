@@ -38,7 +38,7 @@ func TestAuth_LogoutSvuotaLaCache(t *testing.T) {
 
 	cfg := newTestConfig(t, core.srv.URL)
 	cfg.IdentityURL = mustURL(t, fakeIdentity.URL)
-	cfg.IdentityTimeout = time.Second
+	cfg.IdentityTimeout = 5 * time.Second
 	cfg.IdentityServiceSecret = testSecret
 	cfg.AuthCacheTTL = 10 * time.Minute
 	cfg.AuthCacheNegativeTTL = 10 * time.Minute

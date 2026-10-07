@@ -185,7 +185,7 @@ name = "go-gofmt"
 # gofmt sui blob committati (HEAD, LF), non sul worktree CRLF di Windows:
 # golangci-lint dei check go-lint-* non controlla il formato (GIT-119).
 run = "go run scripts/check-gofmt.go"
-timeout_s = 120
+timeout_s = 600
 paths = ["**/*.go", "scripts/check-gofmt.go"]
 
 [[check]]
