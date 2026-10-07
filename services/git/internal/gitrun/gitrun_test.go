@@ -45,8 +45,16 @@ func TestOutputCapAndTimeoutAndStream(t *testing.T) {
 		t.Fatalf("tetto: %v", err)
 	}
 	// Timeout.
-	fast := &Runner{Bin: r.Bin, Timeout: time.Nanosecond}
-	if _, err := fast.Output(context.Background(), dir, nil, "config", "--list"); err == nil {
+	// Un *os.File come stdin (e non io.Pipe: exec non avvia la goroutine di copia
+	// che bloccherebbe Wait): git resta in attesa e scatta il timeout.
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pr.Close() }()
+	defer func() { _ = pw.Close() }()
+	slow := &Runner{Bin: r.Bin, Timeout: 200 * time.Millisecond}
+	if _, err := slow.Output(context.Background(), dir, pr, "hash-object", "--stdin"); err == nil {
 		t.Fatal("timeout atteso")
 	}
 	// Errore con stderr e codice.

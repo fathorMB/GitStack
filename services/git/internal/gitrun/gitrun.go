@@ -111,6 +111,9 @@ func (r *Runner) command(ctx context.Context, gitDir string, args []string) *exe
 	}, args...)
 	cmd := exec.CommandContext(ctx, r.Bin, full...)
 	cmd.Env = Env()
+	// Un figlio di git (o un wrapper) puo' tenere aperte le pipe dopo la kill
+	// del contesto: senza WaitDelay Wait aspetterebbe oltre il timeout.
+	cmd.WaitDelay = 3 * time.Second
 	return cmd
 }
 

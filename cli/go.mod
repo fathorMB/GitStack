@@ -3,7 +3,7 @@ module github.com/fathorMB/GitStack/cli
 go 1.26.2
 
 require (
-	github.com/fathorMB/GitStack/client/go v0.0.0-20261006123015-3bc3cd1d06ab
+	github.com/fathorMB/GitStack/client/go v0.0.0-20261006192302-f307180f2163
 	github.com/itchyny/gojq v0.12.19
 	github.com/spf13/cobra v1.10.2
 	github.com/zalando/go-keyring v0.2.8
