@@ -19,8 +19,11 @@ import (
 // M-07/M (GIT-174): gli script della prova reale (scripts/agent-trial) contro
 // lo stack completo, col binario gs vero. setup.sh prepara agente, repo,
 // grant, issue e token; poi si recita la parte dell'agente (notifica, clone,
-// commit `fixes #n`, push, risposta, lettura) e check.sh deve dare 0.
-// Prima che l'agente lavori, check.sh deve dare 1.
+// commit `fixes #n` su un ramo agent/<n>-<slug>, push del ramo, risposta, lettura);
+// poi una persona unisce sul ramo predefinito (regola v1 senza PR, GIT-191) e
+// check.sh deve dare 0.
+// Prima che l'agente lavori check.sh deve dare 1; dopo il lavoro ma prima
+// dell'unione dà 3, con i controlli del passo di unione in SKIP (non FAIL).
 
 func TestAgentTrial(t *testing.T) {
 	if _, err := exec.LookPath("bash"); err != nil {
@@ -120,12 +123,13 @@ func TestAgentTrial(t *testing.T) {
 	g.process()
 
 	// Prima del lavoro dell'agente la checklist non passa.
-	if out, code := run("check.sh", nil); code != 1 || !strings.Contains(out, "FAIL issue chiusa") ||
+	if out, code := run("check.sh", nil); code != 1 || !strings.Contains(out, "FAIL ramo dell'agente") ||
 		!strings.Contains(out, "nessun commento di trial-agent") || strings.Contains(out, "cannot iterate") {
 		t.Fatalf("check.sh prima del lavoro: exit %d\n%s", code, out)
 	}
 
-	// L'agente: legge la notifica, clona, corregge, committa con fixes #1, spinge.
+	// L'agente: legge la notifica, clona, lavora su un ramo, committa con fixes #1
+	// (-F, come dicono le skills) con la propria identità git, spinge il ramo.
 	as := func(args ...string) gsRun {
 		t.Helper()
 		r := g.gsToken(agentToken, "", "", args...)
@@ -138,51 +142,113 @@ func TestAgentTrial(t *testing.T) {
 		t.Fatalf("notifica di assegnazione dell'agente: %q", r.out)
 	}
 	dir := filepath.Join(t.TempDir(), "w")
-	env := gitEnv(agentToken)
-	gitAgent := func(d string, args ...string) {
+	const agentEmail = "trial-agent@agents.gitstack.invalid" // quella che setup.sh dà all'utente agente
+	// gitAs lancia git con le credenziali di token e con l'identità data.
+	gitAs := func(token, name, email, d string, args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", append([]string{"-c", "credential.helper=", "-c", "core.autocrlf=false"}, args...)...)
 		cmd.Dir = d
 		cmd.Env = append(cleanEnv(), "HOME="+g.home, "USERPROFILE="+g.home, "GIT_TERMINAL_PROMPT=0",
-			"GIT_AUTHOR_NAME=trial-agent", "GIT_AUTHOR_EMAIL=trial-agent@agents.example.com",
-			"GIT_COMMITTER_NAME=trial-agent", "GIT_COMMITTER_EMAIL=trial-agent@agents.example.com")
-		cmd.Env = append(cmd.Env, env...)
+			"GIT_AUTHOR_NAME="+name, "GIT_AUTHOR_EMAIL="+email,
+			"GIT_COMMITTER_NAME="+name, "GIT_COMMITTER_EMAIL="+email)
+		cmd.Env = append(cmd.Env, gitEnv(token)...)
 		if b, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, b)
 		}
+	}
+	gitAgent := func(d string, args ...string) {
+		t.Helper()
+		gitAs(agentToken, "trial-agent", agentEmail, d, args...)
 	}
 	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	gitAgent(filepath.Dir(dir), "clone", "-q", g.gitHTTP+"/admin/agent-trial.git", dir)
+	// Identità del repo (config locale), come nel passo 4 della guida.
+	gitAgent(dir, "config", "user.name", "trial-agent")
+	gitAgent(dir, "config", "user.email", agentEmail)
+	branch := "agent/1-conta-parole"
+	gitAgent(dir, "switch", "-q", "-c", branch)
 	fixed := "import sys\n\n\ndef count_words(text):\n    return len(text.split())\n\n\nif __name__ == \"__main__\":\n    print(count_words(sys.stdin.read()))\n"
 	if err := os.WriteFile(filepath.Join(dir, "wordcount.py"), []byte(fixed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gitAgent(dir, "commit", "-q", "-a", "-m", "Conta le parole con qualsiasi spazio bianco\n\nfixes #1")
-	gitAgent(dir, "push", "-q", "origin", "HEAD:main")
+	msg := filepath.Join(work, "msg.txt")
+	if err := os.WriteFile(msg, []byte("Conta le parole con qualsiasi spazio bianco\n\nfixes #1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitAgent(dir, "commit", "-q", "-a", "-F", msg)
+	gitAgent(dir, "push", "-q", "-u", "origin", branch)
 
 	id, ok := g.notifier.Identity.(issuelinks.Identity)
 	if !ok {
 		t.Fatal("l'identity dello stack non ha HasRole")
 	}
 	linker := &issuelinks.Linker{Pool: g.notifier.Pool, Identity: id, Notifier: g.notifier}
-	for _, p := range g.pushEvents("admin/agent-trial", 1) {
-		if err := linker.HandlePush(context.Background(), events.Envelope{}, p); err != nil {
-			t.Fatalf("HandlePush: %v", err)
+	// pushEvents rende tutti i push del repo dall'inizio (seed di setup.sh incluso):
+	// si gestiscono solo quelli non ancora visti.
+	handled := 0
+	process := func(total int) {
+		t.Helper()
+		evs := g.pushEvents("admin/agent-trial", total)
+		for _, p := range evs[handled:] {
+			if err := linker.HandlePush(context.Background(), events.Envelope{}, p); err != nil {
+				t.Fatalf("HandlePush: %v", err)
+			}
 		}
+		handled = len(evs)
 	}
-	as("issue", "comment", "1", "-R", "admin/agent-trial", "--body", "Risolto con il commit che dice fixes #1; i test passano.")
+	process(2) // il seed di setup.sh e il ramo dell'agente
+	// Il commit è dell'agente e non della persona: GitStack lo collega all'utente per email.
+	if r := g.gsToken(adminToken, "", "", "api", "/repos/admin/agent-trial/commits?ref=agent%2F1-conta-parole",
+		"--jq", ".items[0].author.user.username"); r.code != 0 || strings.TrimSpace(r.out) != "trial-agent" {
+		t.Errorf("autore del commit dell'agente: exit %d, %q (%s)", r.code, r.out, r.errOut)
+	}
+	cmt := filepath.Join(work, "comment.txt")
+	if err := os.WriteFile(cmt, []byte("Fatto nel ramo "+branch+"; i test passano. Riassunto: count_words con split().\n\n"+
+		"Per unire, dal ramo predefinito:\ngit fetch && git merge --ff-only origin/"+branch+" && git push\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	as("issue", "comment", "1", "-R", "admin/agent-trial", "-F", cmt)
 	as("notification", "read", "--all", "-R", "admin/agent-trial", "--reason", "assigned")
 
 	transcript := filepath.Join(work, "sessione.txt")
 	if err := os.WriteFile(transcript, []byte("gs issue view 1 --comments\ngs issue comment 1 --body ok\ngs notification read --all\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if out, code := run("check.sh", []string{"TRIAL_TRANSCRIPT=" + transcript}); code != 0 {
-		t.Fatalf("check.sh dopo il lavoro: exit %d\n%s", code, out)
-	} else if !strings.Contains(out, "ESITO: prova superata") {
-		t.Fatalf("check.sh: esito inatteso\n%s", out)
+	// Prima dell'unione: la parte dell'agente è verde, il passo di unione è SKIP
+	// con il motivo (uscita 3), non FAIL.
+	out, code = run("check.sh", []string{"TRIAL_TRANSCRIPT=" + transcript})
+	if code != 3 || strings.Contains(out, "FAIL ") {
+		t.Fatalf("check.sh prima dell'unione: exit %d, atteso 3 senza FAIL\n%s", code, out)
+	}
+	for _, s := range []string{
+		"PASS ramo remoto " + branch + " con 'fixes #1'",
+		"PASS il commento dell'agente nomina il ramo " + branch,
+		"SKIP commit fixes sul ramo predefinito: la persona non ha ancora unito",
+		"SKIP issue chiusa come completed: la persona non ha ancora unito",
+		"PASS la notifica di assegnazione della issue #1 e' stata letta",
+	} {
+		if !strings.Contains(out, s) {
+			t.Errorf("check.sh prima dell'unione: manca %q\n%s", s, out)
+		}
+	}
+
+	// La persona (admin, con write) unisce in fast-forward sul ramo predefinito:
+	// il `fixes #1` arriva su main e chiude la issue, e la chiusura genera una
+	// notifica state_change nella casella dell'agente quando ha già finito.
+	gitAs(adminToken, "admin", "admin@example.com", dir, "push", "-q", "origin", branch+":main")
+	process(3)
+	out, code = run("check.sh", []string{"TRIAL_TRANSCRIPT=" + transcript})
+	if code != 0 {
+		t.Fatalf("check.sh dopo l'unione: exit %d\n%s", code, out)
+	} else if !strings.Contains(out, "ESITO: prova superata") || !strings.Contains(out, "PASS issue #1 chiusa come completed") ||
+		!strings.Contains(out, "PASS commit con 'fixes #1' sul ramo predefinito") {
+		t.Fatalf("check.sh dopo l'unione: esito inatteso\n%s", out)
+	}
+	// La chiusura ha prodotto una notifica non letta di altro tipo: non conta.
+	if r := as("notification", "list", "-R", "admin/agent-trial", "--json", "reason", "--jq", ".[].reason"); strings.Contains(r.out, "assigned") {
+		t.Errorf("notifica di assegnazione ancora non letta: %q", r.out)
 	}
 
 	// Un --yes nella trascrizione fa fallire il controllo.
