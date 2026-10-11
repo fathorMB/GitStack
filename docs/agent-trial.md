@@ -256,7 +256,7 @@ git merge --ff-only origin/agent/1-<slug>
 git push
 ```
 
-Arrivato `fixes #1` su `main`, la issue si chiude da sola con motivo `completed` e genera una notifica `state_change` nella casella dell'agente (non è un'incoerenza: arriva dopo che l'agente ha finito, e `check.sh` conta solo la notifica di assegnazione). Se `--ff-only` rifiuta, il ramo è indietro rispetto a `main`: chiedi all'agente di ribasarlo, non forzare.
+Arrivato `fixes #1` su `main`, la issue si chiude da sola con motivo `completed` e genera una notifica `state_change` nella casella dell'agente (non è un'incoerenza: arriva dopo che l'agente ha finito, e `check.sh` conta solo la notifica di assegnazione). **Prima di lanciare check.sh (passo 7), non cancellare il ramo `agent/1-<slug>` remoto:** il controllo del ramo remoto fallirebbe con «nessun ramo agent/1-<slug>: l'agente non ha spinto un ramo». Se `--ff-only` rifiuta, il ramo è indietro rispetto a `main`: chiedi all'agente di ribasarlo, non forzare.
 
 ## 7. Controlla l'esito
 
