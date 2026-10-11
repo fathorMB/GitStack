@@ -17,7 +17,8 @@
 # Variabili (tutte facoltative tranne le prime due):
 #   GS_HOST            istanza (come `gs`: nome o IP, con :porta se serve)
 #   GS_ADMIN_TOKEN     token dell'amministratore, scope write:user e write:resource
-#   GS_CA_FILE         CA interna da fidare (Linux; su macOS/Windows va nel sistema)
+#   GS_CA_FILE         file della CA interna: per gs su Linux (SSL_CERT_FILE) e per git;
+#                      su macOS e Windows gs si fida solo dello store di sistema
 #   TRIAL_AGENT        nome dell'utente agente        (default trial-agent)
 #   TRIAL_REPO         nome del repo di prova         (default agent-trial)
 #   TRIAL_TOKEN_FILE   dove scrivere il token         (default ./agent-trial.token)
@@ -182,6 +183,6 @@ Prova pronta.
   repo     $REPO
   issue    #$num (assegnata a $AGENT)
   agente   $AGENT   token: $TOKEN_FILE
-Prossimo passo: docs/agent-trial.md, "Installa le skills e lancia l'agente".
+Prossimo passo: docs/agent-trial.md, sezione "4. Installa le skills in un progetto".
 Dopo la prova: scripts/agent-trial/check.sh
 EOF

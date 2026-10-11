@@ -71,7 +71,7 @@ esac
 
 # 3. l'agente ha scritto sulla issue (risposta, C4)
 n="$(admin issue view "$num" -R "$REPO" --json comments \
-  --jq "[.comments[] | select(.author.username == \"$AGENT\" and (.deleted | not))] | length" 2>&1)"
+  --jq "[(.comments // [])[] | select(.author.username == \"$AGENT\" and (.deleted | not))] | length" 2>&1)"
 case "$n" in
   '' | *[!0-9]*) nok "risposta dell'agente" "risposta inattesa: $n" ;;
   0) nok "risposta dell'agente" "nessun commento di $AGENT sulla issue #$num" ;;

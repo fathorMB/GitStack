@@ -52,6 +52,13 @@ k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.pa
 
 Apri `https://<ip-della-vm>/` (il browser avviserà della CA interna: [`docs/tls.md`](tls.md)), entra come `admin` con quella password e cambia la password. Dal PC: `export GS_HOST=<ip-della-vm>`.
 
+Due cose da sapere sulla VM:
+
+- **Il certificato vale solo per l'IP dato a `--host`.** La VM sul Default Switch può cambiare IP dopo un riavvio o un ripristino (visto in prova: certificato con SAN `172.28.5.19`, VM su `172.29.132.37`). Dopo ogni `reset-vm.ps1` controlla l'IP che stampa: se è diverso da quello del certificato, ripristina e **reinstalla** con il nuovo IP (stesso comando di sopra, `--host <nuovo-ip>`), poi riprendi da `gitstack-tls fingerprint`: la CA e la sua impronta cambiano.
+- **Immagini su ghcr.** Con `curl | bash` l'installer usa `main`; se l'ultimo commit di `main` non ha ancora le immagini pubblicate (la CI è in corso) i pod non partono. In quel caso fissa un commit con immagini già pubblicate: `curl -fsSL .../install.sh | sudo GITSTACK_REF=<sha> bash -s -- --host <ip-della-vm>`.
+
+La CA interna va fidata anche da `gs`: lo spiega il passo 2 («Fidarsi della CA interna»), valido per la VM e per homehub.
+
 Lo script `e2e.ps1` prova già un ciclo di `gs` con un utente di prova (passo e8, GIT-173); questa guida aggiunge l'agente vero.
 
 ### B. homehub
@@ -63,7 +70,7 @@ curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/insta
 sudo gitstack-tls fingerprint
 ```
 
-Se è già installato non reinstallare: l'installer è idempotente ma basta `sudo gitstack-tls fingerprint`. Dal PC: `export GS_HOST=homehub.local`, e la CA interna va fidata sul PC come in [`docs/tls.md`](tls.md) (scarica `https://homehub.local/downloads/ca.crt`).
+Se è già installato non reinstallare: l'installer è idempotente ma basta `sudo gitstack-tls fingerprint`. Dal PC: `export GS_HOST=homehub.local`. La CA interna va fidata sul PC: lo spiega il passo 2 («Fidarsi della CA interna»), da fare per la VM come per homehub.
 
 Per entrambi: l'istanza deve servire `/downloads/` (immagine web recente, GIT-171): `curl -fsSk https://$GS_HOST/downloads/index.json` deve rispondere con un JSON che ha `skills`.
 
@@ -89,13 +96,44 @@ Gli script verificano lo SHA-256 del binario contro `SHA256SUMS` dell'istanza e,
 
 **Atteso:** `gs version` stampa la versione (`sha-<commit>`).
 
+### Fidarsi della CA interna
+
+Con la CA interna (il default dell'installer, vale per la VM e per homehub) l'installatore verifica l'impronta e rende fidata la CA **solo per sé e per git**: `gs` e `git` negli altri passi danno altrimenti `x509: certificate signed by unknown authority`. Scegli la riga della tua piattaforma e **eseguila una volta**, prima dei passi 3 e 4:
+
+Linux (senza sudo): l'installatore ha già salvato la CA, basta indicarla. Questo vale anche per gli script del passo 3 e per i passi 4 e 5, nella stessa shell:
+
+```bash
+export GS_CA_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gitstack/ca-$GS_HOST.crt"
+export SSL_CERT_FILE="$GS_CA_FILE"
+ls -l "$GS_CA_FILE"          # deve esistere
+```
+
+macOS: Go non legge `SSL_CERT_FILE`, serve lo store di sistema. Rilancia l'installatore con `GS_TRUST_SYSTEM=1` (chiede sudo) e tieni il file per git:
+
+```bash
+GS_TRUST_SYSTEM=1 GS_CA_SHA256=<impronta del passo 1> sh install-gs.sh
+export GS_CA_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gitstack/ca-$GS_HOST.crt"
+```
+
+(Su Linux `GS_TRUST_SYSTEM=1` fa lo stesso per l'intero sistema, `update-ca-certificates` incluso: alternativa a `SSL_CERT_FILE`.)
+
+Windows: `install-gs.ps1` ha già importato la CA in `Cert:\CurrentUser\Root`, e `gs` la usa da lì. Resta git (Git for Windows con OpenSSL non guarda lo store) e gli script: scarica la CA da Git Bash e confrontane l'impronta con quella del passo 1:
+
+```bash
+curl -fsS -o "$HOME/ca-$GS_HOST.crt" "http://$GS_HOST/downloads/ca.crt"
+openssl x509 -in "$HOME/ca-$GS_HOST.crt" -noout -fingerprint -sha256     # = impronta del passo 1 (con i due punti)
+export GS_CA_FILE="$HOME/ca-$GS_HOST.crt"
+```
+
+Altre strade (import nello store di sistema, solo per git): [`docs/tls.md`](tls.md).
+
 ## 3. Prepara la prova
 
 Serve un token **dell'amministratore**, solo per questo passo. Dalla UI: `https://$GS_HOST/settings/tokens/new`, scope `write:user` e `write:resource`, scadenza di 1 giorno. Copia il valore (si vede una volta).
 
 ```bash
 export GS_ADMIN_TOKEN=gst_...              # il token appena creato
-export GS_CA_FILE=$HOME/ca.crt             # solo se la CA è interna: il file di /downloads/ca.crt (Linux; su macOS e Windows la CA va nel sistema)
+echo "$GS_CA_FILE"                          # la CA interna: impostata nel passo 2 («Fidarsi della CA interna»)
 cd <checkout di GitStack>
 scripts/agent-trial/setup.sh
 ```
@@ -133,12 +171,17 @@ Il progetto è un clone del repo di prova, fatto con le credenziali dell'agente.
 export GS_HOST=<lo stesso host>
 export GS_TOKEN=$(cat ./agent-trial.token)      # token dell'agente, non dell'admin
 export GS_NO_KEYRING=1                           # niente portachiavi: il token resta nell'ambiente
+export GIT_SSL_CAINFO="$GS_CA_FILE"              # git: la CA interna (impostata nel passo 2)
 
-gs auth status                                   # utente trial-agent, scope read:resource write:resource
+gs auth status                                   # una riga: host, trial-agent, GS_TOKEN, scadenza «mai»
 gs auth setup-git                                # git usa il token di gs per questo host (config globale, voce per host)
 gs repo clone <admin>/agent-trial ~/agent-trial-work
 cd ~/agent-trial-work
 ```
+
+Prima di cominciare `GS_CA_FILE` (e su Linux `SSL_CERT_FILE`) deve essere esportato nella stessa shell: è la riga del passo 2 («Fidarsi della CA interna»). Senza, `gs` risponde `x509: certificate signed by unknown authority`. Se hai aperto una shell nuova, ripeti quella riga; su macOS e Windows `gs` usa lo store di sistema e non serve altro.
+
+`gs auth status` stampa una sola riga, per esempio `172.29.132.37 trial-agent GS_TOKEN - mai`: host, utente, origine del token (`GS_TOKEN` = variabile d'ambiente), scadenza (`mai`: con `GS_TOKEN` `gs` non la conosce, non vuol dire che il token non scada; il setup gli dà 7 giorni). **Non mostra gli scope.** Che il token abbia solo `read:resource` e `write:resource` lo verifica `check.sh` per effetto (un `GET /users` con quel token deve dare exit 5, passo 6).
 
 Installa le skills nel progetto per Claude Code e tienile fuori dai commit dell'agente:
 
