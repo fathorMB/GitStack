@@ -172,7 +172,7 @@ func (s *apiServer) RestoreRepository(w http.ResponseWriter, r *http.Request, re
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante il ripristino del repo.")
 		return
 	}
-	writeJSON(w, http.StatusOK, s.toAPIRepo(r, repo, s.isEmpty(r.Context(), caller, id)))
+	writeJSON(w, http.StatusOK, s.repoWithMirror(r, repo, s.isEmpty(r.Context(), caller, id)))
 }
 
 // ListDeletedRepositories implementa GET /repos/deleted: i repo eliminati da

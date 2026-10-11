@@ -277,6 +277,7 @@ func (s *apiServer) ListRepositories(w http.ResponseWriter, r *http.Request, par
 	for i, it := range items {
 		out = append(out, s.toAPIRepo(r, it, empties[i]))
 	}
+	s.fillRepoMirrors(r.Context(), out)
 	writeJSON(w, http.StatusOK, openapi.RepositoryList{Items: out, Page: page, PerPage: perPage, Total: total})
 }
 
@@ -473,7 +474,7 @@ func (s *apiServer) GetRepository(w http.ResponseWriter, r *http.Request, owner 
 	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, s.toAPIRepo(r, repo, s.isEmpty(r.Context(), caller, repo.ID)))
+	writeJSON(w, http.StatusOK, s.repoWithMirror(r, repo, s.isEmpty(r.Context(), caller, repo.ID)))
 }
 
 func validVisibility(v string) bool { return v == "private" || v == "internal" }
@@ -605,5 +606,5 @@ func (s *apiServer) UpdateRepository(w http.ResponseWriter, r *http.Request, own
 		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante l'aggiornamento del repo.")
 		return
 	}
-	writeJSON(w, http.StatusOK, s.toAPIRepo(r, updated, s.isEmpty(r.Context(), caller, updated.ID)))
+	writeJSON(w, http.StatusOK, s.repoWithMirror(r, updated, s.isEmpty(r.Context(), caller, updated.ID)))
 }

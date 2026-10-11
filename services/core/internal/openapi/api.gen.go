@@ -537,6 +537,144 @@ func (e OwnerType) Valid() bool {
 	}
 }
 
+// Defines values for PullMirrorDivergedRefKind.
+const (
+	PullMirrorDivergedRefKindDeleted   PullMirrorDivergedRefKind = "deleted"
+	PullMirrorDivergedRefKindRewritten PullMirrorDivergedRefKind = "rewritten"
+)
+
+// Valid indicates whether the value is a known member of the PullMirrorDivergedRefKind enum.
+func (e PullMirrorDivergedRefKind) Valid() bool {
+	switch e {
+	case PullMirrorDivergedRefKindDeleted:
+		return true
+	case PullMirrorDivergedRefKindRewritten:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullMirrorMode.
+const (
+	PullMirrorModeMirror PullMirrorMode = "mirror"
+	PullMirrorModeOnce   PullMirrorMode = "once"
+)
+
+// Valid indicates whether the value is a known member of the PullMirrorMode enum.
+func (e PullMirrorMode) Valid() bool {
+	switch e {
+	case PullMirrorModeMirror:
+		return true
+	case PullMirrorModeOnce:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullMirrorRunTrigger.
+const (
+	PullMirrorRunTriggerInitial  PullMirrorRunTrigger = "initial"
+	PullMirrorRunTriggerManual   PullMirrorRunTrigger = "manual"
+	PullMirrorRunTriggerSchedule PullMirrorRunTrigger = "schedule"
+)
+
+// Valid indicates whether the value is a known member of the PullMirrorRunTrigger enum.
+func (e PullMirrorRunTrigger) Valid() bool {
+	switch e {
+	case PullMirrorRunTriggerInitial:
+		return true
+	case PullMirrorRunTriggerManual:
+		return true
+	case PullMirrorRunTriggerSchedule:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullMirrorRunOutcome.
+const (
+	PullMirrorRunOutcomeBlocked  PullMirrorRunOutcome = "blocked"
+	PullMirrorRunOutcomeDiverged PullMirrorRunOutcome = "diverged"
+	PullMirrorRunOutcomeError    PullMirrorRunOutcome = "error"
+	PullMirrorRunOutcomeSuccess  PullMirrorRunOutcome = "success"
+)
+
+// Valid indicates whether the value is a known member of the PullMirrorRunOutcome enum.
+func (e PullMirrorRunOutcome) Valid() bool {
+	switch e {
+	case PullMirrorRunOutcomeBlocked:
+		return true
+	case PullMirrorRunOutcomeDiverged:
+		return true
+	case PullMirrorRunOutcomeError:
+		return true
+	case PullMirrorRunOutcomeSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullMirrorRunRefStatus.
+const (
+	PullMirrorRunRefStatusCreated  PullMirrorRunRefStatus = "created"
+	PullMirrorRunRefStatusDiverged PullMirrorRunRefStatus = "diverged"
+	PullMirrorRunRefStatusError    PullMirrorRunRefStatus = "error"
+	PullMirrorRunRefStatusUpToDate PullMirrorRunRefStatus = "up-to-date"
+	PullMirrorRunRefStatusUpdated  PullMirrorRunRefStatus = "updated"
+)
+
+// Valid indicates whether the value is a known member of the PullMirrorRunRefStatus enum.
+func (e PullMirrorRunRefStatus) Valid() bool {
+	switch e {
+	case PullMirrorRunRefStatusCreated:
+		return true
+	case PullMirrorRunRefStatusDiverged:
+		return true
+	case PullMirrorRunRefStatusError:
+		return true
+	case PullMirrorRunRefStatusUpToDate:
+		return true
+	case PullMirrorRunRefStatusUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullMirrorState.
+const (
+	PullMirrorStateError   PullMirrorState = "error"
+	PullMirrorStateInSync  PullMirrorState = "in_sync"
+	PullMirrorStatePaused  PullMirrorState = "paused"
+	PullMirrorStatePending PullMirrorState = "pending"
+	PullMirrorStateStopped PullMirrorState = "stopped"
+	PullMirrorStateSyncing PullMirrorState = "syncing"
+)
+
+// Valid indicates whether the value is a known member of the PullMirrorState enum.
+func (e PullMirrorState) Valid() bool {
+	switch e {
+	case PullMirrorStateError:
+		return true
+	case PullMirrorStateInSync:
+		return true
+	case PullMirrorStatePaused:
+		return true
+	case PullMirrorStatePending:
+		return true
+	case PullMirrorStateStopped:
+		return true
+	case PullMirrorStateSyncing:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RepoMirrorRunOutcome.
 const (
 	RepoMirrorRunOutcomeBlocked  RepoMirrorRunOutcome = "blocked"
@@ -1369,6 +1507,21 @@ type DeletedRepositoryList struct {
 	Items []DeletedRepository `json:"items"`
 }
 
+// EnablePullMirrorInput Example: {"intervalSeconds":600,"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-backup"}
+type EnablePullMirrorInput struct {
+	// IntervalSeconds Default 600.
+	IntervalSeconds *int `json:"intervalSeconds,omitempty"`
+
+	// Token Facoltativo, da 1 a 512 caratteri; cifrato, non torna mai.
+	Token *string `json:"token,omitempty"`
+
+	// Url `https://` senza credenziali, al massimo 2048 caratteri.
+	Url string `json:"url"`
+
+	// Username Facoltativo, da 1 a 256 caratteri.
+	Username *string `json:"username,omitempty"`
+}
+
 // Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Error struct {
 	Error struct {
@@ -1485,6 +1638,41 @@ type Health struct {
 
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
+
+// ImportRepositoryInput Example: {"intervalSeconds":600,"mode":"mirror","name":"gitstack-backup","owner":"alice","url":"https://github.com/example/gitstack.git","visibility":"private"}
+type ImportRepositoryInput struct {
+	Description *string `json:"description,omitempty"`
+
+	// IntervalSeconds Solo con `mode: mirror`; default 600.
+	IntervalSeconds *int `json:"intervalSeconds,omitempty"`
+
+	// Mode `mirror`: «mantieni sincronizzato», il repo resta in sola lettura e si aggiorna a intervalli (MP1-MP4); `once`: «copia una volta sola» (MP8), dopo la prima copia il mirror e' interrotto e il repo e' normale.
+	Mode PullMirrorMode `json:"mode"`
+
+	// Name Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
+	//
+	//
+	// Example: my-app
+	Name RepoName `json:"name"`
+
+	// Owner Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
+	//
+	//
+	// Example: alice
+	Owner Name `json:"owner"`
+
+	// Token Facoltativo, da 1 a 512 caratteri; cifrato, non torna mai e con `once` e' cancellato a copia finita.
+	Token *string `json:"token,omitempty"`
+
+	// Url Origine, `https://` senza credenziali, al massimo 2048 caratteri (MP5).
+	Url string `json:"url"`
+
+	// Username Facoltativo, da 1 a 256 caratteri.
+	Username *string `json:"username,omitempty"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility *RepoVisibility `json:"visibility,omitempty"`
+}
 
 // Issue defines model for Issue.
 type Issue struct {
@@ -1891,6 +2079,126 @@ type NotificationWebhook struct {
 // OwnerType defines model for OwnerType.
 type OwnerType string
 
+// PullMirror Example: {"attempts":0,"createdAt":"2026-10-10T08:00:00Z","divergedRefs":[{"detectedAt":"2026-10-11T22:10:00Z","kind":"rewritten","localSha":"4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4","ref":"refs/heads/old-feature","remoteSha":"9a8b7c6d5e4f30211203f4e5d6c7b8a998877665"}],"hasToken":true,"id":"5c1f0a3e-2b7d-4e68-9a41-0d8f6b2c7e19","intervalSeconds":600,"lastAttemptAt":"2026-10-12T09:40:00Z","lastError":null,"lastSyncedAt":"2026-10-12T09:40:00Z","mode":"mirror","nextSyncAt":"2026-10-12T09:50:00Z","origin":"https://github.com/example/gitstack.git","state":"in_sync","updatedAt":"2026-10-12T09:40:00Z","username":"gitstack-backup"}
+type PullMirror struct {
+	// Attempts Tentativi falliti consecutivi dall'ultimo successo.
+	Attempts  int        `json:"attempts"`
+	CreatedAt time.Time  `json:"createdAt"`
+	CreatedBy *IssueUser `json:"createdBy,omitempty"`
+
+	// DivergedRefs Ref segnati `diverged` (MP1), vuoto se non ce ne sono.
+	DivergedRefs []PullMirrorDivergedRef `json:"divergedRefs"`
+
+	// HasToken `true` se c'e' un token per l'origine. Il token non torna mai nelle risposte.
+	HasToken bool               `json:"hasToken"`
+	Id       openapi_types.UUID `json:"id"`
+
+	// IntervalSeconds Ogni quanto si aggiorna (default 600, da 5 minuti a 24 ore, MP4).
+	IntervalSeconds int        `json:"intervalSeconds"`
+	LastAttemptAt   *time.Time `json:"lastAttemptAt,omitempty"`
+
+	// LastError Motivo dell'ultimo errore, senza credenziali; `null` dopo un successo.
+	LastError *string `json:"lastError,omitempty"`
+
+	// LastSyncedAt Ultimo aggiornamento riuscito.
+	LastSyncedAt *time.Time `json:"lastSyncedAt,omitempty"`
+
+	// Mode `mirror`: «mantieni sincronizzato», il repo resta in sola lettura e si aggiorna a intervalli (MP1-MP4); `once`: «copia una volta sola» (MP8), dopo la prima copia il mirror e' interrotto e il repo e' normale.
+	Mode PullMirrorMode `json:"mode"`
+
+	// NextSyncAt Prossimo aggiornamento previsto; `null` in pausa, interrotto o in corso.
+	NextSyncAt *time.Time `json:"nextSyncAt,omitempty"`
+
+	// Origin Origine, `https://` senza credenziali (MP5).
+	Origin string `json:"origin"`
+
+	// State Stato di un mirror in pull, con gli stessi nomi del mirror in push. `pending`: in coda (primo aggiornamento o prossimo giro); `syncing`: un worker lo sta aggiornando; `in_sync`: l'ultimo aggiornamento e' riuscito (anche con ref `diverged`: gli altri ref si aggiornano); `error`: l'ultimo tentativo e' fallito, si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora, 3 ore, poi ogni 6 ore, tranne un blocco della policy di uscita (C8) che non si ritenta; `paused`: fermato da un admin, repo in sola lettura; `stopped`: interrotto (MP6), il repo e' normale, restano registro e ref `diverged`.
+	State     PullMirrorState `json:"state"`
+	StoppedAt *time.Time      `json:"stoppedAt,omitempty"`
+	UpdatedAt time.Time       `json:"updatedAt"`
+
+	// Username Utente per l'origine; `null` senza credenziali.
+	Username *string `json:"username,omitempty"`
+}
+
+// PullMirrorDivergedRef defines model for PullMirrorDivergedRef.
+type PullMirrorDivergedRef struct {
+	DetectedAt time.Time `json:"detectedAt"`
+
+	// Kind `rewritten`: l'origine ha riscritto il ref (force-push, non fast-forward, tag spostato); `deleted`: l'origine l'ha cancellato. In entrambi i casi su GitStack resta la versione precedente.
+	Kind PullMirrorDivergedRefKind `json:"kind"`
+
+	// LocalSha SHA su GitStack (la versione conservata).
+	LocalSha string `json:"localSha"`
+
+	// Ref Example: refs/heads/main
+	Ref string `json:"ref"`
+
+	// RemoteSha SHA nell'origine; `null` se il ref e' stato cancellato.
+	RemoteSha *string `json:"remoteSha,omitempty"`
+}
+
+// PullMirrorDivergedRefKind `rewritten`: l'origine ha riscritto il ref (force-push, non fast-forward, tag spostato); `deleted`: l'origine l'ha cancellato. In entrambi i casi su GitStack resta la versione precedente.
+type PullMirrorDivergedRefKind string
+
+// PullMirrorMode `mirror`: «mantieni sincronizzato», il repo resta in sola lettura e si aggiorna a intervalli (MP1-MP4); `once`: «copia una volta sola» (MP8), dopo la prima copia il mirror e' interrotto e il repo e' normale.
+type PullMirrorMode string
+
+// PullMirrorRun defines model for PullMirrorRun.
+type PullMirrorRun struct {
+	// Attempt Numero del tentativo (1 = il primo dopo un successo o una richiesta).
+	Attempt    int `json:"attempt"`
+	DurationMs int `json:"durationMs"`
+
+	// Error Senza credenziali.
+	Error      *string            `json:"error,omitempty"`
+	FinishedAt time.Time          `json:"finishedAt"`
+	Id         openapi_types.UUID `json:"id"`
+
+	// Outcome `success`: aggiornamento riuscito (anche se tutto era gia' allineato); `diverged`: riuscito ma almeno un ref e' divergente (conservato, gli altri si sono aggiornati); `error`: fallito, si ritenta; `blocked`: origine non ammessa dalla policy di uscita (C8), non si ritenta.
+	Outcome PullMirrorRunOutcome `json:"outcome"`
+
+	// Refs Cosa e' successo a ogni ref che e' cambiato o e' divergente (i ref invariati si omettono).
+	Refs      []PullMirrorRunRef `json:"refs"`
+	StartedAt time.Time          `json:"startedAt"`
+
+	// Trigger `initial`: prima copia; `schedule`: a intervallo; `manual`: «Sincronizza ora»/Riprendi.
+	Trigger PullMirrorRunTrigger `json:"trigger"`
+}
+
+// PullMirrorRunTrigger `initial`: prima copia; `schedule`: a intervallo; `manual`: «Sincronizza ora»/Riprendi.
+type PullMirrorRunTrigger string
+
+// PullMirrorRunList defines model for PullMirrorRunList.
+type PullMirrorRunList struct {
+	Items   []PullMirrorRun `json:"items"`
+	Page    int             `json:"page"`
+	PerPage int             `json:"perPage"`
+	Total   int             `json:"total"`
+}
+
+// PullMirrorRunOutcome `success`: aggiornamento riuscito (anche se tutto era gia' allineato); `diverged`: riuscito ma almeno un ref e' divergente (conservato, gli altri si sono aggiornati); `error`: fallito, si ritenta; `blocked`: origine non ammessa dalla policy di uscita (C8), non si ritenta.
+type PullMirrorRunOutcome string
+
+// PullMirrorRunRef defines model for PullMirrorRunRef.
+type PullMirrorRunRef struct {
+	NewSha *string `json:"newSha,omitempty"`
+	OldSha *string `json:"oldSha,omitempty"`
+
+	// Reason Motivo per `diverged` ed `error`, es. `non-fast-forward`, `deleted`.
+	Reason *string `json:"reason,omitempty"`
+
+	// Ref Example: refs/heads/main
+	Ref    string                 `json:"ref"`
+	Status PullMirrorRunRefStatus `json:"status"`
+}
+
+// PullMirrorRunRefStatus defines model for PullMirrorRunRef.Status.
+type PullMirrorRunRefStatus string
+
+// PullMirrorState Stato di un mirror in pull, con gli stessi nomi del mirror in push. `pending`: in coda (primo aggiornamento o prossimo giro); `syncing`: un worker lo sta aggiornando; `in_sync`: l'ultimo aggiornamento e' riuscito (anche con ref `diverged`: gli altri ref si aggiornano); `error`: l'ultimo tentativo e' fallito, si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora, 3 ore, poi ogni 6 ore, tranne un blocco della policy di uscita (C8) che non si ritenta; `paused`: fermato da un admin, repo in sola lettura; `stopped`: interrotto (MP6), il repo e' normale, restano registro e ref `diverged`.
+type PullMirrorState string
+
 // RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
 type RepoCloneUrls struct {
 	// Https Example: https://git.example.com/alice/my-app.git
@@ -2051,6 +2359,9 @@ type Repository struct {
 	// Id Id della risorsa (`type=repo`) in core.
 	Id *openapi_types.UUID `json:"id,omitempty"`
 
+	// Mirror Presente solo se il repo e' un mirror in pull attivo (anche in pausa, MP2, MP7): il codice e' in sola lettura. `null` o assente in un repo normale. Il dettaglio e' in `getRepoPullMirror`.
+	Mirror *RepositoryMirror `json:"mirror,omitempty"`
+
 	// Name Nome di un repo (R11): lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1-100 caratteri; non inizia con `.`; non finisce con `.git` (regola applicata dal servizio, non esprimibile nel pattern). Le maiuscole sono conservate come scritte; l'unicita' per owner e il lookup non distinguono maiuscole e minuscole (`GitStack` e `gitstack` sono lo stesso repo).
 	//
 	//
@@ -2072,6 +2383,15 @@ type RepositoryList struct {
 	Page    int          `json:"page"`
 	PerPage int          `json:"perPage"`
 	Total   int          `json:"total"`
+}
+
+// RepositoryMirror Example: {"lastSyncedAt":"2026-10-12T09:40:00Z","origin":"https://github.com/example/gitstack.git"}
+type RepositoryMirror struct {
+	// LastSyncedAt Ultimo aggiornamento riuscito; `null` finche' la prima copia non e' finita.
+	LastSyncedAt *time.Time `json:"lastSyncedAt,omitempty"`
+
+	// Origin Origine del mirror in pull, `https://` senza credenziali.
+	Origin string `json:"origin"`
 }
 
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
@@ -2124,6 +2444,12 @@ type SetIssueMilestoneInput struct {
 // SetRepoWatchInput defines model for SetRepoWatchInput.
 type SetRepoWatchInput struct {
 	Mode RepoWatchMode `json:"mode"`
+}
+
+// StopPullMirrorInput Example: {"confirm":"gitstack-backup"}
+type StopPullMirrorInput struct {
+	// Confirm Il nome del repo (`name`), riscritto come conferma (MP6, G8).
+	Confirm string `json:"confirm"`
 }
 
 // Tag defines model for Tag.
@@ -2248,6 +2574,17 @@ type UpdateNotificationInput struct {
 type UpdateNotificationPreferencesInput struct {
 	// Email Tipo (`NotificationReason`) → email si/no. I tipi omessi non cambiano.
 	Email map[string]bool `json:"email"`
+}
+
+// UpdatePullMirrorInput defines model for UpdatePullMirrorInput.
+type UpdatePullMirrorInput struct {
+	IntervalSeconds *int `json:"intervalSeconds,omitempty"`
+
+	// Token Sostituisce il token; stringa vuota lo toglie.
+	Token *string `json:"token,omitempty"`
+
+	// Username Stringa vuota toglie l'utente.
+	Username *string `json:"username,omitempty"`
 }
 
 // UpdateRepoMirrorInput defines model for UpdateRepoMirrorInput.
@@ -2866,6 +3203,12 @@ type ListRepoMirrorRunsParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListRepoPullMirrorRunsParams defines parameters for ListRepoPullMirrorRuns.
+type ListRepoPullMirrorRunsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryRawParams defines parameters for GetRepositoryRaw.
 type GetRepositoryRawParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -2942,6 +3285,9 @@ type UpdateOrgWebhookJSONRequestBody = UpdateWebhookInput
 // CreateRepositoryJSONRequestBody defines body for CreateRepository for application/json ContentType.
 type CreateRepositoryJSONRequestBody = CreateRepositoryInput
 
+// ImportRepositoryJSONRequestBody defines body for ImportRepository for application/json ContentType.
+type ImportRepositoryJSONRequestBody = ImportRepositoryInput
+
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 
@@ -3001,6 +3347,15 @@ type CreateRepoMirrorJSONRequestBody = CreateRepoMirrorInput
 
 // UpdateRepoMirrorJSONRequestBody defines body for UpdateRepoMirror for application/json ContentType.
 type UpdateRepoMirrorJSONRequestBody = UpdateRepoMirrorInput
+
+// UpdateRepoPullMirrorJSONRequestBody defines body for UpdateRepoPullMirror for application/json ContentType.
+type UpdateRepoPullMirrorJSONRequestBody = UpdatePullMirrorInput
+
+// EnableRepoPullMirrorJSONRequestBody defines body for EnableRepoPullMirror for application/json ContentType.
+type EnableRepoPullMirrorJSONRequestBody = EnablePullMirrorInput
+
+// StopRepoPullMirrorJSONRequestBody defines body for StopRepoPullMirror for application/json ContentType.
+type StopRepoPullMirrorJSONRequestBody = StopPullMirrorInput
 
 // SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
 type SetRepoWatchJSONRequestBody = SetRepoWatchInput
@@ -3079,6 +3434,9 @@ type ServerInterface interface {
 	// RestoreRepository Ripristina un repo eliminato
 	// (POST /repos/deleted/{repoId}/restore)
 	RestoreRepository(w http.ResponseWriter, r *http.Request, repoId openapi_types.UUID)
+	// ImportRepository Crea un repo importandolo da un URL
+	// (POST /repos/import)
+	ImportRepository(w http.ResponseWriter, r *http.Request)
 	// DeleteRepository Elimina un repo (recuperabile per 7 giorni)
 	// (DELETE /repos/{owner}/{repo})
 	DeleteRepository(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -3268,6 +3626,30 @@ type ServerInterface interface {
 	// SyncRepoMirror Sincronizza ora un mirror in push
 	// (POST /repos/{owner}/{repo}/mirrors/{mirrorId}/sync)
 	SyncRepoMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, mirrorId MirrorIdParam)
+	// GetRepoPullMirror Legge il mirror in pull di un repo (con il suo stato)
+	// (GET /repos/{owner}/{repo}/pull-mirror)
+	GetRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// UpdateRepoPullMirror Modifica intervallo e credenziali del mirror in pull
+	// (PATCH /repos/{owner}/{repo}/pull-mirror)
+	UpdateRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// EnableRepoPullMirror Attiva il mirror in pull su un repo esistente
+	// (POST /repos/{owner}/{repo}/pull-mirror)
+	EnableRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// PauseRepoPullMirror Mette in pausa il mirror in pull
+	// (POST /repos/{owner}/{repo}/pull-mirror/pause)
+	PauseRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// ResumeRepoPullMirror Riprende il mirror in pull
+	// (POST /repos/{owner}/{repo}/pull-mirror/resume)
+	ResumeRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// ListRepoPullMirrorRuns Registro delle ultime esecuzioni del mirror in pull
+	// (GET /repos/{owner}/{repo}/pull-mirror/runs)
+	ListRepoPullMirrorRuns(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListRepoPullMirrorRunsParams)
+	// StopRepoPullMirror Interrompe il mirror in pull
+	// (POST /repos/{owner}/{repo}/pull-mirror/stop)
+	StopRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// SyncRepoPullMirror Sincronizza ora il mirror in pull
+	// (POST /repos/{owner}/{repo}/pull-mirror/sync)
+	SyncRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	// (GET /repos/{owner}/{repo}/raw)
 	GetRepositoryRaw(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryRawParams)
@@ -4138,6 +4520,20 @@ func (siw *ServerInterfaceWrapper) RestoreRepository(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RestoreRepository(w, r, repoId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ImportRepository operation middleware
+func (siw *ServerInterfaceWrapper) ImportRepository(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ImportRepository(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7402,6 +7798,315 @@ func (siw *ServerInterfaceWrapper) SyncRepoMirror(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) GetRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) UpdateRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EnableRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) EnableRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EnableRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PauseRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) PauseRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PauseRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResumeRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) ResumeRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResumeRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRepoPullMirrorRuns operation middleware
+func (siw *ServerInterfaceWrapper) ListRepoPullMirrorRuns(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListRepoPullMirrorRunsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRepoPullMirrorRuns(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StopRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) StopRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StopRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SyncRepoPullMirror operation middleware
+func (siw *ServerInterfaceWrapper) SyncRepoPullMirror(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SyncRepoPullMirror(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetRepositoryRaw operation middleware
 func (siw *ServerInterfaceWrapper) GetRepositoryRaw(w http.ResponseWriter, r *http.Request) {
 
@@ -8277,6 +8982,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/resources/{resourceId}", wrapper.UpdateResource)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos", wrapper.ListRepositories)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos", wrapper.CreateRepository)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/import", wrapper.ImportRepository)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/access", wrapper.GetUserAccess)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/deleted", wrapper.ListDeletedRepositories)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/deleted/{repoId}/restore", wrapper.RestoreRepository)
@@ -8352,6 +9058,14 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/mirrors/{mirrorId}", wrapper.UpdateRepoMirror)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/mirrors/{mirrorId}/sync", wrapper.SyncRepoMirror)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/mirrors/{mirrorId}/runs", wrapper.ListRepoMirrorRuns)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror", wrapper.GetRepoPullMirror)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror", wrapper.UpdateRepoPullMirror)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror", wrapper.EnableRepoPullMirror)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror/sync", wrapper.SyncRepoPullMirror)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror/pause", wrapper.PauseRepoPullMirror)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror/resume", wrapper.ResumeRepoPullMirror)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror/stop", wrapper.StopRepoPullMirror)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pull-mirror/runs", wrapper.ListRepoPullMirrorRuns)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks", wrapper.ListRepoWebhooks)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks", wrapper.CreateRepoWebhook)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/hooks/{hookId}", wrapper.DeleteRepoWebhook)
