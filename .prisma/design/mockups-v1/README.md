@@ -21,7 +21,7 @@ Stile e token: `design/styleguide/`. Le variabili CSS qui sono identiche a quell
 | 13 | Issue detail (varianti: normale, chiusura con motivo, bloccata vista da read, nascosta, repo archiviato; etichette M-06/M-07 sugli elementi successivi) | M-05, M-06 |
 | 14 | Access tokens & SSH keys | M-02 |
 | 15 | Organization · Teams | M-02 |
-| 16 | Admin · System (servizi, backup, upgrade) | M-08 |
+| 16 | Admin · System (servizi, Postgres esterno, rete aziendale, backup locale e S3, upgrade di GitStack e k3s; N7–N10) | M-08 |
 | 17 | Admin · Agents (account agent, P4/P5) | M-02 |
 | 18 | Settings · General (branch principale, protezione, archiviazione, eliminazione) | M-03 |
 | 19 | Deleted repositories (ripristino entro 7 giorni) | M-03 |

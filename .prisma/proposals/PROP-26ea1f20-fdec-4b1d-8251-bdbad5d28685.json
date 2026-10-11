@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "PROP-26ea1f20-fdec-4b1d-8251-bdbad5d28685",
+  "state": "applied",
+  "created": "2026-10-11T22:35:40.278876800+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "M-09 include il mirror in pull (regole MP1–MP7) come primo pezzo da fare, prima del resto di M-09 e in parallelo al resto di M-08; il passaggio su homehub è definito in due tappe (copia di backup, poi casa su GitStack) e le 4 settimane di dogfooding contano dalla tappa 2. Scelte dell'operatore del 2026-10-12.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+            "DOC-3595cb24-e019-4230-a412-009769bae527"
+          ],
+          "reopen_reason": "Mirror in pull dentro M-09 come primo pezzo; due tappe del passaggio su homehub (operatore, 2026-10-12).",
+          "schema_version": 1,
+          "title": "Rilascio v1.0",
+          "updated": "2026-10-11T22:40:25.979429100+00:00"
+        },
+        "body": "\n# Rilascio v1.0\n\n## Outcome\n\nGitStack v1.0 è pubblicato open source, sicuro e documentato, e ospita il proprio codice (dogfooding).\n\n## Rationale\n\nChiude la tappa v1 della visione; il dogfooding sostituisce GitHub come casa del codice. Il mirror in pull serve subito a tenere su homehub una copia di backup del repo GitHub e, a tendere, ai clienti che migrano da GitHub.\n\n## Scope\n\nRegole V1–V8 in [[knowledge/topics/rilascio-v1]] e MP1–MP7 in [[knowledge/topics/mirror-in-pull]].\n\n**Primo pezzo da fare (2026-10-12):** il **mirror in pull** (MP1–MP7), prima del resto di M-09 e in parallelo al resto di M-08. Con esso si fa la tappa 1 del passaggio su homehub (\"fase 3\", GL-31): copia di backup del repo GitHub, codice in sola lettura, issues già usabili.\n\n**Passaggio su homehub in due tappe (V7):** tappa 1 copia di backup con il mirror in pull; tappa 2, prima della v1.0, casa su GitStack (Interrompi del mirror in pull, mirror in push verso GitHub, agenti che lavorano su homehub). Le 4 settimane di dogfooding di V1 contano dalla tappa 2.\n\nAvanzamento al commit `e708707` (2026-10-12):\n- **fatto:** tabella regole→test con controllo in CI (V1, GIT-115); scansioni di sicurezza in CI (V2, GIT-114); mirror in push verso GitHub (V8-mirror, GIT-179);\n- **resta:** mirror in pull (MP1–MP7) e tappa 1; tappa 2; revisione di sicurezza ASVS L2 e threat model, mirror compresi (V2); test di fumo (V3); versioni e `SECURITY.md` (V4); pipeline di rilascio firmata con SBOM e changelog (V5); sito di documentazione (V6); dogfooding di almeno 4 settimane (V7); «Sincronizza ora» e stato del mirror in push nella UI (GIT-180) e segnalazioni pubbliche (V8); release candidate e criteri di uscita (V1).\n\nFuori dalla v1: penetration test esterno, test di carico con obiettivi numerici, versioni LTS, documentazione nell'istanza o tradotta, visibilità pubblica dei repo, mirror in pull via SSH o con LFS, importazione di issues da GitHub.\n\nPriorità 9 di 9 nella v1; dentro M-09 il mirror in pull viene per primo.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-09.md`\n- `docs/rules-coverage.md` (famiglia V)\n- Tema di analisi \"Rilascio v1.0: regole di prodotto\" (V1–V8)\n- Tema di analisi \"Mirror in pull\" (MP1–MP7)\n",
+        "expected_digest": "c9d6e5009a0a9562f7ade2ea51eb2369c1c64ec82ef1fa69b3f0fbc08421669c",
+        "slug": null,
+        "reason": "Mirror in pull dentro M-09 come primo pezzo; due tappe del passaggio su homehub (operatore, 2026-10-12)."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "confermo tutto"
+  }
+}

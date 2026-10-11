@@ -1,6 +1,7 @@
 ---
-{"horizon":"next","id":"OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d","knowledge":["DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d"],"reopen_reason":"Regole V1–V8 sul rilascio v1.0 (tema consolidato il 2026-10-05).","schema_version":1,"title":"Rilascio v1.0","updated":"2026-10-05T14:10:00+00:00"}
+{"horizon":"now","id":"OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d","knowledge":["DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-3595cb24-e019-4230-a412-009769bae527"],"reopen_reason":"Regola MP8 (import una tantum) aggiunta al primo pezzo di M-09 (operatore, 2026-10-12).","schema_version":1,"title":"Rilascio v1.0","updated":"2026-10-11T23:07:25.079522100+00:00"}
 ---
+
 
 # Rilascio v1.0
 
@@ -10,17 +11,28 @@ GitStack v1.0 è pubblicato open source, sicuro e documentato, e ospita il propr
 
 ## Rationale
 
-Chiude la tappa v1 della visione; il dogfooding sostituisce GitHub come casa del codice.
+Chiude la tappa v1 della visione; il dogfooding sostituisce GitHub come casa del codice. Il mirror in pull serve subito a tenere su homehub una copia di backup del repo GitHub e, a tendere, ai clienti che migrano da GitHub; l'import una tantum rende evidente il percorso di migrazione.
 
 ## Scope
 
-Criteri di uscita misurabili con release candidate (V1); revisione di sicurezza interna con OWASP ASVS L2, threat model e scansioni bloccanti (V2); test di fumo sul carico (V3); versioni SemVer, politica di supporto e `SECURITY.md` (V4); pipeline di rilascio con firme cosign, SBOM, verifica automatica e changelog (V5); sito di documentazione pubblico in inglese (utente, admin, API, CLI) (V6); dogfooding anticipato su un'istanza Ubuntu Server con codice e issues del progetto (V7); mirror pubblico in sola lettura su GitHub, pubblicazione e annuncio (V8). Regole in [[knowledge/topics/rilascio-v1]].
+Regole V1–V8 in [[knowledge/topics/rilascio-v1]] e MP1–MP8 in [[knowledge/topics/mirror-in-pull]].
 
-Fuori dalla v1: penetration test esterno, test di carico con obiettivi numerici, versioni LTS, documentazione nell'istanza o tradotta, visibilità pubblica dei repo in GitStack.
+**Primo pezzo da fare (2026-10-12):** il **mirror in pull** (MP1–MP7) con l'**import una tantum da URL** (MP8), prima del resto di M-09 e in parallelo al resto di M-08. Con il mirror in pull si fa la tappa 1 del passaggio su homehub ("fase 3", GL-31): copia di backup del repo GitHub, codice in sola lettura, issues già usabili.
 
-Priorità 9 di 9 nella v1.
+**Passaggio su homehub in due tappe (V7):** tappa 1 copia di backup con il mirror in pull; tappa 2, prima della v1.0 e quando sono vere le cinque condizioni di [[knowledge/topics/rilascio-v1]], casa su GitStack (Interrompi del mirror in pull, mirror in push verso GitHub, agenti che lavorano su homehub, CI di GitHub solo su `main` e test in locale prima di unire). Le 4 settimane di dogfooding di V1 contano dalla tappa 2.
+
+Avanzamento al commit `e708707` (2026-10-12):
+- **fatto:** tabella regole→test con controllo in CI (V1, GIT-115); scansioni di sicurezza in CI (V2, GIT-114); mirror in push verso GitHub (V8-mirror, GIT-179);
+- **resta:** mirror in pull e import una tantum (MP1–MP8) e tappa 1; tappa 2; revisione di sicurezza ASVS L2 e threat model, mirror compresi (V2); test di fumo (V3); versioni e `SECURITY.md` (V4); pipeline di rilascio firmata con SBOM e changelog (V5); sito di documentazione (V6); dogfooding di almeno 4 settimane (V7); «Sincronizza ora» e stato del mirror in push nella UI (GIT-180) e segnalazioni pubbliche (V8); release candidate e criteri di uscita (V1).
+
+Fuori dalla v1: penetration test esterno, test di carico con obiettivi numerici, versioni LTS, documentazione nell'istanza o tradotta, visibilità pubblica dei repo, mirror in pull via SSH o con LFS, importazione di issues da GitHub.
+
+Priorità 9 di 9 nella v1; dentro M-09 il mirror in pull viene per primo.
 
 ## Source references
 
 - `.lmbrain-lite/milestones/M-09.md`
+- `docs/rules-coverage.md` (famiglia V)
 - Tema di analisi "Rilascio v1.0: regole di prodotto" (V1–V8)
+- Tema di analisi "Mirror in pull" (MP1–MP7) e scelta MP8 del 2026-10-12
+

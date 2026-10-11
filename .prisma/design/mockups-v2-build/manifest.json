@@ -1,0 +1,13 @@
+{
+  "id": "DESIGN-12d91d5b-7987-453a-befe-f9367e8a85af",
+  "knowledge": [
+    "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+    "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358",
+    "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4"
+  ],
+  "schema_version": 1,
+  "status": "ready",
+  "title": "GitStack Mockups · v2 Build (CI, registry, release)",
+  "update_reason": null,
+  "updated": "2026-10-11T22:56:50.874771700+00:00"
+}

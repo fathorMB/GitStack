@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "PROP-767b03e1-5832-4b2e-b54a-bd0d9cd9bf8d",
+  "state": "proposed",
+  "created": "2026-10-11T22:18:35.920434900+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "test di formato",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-c79ed133-8339-4a82-9f91-6b100a636da1",
+          "knowledge": [
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "Milestone completata: esce dall'orizzonte now, come M-03 e M-04.",
+          "schema_version": 1,
+          "title": "Identità, organizzazioni e permessi (completata)",
+          "updated": "2026-10-11T22:18:35.897617600+00:00"
+        },
+        "body": "\n# Identità, organizzazioni e permessi (completata)\n\nx\n",
+        "expected_digest": "2009118a25e0625327f992515df387d069284a5b51d073c2b3ab132a3927b4f7",
+        "slug": null,
+        "reason": "Milestone completata: esce dall'orizzonte now, come M-03 e M-04."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": null
+}

@@ -10,11 +10,13 @@
 ## requirements
 
 - [[knowledge/topics/browser-codice]] — Browser del codice: regole di prodotto
+- [[knowledge/topics/ci-registry-release]] — v2 — CI, registry e release: regole di prodotto
 - [[knowledge/topics/cli-gs-skills]] — CLI gs e skills per agenti: regole di prodotto
 - [[knowledge/topics/collegamenti-notifiche-webhook]] — Collegamenti, notifiche e webhook: regole di prodotto
 - [[knowledge/topics/identita-e-sicurezza]] — Identità, autenticazione e permessi
 - [[knowledge/topics/installazione-e-deploy]] — Installazione, deploy e operazioni
 - [[knowledge/topics/issues]] — Issues: regole di prodotto
+- [[knowledge/topics/mirror-in-pull]] — Mirror in pull: regole di prodotto
 - [[knowledge/topics/pull-request]] — Pull Request (v1.1): regole di prodotto
 - [[knowledge/topics/repository-git]] — Repository Git: regole di prodotto
 - [[knowledge/topics/server-mcp]] — Server MCP (v1.1): regole di prodotto

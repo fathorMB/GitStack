@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitStack Mockups · Mirror in pull</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN TOKENS · palette "Aurora" (identici a mockups-v1 e styleguide) ============ */
+:root{
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r-sm:4px;--r:6px;--r-lg:10px;
+  --aurora:linear-gradient(135deg,#7c5cff 0%,#e0469b 55%,#ff8a3d 100%);
+  --sidebar-bg:#0e0b16;--sidebar-border:#1f1930;--sidebar-fg:#a39db8;--sidebar-fg-strong:#f3f0fa;
+  --sidebar-hover:#18132a;--sidebar-active:#221a3b;--sidebar-accent:#a28bff;
+  --bg:#f5f4fa;--surface:#ffffff;--surface-2:#f1eff8;--surface-3:#e7e4f1;
+  --border:#e0dcec;--border-strong:#cbc5dc;
+  --text:#16121f;--text-muted:#5f5873;--text-subtle:#8e87a3;
+  --accent:#6a47f5;--accent-hover:#5835e0;--accent-fg:#ffffff;--accent-soft:#efebff;--accent-text:#5b3be0;
+  --success:#1f8f52;--success-soft:#e4f5eb;--danger:#d93645;--danger-soft:#fdeaec;
+  --warning:#b7741a;--warning-soft:#fcf1de;--info:#2f6fe0;--info-soft:#e8effd;
+  --closed:#c2338a;--closed-soft:#fbe7f2;--agent:#cf5510;--agent-soft:#fff0e5;
+  --focus:0 0 0 3px rgba(106,71,245,.3);
+  --shadow-1:0 1px 2px rgba(22,18,31,.06);--shadow-2:0 10px 28px rgba(22,18,31,.14);
+  --code-bg:#f8f7fc;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0912;--surface:#13101d;--surface-2:#1a1626;--surface-3:#231e33;
+  --border:#2a2440;--border-strong:#3a3354;
+  --text:#ece9f5;--text-muted:#9d96b3;--text-subtle:#6c6584;
+  --accent:#7c5cff;--accent-hover:#9479ff;--accent-fg:#ffffff;--accent-soft:rgba(124,92,255,.16);--accent-text:#b3a3ff;
+  --success:#3fcf7f;--success-soft:rgba(63,207,127,.13);--danger:#ff6b76;--danger-soft:rgba(255,107,118,.14);
+  --warning:#f0b04a;--warning-soft:rgba(240,176,74,.14);--info:#7aa7ff;--info-soft:rgba(122,167,255,.14);
+  --closed:#ee6bb4;--closed-soft:rgba(238,107,180,.15);--agent:#ffa066;--agent-soft:rgba(255,138,61,.15);
+  --focus:0 0 0 3px rgba(124,92,255,.4);
+  --shadow-1:0 1px 2px rgba(0,0,0,.45);--shadow-2:0 12px 32px rgba(0,0,0,.55);
+  --code-bg:#0f0c18;
+}}
+:root[data-theme="dark"]{
+  --bg:#0b0912;--surface:#13101d;--surface-2:#1a1626;--surface-3:#231e33;
+  --border:#2a2440;--border-strong:#3a3354;
+  --text:#ece9f5;--text-muted:#9d96b3;--text-subtle:#6c6584;
+  --accent:#7c5cff;--accent-hover:#9479ff;--accent-fg:#ffffff;--accent-soft:rgba(124,92,255,.16);--accent-text:#b3a3ff;
+  --success:#3fcf7f;--success-soft:rgba(63,207,127,.13);--danger:#ff6b76;--danger-soft:rgba(255,107,118,.14);
+  --warning:#f0b04a;--warning-soft:rgba(240,176,74,.14);--info:#7aa7ff;--info-soft:rgba(122,167,255,.14);
+  --closed:#ee6bb4;--closed-soft:rgba(238,107,180,.15);--agent:#ffa066;--agent-soft:rgba(255,138,61,.15);
+  --focus:0 0 0 3px rgba(124,92,255,.4);
+  --shadow-1:0 1px 2px rgba(0,0,0,.45);--shadow-2:0 12px 32px rgba(0,0,0,.55);
+  --code-bg:#0f0c18;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.5 var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text);text-decoration:none;cursor:pointer}a:hover{text-decoration:underline}
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}
+p{margin:0}
+.mono{font-family:var(--font-mono);font-size:.92em}
+.icon{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.icon-lg{width:18px;height:18px}
+.muted{color:var(--text-muted)}.subtle{color:var(--text-subtle)}.small{font-size:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp{flex:1}
+.stack{display:flex;flex-direction:column}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:500 13px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2);text-decoration:none}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-danger{color:var(--danger)}
+.btn-danger:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-danger-solid{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--text-muted)}
+.btn-sm{height:26px;padding:0 8px;font-size:12px}
+.btn-group{display:inline-flex}.btn-group .btn{border-radius:0}.btn-group .btn:first-child{border-radius:var(--r) 0 0 var(--r)}.btn-group .btn:last-child{border-radius:0 var(--r) var(--r) 0}.btn-group .btn+.btn{margin-left:-1px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-weight:600;font-size:13px}
+.hint{font-size:12px;color:var(--text-muted)}
+.input,.select{height:32px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:14px var(--font-sans);width:100%}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
+.input.err{border-color:var(--danger)}
+.input-icon{position:relative}.input-icon>.icon{position:absolute;left:9px;top:8px;color:var(--text-subtle)}.input-icon .input{padding-left:32px}
+.check{display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.check input{accent-color:var(--accent);margin:3px 0 0}
+.switch{position:relative;width:32px;height:18px;border-radius:9px;background:var(--surface-3);border:1px solid var(--border-strong);display:inline-block;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text-subtle)}
+.switch.on{background:var(--accent);border-color:var(--accent)}.switch.on::after{left:16px;background:var(--accent-fg)}
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--text-muted);background:var(--surface);white-space:nowrap}
+.badge-accent{background:var(--accent-soft);border-color:transparent;color:var(--accent-text)}
+.badge-mirror{background:var(--info-soft);border-color:color-mix(in srgb,var(--info) 35%,transparent);color:var(--info)}
+.badge-paused{background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 35%,transparent);color:var(--warning)}
+.badge-ok{background:var(--success-soft);border-color:transparent;color:var(--success)}
+.badge-err{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.badge-agent{background:var(--agent-soft);border-color:transparent;color:var(--agent);font-family:var(--font-mono);font-size:11px;height:18px;padding:0 6px}
+.badge-soon{height:16px;padding:0 5px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;background:transparent;border-color:var(--sidebar-border);color:var(--sidebar-fg)}
+.counter{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--surface-3);color:var(--text-muted);font-size:11px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.tab{display:flex;align-items:center;gap:6px;padding:10px 12px;color:var(--text-muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab:hover{color:var(--text);text-decoration:none}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.seg{display:inline-flex;padding:2px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border)}
+.seg span{padding:4px 12px;border-radius:4px;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg span.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-1)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600}
+.card-b{padding:16px}
+.list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.list-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--border)}
+.list-row:first-child{border-top:0}
+.list-head{background:var(--surface-2);font-size:13px;color:var(--text-muted);padding:8px 16px}
+.alert{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r);border:1px solid;font-size:13px}
+.alert-info{background:var(--info-soft);border-color:color-mix(in srgb,var(--info) 30%,transparent)}.alert-info>.icon{color:var(--info)}
+.alert-success{background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 30%,transparent)}.alert-success>.icon{color:var(--success)}
+.alert-warning{background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}.alert-warning>.icon{color:var(--warning)}
+.alert-danger{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}.alert-danger>.icon{color:var(--danger)}
+.avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex:none}
+.avatar .icon{width:14px;height:14px;color:#fff}
+.avatar-sq{border-radius:6px}
+.av-a{background:#6a47f5}.av-b{background:#2563eb}.av-bot{background:linear-gradient(135deg,#ff8a3d,#e0469b)}.av-org{background:#334155}.av-sys{background:#475569}
+.kbd{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--border-strong);border-bottom-width:2px;font:11px var(--font-mono);color:var(--text-muted);background:var(--surface)}
+.cmdblock{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font:13px/1.7 var(--font-mono);white-space:pre;overflow:auto}
+.cmdblock .p{color:var(--text-subtle);user-select:none}
+.cmdblock .e{color:var(--danger)}.cmdblock .o{color:var(--success)}.cmdblock .w{color:var(--warning)}
+.sha{font-family:var(--font-mono);font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:var(--r);color:var(--text-muted);background:var(--surface)}
+.modal-back{position:absolute;inset:0;background:rgba(14,11,22,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:90px;z-index:10}
+.modal{width:480px;max-width:92%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2)}
+.modal-h{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600;display:flex;align-items:center;gap:8px}
+.modal-b{padding:18px}
+.modal-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+
+/* ============ MOCKUP BAR (non fa parte del prodotto) ============ */
+.mbar{position:fixed;top:0;left:0;right:0;height:40px;z-index:50;display:flex;align-items:center;gap:10px;padding:0 12px;background:#262626;color:#f5f5f5;font-size:12px;border-bottom:1px solid #3a3a3a}
+.mbar b{font-weight:600;letter-spacing:.02em}
+.mbar select{height:26px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#fff;font:12px var(--font-sans);padding:0 6px;max-width:300px}
+.mbar button{height:26px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#fff;font:12px var(--font-sans);padding:0 10px;cursor:pointer}
+.mbar button:hover{background:#444}
+.mbar .desc{color:#bdbdbd;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0}
+.mvar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 12px;background:#262626;color:#f5f5f5;font-size:12px;border-bottom:1px solid #3a3a3a}
+.mvar b{font-weight:600}.mvar-note{color:#a3a3a3;margin-right:6px}
+.mvar button{height:24px;padding:0 9px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#e5e5e5;font:12px var(--font-sans);cursor:pointer}
+.mvar button.on{background:#7c5cff;border-color:#7c5cff;color:#fff}
+.mtag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border:1px dashed var(--border-strong);border-radius:4px;font:10px var(--font-mono);color:var(--text-subtle);vertical-align:middle;margin-left:4px;letter-spacing:.03em}
+
+/* ============ APP SHELL ============ */
+.app{position:fixed;top:40px;left:0;right:0;bottom:0;display:grid;grid-template-columns:232px 1fr}
+.sidebar{background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;border-right:1px solid var(--sidebar-border);overflow:auto}
+.sb-brand{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;color:var(--sidebar-fg-strong);font-weight:700;font-size:15px}
+.sb-org{margin:4px 10px 8px;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);border:1px solid var(--sidebar-border);color:var(--sidebar-fg-strong);font-weight:500}
+.sb-grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:#5f717c;padding:14px 18px 6px}
+.sb-item{position:relative;display:flex;align-items:center;gap:10px;margin:1px 10px;padding:7px 8px;border-radius:var(--r);color:var(--sidebar-fg);font-weight:500;cursor:pointer}
+.sb-item:hover{background:var(--sidebar-hover);color:var(--sidebar-fg-strong);text-decoration:none}
+.sb-item.active{background:var(--sidebar-active);color:var(--sidebar-fg-strong)}
+.sb-item.active::before{content:"";position:absolute;left:-10px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--aurora)}
+.sb-item.active .icon{color:var(--sidebar-accent)}
+.sb-item.disabled{opacity:.5;cursor:default}
+.sb-item .counter{background:var(--sidebar-active);color:var(--sidebar-fg-strong);margin-left:auto}
+.sb-item .badge-soon{margin-left:auto}
+.sb-foot{margin-top:auto;border-top:1px solid var(--sidebar-border);padding:10px;display:flex;align-items:center;gap:10px;color:var(--sidebar-fg-strong)}
+.sb-foot small{display:block;color:var(--sidebar-fg);font-size:11px}
+.main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{height:52px;flex:none;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.crumb{font-size:15px;display:flex;align-items:center;gap:6px;min-width:0}
+.crumb a{color:var(--text-muted)}.crumb b{font-weight:600}.crumb .sep{color:var(--text-subtle)}
+.content{flex:1;overflow:auto;position:relative}
+.page{max-width:1280px;margin:0 auto;padding:24px 28px 64px}
+.page-narrow{max-width:760px}
+.screen{display:none}.screen.on{display:block}
+.repo-h{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 28px 0}
+.repo-h .inner{max-width:1280px;margin:0 auto}
+.repo-title{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.repo-title h1{font-size:20px;font-weight:600}
+.repo-title h1 a{color:var(--text-muted);font-weight:400}
+.repo-h .tabs{border-bottom:0;margin-top:6px}
+.mirror-strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:var(--r);background:var(--info-soft);border:1px solid color-mix(in srgb,var(--info) 25%,transparent);font-size:13px;margin:4px 0 8px}
+.mirror-strip.paused{background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}
+.mirror-strip.bad{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
+.ftable .list-row{padding:8px 16px}
+.ftable .fname{width:240px;display:flex;align-items:center;gap:8px}
+.ftable .fname .icon{color:var(--text-subtle)}.ftable .fname .icon.dir{color:var(--accent)}
+.ftable .fmsg{flex:1;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftable .fwhen{color:var(--text-subtle);font-size:12px;width:90px;text-align:right}
+.lastcommit{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface-2);font-size:13px}
+.repo-grid{display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start}
+.about h3{font-size:14px;margin-bottom:8px}.about .row{margin:6px 0;color:var(--text-muted)}
+.settings-grid{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:start}
+.subnav a{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);color:var(--text-muted);font-weight:500}
+.subnav a:hover{background:var(--surface-2);color:var(--text);text-decoration:none}
+.subnav a.active{background:var(--surface);color:var(--text);box-shadow:inset 3px 0 0 var(--accent);border:1px solid var(--border)}
+.sec-h{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.sec-h h2{font-size:18px;font-weight:600}
+.kv{display:grid;grid-template-columns:170px 1fr;gap:10px 16px;font-size:13px;align-items:center}
+.kv dt{color:var(--text-muted)}.kv dd{margin:0}
+.scope{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.notif .list-row{align-items:flex-start}
+.notif .unread{box-shadow:inset 3px 0 0 var(--accent)}
+.log td,.log th{padding:8px 12px;border-top:1px solid var(--border);text-align:left;font-size:13px;vertical-align:top}
+.log th{background:var(--surface-2);color:var(--text-muted);font-weight:500;border-top:0}
+.log{width:100%;border-collapse:collapse}
+@media (max-width:1100px){.repo-grid{grid-template-columns:1fr}}
+@media (max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.settings-grid{grid-template-columns:1fr}.page{padding:16px}.repo-h{padding:14px 16px 0}.mbar .desc{display:none}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="aur" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="29" y2="29"><stop offset="0" stop-color="#7c5cff"/><stop offset=".55" stop-color="#e0469b"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
+  <symbol id="logo" viewBox="0 0 32 32"><path d="M16 3.5 28.5 10 16 16.5 3.5 10Z" fill="url(#aur)"/><path d="M3.5 16 16 22.5 28.5 16" fill="none" stroke="url(#aur)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/><path d="M3.5 22 16 28.5 28.5 22" fill="none" stroke="url(#aur)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></symbol>
+  <symbol id="i-repo" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/></symbol>
+  <symbol id="i-issue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 7.5 12 3 3 7.5v9L12 21l9-4.5z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-6 4-11 8.5"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="1.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l2.5 2.5M18.5 4.5 21 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="m7 9 3 3-3 3M12.5 15H17"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9 17h6"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
+  <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7 4 12l4 5"/><path d="m16 7 4 5-4 5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v13M6 11l6 6 6-6"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
+</svg>
+
+<!-- ============ MOCKUP BAR ============ -->
+<div class="mbar">
+  <b><span style="background:#facc15;color:#1a1a1a;border-radius:3px;padding:1px 5px;margin-right:6px;font-size:10px">MOCKUP</span>Mirror in pull</b>
+  <select id="pick">
+    <option value="import">P1 · New repository · Import from URL</option>
+    <option value="repo">P2 · Repo in mirror (Code)</option>
+    <option value="settings">P3 · Settings · Pull mirror</option>
+    <option value="enable">P4 · Settings · Enable pull mirror (repo esistente)</option>
+    <option value="push-mirrors">P5 · Settings · Push mirrors (blocco stesso indirizzo)</option>
+    <option value="notifications">P6 · Notifications del mirror</option>
+    <option value="cli">P7 · Push rifiutato e gs repo view</option>
+  </select>
+  <button id="prev">←</button><button id="next">→</button>
+  <span class="desc" id="desc"></span>
+  <button id="themeBtn">Tema: <span>auto</span></button>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sb-brand"><svg width="24" height="24"><use href="#logo"/></svg>GitStack</div>
+    <div class="sb-org"><span class="avatar avatar-sq av-org" style="width:22px;height:22px">AC</span>Acme<span class="sp"></span><svg class="icon" style="color:var(--sidebar-fg)"><use href="#i-chev"/></svg></div>
+    <div class="sb-grp">Workspace</div>
+    <a class="sb-item" data-nav="home"><svg class="icon icon-lg"><use href="#i-home"/></svg>Home</a>
+    <a class="sb-item" data-nav="repos" data-go="repo"><svg class="icon icon-lg"><use href="#i-repo"/></svg>Repositories</a>
+    <a class="sb-item" data-nav="issues"><svg class="icon icon-lg"><use href="#i-issue"/></svg>Issues<span class="counter">7</span></a>
+    <a class="sb-item" data-nav="notifications" data-go="notifications"><svg class="icon icon-lg"><use href="#i-bell"/></svg>Notifications<span class="counter">2</span></a>
+    <a class="sb-item" data-nav="cli" data-go="cli"><svg class="icon icon-lg"><use href="#i-terminal"/></svg>CLI &amp; skills</a>
+    <div class="sb-grp">Platform</div>
+    <a class="sb-item disabled"><svg class="icon icon-lg"><use href="#i-apps"/></svg>Apps<span class="badge badge-soon">Soon</span></a>
+    <a class="sb-item disabled"><svg class="icon icon-lg"><use href="#i-box"/></svg>Registry<span class="badge badge-soon">Soon</span></a>
+    <div class="sb-grp">Administration</div>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-users"/></svg>Organization</a>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-server"/></svg>System</a>
+    <div class="sb-foot">
+      <span class="avatar av-a">MR</span>
+      <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">mrossi</div><small>Owner · Acme</small></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb" id="crumb"></div>
+      <span class="sp"></span>
+      <div class="btn-group"><button class="btn btn-sm" data-go="import"><svg class="icon"><use href="#i-plus"/></svg>New</button><button class="btn btn-sm"><svg class="icon"><use href="#i-chev"/></svg></button></div>
+      <a class="btn btn-ghost btn-sm" data-go="notifications"><svg class="icon icon-lg"><use href="#i-bell"/></svg></a>
+      <span class="avatar av-a">MR</span>
+    </header>
+
+    <div class="content" id="content">
+
+<!-- ============ P1 NEW REPOSITORY · IMPORT FROM URL ============ -->
+<section class="screen" data-screen="import" data-nav="repos" data-crumb="<a>Acme</a><span class='sep'>/</span><b>New repository</b>" data-desc="MP3, MP5, MP4: «Import from URL» nella creazione del repo. Solo https:// senza credenziali nell'indirizzo, controllo della policy di uscita al salvataggio; token facoltativo per origini private; «Keep in sync» crea un mirror in pull (default ogni 10 minuti).">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="ok">Origine valida</button><button data-var="bad">Origine rifiutata (C8)</button><button data-var="once">Import una tantum</button></div>
+  <div class="page page-narrow">
+    <h1 style="font-size:22px;font-weight:600">Create a new repository</h1>
+    <p class="muted" style="margin:4px 0 16px">A repository holds your project's files, history and issues.</p>
+    <div class="seg" style="margin-bottom:16px"><span>Empty repository</span><span class="active"><svg class="icon"><use href="#i-down"/></svg>Import from URL</span></div>
+    <div class="card card-b stack" style="gap:18px;padding:22px">
+      <div class="field"><label>Source URL</label>
+        <div class="input-icon"><svg class="icon"><use href="#i-globe"/></svg><input class="input" data-v="ok once" value="https://github.com/acme-labs/GitStack.git"><input class="input err" data-v="bad" value="https://10.0.4.12/git/legacy.git"></div>
+        <span class="hint" data-v="ok once">HTTPS only. Don't put credentials in the URL: use the token field below.</span>
+        <div class="alert alert-danger" data-v="bad"><svg class="icon"><use href="#i-shield"/></svg><div><b>This address is blocked by the outbound policy.</b> Private and internal addresses can only be used if an administrator allows them in <b>System · Outbound connections</b>.</div></div>
+      </div>
+      <div class="row" style="gap:10px;flex-wrap:nowrap">
+        <div class="field" style="flex:1"><label>Username <span class="subtle" style="font-weight:400">(optional)</span></label><input class="input" placeholder="x-access-token"></div>
+        <div class="field" style="flex:1"><label>Access token <span class="subtle" style="font-weight:400">(optional)</span></label><input class="input" type="password" value="ghp_xxxxxxxxxxxxxxxx"></div>
+      </div>
+      <p class="hint" style="margin-top:-10px"><svg class="icon"><use href="#i-lock"/></svg> Needed only for private sources. Stored encrypted; GitStack never shows it again.</p>
+      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:nowrap">
+        <div class="field" style="width:200px"><label>Owner</label><button class="btn" style="justify-content:flex-start"><span class="avatar avatar-sq av-org" style="width:18px;height:18px;font-size:8px">AC</span>acme<span class="sp"></span><svg class="icon"><use href="#i-chev"/></svg></button></div>
+        <span style="font-size:20px;color:var(--text-subtle);padding-bottom:4px">/</span>
+        <div class="field" style="flex:1"><label>Repository name</label><input class="input" value="GitStack"></div>
+      </div>
+      <div class="field"><label>Visibility</label>
+        <label class="check scope" style="border-color:var(--accent);background:var(--accent-soft)"><input type="radio" name="vis" checked><span><b><svg class="icon"><use href="#i-lock"/></svg> Private</b> <span class="muted small">— default</span></span></label>
+      </div>
+      <div class="field"><label>After the import</label>
+        <label class="check scope" data-v="ok bad" style="border-color:var(--accent);background:var(--accent-soft)"><input type="radio" name="sync" checked><span><b><svg class="icon"><use href="#i-mirror"/></svg> Keep in sync (pull mirror)</b><br><span class="muted small">GitStack fetches all branches and tags from the source every <b>10 minutes</b>. Code is <b>read-only</b> here; issues work normally. Nothing is ever deleted or overwritten: rewritten refs are flagged as <i>diverged</i>.</span></span></label>
+        <label class="check scope" data-v="ok bad"><input type="radio" name="sync"><span><b>Copy once</b><br><span class="muted small">Import the history now and work on it here. No link with the source.</span></span></label>
+        <label class="check scope" data-v="once"><input type="radio" name="sync2"><span><b><svg class="icon"><use href="#i-mirror"/></svg> Keep in sync (pull mirror)</b></span></label>
+        <label class="check scope" data-v="once" style="border-color:var(--accent);background:var(--accent-soft)"><input type="radio" name="sync2" checked><span><b>Copy once</b><br><span class="muted small">Import the history now and work on it here. No link with the source.</span></span></label>
+      </div>
+      <div class="row" style="border-top:1px solid var(--border);padding-top:16px"><span class="sp"></span><button class="btn">Cancel</button><button class="btn btn-primary" data-go="repo" data-v="ok once">Import repository</button><button class="btn btn-primary" data-v="bad" disabled>Import repository</button></div>
+    </div>
+    <p class="hint" style="margin-top:12px"><span class="mtag">nota</span> «Copy once» è l'import una tantum (MP8): stesse origini e credenziali, poi le credenziali sono cancellate e il repo è normale e scrivibile.</p>
+  </div>
+</section>
+
+<!-- ============ P2 REPO IN MIRROR ============ -->
+<section class="screen" data-screen="repo" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><b>GitStack</b>" data-desc="MP2, MP1, MP4, MP6: pagina del repo in mirror. Etichetta Mirror con origine e ultimo aggiornamento; nessuna istruzione di push; varianti in pausa, con ref diverged e senza aggiornamenti da oltre 24 ore. Le issues funzionano normalmente.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="active">Attivo</button><button data-var="paused">In pausa</button><button data-var="diverged">Ref diverged</button><button data-var="stale">Fermo da &gt; 24 h</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="badge badge-mirror" data-v="active diverged stale"><svg class="icon"><use href="#i-mirror"/></svg>Mirror</span><span class="badge badge-paused" data-v="paused"><svg class="icon"><use href="#i-pause"/></svg>Mirror · paused</span></div>
+    <div class="mirror-strip" data-v="active"><svg class="icon" style="color:var(--info)"><use href="#i-mirror"/></svg><span>Mirrored from <a class="mono">https://github.com/acme-labs/GitStack.git</a> · updated <b>3 min ago</b> · every 10 min</span><span class="sp"></span><button class="btn btn-sm"><svg class="icon"><use href="#i-sync"/></svg>Sync now</button><a class="small" data-go="settings">Mirror settings</a></div>
+    <div class="mirror-strip paused" data-v="paused"><svg class="icon" style="color:var(--warning)"><use href="#i-pause"/></svg><span>Mirror paused by <b>mrossi</b> 2 h ago · last update 2 h ago. Code stays read-only.</span><span class="sp"></span><button class="btn btn-sm"><svg class="icon"><use href="#i-play"/></svg>Resume</button></div>
+    <div class="mirror-strip bad" data-v="diverged"><svg class="icon" style="color:var(--danger)"><use href="#i-alert"/></svg><span><b>1 ref diverged</b> from the source: <span class="mono">feature/old-ui</span> was rewritten upstream. GitStack kept its copy; other refs keep updating.</span><span class="sp"></span><a class="small" data-go="settings">Review</a></div>
+    <div class="mirror-strip bad" data-v="stale"><svg class="icon" style="color:var(--danger)"><use href="#i-alert"/></svg><span><b>No successful update for 26 hours.</b> Last error: <span class="mono">authentication failed (401)</span> — the token may have expired. Repo admins were notified.</span><span class="sp"></span><a class="small" data-go="settings">Fix in settings</a></div>
+    <div class="tabs"><a class="tab active"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">4</span></a><a class="tab"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab" data-go="settings"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="repo-grid">
+      <div class="stack" style="gap:14px">
+        <div class="row"><button class="btn"><svg class="icon"><use href="#i-branch"/></svg><span class="mono">main</span><svg class="icon"><use href="#i-chev"/></svg></button><span class="muted small"><svg class="icon"><use href="#i-branch"/></svg> 14 branches · <svg class="icon"><use href="#i-tag"/></svg> 6 tags</span><span class="sp"></span><button class="btn btn-primary">Clone <svg class="icon"><use href="#i-chev"/></svg></button></div>
+        <div class="list ftable">
+          <div class="lastcommit"><span class="avatar av-b">LB</span><b>lbianchi</b><span class="muted" style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">core: retry webhook deliveries with backoff (fixes #212)</span><span class="sha">a91c3e2</span><span class="subtle">18 min ago</span></div>
+          <div class="list-row"><span class="fname"><svg class="icon dir"><use href="#i-folder"/></svg>cli</span><span class="fmsg">gs: repo view shows mirror source</span><span class="fwhen">2 days ago</span></div>
+          <div class="list-row"><span class="fname"><svg class="icon dir"><use href="#i-folder"/></svg>deploy</span><span class="fmsg">install: verify cosign signatures</span><span class="fwhen">3 days ago</span></div>
+          <div class="list-row"><span class="fname"><svg class="icon dir"><use href="#i-folder"/></svg>services</span><span class="fmsg">core: retry webhook deliveries with backoff</span><span class="fwhen">18 min ago</span></div>
+          <div class="list-row"><span class="fname"><svg class="icon dir"><use href="#i-folder"/></svg>web</span><span class="fmsg">web: mirror badge on repo header</span><span class="fwhen">1 day ago</span></div>
+          <div class="list-row"><span class="fname"><svg class="icon"><use href="#i-file"/></svg>README.md</span><span class="fmsg">docs: operations guide links</span><span class="fwhen">5 days ago</span></div>
+        </div>
+        <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>This repository is a <b>pull mirror</b>: pushes are rejected here. Push to <span class="mono">github.com/acme-labs/GitStack</span>; changes appear here at the next update. Issues, labels and milestones work as usual.</div></div>
+      </div>
+      <div class="card card-b about">
+        <h3>About</h3>
+        <p class="muted small">GitStack source, backup copy of the GitHub repository.</p>
+        <div class="row"><svg class="icon"><use href="#i-mirror"/></svg>Pull mirror of <a class="mono small">github.com/acme-labs/GitStack</a></div>
+        <div class="row"><svg class="icon"><use href="#i-sync"/></svg><span data-v="active diverged">Last update 3 min ago</span><span data-v="paused">Paused</span><span data-v="stale" style="color:var(--danger)">Last success 26 h ago</span></div>
+        <div class="row"><svg class="icon"><use href="#i-issue"/></svg>4 open issues</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ P3 SETTINGS · PULL MIRROR ============ -->
+<section class="screen" data-screen="settings" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="MP3, MP4, MP1, MP6: sezione «Pull mirror» (solo admin del repo). Origine, credenziali mai mostrate, intervallo 5 min–24 h, Sync now, ref diverged, registro delle esecuzioni; Pausa e Interrompi con conferma del nome del repo.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="active">Attivo</button><button data-var="paused">In pausa</button><button data-var="stop">Interrompi (conferma)</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="badge badge-mirror" data-v="active stop"><svg class="icon"><use href="#i-mirror"/></svg>Mirror</span><span class="badge badge-paused" data-v="paused"><svg class="icon"><use href="#i-pause"/></svg>Mirror · paused</span></div>
+    <div class="tabs"><a class="tab" data-go="repo"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">4</span></a><a class="tab"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="settings-grid">
+      <nav class="subnav">
+        <a><svg class="icon"><use href="#i-settings"/></svg>General</a>
+        <a><svg class="icon"><use href="#i-users"/></svg>Collaborators &amp; teams</a>
+        <a><svg class="icon"><use href="#i-link"/></svg>Webhooks</a>
+        <a class="active"><svg class="icon"><use href="#i-mirror"/></svg>Pull mirror</a>
+        <a data-go="push-mirrors"><svg class="icon"><use href="#i-sync"/></svg>Push mirrors</a>
+      </nav>
+      <div class="stack" style="gap:24px">
+        <div>
+          <div class="sec-h"><h2>Pull mirror</h2><span class="badge badge-ok" data-v="active stop"><span class="dot" style="background:var(--success)"></span>Active</span><span class="badge badge-paused" data-v="paused">Paused</span><span class="sp"></span><button class="btn btn-sm" data-v="active stop"><svg class="icon"><use href="#i-sync"/></svg>Sync now</button></div>
+          <div class="card card-b stack" style="gap:16px">
+            <dl class="kv">
+              <dt>Source</dt><dd class="mono">https://github.com/acme-labs/GitStack.git</dd>
+              <dt>Credentials</dt><dd class="row"><svg class="icon muted"><use href="#i-key"/></svg><span class="mono">x-access-token</span> · token set <span class="subtle">(hidden)</span><button class="btn btn-sm">Replace token</button><button class="btn btn-sm btn-ghost">Remove</button></dd>
+              <dt>Update every</dt><dd class="row"><button class="btn btn-sm">10 minutes <svg class="icon"><use href="#i-chev"/></svg></button><span class="hint">From 5 minutes to 24 hours.</span></dd>
+              <dt>Last update</dt><dd><span data-v="active stop"><svg class="icon" style="color:var(--success)"><use href="#i-check"/></svg> 3 min ago · 2 refs updated</span><span data-v="paused">2 h ago · paused by mrossi</span></dd>
+              <dt>What is copied</dt><dd class="muted">All branches and tags. Never deleted or overwritten. Issues, releases, wiki and LFS files of the source are not copied.</dd>
+            </dl>
+            <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>If a successful update doesn't happen for <b>24 hours</b>, repository admins get a notification.</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="sec-h"><h2>Diverged refs</h2><span class="counter">1</span></div>
+          <div class="list">
+            <div class="list-row list-head"><span style="width:200px">Ref</span><span style="width:110px">Here</span><span style="width:110px">Source</span><span class="sp">Since</span></div>
+            <div class="list-row"><span class="mono" style="width:200px"><svg class="icon"><use href="#i-branch"/></svg> feature/old-ui</span><span style="width:110px"><span class="sha">4be01d7</span></span><span style="width:110px"><span class="sha">c3f9a10</span></span><span class="small muted sp">force-pushed upstream · yesterday 18:40</span></div>
+          </div>
+          <p class="hint" style="margin-top:8px">GitStack keeps its version. A diverged ref is never overwritten while the mirror is active; it is left as it is if you stop the mirror.</p>
+        </div>
+        <div>
+          <div class="sec-h"><h2>Recent runs</h2><span class="hint">Last 50 runs, kept 30 days</span></div>
+          <div class="list"><table class="log">
+            <tr><th>When</th><th>Result</th><th>Details</th><th>Duration</th></tr>
+            <tr><td>3 min ago</td><td><span class="badge badge-ok">Success</span></td><td>main a91c3e2 · 1 new tag v0.9.0-rc.1</td><td>2.1 s</td></tr>
+            <tr><td>13 min ago</td><td><span class="badge badge-ok">No changes</span></td><td>—</td><td>0.8 s</td></tr>
+            <tr><td>yesterday 18:50</td><td><span class="badge badge-err">Diverged</span></td><td><span class="mono">feature/old-ui</span> rewritten upstream; other refs updated</td><td>1.9 s</td></tr>
+            <tr><td>yesterday 09:02</td><td><span class="badge badge-err">Error</span></td><td>network unreachable · retry in 2 min</td><td>30 s</td></tr>
+          </table></div>
+        </div>
+        <div>
+          <div class="sec-h"><h2 style="color:var(--danger)">Danger zone</h2></div>
+          <div class="list" style="border-color:var(--danger)">
+            <div class="list-row" style="padding:14px 16px" data-v="active stop"><div style="flex:1"><b>Pause mirror</b><div class="small muted">Stop updates for now. The repository stays a read-only mirror; resume with one click.</div></div><button class="btn"><svg class="icon"><use href="#i-pause"/></svg>Pause</button></div>
+            <div class="list-row" style="padding:14px 16px" data-v="paused"><div style="flex:1"><b>Resume mirror</b><div class="small muted">Updates restart now, then every 10 minutes.</div></div><button class="btn btn-primary"><svg class="icon"><use href="#i-play"/></svg>Resume</button></div>
+            <div class="list-row" style="padding:14px 16px"><div style="flex:1"><b>Stop mirroring</b><div class="small muted">The repository becomes a normal, writable repository. Source credentials are deleted; run history and diverged refs stay. You can enable a pull mirror again later.</div></div><button class="btn btn-danger" data-var="stop"><svg class="icon"><use href="#i-stop"/></svg>Stop mirroring</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-back" data-v="stop">
+    <div class="modal">
+      <div class="modal-h"><svg class="icon" style="color:var(--danger)"><use href="#i-alert"/></svg>Stop mirroring acme/GitStack?</div>
+      <div class="modal-b stack" style="gap:12px">
+        <p>After this, <b>pushes are accepted here</b> and GitStack stops fetching from <span class="mono">github.com/acme-labs/GitStack</span>. The saved token is deleted.</p>
+        <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>Moving your work to GitStack? After stopping, add a <a data-go="push-mirrors">push mirror</a> to GitHub so it keeps receiving the default branch and tags.</div></div>
+        <div class="field"><label>Type <span class="mono">acme/GitStack</span> to confirm</label><input class="input" value="acme/GitSt"></div>
+      </div>
+      <div class="modal-f"><button class="btn" data-var="active">Cancel</button><button class="btn btn-danger-solid" disabled>Stop mirroring</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ P4 SETTINGS · ENABLE PULL MIRROR (REPO ESISTENTE) ============ -->
+<section class="screen" data-screen="enable" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="MP3, MP1: attivare il mirror in pull su un repo esistente con contenuti (caso homehub). Si spiega in anticipo che i ref uguali o più vecchi si aggiornano e quelli diversi diventano diverged, senza perdere niente.">
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
+    <div class="tabs"><a class="tab"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">4</span></a><a class="tab"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="settings-grid">
+      <nav class="subnav">
+        <a><svg class="icon"><use href="#i-settings"/></svg>General</a>
+        <a><svg class="icon"><use href="#i-users"/></svg>Collaborators &amp; teams</a>
+        <a><svg class="icon"><use href="#i-link"/></svg>Webhooks</a>
+        <a class="active"><svg class="icon"><use href="#i-mirror"/></svg>Pull mirror</a>
+        <a data-go="push-mirrors"><svg class="icon"><use href="#i-sync"/></svg>Push mirrors</a>
+      </nav>
+      <div>
+        <div class="sec-h"><h2>Pull mirror</h2><span class="badge">Off</span></div>
+        <div class="card card-b stack" style="gap:16px">
+          <p class="muted">Keep this repository as a copy of another Git server. While the mirror is on, <b>code is read-only</b> here and only the mirror updates branches and tags.</p>
+          <div class="field"><label>Source URL</label><input class="input" value="https://github.com/acme-labs/GitStack.git"><span class="hint">HTTPS only, no credentials in the URL.</span></div>
+          <div class="row" style="gap:10px;flex-wrap:nowrap">
+            <div class="field" style="flex:1"><label>Username <span class="subtle" style="font-weight:400">(optional)</span></label><input class="input" value="x-access-token"></div>
+            <div class="field" style="flex:1"><label>Access token <span class="subtle" style="font-weight:400">(optional)</span></label><input class="input" type="password" value="ghp_xxxxxxxxxxxxxxxx"></div>
+          </div>
+          <div class="field" style="width:240px"><label>Update every</label><button class="btn" style="justify-content:space-between">10 minutes <svg class="icon"><use href="#i-chev"/></svg></button></div>
+          <div class="alert alert-warning"><svg class="icon"><use href="#i-alert"/></svg><div><b>This repository already has content</b> (9 branches, 4 tags). Refs that match the source or are behind it will be updated. Refs that differ will be <b>kept and flagged as diverged</b>: nothing is deleted or overwritten.</div></div>
+          <div class="row" style="border-top:1px solid var(--border);padding-top:16px"><span class="sp"></span><button class="btn btn-primary" data-go="settings"><svg class="icon"><use href="#i-mirror"/></svg>Enable pull mirror</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ P5 SETTINGS · PUSH MIRRORS ============ -->
+<section class="screen" data-screen="push-mirrors" data-nav="repos" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="MP6: con il mirror in pull attivo non si può aggiungere un mirror in push verso lo stesso indirizzo dell'origine (eviterebbe un ciclo). Dopo «Stop mirroring» lo stesso indirizzo è ammesso: è la tappa 2 di V7.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="blocked">Pull attivo: bloccato</button><button data-var="after">Dopo Stop mirroring (tappa 2)</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span><span class="badge badge-mirror" data-v="blocked"><svg class="icon"><use href="#i-mirror"/></svg>Mirror</span></div>
+    <div class="tabs"><a class="tab" data-go="repo"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues <span class="counter">4</span></a><a class="tab"><svg class="icon"><use href="#i-history"/></svg>Commits</a><a class="tab active"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="settings-grid">
+      <nav class="subnav">
+        <a><svg class="icon"><use href="#i-settings"/></svg>General</a>
+        <a><svg class="icon"><use href="#i-link"/></svg>Webhooks</a>
+        <a data-go="settings"><svg class="icon"><use href="#i-mirror"/></svg>Pull mirror</a>
+        <a class="active"><svg class="icon"><use href="#i-sync"/></svg>Push mirrors</a>
+      </nav>
+      <div>
+        <div class="sec-h"><h2>Push mirrors</h2><span class="sp"></span></div>
+        <div class="card card-b stack" style="gap:16px">
+          <p class="muted">Push the default branch and tags to another server after every push here. Never forced.</p>
+          <div class="field"><label>Destination URL</label><input class="input" data-v="blocked" style="border-color:var(--danger)" value="https://github.com/acme-labs/GitStack.git"><input class="input" data-v="after" value="https://github.com/acme-labs/GitStack.git"></div>
+          <div class="alert alert-danger" data-v="blocked"><svg class="icon"><use href="#i-x"/></svg><div><b>This is the source of the pull mirror.</b> Pushing to it while pulling from it would create a loop. Stop the pull mirror first (Settings · Pull mirror), then add this push mirror.</div></div>
+          <div class="alert alert-success" data-v="after"><svg class="icon"><use href="#i-check"/></svg><div>The pull mirror was stopped yesterday: this repository is now the home of the code, and GitHub will receive the default branch and tags.</div></div>
+          <div class="row" style="border-top:1px solid var(--border);padding-top:16px"><span class="sp"></span><button class="btn btn-primary" data-v="blocked" disabled>Add push mirror</button><button class="btn btn-primary" data-v="after">Add push mirror</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ P6 NOTIFICATIONS ============ -->
+<section class="screen" data-screen="notifications" data-nav="notifications" data-crumb="<b>Notifications</b>" data-desc="MP1, MP4: notifiche agli admin del repo — ref diverged e nessun aggiornamento riuscito da oltre 24 ore. Stessa casella di persone e agenti (C4).">
+  <div class="page page-narrow">
+    <div class="row" style="margin-bottom:16px"><h1 style="font-size:22px;font-weight:600">Notifications</h1><span class="sp"></span><span class="seg"><span class="active">Unread</span><span>All</span></span></div>
+    <div class="list notif">
+      <div class="list-row unread"><span class="avatar av-sys"><svg class="icon"><use href="#i-alert"/></svg></span><div style="flex:1"><a data-go="settings" style="font-weight:600;color:var(--text)">Pull mirror hasn't updated for 24 hours</a><div class="small muted"><span class="mono">acme/GitStack</span> · last error: authentication failed (401). Check the token in Settings · Pull mirror.</div></div><span class="small subtle">10 min ago</span></div>
+      <div class="list-row unread"><span class="avatar av-sys"><svg class="icon"><use href="#i-mirror"/></svg></span><div style="flex:1"><a data-go="settings" style="font-weight:600;color:var(--text)">Ref diverged: feature/old-ui</a><div class="small muted"><span class="mono">acme/GitStack</span> · rewritten at the source. GitStack kept its version <span class="mono">4be01d7</span>.</div></div><span class="small subtle">yesterday</span></div>
+      <div class="list-row"><span class="avatar av-bot"><svg class="icon"><use href="#i-bot"/></svg></span><div style="flex:1"><span style="font-weight:600">build-agent commented on #12</span> <span class="badge badge-agent">agent</span><div class="small muted"><span class="mono">acme/GitStack</span> · issues work normally on a mirrored repository.</div></div><span class="small subtle">2 days ago</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ P7 CLI ============ -->
+<section class="screen" data-screen="cli" data-nav="cli" data-crumb="<b>Terminal</b>" data-desc="MP2, MP7: cosa vede chi fa push su un repo in mirror (HTTPS o SSH) e cosa mostra gs repo view. Nessun comando gs nuovo: la gestione via gs api.">
+  <div class="page page-narrow stack" style="gap:18px">
+    <div><h3 style="margin-bottom:8px">Push rejected while the mirror is active</h3>
+<div class="cmdblock"><span class="p">$ </span>git push origin main
+Enumerating objects: 5, done.
+<span class="e">remote: error: acme/GitStack is a pull mirror of https://github.com/acme-labs/GitStack.git
+remote: error: code is read-only here; push your changes to the source instead.</span>
+To https://homehub.local/acme/GitStack.git
+ <span class="e">! [remote rejected] main -&gt; main (repository is a pull mirror)</span>
+error: failed to push some refs to 'https://homehub.local/acme/GitStack.git'</div></div>
+    <div><h3 style="margin-bottom:8px">gs repo view</h3>
+<div class="cmdblock"><span class="p">$ </span>gs repo view acme/GitStack
+acme/GitStack  ·  private
+GitStack source, backup copy of the GitHub repository.
+
+Mirror:  pull from https://github.com/acme-labs/GitStack.git
+         <span class="o">active</span> · every 10m · last update 3m ago · <span class="w">1 diverged ref</span>
+Issues:  4 open</div></div>
+    <div><h3 style="margin-bottom:8px">Management through the API</h3>
+<div class="cmdblock"><span class="p">$ </span>gs api -X POST repos/acme/GitStack/pull-mirror/sync
+<span class="p">$ </span>gs api -X PATCH repos/acme/GitStack/pull-mirror -f state=paused</div>
+    <p class="hint" style="margin-top:6px"><span class="mtag">nota</span> Percorsi API indicativi: li fissa il contratto OpenAPI.</p></div>
+  </div>
+</section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var screens=[].slice.call(document.querySelectorAll('.screen'));
+  var ids=screens.map(function(s){return s.dataset.screen});
+  var pick=document.getElementById('pick'),crumb=document.getElementById('crumb'),desc=document.getElementById('desc'),content=document.getElementById('content');
+  function show(id){
+    if(ids.indexOf(id)<0)id=ids[0];
+    screens.forEach(function(s){s.classList.toggle('on',s.dataset.screen===id)});
+    var s=screens[ids.indexOf(id)];
+    crumb.innerHTML=s.dataset.crumb||'';
+    desc.textContent=s.dataset.desc||'';
+    pick.value=id;
+    document.querySelectorAll('.sb-item[data-nav]').forEach(function(a){a.classList.toggle('active',a.dataset.nav===s.dataset.nav)});
+    content.scrollTop=0;
+    if(location.hash.slice(1)!==id)history.replaceState(null,'','#'+id);
+  }
+  document.addEventListener('click',function(e){var t=e.target.closest('[data-go]');if(t){e.preventDefault();show(t.dataset.go)}});
+  pick.addEventListener('change',function(){show(pick.value)});
+  document.getElementById('prev').onclick=function(){var i=ids.indexOf(pick.value);show(ids[(i-1+ids.length)%ids.length])};
+  document.getElementById('next').onclick=function(){var i=ids.indexOf(pick.value);show(ids[(i+1)%ids.length])};
+  window.addEventListener('hashchange',function(){show(location.hash.slice(1))});
+  // varianti: la prima voce della barra .mvar è quella di partenza
+  screens.forEach(function(sec){
+    var bar=sec.querySelector('.mvar');if(!bar)return;
+    function setv(v){
+      sec.querySelectorAll('[data-v]').forEach(function(el){el.style.display=el.dataset.v.split(' ').indexOf(v)<0?'none':''});
+      bar.querySelectorAll('[data-var]').forEach(function(b){b.classList.toggle('on',b.dataset.var===v)})}
+    sec.addEventListener('click',function(e){var b=e.target.closest('[data-var]');if(b)setv(b.dataset.var)});
+    setv(bar.querySelector('[data-var]').dataset.var);
+  });
+  var root=document.documentElement,tb=document.getElementById('themeBtn');
+  function cur(){return root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
+  try{var st=localStorage.getItem('gs-theme');if(st)root.setAttribute('data-theme',st)}catch(e){}
+  function paint(){tb.querySelector('span').textContent=cur()==='dark'?'scuro':'chiaro'}
+  tb.onclick=function(){var n=cur()==='dark'?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem('gs-theme',n)}catch(e){}paint()};
+  paint();
+  show(location.hash.slice(1)||ids[0]);
+})();
+</script>
+</body>
+</html>

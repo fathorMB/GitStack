@@ -1,0 +1,13 @@
+{
+  "id": "DESIGN-b9416d15-0127-44a4-8948-2416a74acb54",
+  "knowledge": [
+    "DOC-3595cb24-e019-4230-a412-009769bae527",
+    "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+    "DOC-ef8572eb-11a9-4ab0-ac04-ff006b41bdc4"
+  ],
+  "schema_version": 1,
+  "status": "ready",
+  "title": "GitStack Mockups · Mirror in pull",
+  "update_reason": "P1: l'import una tantum (\"Copy once\") è ora la regola MP8 confermata il 2026-10-12; tolta la nota di punto aperto.",
+  "updated": "2026-10-11T23:07:07.032569300+00:00"
+}

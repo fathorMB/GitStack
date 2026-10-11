@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "id": "PROP-ef60f0cd-2e9e-45f6-988b-f882a494e685",
+  "state": "applied",
+  "created": "2026-10-11T22:53:14.344594+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "La v2 \"Build\" si divide in tre passi in ordine: v2-a CI (CI1–CI7), v2-b Registry (RG1–RG2), v2-c Release (REL1). L'obiettivo esistente \"v2 — Build\" diventa il riepilogo con l'ordine; tre nuovi obiettivi (orizzonte later) descrivono i passi. Realizzazione dopo v1.0 e v1.1, come già previsto. Scelte dell'operatore del 2026-10-12.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-397d65b0-f4a8-4a4c-b965-08d5e41c8be0",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e"
+          ],
+          "reopen_reason": "Regole della v2 analizzate (CI1–CI7, RG1–RG2, REL1) e ordine in tre passi (2026-10-12).",
+          "schema_version": 1,
+          "title": "v2 — Build: CI e registry container",
+          "updated": "2026-10-11T22:57:32.339482900+00:00"
+        },
+        "body": "\n# v2 — Build: CI e registry container\n\n## Outcome\n\nCI in stile GitHub Actions che reagisce a push, PR e avvii manuali, registry di immagini container e release sui tag, tutto dentro GitStack e utilizzabile da persone e agenti.\n\n## Rationale\n\nPrimo passo verso il \"piccolo cloud privato\"; si aggancia agli eventi e alle risorse generiche predisposti in v1 (D15) e agli stati dei commit della v1.1 (PR9). Per GitStack stesso restituisce la CI ai branch di lavoro dopo il passaggio della casa su homehub.\n\n## Scope\n\nRegole in [[knowledge/topics/ci-registry-release]] (analisi del 2026-10-12). Realizzazione dopo v1.0 e v1.1, in tre passi in ordine, ciascuno utilizzabile da solo:\n\n1. **v2-a CI** (CI1–CI7);\n2. **v2-b Registry** (RG1–RG2);\n3. **v2-c Release** (REL1, al posto della pagina Tags di B7).\n\nFuori dalla v2: eventi su issues e commenti, ambienti con approvazione manuale, verifica obbligatoria delle firme al deploy (v3).\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\"\n",
+        "expected_digest": "7d95afdfaf6119af78a3f454e09ca2e06071125c8cc19caaed152b559bf22b4c",
+        "slug": null,
+        "reason": "Regole della v2 analizzate (CI1–CI7, RG1–RG2, REL1) e ordine in tre passi (2026-10-12)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-dd71564f-d3a2-411d-bae7-f9395b449131",
+          "knowledge": [
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358"
+          ],
+          "reopen_reason": "Primo passo della v2 (operatore, 2026-10-12).",
+          "schema_version": 1,
+          "title": "v2-a — CI in stile GitHub Actions",
+          "updated": "2026-10-11T22:57:32.340694400+00:00"
+        },
+        "body": "\n# v2-a — CI in stile GitHub Actions\n\n## Outcome\n\nI workflow in formato GitHub Actions girano su GitStack a ogni push, PR, avvio manuale o orario; i risultati compaiono come stati dei commit e gli agenti li seguono con `gs run`.\n\n## Rationale\n\nCI1–CI7: la parte più grande della v2 e quella che serve subito al dogfooding, perché dopo la tappa 2 i branch di lavoro di GitStack non hanno più la CI di GitHub.\n\n## Scope\n\nWorkflow compatibili con GitHub Actions; runner integrato isolato più runner esterni; eventi push, pull_request, workflow_dispatch, schedule; segreti, variabili e token del job con tetto sui permessi; log, artefatti e cache; scheda Actions, notifiche, webhook, `gs run` e `gs workflow`, skills aggiornate; limiti di risorse automatici. Regole in [[knowledge/topics/ci-registry-release]].\n\nPrimo dei tre passi della v2; dipende dagli stati dei commit della v1.1 (PR9).\n\n## Source references\n\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\" (CI1–CI7)\n",
+        "expected_digest": null,
+        "slug": "v2-a-ci",
+        "reason": "Primo passo della v2 (operatore, 2026-10-12)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-58a0b0bf-3830-4ce4-9ae3-0c7504240bde",
+          "knowledge": [
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6"
+          ],
+          "reopen_reason": "Secondo passo della v2 (operatore, 2026-10-12).",
+          "schema_version": 1,
+          "title": "v2-b — Registry di immagini container",
+          "updated": "2026-10-11T22:57:32.341611900+00:00"
+        },
+        "body": "\n# v2-b — Registry di immagini container\n\n## Outcome\n\nOgni repo può pubblicare immagini OCI su GitStack, con i suoi permessi e la sua visibilità, da `docker`, dalla CI o dagli agenti.\n\n## Rationale\n\nRG1–RG2: chiude il ciclo build della CI e prepara la v3, dove le app su k3s useranno le immagini del proprio repo.\n\n## Scope\n\nRegistry OCI legato ai repo, login con token, scheda Packages, pulizia automatica, tag protetti, quote, disco o S3, immagini escluse di default dai backup, firme cosign e SBOM conservate. Regole in [[knowledge/topics/ci-registry-release]].\n\nSecondo dei tre passi della v2, dopo v2-a.\n\n## Source references\n\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\" (RG1–RG2)\n",
+        "expected_digest": null,
+        "slug": "v2-b-registry",
+        "reason": "Secondo passo della v2 (operatore, 2026-10-12)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-a5afa7c2-2943-4650-92ed-8d0528fd0eda",
+          "knowledge": [
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-04fbc589-a144-403b-99e0-13e541fac16a"
+          ],
+          "reopen_reason": "Terzo passo della v2 (operatore, 2026-10-12).",
+          "schema_version": 1,
+          "title": "v2-c — Release sui tag",
+          "updated": "2026-10-11T22:57:32.342576800+00:00"
+        },
+        "body": "\n# v2-c — Release sui tag\n\n## Outcome\n\nOgni versione ha una pagina di release con note e file allegati, creata a mano o dalla CI, e si scarica anche con `gs release`.\n\n## Rationale\n\nREL1 e B7: le release erano rimandate alla v2; permettono a GitStack di rilasciare se stesso da GitStack.\n\n## Scope\n\nRelease su tag con note generate da commit e PR, file allegati fino a 2 GB con SHA-256, bozza, pre-release e Latest, pagina Releases al posto di Tags, `gs release`, webhook `release`. Regole in [[knowledge/topics/ci-registry-release]].\n\nTerzo dei tre passi della v2, dopo v2-a e v2-b.\n\n## Source references\n\n- Tema di analisi \"v2 — CI e registry container: regole di prodotto\" (REL1)\n",
+        "expected_digest": null,
+        "slug": "v2-c-release",
+        "reason": "Terzo passo della v2 (operatore, 2026-10-12)."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "confermo"
+  }
+}

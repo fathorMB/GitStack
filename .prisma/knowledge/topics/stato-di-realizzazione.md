@@ -1,5 +1,5 @@
 ---
-{"area":"delivery","id":"DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","related":[],"reopen_reason":"Riallineamento al codice di main al commit 1587133 (2026-10-05), richiesto dall'operatore.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/ROADMAP.md","source_id":"SRC-e44cf26d-7f3c-466b-a405-558022e98ca5"},{"origin_path":".lmbrain-lite/milestones/M-01.md","source_id":"SRC-176c2e31-e34b-4c7e-98eb-0cdec1543d99"},{"origin_path":".lmbrain-lite/milestones/M-02.md","source_id":"SRC-1acfaa85-6fd1-4f3e-8902-7631d5324e73"}],"tags":["stato","milestone","v1"],"title":"Stato di realizzazione della v1","updated":"2026-10-05T19:50:04.895621+00:00"}
+{"area":"delivery","id":"DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","related":["DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d"],"reopen_reason":"Riallineamento al codice di main al commit e708707 (2026-10-12) e alle indicazioni del CEO, confermato dall'operatore.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/ROADMAP.md","source_id":"SRC-e44cf26d-7f3c-466b-a405-558022e98ca5"},{"origin_path":".lmbrain-lite/milestones/M-01.md","source_id":"SRC-176c2e31-e34b-4c7e-98eb-0cdec1543d99"},{"origin_path":".lmbrain-lite/milestones/M-02.md","source_id":"SRC-1acfaa85-6fd1-4f3e-8902-7631d5324e73"}],"tags":["stato","milestone","v1"],"title":"Stato di realizzazione della v1","updated":"2026-10-11T22:21:10.963834+00:00"}
 ---
 
 
@@ -7,35 +7,38 @@
 
 ## Context
 
-Stato **ricostruito dal repo** (storia dei commit, codice e `docs/rules-coverage.md`) e riallineato il 2026-10-05 al commit `1587133` su `main`. Allineamenti precedenti: `af42239` (2026-09-30, scelto dall'operatore come riferimento al posto di "tutte completate") e `de88a0e` (2026-10-05 mattina). "Completata" qui significa che i commit coprono tutto ciò che la milestone prevede; la chiusura formale degli item resta nel tracker GalaxyLab.
+Stato **ricostruito dal repo** (`docs/rules-coverage.md`, `docs/operations.md`, `deploy/`) e dalle indicazioni del CEO, riallineato il 2026-10-12 al commit `e708707` su `main` e confermato dall'operatore. Allineamenti precedenti: `af42239` (2026-09-30), `de88a0e` e `1587133` (2026-10-05). "Completata" significa che il codice copre tutto ciò che la milestone prevede e la sua famiglia di regole è coperta da test; la chiusura formale degli item resta nel tracker GalaxyLab.
 
 ## Confirmed decisions
 
 | Milestone | Stato | Prove |
 |---|---|---|
-| M-01 Scheletro che cammina | **completata** | monorepo e licenze, CI, OpenAPI e client generati, gateway, core con migrazioni, `pkg/events`, web UI, chart Helm, installer v0, ambiente k3d, VM e test e2e (GIT-1…GIT-28) |
-| M-02 Identità, organizzazioni e permessi | **completata** | tutto quanto già realizzato (GIT-29…GIT-62) più: token degli utenti agent gestiti dall'admin, P5 (GIT-78); UI Admin · Agents, mockup 17 (GIT-79); API dell'accesso effettivo di un utente (GIT-95). Regole P1–P6 coperte da test; P7 parziale solo per la parte `gs` |
-| M-03 Hosting Git | **completata** | permessi da owner e visibilità (GIT-65), API pubblica dei repo (GIT-67), eliminazione recuperabile 7 giorni (GIT-68), push/pull HTTPS con token e permessi (GIT-70), server SSH sulla 2222 (GIT-71, GIT-99, GIT-100), regole al push R6/R9/R10 (GIT-72), evento `git.push` su NATS (GIT-73, GIT-97), deploy del servizio git (GIT-74), UI impostazioni e repo eliminati (GIT-76), test e2e con client git reale in CI e su VM (GIT-77). Regole R parziali solo per parti che dipendono da `gs`, dall'installer o dalle issues |
-| M-04 Browser del codice | **completata** | contratto delle letture (GIT-80, GIT-91), servizio git: albero, file, raw, branch, tag, archivi, commit, diff, blame, lingue (GIT-81…GIT-83), letture con permessi (GIT-84), Markdown sicuro (GIT-85, GIT-90, GIT-92), UI Code, file, History, Blame, Raw, commit e diff, Tags e Search code (GIT-86, GIT-87, GIT-88, GIT-93, GIT-94), test e2e e su VM (GIT-89, GIT-116, GIT-121), correzioni (GIT-117, GIT-120). Regole B1, B2, B3, B6, B7 coperte; B4 e B5 parziali solo per la parte `gs` |
-| M-05 Issues | **in corso** | realizzati: contratto API e schema (GIT-101), sintassi di ricerca I10 (GIT-102), issues in core con numerazione, stato e permessi (GIT-103), commenti, cronologia, blocco ed eliminazione tracciata (GIT-104), etichette, milestone e assegnatari (GIT-105), ricerca nel repo e globale (GIT-106), allegati fino a 10 MB (GIT-107), UI lista issues con filtri, mockup 12 (GIT-109). Mancano, dal codice: UI di dettaglio e di nuova issue, issues in sola lettura sui repo archiviati (R10) e la tabella regole→test I1–I11 (GIT-113) |
-| M-06 Collegamenti, notifiche, webhook | da fare | — |
-| M-07 CLI `gs` e skills | da fare | `cli/` scheletro, `skills/` vuota |
-| M-08 Installazione, upgrade, backup | da fare | solo installer v0 Ubuntu, HTTP |
-| M-09 Rilascio v1.0 | da fare, con due parti anticipate | V1 anticipato: tabella regole→test in `docs/rules-coverage.md` con controllo in CI (GIT-115); V2 anticipato: scansioni di sicurezza in CI, segnalanti su main e bloccanti sui tag (GIT-114). Nessun tag di versione |
+| M-01 Scheletro che cammina | **completata** | GIT-1…GIT-28 |
+| M-02 Identità, organizzazioni e permessi | **completata** | GIT-29…GIT-62, GIT-78, GIT-79, GIT-95; famiglia P coperta, P7 compresa la parte `gs` |
+| M-03 Hosting Git | **completata** | GIT-65…GIT-77, GIT-99, GIT-100; famiglia R coperta salvo dettagli di test (R1, R3) e la parte installer di R7, che passa a M-08 |
+| M-04 Browser del codice | **completata** | GIT-80…GIT-94, GIT-116…GIT-121; famiglia B coperta, B4 e B5 comprese le parti `gs` |
+| M-05 Issues | **completata** | GIT-101…GIT-113; famiglia I1–I11 coperta, compresa la sola lettura sui repo archiviati (R10) |
+| M-06 Collegamenti, notifiche, webhook | **completata** | famiglia C1–C9 coperta (collegamenti e chiusura via commit, notifiche, email, webhook firmati, protezione SSRF con `pkg/egress`) |
+| M-07 CLI `gs` e skills | **completata** | famiglia G1–G8 coperta; distribuzione da `/downloads`; guida alla prova reale di un agente (GIT-174, `docs/agent-trial.md`) |
+| M-08 Installazione, upgrade, backup | **in corso** | fatto: preflight hardware (N1) e nome host (N6, `gitstack config set host`), HTTPS con CA interna, Let's Encrypt o certificato del cliente e avviso per HTTP (N5, parziale nei test), comando `gitstack` con `status`, `backup` (anche cifrato), `restore`, `upgrade` con backup preventivo e rollback, timer di backup giornaliero locale, guida operativa (`docs/operations.md`) |
+| M-09 Rilascio v1.0 | **in corso** | fatto: tabella regole→test con controllo in CI (V1, GIT-115), scansioni di sicurezza in CI (V2, GIT-114), mirror in push verso GitHub (V8-mirror, GIT-179). Nessun tag di versione |
 
-Lavoro di qualità trasversale nel periodo: correzioni di CI e test instabili (GIT-96, GIT-98, GIT-118, GIT-119, GIT-122, GIT-123).
+### Cosa resta della v1 (indicazioni del CEO, 2026-10-12)
+
+1. **Resto di M-08:** Ubuntu 22.04 e Pop!_OS 22.04/24.04 (N2; oggi l'installer accetta solo Ubuntu 24.04); Windows via WSL2 di prova (W1, W2); mirror e proxy aziendali (N4; oggi solo `--image-registry`); Postgres esterno supportato dall'installer (oggi solo via `--set postgres.enabled=false` del chart); backup su S3 (D19; oggi solo locale più `rsync`); verifica delle firme cosign in `install.sh` e `gitstack upgrade` (V5); test in CI di installazione, aggiornamento e ripristino sui sistemi supportati (N2; oggi le prove reali girano sulla VM lanciata dal board).
+2. **M-09**, comprese la **migrazione vera del codice su homehub** ("fase 3", legata all'item GalaxyLab GL-31) e le altre parti di V1–V8 non ancora fatte (revisione di sicurezza, test di fumo, versioni e `SECURITY.md`, pipeline firmata con SBOM, sito di documentazione, «Sincronizza ora» e stato del mirror nella UI, GIT-180).
 
 Il dettaglio di task e avanzamento resta nel tracker GalaxyLab, non in Prisma.
 
 ## Open questions
 
-- La roadmap prodotto mette ancora M-02 in "now" e M-03/M-04 in "next": va riallineata con una proposta.
-- In `docs/rules-coverage.md` la CLI `gs` è attribuita a "M-06", mentre in Prisma è M-07: probabile svista da segnalare ai coding agent.
-- Da riallineare alla chiusura di M-05.
+- Cosa sono le fasi del dogfooding (in particolare la "fase 3") e cosa chiede GL-31: Prisma conosce solo V7 ("passaggio graduale"). Da chiarire con l'operatore.
+- `deploy/README.md` e `docs/operations.md` dicono ancora "WSL2 e altre distribuzioni arrivano con M-08" e citano `.lmbrain-lite`: da aggiornare quando M-08 chiude.
 
 ## Related topics
 
 - [[knowledge/topics/visione]]
 - [[knowledge/topics/sviluppo-e-qualita]]
+- [[knowledge/topics/installazione-e-deploy]]
 - [[knowledge/topics/rilascio-v1]]
 

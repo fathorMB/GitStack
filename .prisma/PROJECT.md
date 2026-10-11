@@ -1,6 +1,6 @@
 ---
 title: GitStack
-updated: 2026-10-05
+updated: 2026-10-12
 ---
 
 # Project
@@ -21,9 +21,9 @@ Team e aziende che vogliono ospitare codice e issues sui propri server, senza cl
 - Frontend: React + TypeScript, usa solo l'API pubblica REST descritta in OpenAPI.
 - Licenze: AGPL-3.0 per il server, Apache-2.0 per CLI, skills e client.
 
-## Current state (2026-10-05)
+## Current state (2026-10-12)
 
-M-01 "Scheletro che cammina" completata; M-02 "Identità, organizzazioni e permessi" quasi completata (manca la gestione admin dei token degli agent); M-03 "Hosting Git" in corso (storage, nomi, modelli e UI fatti; API pubblica e protocolli Git da fare); M-04…M-09 da fare. Regole di prodotto consolidate per M-03…M-09 (repo, browser, issues, collegamenti e notifiche, CLI e skills, installer, Windows di prova, rilascio). Dettagli in [[knowledge/topics/stato-di-realizzazione]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n); con il dogfooding passano gradualmente a GitStack (V7).
+M-01…M-07 completate (main al commit `e708707`). In corso i due blocchi rimasti della v1: **M-08** (fatti installer su Ubuntu 24.04 con HTTPS, `gitstack` status/backup/restore/upgrade con rollback; restano Ubuntu 22.04 e Pop!_OS, WSL2 di prova, backup su S3, Postgres esterno, proxy e mirror aziendali, firme cosign, aggiornamento di k3s, test di installazione in CI — regole N1–N10) e **M-09** (primo pezzo: mirror in pull e import una tantum, regole MP1–MP8; poi passaggio del codice di GitStack su homehub in due tappe, copia di backup e poi casa su GitStack a cinque condizioni; poi il resto di V1–V8). La v2 (CI in stile GitHub Actions, registry, release) è analizzata (CI1–CI7, RG1–RG2, REL1) e resta dopo v1.0 e v1.1. Dettagli in [[knowledge/topics/stato-di-realizzazione]], [[knowledge/topics/rilascio-v1]], [[knowledge/topics/mirror-in-pull]], [[knowledge/topics/ci-registry-release]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n); con il dogfooding passano gradualmente a GitStack (V7).
 
 ## Constraints
 
@@ -34,4 +34,4 @@ M-01 "Scheletro che cammina" completata; M-02 "Identità, organizzazioni e perme
 
 ## Out of scope (v1)
 
-Pull Request (v1.1, già previste nel modello dati), bacheca Kanban, CI/build, registry container, deploy di app, server MCP, LDAP.
+Pull Request (v1.1, già previste nel modello dati), bacheca Kanban, CI/build, registry container e release (v2), deploy di app (v3), server MCP (v1.1), LDAP.

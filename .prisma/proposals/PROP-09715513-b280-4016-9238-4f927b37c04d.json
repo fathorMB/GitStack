@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "id": "PROP-09715513-b280-4016-9238-4f927b37c04d",
+  "state": "applied",
+  "created": "2026-10-11T22:19:28.926134500+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Riallineamento della roadmap al codice di main (commit e708707, 2026-10-12) e alle indicazioni del CEO: M-05, M-06, M-07 completate (stato nel testo, orizzonte next come M-03 e M-04); M-02 completata esce da now; M-08 e M-09 passano a now con l'elenco di ciò che è fatto e di ciò che resta. \"Fase 3\" e GL-31 restano da chiarire.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-c79ed133-8339-4a82-9f91-6b100a636da1",
+          "knowledge": [
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "Milestone completata: esce dall'orizzonte now, come M-03 e M-04.",
+          "schema_version": 1,
+          "title": "Identità, organizzazioni e permessi (completata)",
+          "updated": "2026-10-11T22:20:26.309466200+00:00"
+        },
+        "body": "\n# Identità, organizzazioni e permessi (completata)\n\n## Outcome\n\nUtenti e agenti si autenticano (password, token con scope, chiavi SSH, OIDC esterno) e i permessi su organizzazioni, team e risorse generiche sono applicati ovunque.\n\n**Stato: completata.** Dettagli in [[knowledge/topics/stato-di-realizzazione]]. Resta in roadmap solo perché la roadmap non ha un orizzonte per il lavoro concluso.\n\n## Rationale\n\nD5 e D15: identità pronta all'uso, token con permessi limitati per gli agenti, permessi modellati su risorse generiche.\n\n## Scope\n\nUtenti locali, sessioni, token, chiavi SSH, OIDC, organizzazioni e team, modello dei permessi P1–P7, utenti agent gestiti dall'amministratore (GIT-78, GIT-79), API dell'accesso effettivo (GIT-95). Famiglia P interamente coperta da test, compresa P7 via `gs`.\n\nPriorità 2 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-02.md`\n- `docs/rules-coverage.md` (famiglia P)\n",
+        "expected_digest": "2009118a25e0625327f992515df387d069284a5b51d073c2b3ab132a3927b4f7",
+        "slug": null,
+        "reason": "Milestone completata: esce dall'orizzonte now, come M-03 e M-04."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-43ae9cfe-b093-4063-a4d8-90e6cf6827e2",
+          "knowledge": [
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-1565db4b-4108-490d-aca1-28d30c36ad99",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-05 completata: famiglia I1–I11 coperta, R10 sulle issues fatta.",
+          "schema_version": 1,
+          "title": "Issues",
+          "updated": "2026-10-11T22:20:26.311495500+00:00"
+        },
+        "body": "\n# Issues\n\n## Outcome\n\nOgni repo ha le sue issues con commenti, assegnatari, etichette, milestone e ricerca, usabili da UI, API e `gs`.\n\n**Stato: completata** (main al commit `e708707`, 2026-10-12): UI di lista, dettaglio e nuova issue, issues in sola lettura sui repo archiviati (R10), tabella regole→test I1–I11 tutta coperta (GIT-113). Dettagli in [[knowledge/topics/stato-di-realizzazione]].\n\n## Rationale\n\nD10: le issues legano il lavoro al codice e servono agli agenti per filtrare e chiudere lavoro.\n\n## Scope\n\nRegole in [[knowledge/topics/issues]] (I1–I11). Fuori dalla v1: stati personalizzati, etichette e milestone di organizzazione, trasferimento di issues, bacheca Kanban.\n\nPriorità 5 di 9 nella v1. Mockup 12, 13 e \"New issue\".\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-05.md`\n- `docs/rules-coverage.md` (famiglia I)\n",
+        "expected_digest": "2d8603ea56ef79f01241cf90bc28cb1665d9fd91b2be768cf288d8e401f6491e",
+        "slug": null,
+        "reason": "M-05 completata: famiglia I1–I11 coperta, R10 sulle issues fatta."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-60448747-d91d-4e43-8de7-fa718dadf250",
+          "knowledge": [
+            "DOC-951cc9b3-4a06-48b1-959e-02a9431bbbb2",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-6db23bbe-fbf2-4913-a207-711865af66f6",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-06 completata: famiglia C1–C9 coperta da test.",
+          "schema_version": 1,
+          "title": "Collegamenti, notifiche e webhook",
+          "updated": "2026-10-11T22:20:26.313095100+00:00"
+        },
+        "body": "\n# Collegamenti, notifiche e webhook\n\n## Outcome\n\nCodice e issues sono collegati (`#12`, `fixes #12` chiude la issue), gli utenti ricevono notifiche in-app ed email, e sistemi esterni ricevono webhook firmati.\n\n**Stato: completata** (main al commit `e708707`, 2026-10-12): famiglia C1–C9 tutta coperta da test, con end-to-end in `TestM06E2E`. Dettagli in [[knowledge/topics/stato-di-realizzazione]].\n\n## Rationale\n\nD10 e D11: il consumo degli eventi `git.push` rende il bus la spina dorsale del prodotto e prepara CI e deploy futuri.\n\n## Scope\n\nRegole in [[knowledge/topics/collegamenti-notifiche-webhook]] (C1–C9). Fuori dalla v1: risposta via email, formato webhook compatibile GitHub, parole chiave in italiano, riepiloghi email periodici.\n\nPriorità 6 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-06.md`\n- `docs/rules-coverage.md` (famiglia C)\n",
+        "expected_digest": "4d20d3873e0fc42515146749eb294c38580fc306514a0dcd7b9256086d2bf2c9",
+        "slug": null,
+        "reason": "M-06 completata: famiglia C1–C9 coperta da test."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "next",
+          "id": "OBJ-0820d6e7-7b4f-4c7c-b84d-a3ef18d5bc81",
+          "knowledge": [
+            "DOC-7d7f0293-9b0f-4175-9bc5-b085d5db5f3f",
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-84811cef-6f8e-4028-97d6-d47381172907",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-07 completata: famiglia G1–G8 coperta da test, guida alla prova reale con un agente.",
+          "schema_version": 1,
+          "title": "CLI gs e skills per agenti",
+          "updated": "2026-10-11T22:20:26.314956700+00:00"
+        },
+        "body": "\n# CLI gs e skills per agenti\n\n## Outcome\n\nUn agente di coding, con la CLI `gs` e il pacchetto di skills, gestisce repo e issues su GitStack come oggi fa con `gh` su GitHub.\n\n**Stato: completata** (main al commit `e708707`, 2026-10-12): famiglia G1–G8 tutta coperta da test; binari e skills serviti da `/downloads`; guida e script per la prova reale di un agente (GIT-174, `docs/agent-trial.md`). La prova \"un agente chiude una issue end-to-end\" resta anche un criterio di uscita di V1 (M-09). Dettagli in [[knowledge/topics/stato-di-realizzazione]].\n\n## Rationale\n\nD8 e D17: gli agenti sono utenti di prima classe; licenza Apache-2.0.\n\n## Scope\n\nRegole in [[knowledge/topics/cli-gs-skills]] (G1–G8). Fuori dalla v1: login automatico dal browser, comandi admin dedicati, gestori di pacchetti.\n\nPriorità 7 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-07.md`\n- `docs/rules-coverage.md` (famiglia G)\n",
+        "expected_digest": "79efd6f0185690ce2bed21a7d8dc9a278943477b7159cfb2e7a6aea45b50390d",
+        "slug": null,
+        "reason": "M-07 completata: famiglia G1–G8 coperta da test, guida alla prova reale con un agente."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+          "knowledge": [
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "M-08 è uno dei due blocchi rimasti della v1 (CEO, 2026-10-12): passa a now con fatto/resta.",
+          "schema_version": 1,
+          "title": "Installazione, aggiornamenti e backup",
+          "updated": "2026-10-11T22:20:26.317356800+00:00"
+        },
+        "body": "\n# Installazione, aggiornamenti e backup\n\n## Outcome\n\nUn cliente installa GitStack su Linux con un comando (o su Windows via WSL2 per prove), lo aggiorna in sicurezza con rollback e fa backup e ripristino coerenti.\n\n## Rationale\n\nD1, D14, D18, D19: per un prodotto on-prem installazione, aggiornamenti e backup sono requisiti dal giorno uno; un aggiornamento fallito è un cliente perso.\n\n## Scope\n\nRequisiti N1–N6, W1, W2 e V5 in [[knowledge/topics/installazione-e-deploy]].\n\nAvanzamento al commit `e708707` (2026-10-12):\n- **fatto:** installer su Ubuntu Server 24.04 con preflight (N1, N6), HTTPS con CA interna, Let's Encrypt o certificato del cliente (N5), comando `gitstack` con `status`, `backup` (anche cifrato), `restore`, `upgrade` con backup preventivo e rollback, timer di backup giornaliero locale, guida operativa;\n- **resta (indicazioni del CEO):** Ubuntu 22.04 e Pop!_OS 22.04/24.04 (N2); Windows via WSL2 di prova (W1, W2); mirror e proxy aziendali (N4); Postgres esterno; backup su S3; verifica delle firme cosign (V5); test in CI di installazione, aggiornamento e ripristino.\n\nFuori dalla v1: Debian, RHEL e derivate, arm64, più nodi, air-gapped, supporto di produzione su Windows.\n\nPriorità 8 di 9 nella v1. Mockup 16.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-08.md`\n- `deploy/README.md`, `docs/operations.md`\n- Temi di analisi \"Requisiti minimi e distribuzioni dell'installer definitivo\" (N1–N6) e \"Supporto Windows via WSL2 in produzione\" (W1, W2)\n",
+        "expected_digest": "482ff98940ee4ed2ca79557212fddc47865bc5e3fddde1170001b56904de5f20",
+        "slug": null,
+        "reason": "M-08 è uno dei due blocchi rimasti della v1 (CEO, 2026-10-12): passa a now con fatto/resta."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d"
+          ],
+          "reopen_reason": "M-09 è uno dei due blocchi rimasti della v1 (CEO, 2026-10-12): passa a now con fatto/resta.",
+          "schema_version": 1,
+          "title": "Rilascio v1.0",
+          "updated": "2026-10-11T22:20:26.319459800+00:00"
+        },
+        "body": "\n# Rilascio v1.0\n\n## Outcome\n\nGitStack v1.0 è pubblicato open source, sicuro e documentato, e ospita il proprio codice (dogfooding).\n\n## Rationale\n\nChiude la tappa v1 della visione; il dogfooding sostituisce GitHub come casa del codice.\n\n## Scope\n\nRegole V1–V8 in [[knowledge/topics/rilascio-v1]].\n\nAvanzamento al commit `e708707` (2026-10-12):\n- **fatto:** tabella regole→test con controllo in CI (V1, GIT-115); scansioni di sicurezza in CI (V2, GIT-114); mirror in push verso GitHub (V8-mirror, GIT-179);\n- **resta:** migrazione vera del codice su homehub (\"fase 3\", legata a GL-31: contenuto da chiarire), revisione di sicurezza ASVS L2 e threat model (V2), test di fumo (V3), versioni e `SECURITY.md` (V4), pipeline di rilascio firmata con SBOM e changelog (V5), sito di documentazione (V6), dogfooding di almeno 4 settimane (V7), «Sincronizza ora» e stato del mirror nella UI (GIT-180) e segnalazioni pubbliche (V8), release candidate e criteri di uscita (V1).\n\nFuori dalla v1: penetration test esterno, test di carico con obiettivi numerici, versioni LTS, documentazione nell'istanza o tradotta, visibilità pubblica dei repo.\n\nPriorità 9 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-09.md`\n- `docs/rules-coverage.md` (famiglia V)\n- Tema di analisi \"Rilascio v1.0: regole di prodotto\" (V1–V8)\n",
+        "expected_digest": "24adf39caae521ac740ace31a26c9469aba9b43a0addcf3ec20f63d563c4ac57",
+        "slug": null,
+        "reason": "M-09 è uno dei due blocchi rimasti della v1 (CEO, 2026-10-12): passa a now con fatto/resta."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "confermo, applica pure"
+  }
+}

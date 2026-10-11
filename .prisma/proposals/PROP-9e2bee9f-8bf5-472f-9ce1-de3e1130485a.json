@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "PROP-9e2bee9f-8bf5-472f-9ce1-de3e1130485a",
+  "state": "applied",
+  "created": "2026-10-11T23:04:55.484440700+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "M-08: lo scope include le nuove regole N7 (backup su S3), N8 (Postgres esterno con supporto pieno), N9 (proxy, mirror e CA aziendale) e N10 (aggiornamento di k3s dentro gitstack upgrade). N10 si aggiunge all'elenco del CEO del 2026-10-12, per scelta dell'operatore dello stesso giorno.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+          "knowledge": [
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "Regole N7–N10 confermate dall'operatore il 2026-10-12; N10 aggiunge l'aggiornamento di k3s all'elenco del CEO.",
+          "schema_version": 1,
+          "title": "Installazione, aggiornamenti e backup",
+          "updated": "2026-10-11T23:05:17.558176600+00:00"
+        },
+        "body": "\n# Installazione, aggiornamenti e backup\n\n## Outcome\n\nUn cliente installa GitStack su Linux con un comando (o su Windows via WSL2 per prove), anche in una rete aziendale chiusa e con il proprio Postgres, lo aggiorna in sicurezza con rollback (k3s compreso) e fa backup e ripristino coerenti, anche su S3.\n\n## Rationale\n\nD1, D14, D18, D19: per un prodotto on-prem installazione, aggiornamenti e backup sono requisiti dal giorno uno; un aggiornamento fallito è un cliente perso. N10 tiene le patch di sicurezza di k3s sotto GitStack (V4).\n\n## Scope\n\nRequisiti N1–N10, W1, W2 e V5 in [[knowledge/topics/installazione-e-deploy]].\n\nAvanzamento al commit `e708707` (2026-10-12):\n- **fatto:** installer su Ubuntu Server 24.04 con preflight (N1, N6), HTTPS con CA interna, Let's Encrypt o certificato del cliente (N5), comando `gitstack` con `status`, `backup` (anche cifrato), `restore`, `upgrade` con backup preventivo e rollback, timer di backup giornaliero locale, guida operativa;\n- **resta:** Ubuntu 22.04 e Pop!_OS 22.04/24.04 (N2); Windows via WSL2 di prova (W1, W2); backup su S3 con cifratura obbligatoria e `restore --from s3` (N7); Postgres esterno con supporto pieno, PostgreSQL 15–17 (N8); proxy, mirror di immagini e download, CA aziendale (N4, N9); verifica delle firme cosign (V5); aggiornamento di k3s, patch automatiche e minori con `--k3s` (N10); test in CI di installazione, aggiornamento (anche di k3s) e ripristino su tutti i sistemi supportati.\n\nFuori dalla v1: Debian, RHEL e derivate, arm64, più nodi, air-gapped, supporto di produzione su Windows, alta disponibilità del Postgres esterno (responsabilità del cliente).\n\nPriorità 8 di 9 nella v1. Mockup 16.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-08.md`\n- `deploy/README.md`, `docs/operations.md`\n- Temi di analisi \"Requisiti minimi e distribuzioni dell'installer definitivo\" (N1–N6) e \"Supporto Windows via WSL2 in produzione\" (W1, W2)\n- Scelte dell'operatore del 2026-10-12 (N7–N10)\n",
+        "expected_digest": "9a53963ea0604fc30cb4e44c668b63397e8f7803a1133a275fb8950fc73dba0e",
+        "slug": null,
+        "reason": "Regole N7–N10 confermate dall'operatore il 2026-10-12; N10 aggiunge l'aggiornamento di k3s all'elenco del CEO."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "confermo tutto"
+  }
+}

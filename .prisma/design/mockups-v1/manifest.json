@@ -11,11 +11,12 @@
     "DOC-04fbc589-a144-403b-99e0-13e541fac16a",
     "DOC-84811cef-6f8e-4028-97d6-d47381172907",
     "DOC-3d5a5862-5bff-4e92-821c-c5caa78ca358",
-    "DOC-b18abc32-db2c-4b14-8800-d37f5443dbad"
+    "DOC-b18abc32-db2c-4b14-8800-d37f5443dbad",
+    "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
   ],
   "schema_version": 1,
   "status": "ready",
   "title": "GitStack Mockups v1",
-  "update_reason": "Schermata 24: nota di versione del riquadro MCP allineata a G6/M5 (rifiuto solo su versione maggiore diversa), 2026-10-05.",
-  "updated": "2026-10-05T20:47:27.425051800+00:00"
+  "update_reason": "Schermata 16 (Admin · System) aggiornata alle regole N7–N10 del 2026-10-12: Postgres esterno, rete aziendale (proxy, mirror, CA), backup locale più copia cifrata su S3 con errore di caricamento, aggiornamento di k3s (patch automatica, minori con --k3s).",
+  "updated": "2026-10-11T23:05:57.092902+00:00"
 }
