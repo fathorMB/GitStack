@@ -22,8 +22,12 @@ Regole per l'hosting dei repo (M-03) confermate dall'operatore il 2026-10-05 nel
 | R8 | **Git LFS dopo la v1.** I file grandi sono governati da R6; nulla in M-03 deve impedire di aggiungere LFS. |
 | R9 | **Protezione minima del branch principale:** force-push ed eliminazione rifiutati, attiva di default, disattivabile da chi ha `admin`. Regole complete con le PR in v1.1. |
 | R10 | **Archiviazione nella v1:** chi ha `admin` archivia e riattiva; il repo resta leggibile e clonabile ma rifiuta push e modifiche alle impostazioni; etichetta "Archived"; con M-05 le issues diventano di sola lettura. |
-| R11 | **Nomi dei repo:** minuscole, cifre, `-`, `_`, `.`; 1–100 caratteri; non inizia con `.`, non finisce con `.git`; maiuscole rifiutate; unico per owner. |
+| R11 | **Nomi dei repo:** lettere maiuscole e minuscole, cifre, `-`, `_`, `.`; 1–100 caratteri; non inizia con `.`, non finisce con `.git`. Il nome conserva le maiuscole scritte alla creazione o alla modifica (es. `GitStack`) e così appare in UI, API, `gs` e indirizzi di clone mostrati. Unicità per owner **senza distinzione di maiuscole**: `GitStack` e `gitstack` non coesistono sotto lo stesso owner (il nome resta occupato anche nel cestino, R2). Ogni indirizzo risolve il repo in qualsiasi combinazione di maiuscole e minuscole: pagina web `/<owner>/<repo>`, API `/v1/repos/{owner}/{repo}/…`, git HTTPS `/<owner>/<repo>.git`, SSH `ssh://git@<host>:2222/<owner>/<repo>.git`, raw e archivi, `gs --repo`, riferimenti `owner/repo#n` nelle issues e nei commit (C1). Nomi di utenti e organizzazioni: restano in minuscolo (regola invariata). |
 | R12 | **Eliminazione e ripristino a chi ha `admin` sul repo** (owner dell'organizzazione, grant `admin`, proprietario del repo personale) e sempre all'amministratore dell'installazione. Lista "Deleted repositories" nelle impostazioni dell'owner con ripristino e giorni rimasti. |
+
+### Revisioni delle decisioni
+
+- **2026-10-06, R11 (decisione del board, GIT-178):** la regola originale del 2026-10-05 rifiutava le maiuscole. Creando su homehub il repo per il codice di GitStack il nome `GitStack` è stato rifiutato: il rifiuto era corretto per la regola di allora, il board l'ha cambiata per comportarsi come GitHub (nome conservato come scritto, unicità e indirizzi senza distinzione di maiuscole). Il percorso su disco resta per id (R3), quindi i repo esistenti non si spostano; la migrazione `0013_repo_name_case` allarga il CHECK dei nomi e sostituisce l'unicità con un indice su `lower(name)`.
 
 ## Requisiti derivati
 

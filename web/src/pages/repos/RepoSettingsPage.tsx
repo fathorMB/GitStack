@@ -7,6 +7,7 @@ import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
+import { RepoMirrorsSection } from './RepoMirrorsSection';
 import { VisibilityBadge } from './ReposPage';
 import { isRepoAdmin, loadMe } from './repoAdmin';
 
@@ -186,10 +187,20 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
         <div className="sec-h">
           <h2>Webhooks</h2>
         </div>
-        <Link to={`/${repo.owner.name}/${repo.name}/webhooks`} className="card card-b" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
-          <p className="muted">Configure webhook URLs to receive notifications at an external endpoint.</p>
-        </Link>
+        <div className="list">
+          <div className="list-row" style={{ padding: '14px 16px' }}>
+            <div style={{ flex: 1 }}>
+              <b>Webhook endpoints</b>
+              <div className="small muted">Receive signed notifications at an external URL when events happen in this repository.</div>
+            </div>
+            <Link to={`/${repo.owner.name}/${repo.name}/webhooks`} className="btn btn-sm">
+              Manage webhooks
+            </Link>
+          </div>
+        </div>
       </section>
+
+      <RepoMirrorsSection owner={repo.owner.name} repo={repo.name} readOnly={readOnly} />
 
       <section aria-label="Danger zone">
         <div className="sec-h">

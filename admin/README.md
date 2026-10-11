@@ -128,6 +128,7 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
 | 6 | backup/restore/upgrade rifiutato con motivo (upgrade: anche downgrade e destinazione non valida) (versione diversa, archivio corrotto, cifrato senza chiave o con chiave errata) |
 | 7 | upgrade fallito e tornato com'era (rollback riuscito) |
 | 8 | upgrade fallito e rollback NON riuscito: serve un intervento (il messaggio dice come) |
+| 9 | restore completato nei dati ma l'istanza non risponde attraverso l'Ingress entro il timeout (120 s): il messaggio dice quale URL ha fallito e con quale stato; verifica con `gitstack status` |
 | 70 | errore inatteso |
 
 Errori su stderr con prefisso `ERRORE:`, come `install.sh`.
@@ -209,7 +210,33 @@ sudo gitstack restore --key-file chiave /srv/backup/gitstack-backup-….tar.gz.e
    ruolo `identity_app` la riallinea l'initContainer di identity dal Secret
    ripristinato) e rimette i file di `config/` in `/etc/gitstack`, **senza**
    sovrascrivere `config.yaml` (lo ha appena scritto l'installer);
-6. riporta le repliche ai valori di prima e aspetta che i Deployment siano pronti.
+6. **TLS e CA** (solo con `tls: internal` o `custom`; con `insecure` e
+   `letsencrypt` non si fa niente): i file di `/etc/gitstack/tls` (`ca.crt`,
+   `ca.key`, `server.crt`/`server.key`, `server.sans`) tornano quelli del
+   backup, ma `tls/tls.conf` e `tls/install.conf` **restano quelli della nuova
+   installazione**, perché descrivono la macchina di oggi (nomi e IP per i SAN,
+   host). Poi, prima di riaccendere i servizi, il restore lancia
+   `gitstack-tls ensure` senza opzioni: se i SAN di oggi differiscono da quelli
+   del backup, o il certificato non è firmato dalla CA ripristinata, il
+   certificato del server è riemesso **con la CA del backup**; altrimenti si
+   riusa quello ripristinato. `ensure` aggiorna il Secret `<release>-tls`
+   (Traefik lo rilegge da solo) e il ConfigMap `<release>-ca`. A servizi
+   riaccesi il restore fa un `rollout restart` del Deployment `<release>-web`
+   e ne aspetta il ready, perché il web monta il ConfigMap come cartella e il
+   kubelet lo aggiornerebbe solo dopo circa un minuto: all'uscita
+   `/downloads/ca.crt` è già la CA del backup, come `gitstack-tls fingerprint` e
+   la catena servita su 443. I client che si fidavano della CA originale
+   continuano a fidarsi. Se `ensure` fallisce, i dati sono già ripristinati: i
+   servizi sono riaccesi, il comando esce con codice 70 e dice di rilanciare
+   `sudo gitstack-tls ensure`;
+7. riporta le repliche ai valori di prima e aspetta che i Deployment siano pronti;
+8. **attende l'Ingress**: «Restore completato» vuol dire che l'istanza è di nuovo
+   utilizzabile per intero, non solo che i pod sono Ready (Traefik può avere gli
+   endpoint del web ancora vecchi e dare 502). Ogni 2 s, fino a 120 s, il
+   comando chiede attraverso l'Ingress `/api/healthz` (come `status`) e, con `tls: internal` o
+   `custom`, `GET http://<host>/downloads/ca.crt` (200 e un PEM `CERTIFICATE`); finisce solo
+   quando entrambi danno 200 nello stesso giro. Se scade esce con **codice 9** e un messaggio
+   con l'ultimo URL e stato visti: i dati sono ripristinati, si controlla con `gitstack status`.
 
 Se un passo dopo l'arresto fallisce i servizi **restano fermi** (un database
 o dei repo a metà non devono ricevere traffico) e l'errore spiega come
@@ -283,6 +310,12 @@ cambiato non si ripristina niente: i dati scritti nel frattempo restano. Con il 
 i dati scritti dopo il backup durante l'aggiornamento si perdono: il messaggio finale lo dice.
 Alla fine il comando scrive cosa è successo e dov'è il backup; exit 7 se il rollback è
 riuscito, 8 se no (con i comandi per finire a mano).
+
+Il «sano» dell'upgrade comprende anche l'Ingress: con `tls: internal` o `custom`, dopo che i
+servizi sono sani, `GET http://<host>/downloads/ca.crt` deve dare 200 con un PEM (il web
+viene riavviato dall'upgrade). Entro il timeout di `--timeout` altrimenti l'upgrade conta come
+salute fallita e parte il rollback di prima (niente exit nuovo). `backup` non riavvia il
+web (ferma solo gli ingressi che scrivono): non cambia.
 
 `--set` e `--values` passano valori aggiuntivi a helm (una prova di rollback si fa, per
 esempio, con un valore che impedisce a un servizio di diventare pronto).

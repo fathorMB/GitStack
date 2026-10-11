@@ -8,6 +8,15 @@
 # gateway: il chart Helm di GIT-8 lo sovrascrive con il nome del Service
 # k3s. La SPA non lo conosce, chiama solo l'URL relativo /api/v1/... (D7,
 # API-first) — vedi web/src/lib/resourcesApi.ts.
+# Schema con cui il client ha raggiunto l'istanza: dietro Traefik (TLS
+# terminato li) viene da X-Forwarded-Proto. Serve a scrivere l'indirizzo
+# giusto negli script di installazione di gs (GIT-171).
+map $http_x_forwarded_proto $gs_scheme {
+    default $scheme;
+    https   https;
+    http    http;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -20,12 +29,52 @@ server {
         return 200 "ok";
     }
 
-    # Certificato della CA interna (N5, GIT-143): il chart monta il ConfigMap
-    # <release>-ca (chiave ca.crt) in /usr/share/nginx/html/downloads. Senza
-    # il file (installazione con certificato del cliente o Let's Encrypt) la
-    # risposta e' 404, non il fallback SPA con un 200 HTML.
+    # Distribuzione di gs (GIT-171, G6) e certificato della CA (N5, GIT-143).
+    # Pubblico: servono per fare login, prima di avere un token. I file stanno
+    # DENTRO l'immagine (build-gs-dist.sh, stage gs del Dockerfile): niente
+    # internet a runtime. Gli script di installazione ricevono l'indirizzo con
+    # cui sono stati raggiunti al posto del segnaposto (sub_filter): dietro
+    # Traefik lo schema viene da X-Forwarded-Proto.
+    # "location = /downloads" (senza slash) resta alla SPA (pagina della UI).
     location ^~ /downloads/ {
+        default_type application/octet-stream;
         try_files $uri =404;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options "nosniff";
+    }
+
+    location = /downloads/SHA256SUMS {
+        default_type text/plain;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options "nosniff";
+    }
+
+    # index.json lo scrive l'entrypoint (30-gs-index.sh) in /tmp: ca_cert
+    # dipende dall istanza.
+    location = /downloads/index.json {
+        alias /tmp/gs-index.json;
+        default_type application/json;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options "nosniff";
+    }
+
+    # Certificato PUBBLICO della CA interna: il chart monta il ConfigMap
+    # <release>-ca (chiave ca.crt) in /etc/gitstack/ca. Senza il file
+    # (certificato del cliente o Let s Encrypt) la risposta e 404, non il
+    # fallback SPA con un 200 HTML.
+    location = /downloads/ca.crt {
+        alias /etc/gitstack/ca/ca.crt;
+        default_type application/x-x509-ca-cert;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options "nosniff";
+    }
+
+    location ~ ^/install-gs.(sh|ps1)$ {
+        root /usr/share/nginx/html;
+        default_type text/plain;
+        sub_filter_types *;
+        sub_filter_once off;
+        sub_filter "__GS_BASE_URL__" "$gs_scheme://$http_host";
         add_header Cache-Control "no-cache";
         add_header X-Content-Type-Options "nosniff";
     }

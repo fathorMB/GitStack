@@ -59,10 +59,10 @@ go test ./...
 
 ### Immagine Docker
 
-`Dockerfile` multi-stage (build Go + distroless statico). Il contesto di build è questa cartella, non la radice del monorepo:
+`Dockerfile` multi-stage (build Go + distroless statico). Il contesto di build è la radice del monorepo (GIT-184):
 
 ```
-docker build -f services/gateway/Dockerfile services/gateway
+docker build -f services/gateway/Dockerfile .
 ```
 
 Il tag e il push nel registry interno sono compito del job `registry` (GIT-2), non di questo Dockerfile.

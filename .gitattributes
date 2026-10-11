@@ -19,3 +19,9 @@ deploy/gitstack/files/identity-bootstrap-role.sql text eol=lf
 
 # Modelli di contenuto iniziale (GIT-69): testi in LF anche su Windows.
 services/git/internal/templates/** text eol=lf
+
+# Script di installazione di gs serviti dall istanza (GIT-171): LF anche su Windows.
+web/deploy/install-gs.ps1 text eol=lf
+
+# Lo script Python copiato sulla VM dall'e2e (GIT-181): LF anche sul checkout Windows del board.
+deploy/test-vm/e2e/*.py text eol=lf

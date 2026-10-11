@@ -42,6 +42,13 @@
 #                                             un'installazione idempotente
 #                                             non lo cambia, k3s non è stato
 #                                             riavviato/reinstallato.
+#   mirror-dest-start <porta> <utente> <token>  (GIT-181) Repo bare servito via HTTPS
+#                                             da mirror-dest.py col certificato
+#                                             della VM, in ascolto sulla porta.
+#   mirror-dest-stop | mirror-dest-ref <ref> | mirror-dest-refs
+#   mirror-enable <release> <ns> <ip>         git si fida della CA della VM per i
+#                                             mirror; core ammette <ip> (egress).
+#   mirror-disable <release> <ns>             Toglie il cablaggio.
 #   collect-diagnostics <cartella>           Raccoglie journalctl -u k3s,
 #                                             kubectl get all -A, describe e
 #                                             log dei pod, eventi, df/free
@@ -275,13 +282,111 @@ collect_diagnostics() {
   echo "OK: diagnostica raccolta in ${dir}"
 }
 
+# --- mirror (GIT-181) --------------------------------------------------------
+#
+# Destinazione di prova per i mirror in push: un repo bare servito via HTTPS da
+# mirror-dest.py (git http-backend) con il certificato e la CA della VM, e il
+# cablaggio per fidarsene: core ammette il suo indirizzo (egress.allow, C8) e il
+# servizio git si fida della CA per i soli push dei mirror.
+
+MIRROR_DIR="/tmp/gitstack-e2e/mirror-dest"
+MIRROR_CA_MAP="gitstack-e2e-mirror-ca"
+TLS_DIR="${GITSTACK_TLS_DIR:-/etc/gitstack/tls}"
+
+mirror_dest_stop() {
+  local pid
+  if [ -f "${MIRROR_DIR}/pid" ]; then
+    pid="$(cat "${MIRROR_DIR}/pid")"
+    if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+      kill "${pid}" 2>/dev/null || true
+    fi
+    rm -f "${MIRROR_DIR}/pid"
+  fi
+  echo "OK: destinazione ferma"
+}
+
+mirror_dest_start() {
+  local port="${1:?porta}" user="${2:?utente}" token="${3:?token}"
+  command -v python3 >/dev/null 2>&1 || fail "python3 non trovato sulla VM"
+  command -v git >/dev/null 2>&1 || fail "git non trovato sulla VM"
+  [ -f /tmp/gitstack-e2e/mirror-dest.py ] || fail "manca /tmp/gitstack-e2e/mirror-dest.py"
+  mirror_dest_stop >/dev/null
+  rm -rf "${MIRROR_DIR}"
+  mkdir -p "${MIRROR_DIR}/repos"
+  git init -q --bare -b main "${MIRROR_DIR}/repos/mirror.git"
+  # Il certificato del server di GitStack (SAN con l'IP della VM, firmato dalla
+  # CA interna); la chiave e' di root: la si copia per l'utente di test.
+  sudo -n install -m 0644 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/server.crt" "${MIRROR_DIR}/server.crt" \
+    || fail "copia di server.crt non riuscita"
+  sudo -n install -m 0600 -o "$(id -u)" -g "$(id -g)" "${TLS_DIR}/server.key" "${MIRROR_DIR}/server.key" \
+    || fail "copia di server.key non riuscita"
+  setsid nohup python3 /tmp/gitstack-e2e/mirror-dest.py "${MIRROR_DIR}/repos" "${port}" \
+    "${MIRROR_DIR}/server.crt" "${MIRROR_DIR}/server.key" "${user}" "${token}" \
+    >"${MIRROR_DIR}/server.log" 2>&1 </dev/null &
+  echo $! >"${MIRROR_DIR}/pid"
+  local _
+  for _ in $(seq 1 30); do
+    if ss -ltnH "( sport = :${port} )" 2>/dev/null | grep -q .; then
+      echo "OK: destinazione in ascolto sulla porta ${port}"
+      return 0
+    fi
+    sleep 0.5
+  done
+  cat "${MIRROR_DIR}/server.log" >&2 || true
+  fail "la destinazione non ascolta sulla porta ${port}"
+}
+
+# Stampa lo sha di un ref della destinazione (vuoto se non esiste).
+mirror_dest_ref() {
+  local ref="${1:?ref}"
+  git --git-dir="${MIRROR_DIR}/repos/mirror.git" rev-parse --verify -q "${ref}" || true
+}
+
+# Stampa i ref della destinazione, per la diagnostica.
+mirror_dest_refs() {
+  git --git-dir="${MIRROR_DIR}/repos/mirror.git" for-each-ref || true
+}
+
+# Fa fidare il servizio git della CA della VM per i mirror e ammette l'indirizzo
+# della destinazione nell'egress di core. Aspetta i rollout.
+mirror_enable() {
+  local release="${1:-gitstack}" ns="${2:-default}" ip="${3:?indirizzo}"
+  k3s kubectl -n "${ns}" create configmap "${MIRROR_CA_MAP}" --from-file=ca.crt="${TLS_DIR}/ca.crt" \
+    --dry-run=client -o yaml | k3s kubectl -n "${ns}" apply -f - || fail "ConfigMap della CA non creato"
+  k3s kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
+    '{"spec":{"template":{"spec":{"volumes":[{"name":"mirror-ca","configMap":{"name":"'"${MIRROR_CA_MAP}"'"}}],"containers":[{"name":"git","env":[{"name":"GITSTACK_GIT_MIRROR_CA_FILE","value":"/etc/gitstack/mirror-ca/ca.crt"}],"volumeMounts":[{"name":"mirror-ca","mountPath":"/etc/gitstack/mirror-ca","readOnly":true}]}]}}}}' \
+    || fail "patch del deployment git non riuscito"
+  k3s kubectl -n "${ns}" set env "deployment/${release}-core" "GITSTACK_EGRESS_ALLOW=${ip}/32" \
+    || fail "egress.allow di core non impostato"
+  k3s kubectl -n "${ns}" rollout status "deployment/${release}-git" --timeout=240s || fail "rollout di git non riuscito"
+  k3s kubectl -n "${ns}" rollout status "deployment/${release}-core" --timeout=240s || fail "rollout di core non riuscito"
+  echo "OK: git si fida della CA della VM per i mirror, core ammette ${ip}"
+}
+
+# Toglie quanto ha messo mirror_enable.
+mirror_disable() {
+  local release="${1:-gitstack}" ns="${2:-default}"
+  # $patch è una direttiva del patch strategico, non una variabile.
+  # shellcheck disable=SC2016
+  k3s kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
+    '{"spec":{"template":{"spec":{"volumes":[{"name":"mirror-ca","$patch":"delete"}],"containers":[{"name":"git","env":[{"name":"GITSTACK_GIT_MIRROR_CA_FILE","$patch":"delete"}],"volumeMounts":[{"name":"mirror-ca","mountPath":"/etc/gitstack/mirror-ca","$patch":"delete"}]}]}}}}' \
+    || true
+  k3s kubectl -n "${ns}" set env "deployment/${release}-core" GITSTACK_EGRESS_ALLOW- || true
+  k3s kubectl -n "${ns}" delete configmap "${MIRROR_CA_MAP}" --ignore-not-found || true
+  k3s kubectl -n "${ns}" rollout status "deployment/${release}-git" --timeout=240s || true
+  k3s kubectl -n "${ns}" rollout status "deployment/${release}-core" --timeout=240s || true
+  echo "OK: cablaggio dei mirror rimosso"
+}
+
 # --- main -------------------------------------------------------------
 
 usage() {
   cat <<'EOF'
 Uso: remote.sh <sottocomando> [argomenti]
 Sottocomandi: clean-check, jetstream-count, postgres-secret-hash,
-admin-password, admin-secret-state, k3s-active-since, collect-diagnostics. Vedi l'intestazione del file.
+admin-password, admin-secret-state, k3s-active-since, collect-diagnostics,
+mirror-dest-start, mirror-dest-stop, mirror-dest-ref, mirror-dest-refs,
+mirror-enable, mirror-disable. Vedi l'intestazione del file.
 EOF
 }
 
@@ -298,6 +403,12 @@ main() {
     admin-secret-state) admin_secret_state "$@" ;;
     k3s-active-since) k3s_active_since "$@" ;;
     collect-diagnostics) collect_diagnostics "$@" ;;
+    mirror-dest-start) mirror_dest_start "$@" ;;
+    mirror-dest-stop) mirror_dest_stop "$@" ;;
+    mirror-dest-ref) mirror_dest_ref "$@" ;;
+    mirror-dest-refs) mirror_dest_refs "$@" ;;
+    mirror-enable) mirror_enable "$@" ;;
+    mirror-disable) mirror_disable "$@" ;;
     -h|--help) usage ;;
     *)
       echo "remote.sh: sottocomando sconosciuto: ${cmd}" >&2

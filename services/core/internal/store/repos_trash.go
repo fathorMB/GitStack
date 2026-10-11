@@ -78,7 +78,7 @@ func (s *Store) ListDeletedRepos(ctx context.Context, ownerName *string, now tim
 		WHERE r.deleted_at IS NOT NULL AND r.deleted_at > $1`
 	args := []any{now.Add(-Retention)}
 	if ownerName != nil {
-		q += ` AND r.owner_name = $2`
+		q += ` AND lower(r.owner_name) = lower($2)`
 		args = append(args, *ownerName)
 	}
 	rows, err := s.pool.Query(ctx, q+` ORDER BY r.deleted_at DESC, r.resource_id ASC`, args...)

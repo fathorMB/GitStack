@@ -299,6 +299,14 @@ git:
       # Secret esistente con la chiave `ssh_host_ed25519_key`; vuoto = generata
       # una sola volta dal chart (<release>-git-ssh-host-key, resource-policy keep).
       existingSecret: ""
+  # Mirror in push (V8): CA privata per le destinazioni.
+  mirror:
+    # Nome di un ConfigMap (stesso namespace) con la chiave ca.crt: file PEM di
+    # CA di cui git si fida per i soli push dei mirror, per esempio la CA
+    # interna di un secondo GitStack. SOSTITUISCE le CA di sistema per quei
+    # push: per spingere anche su GitHub il file deve contenere anche le CA
+    # pubbliche. Vuoto = CA di sistema (GitHub e simili).
+    caConfigMap: ""
   resources:
     requests:
       cpu: 25m

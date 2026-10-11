@@ -24,6 +24,8 @@ const (
 	// DurableIssueLinks: collegamento commit↔issue e chiusura con fixes #n
 	// (M-06/C, internal/issuelinks).
 	DurableIssueLinks = "core-issue-linker"
+	// DurableMirrors: mirror in push verso un altro server Git (V8, internal/mirrors).
+	DurableMirrors = "core-mirrors-git"
 )
 
 // Handler gestisce un git.push. Un errore fa ritentare il messaggio (Nak con

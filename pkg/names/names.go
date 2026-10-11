@@ -16,13 +16,14 @@ const MaxRepoNameLen = 100
 var (
 	ErrEmpty       = errors.New("repository name must not be empty")
 	ErrTooLong     = errors.New("repository name must be at most 100 characters long")
-	ErrInvalidChar = errors.New("repository name may only contain lowercase letters, digits, '-', '_' and '.'")
+	ErrInvalidChar = errors.New("repository name may only contain letters, digits, '-', '_' and '.'")
 	ErrLeadingDot  = errors.New("repository name must not start with '.'")
 	ErrGitSuffix   = errors.New("repository name must not end with '.git'")
 )
 
 // ValidateRepoName checks name against rule R11. Uppercase letters are
-// rejected, never converted. It returns nil or one of the Err* sentinels.
+// allowed and kept as written: uniqueness per owner ignores case, which the
+// database enforces. It returns nil or one of the Err* sentinels.
 func ValidateRepoName(name string) error {
 	if name == "" {
 		return ErrEmpty
@@ -32,7 +33,7 @@ func ValidateRepoName(name string) error {
 	}
 	for i := 0; i < len(name); i++ {
 		c := name[i]
-		ok := (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+		ok := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
 			c == '-' || c == '_' || c == '.'
 		if !ok {
 			return ErrInvalidChar
@@ -41,7 +42,7 @@ func ValidateRepoName(name string) error {
 	if name[0] == '.' {
 		return ErrLeadingDot
 	}
-	if strings.HasSuffix(name, ".git") {
+	if strings.HasSuffix(strings.ToLower(name), ".git") {
 		return ErrGitSuffix
 	}
 	return nil

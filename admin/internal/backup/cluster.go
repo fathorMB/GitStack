@@ -34,6 +34,9 @@ type Cluster interface {
 	WaitStopped(ctx context.Context, component string) error
 	// WaitReady aspetta che il Deployment abbia le repliche pronte.
 	WaitReady(ctx context.Context, deployment string) error
+	// Restart fa ripartire i pod del Deployment (rollout restart); chi
+	// chiama aspetta poi WaitReady.
+	Restart(ctx context.Context, deployment string) error
 	// PGExec esegue `args` nel pod di Postgres con stdin/stdout collegati.
 	PGExec(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error
 	// VolumePath è la cartella sull'host del volume del PVC (ErrNotFound se
@@ -142,6 +145,11 @@ func (k *KubectlCluster) WaitStopped(ctx context.Context, component string) erro
 // WaitReady implementa Cluster.
 func (k *KubectlCluster) WaitReady(ctx context.Context, deployment string) error {
 	return k.run(ctx, nil, io.Discard, "rollout", "status", "deployment/"+deployment, "--timeout=300s")
+}
+
+// Restart implementa Cluster.
+func (k *KubectlCluster) Restart(ctx context.Context, deployment string) error {
+	return k.run(ctx, nil, io.Discard, "rollout", "restart", "deployment/"+deployment)
 }
 
 // PGExec implementa Cluster.

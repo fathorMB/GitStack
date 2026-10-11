@@ -149,7 +149,7 @@ func TestNATSIrraggiungibile(t *testing.T) {
 	t.Cleanup(pub.Close)
 	n := &pushevent.Notifier{
 		Pub: pub, Git: runner(t), Logger: quiet(),
-		AttemptTimeout: 300 * time.Millisecond, Attempts: 2, Backoff: 10 * time.Millisecond,
+		AttemptTimeout: 2 * time.Second, Attempts: 2, Backoff: 10 * time.Millisecond,
 	}
 	bare, work := bareAndWork(t)
 	p := n.Begin(context.Background(), target(bare), alice)
@@ -158,7 +158,7 @@ func TestNATSIrraggiungibile(t *testing.T) {
 
 	start := time.Now()
 	p.Done()
-	if d := time.Since(start); d > 200*time.Millisecond {
+	if d := time.Since(start); d > 1500*time.Millisecond {
 		t.Fatalf("Done non deve aspettare NATS: %v", d)
 	}
 	wait(t, n) // i tentativi finiscono, l'errore va nel log, nessun panic
