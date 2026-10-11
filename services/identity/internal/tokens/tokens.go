@@ -28,6 +28,8 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+
+	"github.com/fathorMB/GitStack/pkg/scopes"
 )
 
 const (
@@ -62,9 +64,9 @@ var (
 const base62Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
 // buildScopeMap crea una mappa da scope stringa a bool per lookup rapido.
-func buildScopeMap(scopes []string) map[string]bool {
-	m := make(map[string]bool, len(scopes))
-	for _, s := range scopes {
+func buildScopeMap(list []string) map[string]bool {
+	m := make(map[string]bool, len(list))
+	for _, s := range list {
 		m[s] = true
 	}
 	return m
@@ -80,17 +82,6 @@ var KnownScopes = []string{
 	"admin:org",
 	"read:resource",
 	"write:resource",
-}
-
-// scopeImplications contiene le regole di implicazione tra scope:
-//
-//	write:X implica read:X
-//	admin:org implica write:org e read:org
-var scopeImplications = map[string][]string{
-	"write:user":     {"read:user"},
-	"write:org":      {"read:org"},
-	"admin:org":      {"write:org", "read:org"},
-	"write:resource": {"read:resource"},
 }
 
 // Generate produce un nuovo token personale.
@@ -227,45 +218,12 @@ func ParseScopes(input []string) ([]string, error) {
 	return result, nil
 }
 
-// Satisfies verifica se l'insieme di scope forniti (have) soddisfa
-// lo scope richiesto (need), considerando le implicazioni definite:
-//
-//	write:X implica read:X
-//	admin:org implica write:org e read:org
-//
-// Ritorna true se:
-//   - have contiene esattamente need, oppure
-//   - have contiene uno scope che implica need (ricorsivamente).
+// Satisfies verifica se l'insieme di scope forniti (have) soddisfa lo scope
+// richiesto (need). La regola di implicazione (write:X implica read:X,
+// admin:org implica write:org e read:org) è in pkg/scopes, unica fonte
+// condivisa con gateway e git.
 func Satisfies(have []string, need string) bool {
-	haveMap := buildScopeMap(have)
-
-	// Caso base: lo scope è direttamente presente.
-	if haveMap[need] {
-		return true
-	}
-
-	// Cerca se uno degli scope in have implica need.
-	for _, s := range have {
-		if implies(s, need, haveMap) {
-			return true
-		}
-	}
-	return false
-}
-
-// implies verifica che lo scope s implichi target, seguendo la catena
-// di implicazioni (anche transitiva).
-func implies(s, target string, haveMap map[string]bool) bool {
-	implications := scopeImplications[s]
-	for _, imp := range implications {
-		if imp == target {
-			return true
-		}
-		if haveMap[imp] && implies(imp, target, haveMap) {
-			return true
-		}
-	}
-	return false
+	return scopes.Grants(have, need)
 }
 
 // base62Encode codifica byte slice in stringa base62.

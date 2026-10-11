@@ -135,6 +135,9 @@ func setupWith(t *testing.T, limits receiverules.Limits, events *pushevent.Notif
 			"gst_alice_ro": {UserID: alice, Username: "alice", Scopes: []string{access.ScopeRead}},
 			// bob ha il ruolo write su priv ma il token è solo read.
 			"gst_bob_ro": {UserID: bob, Username: "bob", Scopes: []string{access.ScopeRead}},
+			// alice con un token di sola scrittura (write:resource senza
+			// read:resource letterale): write implica read (GIT-190).
+			"gst_alice_wo": {UserID: alice, Username: "alice", Scopes: []string{access.ScopeWrite}},
 		},
 		roles: map[[2]string]string{
 			{alice, repoPriv}: "admin", {alice, repoInt}: "admin", {alice, repoGone}: "admin", {alice, repoArch}: "admin",
@@ -383,4 +386,20 @@ func TestDumbProtocolRifiutato(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("senza service: %d, voglio 403", resp.StatusCode)
 	}
+}
+
+// GIT-190: write:resource implica read:resource anche per git. Un token con
+// solo write:resource clona, fa fetch e push; uno con solo read:resource non
+// fa push (403, vedi TestSoloLetturaNonPuoPushare).
+func TestTokenSoloScritturaClonaFetchaEPusha(t *testing.T) {
+	e := setup(t)
+	work := t.TempDir()
+	c := filepath.Join(work, "c")
+	mustGit(t, work, "clone", e.url("alice", "gst_alice_wo", "/alice/priv.git"), c)
+	mustGit(t, c, "fetch", "origin")
+	if out := mustGit(t, c, "ls-remote", "origin"); !strings.Contains(out, "refs/heads/main") {
+		t.Errorf("ls-remote senza main:\n%s", out)
+	}
+	mustGit(t, c, "commit", "--allow-empty", "-m", "vuoto")
+	mustGit(t, c, "push", "origin", "HEAD")
 }

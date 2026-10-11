@@ -10,6 +10,8 @@ package security
 
 import (
 	"strings"
+
+	"github.com/fathorMB/GitStack/pkg/scopes"
 )
 
 // CredentialKind è il tipo di credenziale accettato da una rotta.
@@ -216,32 +218,10 @@ func isParam(s string) bool {
 	return len(s) > 2 && s[0] == '{' && s[len(s)-1] == '}'
 }
 
-// Grants dice se l'insieme di scope del token soddisfa lo scope richiesto:
-// `write:*` include `read:*` dello stesso ambito e `admin:org` include
-// `write:org` (e quindi `read:org`), come da catalogo TokenScope del
-// contratto.
+// Grants dice se l'insieme di scope del token soddisfa lo scope richiesto.
+// La regola di implicazione è in pkg/scopes (unica fonte con identity e git).
 func Grants(have []string, required string) bool {
-	for _, h := range have {
-		if h == required || implies(h, required) {
-			return true
-		}
-	}
-	return false
-}
-
-func implies(have, required string) bool {
-	hAct, hScope, ok := strings.Cut(have, ":")
-	rAct, rScope, ok2 := strings.Cut(required, ":")
-	if !ok || !ok2 || hScope != rScope {
-		return false
-	}
-	switch hAct {
-	case "admin":
-		return rAct == "write" || rAct == "read"
-	case "write":
-		return rAct == "read"
-	}
-	return false
+	return scopes.Grants(have, required)
 }
 
 // Missing ritorna gli scope richiesti che l'insieme non soddisfa.
