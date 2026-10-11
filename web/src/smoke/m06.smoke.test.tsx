@@ -6,8 +6,8 @@
 // VITE_SMOKE_*. Senza quelle variabili i test sono saltati, così `pnpm test`
 // resta veloce e senza stack. Stesso schema di issues.smoke.test.tsx.
 //
-// Pagine dei mockup: 05 (centro notifiche) e 21 (impostazioni delle
-// notifiche), con le rotte vere di App.tsx.
+// Pagine dei mockup: 05 (centro notifiche), 11 (webhook del repo) e 21
+// (impostazioni delle notifiche), con le rotte vere di App.tsx.
 import { configure, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -18,7 +18,10 @@ import { AuthProvider } from '../routes/auth';
 const gateway = import.meta.env.VITE_SMOKE_GATEWAY as string | undefined;
 const token = import.meta.env.VITE_SMOKE_TOKEN as string | undefined;
 
-const enabled = Boolean(gateway && token);
+const hookRepo = import.meta.env.VITE_SMOKE_HOOK_REPO as string | undefined;
+const hookUrl = import.meta.env.VITE_SMOKE_HOOK_URL as string | undefined;
+
+const enabled = Boolean(gateway && token && hookRepo && hookUrl);
 
 // Base dell'API: il gateway vero invece del `/api` relativo del container web.
 vi.mock('../lib/http', async (importOriginal) => ({
@@ -36,6 +39,14 @@ const pages: { screen: string; path: string; expect: (v: ReturnType<typeof withi
       expect(await v.findByRole('heading', { name: 'Notifications' })).toBeInTheDocument();
       expect((await v.findAllByTestId('notification')).length).toBeGreaterThan(0);
       expect(await v.findByRole('group', { name: 'Reason' })).toBeInTheDocument();
+    },
+  },
+  {
+    screen: '11 webhook del repo (elenco con indirizzo, eventi e ultima consegna)',
+    path: `/${hookRepo}/webhooks`,
+    expect: async (v) => {
+      expect(await v.findByRole('heading', { name: 'Webhooks' })).toBeInTheDocument();
+      expect(await v.findByText(hookUrl as string)).toBeInTheDocument();
     },
   },
   {

@@ -52,6 +52,12 @@ type App struct {
 	TuneUpgrade func(*upgrade.Options)
 	// LocalAddrs, se non nil, sostituisce gli indirizzi delle interfacce (test).
 	LocalAddrs func() []string
+	// ServingTimeout e ServingPoll regolano l'attesa dell'Ingress dopo un
+	// restore e un upgrade (default 120 s e 2 s; test: valori brevi).
+	ServingTimeout time.Duration
+	ServingPoll    time.Duration
+	// CheckServing, se non nil, sostituisce la verifica HTTP di un tentativo (test).
+	CheckServing func(context.Context, *config.Config) error
 	// Now, se non nil, sovrascrive l'orologio di backup (test).
 	Now func() time.Time
 }

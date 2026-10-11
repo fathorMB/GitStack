@@ -28,7 +28,7 @@ import (
 
 var notificationReasons = map[string]bool{
 	"assigned": true, "mentioned": true, "participating": true, "subscribed": true,
-	"commit_linked": true, "state_change": true, "webhook": true,
+	"commit_linked": true, "state_change": true, "webhook": true, "mirror": true,
 }
 
 type inboxFilter struct {
@@ -158,7 +158,7 @@ func inboxWhere(sc inboxScope, f inboxFilter) (string, []any) {
 	}
 	if f.hasRepo {
 		args = append(args, f.repoOwner, f.repoName)
-		where += fmt.Sprintf(" AND r.owner_name = $%d AND r.name = $%d", len(args)-1, len(args))
+		where += fmt.Sprintf(" AND lower(r.owner_name) = lower($%d) AND lower(r.name) = lower($%d)", len(args)-1, len(args))
 	}
 	return where, args
 }
@@ -370,6 +370,8 @@ func notificationSummary(reason, event, actor, repo string, number *int64, title
 		return "Un commit cita " + where
 	case "webhook":
 		return "Un webhook che gestisci è stato disattivato dai fallimenti"
+	case "mirror":
+		return "Un mirror di " + repo + " si è fermato: la destinazione ha una storia diversa"
 	}
 	switch event {
 	case "issue.created":

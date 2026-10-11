@@ -15,11 +15,62 @@ import (
 	"github.com/fathorMB/GitStack/admin/internal/backup"
 	"github.com/fathorMB/GitStack/admin/internal/backupstate"
 	"github.com/fathorMB/GitStack/admin/internal/config"
+	"github.com/fathorMB/GitStack/admin/internal/status"
 )
 
 // ExitRefused è il codice di un restore (o backup) rifiutato con motivo:
 // versione diversa, archivio corrotto o cifrato senza chiave.
 const ExitRefused = 6
+
+// ExitNotServing è il codice di un restore completato nei dati ma con
+// l'istanza che non risponde attraverso l'Ingress entro il timeout
+// (/api/healthz o /downloads/ca.crt).
+const ExitNotServing = 9
+
+// Attesa dell'Ingress dopo un restore: un tentativo ogni 2 s, ciascuno con
+// timeout di 5 s, al massimo 120 s.
+const (
+	defaultServingTimeout = 120 * time.Second
+	defaultServingPoll    = 2 * time.Second
+)
+
+// waitServing ripete status.CheckServing finché passa o scade il timeout.
+func (a *App) waitServing(ctx context.Context, cfg *config.Config) error {
+	timeout, poll := a.ServingTimeout, a.ServingPoll
+	if timeout <= 0 {
+		timeout = defaultServingTimeout
+	}
+	if poll <= 0 {
+		poll = defaultServingPoll
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	var last error
+	for {
+		actx, acancel := context.WithTimeout(ctx, 5*time.Second)
+		var err error
+		if a.CheckServing != nil {
+			err = a.CheckServing(actx, cfg)
+		} else {
+			err = status.CheckServing(actx, cfg, a.HTTP)
+		}
+		acancel()
+		if err == nil {
+			return nil
+		}
+		// Un tentativo interrotto dalla scadenza del timeout complessivo non
+		// dice nulla sull'Ingress: se c'è già una risposta vera (per esempio
+		// HTTP 502), resta quella l'ultimo errore.
+		if last == nil || ctx.Err() == nil {
+			last = err
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("nessuna risposta valida entro %s; ultimo errore: %v", roundDur(timeout), last)
+		case <-time.After(poll):
+		}
+	}
+}
 
 // defaultConfigDir è la cartella della configurazione dell'installazione.
 const defaultConfigDir = "/etc/gitstack"
@@ -148,6 +199,29 @@ func (a *App) backupStateWrite(cfgPath string, success bool, path string, err er
 	_ = backupstate.Write(cfgDir, s)
 }
 
+// publishTLS lancia `gitstack-tls ensure` sulla cartella tls ripristinata,
+// senza opzioni: nomi e IP vengono da tls.conf della nuova installazione, quindi
+// il certificato del server è riemesso (con la CA del backup) se i SAN o la
+// firma non combaciano.
+func (a *App) publishTLS(ctx context.Context, configDir string) error {
+	tlsDir := a.Getenv("GITSTACK_TLS_DIR")
+	if tlsDir == "" {
+		tlsDir = filepath.Join(configDir, "tls")
+	}
+	tlsBin := a.Getenv("GITSTACK_TLS_BIN")
+	if tlsBin == "" {
+		tlsBin = tlsToolPath
+	}
+	out, err := a.Runner.Run(ctx, []string{"GITSTACK_TLS_DIR=" + tlsDir}, tlsBin, "ensure")
+	if len(out) > 0 {
+		_, _ = a.Stdout.Write(out)
+	}
+	if err != nil {
+		return fmt.Errorf("gitstack-tls ensure: %w", err)
+	}
+	return nil
+}
+
 func runRestore(ctx context.Context, a *App, args []string) int {
 	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -197,9 +271,29 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	}
 	o := a.options(cfg, path, key)
 	o.Cluster, o.DestDir = cl, *dest
+	// Con TLS internal o custom la CA e il certificato ripristinati su disco
+	// vanno pubblicati nel cluster; con insecure e letsencrypt niente.
+	if cfg.TLS == "internal" || cfg.TLS == "custom" {
+		o.PublishTLS = func(ctx context.Context) error { return a.publishTLS(ctx, o.ConfigDir) }
+	}
+	o.WaitServing = func(ctx context.Context) error { return a.waitServing(ctx, cfg) }
 	if err := backup.Restore(ctx, o, archive); err != nil {
+		var se *backup.ServingError
+		if errors.As(err, &se) {
+			a.errorf("restore: %v", err)
+			return ExitNotServing
+		}
 		return a.backupFailure("restore", err)
 	}
 	_, _ = fmt.Fprintln(a.Stdout, "Restore completato: database, repo, allegati, Secret e configurazione ripristinati.")
 	return ExitOK
+}
+
+// roundDur formatta una durata per i messaggi: al secondo sopra il secondo,
+// altrimenti con la sua precisione (300ms, non 0s).
+func roundDur(d time.Duration) time.Duration {
+	if d >= time.Second {
+		return d.Round(time.Second)
+	}
+	return d
 }

@@ -1,6 +1,6 @@
 import { CircleDot, FileCode, Link as LinkIcon, Terminal } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CopyButton, ErrorAlert } from '../../components';
 import { countIssues } from '../../lib/issuesApi';
 import { fetchRepo } from '../../lib/reposApi';
@@ -34,6 +34,17 @@ export function RepoPage({ mode = 'tree' }: { mode?: RepoMode }) {
 
 function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: string; splat: string; mode: RepoMode }) {
   const { data, loading, error } = useLoad(() => fetchRepo(owner, repo));
+
+  // R11: l'indirizzo vale con qualsiasi maiuscola; si porta alla forma
+  // canonica salvata (es. /acme/gitstack/issues -> /acme/GitStack/issues).
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (!data || (data.owner.name === owner && data.name === repo)) return;
+    const rest = location.pathname.split('/').slice(3).join('/');
+    const canonical = `/${data.owner.name}/${data.name}${rest ? `/${rest}` : ''}`;
+    void navigate({ pathname: canonical, search: location.search, hash: location.hash }, { replace: true });
+  }, [data, owner, repo, location, navigate]);
 
   // Link alle impostazioni solo a chi ha admin; un errore nel controllo lo nasconde.
   const [admin, setAdmin] = useState(false);

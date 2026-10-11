@@ -151,7 +151,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, he
 // leggendo il formato errore unico ({"error":{"code","message"}}). Un corpo
 // diverso (HTML di un proxy, vuoto) dà un errore con solo lo stato.
 func ErrorFromResponse(status int, body []byte) error {
-	ae := &cmdutil.APIError{Status: status}
+	ae := &cmdutil.APIError{Status: status, Body: body}
 	var e struct {
 		Error struct {
 			Code    string `json:"code"`

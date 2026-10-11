@@ -3,8 +3,11 @@ package cmdutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -33,10 +36,23 @@ type Factory struct {
 	// prioritario).
 	Config func() (*config.Config, error)
 	Tokens func() (config.TokenSource, error)
+	// StoredTokens è il TokenSource senza GS_TOKEN: portachiavi o file.
+	StoredTokens func() (config.TokenSource, error)
 
 	// HTTPClient è il client HTTP di base; nei test si sostituisce.
 	HTTPClient func() *http.Client
+
+	// OpenBrowser apre un URL nel browser (gs auth login --web).
+	OpenBrowser func(url string) error
+	// RunGit esegue git con gli argomenti dati (gs auth setup-git).
+	RunGit func(ctx context.Context, args ...string) error
+	// Executable è il percorso del binario gs in esecuzione.
+	Executable func() (string, error)
 }
+
+// EnvNoKeyring, se impostata, disattiva il portachiavi di sistema: i token
+// vanno solo nel file di configurazione solo-utente.
+const EnvNoKeyring = "GS_NO_KEYRING"
 
 // New costruisce la Factory di produzione.
 func New(version string, io *IOStreams) *Factory {
@@ -58,14 +74,33 @@ func New(version string, io *IOStreams) *Factory {
 		cfg = c
 		return cfg, nil
 	}
-	f.Tokens = func() (config.TokenSource, error) {
+	f.StoredTokens = func() (config.TokenSource, error) {
 		c, err := f.Config()
 		if err != nil {
 			return nil, err
 		}
-		return config.WithEnv(config.FileTokens{Cfg: c}, f.Getenv), nil
+		if f.Getenv(EnvNoKeyring) != "" {
+			return config.FileTokens{Cfg: c}, nil
+		}
+		return config.KeyringTokens{Cfg: c}, nil
+	}
+	f.Tokens = func() (config.TokenSource, error) {
+		st, err := f.StoredTokens()
+		if err != nil {
+			return nil, err
+		}
+		return config.WithEnv(st, f.Getenv), nil
 	}
 	f.HTTPClient = func() *http.Client { return &http.Client{Timeout: 60 * time.Second} }
+	f.OpenBrowser = openBrowser
+	f.RunGit = func(ctx context.Context, args ...string) error {
+		out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
+	f.Executable = os.Executable
 	return f
 }
 
@@ -146,4 +181,22 @@ func ResolveRepo(ctx context.Context, repoFlag string, g gsrepo.Git) (owner, rep
 		}
 	}
 	return "", "", UsageErrorf("repo non determinabile: usa --repo owner/repo o lancia il comando in un repo con remote origin")
+}
+
+// openBrowser apre url con il programma predefinito del sistema.
+func openBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
 }

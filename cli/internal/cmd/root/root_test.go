@@ -71,17 +71,15 @@ func TestHelpElenca12Gruppi(t *testing.T) {
 }
 
 func TestUsoErrato(t *testing.T) {
-	for _, args := range [][]string{{"nonesiste"}, {"--flag-strano"}, {"version", "extra"}, {"api", "user", "--json=nope"}} {
+	for _, args := range [][]string{{"nonesiste"}, {"--flag-strano"}, {"version", "extra"}, {"api", "--json=nope"}} {
 		r := gs(t, nil, args...)
 		if r.code != 2 {
 			t.Errorf("%v: exit %d, atteso 2 (%q)", args, r.code, r.errOut)
 		}
 	}
-	// Le foglie non ancora implementate escono 2.
-	for _, g := range []string{"browse", "blame"} {
-		if r := gs(t, nil, g); r.code != 2 || !strings.Contains(r.errOut, "non ancora implementato") {
-			t.Errorf("%s: %+v", g, r)
-		}
+	// blame senza il file è un uso errato.
+	if r := gs(t, nil, "blame"); r.code != 2 || !strings.Contains(r.errOut, "serve il percorso del file") {
+		t.Errorf("blame: %+v", r)
 	}
 }
 
@@ -107,7 +105,7 @@ func TestApiUserConGSHostETokenDaEnv(t *testing.T) {
 		return result{Run(context.Background(), fac, args), out.String(), errOut.String()}
 	}
 
-	r := f("api", "user")
+	r := f("api", "/auth/session")
 	if r.code != 0 || !strings.Contains(r.out, "alice") {
 		t.Fatalf("%+v", r)
 	}
@@ -115,23 +113,17 @@ func TestApiUserConGSHostETokenDaEnv(t *testing.T) {
 		t.Errorf("richiesta: %q %q %q", path, ua, auth)
 	}
 
-	r = f("api", "user", "--json", "user,authMethod")
-	var got map[string]any
-	if r.code != 0 || json.Unmarshal([]byte(r.out), &got) != nil || len(got) != 2 || got["authMethod"] != "token" {
-		t.Fatalf("--json: %+v", r)
-	}
-	if r = f("api", "user", "--jq", ".user.username"); r.out != "alice\n" || r.code != 0 {
+	if r = f("api", "/auth/session", "--jq", ".user.username"); r.out != "alice\n" || r.code != 0 {
 		t.Fatalf("--jq: %+v", r)
-	}
-	if r = f("api", "user", "--json"); r.code != 0 || !strings.Contains(r.out, "authMethod") {
-		t.Fatalf("--json senza campi: %+v", r)
 	}
 }
 
 func TestHostnameFlagEIstanzaPredefinita(t *testing.T) {
 	var hits int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hits++
+		if !strings.HasSuffix(r.URL.Path, "/meta") {
+			hits++
+		}
 		if r.Header.Get("Authorization") != "Bearer gst_file" {
 			w.WriteHeader(401)
 			_, _ = io.WriteString(w, `{"error":{"code":"unauthenticated","message":"no"}}`)
@@ -159,14 +151,14 @@ func TestHostnameFlagEIstanzaPredefinita(t *testing.T) {
 		return result{Run(context.Background(), fac, args), out.String(), errOut.String()}
 	}
 	// Istanza predefinita (nessun GS_HOST, nessun repo) e --hostname esplicito.
-	if r := run("api", "user"); r.code != 0 {
+	if r := run("api", "/auth/session"); r.code != 0 {
 		t.Fatalf("predefinita: %+v", r)
 	}
-	if r := run("api", "user", "--hostname", srv.URL); r.code != 0 {
+	if r := run("api", "/auth/session", "--hostname", srv.URL); r.code != 0 {
 		t.Fatalf("--hostname: %+v", r)
 	}
 	// --hostname verso un'istanza senza token: exit 4.
-	r := run("api", "user", "--hostname", "altra.test")
+	r := run("api", "/auth/session", "--hostname", "altra.test")
 	if r.code != 4 {
 		t.Errorf("senza token: exit %d (%q)", r.code, r.errOut)
 	}
@@ -204,18 +196,18 @@ func TestCodiciDiUscitaEErroreJSON(t *testing.T) {
 			fac.HTTPClient = srv.Client
 			return result{Run(context.Background(), fac, args), out.String(), errOut.String()}
 		}
-		// Testo normale su stderr.
-		r := run("api", "user")
-		if r.code != c.code || !strings.HasPrefix(r.errOut, "gs: ") || r.out != "" {
+		// Testo normale su stderr; il corpo dell'errore va su stdout (gs api).
+		r := run("api", "/auth/session")
+		if r.code != c.code || !strings.HasPrefix(r.errOut, "gs: ") || strings.TrimSpace(r.out) != c.body {
 			t.Errorf("%d: %+v", c.status, r)
 		}
 		// Modalità JSON: errore JSON su stderr, stdout vuoto.
-		for _, args := range [][]string{{"api", "user", "--json", "user"}, {"api", "user", "--jq", ".user"}} {
+		for _, args := range [][]string{{"api", "/auth/session", "--jq", ".user"}, {"api", "/auth/session", "--jq", "."}} {
 			r = run(args...)
 			var e struct {
 				Error struct{ Code, Message string }
 			}
-			if r.code != c.code || r.out != "" || json.Unmarshal([]byte(r.errOut), &e) != nil || e.Error.Message == "" {
+			if r.code != c.code || strings.TrimSpace(r.out) != c.body || json.Unmarshal([]byte(r.errOut), &e) != nil || e.Error.Message == "" {
 				t.Errorf("%d %v: %+v", c.status, args, r)
 				continue
 			}
@@ -228,13 +220,63 @@ func TestCodiciDiUscitaEErroreJSON(t *testing.T) {
 }
 
 func TestSenzaIstanzaNeToken(t *testing.T) {
-	r := gs(t, nil, "api", "user")
+	r := gs(t, nil, "api", "/auth/session")
 	if r.code != 4 || !strings.Contains(r.errOut, "nessuna istanza") {
 		t.Errorf("%+v", r)
 	}
-	r = gs(t, map[string]string{"GS_HOST": "h.test"}, "api", "user", "--json", "user")
+	r = gs(t, map[string]string{"GS_HOST": "h.test"}, "api", "/auth/session", "--jq", ".user")
 	var e struct{ Error struct{ Code string } }
 	if r.code != 4 || json.Unmarshal([]byte(r.errOut), &e) != nil || e.Error.Code != "not_authenticated" {
 		t.Errorf("%+v", r)
+	}
+}
+
+// Il controllo di versione (G6) è collegato alla radice: major diversa = exit 1,
+// minor diversa = avviso su stderr; version e auth login non lo eseguono.
+func TestCompatCollegata(t *testing.T) {
+	serverVersion := "v2.0.0"
+	var metaHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/meta") {
+			metaHits++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"server_version":"`+serverVersion+`","api_version":"v1"}`)
+			return
+		}
+		session(w, r)
+	}))
+	defer srv.Close()
+	run := func(version string, args ...string) result {
+		io_, _, out, errOut := cmdutil.Test()
+		fac := cmdutil.New(version, io_)
+		dir := t.TempDir()
+		fac.Getenv = func(k string) string {
+			switch k {
+			case config.EnvConfigDir:
+				return dir
+			case "GS_HOST":
+				return srv.URL
+			case "GS_TOKEN":
+				return "gst_x"
+			}
+			return ""
+		}
+		fac.Git = noGit{}
+		fac.HTTPClient = srv.Client
+		return result{Run(context.Background(), fac, args), out.String(), errOut.String()}
+	}
+	if r := run("v1.0.0", "api", "/auth/session"); r.code != 1 || !strings.Contains(r.errOut, "incompatibile") {
+		t.Errorf("major diversa: %+v", r)
+	}
+	serverVersion = "v1.2.0"
+	if r := run("v1.0.0", "api", "/auth/session"); r.code != 0 || !strings.Contains(r.errOut, "avviso") {
+		t.Errorf("minor diversa: %+v", r)
+	}
+	before := metaHits
+	if r := run("v1.0.0", "version"); r.code != 0 {
+		t.Errorf("version: %+v", r)
+	}
+	if metaHits != before {
+		t.Error("version non deve controllare il server")
 	}
 }

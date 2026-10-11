@@ -57,6 +57,10 @@ type Target struct {
 
 // TargetOf ricava il Target da quello che l'autorizzazione ha risolto.
 func TargetOf(dir, owner, name string, ref access.RepoRef) Target {
+	// Nome canonico di core, non quello scritto nell'indirizzo (R11).
+	if ref.Owner != "" && ref.Name != "" {
+		owner, name = ref.Owner, ref.Name
+	}
 	return Target{Dir: dir, RepoID: ref.ID, Owner: owner, Name: name, DefaultBranch: ref.DefaultBranch}
 }
 

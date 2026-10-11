@@ -21,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/mirrorpush"
 	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
@@ -111,6 +112,7 @@ func run(out io.Writer) int {
 		Handler: httpserver.NewRouter(httpserver.Deps{
 			Store:   store,
 			Reads:   gitread.New(runner, store.Dir),
+			Mirror:  mirrorService(runner, store, cfg),
 			Content: newContent(),
 			Secret:  cfg.ServiceSecret,
 			Logger:  logger,
@@ -159,6 +161,17 @@ func run(out io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// mirrorService costruisce l'esecutore dei mirror in push. Con
+// GITSTACK_GIT_MIRROR_CA_FILE git si fida delle CA di quel file per i push dei
+// mirror (GIT_SSL_CAINFO; il resto dell'ambiente di git non cambia).
+func mirrorService(runner *gitrun.Runner, store *repostore.Store, cfg config.Config) *mirrorpush.Service {
+	svc := &mirrorpush.Service{Run: runner, Dir: store.Dir}
+	if cfg.MirrorCAFile != "" {
+		svc.ExtraEnv = []string{"GIT_SSL_CAINFO=" + cfg.MirrorCAFile}
+	}
+	return svc
 }
 
 func parseLevel(s string) (slog.Level, bool) {

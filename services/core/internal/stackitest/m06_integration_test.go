@@ -1238,6 +1238,8 @@ func (e *m06Env) uiSmoke(t *testing.T) {
 	cmd.Env = append(os.Environ(),
 		"VITE_SMOKE_GATEWAY="+e.gateway,
 		"VITE_SMOKE_TOKEN="+e.tokens["alice"],
+		"VITE_SMOKE_HOOK_REPO=alice/"+m06App,
+		"VITE_SMOKE_HOOK_URL="+m06HookHost+"/repo",
 		"CI=1",
 	)
 	out, err := cmd.CombinedOutput()

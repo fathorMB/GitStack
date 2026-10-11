@@ -83,8 +83,8 @@ export async function restoreRepo(repoId: string): Promise<Repository> {
 export function validateRepoName(name: string): string {
   if (name === '') return 'Enter a name.';
   if (name.length > 100) return 'Use at most 100 characters.';
-  if (!/^[a-z0-9_-]/.test(name)) return 'Start with a lowercase letter, a digit, "-" or "_".';
-  if (!/^[a-z0-9._-]+$/.test(name)) return 'Use only lowercase letters, digits, "-", "_" and ".".';
-  if (name.endsWith('.git')) return 'The name cannot end with ".git".';
+  if (!/^[A-Za-z0-9_-]/.test(name)) return 'Start with a letter, a digit, "-" or "_".';
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) return 'Use only letters, digits, "-", "_" and ".".';
+  if (name.toLowerCase().endsWith('.git')) return 'The name cannot end with ".git".';
   return '';
 }

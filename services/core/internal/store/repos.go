@@ -163,7 +163,7 @@ func (t *RepoTx) Update(ctx context.Context, cur Repo, upd RepoUpdate) (Repo, er
 // GetRepoByName legge un repo non eliminato per nome dell'owner e del repo.
 func (s *Store) GetRepoByName(ctx context.Context, ownerName, name string) (Repo, error) {
 	row := s.pool.QueryRow(ctx, `SELECT `+repoCols+` FROM core.repositories r
-		WHERE r.owner_name = $1 AND r.name = $2 AND r.deleted_at IS NULL`, ownerName, name)
+		WHERE lower(r.owner_name) = lower($1) AND lower(r.name) = lower($2) AND r.deleted_at IS NULL`, ownerName, name)
 	repo, err := scanRepo(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Repo{}, ErrNotFound
@@ -186,7 +186,7 @@ func (s *Store) ListRepos(ctx context.Context, visible []uuid.UUID, ownerName *s
 	}
 	if ownerName != nil {
 		args = append(args, *ownerName)
-		where += fmt.Sprintf(" AND r.owner_name = $%d", len(args))
+		where += fmt.Sprintf(" AND lower(r.owner_name) = lower($%d)", len(args))
 	}
 	var total int
 	if err := s.pool.QueryRow(ctx, "SELECT count(*) FROM core.repositories r"+where, args...).Scan(&total); err != nil {

@@ -46,14 +46,16 @@ HELM_VERSION ?= v3.16.3
 # Servizi con un'immagine costruibile in locale (identity e git non hanno
 # ancora un Dockerfile: arrivano con milestone successive a M-01, come nel
 # job "registry" di ci.yml). contesto/Dockerfile identici alla matrice di
-# quel job.
+# quel job. I servizi Go hanno per contesto la RADICE del monorepo (GIT-184):
+# i Dockerfile copiano pkg/ e scripts/docker-local-replace.sh. Lo verifica
+# scripts/check-internal-versions.go.
 DEV_SERVICES := gateway identity core web
 
-CONTEXT_gateway    := services/gateway
+CONTEXT_gateway    := .
 DOCKERFILE_gateway := services/gateway/Dockerfile
-CONTEXT_identity   := services/identity
+CONTEXT_identity   := .
 DOCKERFILE_identity := services/identity/Dockerfile
-CONTEXT_core       := services/core
+CONTEXT_core       := .
 DOCKERFILE_core    := services/core/Dockerfile
 # web: contesto la radice del monorepo (dipende in locale da client/ts, vedi
 # web/Dockerfile), non web/ da sola — stesso motivo del job "registry".

@@ -38,6 +38,7 @@ type APIError struct {
 	Status  int    // stato HTTP
 	Code    string // error.code, vuoto se il corpo non è nel formato unico
 	Message string // error.message
+	Body    []byte // corpo grezzo della risposta (per `gs api`)
 }
 
 func (e *APIError) Error() string {

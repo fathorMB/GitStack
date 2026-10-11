@@ -124,7 +124,7 @@ segreti dei webhook (`m06Leak`).
 | `email_secondo_le_preferenze` | default (menzioni e assegnazioni), preferenza spenta, mai agli agenti, un solo giro (C5) |
 | `webhook_firmati_tentativi_410_e_redeliver` | webhook di repo e di organizzazione firmati (HMAC), payload v1 di issues e push, segreto mai restituito, attesa di un minuto fra i tentativi, 410 che ferma, Redeliver di repo e di organizzazione, permessi (C6, C7) |
 | `destinazioni_ssrf_bloccate` | indirizzi interni rifiutati alla creazione e alla modifica (422 `url_not_allowed`, niente creato); un nome che risolve al loopback è bloccato alla consegna dal client vero, senza ritentare e senza aprire la connessione (C8) |
-| `ui_smoke` | `web/src/smoke/m06.smoke.test.tsx`: pagine 05 (centro notifiche) e 21 (impostazioni delle notifiche) con le rotte vere di App.tsx contro il gateway; la pagina 11 (webhook) si aggiunge quando GIT-139 è su main; `GITSTACK_REQUIRE_UI_SMOKE` trasforma lo Skip in errore |
+| `ui_smoke` | `web/src/smoke/m06.smoke.test.tsx`: pagine 05 (centro notifiche), 11 (webhook del repo) e 21 (impostazioni delle notifiche) con le rotte vere di App.tsx contro il gateway; `GITSTACK_REQUIRE_UI_SMOKE` trasforma lo Skip in errore |
 | `conservazione_e_perdita_di_accesso` | le lette spariscono dopo 90 giorni, le non lette restano; perso l'accesso al vault, le sue notifiche spariscono (C9) |
 
 ## VM di test

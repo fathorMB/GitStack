@@ -117,7 +117,7 @@ Il chart parla HTTP di default (job k3d della CI, `helm install` a mano); l'inst
 | `ingress.tls.secretName` | Secret `kubernetes.io/tls` creato dall'installer (`gitstack-tls`): CA interna o certificato del cliente |
 | (TLSStore `default`) | con `secretName` il chart crea un `TLSStore` Traefik `default` nel namespace della release che punta a quel Secret: il certificato dell'installer vale anche per chi si collega per IP (senza SNI, Traefik altrimenti serve il suo "TRAEFIK DEFAULT CERT" perche' con ServiceLB l'indirizzo locale e' quello del pod). Non si crea con `certResolver` (`templates/tlsstore.yaml`) |
 | `ingress.tls.certResolver` | resolver ACME di Traefik (Let's Encrypt), nessun Secret |
-| `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (308) manda tutto a https (`templates/ingress-redirect.yaml`) |
+| `ingress.tls.redirect` (`true`) / `redirectPort` | su `web` (80) un `IngressRoute` + `Middleware redirectScheme` (redirect permanente: 301 per GET/HEAD, 308 per gli altri metodi (Traefik redirectScheme)) manda tutto a https (`templates/ingress-redirect.yaml`) |
 | `ingress.tls.caConfigMap` | ConfigMap con `ca.crt`: il pod `web` lo monta in `/etc/gitstack/ca` e nginx lo serve su `/downloads/ca.crt` (i binari di `gs` stanno nell'immagine, vedi sotto), e la 80 serve `/downloads/ca.crt` senza redirect (serve a fidarsi di HTTPS) |
 
 `core.env.publicUrl` e `identity.oidc.publicUrl` vanno impostati con l'URL https pubblico: l'installer lo fa. I servizi non lo usano per parlarsi (nomi dei Service). Traefik inoltra a gateway e identity con `X-Forwarded-Proto: https`. Dettagli per l'operatore: [`../../docs/tls.md`](../../docs/tls.md).
@@ -149,6 +149,7 @@ Deployment `<release>-git` (strategia `Recreate`: il PVC è `ReadWriteOnce`; `fs
 | `git.resources` | 25m / 32Mi, limite 256Mi | Risorse del container. |
 | `git.ssh.enabled` | `true` | Server SSH integrato del servizio git (GIT-71): crea il Service `<release>-git-ssh` (`LoadBalancer`, in k3s ServiceLB apre la porta sul nodo), la porta del container e il Secret della chiave host montato in `/etc/gitstack/ssh`. |
 | `git.ssh.port` | `2222` | Porta SSH esposta (e `GITSTACK_CORE_SSH_PORT` di core). Mai la 22: l'installer non modifica l'sshd dell'host (R7). |
+| `git.mirror.caConfigMap` | `""` | Mirror in push: nome di un ConfigMap con `ca.crt` (CA privata, per esempio quella interna di un secondo GitStack), montato in `/etc/gitstack/mirror-ca` con `GITSTACK_GIT_MIRROR_CA_FILE`. Sostituisce le CA di sistema per i soli push dei mirror: per spingere anche su GitHub il file deve contenere anche le CA pubbliche. Vuoto = CA di sistema. |
 | `git.ssh.hostKey.existingSecret` | vuoto | Secret esistente con la chiave `ssh_host_ed25519_key`; vuoto = generata una sola volta (`<release>-git-ssh-host-key`, `lookup` + `helm.sh/resource-policy: keep`, così i client non vedono mai "host key changed"). |
 | `core.env.publicUrl` | vuoto | `GITSTACK_CORE_PUBLIC_URL`, emesso solo se valorizzato. |
 | `core.env.sshHost` | vuoto | `GITSTACK_CORE_SSH_HOST`, emesso solo se valorizzato. |

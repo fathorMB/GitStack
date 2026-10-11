@@ -379,7 +379,84 @@ func (s *apiServer) runSearch(ctx context.Context, p searchParams) ([]searchRow,
 	if err != nil {
 		return nil, 0, issueViews{}, err
 	}
+	v.commits, err = s.linkedCommitCounts(ctx, tx, p.caller, list)
+	if err != nil {
+		return nil, 0, issueViews{}, err
+	}
 	return list, total, v, nil
+}
+
+// linkedCommitCounts conta, per ogni issue della pagina, gli sha distinti degli
+// eventi commit_linked e closed_by_commit. C1: un commit di un altro repo si
+// conta solo se il chiamante legge quel repo (come nella cronologia).
+func (s *apiServer) linkedCommitCounts(ctx context.Context, q querier, caller uuid.UUID, list []searchRow) (map[uuid.UUID]int, error) {
+	out := map[uuid.UUID]int{}
+	if len(list) == 0 {
+		return out, nil
+	}
+	ids := make([]uuid.UUID, len(list))
+	repoOf := make(map[uuid.UUID]uuid.UUID, len(list))
+	for i, x := range list {
+		ids[i] = x.ID
+	}
+	rows, err := q.Query(ctx, `SELECT e.issue_id, i.repo_id, e.data->'commit'->>'sha', coalesce(e.data->'commit'->>'repositoryId', '')
+		FROM core.issue_events e JOIN core.issues i ON i.id = e.issue_id
+		WHERE e.issue_id = ANY($1) AND e.type IN ('commit_linked', 'closed_by_commit')`, ids)
+	if err != nil {
+		return nil, err
+	}
+	type ev struct {
+		issue uuid.UUID
+		sha   string
+		repo  string
+	}
+	var evs []ev
+	for rows.Next() {
+		var issueID, repoID uuid.UUID
+		var sha *string
+		var repo string
+		if err := rows.Scan(&issueID, &repoID, &sha, &repo); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if sha == nil || *sha == "" {
+			continue
+		}
+		repoOf[issueID] = repoID
+		evs = append(evs, ev{issueID, *sha, repo})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	seen := map[uuid.UUID]map[string]bool{}
+	ok := map[uuid.UUID]bool{}
+	for _, e := range evs {
+		if e.repo != "" && e.repo != repoOf[e.issue].String() {
+			rid, err := uuid.Parse(e.repo)
+			if err != nil {
+				continue
+			}
+			allowed, known := ok[rid]
+			if !known {
+				if allowed, err = s.repoIdentity.HasRole(ctx, caller, rid, "read"); err != nil {
+					return nil, fmt.Errorf("permesso read sul repo del commit: %w", err)
+				}
+				ok[rid] = allowed
+			}
+			if !allowed {
+				continue
+			}
+		}
+		if seen[e.issue] == nil {
+			seen[e.issue] = map[string]bool{}
+		}
+		if !seen[e.issue][e.sha] {
+			seen[e.issue][e.sha] = true
+			out[e.issue]++
+		}
+	}
+	return out, nil
 }
 
 func writeSearchFailure(w http.ResponseWriter, what string, err error) {

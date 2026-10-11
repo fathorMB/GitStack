@@ -271,7 +271,7 @@ function IssueRow({ issue, base }: { issue: IssueSummary; base: string }) {
               <Flag size={13} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> {issue.milestone.title}
             </>
           ) : null}
-          <LinkedCommitsCount count={(issue as IssueSummary & { linkedCommitCount?: number }).linkedCommitCount ?? 0} />
+          <LinkedCommitsCount count={issue.linkedCommitCount} />
         </div>
       </div>
       <span className="iright row" style={{ gap: 8 }}>
