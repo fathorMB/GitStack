@@ -53,18 +53,18 @@ hosts/<host>.yaml      user, git_protocol e, solo se non c'è il portachiavi, to
 
 Il `:` di `host:porta` nel nome file diventa `_`. File `0600` e cartelle `0700` su Unix; su Windows la DACL del file (e delle cartelle) è protetta e ha un'unica voce, per l'utente corrente (`os.WriteFile` con `0600` su Windows non protegge niente). La scrittura è atomica (file temporaneo accanto, poi rename). I test lo verificano (`internal/config`: modo su Unix, lettura della DACL su Windows).
 
-**Token.** L'interfaccia `config.TokenSource` ha due implementazioni: `KeyringTokens` (portachiavi di sistema via `github.com/zalando/go-keyring`, servizio `gs`, utente = host) e `FileTokens` (campo `token` di `hosts/<host>.yaml`, 0600). `KeyringTokens` usa il file come ripiego quando il portachiavi non c'è (nessun Secret Service, niente D-Bus) e legge anche un token già nel file. `GS_NO_KEYRING=1` disattiva il portachiavi. `GS_TOKEN` ha sempre la precedenza, ma vale solo per l'istanza scelta (`--hostname`, `GS_HOST`, o la predefinita). Il file host ha anche `host:`, il nome esatto dell'istanza (il nome del file perde i due punti).
+**Token.** L'interfaccia `config.TokenSource` ha due implementazioni: `KeyringTokens` (portachiavi di sistema via `github.com/zalando/go-keyring`, servizio `gs`, utente = host) e `FileTokens` (campo `token` di `hosts/<host>.yaml`, 0600). `KeyringTokens` usa il file come ripiego quando il portachiavi non c'è (nessun Secret Service, niente D-Bus) e legge anche un token già nel file. `GS_NO_KEYRING=1` disattiva il portachiavi. `GS_TOKEN` ha la precedenza sugli altri token, ma vale solo per l'host di `GS_HOST` o, se manca, per la predefinita: per un altro host (anche con `--hostname`) non si manda mai e `gs` risponde «nessun token» (exit 4) senza fare richieste. Il file host ha anche `host:`, il nome esatto dell'istanza (il nome del file perde i due punti).
 
 **Scelta dell'istanza** (`Factory.Host`), nell'ordine:
 
 1. `--hostname <host[:porta]>`;
-2. l'host del remote `origin` se si è in un repo;
-3. `GS_HOST`;
+2. `GS_HOST`;
+3. l'host del remote `origin` se si è in un repo, ma solo se è un'istanza già configurata (un remote su github.com non è GitStack e non riceve né richieste né token);
 4. l'istanza predefinita (`default_host`).
 
 Nessuna: exit 4 («nessuna istanza»). Senza token per l'istanza: exit 4.
 
-**Scelta del repo** (`Factory.BaseRepo`): `--repo owner/repo` (`-R`), altrimenti il remote `origin`; altrimenti uso errato (exit 2).
+**Scelta del repo** (`Factory.BaseRepo`): `--repo owner/repo` (`-R`), altrimenti il remote `origin`; altrimenti uso errato (exit 2). Se l'istanza è stata scelta con `--hostname` o `GS_HOST` e l'`origin` punta a un altro host, il remote non vale: exit 2 con un errore che nomina i due host (serve `--repo`).
 
 Remote riconosciuti (`gsrepo.ParseRemote`):
 

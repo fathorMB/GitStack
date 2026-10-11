@@ -71,7 +71,7 @@ func TestSaveHostEDefault(t *testing.T) {
 
 func TestTokenSource(t *testing.T) {
 	c := newCfg(t)
-	ts := WithEnv(FileTokens{Cfg: c}, func(k string) string { return "" })
+	ts := WithEnv(FileTokens{Cfg: c}, func(k string) string { return "" }, nil)
 	if _, _, err := ts.Token("a.test"); !errors.Is(err, ErrNoToken) {
 		t.Fatalf("atteso ErrNoToken, ho %v", err)
 	}
@@ -83,15 +83,32 @@ func TestTokenSource(t *testing.T) {
 		t.Fatalf("file: %q %q %v", tok, src, err)
 	}
 	// GS_TOKEN vince.
-	env := WithEnv(FileTokens{Cfg: c}, func(k string) string {
-		if k == EnvToken {
-			return "gst_env"
-		}
-		return ""
-	})
+	envOf := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	env := WithEnv(FileTokens{Cfg: c}, envOf(map[string]string{EnvToken: "gst_env", EnvHost: "a.test"}), nil)
 	tok, src, err = env.Token("a.test")
 	if err != nil || tok != "gst_env" || src != SourceEnv {
 		t.Fatalf("env: %q %q %v", tok, src, err)
+	}
+	// GS_TOKEN non vale per un altro host: si ricade sul token salvato (o nessuno).
+	if _, _, err := env.Token("github.com"); !errors.Is(err, ErrNoToken) {
+		t.Fatalf("GS_TOKEN per un altro host: atteso ErrNoToken, ho %v", err)
+	}
+	tok, src, err = env.Token("A.test")
+	if err != nil || tok != "gst_env" {
+		t.Fatalf("host case-insensitive: %q %q %v", tok, src, err)
+	}
+	// Senza GS_HOST vale per la predefinita, solo per quella.
+	envDef := WithEnv(FileTokens{Cfg: c}, envOf(map[string]string{EnvToken: "gst_env"}), func() string { return "def.test" })
+	if tok, _, err := envDef.Token("def.test"); err != nil || tok != "gst_env" {
+		t.Fatalf("predefinita: %q %v", tok, err)
+	}
+	if _, _, err := envDef.Token("other.test"); !errors.Is(err, ErrNoToken) {
+		t.Fatalf("altro host con predefinita: %v", err)
+	}
+	// Né GS_HOST né predefinita: GS_TOKEN non esce verso nessun host.
+	envNone := WithEnv(FileTokens{Cfg: c}, envOf(map[string]string{EnvToken: "gst_env"}), nil)
+	if _, _, err := envNone.Token("x.test"); !errors.Is(err, ErrNoToken) {
+		t.Fatalf("senza target: %v", err)
 	}
 	if err := ts.DeleteToken("a.test"); err != nil {
 		t.Fatal(err)

@@ -71,7 +71,7 @@ func (g *gsEnv) gsToken(token, repo, stdin string, args ...string) gsRun {
 	}
 	cmd := exec.Command(g.bin, full...)
 	cmd.Dir = g.t.TempDir() // fuori da un repo: niente remote origin
-	cmd.Env = append(cleanEnv(), "GS_CONFIG_DIR="+g.t.TempDir(), "GS_TOKEN="+token, "HOME="+g.home, "USERPROFILE="+g.home)
+	cmd.Env = append(cleanEnv(), "GS_CONFIG_DIR="+g.t.TempDir(), "GS_HOST="+g.proxy, "GS_TOKEN="+token, "HOME="+g.home, "USERPROFILE="+g.home)
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errOut bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errOut

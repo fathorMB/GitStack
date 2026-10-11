@@ -44,7 +44,7 @@ func newStatusCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Mostra le istanze configurate con utente, scope e scadenza del token",
 		Long: "Per ogni istanza configurata (o solo per --hostname) verifica il token con l'API e mostra\n" +
 			"utente, scope e scadenza. Esce con 4 se un token è scaduto, revocato o mancante.\n" +
-			"GS_TOKEN vale solo per l'istanza di GS_HOST (o --hostname): non si manda mai a un'altra.",
+			"GS_TOKEN vale solo per l'istanza di GS_HOST (o la predefinita se manca): non si manda mai a un'altra.",
 		Args: cmdutil.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return runStatus(c.Context(), f, &jo)
@@ -68,6 +68,8 @@ func runStatus(ctx context.Context, f *cmdutil.Factory, jo *output.JSONOptions) 
 		envHost = normalizeHost(f.Getenv(cmdutil.EnvHost))
 	}
 	envToken := f.Getenv(config.EnvToken)
+	// GS_TOKEN vale solo per GS_HOST o, senza, per la predefinita: non per --hostname.
+	tokenTarget := config.EnvTokenTarget(f.Getenv, func() string { h, _ := cfg.DefaultHost(); return h })
 	if envHost == "" && envToken != "" {
 		envHost, _ = cfg.DefaultHost()
 	}
@@ -89,7 +91,7 @@ func runStatus(ctx context.Context, f *cmdutil.Factory, jo *output.JSONOptions) 
 	worst := 0
 	for _, h := range hosts {
 		token, source := "", ""
-		if envToken != "" && h == envHost {
+		if envToken != "" && config.SameHost(h, tokenTarget) {
 			token, source = envToken, config.SourceEnv
 		} else if t, src, err := stored.Token(h); err == nil {
 			token, source = t, src

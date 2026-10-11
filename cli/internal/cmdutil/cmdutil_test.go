@@ -124,22 +124,26 @@ func TestResolveHost(t *testing.T) {
 		env     map[string]string
 		git     fakeGit
 		def     func() (string, error)
+		known   []string
 		want    string
 		wantErr bool
 	}{
-		{"flag vince su remote ed env", "forced.test", map[string]string{"GS_HOST": "env.test"}, inRepo, def, "forced.test", false},
-		{"remote origin HTTPS", "", nil, inRepo, def, "git.acme.test", false},
-		{"remote vince su GS_HOST", "", map[string]string{"GS_HOST": "env.test"}, inRepo, def, "git.acme.test", false},
-		{"remote SSH scp-like", "", nil, fakeGit{url: "git@ssh.acme.test:acme/api.git"}, def, "ssh.acme.test", false},
-		{"remote ssh:// con porta 2222", "", nil, fakeGit{url: "ssh://git@ssh.acme.test:2222/acme/api.git"}, def, "ssh.acme.test", false},
-		{"fuori da un repo: GS_HOST", "", map[string]string{"GS_HOST": "env.test"}, noRepo, def, "env.test", false},
-		{"fuori da un repo: predefinita", "", nil, noRepo, def, "default.test", false},
-		{"remote non riconosciuto: GS_HOST", "", map[string]string{"GS_HOST": "env.test"}, fakeGit{url: "/srv/git/x.git"}, def, "env.test", false},
-		{"niente: exit 4", "", nil, noRepo, noDefault, "", true},
+		{"flag vince su remote ed env", "forced.test", map[string]string{"GS_HOST": "env.test"}, inRepo, def, []string{"git.acme.test"}, "forced.test", false},
+		{"remote origin configurato", "", nil, inRepo, def, []string{"git.acme.test"}, "git.acme.test", false},
+		{"remote origin è la predefinita", "", nil, inRepo, func() (string, error) { return "git.acme.test", nil }, nil, "git.acme.test", false},
+		{"GS_HOST vince sul remote", "", map[string]string{"GS_HOST": "env.test"}, inRepo, def, []string{"git.acme.test"}, "env.test", false},
+		{"remote non configurato (github): predefinita", "", nil, fakeGit{url: "https://github.com/o/r.git"}, def, nil, "default.test", false},
+		{"remote non configurato, niente predefinita: exit 4", "", nil, fakeGit{url: "https://github.com/o/r.git"}, noDefault, nil, "", true},
+		{"remote SSH scp-like configurato", "", nil, fakeGit{url: "git@ssh.acme.test:acme/api.git"}, def, []string{"ssh.acme.test"}, "ssh.acme.test", false},
+		{"remote ssh:// 2222 con istanza con porta HTTP", "", nil, fakeGit{url: "ssh://git@ssh.acme.test:2222/acme/api.git"}, def, []string{"ssh.acme.test:8443"}, "ssh.acme.test:8443", false},
+		{"fuori da un repo: GS_HOST", "", map[string]string{"GS_HOST": "env.test"}, noRepo, def, nil, "env.test", false},
+		{"fuori da un repo: predefinita", "", nil, noRepo, def, nil, "default.test", false},
+		{"remote non riconosciuto: GS_HOST", "", map[string]string{"GS_HOST": "env.test"}, fakeGit{url: "/srv/git/x.git"}, def, nil, "env.test", false},
+		{"niente: exit 4", "", nil, noRepo, noDefault, nil, "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := ResolveHost(ctx, c.flag, envOf(c.env), c.git, c.def)
+			got, err := ResolveHost(ctx, c.flag, envOf(c.env), c.git, c.def, func() []string { return c.known })
 			if (err != nil) != c.wantErr {
 				t.Fatalf("err = %v", err)
 			}

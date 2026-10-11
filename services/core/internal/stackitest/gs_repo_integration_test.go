@@ -49,7 +49,7 @@ func repoGS(g *gsEnv, o gsOpts, args ...string) gsRun {
 	}
 	cmd := exec.Command(g.bin, append([]string{"--hostname", g.proxy}, args...)...)
 	cmd.Dir = g.t.TempDir() // fuori da un repo: niente remote origin
-	cmd.Env = append(cleanEnv(), "GS_CONFIG_DIR="+g.t.TempDir(), "GS_TOKEN="+token, "HOME="+home, "USERPROFILE="+home,
+	cmd.Env = append(cleanEnv(), "GS_CONFIG_DIR="+g.t.TempDir(), "GS_HOST="+g.proxy, "GS_TOKEN="+token, "HOME="+home, "USERPROFILE="+home,
 		"GIT_CONFIG_GLOBAL="+gitconfig, "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=never", "GIT_ASKPASS=",
 		"GIT_SSH_COMMAND="+sshCmd)
 	cmd.Stdin = strings.NewReader(o.stdin)

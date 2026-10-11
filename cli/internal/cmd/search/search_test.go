@@ -46,7 +46,7 @@ func run(t *testing.T, routes map[string]string, args ...string) result {
 	defer srv.Close()
 	io_, _, out, errOut := cmdutil.Test()
 	f := cmdutil.New("test", io_)
-	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}
+	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok", "GS_HOST": srv.URL}
 	f.Getenv = func(k string) string { return env[k] }
 	f.Git = noGit{}
 	full := append([]string{"--hostname", srv.URL, "-R", "acme/web"}, args...)

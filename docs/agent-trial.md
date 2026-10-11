@@ -134,7 +134,7 @@ Serve un token **dell'amministratore**, solo per questo passo. Dalla UI: `https:
 ```bash
 export GS_ADMIN_TOKEN=gst_...              # il token appena creato
 echo "$GS_CA_FILE"                          # la CA interna: impostata nel passo 2 («Fidarsi della CA interna»)
-cd <checkout di GitStack>
+cd <checkout di GitStack>                   # l'origin può essere GitHub: gs usa GS_HOST, mai l'host del remote
 scripts/agent-trial/setup.sh
 ```
 

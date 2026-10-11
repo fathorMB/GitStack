@@ -89,7 +89,12 @@ func New(version string, io *IOStreams) *Factory {
 		if err != nil {
 			return nil, err
 		}
-		return config.WithEnv(st, f.Getenv), nil
+		return config.WithEnv(st, f.Getenv, func() string {
+			if h, err := f.defaultHost(); err == nil {
+				return h
+			}
+			return ""
+		}), nil
 	}
 	f.HTTPClient = func() *http.Client { return &http.Client{Timeout: 60 * time.Second} }
 	f.OpenBrowser = openBrowser
@@ -104,11 +109,22 @@ func New(version string, io *IOStreams) *Factory {
 	return f
 }
 
-// Host sceglie l'istanza. Ordine: --hostname; host del remote origin se si è
-// in un repo; GS_HOST; istanza predefinita della configurazione. Nessuna →
-// errore di non autenticato (exit 4).
+// Host sceglie l'istanza. Ordine: --hostname; GS_HOST; host del remote origin,
+// solo se è un'istanza già configurata (mai un host qualunque, come github.com);
+// istanza predefinita della configurazione. Nessuna → errore di non
+// autenticato (exit 4).
 func (f *Factory) Host() (string, error) {
-	return ResolveHost(context.Background(), f.HostnameFlag, f.Getenv, f.Git, f.defaultHost)
+	return ResolveHost(context.Background(), f.HostnameFlag, f.Getenv, f.Git, f.defaultHost, f.knownHosts)
+}
+
+// knownHosts sono le istanze che l'utente ha configurato (hosts/*.yaml).
+func (f *Factory) knownHosts() []string {
+	c, err := f.Config()
+	if err != nil {
+		return nil
+	}
+	hs, _ := c.Hosts()
+	return hs
 }
 
 func (f *Factory) defaultHost() (string, error) {
@@ -120,8 +136,35 @@ func (f *Factory) defaultHost() (string, error) {
 }
 
 // BaseRepo sceglie owner/repo: --repo, altrimenti il remote origin.
+//
+// Se l'istanza è stata scelta in modo esplicito (--hostname o GS_HOST) e il
+// remote origin punta a un altro host, il remote non vale: errore che nomina i
+// due host, e --repo owner/repo risolve.
 func (f *Factory) BaseRepo() (owner, repo string, err error) {
-	return ResolveRepo(context.Background(), f.RepoFlag, f.Git)
+	ctx := context.Background()
+	if strings.TrimSpace(f.RepoFlag) == "" && f.Git != nil {
+		chosen := strings.TrimSpace(f.HostnameFlag)
+		if chosen == "" {
+			chosen = strings.TrimSpace(f.Getenv(EnvHost))
+		}
+		if r, rerr := gsrepo.OriginRemote(ctx, f.Git); chosen != "" && rerr == nil && !sameHostname(r.Host, chosen) {
+			return "", "", UsageErrorf("il remote origin è su %s ma l'istanza scelta è %s: usa --repo owner/repo", r.Host, chosen)
+		}
+	}
+	return ResolveRepo(ctx, f.RepoFlag, f.Git)
+}
+
+// sameHostname confronta due host ignorando schema e porta (la porta di un
+// remote SSH non è quella HTTP).
+func sameHostname(a, b string) bool {
+	strip := func(s string) string {
+		s = config.NormalizeHost(s)
+		if i := strings.LastIndex(s, ":"); i >= 0 && !strings.Contains(s[i:], "]") {
+			s = s[:i]
+		}
+		return s
+	}
+	return strip(a) == strip(b)
 }
 
 // Token dà il token per host (GS_TOKEN vince). Senza token → exit 4.
@@ -137,18 +180,39 @@ func (f *Factory) Token(host string) (string, error) {
 	return tok, err
 }
 
-// ResolveHost è la regola di G7, separata dalla Factory per i test.
-func ResolveHost(ctx context.Context, hostnameFlag string, getenv func(string) string, g gsrepo.Git, defaultHost func() (string, error)) (string, error) {
+// ResolveHost è la regola di G7, separata dalla Factory per i test. Il remote
+// origin sceglie l'istanza solo se il suo host è fra quelli configurati
+// (known) o è la predefinita: un remote su un host qualunque (github.com) non
+// è un'istanza GitStack e non riceve richieste né token.
+func ResolveHost(ctx context.Context, hostnameFlag string, getenv func(string) string, g gsrepo.Git, defaultHost func() (string, error), known func() []string) (string, error) {
 	if h := strings.TrimSpace(hostnameFlag); h != "" {
+		return h, nil
+	}
+	if h := strings.TrimSpace(getenv(EnvHost)); h != "" {
 		return h, nil
 	}
 	if g != nil {
 		if r, err := gsrepo.OriginRemote(ctx, g); err == nil {
-			return r.Host, nil
+			var cands []string
+			if known != nil {
+				cands = append(cands, known()...)
+			}
+			if defaultHost != nil {
+				if d, err := defaultHost(); err == nil && d != "" {
+					cands = append(cands, d)
+				}
+			}
+			for _, c := range cands {
+				if config.SameHost(c, r.Host) {
+					return c, nil
+				}
+			}
+			for _, c := range cands {
+				if sameHostname(c, r.Host) {
+					return c, nil
+				}
+			}
 		}
-	}
-	if h := strings.TrimSpace(getenv(EnvHost)); h != "" {
-		return h, nil
 	}
 	if defaultHost != nil {
 		h, err := defaultHost()
