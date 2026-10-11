@@ -28,7 +28,7 @@ func (fakeCore) ResolveRepo(context.Context, trust.Identity, string, string) (Re
 type fakeDisk struct{}
 
 func (fakeDisk) Get(context.Context, string) (repostore.Info, error) { return repostore.Info{}, nil }
-func (fakeDisk) RepoPath(string) (string, error)                      { return "/tmp/r1.git", nil }
+func (fakeDisk) RepoPath(string) (string, error)                     { return "/tmp/r1.git", nil }
 
 // GIT-190: gli scope si valutano con la regola unica di pkg/scopes, come
 // nell'API: write:resource implica read:resource.
