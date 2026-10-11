@@ -127,6 +127,14 @@ Senza toccare il sistema: `git config --global http.sslCAInfo /percorso/ca.crt`,
 
 `curl --cacert ca.crt https://<host>/api/healthz`.
 
+### Windows: curl.exe, git.exe e percorsi (GIT-191)
+
+Dalla prova reale di un agente su Windows (GIT-174):
+
+- **`curl.exe` e la revoca.** `curl.exe` usa schannel, che controlla la revoca del certificato; la CA interna non pubblica né CRL né OCSP e il controllo fallisce con `CERT_TRUST_REVOCATION_STATUS_UNKNOWN`, anche con la CA fidata. Aggiungi `--ssl-no-revoke` (vale solo per quel comando: la catena e l'host sono controllati comunque): `curl.exe --ssl-no-revoke --cacert C:/Users/<tu>/ca.crt https://<host>/api/healthz`.
+- **`git.exe` con `GIT_CONFIG_NOSYSTEM`.** Senza la configurazione di sistema di Git for Windows il backend TLS non è più quello scelto dall'installer ma schannel, che non legge `http.sslCAInfo`/`GIT_SSL_CAINFO` come file OpenSSL e non capisce i percorsi in stile MSYS (`/c/Users/...`). Scrivi i percorsi con la lettera di unità e le barre dritte, `C:/Users/<tu>/ca.crt`, e per schannel importa la CA nello store (sezione Windows sopra). Gli script di `scripts/agent-trial/` la impostano così in `GS_CA_FILE`.
+- **Revoca in git (schannel).** Se git con schannel dà lo stesso errore di revoca, `git config --global http.schannelCheckRevoke false` (o per l'host: `http.https://<host>/.schannelCheckRevoke false`).
+
 ## Provato su
 
 - `deploy/gitstack-tls.sh`: emissione, riemissione al cambio dei SAN e a ridosso della scadenza, certificato del cliente (chiave non corrispondente rifiutata, SAN non coperti segnalati), permessi dei file, in un container Ubuntu 24.04 con `kubectl` finto.

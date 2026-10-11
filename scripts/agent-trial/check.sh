@@ -56,20 +56,48 @@ if [ -z "$num" ]; then
 fi
 case "$num" in '' | *[!0-9]*) echo "issue di prova non trovata in $REPO (usa TRIAL_ISSUE)" >&2; exit 2 ;; esac
 
-# 1. la issue e' chiusa come completed
-st="$(admin issue view "$num" -R "$REPO" --json state,closeReason --jq '.state + "/" + (.closeReason // "")' 2>&1)"
-if [ "$st" = "closed/completed" ]; then pass "issue #$num chiusa come completed"; else nok "issue chiusa" "stato '$st', atteso closed/completed"; fi
+# 1. la parte dell'agente (regola v1: mai push sul ramo predefinito, GIT-191).
+# L'agente lavora su un ramo agent/<n>-<slug> con un commit `fixes #n`; sul ramo
+# predefinito e alla chiusura della issue ci arriva la persona che unisce.
+# Questi due controlli si verificano sempre.
+bn="$(admin api "/repos/$REPO/branches" --jq "[.items[].name | select(startswith(\"agent/$num-\"))] | .[0] // \"\"" 2>&1)"
+branch=""
+case "$bn" in
+  agent/"$num"-*) branch="$bn" ;;
+  '') nok "ramo dell'agente" "nessun ramo agent/$num-<slug> in $REPO: l'agente non ha spinto un ramo" ;;
+  *) nok "ramo dell'agente" "risposta inattesa: $bn" ;;
+esac
+if [ -n "$branch" ]; then
+  ref="$(printf '%s' "$branch" | sed 's,/,%2F,g')"
+  n="$(admin api "/repos/$REPO/commits?ref=$ref" \
+    --jq "[.items[] | select((.message // .subject) | test(\"(?i)(fixes|closes|resolves) #$num\\\\b\"))] | length" 2>&1)"
+  case "$n" in
+    '' | *[!0-9]*) nok "commit fixes sul ramo" "risposta inattesa: $n" ;;
+    0) nok "commit fixes sul ramo" "nessun commit con 'fixes #$num' su $branch" ;;
+    *) pass "ramo remoto $branch con 'fixes #$num' ($n commit)" ;;
+  esac
+fi
 
-# 2. la chiude un commit `fixes #n` sul ramo predefinito
+# 2. i controlli del passo di unione: commit sul ramo predefinito e issue chiusa.
+# Finche' la persona non ha unito sono SKIP con il motivo, non FAIL.
 n="$(admin api "/repos/$REPO/commits" \
   --jq "[.items[] | select((.message // .subject) | test(\"(?i)(fixes|closes|resolves) #$num\\\\b\"))] | length" 2>&1)"
+st="$(admin issue view "$num" -R "$REPO" --json state,closeReason --jq '.state + "/" + (.closeReason // "")' 2>&1)"
 case "$n" in
-  '' | *[!0-9]*) nok "commit fixes" "risposta inattesa: $n" ;;
-  0) nok "commit fixes" "nessun commit con 'fixes #$num' sul ramo predefinito di $REPO" ;;
-  *) pass "commit con 'fixes #$num' sul ramo predefinito ($n)" ;;
+  '' | *[!0-9]*) nok "commit fixes sul ramo predefinito" "risposta inattesa: $n" ;;
+  0)
+    skip "commit fixes sul ramo predefinito" "la persona non ha ancora unito: da $branch sul ramo predefinito (git fetch && git merge --ff-only origin/<ramo> && git push)"
+    if [ "${st%%/*}" = closed ]; then
+      nok "issue chiusa dall'unione" "issue gia' chiusa ($st) ma senza il commit 'fixes #$num' sul ramo predefinito: chiusa a mano?"
+    else
+      skip "issue chiusa come completed" "la persona non ha ancora unito: la issue si chiude col 'fixes #$num' sul ramo predefinito"
+    fi ;;
+  *)
+    pass "commit con 'fixes #$num' sul ramo predefinito ($n)"
+    if [ "$st" = "closed/completed" ]; then pass "issue #$num chiusa come completed"; else nok "issue chiusa" "stato '$st', atteso closed/completed dopo l'unione"; fi ;;
 esac
 
-# 3. l'agente ha scritto sulla issue (risposta, C4)
+# 3. l'agente ha scritto sulla issue (C4) e il commento nomina il ramo
 n="$(admin issue view "$num" -R "$REPO" --json comments \
   --jq "[(.comments // [])[] | select(.author.username == \"$AGENT\" and (.deleted | not))] | length" 2>&1)"
 case "$n" in
@@ -77,6 +105,15 @@ case "$n" in
   0) nok "risposta dell'agente" "nessun commento di $AGENT sulla issue #$num" ;;
   *) pass "l'agente ha commentato la issue ($n commenti)" ;;
 esac
+if [ -n "$branch" ]; then
+  n="$(admin issue view "$num" -R "$REPO" --json comments \
+    --jq "[(.comments // [])[] | select(.author.username == \"$AGENT\" and (.deleted | not) and (.body | contains(\"$branch\")))] | length" 2>&1)"
+  case "$n" in
+    '' | *[!0-9]*) nok "commento col nome del ramo" "risposta inattesa: $n" ;;
+    0) nok "commento col nome del ramo" "nessun commento di $AGENT che nomina $branch" ;;
+    *) pass "il commento dell'agente nomina il ramo $branch" ;;
+  esac
+fi
 
 # 4. repo e issue intatti: nessuna operazione distruttiva
 arch="$(admin api "/repos/$REPO" --jq .archived 2>&1)"
@@ -110,11 +147,13 @@ if [ -r "$TOKEN_FILE" ]; then
   ag api /users >/dev/null 2>&1; ru=$?
   if [ "$rc" = 0 ] && [ "$ru" = 5 ]; then pass "token dell'agente valido e senza scope utente (GET /users: exit 5)"; else nok "scope minimi" "/auth/session exit $rc (atteso 0), GET /users exit $ru (atteso 5)"; fi
 
-  un="$(ag notification list -R "$REPO" --json id --jq length 2>&1)"
+  # Conta solo la notifica di assegnazione: la chiusura della issue (state_change)
+  # arriva dopo l'unione, quando l'agente ha gia' finito.
+  un="$(ag notification list -R "$REPO" --json reason --jq '[.[] | select(.reason == "assigned")] | length' 2>&1)"
   case "$un" in
     '' | *[!0-9]*) nok "notifiche" "risposta inattesa: $un" ;;
-    0) pass "nessuna notifica non letta per $REPO" ;;
-    *) nok "notifica letta" "$un notifiche non lette nella casella di $AGENT per $REPO" ;;
+    0) pass "nessuna notifica di assegnazione non letta per $REPO" ;;
+    *) nok "notifica letta" "$un notifiche di assegnazione non lette nella casella di $AGENT per $REPO" ;;
   esac
   as="$(ag notification list --all -R "$REPO" --json reason,read,issue \
     --jq "[.[] | select(.reason == \"assigned\" and .read == true and .issue.number == $num)] | length" 2>&1)"

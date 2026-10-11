@@ -21,6 +21,9 @@
 #                      su macOS e Windows gs si fida solo dello store di sistema
 #   TRIAL_AGENT        nome dell'utente agente        (default trial-agent)
 #   TRIAL_REPO         nome del repo di prova         (default agent-trial)
+#   TRIAL_AGENT_EMAIL  email dell'utente agente: e' quella che l'agente mette in
+#                      user.email (GitStack collega a lui i suoi commit)
+#                                                      (default <agente>@agents.gitstack.invalid)
 #   TRIAL_TOKEN_FILE   dove scrivere il token         (default ./agent-trial.token)
 #   TRIAL_TOKEN_DAYS   giorni di validita' del token  (default 7)
 #   GS                 percorso del binario gs        (default gs)
@@ -53,6 +56,7 @@ esac
 GS="${GS:-gs}"
 AGENT="${TRIAL_AGENT:-trial-agent}"
 REPO_NAME="${TRIAL_REPO:-agent-trial}"
+AGENT_EMAIL="${TRIAL_AGENT_EMAIL:-$AGENT@agents.gitstack.invalid}"
 TOKEN_FILE="${TRIAL_TOKEN_FILE:-./agent-trial.token}"
 DAYS="${TRIAL_TOKEN_DAYS:-7}"
 TOKEN_NAME="agent-trial"
@@ -94,14 +98,22 @@ ok "admin ($ME)"
 # --- 1. utente agente ---------------------------------------------------------
 AGENT_ID="$(ok_only "$GS" api "/users/$AGENT" --jq .id)"
 if [ -z "$AGENT_ID" ]; then
-  out="$("$GS" api -X POST /users -f "username=$AGENT" -f kind=agent -f "displayName=Agente di prova" --jq .id 2>&1)" \
-    || fail agente "creazione di $AGENT: $out"
+  out="$("$GS" api -X POST /users -f "username=$AGENT" -f kind=agent -f "displayName=Agente di prova"     -f "email=$AGENT_EMAIL" --jq .id 2>&1)" || fail agente "creazione di $AGENT: $out"
   AGENT_ID="$out"
 else
   kind="$(ok_only "$GS" api "/users/$AGENT" --jq .kind)"
   [ "$kind" = agent ] || fail agente "$AGENT esiste ma e' di tipo '$kind', non agent: scegli un altro TRIAL_AGENT"
+  # Identita' git (GIT-191): l'agente deve avere un'email, altrimenti i suoi
+  # commit risultano di nessuno (o della persona, se usa l'identita' globale).
+  have_email="$(ok_only "$GS" api "/users/$AGENT" --jq '.email // ""')"
+  if [ -z "$have_email" ]; then
+    out="$("$GS" api -X PATCH "/users/$AGENT" -f "email=$AGENT_EMAIL" --jq .id 2>&1)"       || fail agente "email di $AGENT: $out"
+  fi
 fi
+EMAIL_NOW="$(ok_only "$GS" api "/users/$AGENT" --jq '.email // ""')"
+[ -n "$EMAIL_NOW" ] || EMAIL_NOW="$AGENT_EMAIL"
 ok "agente ($AGENT)"
+ok "identita git ($AGENT <$EMAIL_NOW>)"
 
 # --- 2. repo di prova ----------------------------------------------------------
 if ! "$GS" api "/repos/$REPO" --jq .id >/dev/null 2>&1; then
@@ -183,6 +195,9 @@ Prova pronta.
   repo     $REPO
   issue    #$num (assegnata a $AGENT)
   agente   $AGENT   token: $TOKEN_FILE
+  identita git dell'agente, nel clone di lavoro (config locale, mai --global):
+    git config user.name  "$AGENT"
+    git config user.email "$EMAIL_NOW"
 Prossimo passo: docs/agent-trial.md, sezione "4. Installa le skills in un progetto".
-Dopo la prova: scripts/agent-trial/check.sh
+Dopo la prova e dopo che una persona ha unito il ramo dell'agente: scripts/agent-trial/check.sh
 EOF
