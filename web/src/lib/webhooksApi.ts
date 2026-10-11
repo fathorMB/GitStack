@@ -65,7 +65,7 @@ export async function fetchRepoWebhook(owner: string, repo: string, hookId: stri
 export async function createRepoWebhook(
   owner: string,
   repo: string,
-  input: { url: string; events: WebhookEvent[] },
+  input: { url: string; events: WebhookEvent[]; secret?: string },
 ): Promise<Webhook> {
   return unwrap(
     await sdkCreateRepoWebhook({
@@ -80,7 +80,7 @@ export async function updateRepoWebhook(
   owner: string,
   repo: string,
   hookId: string,
-  input: { url?: string; events?: WebhookEvent[]; active?: boolean },
+  input: { url?: string; events?: WebhookEvent[]; active?: boolean; secret?: string },
 ): Promise<Webhook> {
   return unwrap(
     await sdkUpdateRepoWebhook({
@@ -174,7 +174,7 @@ export async function fetchOrgWebhook(org: string, hookId: string): Promise<Webh
 
 export async function createOrgWebhook(
   org: string,
-  input: { url: string; events: WebhookEvent[] },
+  input: { url: string; events: WebhookEvent[]; secret?: string },
 ): Promise<Webhook> {
   return unwrap(
     await sdkCreateOrgWebhook({
@@ -188,7 +188,7 @@ export async function createOrgWebhook(
 export async function updateOrgWebhook(
   org: string,
   hookId: string,
-  input: { url?: string; events?: WebhookEvent[]; active?: boolean },
+  input: { url?: string; events?: WebhookEvent[]; active?: boolean; secret?: string },
 ): Promise<Webhook> {
   return unwrap(
     await sdkUpdateOrgWebhook({

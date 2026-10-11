@@ -116,6 +116,11 @@ function OrgView({ org }: { org: string }) {
             Deleted repositories
           </Link>
         ) : null}
+        {myRole === 'owner' ? (
+          <Link to={`/orgs/${organization.name}/webhooks`} className="small">
+            Webhooks
+          </Link>
+        ) : null}
         <Link to="/orgs" className="small">
           All organizations
         </Link>

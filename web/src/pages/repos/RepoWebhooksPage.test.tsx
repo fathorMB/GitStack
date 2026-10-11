@@ -36,11 +36,12 @@ vi.mock('../../lib/webhooksApi', async (orig) => ({
   deleteRepoWebhook: vi.fn(),
   reactivateRepoWebhook: vi.fn(),
   fetchRepoWebhookDeliveries: vi.fn(),
+  fetchRepoWebhookDeliveryDetail: vi.fn(),
   redeliverRepoWebhookDelivery: vi.fn(),
 }));
 
 import { fetchRepo } from '../../lib/reposApi';
-import { fetchRepoWebhooks, createRepoWebhook, reactivateRepoWebhook, fetchRepoWebhookDeliveries, redeliverRepoWebhookDelivery } from '../../lib/webhooksApi';
+import { fetchRepoWebhooks, createRepoWebhook, reactivateRepoWebhook, fetchRepoWebhookDeliveries, fetchRepoWebhookDeliveryDetail, redeliverRepoWebhookDelivery } from '../../lib/webhooksApi';
 import { isRepoAdmin, loadMe } from './repoAdmin';
 import { fetchOrgMembers } from '../../lib/orgsApi';
 import type { Webhook, WebhookDeliverySummary } from '../../lib/webhooksApi';
@@ -50,6 +51,7 @@ const mockedFetch = vi.mocked(fetchRepoWebhooks);
 const mockedCreate = vi.mocked(createRepoWebhook);
 const mockedReactivate = vi.mocked(reactivateRepoWebhook);
 const mockedDeliveries = vi.mocked(fetchRepoWebhookDeliveries);
+const mockedDeliveryDetail = vi.mocked(fetchRepoWebhookDeliveryDetail);
 const mockedRedeliver = vi.mocked(redeliverRepoWebhookDelivery);
 const mockedLoadMe = vi.mocked(loadMe);
 const mockedOrgMembers = vi.mocked(fetchOrgMembers);
@@ -85,12 +87,22 @@ describe('RepoWebhooksPage', () => {
       disabledAt: null, disabledReason: undefined, failingSince: null, lastDelivery: null,
       createdBy: null, createdAt: '2025-09-01T00:00:00Z', updatedAt: '2025-10-01T00:00:00Z',
     });
-    mockedDeliveries.mockResolvedValue({ items: [], page: 1, perPage: 20, total: 0 });
+    mockedDeliveries.mockResolvedValue({
+      items: [
+        { id: 'd123456789abcdef01', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
+        { id: 'd223456789abcdef02', event: 'issues', status: 'failure', attempt: 2, statusCode: 500, durationMs: 1200, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
+        { id: 'd323456789abcdef03', event: 'issues', status: 'success', attempt: 1, statusCode: 200, durationMs: 95, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
+      ],
+      page: 1,
+      perPage: 20,
+      total: 3,
+    });
     mockedRedeliver.mockResolvedValue({} as never);
     mockedLoadMe.mockResolvedValue({ id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', isAdmin: false, kind: 'human' as const });
     mockedOrgMembers.mockResolvedValue([{ user: { id: 'user-1', username: 'mrossi', displayName: 'Mario Rossi', kind: 'human' as const }, role: 'owner', createdAt: new Date().toISOString() }]);
     vi.mocked(isRepoAdmin).mockResolvedValue(true);
     vi.mocked(mockedCreate).mockReset();
+    vi.mocked(mockedDeliveryDetail).mockReset();
   });
 
   function renderPage(webhookList?: { items: Webhook[]; page: number; perPage: number; total: number }, isAdmin?: boolean) {
@@ -124,7 +136,7 @@ describe('RepoWebhooksPage', () => {
     renderPage();
 
     expect(await screen.findByText('Webhooks')).toBeInTheDocument();
-    expect(screen.getByText('ci.acme.local/hooks/gitstack')).toBeInTheDocument();
+    expect(screen.getByText(/ci\.acme\.local\/hooks\/gitstack/)).toBeInTheDocument();
   });
 
   it('mostra EmptyState quando non ci sono webhook', async () => {
@@ -149,9 +161,11 @@ describe('RepoWebhooksPage', () => {
     renderPage();
 
     expect(await screen.findByText('Webhooks')).toBeInTheDocument();
-    expect(screen.getByText('old-ci.acme.local/hooks/gitstack')).toBeInTheDocument();
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.some((b) => b.textContent === 'Re-enable')).toBe(true);
+    expect(screen.getByText(/old-ci\.acme\.local\/hooks\/gitstack/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Re-enable' })).toBeInTheDocument();
+    expect(screen.getByText('disabled automatically')).toBeInTheDocument();
+    expect(screen.getByText(/failing for 3 days/)).toBeInTheDocument();
+    expect(screen.queryByText(/consecutive_failures/)).not.toBeInTheDocument();
   });
 
   it('conferma e attiva un webhook disattivato', async () => {
@@ -170,11 +184,16 @@ describe('RepoWebhooksPage', () => {
     const reenableBtn = screen.getByRole('button', { name: 'Re-enable' });
     await user.click(reenableBtn);
     expect(mockedReactivate).toHaveBeenCalledWith('acme', 'api-gateway', 'wh-2');
+    await waitFor(() => {
+      expect(screen.queryByText('disabled automatically')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: 'Re-enable' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
   it('mostra il testo informativo su GitStack v1', async () => {
     renderPage();
-    expect(await screen.findByText('GitStack sends a signed POST')).toBeInTheDocument();
+    expect(await screen.findByText(/GitStack sends a signed POST/)).toBeInTheDocument();
     expect(screen.getByText(/X-GitStack-Event/)).toBeInTheDocument();
     expect(screen.getByText(/X-GitStack-Signature/)).toBeInTheDocument();
     expect(screen.getByText(/8 times over 24 hours/)).toBeInTheDocument();
@@ -201,10 +220,14 @@ describe('RepoWebhooksPage', () => {
     await user.type(urlInput, 'https://new.example.com/hooks');
     await user.click(screen.getByRole('button', { name: 'Create webhook' }));
     await waitFor(() => {
-      expect(mockedCreate).toHaveBeenCalledWith('acme', 'api-gateway', {
-        url: 'https://new.example.com/hooks',
-        events: [],
-      });
+      expect(mockedCreate).toHaveBeenCalledTimes(1);
+      const callArgs = mockedCreate.mock.calls[0];
+      expect(callArgs[0]).toBe('acme');
+      expect(callArgs[1]).toBe('api-gateway');
+      expect(callArgs[2]).toHaveProperty('url', 'https://new.example.com/hooks');
+      expect(callArgs[2]).toHaveProperty('secret');
+      expect(typeof callArgs[2].secret).toBe('string');
+      expect(callArgs[2].secret!.length).toBeGreaterThan(0);
     }, { timeout: 5000 });
     expect(await screen.findByText('Webhook created')).toBeInTheDocument();
   }, { timeout: 15000 });
@@ -232,6 +255,7 @@ describe('RepoWebhooksPage', () => {
     const user = userEvent.setup();
     renderPage();
 
+    await screen.findByText(/ci\.acme\.local\/hooks\/gitstack/);
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await waitFor(() => {
       expect(screen.getByText('Recent deliveries')).toBeInTheDocument();
@@ -239,8 +263,9 @@ describe('RepoWebhooksPage', () => {
     expect(screen.getByText('d123456789abcdef01')).toBeInTheDocument();
     expect(screen.getByText('d223456789abcdef02')).toBeInTheDocument();
     expect(screen.getByText('d323456789abcdef03')).toBeInTheDocument();
+    expect(mockedDeliveries).toHaveBeenCalledWith('acme', 'api-gateway', 'wh-1');
     const redeliverButtons = screen.getAllByRole('button', { name: 'Redeliver' });
-    expect(redeliverButtons.length).toBeGreaterThanOrEqual(3);
+    expect(redeliverButtons.length).toBe(3);
   }, { timeout: 15000 });
 
   it('non mostra la sezione Webhooks senza permessi admin', async () => {
@@ -278,17 +303,51 @@ describe('RepoWebhooksPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await waitFor(() => {
-      expect(screen.getByText('ci.acme.local/hooks/gitstack')).toBeInTheDocument();
-    }, { timeout: 5000 });
+    await screen.findByText(/ci\.acme\.local\/hooks\/gitstack/);
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await waitFor(() => {
       expect(screen.getByText('Recent deliveries')).toBeInTheDocument();
     }, { timeout: 5000 });
     await user.click(screen.getByRole('button', { name: 'Redeliver' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Queued' })).toBeInTheDocument();
+      expect(mockedRedeliver).toHaveBeenCalledWith('acme', 'api-gateway', 'wh-1', 'd-1');
     }, { timeout: 5000 });
+    expect(await screen.findByText('Redelivery queued.')).toBeInTheDocument();
+  }, { timeout: 15000 });
+
+  it('apre il dettaglio di una consegna con la risposta troncata', async () => {
+    mockedFetch.mockResolvedValue({ items: [
+      {
+        id: 'wh-1', scope: 'repo', repository: { id: 'r-1', fullName: 'acme/api-gateway' }, organization: null,
+        url: 'https://ci.acme.local/hooks/gitstack', events: ['push'], active: true, hasSecret: true,
+        disabledAt: null, disabledReason: undefined, failingSince: null, lastDelivery: null,
+        createdBy: null, createdAt: NOW, updatedAt: NOW,
+      } as Webhook,
+    ], page: 1, perPage: 50, total: 1 });
+    mockedDeliveries.mockResolvedValue({
+      items: [{ id: 'd-1', event: 'push', status: 'failed', attempt: 1, statusCode: 500, durationMs: 82, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary],
+      page: 1, perPage: 20, total: 1,
+    });
+    mockedDeliveryDetail.mockResolvedValue({
+      id: 'd-1', event: 'push', status: 'failed', attempt: 1, statusCode: 500, durationMs: 82, createdAt: NOW, deliveredAt: NOW,
+      request: { headers: { 'X-GitStack-Event': 'push' }, payload: { ref: 'refs/heads/main' } },
+      response: { headers: { 'Content-Type': 'text/plain' }, body: 'x'.repeat(3000), truncated: true },
+    } as never);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText(/ci.acme.local/hooks/gitstack/);
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(await screen.findByText('d-1'));
+    await waitFor(() => {
+      expect(mockedDeliveryDetail).toHaveBeenCalledWith('acme', 'api-gateway', 'wh-1', 'd-1');
+    });
+    expect(await screen.findByText('Delivery detail')).toBeInTheDocument();
+    expect(screen.getByText(/X-GitStack-Event/, { selector: 'pre' })).toBeInTheDocument();
+    expect(screen.getByText(/refs/heads/main/)).toBeInTheDocument();
+    expect(screen.getByText(/truncated to 2 KB/)).toBeInTheDocument();
+    const body = screen.getByText(/^x{100,}/);
+    expect(body.textContent!.length).toBeLessThan(2100);
   }, { timeout: 15000 });
 
   it('mostra il dialog del segreto dopo la creazione', async () => {
@@ -315,5 +374,14 @@ describe('RepoWebhooksPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Webhook created')).toBeInTheDocument();
     }, { timeout: 5000 });
+    const sent = mockedCreate.mock.calls[0][2].secret as string;
+    expect(sent).toMatch(/^[0-9a-f]{64}$/);
+    const shown = screen.getByLabelText('New webhook secret') as HTMLInputElement;
+    expect(shown.value).toBe(sent);
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Webhook created')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByDisplayValue(sent)).not.toBeInTheDocument();
   }, { timeout: 15000 });
 });

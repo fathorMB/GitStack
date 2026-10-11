@@ -9,9 +9,18 @@ import { Button, ConfirmDialog, CopyButton, EmptyState, ErrorAlert, FormField, T
 import { describeError } from '../../lib/http';
 import { timeAgo } from '../../lib/format';
 import { fetchRepo } from '../../lib/reposApi';
-import type { Webhook, WebhookDeliverySummary } from '../../lib/webhooksApi';
+import {
+  createRepoWebhook,
+  deleteRepoWebhook,
+  fetchRepoWebhookDeliveryDetail,
+  fetchRepoWebhookDeliveries,
+  fetchRepoWebhooks,
+  reactivateRepoWebhook,
+  redeliverRepoWebhookDelivery,
+  updateRepoWebhook,
+} from '../../lib/webhooksApi';
+import type { Webhook, WebhookDeliveryDetail, WebhookDeliverySummary } from '../../lib/webhooksApi';
 import { isRepoAdmin, loadMe } from './repoAdmin';
-import { VisibilityBadge } from './ReposPage';
 
 const EVENT_DESCRIPTIONS: Record<string, string> = {
   push: 'Commits or tags pushed',
@@ -23,6 +32,24 @@ const EVENT_DESCRIPTIONS: Record<string, string> = {
 const WEBHOOK_INFO =
   'GitStack sends a signed POST request to these URLs when selected events happen. Failed deliveries are retried up to 8 times over 24 hours; a webhook failing for 3 days is disabled automatically. Payload format: GitStack v1, with X-GitStack-Event, X-GitStack-Delivery and X-GitStack-Signature headers. Addresses inside the GitStack cluster are never allowed.';
 
+function generateSecret(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function disabledReasonLabel(reason: string | undefined): string | null {
+  if (!reason) return null;
+  switch (reason) {
+    case 'consecutive_failures':
+      return 'failing for 3 days';
+    case 'gone':
+      return '410 Gone';
+    default:
+      return reason;
+  }
+}
+
 export function RepoWebhooksPage() {
   const { owner = '', repo = '' } = useParams();
   return <RepoWebhooksView key={`${owner}/${repo}`} owner={owner} repo={repo} />;
@@ -30,7 +57,6 @@ export function RepoWebhooksPage() {
 
 function RepoWebhooksView({ owner, repo }: { owner: string; repo: string }) {
   const [loading, setLoading] = useState(true);
-  const [repoData, setRepoData] = useState<Awaited<ReturnType<typeof fetchRepo>> | null>(null);
   const [admin, setAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +64,6 @@ function RepoWebhooksView({ owner, repo }: { owner: string; repo: string }) {
     try {
       const [r, me] = await Promise.all([fetchRepo(owner, repo), loadMe()]);
       const isAdmin = await isRepoAdmin(r, me);
-      setRepoData(r);
       setAdmin(isAdmin);
     } catch (_err) {
       setError(describeError(_err));
@@ -53,18 +78,16 @@ function RepoWebhooksView({ owner, repo }: { owner: string; repo: string }) {
 
   if (loading) return <p className="muted">Loading settings…</p>;
 
+  if (error) return <ErrorAlert message={error} />;
+
   return (
     <div>
       <div className="repo-title row">
-        <h1>
-          {repoData?.owner.name}/{repoData?.name}
-        </h1>
-        {repoData ? <VisibilityBadge visibility={repoData.visibility} /> : null}
+        <h1>{owner}/{repo}</h1>
       </div>
-      {error ? <ErrorAlert message={error} /> : null}
       <div className="stack" style={{ gap: 24, marginTop: 16 }}>
-        {admin && repoData ? (
-          <WebhooksContent key={`${owner}/${repo}`} owner={owner} repo={repo} repoData={repoData} onReload={load} />
+        {admin ? (
+          <WebhooksContent owner={owner} repo={repo} />
         ) : (
           <p className="muted">Webhooks are available only to repository admins.</p>
         )}
@@ -78,12 +101,9 @@ function RepoWebhooksView({ owner, repo }: { owner: string; repo: string }) {
 function WebhooksContent({
   owner,
   repo,
-  onReload,
 }: {
   owner: string;
   repo: string;
-  repoData?: unknown;
-  onReload: () => void;
 }) {
   const { toast } = useToast();
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
@@ -101,10 +121,12 @@ function WebhooksContent({
   const [toDelete, setToDelete] = useState<Webhook | null>(null);
   const [redelivering, setRedelivering] = useState<string | null>(null);
 
+  // Dettaglio consegna
+  const [deliveryDetail, setDeliveryDetail] = useState<WebhookDeliveryDetail | null>(null);
+
   const loadWebhooks = useCallback(async () => {
     try {
-      const api = await import('../../lib/webhooksApi');
-      const data = await api.fetchRepoWebhooks(owner, repo);
+      const data = await fetchRepoWebhooks(owner, repo);
       setWebhooks(data.items);
     } catch {
       setWebhooks([]);
@@ -121,8 +143,7 @@ function WebhooksContent({
     async (wh: Webhook) => {
       setDeliveriesLoading((prev) => ({ ...prev, [wh.id]: true }));
       try {
-        const api = await import('../../lib/webhooksApi');
-        const data = await api.fetchRepoWebhookDeliveries(owner, repo, wh.id);
+        const data = await fetchRepoWebhookDeliveries(owner, repo, wh.id);
         setDeliveriesByWebhook((prev) => ({ ...prev, [wh.id]: data.items }));
       } catch {
         setDeliveriesByWebhook((prev) => ({ ...prev, [wh.id]: [] }));
@@ -132,6 +153,13 @@ function WebhooksContent({
     },
     [owner, repo],
   );
+
+  // Carica le consegne quando si apre un webhook in modifica
+  useEffect(() => {
+    if (editing?.id) {
+      void loadDeliveries(editing);
+    }
+  }, [editing?.id, loadDeliveries]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,13 +174,13 @@ function WebhooksContent({
     setFormErrors({});
     setSaving(true);
     try {
-      const api = await import('../../lib/webhooksApi');
-      await api.createRepoWebhook(owner, repo, { url, events: checkedEvents as Webhook['events'] });
-      setCreatedSecret('placeholder_secret');
+      const typed = formData.get('secret')?.toString().trim() ?? '';
+      const secret = typed || generateSecret();
+      await createRepoWebhook(owner, repo, { url, events: checkedEvents as Webhook['events'], secret });
+      setCreatedSecret(secret);
       setEditing(null);
       toast('Webhook created.', 'success');
       await loadWebhooks();
-      onReload();
     } catch (err) {
       setFormErrors({ _form: describeError(err) });
     } finally {
@@ -171,15 +199,18 @@ function WebhooksContent({
       if (formData.get(ev) === 'on') checkedEvents.push(ev);
     }
     const active = formData.get('active') === 'on';
+    const secret = formData.get('secret')?.toString();
 
     setSaving(true);
     try {
-      const api = await import('../../lib/webhooksApi');
-      const updated = await api.updateRepoWebhook(owner, repo, editing.id, { url, events: checkedEvents as Webhook['events'], active });
+      const body: { url: string; events: Webhook['events']; active: boolean; secret?: string } = { url, events: checkedEvents as Webhook['events'], active };
+      if (secret && secret.trim()) {
+        body.secret = secret;
+      }
+      const updated = await updateRepoWebhook(owner, repo, editing.id, body);
       setWebhooks((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
       setEditing(null);
       toast('Webhook saved.', 'success');
-      onReload();
     } catch (err) {
       setFormErrors({ _form: describeError(err) });
     } finally {
@@ -191,8 +222,7 @@ function WebhooksContent({
     if (!toDelete) return;
     setSaving(true);
     try {
-      const api = await import('../../lib/webhooksApi');
-      await api.deleteRepoWebhook(owner, repo, toDelete.id);
+      await deleteRepoWebhook(owner, repo, toDelete.id);
       setWebhooks((prev) => prev.filter((w) => w.id !== toDelete.id));
       setDeliveriesByWebhook((prev) => {
         const copy = { ...prev };
@@ -202,7 +232,6 @@ function WebhooksContent({
       setCreatedSecret(null);
       toast('Webhook deleted.', 'success');
       await loadWebhooks();
-      onReload();
     } catch (_err) {
       toast(describeError(_err), 'error');
     } finally {
@@ -214,11 +243,9 @@ function WebhooksContent({
   async function handleReactivate(wh: Webhook) {
     setSaving(true);
     try {
-      const api = await import('../../lib/webhooksApi');
-      const updated = await api.reactivateRepoWebhook(owner, repo, wh.id);
+      const updated = await reactivateRepoWebhook(owner, repo, wh.id);
       setWebhooks((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
       toast('Webhook re-enabled.', 'success');
-      onReload();
     } catch (err) {
       toast(describeError(err), 'error');
     } finally {
@@ -229,14 +256,24 @@ function WebhooksContent({
   async function handleRedeliver(whId: string, deliveryId: string) {
     setRedelivering(deliveryId);
     try {
-      const api = await import('../../lib/webhooksApi');
-      await api.redeliverRepoWebhookDelivery(owner, repo, whId, deliveryId);
+      await redeliverRepoWebhookDelivery(owner, repo, whId, deliveryId);
       toast('Redelivery queued.', 'success');
-      loadDeliveries(webhooks.find((w) => w.id === whId) ?? editing!);
+      if (editing && editing.id === whId) {
+        await loadDeliveries(editing);
+      }
     } catch (err) {
       toast(describeError(err), 'error');
     } finally {
       setRedelivering(null);
+    }
+  }
+
+  async function openDeliveryDetail(whId: string, deliveryId: string) {
+    try {
+      const detail = await fetchRepoWebhookDeliveryDetail(owner, repo, whId, deliveryId);
+      setDeliveryDetail(detail);
+    } catch {
+      toast('Could not load delivery detail.', 'error');
     }
   }
 
@@ -285,7 +322,7 @@ function WebhooksContent({
                     <>
                       {' · '}
                       <b style={{ color: 'var(--danger)' }}>disabled automatically</b>{' '}
-                      {wh.disabledReason ? `(${wh.disabledReason})` : ''}
+                      {disabledReasonLabel(wh.disabledReason)}
                     </>
                   )}
                   {wh.failingSince && !wh.disabledAt && (
@@ -338,9 +375,9 @@ function WebhooksContent({
               >
                 <TextInput
                   name="secret"
-                  defaultValue={editing.hasSecret ? '••••••••••••••••' : ''}
-                  type={editing.hasSecret ? 'password' : 'text'}
-                  placeholder={editing.hasSecret ? 'Secret hidden' : 'Generate a secret to sign requests'}
+                  defaultValue=""
+                  type="text"
+                  placeholder={editing.hasSecret ? 'Leave empty to keep current secret' : 'Generate a secret to sign requests'}
                 />
               </FormField>
               <FormField label="Events">
@@ -391,12 +428,13 @@ function WebhooksContent({
                     </li>
                   ) : (
                     (deliveriesByWebhook[editing.id] ?? []).map((d) => (
-                      <li key={d.id} className="list-row small">
+                      <li key={d.id} className="list-row small" style={{ cursor: 'pointer' }} onClick={() => openDeliveryDetail(editing.id!, d.id)}>
                         {d.status === 'success' ? (
                           <Check size={16} style={{ color: 'var(--success)' }} aria-hidden="true" />
                         ) : (
                           <X size={16} style={{ color: 'var(--danger)' }} aria-hidden="true" />
                         )}
+                        <span className="mono subtle" title={d.id}>{d.id}</span>
                         <span className="mono">{d.event}</span>
                         {d.action ? <span className="mono subtle">{d.action}</span> : null}
                         <span className="sp" />
@@ -405,7 +443,7 @@ function WebhooksContent({
                         </b>
                         {d.durationMs ? <span className="muted">{d.durationMs} ms</span> : null}
                         <span className="subtle">{timeAgo(d.createdAt)}</span>
-                        <Button size="sm" disabled={redelivering === d.id} onClick={() => handleRedeliver(editing.id, d.id)}>
+                        <Button size="sm" disabled={redelivering === d.id} onClick={(e) => { e.stopPropagation(); handleRedeliver(editing.id!, d.id); }}>
                           {redelivering === d.id ? 'Queued' : 'Redeliver'}
                         </Button>
                       </li>
@@ -465,6 +503,89 @@ function WebhooksContent({
                 <Button variant="primary">Done</Button>
               </Dialog.Close>
             </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Dettaglio consegna */}
+      <Dialog.Root
+        open={deliveryDetail !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeliveryDetail(null);
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="dialog dialog-wide">
+            <Dialog.Title className="dialog-title">
+              Delivery detail
+            </Dialog.Title>
+            {deliveryDetail && (
+              <div className="stack" style={{ gap: 16 }}>
+                <div>
+                  <b>Request</b>
+                  <div className="card-b stack" style={{ gap: 8, marginTop: 8 }}>
+                    {deliveryDetail.request.headers && Object.keys(deliveryDetail.request.headers).length > 0 && (
+                      <div>
+                        <small className="muted">Headers:</small>
+                        <pre className="small" style={{ overflow: 'auto', maxHeight: 120, background: 'var(--bg-subtle)', padding: '8px 12px', borderRadius: 4 }}>
+                          {JSON.stringify(deliveryDetail.request.headers, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    <div>
+                      <small className="muted">Payload: {JSON.stringify(deliveryDetail.request.payload).length > 2048 ? `${JSON.stringify(deliveryDetail.request.payload).length} chars (truncated to 2 KB)` : `${JSON.stringify(deliveryDetail.request.payload).length} chars`}</small>
+                      <pre className="small" style={{ overflow: 'auto', maxHeight: 200, background: 'var(--bg-subtle)', padding: '8px 12px', borderRadius: 4 }}>
+                        {JSON.stringify(deliveryDetail.request.payload).length > 2048
+                          ? JSON.stringify(deliveryDetail.request.payload, null, 2).slice(0, 2048) + '\n... [truncated]'
+                          : JSON.stringify(deliveryDetail.request.payload, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <b>Response</b>
+                  <div className="card-b stack" style={{ gap: 8, marginTop: 8 }}>
+                    <div className="row">
+                      <span className="mono" style={{ fontSize: 13 }}>
+                        Status: {deliveryDetail.statusCode ?? '—'}
+                      </span>
+                      {deliveryDetail.durationMs ? (
+                        <span className="muted small"> · {deliveryDetail.durationMs} ms</span>
+                      ) : null}
+                    </div>
+                    {deliveryDetail.response ? (
+                      <>
+                        {deliveryDetail.response.headers && Object.keys(deliveryDetail.response.headers).length > 0 && (
+                          <div>
+                            <small className="muted">Headers:</small>
+                            <pre className="small" style={{ overflow: 'auto', maxHeight: 120, background: 'var(--bg-subtle)', padding: '8px 12px', borderRadius: 4 }}>
+                              {JSON.stringify(deliveryDetail.response.headers, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                        <div>
+                          <small className="muted">Body: {deliveryDetail.response.body.length > 2048 ? `${deliveryDetail.response.body.length} chars (truncated to 2 KB)` : `${deliveryDetail.response.body.length} chars`}</small>
+                          {deliveryDetail.response.truncated && <span className="subtle small" style={{ marginLeft: 8 }}>[truncated]</span>}
+                          <pre className="small" style={{ overflow: 'auto', maxHeight: 200, background: 'var(--bg-subtle)', padding: '8px 12px', borderRadius: 4 }}>
+                            {deliveryDetail.response.body.length > 2048
+                              ? deliveryDetail.response.body.slice(0, 2048) + '\n... [truncated]'
+                              : deliveryDetail.response.body}
+                          </pre>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="muted small">No response received.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="dialog-actions">
+                  <Dialog.Close asChild>
+                    <Button variant="primary">Close</Button>
+                  </Dialog.Close>
+                </div>
+              </div>
+            )}
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

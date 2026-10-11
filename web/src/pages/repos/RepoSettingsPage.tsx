@@ -182,6 +182,15 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
         </form>
       </section>
 
+      <section aria-label="Webhooks">
+        <div className="sec-h">
+          <h2>Webhooks</h2>
+        </div>
+        <Link to={`/${repo.owner.name}/${repo.name}/webhooks`} className="card card-b" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+          <p className="muted">Configure webhook URLs to receive notifications at an external endpoint.</p>
+        </Link>
+      </section>
+
       <section aria-label="Danger zone">
         <div className="sec-h">
           <h2 style={{ color: 'var(--danger)' }}>Danger zone</h2>
