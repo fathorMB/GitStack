@@ -96,7 +96,7 @@ func run(t *testing.T, fk *fake, stdin string, args ...string) result {
 	io_, in, out, errOut := cmdutil.Test()
 	in.WriteString(stdin)
 	f := cmdutil.New("test", io_)
-	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}
+	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok", "GS_HOST": fk.srv.URL}
 	f.Getenv = func(k string) string { return env[k] }
 	f.Git = noGit{}
 	full := append([]string{"--hostname", fk.srv.URL, "-R", "acme/web"}, args...)
@@ -226,7 +226,7 @@ func runTTY(t *testing.T, fk *fake, stdin string, args ...string) result {
 	in.WriteString(stdin)
 	io_.InTTY = true
 	f := cmdutil.New("test", io_)
-	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}
+	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok", "GS_HOST": fk.srv.URL}
 	f.Getenv = func(k string) string { return env[k] }
 	f.Git = noGit{}
 	full := append([]string{"--hostname", fk.srv.URL, "-R", "acme/web"}, args...)

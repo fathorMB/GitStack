@@ -50,7 +50,7 @@ Configura git perché usi il token di `gs` per clone e push sull'istanza.
 
 ## Più istanze
 
-L'istanza si sceglie così: `--hostname`, poi il remote `origin` del repo corrente, poi `GS_HOST`, poi quella predefinita. `GS_TOKEN` vale solo per l'istanza di `GS_HOST`.
+L'istanza si sceglie così: `--hostname`, poi `GS_HOST`, poi il remote `origin` del repo corrente (solo se è un'istanza già configurata), poi quella predefinita. `GS_TOKEN` vale solo per l'istanza di `GS_HOST` (o la predefinita se `GS_HOST` manca): mai per un altro host, nemmeno quello del remote.
 
 ## Regola sulle operazioni distruttive
 

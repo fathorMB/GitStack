@@ -96,7 +96,7 @@ func runWith(t *testing.T, fk *fake, o runOpts, args ...string) result {
 	in.WriteString(o.stdin)
 	io_.InTTY = o.tty
 	f := cmdutil.New("test", io_)
-	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}
+	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok", "GS_HOST": fk.srv.URL}
 	for k, v := range o.env {
 		env[k] = v
 	}

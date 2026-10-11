@@ -135,6 +135,11 @@ func checkCompat(c *cobra.Command, f *cmdutil.Factory) error {
 	if err != nil {
 		return nil
 	}
+	// Senza token per questo host il comando fallirà con exit 4: niente
+	// richiesta a un host che non ha un token qui (GIT-189).
+	if _, err := f.Token(host); err != nil {
+		return nil
+	}
 	cache := ""
 	if cfg, err := f.Config(); err == nil {
 		cache = filepath.Join(cfg.Path(), "compat.json")

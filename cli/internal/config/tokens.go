@@ -1,6 +1,9 @@
 package config
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 // EnvToken è la variabile d'ambiente che passa un token a gs senza login:
 // vince su qualsiasi altra sorgente (CI, agenti).
@@ -62,18 +65,52 @@ func (f FileTokens) DeleteToken(host string) error {
 	return nil
 }
 
-// WithEnv antepone GS_TOKEN a inner: se la variabile è impostata, vince.
-func WithEnv(inner TokenSource, getenv func(string) string) TokenSource {
-	return envTokens{inner: inner, getenv: getenv}
+// EnvHost è la variabile d'ambiente che sceglie l'istanza (GS_HOST).
+const EnvHost = "GS_HOST"
+
+// NormalizeHost porta un host a una forma confrontabile: minuscolo, senza
+// schema né percorso.
+func NormalizeHost(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.TrimPrefix(strings.TrimPrefix(s, "https://"), "http://")
+	if i := strings.IndexAny(s, "/?#"); i >= 0 {
+		s = s[:i]
+	}
+	return s
+}
+
+// SameHost dice se due host (con eventuale porta) sono lo stesso.
+func SameHost(a, b string) bool {
+	a, b = NormalizeHost(a), NormalizeHost(b)
+	return a != "" && a == b
+}
+
+// WithEnv antepone GS_TOKEN a inner, ma solo per l'istanza di GS_HOST o, se
+// GS_HOST manca, per quella predefinita (defaultHost, può essere nil): GS_TOKEN
+// non esce mai verso un altro host. Per gli altri host vale inner.
+func WithEnv(inner TokenSource, getenv func(string) string, defaultHost func() string) TokenSource {
+	return envTokens{inner: inner, getenv: getenv, defaultHost: defaultHost}
 }
 
 type envTokens struct {
-	inner  TokenSource
-	getenv func(string) string
+	inner       TokenSource
+	getenv      func(string) string
+	defaultHost func() string
+}
+
+// EnvTokenTarget è l'host a cui vale GS_TOKEN: GS_HOST, altrimenti la predefinita.
+func EnvTokenTarget(getenv func(string) string, defaultHost func() string) string {
+	if h := NormalizeHost(getenv(EnvHost)); h != "" {
+		return h
+	}
+	if defaultHost != nil {
+		return NormalizeHost(defaultHost())
+	}
+	return ""
 }
 
 func (e envTokens) Token(host string) (string, string, error) {
-	if t := e.getenv(EnvToken); t != "" {
+	if t := e.getenv(EnvToken); t != "" && SameHost(host, EnvTokenTarget(e.getenv, e.defaultHost)) {
 		return t, SourceEnv, nil
 	}
 	return e.inner.Token(host)

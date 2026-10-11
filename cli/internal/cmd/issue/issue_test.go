@@ -90,7 +90,7 @@ func run(t *testing.T, fk *fake, stdin string, args ...string) result {
 	io_, in, out, errOut := cmdutil.Test()
 	in.WriteString(stdin)
 	f := cmdutil.New("test", io_)
-	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}
+	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok", "GS_HOST": fk.srv.URL}
 	f.Getenv = func(k string) string { return env[k] }
 	f.Git = noGit{}
 	full := append([]string{"--hostname", fk.srv.URL, "-R", "acme/web"}, args...)
@@ -406,7 +406,7 @@ func TestErrori_CodiciDiUscita(t *testing.T) {
 	io_, _, _, errOut := cmdutil.Test()
 	f := cmdutil.New("test", io_)
 	f.Getenv = func(k string) string {
-		return map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "no"}[k]
+		return map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "no", "GS_HOST": fk.srv.URL}[k]
 	}
 	f.Git = noGit{}
 	if code := root.Run(context.Background(), f, []string{"--hostname", fk.srv.URL, "-R", "acme/web", "issue", "view", "5"}); code != 4 {
@@ -423,7 +423,7 @@ func TestErrori_CodiciDiUscita(t *testing.T) {
 		t.Errorf("senza token: exit %d", code)
 	}
 	f.Getenv = func(k string) string {
-		return map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}[k]
+		return map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok", "GS_HOST": fk.srv.URL}[k]
 	}
 	if code := root.Run(context.Background(), f, []string{"--hostname", fk.srv.URL, "issue", "view", "5"}); code != 2 {
 		t.Errorf("senza repo: exit %d", code)

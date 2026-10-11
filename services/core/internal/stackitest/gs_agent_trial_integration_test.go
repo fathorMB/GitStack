@@ -46,6 +46,17 @@ func TestAgentTrial(t *testing.T) {
 	}
 
 	work := t.TempDir()
+	// GIT-189: gli script si lanciano dal checkout di GitStack (docs/agent-trial.md,
+	// passo 3), il cui origin è su GitHub: gs deve usare GS_HOST e non mandare
+	// né richieste né token a quell'host.
+	for _, args := range [][]string{{"init", "-q"}, {"remote", "add", "origin", "https://github.com/fathorMB/GitStack.git"}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = work
+		cmd.Env = append(cleanEnv(), "HOME="+g.home, "USERPROFILE="+g.home)
+		if b, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, b)
+		}
+	}
 	tokenFile := filepath.Join(work, "agent-trial.token")
 	// Nello stack di prova gli indirizzi di clone puntano al servizio git, non
 	// al gateway: le credenziali di git si danno con insteadOf (in produzione
