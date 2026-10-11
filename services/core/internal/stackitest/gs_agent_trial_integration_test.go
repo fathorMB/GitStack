@@ -109,7 +109,8 @@ func TestAgentTrial(t *testing.T) {
 	g.process()
 
 	// Prima del lavoro dell'agente la checklist non passa.
-	if out, code := run("check.sh", nil); code != 1 || !strings.Contains(out, "FAIL issue chiusa") {
+	if out, code := run("check.sh", nil); code != 1 || !strings.Contains(out, "FAIL issue chiusa") ||
+		!strings.Contains(out, "nessun commento di trial-agent") || strings.Contains(out, "cannot iterate") {
 		t.Fatalf("check.sh prima del lavoro: exit %d\n%s", code, out)
 	}
 
