@@ -1,6 +1,8 @@
 package milestone
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -50,28 +52,34 @@ func newEditCmd(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			in := gitstack.UpdateMilestoneInput{}
+			// Il corpo è una mappa e non UpdateMilestoneInput: il tipo generato
+			// ha dueOn con omitempty e non può mandare `"dueOn": null`, che è
+			// come l'API toglie la data (I7).
+			in := map[string]any{}
 			if titleSet {
 				title = strings.TrimSpace(title)
 				if title == "" {
 					return cmdutil.UsageErrorf("il titolo non può essere vuoto")
 				}
-				in.Title = &title
+				in["title"] = title
 			}
 			if descSet {
-				in.Description = &description
+				in["description"] = description
 			}
 			if dueOnSet {
-				parsed, err := parseDate(dueOn)
-				if err != nil {
+				if _, err := parseDate(dueOn); err != nil {
 					return cmdutil.UsageErrorf("data scadenza: %v", err)
 				}
-				in.DueOn = &parsed
+				in["dueOn"] = dueOn
 			}
 			if removeSet {
-				in.DueOn = nil
+				in["dueOn"] = nil
 			}
-			resp, err := e.gen.UpdateMilestoneWithResponse(c.Context(), gitstack.RepoOwnerParam(e.owner), gitstack.RepoNameParam(e.repo), gitstack.MilestoneNumberParam(number), in)
+			body, err := json.Marshal(in)
+			if err != nil {
+				return err
+			}
+			resp, err := e.gen.UpdateMilestoneWithBodyWithResponse(c.Context(), gitstack.RepoOwnerParam(e.owner), gitstack.RepoNameParam(e.repo), gitstack.MilestoneNumberParam(number), "application/json", bytes.NewReader(body))
 			if err != nil {
 				return err
 			}

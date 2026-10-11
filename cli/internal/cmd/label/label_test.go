@@ -164,15 +164,38 @@ func TestEdit(t *testing.T) {
 	}
 }
 
+// runTTY come run, ma con un terminale interattivo su stdin.
+func runTTY(t *testing.T, fk *fake, stdin string, args ...string) result {
+	t.Helper()
+	io_, in, out, errOut := cmdutil.Test()
+	in.WriteString(stdin)
+	io_.InTTY = true
+	f := cmdutil.New("test", io_)
+	env := map[string]string{config.EnvConfigDir: t.TempDir(), config.EnvToken: "tok"}
+	f.Getenv = func(k string) string { return env[k] }
+	f.Git = noGit{}
+	full := append([]string{"--hostname", fk.srv.URL, "-R", "acme/web"}, args...)
+	code := root.Run(context.Background(), f, full)
+	return result{code, out.String(), errOut.String()}
+}
+
 func TestDelete_ConfermeG8(t *testing.T) {
 	fk := newFake(t, map[string]reply{"DELETE /repos/acme/web/labels/bug": {204, ``}})
 	// Senza TTY e senza --yes: exit 2, zero DELETE.
 	if r := run(t, fk, "", "label", "delete", "bug"); r.code != 2 || len(fk.find("DELETE", "/repos/acme/web/labels/bug")) != 0 {
 		t.Errorf("senza tty: exit %d", r.code)
 	}
+	// TTY, risposta sbagliata: annullato (exit 1), nessuna DELETE.
+	if r := runTTY(t, fk, "nope\n", "label", "delete", "bug"); r.code != 1 || len(fk.find("DELETE", "/repos/acme/web/labels/bug")) != 0 {
+		t.Errorf("risposta sbagliata: exit %d (%s)", r.code, r.errOut)
+	}
+	// TTY, risposta giusta: elimina.
+	if r := runTTY(t, fk, "bug\n", "label", "delete", "bug"); r.code != 0 || len(fk.find("DELETE", "/repos/acme/web/labels/bug")) != 1 {
+		t.Errorf("conferma: exit %d (%s)", r.code, r.errOut)
+	}
 	// --yes senza TTY: elimina.
 	r := run(t, fk, "", "label", "delete", "bug", "--yes")
-	if r.code != 0 || len(fk.find("DELETE", "/repos/acme/web/labels/bug")) != 1 {
+	if r.code != 0 || len(fk.find("DELETE", "/repos/acme/web/labels/bug")) != 2 {
 		t.Errorf("--yes: exit %d (%s)", r.code, r.errOut)
 	}
 }
