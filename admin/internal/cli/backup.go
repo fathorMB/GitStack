@@ -48,18 +48,25 @@ func (a *App) waitServing(ctx context.Context, cfg *config.Config) error {
 	var last error
 	for {
 		actx, acancel := context.WithTimeout(ctx, 5*time.Second)
+		var err error
 		if a.CheckServing != nil {
-			last = a.CheckServing(actx, cfg)
+			err = a.CheckServing(actx, cfg)
 		} else {
-			last = status.CheckServing(actx, cfg, a.HTTP)
+			err = status.CheckServing(actx, cfg, a.HTTP)
 		}
 		acancel()
-		if last == nil {
+		if err == nil {
 			return nil
+		}
+		// Un tentativo interrotto dalla scadenza del timeout complessivo non
+		// dice nulla sull'Ingress: se c'è già una risposta vera (per esempio
+		// HTTP 502), resta quella l'ultimo errore.
+		if last == nil || ctx.Err() == nil {
+			last = err
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("nessuna risposta valida entro %s; ultimo errore: %v", timeout.Round(time.Second), last)
+			return fmt.Errorf("nessuna risposta valida entro %s; ultimo errore: %v", roundDur(timeout), last)
 		case <-time.After(poll):
 		}
 	}
@@ -280,4 +287,13 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	}
 	_, _ = fmt.Fprintln(a.Stdout, "Restore completato: database, repo, allegati, Secret e configurazione ripristinati.")
 	return ExitOK
+}
+
+// roundDur formatta una durata per i messaggi: al secondo sopra il secondo,
+// altrimenti con la sua precisione (300ms, non 0s).
+func roundDur(d time.Duration) time.Duration {
+	if d >= time.Second {
+		return d.Round(time.Second)
+	}
+	return d
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -21,6 +22,10 @@ import (
 type sniffListener struct {
 	net.Listener
 	conf *tls.Config
+
+	once sync.Once
+	ch   chan net.Conn
+	done chan struct{}
 }
 
 type peekConn struct {
@@ -30,17 +35,41 @@ type peekConn struct {
 
 func (c *peekConn) Read(p []byte) (int, error) { return c.r.Read(p) }
 
+// Accept non blocca sul primo byte di una connessione: lo sniff avviene in
+// una goroutine per connessione, così una connessione muta non ferma le altre.
 func (l *sniffListener) Accept() (net.Conn, error) {
-	c, err := l.Listener.Accept()
-	if err != nil {
-		return nil, err
+	l.once.Do(func() {
+		l.ch = make(chan net.Conn)
+		l.done = make(chan struct{})
+		go func() {
+			for {
+				c, err := l.Listener.Accept()
+				if err != nil {
+					close(l.done)
+					return
+				}
+				go func() {
+					pc := &peekConn{Conn: c, r: bufio.NewReader(c)}
+					b, err := pc.r.Peek(1)
+					var out net.Conn = pc
+					if err == nil && b[0] == 0x16 {
+						out = tls.Server(pc, l.conf)
+					}
+					select {
+					case l.ch <- out:
+					case <-l.done:
+						_ = c.Close()
+					}
+				}()
+			}
+		}()
+	})
+	select {
+	case c := <-l.ch:
+		return c, nil
+	case <-l.done:
+		return nil, net.ErrClosed
 	}
-	pc := &peekConn{Conn: c, r: bufio.NewReader(c)}
-	b, err := pc.r.Peek(1)
-	if err == nil && b[0] == 0x16 {
-		return tls.Server(pc, l.conf), nil
-	}
-	return pc, nil
 }
 
 const testPEM = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
@@ -111,7 +140,7 @@ func TestRestoreWaitsForIngressRetrying(t *testing.T) {
 func TestRestoreIngressTimeoutExits9(t *testing.T) {
 	a, cfg := backupApp(t, "sha-aaa")
 	host, _ := ingress(t, a, -1)
-	a.ServingTimeout = 300 * time.Millisecond
+	a.ServingTimeout = 2 * time.Second
 	code, stderr := restoreOn(t, a, cfg, "internal", host)
 	if code != ExitNotServing || ExitNotServing != 9 {
 		t.Fatalf("exit %d, atteso 9; stderr: %s", code, stderr)
@@ -146,4 +175,16 @@ func newTLSConfig(t *testing.T) (*tls.Config, *http.Client) {
 	ts := httptest.NewTLSServer(http.NotFoundHandler())
 	defer ts.Close()
 	return &tls.Config{Certificates: ts.TLS.Certificates, MinVersion: tls.VersionTLS12}, ts.Client()
+}
+
+func TestRoundDurSottoIlSecondo(t *testing.T) {
+	for d, want := range map[time.Duration]string{
+		300 * time.Millisecond:  "300ms",
+		1400 * time.Millisecond: "1s",
+		120 * time.Second:       "2m0s",
+	} {
+		if got := roundDur(d).String(); got != want {
+			t.Errorf("roundDur(%s) = %s, atteso %s", d, got, want)
+		}
+	}
 }

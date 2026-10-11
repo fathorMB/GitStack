@@ -7,6 +7,7 @@ import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
+import { RepoMirrorsSection } from './RepoMirrorsSection';
 import { VisibilityBadge } from './ReposPage';
 import { isRepoAdmin, loadMe } from './repoAdmin';
 
@@ -181,6 +182,8 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
           </div>
         </form>
       </section>
+
+      <RepoMirrorsSection owner={repo.owner.name} repo={repo.name} readOnly={readOnly} />
 
       <section aria-label="Danger zone">
         <div className="sec-h">

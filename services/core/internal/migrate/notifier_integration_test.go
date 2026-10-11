@@ -17,7 +17,7 @@ func TestMigration0010_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
 		t.Fatalf("down 0010: %v", err)
 	}
 	var has bool
@@ -52,7 +52,7 @@ func TestMigration0011_SaleEScende(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("down 0011: %v", err)
 	}
 	q := `SELECT count(*) FROM information_schema.columns WHERE table_schema = 'core' AND table_name = 'notifications' AND column_name IN ('email_attempts', 'email_failed_at')`

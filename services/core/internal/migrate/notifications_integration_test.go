@@ -133,7 +133,7 @@ func TestMigration0006_SaleEScende(t *testing.T) {
 	wantCode(t, err, "23514")
 
 	// Down: tabelle via, eventi nuovi eliminati, vincolo precedente di nuovo in vigore.
-	if err := migrate.Down(ctx, pool, dsn, 7); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 8); err != nil {
 		t.Fatalf("down 0006: %v", err)
 	}
 	for _, tbl := range notificationTables {

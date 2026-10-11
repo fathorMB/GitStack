@@ -1,26 +1,34 @@
 # syntax=docker/dockerfile:1
 #
-# Immagine di identity. Contesto di build: questa cartella (services/identity),
-# non la radice del monorepo: il modulo Go di identity non dipende da altri
-# moduli del workspace (parla con Postgres via pgx), quindi si compila da solo.
+# Immagine del servizio identity. Contesto di build: la RADICE del monorepo
+# (GIT-184); i moduli interni (pkg/*) si compilano dalle sorgenti locali.
 #
-#   docker build -f services/identity/Dockerfile services/identity
+#   docker build -f services/identity/Dockerfile .
 #
-# Il tag e il push nel registry li fa il job `registry` di ci.yml: non è
-# compito di questa immagine.
+# Il tag e il push nel registry li fa il job `registry` di ci.yml.
 
 # --- Stage 1: build -----------------------------------------------------
 FROM golang:1.26-alpine AS build
 
+# Contesto di build: la RADICE del monorepo (GIT-184). I moduli interni
+# (pkg/*, client/go) si compilano dalle sorgenti locali del commit, non dalla
+# pseudo-versione del go.mod: scripts/docker-local-replace.sh scrive i replace.
+#   docker build -f services/identity/Dockerfile .
 WORKDIR /src
+COPY pkg ./pkg
+COPY scripts/docker-local-replace.sh ./scripts/docker-local-replace.sh
 
-# Livello di cache separato per i moduli.
-COPY go.mod go.sum ./
-RUN for i in 1 2 3 4 5; do go mod download && exit 0; echo "go mod download: tentativo $i fallito" >&2; sleep $((i*5)); done; exit 1
+WORKDIR /src/services/identity
 
-COPY . .
+# Livello di cache separato per i moduli di terze parti.
+COPY services/identity/go.mod services/identity/go.sum ./
+RUN sh /src/scripts/docker-local-replace.sh /src \
+    && for i in 1 2 3 4 5; do go mod download && exit 0; echo "go mod download: tentativo $i fallito" >&2; sleep $((i*5)); done; exit 1
 
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/identity .
+COPY services/identity/ .
+
+RUN sh /src/scripts/docker-local-replace.sh /src \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/identity .
 
 # --- Stage 2: runtime ----------------------------------------------------
 # distroless "static": binario staticamente linkato, nessuna shell, utente

@@ -127,7 +127,7 @@ func TestMigration0009_SaleEScende(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO core.event_outbox (id, name, version, payload) VALUES (gen_random_uuid(), 'x.y', 1, '{}')`); err != nil {
 		t.Fatal(err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 5); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 6); err != nil {
 		t.Fatalf("down 0009: %v", err)
 	}
 	if exists() {

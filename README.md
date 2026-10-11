@@ -91,6 +91,35 @@ Dopo aver aggiunto un modulo al workspace o cambiato una dipendenza, lancia
 non solo quelli del modulo toccato. Dettagli: `api/README.md`,
 `client/README.md`.
 
+## Cambiare un pkg/* o client/go
+
+Un cambio a `pkg/*` (o `client/go`) è **un commit solo**: niente bump dei
+`go.mod`. I `Dockerfile` dei servizi hanno per contesto la radice del repo
+(`docker build -f services/<svc>/Dockerfile .`), copiano `pkg/` e lanciano
+`scripts/docker-local-replace.sh`, che scrive in `go.mod` un `replace` verso
+le sorgenti locali di ogni modulo interno (la lista si ricava dalle cartelle).
+L'immagine contiene quindi sempre il codice del commit, qualunque
+pseudo-versione dica il `require` (GIT-184; prima, GIT-182, serviva un secondo
+commit con `go get <modulo>@<hash>`).
+
+Se un servizio comincia a richiedere un modulo interno nuovo, il suo
+`Dockerfile` deve copiarne la cartella (oggi `COPY pkg ./pkg`).
+
+I controlli (in `.galaxylab/checks.toml` e nel job Go di `ci.yml`):
+
+- `go run scripts/check-internal-versions.go` (`go-internal-versions`) fallisce
+  se un `Dockerfile` di servizio non copia le sorgenti dei moduli interni che il
+  suo `go.mod` richiede, se un `RUN` con `go mod download`/`go build` gira
+  senza `docker-local-replace.sh`, o se un workflow (`context:` della matrix,
+  `docker build -f`) costruisce un servizio con un contesto diverso dalla radice.
+- `go run scripts/check-standalone-build.go` (`go-standalone-build`) copia in
+  una cartella temporanea solo ciò che il `Dockerfile` copia, applica lo stesso
+  script e compila con `GOWORK=off` e `-mod=readonly`: un `go.sum` incompleto
+  si vede come nell'immagine.
+
+Il job Chart (k3d) crea inoltre il repo `GitStack` attraverso l'Ingress, con
+l'immagine vera di core.
+
 ## CI
 
 `.github/workflows/ci.yml` (GitHub Actions, runner `ubuntu-24.04`) gira su

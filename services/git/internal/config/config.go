@@ -41,6 +41,12 @@ const (
 	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
 	// log all'avvio); NATS non raggiungibile non ferma né i push né l'avvio.
 	EnvNatsURL = "GITSTACK_GIT_NATS_URL"
+	// EnvMirrorCAFile: file PEM con le CA di cui il mirror in push si fida
+	// (GIT-181), per una destinazione con certificato di una CA privata, per
+	// esempio un secondo GitStack con la CA interna. SOSTITUISCE le CA di
+	// sistema per i soli push dei mirror: per spingere anche su GitHub il file
+	// deve contenerle tutte. Vuoto = CA di sistema.
+	EnvMirrorCAFile = "GITSTACK_GIT_MIRROR_CA_FILE"
 )
 
 // DefaultSSHAddr è la porta SSH di default (R7).
@@ -67,6 +73,8 @@ type Config struct {
 	RepoWarnBytes int64
 	// NatsURL: vuoto = git.push non viene pubblicato.
 	NatsURL string
+	// MirrorCAFile: vedi EnvMirrorCAFile; vuoto = CA di sistema.
+	MirrorCAFile string
 }
 
 // Load legge la configurazione dall'ambiente di processo.
@@ -124,6 +132,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(EnvNatsURL); ok {
 		cfg.NatsURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(EnvMirrorCAFile); ok {
+		cfg.MirrorCAFile = strings.TrimSpace(v)
 	}
 
 	for _, s := range []struct {

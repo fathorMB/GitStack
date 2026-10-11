@@ -1072,6 +1072,9 @@ type LabelNameParam = string
 // MilestoneNumberParam defines model for MilestoneNumberParam.
 type MilestoneNumberParam = int64
 
+// MirrorIdParam defines model for MirrorIdParam.
+type MirrorIdParam = openapi_types.UUID
+
 // NotificationIdParam defines model for NotificationIdParam.
 type NotificationIdParam = openapi_types.UUID
 

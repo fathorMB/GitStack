@@ -40,7 +40,7 @@ func TestDown_RollbackDocumentato(t *testing.T) {
 	pool, dsn := dbtest.NewPool(t)
 	ctx := context.Background()
 
-	if err := migrate.Down(ctx, pool, dsn, 12); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 13); err != nil {
 		t.Fatalf("rollback non riuscito: %v", err)
 	}
 

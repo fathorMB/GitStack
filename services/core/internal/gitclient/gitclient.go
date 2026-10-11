@@ -92,6 +92,12 @@ func New(base *url.URL, secret string, timeout time.Duration) *Client {
 }
 
 func (c *Client) do(ctx context.Context, caller trust.Identity, method, path string, body any, out any, okStatus ...int) error {
+	return c.doWith(c.http, ctx, caller, method, path, body, out, okStatus...)
+}
+
+// doWith è do con un client HTTP a scelta: le chiamate lente (mirror in push)
+// usano il client senza timeout complessivo e si limitano con il contesto.
+func (c *Client) doWith(hc *http.Client, ctx context.Context, caller trust.Identity, method, path string, body any, out any, okStatus ...int) error {
 	var rdr io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -109,7 +115,7 @@ func (c *Client) do(ctx context.Context, caller trust.Identity, method, path str
 	}
 	trust.Sign(req.Header, c.secret, caller, c.now())
 
-	resp, err := c.http.Do(req)
+	resp, err := hc.Do(req)
 	if err != nil {
 		var ue *url.Error
 		if errors.As(err, &ue) {
