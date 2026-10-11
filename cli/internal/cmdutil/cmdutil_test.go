@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/fathorMB/GitStack/cli/internal/config"
 	"github.com/fathorMB/GitStack/cli/internal/gsrepo"
 )
 
@@ -186,4 +190,105 @@ func TestResolveRepo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBaseRepo(t *testing.T) {
+	// makeConfig scrive un config.yaml con default_host in una cartella temporanea.
+	makeConfig := func(defaultHost string) *config.Config {
+		dir := t.TempDir()
+		if defaultHost != "" {
+			data := []byte(fmt.Sprintf("default_host: %s\n", defaultHost))
+			if err := os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return config.New(dir)
+	}
+
+	io, _, _, _ := Test()
+
+	// Test: default host diverso dal remote → errore che nomina i due host.
+	t.Run("default non matcha remote: errore", func(t *testing.T) {
+		cfg := makeConfig("homehub")
+		f := &Factory{
+			IO:         io,
+			Getenv:     os.Getenv,
+			Config:     func() (*config.Config, error) { return cfg, nil },
+			Git:        fakeGit{url: "https://github.com/fathorMB/GitStack.git"},
+			Tokens:     func() (config.TokenSource, error) { return nil, nil },
+			HTTPClient: func() *http.Client { return nil },
+		}
+		// Lancia Host() prima di BaseRepo per verificare la risoluzione.
+		host, hErr := f.Host()
+		if hErr != nil {
+			t.Fatalf("Host() err = %v", hErr)
+		}
+		if host != "homehub" {
+			t.Fatalf("Host() = %q, atteso %q", host, "homehub")
+		}
+
+		o, r, err := f.BaseRepo()
+		if err == nil {
+			t.Fatal("errore atteso, ricevuto nil")
+		}
+		if got := ExitCode(err); got != ExitUsage {
+			t.Fatalf("exit = %d, atteso %d", got, ExitUsage)
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, "github.com") {
+			t.Errorf("errore non nomina github.com: %q", msg)
+		}
+		if !strings.Contains(msg, "homehub") {
+			t.Errorf("errore non nomina homehub: %q", msg)
+		}
+		if !strings.Contains(msg, "--repo") {
+			t.Errorf("errore non suggerisce --repo: %q", msg)
+		}
+		if o != "" || r != "" {
+			t.Errorf("owner/repo = %q/%q, atteso vuoto", o, r)
+		}
+	})
+
+	// Test: default host matcha remote (anche SSH con porta) → funziona.
+	t.Run("remote matcha la predefinita: ok", func(t *testing.T) {
+		cfg := makeConfig("homehub")
+		f := &Factory{
+			IO:         io,
+			Getenv:     os.Getenv,
+			Config:     func() (*config.Config, error) { return cfg, nil },
+			Git:        fakeGit{url: "ssh://git@homehub:2222/acme/api.git"},
+			Tokens:     func() (config.TokenSource, error) { return nil, nil },
+			HTTPClient: func() *http.Client { return nil },
+		}
+
+		o, r, err := f.BaseRepo()
+		if err != nil {
+			t.Fatalf("nessun errore atteso, got = %v", err)
+		}
+		if o != "acme" || r != "api" {
+			t.Errorf("repo = %s/%s, atteso acme/api", o, r)
+		}
+	})
+
+	// Test: --repo forzato supera il controllo del remote.
+	t.Run("--repo supera il remote mismatch", func(t *testing.T) {
+		cfg := makeConfig("homehub")
+		f := &Factory{
+			IO:         io,
+			Getenv:     os.Getenv,
+			Config:     func() (*config.Config, error) { return cfg, nil },
+			RepoFlag:   "acme/api",
+			Git:        fakeGit{url: "https://github.com/fathorMB/GitStack.git"},
+			Tokens:     func() (config.TokenSource, error) { return nil, nil },
+			HTTPClient: func() *http.Client { return nil },
+		}
+
+		o, r, err := f.BaseRepo()
+		if err != nil {
+			t.Fatalf("nessun errore atteso, got = %v", err)
+		}
+		if o != "acme" || r != "api" {
+			t.Errorf("repo = %s/%s, atteso acme/api", o, r)
+		}
+	})
 }

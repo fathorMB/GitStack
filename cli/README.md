@@ -64,7 +64,7 @@ Il `:` di `host:porta` nel nome file diventa `_`. File `0600` e cartelle `0700` 
 
 Nessuna: exit 4 («nessuna istanza»). Senza token per l'istanza: exit 4.
 
-**Scelta del repo** (`Factory.BaseRepo`): `--repo owner/repo` (`-R`), altrimenti il remote `origin`; altrimenti uso errato (exit 2). Se l'istanza è stata scelta con `--hostname` o `GS_HOST` e l'`origin` punta a un altro host, il remote non vale: exit 2 con un errore che nomina i due host (serve `--repo`).
+**Scelta del repo** (`Factory.BaseRepo`): `--repo owner/repo` (`-R`), altrimenti il remote `origin`; altrimenti uso errato (exit 2). Se l'`origin` punta a un host diverso da quello resolved da `Host()`, il remote non vale: exit 2 con un errore che nomina i due host (serve `--repo`).
 
 Remote riconosciuti (`gsrepo.ParseRemote`):
 
