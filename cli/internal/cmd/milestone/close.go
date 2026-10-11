@@ -14,8 +14,8 @@ import (
 func newCloseCmd(f *cmdutil.Factory) *cobra.Command {
 	var jo output.JSONOptions
 	cmd := &cobra.Command{
-		Use:     "close <numero>",
-		Short:   "Chiude una milestone",
+		Use:   "close <numero>",
+		Short: "Chiude una milestone",
 		Long: "Chiude una milestone (I7). Le issue aperte restano, ma non vengono " +
 			"contate nell'avanzamento. Serve il permesso write.",
 		Example: "  gs milestone close 3",
@@ -54,8 +54,8 @@ func newCloseCmd(f *cmdutil.Factory) *cobra.Command {
 func newReopenCmd(f *cmdutil.Factory) *cobra.Command {
 	var jo output.JSONOptions
 	cmd := &cobra.Command{
-		Use:     "reopen <numero>",
-		Short:   "Riapre una milestone",
+		Use:   "reopen <numero>",
+		Short: "Riapre una milestone",
 		Long: "Riapre una milestone chiusa (I7). Le issue chiuse come `completed` " +
 			"vengono contate nell'avanzamento. Serve il permesso write.",
 		Example: "  gs milestone reopen 3",

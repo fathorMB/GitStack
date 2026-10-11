@@ -11,14 +11,14 @@ import (
 
 func newListCmd(f *cmdutil.Factory) *cobra.Command {
 	var (
-		jo  output.JSONOptions
+		jo    output.JSONOptions
 		limit int
 	)
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Elenca le etichette del repo",
-		Long: "Elenca le etichette del repo, dalla più recente. Richiede il permesso read.",
+		Long:    "Elenca le etichette del repo, dalla più recente. Richiede il permesso read.",
 		Example: "  gs label list\n  gs label list --limit 5\n  gs label list --json name,color",
 		Args:    cmdutil.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {

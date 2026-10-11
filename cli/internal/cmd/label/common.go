@@ -9,7 +9,6 @@ import (
 
 	"github.com/fathorMB/GitStack/cli/internal/api"
 	"github.com/fathorMB/GitStack/cli/internal/cmdutil"
-	"github.com/fathorMB/GitStack/cli/internal/gsrepo"
 )
 
 // env è quello che un sottocomando usa: client generato, istanza, repo.
@@ -41,32 +40,6 @@ func newEnv(f *cmdutil.Factory) (*env, error) {
 		return nil, err
 	}
 	return &env{f: f, gen: cl.Generated(), host: host, owner: owner, repo: repo}, nil
-}
-
-// target risolve il repo di un comando: l'argomento `owner/repo` (o l'URL di
-// clone) se c'è, altrimenti -R e infine il remote origin (G7). Si fa prima
-// della rete, così un uso errato esce 2 senza chiamate.
-func target(f *cmdutil.Factory, args []string) (owner, repo string, err error) {
-	if len(args) == 0 {
-		return f.BaseRepo()
-	}
-	return parseTarget(args[0])
-}
-
-func parseTarget(arg string) (owner, repo string, err error) {
-	s := strings.TrimSpace(arg)
-	if strings.Contains(s, "://") || strings.Contains(s, "@") {
-		r, err := gsrepo.ParseRemote(s)
-		if err != nil {
-			return "", "", cmdutil.UsageErrorf("repo non valido: %q (atteso `owner/repo`)", arg)
-		}
-		return r.Owner, r.Repo, nil
-	}
-	o, r, err := gsrepo.ParseRepoFlag(s)
-	if err != nil {
-		return "", "", cmdutil.UsageErrorf("repo non valido: %q (atteso `owner/repo`)", arg)
-	}
-	return o, strings.TrimSuffix(r, ".git"), nil
 }
 
 // check converte una risposta non-2xx nell'errore di gs.

@@ -28,7 +28,7 @@ func (e *env) printLabel(jo *output.JSONOptions, l *gitstack.Label) error {
 		out := labelOut{Label: *l, URL: e.webURL(l.Name)}
 		return jo.Write(e.f.IO.Out, out, e.f.IO.OutTTY)
 	}
-	fmt.Fprintf(e.f.IO.Out, "%s\t%s\t%s\t%s\n", l.Name, l.Color, l.Description, e.webURL(l.Name))
+	_, _ = fmt.Fprintf(e.f.IO.Out, "%s\t%s\t%s\t%s\n", l.Name, l.Color, l.Description, e.webURL(l.Name))
 	return nil
 }
 
@@ -37,7 +37,7 @@ func validateColor(c string) error {
 		return fmt.Errorf("deve essere esadecimale a sei cifre")
 	}
 	for _, b := range c {
-		if !((b >= '0' && b <= '9') || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')) {
+		if (b < '0' || b > '9') && (b < 'a' || b > 'f') && (b < 'A' || b > 'F') {
 			return fmt.Errorf("carattere non esadecimale: %c", b)
 		}
 	}

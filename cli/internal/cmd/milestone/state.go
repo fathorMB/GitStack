@@ -32,7 +32,7 @@ func (e *env) printMilestone(jo *output.JSONOptions, m *gitstack.Milestone) erro
 		out := milestoneOut{Milestone: *m, URL: e.webURL(m.Number), Progress: milestoneProgress(*m)}
 		return jo.Write(e.f.IO.Out, out, e.f.IO.OutTTY)
 	}
-	fmt.Fprintf(e.f.IO.Out, "#%d\t%s\t%s\t%s\n", m.Number, m.Title, m.State, milestoneProgress(*m))
+	_, _ = fmt.Fprintf(e.f.IO.Out, "#%d\t%s\t%s\t%s\n", m.Number, m.Title, m.State, milestoneProgress(*m))
 	return nil
 }
 
