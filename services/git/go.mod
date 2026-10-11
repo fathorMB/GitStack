@@ -18,7 +18,10 @@ require (
 
 require (
 	github.com/fathorMB/GitStack/pkg/events v0.0.0-20261005233751-afbf7986d1ad
+	github.com/fathorMB/GitStack/pkg/scopes v0.0.0-20261011221051-f5da11db6030
 	github.com/nats-io/nats-server/v2 v2.15.0
 	github.com/nats-io/nats.go v1.54.0
 	golang.org/x/sys v0.48.0 // indirect
 )
+
+replace github.com/fathorMB/GitStack/pkg/scopes => ../../pkg/scopes

@@ -16,8 +16,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
+	"github.com/fathorMB/GitStack/pkg/scopes"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/trust"
 )
@@ -136,7 +136,7 @@ func (a *Authorizer) AuthorizeRepo(ctx context.Context, p Principal, owner, name
 	if write {
 		need, role = ScopeWrite, "write"
 	}
-	if !slices.Contains(p.Scopes, need) {
+	if !scopes.Grants(p.Scopes, need) {
 		return "", RepoRef{}, ErrForbidden
 	}
 	caller := trust.Identity{UserID: p.UserID, Username: p.Username, Scopes: p.Scopes}

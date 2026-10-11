@@ -12,6 +12,7 @@ require (
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
+	github.com/fathorMB/GitStack/pkg/scopes v0.0.0-20261011221051-f5da11db6030
 	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/go-openapi/jsonpointer v1.0.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -30,3 +31,5 @@ require (
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.50.0 // indirect
 )
+
+replace github.com/fathorMB/GitStack/pkg/scopes => ../../pkg/scopes
