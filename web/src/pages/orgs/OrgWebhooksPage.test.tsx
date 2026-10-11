@@ -163,7 +163,7 @@ describe('OrgWebhooksPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await screen.findByText('Webhooks');
+    await screen.findByRole('button', { name: 'Re-enable' });
     const reenableBtn = screen.getByRole('button', { name: 'Re-enable' });
     await user.click(reenableBtn);
     expect(mockedReactivate).toHaveBeenCalledWith('acme', 'wh-2');
