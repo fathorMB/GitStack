@@ -110,6 +110,7 @@ function WebhooksContent({ org }: { org: string }) {
   const { toast } = useToast();
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Webhook | null>(null);
   const [saving, setSaving] = useState(false);
@@ -130,8 +131,9 @@ function WebhooksContent({ org }: { org: string }) {
     try {
       const data = await fetchOrgWebhooks(org);
       setWebhooks(data.items);
-    } catch {
+    } catch (err) {
       setWebhooks([]);
+      setListError(describeError(err));
     } finally {
       setLoading(false);
     }
@@ -142,26 +144,27 @@ function WebhooksContent({ org }: { org: string }) {
   }, [loadWebhooks]);
 
   const loadDeliveries = useCallback(
-    async (wh: Webhook) => {
-      setDeliveriesLoading((prev) => ({ ...prev, [wh.id]: true }));
+    async (whId: string) => {
+      setDeliveriesLoading((prev) => ({ ...prev, [whId]: true }));
       try {
-        const data = await fetchOrgWebhookDeliveries(org, wh.id);
-        setDeliveriesByWebhook((prev) => ({ ...prev, [wh.id]: data.items }));
+        const data = await fetchOrgWebhookDeliveries(org, whId);
+        setDeliveriesByWebhook((prev) => ({ ...prev, [whId]: data.items }));
       } catch {
-        setDeliveriesByWebhook((prev) => ({ ...prev, [wh.id]: [] }));
+        setDeliveriesByWebhook((prev) => ({ ...prev, [whId]: [] }));
       } finally {
-        setDeliveriesLoading((prev) => ({ ...prev, [wh.id]: false }));
+        setDeliveriesLoading((prev) => ({ ...prev, [whId]: false }));
       }
     },
     [org],
   );
 
+  const editingId = editing?.id;
   // Carica le consegne quando si apre un webhook in modifica
   useEffect(() => {
-    if (editing?.id) {
-      void loadDeliveries(editing);
+    if (editingId) {
+      void loadDeliveries(editingId);
     }
-  }, [editing?.id, loadDeliveries]);
+  }, [editingId, loadDeliveries]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -261,7 +264,7 @@ function WebhooksContent({ org }: { org: string }) {
       await redeliverOrgWebhookDelivery(org, whId, deliveryId);
       toast('Redelivery queued.', 'success');
       if (editing && editing.id === whId) {
-        await loadDeliveries(editing);
+        await loadDeliveries(whId);
       }
     } catch (err) {
       toast(describeError(err), 'error');
@@ -295,7 +298,9 @@ function WebhooksContent({ org }: { org: string }) {
         {WEBHOOK_INFO}
       </p>
 
-      {loading && webhooks.length === 0 ? (
+      {listError ? (
+        <ErrorAlert message={listError} />
+      ) : loading && webhooks.length === 0 ? (
         <p className="muted">Loading webhooks…</p>
       ) : webhooks.length === 0 ? (
         <EmptyState icon={<LinkIcon size={32} />} title="No webhooks" description="Create a webhook to receive notifications at an external URL." />

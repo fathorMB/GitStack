@@ -108,6 +108,7 @@ function WebhooksContent({
   const { toast } = useToast();
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Webhook | null>(null);
   const [saving, setSaving] = useState(false);
@@ -128,8 +129,9 @@ function WebhooksContent({
     try {
       const data = await fetchRepoWebhooks(owner, repo);
       setWebhooks(data.items);
-    } catch {
+    } catch (err) {
       setWebhooks([]);
+      setListError(describeError(err));
     } finally {
       setLoading(false);
     }
@@ -140,26 +142,27 @@ function WebhooksContent({
   }, [loadWebhooks]);
 
   const loadDeliveries = useCallback(
-    async (wh: Webhook) => {
-      setDeliveriesLoading((prev) => ({ ...prev, [wh.id]: true }));
+    async (whId: string) => {
+      setDeliveriesLoading((prev) => ({ ...prev, [whId]: true }));
       try {
-        const data = await fetchRepoWebhookDeliveries(owner, repo, wh.id);
-        setDeliveriesByWebhook((prev) => ({ ...prev, [wh.id]: data.items }));
+        const data = await fetchRepoWebhookDeliveries(owner, repo, whId);
+        setDeliveriesByWebhook((prev) => ({ ...prev, [whId]: data.items }));
       } catch {
-        setDeliveriesByWebhook((prev) => ({ ...prev, [wh.id]: [] }));
+        setDeliveriesByWebhook((prev) => ({ ...prev, [whId]: [] }));
       } finally {
-        setDeliveriesLoading((prev) => ({ ...prev, [wh.id]: false }));
+        setDeliveriesLoading((prev) => ({ ...prev, [whId]: false }));
       }
     },
     [owner, repo],
   );
 
+  const editingId = editing?.id;
   // Carica le consegne quando si apre un webhook in modifica
   useEffect(() => {
-    if (editing?.id) {
-      void loadDeliveries(editing);
+    if (editingId) {
+      void loadDeliveries(editingId);
     }
-  }, [editing?.id, loadDeliveries]);
+  }, [editingId, loadDeliveries]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -259,7 +262,7 @@ function WebhooksContent({
       await redeliverRepoWebhookDelivery(owner, repo, whId, deliveryId);
       toast('Redelivery queued.', 'success');
       if (editing && editing.id === whId) {
-        await loadDeliveries(editing);
+        await loadDeliveries(whId);
       }
     } catch (err) {
       toast(describeError(err), 'error');
@@ -293,7 +296,9 @@ function WebhooksContent({
         {WEBHOOK_INFO}
       </p>
 
-      {loading && webhooks.length === 0 ? (
+      {listError ? (
+        <ErrorAlert message={listError} />
+      ) : loading && webhooks.length === 0 ? (
         <p className="muted">Loading webhooks…</p>
       ) : webhooks.length === 0 ? (
         <EmptyState icon={<LinkIcon size={32} />} title="No webhooks" description="Create a webhook to receive notifications at an external URL." />

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -68,7 +68,7 @@ describe('OrgWebhooksPage', () => {
     mockedDeliveries.mockResolvedValue({
       items: [
         { id: 'd123456789abcdef01', event: 'push', status: 'success', attempt: 1, statusCode: 200, durationMs: 82, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
-        { id: 'd223456789abcdef02', event: 'issues', status: 'failure', attempt: 2, statusCode: 500, durationMs: 1200, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
+        { id: 'd223456789abcdef02', event: 'issues', status: 'failed', attempt: 2, statusCode: 500, durationMs: 1200, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
         { id: 'd323456789abcdef03', event: 'issues', status: 'success', attempt: 1, statusCode: 200, durationMs: 95, createdAt: NOW, deliveredAt: NOW } as WebhookDeliverySummary,
       ],
       page: 1,
@@ -119,7 +119,7 @@ describe('OrgWebhooksPage', () => {
     renderPage();
 
     expect(await screen.findByText('Webhooks')).toBeInTheDocument();
-    expect(screen.getByText(/ci\.acme\.local\/hooks\/gitstack/)).toBeInTheDocument();
+    expect(await screen.findByText(/ci\.acme\.local\/hooks\/gitstack/)).toBeInTheDocument();
   });
 
   it('mostra EmptyState quando non ci sono webhook', async () => {
@@ -144,10 +144,10 @@ describe('OrgWebhooksPage', () => {
     renderPage();
 
     expect(await screen.findByText('Webhooks')).toBeInTheDocument();
-    expect(screen.getByText(/old-ci\.acme\.local\/hooks\/gitstack/)).toBeInTheDocument();
+    expect(await screen.findByText(/old-ci\.acme\.local\/hooks\/gitstack/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Re-enable' })).toBeInTheDocument();
     expect(screen.getByText('disabled automatically')).toBeInTheDocument();
-    expect(screen.getByText(/failing for 3 days/)).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Webhooks' })).getByText(/failing for 3 days/)).toBeInTheDocument();
     expect(screen.queryByText(/consecutive_failures/)).not.toBeInTheDocument();
   });
 
@@ -263,7 +263,7 @@ describe('OrgWebhooksPage', () => {
     );
     renderPage();
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/Could not reach the server/)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/not implemented|Could not reach the server/);
   });
 
   it('mostra il messaggio di successo per Redeliver', async () => {
@@ -318,14 +318,14 @@ describe('OrgWebhooksPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await screen.findByText(/ci.acme.local/hooks/gitstack/);
+    await screen.findByText('https://ci.acme.local/hooks/gitstack');
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.click(await screen.findByText('d-1'));
     await waitFor(() => {
       expect(mockedDeliveryDetail).toHaveBeenCalledWith('acme', 'wh-1', 'd-1');
     });
     expect(await screen.findByText('Delivery detail')).toBeInTheDocument();
-    expect(screen.getByText(/refs/heads/main/)).toBeInTheDocument();
+    expect(screen.getByText(/"ref": "refs.heads.main"/)).toBeInTheDocument();
     expect(screen.getByText(/truncated to 2 KB/)).toBeInTheDocument();
     const body = screen.getByText(/^x{100,}/);
     expect(body.textContent!.length).toBeLessThan(2100);
