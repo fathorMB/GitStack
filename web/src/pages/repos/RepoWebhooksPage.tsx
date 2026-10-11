@@ -9,6 +9,7 @@ import { Button, ConfirmDialog, CopyButton, EmptyState, ErrorAlert, FormField, T
 import { describeError } from '../../lib/http';
 import { timeAgo } from '../../lib/format';
 import { fetchRepo } from '../../lib/reposApi';
+import type { Repository } from '../../lib/reposApi';
 import {
   createRepoWebhook,
   deleteRepoWebhook,
@@ -20,6 +21,7 @@ import {
   updateRepoWebhook,
 } from '../../lib/webhooksApi';
 import type { Webhook, WebhookDeliveryDetail, WebhookDeliverySummary } from '../../lib/webhooksApi';
+import { RepoHeader } from './RepoHeader';
 import { isRepoAdmin, loadMe } from './repoAdmin';
 
 const EVENT_DESCRIPTIONS: Record<string, string> = {
@@ -58,12 +60,14 @@ export function RepoWebhooksPage() {
 function RepoWebhooksView({ owner, repo }: { owner: string; repo: string }) {
   const [loading, setLoading] = useState(true);
   const [admin, setAdmin] = useState(false);
+  const [repoData, setRepoData] = useState<Repository | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [r, me] = await Promise.all([fetchRepo(owner, repo), loadMe()]);
       const isAdmin = await isRepoAdmin(r, me);
+      setRepoData(r);
       setAdmin(isAdmin);
     } catch (_err) {
       setError(describeError(_err));
@@ -82,9 +86,15 @@ function RepoWebhooksView({ owner, repo }: { owner: string; repo: string }) {
 
   return (
     <div>
-      <div className="repo-title row">
-        <h1>{owner}/{repo}</h1>
-      </div>
+      {repoData ? (
+        <RepoHeader repo={repoData} mode="webhooks" admin={admin} />
+      ) : (
+        <div className="repo-title row">
+          <h1>
+            {owner} / {repo}
+          </h1>
+        </div>
+      )}
       <div className="stack" style={{ gap: 24, marginTop: 16 }}>
         {admin ? (
           <WebhooksContent owner={owner} repo={repo} />

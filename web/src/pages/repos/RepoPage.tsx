@@ -1,8 +1,7 @@
-import { CircleDot, FileCode, Link as LinkIcon, Terminal } from 'lucide-react';
+import { Link as LinkIcon, Terminal } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CopyButton, ErrorAlert } from '../../components';
-import { countIssues } from '../../lib/issuesApi';
 import { fetchRepo } from '../../lib/reposApi';
 import type { Repository } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
@@ -18,9 +17,8 @@ import { SearchPage } from './SearchPage';
 import { TagsPage } from './TagsPage';
 import { FileView } from './FileView';
 import type { FileMode } from './FileView';
-import { VisibilityBadge } from './ReposPage';
+import { RepoHeader } from './RepoHeader';
 import { isRepoAdmin, loadMe } from './repoAdmin';
-import { RepoWatchSelect } from './RepoWatchSelect';
 
 // Pagina /<owner>/<repo> (R1): con repo vuoto mostra il quick setup
 // (mockup 06); altrimenti un segnaposto in attesa del browser di M-04.
@@ -64,49 +62,12 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
     };
   }, [data]);
 
-  // Conteggio delle issues aperte per la scheda; un errore lo nasconde.
-  const [openIssues, setOpenIssues] = useState<number | null>(null);
-  useEffect(() => {
-    let live = true;
-    countIssues(owner, repo, 'is:open').then(
-      (n) => {
-        if (live) setOpenIssues(n);
-      },
-      () => {
-        if (live) setOpenIssues(null);
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [owner, repo]);
-
   if (loading && data === null) return <p className="muted">Loading repository…</p>;
   if (error || !data) return <ErrorAlert message={error ?? 'Repository not found.'} />;
 
   return (
     <div>
-      <div className="repo-title row">
-        <h1>
-          {data.owner.name} / {data.name}
-        </h1>
-        <VisibilityBadge visibility={data.visibility} />
-        {data.archived ? <span className="badge badge-archived">Archived</span> : null}
-        <span className="sp" />
-        <RepoWatchSelect owner={data.owner.name} repo={data.name} />
-        {admin ? <Link to={`/${data.owner.name}/${data.name}/settings`}>Settings</Link> : null}
-      </div>
-      {data.description ? <p className="muted">{data.description}</p> : null}
-      <nav className="tabs" aria-label="Repository sections">
-        <NavLink className={() => (mode !== 'issues' && mode !== 'issue' && mode !== 'newissue' && mode !== 'labels' && mode !== 'milestones' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}`} end>
-          <FileCode size={16} aria-hidden="true" />
-          Code
-        </NavLink>
-        <NavLink className={() => (mode === 'issues' || mode === 'issue' || mode === 'newissue' || mode === 'labels' || mode === 'milestones' ? 'tab active' : 'tab')} to={`/${data.owner.name}/${data.name}/issues`}>
-          <CircleDot size={16} aria-hidden="true" />
-          Issues {openIssues !== null ? <span className="counter">{openIssues}</span> : null}
-        </NavLink>
-      </nav>
+      <RepoHeader repo={data} mode={mode} admin={admin} />
       {mode === 'labels' ? (
         <div className="section-gap">
           <LabelsPage repo={data} />

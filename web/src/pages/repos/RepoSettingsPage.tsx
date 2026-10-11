@@ -8,7 +8,7 @@ import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { RepoMirrorsSection } from './RepoMirrorsSection';
-import { VisibilityBadge } from './ReposPage';
+import { RepoHeader } from './RepoHeader';
 import { isRepoAdmin, loadMe } from './repoAdmin';
 
 // Impostazioni del repo, sezione General (mockup 18): solo per chi ha admin.
@@ -30,13 +30,7 @@ function RepoSettingsView({ owner, repo }: { owner: string; repo: string }) {
 
   return (
     <div>
-      <div className="repo-title row">
-        <h1>
-          {current.owner.name} / <Link to={`/${current.owner.name}/${current.name}`}>{current.name}</Link>
-        </h1>
-        <VisibilityBadge visibility={current.visibility} />
-        {current.archived ? <span className="badge badge-archived">Archived</span> : null}
-      </div>
+      <RepoHeader repo={current} mode="settings" admin={admin} />
       <div className="stack section-gap" style={{ gap: 24 }}>
         {admin ? (
           <SettingsSections key={current.updatedAt} repo={current} onChange={(r) => setData({ repo: r, admin })} />
