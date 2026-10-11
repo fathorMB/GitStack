@@ -9,6 +9,7 @@ use (
 	./pkg/events
 	./pkg/issuequery
 	./pkg/names
+	./pkg/scopes
 	./services/core
 	./services/gateway
 	./services/git
