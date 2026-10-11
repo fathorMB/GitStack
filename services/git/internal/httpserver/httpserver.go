@@ -51,7 +51,7 @@ type Deps struct {
 	// Mirror esegue i mirror in push (GIT-179); nil = rotta non montata.
 	Mirror *mirrorpush.Service
 	// Pull esegue i mirror in pull (GIT-196); nil = rotta non montata.
-	Pull *mirrorpull.Service
+	Pull   *mirrorpull.Service
 	Secret string
 	Logger *slog.Logger
 	// Git, se non nil, serve lo smart HTTP su /<owner>/<repo>.git/...
