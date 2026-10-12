@@ -208,20 +208,7 @@ function Enable-ShareOnNetwork {
         }
     } else {
         # Aggiungi networkingMode nella sezione [wsl2] o crea la sezione
-        $nwLine = 'networkingMode=mirrored # GitStack'
-        if ($wslConfContent -match '\[wsl2\]') {
-            $wslConfContent = $wslConfContent -replace "(\[wsl2\].*?)([^\r\n])", "`$1`n# GitStack`n$nwLine`n`$2"
-            if ($wslConfContent -notmatch [regex]::Escape($nwLine)) {
-                $wslConfContent = $wslConfContent -replace "(\[wsl2\])", "`$1`n# GitStack`n$nwLine"
-            }
-        } else {
-            $wslBlock = "`n[wsl2]`n# GitStack`n$nwLine"
-            if ($wslConfContent.Trim()) {
-                $wslConfContent = $wslConfContent.TrimEnd() + $wslBlock
-            } else {
-                $wslConfContent = '[wsl2]' + $wslBlock.Trim()
-            }
-        }
+        $wslConfContent = Add-GitStackWslconfig -Content $wslConfContent
         $wslConfContent | Set-Content $wslConfPath -Encoding ASCII
         Write-Status '    networkingMode=mirrored aggiunto a .wslconfig.'
     }

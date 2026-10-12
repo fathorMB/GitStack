@@ -20,6 +20,27 @@ function Convert-WindowsToWSLPath {
     return $WinPath
 }
 
+function Add-GitStackWslconfig {
+    param([string]$Content)
+
+    $nwLine = 'networkingMode=mirrored'
+    if ($Content -match '\[wsl2\]') {
+        $Content = $Content -replace "(\[wsl2\].*?)([^\r\n])", "`$1`n# GitStack`n$nwLine`n`$2"
+        if ($Content -notmatch [regex]::Escape($nwLine)) {
+            $Content = $Content -replace "(\[wsl2\])", "`$1`n# GitStack`n$nwLine"
+        }
+    } else {
+        $wslBlock = "`n[wsl2]`n# GitStack`n$nwLine"
+        if ($Content.Trim()) {
+            $Content = $Content.TrimEnd() + $wslBlock
+        } else {
+            $Content = $wslBlock.Trim()
+        }
+    }
+
+    return $Content
+}
+
 function Remove-GitStackWslconfig {
     param([string]$Content)
 

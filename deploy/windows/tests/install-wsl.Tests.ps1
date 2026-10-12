@@ -82,18 +82,17 @@ $utilsPath = Join-Path $PSScriptRoot '..\wsl-utils.ps1'
 $utilsPath = (Resolve-Path -LiteralPath $utilsPath).Path
 . $utilsPath
 
-# Mock di wsl: sovrascrive il comando per restituire valori fissi
-$originalWsl = $function:wsl
+# Mock di wsl per le funzioni che lo invocano: restituisce valori fissi
 $mockWslResult = 0
 $mockWslOutput = ''
-wsl = {
+function wsl {
     param([string[]]$Args)
     if ($Args -contains 'wslpath') {
-        $mockWslOutput
-        Set-Variable -Name 'LASTEXITCODE' -Value $mockWslResult -Scope 1
-        return
+        Set-Variable -Name LASTEXITCODE -Value $mockWslResult -Scope Script
+        return $mockWslOutput
     }
-    $mockWslOutput
+    Set-Variable -Name LASTEXITCODE -Value $mockWslResult -Scope Script
+    return $mockWslOutput
 }
 
 # 5a. Convert-WindowsToWSLPath: wslpath fallisce → fallback E:\ -> /mnt/e/
@@ -102,11 +101,11 @@ $mockWslOutput = ''
 $result = Convert-WindowsToWSLPath -WinPath 'E:\Aziende\GitStack\deploy\windows' -DistroName GitStack
 Check 'convert fallback: E:\ -> /mnt/e/' ($result -eq '/mnt/e/Aziende/GitStack/deploy/windows')
 
-# 5b. Convert-WindowsToWSLPath: wslpath ha successo
+# 5b. Convert-WindowsToWSLPath: wslpath ha successo (valore mock distinto)
 $mockWslResult = 0
-$mockWslOutput = '/mnt/e/Aziende/GitStack'
-$result = Convert-WindowsToWSLPath -WinPath 'E:\Aziende\GitStack' -DistroName GitStack
-Check 'convert wslpath: successo' ($result -eq '/mnt/e/Aziende/GitStack')
+$mockWslOutput = '/mnt/x/mock'
+$result = Convert-WindowsToWSLPath -WinPath 'X:\percorso' -DistroName GitStack
+Check 'convert wslpath: successo (mock distinguibile)' ($result -eq '/mnt/x/mock')
 
 # 5c. Convert-WindowsToWSLPath: root repo (..) risolto prima della chiamata
 # Verifica che il file install-wsl.ps1 passi '..\..' per la radice del repo
@@ -115,7 +114,7 @@ Check 'install-wsl usa Resolve-Path ..\..' ($content -match 'Resolve-Path')
 # 5d. Remove-GitStackWslconfig: rimuove solo righe marcate
 $wslconfInput = "[wsl2]
 # GitStack
-networkingMode=mirrored # GitStack
+networkingMode=mirrored
 memory=4GB
 [wsl2]
 # Altre configurazioni
@@ -134,12 +133,53 @@ memory=4GB"
 $result = Remove-GitStackWslconfig -Content $plain
 Check 'wslconfig: nessun marker, nulla rimosso' ($result -eq $plain)
 
-# Ripristina wsl originale se esisteva
-if ($originalWsl) {
-    function wsl { & $originalWsl @Args }
-} else {
-    Remove-Item function:wsl -ErrorAction SilentlyContinue
+# 5f. Add-GitStackWslconfig: file vuoto → [wsl2] con networkingMode
+$empty = ''
+$result = Add-GitStackWslconfig -Content $empty
+$expected = "[wsl2]
+# GitStack
+networkingMode=mirrored"
+Check 'add: file vuoto' ($result -eq $expected)
+
+# 5g. Add-GitStackWslconfig: senza [wsl2] → crea la sezione
+$noSection = "memory=4GB"
+$result = Add-GitStackWslconfig -Content $noSection
+$expected = "memory=4GB
+[wsl2]
+# GitStack
+networkingMode=mirrored"
+Check 'add: senza [wsl2]' ($result -eq $expected)
+
+# 5h. Add-GitStackWslconfig: con [wsl2] esistente → aggiunge dentro
+$existing = "[wsl2]
+memory=4GB"
+$result = Add-GitStackWslconfig -Content $existing
+$expected = "[wsl2]
+# GitStack
+networkingMode=mirrored
+memory=4GB"
+Check 'add: con [wsl2] esistente' ($result -eq $expected)
+
+# 5i. Roundtrip: Add → Remove restituisce il contenuto originale
+# Roundtrip solo con [wsl2] già presente: Add inserisce # GitStack dentro il blocco,
+# Remove cancella il blocco e il marker; [wsl2] utente resta intatto.
+$cases = @(
+    "[wsl2]
+memory=4GB",
+    "[wsl2]
+# Commento utente
+memory=4GB"
+)
+$rtOk = $true
+foreach ($case in $cases) {
+    $added = Add-GitStackWslconfig -Content $case
+    $removed = Remove-GitStackWslconfig -Content $added
+    if ($removed -ne $case) {
+        $rtOk = $false
+        break
+    }
 }
+Check 'roundtrip Add Remove con [wsl2] presente' ($rtOk -eq $true)
 
 Write-Host ""
 Write-Host "PSScriptAnalyzer: per una verifica completa (naming, best-practice), " `
