@@ -113,12 +113,15 @@ function RepoPageInner({ owner, repo, splat, mode }: { owner: string; repo: stri
 
 // Gli indirizzi arrivano dalla risposta dell'API (cloneUrls): il client non
 // li costruisce mai. L'SSH usa la porta dell'installazione (R7, 2222).
+// Su un mirror in pull si mostra solo il clone (MP2).
 export function QuickSetup({ repo }: { repo: Repository }) {
   const [tab, setTab] = useState<'https' | 'ssh'>('https');
   const sshAvailable = Boolean(repo.cloneUrls.ssh);
   const activeTab = tab === 'ssh' && !sshAvailable ? 'https' : tab;
   const url = (activeTab === 'ssh' ? repo.cloneUrls.ssh : repo.cloneUrls.https) ?? '';
   const branch = repo.defaultBranch || 'main';
+  const isMirror = Boolean(repo.mirror);
+
   return (
     <section className="card section-gap" aria-label="Quick setup">
       <div className="card-h">
@@ -145,23 +148,31 @@ export function QuickSetup({ repo }: { repo: Repository }) {
           <CopyButton value={url} />
         </div>
 
-        <h3>Push an existing repository</h3>
-        <div className="cmdblock">
-          <span className="p">$ </span>git remote add origin {url}
-          {'\n'}
-          <span className="p">$ </span>git push -u origin {branch}
-        </div>
+        {isMirror ? (
+          <p className="muted small">
+            This is a pull mirror: clone only, push to the source.
+          </p>
+        ) : (
+          <>
+            <h3>Push an existing repository</h3>
+            <div className="cmdblock">
+              <span className="p">$ </span>git remote add origin {url}
+              {'\n'}
+              <span className="p">$ </span>git push -u origin {branch}
+            </div>
 
-        <h3>Start from scratch</h3>
-        <div className="cmdblock">
-          <span className="p">$ </span>echo &quot;# {repo.name}&quot; &gt; README.md{'\n'}
-          <span className="p">$ </span>git init &amp;&amp; git add README.md &amp;&amp; git commit -m &quot;first commit&quot;{'\n'}
-          <span className="p">$ </span>git branch -M {branch}
-          {'\n'}
-          <span className="p">$ </span>git remote add origin {url}
-          {'\n'}
-          <span className="p">$ </span>git push -u origin {branch}
-        </div>
+            <h3>Start from scratch</h3>
+            <div className="cmdblock">
+              <span className="p">$ </span>echo &quot;# {repo.name}&quot; &gt; README.md{'\n'}
+              <span className="p">$ </span>git init &amp;&amp; git add README.md &amp;&amp; git commit -m &quot;first commit&quot;{'\n'}
+              <span className="p">$ </span>git branch -M {branch}
+              {'\n'}
+              <span className="p">$ </span>git remote add origin {url}
+              {'\n'}
+              <span className="p">$ </span>git push -u origin {branch}
+            </div>
+          </>
+        )}
 
         <h3>With the GitStack CLI</h3>
         <div className="cmdblock">
