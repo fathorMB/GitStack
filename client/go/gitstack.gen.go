@@ -6782,7 +6782,7 @@ type ClientInterface interface {
 
 	// CreateTokenWithBody Crea un token personale
 	//
-	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -6791,7 +6791,7 @@ type ClientInterface interface {
 
 	// CreateToken Crea un token personale
 	//
-	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -6896,7 +6896,7 @@ type ClientInterface interface {
 
 	// CreateUserTokenWithBody Crea un token per un utente agent
 	//
-	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -6905,7 +6905,7 @@ type ClientInterface interface {
 
 	// CreateUserToken Crea un token per un utente agent
 	//
-	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -10945,7 +10945,7 @@ func (c *Client) ListTokens(ctx context.Context, params *ListTokensParams, reqEd
 
 // CreateTokenWithBody Crea un token personale
 //
-// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 //
 // Takes any type of body and a specified content type.
 //
@@ -10964,7 +10964,7 @@ func (c *Client) CreateTokenWithBody(ctx context.Context, contentType string, bo
 
 // CreateToken Crea un token personale
 //
-// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -11199,7 +11199,7 @@ func (c *Client) ListUserTokens(ctx context.Context, username UsernameParam, par
 
 // CreateUserTokenWithBody Crea un token per un utente agent
 //
-// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 //
 // Takes any type of body and a specified content type.
 //
@@ -11218,7 +11218,7 @@ func (c *Client) CreateUserTokenWithBody(ctx context.Context, username UsernameP
 
 // CreateUserToken Crea un token per un utente agent
 //
-// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -23552,7 +23552,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateTokenWithBodyWithResponse Crea un token personale
 	//
-	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23561,7 +23561,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateTokenWithResponse Crea un token personale
 	//
-	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+	// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23678,7 +23678,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateUserTokenWithBodyWithResponse Crea un token per un utente agent
 	//
-	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23687,7 +23687,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateUserTokenWithResponse Crea un token per un utente agent
 	//
-	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+	// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -41099,7 +41099,7 @@ func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, params
 
 // CreateTokenWithBodyWithResponse Crea un token personale
 //
-// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -41114,7 +41114,7 @@ func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Contex
 
 // CreateTokenWithResponse Crea un token personale
 //
-// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha.
+// Scope `write:user`. Il valore (`gst_...`) e' nella risposta una volta sola: il servizio conserva solo l'hash. Un token non puo' avere scope che il suo creatore non ha: con un token personale, ogni scope richiesto che il token chiamante non concede (`write:X` concede `read:X`, `admin:X` concede `write:X` e `read:X`) e' rifiutato con 403 `insufficient_scope`. Le sessioni del browser non hanno scope e mantengono quelli pieni.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -41309,7 +41309,7 @@ func (c *ClientWithResponses) ListUserTokensWithResponse(ctx context.Context, us
 
 // CreateUserTokenWithBodyWithResponse Crea un token per un utente agent
 //
-// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -41324,7 +41324,7 @@ func (c *ClientWithResponses) CreateUserTokenWithBodyWithResponse(ctx context.Co
 
 // CreateUserTokenWithResponse Crea un token per un utente agent
 //
-// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256.
+// Solo amministratori, scope `write:user` (regola P5). Solo per utenti di tipo `agent` (409 `not_an_agent` altrimenti). Stesse regole dei token personali: scope dal catalogo, scadenza obbligatoria con lo stesso massimo, valore (`gst_...`) mostrato una sola volta, nel database solo lo SHA-256. Se la richiesta arriva con un token, gli scope richiesti devono essere concessi da quel token (403 `insufficient_scope` altrimenti); le sessioni mantengono gli scope pieni.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

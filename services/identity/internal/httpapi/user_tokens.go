@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
+	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -15,28 +16,35 @@ import (
 // umano → 409 not_an_agent (anche se è l'admin stesso). Se ritorna false ha
 // già risposto.
 func (s *server) agentTarget(w http.ResponseWriter, r *http.Request, username string) (users.User, bool) {
+	u, _, ok := s.agentTargetCurrent(w, r, username)
+	return u, ok
+}
+
+// agentTargetCurrent come agentTarget, ma ritorna anche il chiamante (per
+// confrontare gli scope di un token da creare con i suoi).
+func (s *server) agentTargetCurrent(w http.ResponseWriter, r *http.Request, username string) (users.User, auth.Current, bool) {
 	if s.tokens == nil {
 		unavailable(w)
-		return users.User{}, false
+		return users.User{}, auth.Current{}, false
 	}
 	cur, ok := s.current(w, r)
 	if !ok {
-		return users.User{}, false
+		return users.User{}, auth.Current{}, false
 	}
 	if !cur.User.IsAdmin {
 		forbidden(w)
-		return users.User{}, false
+		return users.User{}, auth.Current{}, false
 	}
 	u, err := s.users.Get(r.Context(), username)
 	if !s.userError(w, r, err) {
-		return users.User{}, false
+		return users.User{}, auth.Current{}, false
 	}
 	if u.Kind != users.KindAgent {
 		writeError(w, http.StatusConflict, "not_an_agent",
 			"I token di una persona li gestisce solo lei: questa operazione vale per gli utenti agent.")
-		return users.User{}, false
+		return users.User{}, auth.Current{}, false
 	}
-	return u, true
+	return u, cur, true
 }
 
 func (s *server) ListUserTokens(w http.ResponseWriter, r *http.Request, username openapi.UsernameParam, p openapi.ListUserTokensParams) {
@@ -61,7 +69,7 @@ func (s *server) ListUserTokens(w http.ResponseWriter, r *http.Request, username
 }
 
 func (s *server) CreateUserToken(w http.ResponseWriter, r *http.Request, username openapi.UsernameParam) {
-	agent, ok := s.agentTarget(w, r, username)
+	agent, cur, ok := s.agentTargetCurrent(w, r, username)
 	if !ok {
 		return
 	}
@@ -72,6 +80,9 @@ func (s *server) CreateUserToken(w http.ResponseWriter, r *http.Request, usernam
 	scopes := make([]string, 0, len(in.Scopes))
 	for _, sc := range in.Scopes {
 		scopes = append(scopes, string(sc))
+	}
+	if !scopesWithinCaller(w, cur, scopes) {
+		return
 	}
 	plain, t, err := s.tokens.Create(r.Context(), apitokens.CreateInput{
 		UserID: agent.ID, Name: in.Name, Scopes: scopes, ExpiresAt: in.ExpiresAt,
