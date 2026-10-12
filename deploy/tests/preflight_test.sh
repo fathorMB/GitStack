@@ -115,6 +115,10 @@ expect_ok "SSD sconosciuto non blocca"
 expect_has "SSD sconosciuto" "non riesco a stabilire"
 
 # --- block_rotational su un sysfs finto -----------------------------------------
+# Nota: i due test "rotational partizione" e "rotational dm su nvme" falliscono
+# su main e su questo ramo: il setup crea symlink per sda2/dm-0 ma la cartella
+# queue/rotational non esiste sotto di essi (esiste solo sotto sda/nvme0n1).
+# Bug preesistente nel setup del test, non legato a N2.
 # Ricarica install.sh: ripristina block_rotational vera (sopra era uno stub).
 . "${HERE}/../install.sh"
 set +e +o pipefail
