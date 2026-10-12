@@ -631,57 +631,79 @@ jobs:
           owner="${REPO_OWNER,,}"
           for svc in gateway identity git core web; do
             img="${{ env.REGISTRY }}/${owner}/gitstack-${svc}:sha-${{ github.sha }}"
-            if inspect_err=$(docker manifest inspect "${img}" 2>&1 >/dev/null); then
-              echo "${svc}=${img}" >> "$GITHUB_OUTPUT"
-              echo "IMAGE_${svc}=${img}" >> "$GITHUB_ENV"
-              echo "OK: immagine trovata ${svc}"
-            else
+            # Si risolve il digest del manifest (index multi-arch incluso): firma,
+            # attestazione, SBOM e verifica usano solo img@sha256:..., non il tag.
+            if ! manifest=$(docker buildx imagetools inspect "${img}" --format '{{json .Manifest}}' 2>&1); then
               echo "ERRORE: immagine ${svc} non trovata su ghcr.io: ${img}" >&2
-              echo "docker manifest inspect: ${inspect_err}" >&2
+              echo "docker buildx imagetools inspect: ${manifest}" >&2
               exit 1
             fi
+            digest=$(printf '%s' "${manifest}" | jq -er '.digest')
+            if ! printf '%s' "${digest}" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "ERRORE: digest non valido per ${svc}: '${digest}'" >&2
+              exit 1
+            fi
+            ref="${img%:*}@${digest}"
+            echo "${svc}=${img}" >> "$GITHUB_OUTPUT"
+            echo "IMAGE_${svc}=${img}" >> "$GITHUB_ENV"
+            echo "IMAGEREF_${svc}=${ref}" >> "$GITHUB_ENV"
+            echo "OK: immagine trovata ${svc}: ${ref}"
           done
 
-      # --- Firma delle immagini con attestazione SBOM ---
-      - name: Firma keyless immagini (cosign) con SBOM attestato
-        run: |
-          set -euo pipefail
-          issuer="https://token.actions.githubusercontent.com"
-          identity="${{ steps.wf-id.outputs.identity }}"
-          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
-
-          for svc in gateway identity git core web; do
-            img_var="IMAGE_${svc}"
-            img="${!img_var}"
-            echo "=== Attestazione + firma immagine: ${img} ==="
-
-            # 1. Attestazione SBOM (sigstore in-toto)
-            cosign attest --yes \
-              --type spdxjson \
-              --predicate <(syft "${img}" --quiet -o spdx-json --scope full-sbom) \
-              "${img}"
-
-            # 2. Firma keyless (OIDC)
-            # cosign sign NON accetta --certificate-identity (flag di verifica):
-            # l'identità del certificato è determinata automaticamente dall'OIDC token.
-            echo "Firma keyless per ${img}..."
-            cosign sign --yes --recursive \
-              "${img}"
-            echo "OK: immagine firmata e attestata ${img}"
-          done
-
-      # --- SBOM delle immagini come artifact e nella release ---
+      # --- SBOM delle immagini su file (riusato per attestazione, artifact, release) ---
+      # syft gira come comando normale, senza process substitution: un errore
+      # ferma il passo col suo messaggio. Scope esplicito "squashed" (default per
+      # le immagini; l'altro valore valido e' "all-layers").
       - name: Genera SBOM immagini
         run: |
           set -euo pipefail
           mkdir -p sbom
           for svc in gateway identity git core web; do
-            img_var="IMAGE_${svc}"
-            img="${!img_var}"
-            echo "SBOM per ${svc}..."
-            syft "${img}" --quiet -o spdx-json > "sbom/gitstack-${svc}-sbom.spdx.json"
+            ref_var="IMAGEREF_${svc}"
+            ref="${!ref_var}"
+            out="sbom/gitstack-${svc}-sbom.spdx.json"
+            echo "SBOM per ${svc} (${ref})..."
+            syft scan "${ref}" --scope squashed -o "spdx-json=${out}"
+            if [ ! -s "${out}" ]; then
+              echo "ERRORE: SBOM vuoto o mancante per ${svc}: ${out}" >&2
+              exit 1
+            fi
+            if ! jq empty "${out}"; then
+              echo "ERRORE: SBOM non e' JSON valido per ${svc}: ${out}" >&2
+              exit 1
+            fi
           done
           echo "OK: SBOM immagini generati in sbom/"
+
+      # --- Firma delle immagini con attestazione SBOM (per digest) ---
+      - name: Firma keyless immagini (cosign) con SBOM attestato
+        run: |
+          set -euo pipefail
+
+          for svc in gateway identity git core web; do
+            ref_var="IMAGEREF_${svc}"
+            ref="${!ref_var}"
+            sbom="sbom/gitstack-${svc}-sbom.spdx.json"
+            echo "=== Attestazione + firma immagine: ${ref} ==="
+
+            if [ ! -s "${sbom}" ]; then
+              echo "ERRORE: SBOM mancante o vuoto: ${sbom}" >&2
+              exit 1
+            fi
+
+            # 1. Attestazione SBOM (sigstore in-toto), predicate da file
+            cosign attest --yes \
+              --type spdxjson \
+              --predicate "${sbom}" \
+              "${ref}"
+
+            # 2. Firma keyless (OIDC)
+            # cosign sign NON accetta --certificate-identity (flag di verifica):
+            # l'identità del certificato è determinata automaticamente dall'OIDC token.
+            echo "Firma keyless per ${ref}..."
+            cosign sign --yes --recursive "${ref}"
+            echo "OK: immagine firmata e attestata ${ref}"
+          done
 
       # --- Firma del chart Helm ---
       - name: Firma chart Helm
@@ -710,7 +732,10 @@ jobs:
 
           # SBOM del chart (template e metadati)
           mkdir -p sign sbom
-          syft dir:"${chart_dir}" --quiet -o spdx-json > "sbom/gitstack-chart-sbom.spdx.json"
+          out="sbom/gitstack-chart-sbom.spdx.json"
+          syft scan dir:"${chart_dir}" -o "spdx-json=${out}"
+          test -s "${out}" || { echo "ERRORE: SBOM chart vuoto: ${out}" >&2; exit 1; }
+          jq empty "${out}"
 
           # Firma del file chart come blob (bundle sigstore)
           echo "Firma chart Helm..."
@@ -754,7 +779,10 @@ jobs:
           fi
 
           # SBOM del binario
-          syft file:sign/gitstack-linux-amd64 --quiet -o spdx-json > sbom/gitstack-binary-sbom.spdx.json
+          out="sbom/gitstack-binary-sbom.spdx.json"
+          syft scan file:sign/gitstack-linux-amd64 -o "spdx-json=${out}"
+          test -s "${out}" || { echo "ERRORE: SBOM binario vuoto: ${out}" >&2; exit 1; }
+          jq empty "${out}"
           echo "OK: binario gitstack firmato"
 
           # Firma dei binari gs (tutte le piattaforme)
@@ -767,7 +795,10 @@ jobs:
           done
 
           # SBOM del binario gs_linux_amd64 (rappresentativo)
-          syft file:sign/gs_linux_amd64 --quiet -o spdx-json > sbom/gs-binary-sbom.spdx.json
+          out="sbom/gs-binary-sbom.spdx.json"
+          syft scan file:sign/gs_linux_amd64 -o "spdx-json=${out}"
+          test -s "${out}" || { echo "ERRORE: SBOM gs vuoto: ${out}" >&2; exit 1; }
+          jq empty "${out}"
 
           # Firma del file SHA256SUMS
           if [ -f sign/SHA256SUMS ]; then
@@ -800,8 +831,8 @@ jobs:
           issuer="https://token.actions.githubusercontent.com"
           identity="${{ steps.wf-id.outputs.identity }}"
           identity_regexp="${{ steps.wf-id.outputs.regexp }}"
-          img="${IMAGE_gateway}"
-          echo "Verifica firma immagine: ${img}"
+          img="${IMAGEREF_gateway}"
+          echo "Verifica firma immagine (per digest): ${img}"
           if [ -n "${identity}" ]; then
             cosign verify \
               --certificate-identity "${identity}" \
