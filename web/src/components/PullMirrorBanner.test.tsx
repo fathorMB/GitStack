@@ -92,19 +92,22 @@ describe('PullMirrorInfoBanner', () => {
   });
 
   it('danger banner for stopped mirror', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime('2026-10-12T14:00:00Z');
     render(
       <PullMirrorInfoBanner
         mirror={pullMirror({
           state: 'stopped',
           lastError: 'authentication failed (401)',
-          lastSyncedAt: '2026-10-11T10:00:00Z',
+          lastSyncedAt: '2026-10-12T08:00:00Z',
         })}
       />
     );
     const alert = screen.getByRole('alert');
     expect(alert).toHaveClass('alert-danger');
-    expect(alert).toHaveTextContent(/No successful update for \d+ hour/);
+    expect(alert).toHaveTextContent('No successful update for 30 hours.');
     expect(alert).toHaveTextContent('authentication failed (401)');
+    vi.useRealTimers();
   });
 
   it('danger banner without lastSyncedAt', () => {

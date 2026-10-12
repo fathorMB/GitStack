@@ -181,7 +181,7 @@ export function NewRepoPage() {
               </FormField>
               <span className="repo-slash" aria-hidden="true">/</span>
               <div className="grow">
-                <FormField label="Repository name" hint="Lowercase letters, digits, – — up to 100 characters." error={fields.name || nameError}>
+                <FormField label="Repository name" hint="Lowercase letters, digits, - _ . — up to 100 characters." error={fields.name || nameError}>
                   <TextInput value={name} onChange={(e) => setName(e.target.value)} onBlur={() => setTouched(true)} placeholder="billing-service" autoComplete="off" />
                 </FormField>
               </div>
