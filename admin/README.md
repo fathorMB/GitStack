@@ -141,6 +141,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack restore --from s3 [nome] [--dest D] [--key-file F] [--config F]` | scarica da `backup.s3` l'archivio più recente (o `nome`) e lo ripristina; la chiave è quella di `backup.s3.key_file` se manca `--key-file` | sì |
 | `gitstack config set backup.s3 --endpoint E --bucket B --key-file F [--prefix P] [--region R] [--retention N|bucket] [--notify-command C] [--no-check] [--remove]` | configura la copia cifrata su S3 (chiavi da `GITSTACK_S3_ACCESS_KEY`/`GITSTACK_S3_SECRET_KEY`); verifica il bucket prima di scrivere | sì |
 | `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
+| `gitstack system-info publish|show` | pubblica (o stampa) le informazioni per la pagina Admin · System: ConfigMap `<release>-system-info` letto da core | sì |
 | `gitstack postgres check --url U [--password-file F] [--ca-file F] [--json]` | preflight del Postgres esterno: versione 15–17, connessione, permessi per creare schemi e ruoli (exit 11 se non idoneo) | no |
 | `gitstack version` | versione del binario | no |
 
@@ -158,6 +159,10 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
   (se il cluster non risponde, `image_tag` del config).
 - **Ultimo backup**: «nessuno» se il file `backup-state.json` non esiste nella cartella di configurazione;
   altrimenti mostra data, percorso dell'archivio e (in caso di fallimento) il messaggio di errore.
+
+### `gitstack system-info`: da dove arriva Admin · System (GIT-213)
+
+I servizi non vedono l'host. `gitstack system-info publish` scrive il ConfigMap `<release>-system-info` (chiave `system.json`) con: database (modo, host, porta, database, sslmode, versione), backup (destinazione, ultimo esito locale e S3 con l'errore di caricamento), versioni di GitStack e k3s con l'aggiornamento disponibile, rete aziendale (proxy senza credenziali, CA). Lo lanciano da soli `install.sh`, `gitstack backup` e `gitstack upgrade`. Il chart lo monta in core (volume opzionale, `GITSTACK_SYSTEM_INFO_FILE`), che lo espone con `GET /v1/admin/system` solo all'amministratore e vi aggiunge la versione di Postgres letta ora con `SHOW server_version`. `gitstack system-info show` stampa il documento senza pubblicarlo. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
 
 ### Codici di uscita
 

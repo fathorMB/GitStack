@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { InsecureHttpBanner, ToastProvider } from './components';
 import { AppShell } from './layout/AppShell';
 import { AgentsPage } from './pages/admin/AgentsPage';
+import { SystemPage } from './pages/admin/SystemPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { DownloadsPage } from './pages/DownloadsPage';
@@ -62,6 +63,16 @@ export function AppRoutes() {
           <RequireAuth>
             <AppShell crumb="Notifications">
               <NotificationsPage />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/system"
+        element={
+          <RequireAuth>
+            <AppShell crumb="System">
+              <SystemPage />
             </AppShell>
           </RequireAuth>
         }

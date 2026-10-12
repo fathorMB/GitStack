@@ -70,7 +70,7 @@ export function Sidebar() {
       <div className="sb-grp">Administration</div>
       <SidebarItem icon={<Users size={18} strokeWidth={1.8} />} label="Organization" to="/orgs" />
       <SidebarItem icon={<Bot size={18} strokeWidth={1.8} />} label="Agents" to="/admin/agents" />
-      <SidebarItem icon={<Server size={18} strokeWidth={1.8} />} label="System" disabled soon />
+      <SidebarItem icon={<Server size={18} strokeWidth={1.8} />} label="System" to="/admin/system" />
     </aside>
   );
 }
