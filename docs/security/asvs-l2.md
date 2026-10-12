@@ -15,12 +15,12 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 148 |
+| ok | 149 |
 | n/a | 52 |
-| problem | 59 |
+| problem | 58 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 9, low 9. No critical problem was found. F1 (high) was resolved by GIT-227.
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227.
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
@@ -31,7 +31,7 @@ Problems by severity: critical 0, high 1, medium 9, low 9. No critical problem w
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
 | V6 Stored Cryptography | 8 | 2 | 3 |
 | V7 Error Handling and Logging | 6 | 0 | 6 |
-| V8 Data Protection | 9 | 3 | 3 |
+| V8 Data Protection | 10 | 3 | 2 |
 | V9 Communication | 2 | 1 | 4 |
 | V10 Malicious Code | 3 | 2 | 0 |
 | V11 Business Logic | 4 | 1 | 3 |
@@ -255,7 +255,7 @@ Problems by severity: critical 0, high 1, medium 9, low 9. No critical problem w
 | V8.1.2 | Temporary copies purged | ok | Upload temp files are renamed or removed (`services/core/internal/attachments/attachments_test.go#TestDisk_SaveLimiteERimozione`), expired sessions are deleted (`services/identity/internal/sessions/sessions.go#DeleteExpired`), delivery logs expire after 30 days (`services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_LogConservatoTrentaGiorni`). |
 | V8.1.3 | Few request parameters | ok | No hidden fields; the only state is the cookie or the bearer token. |
 | V8.1.4 | Abnormal request volumes detected | **problem** | No per-IP or per-user counters outside the login limiter and no alerting. [F6] |
-| V8.2.1 | Anti-caching headers | **problem** | JSON API responses and raw file responses carry no `Cache-Control`; only attachments (`private, no-store`) and identity responses do. [F4] |
+| V8.2.1 | Anti-caching headers | **ok** | Gateway middleware adds `Cache-Control: no-store` on authenticated responses; raw/archive set it too: `services/gateway/internal/middleware/headers.go`, `services/git/internal/httpserver/code.go`, `services/core/internal/httpserver/repos_code.go`. |
 | V8.2.2 | No sensitive data in browser storage | ok | Only the theme is kept in `localStorage` (`web/src/pages/ComponentsPage.tsx`). |
 | V8.2.3 | Data cleared at session end | ok | Logout navigates to the login route and unmounts page state; nothing is persisted (`web/src/pages/ChangePasswordPage.tsx#handleLogout`). |
 | V8.3.1 | Sensitive data not in query strings | ok | Tokens use the `Authorization` header and passwords the JSON body; the OIDC callback carries a single-use code and state only (`services/identity/internal/oidc/service_test.go#TestFinish_StateChecks`). |
@@ -357,7 +357,7 @@ Problems by severity: critical 0, high 1, medium 9, low 9. No critical problem w
 | V14.3.2 | Debug modes disabled | ok | No `pprof` or debug endpoint (`git grep net/http/pprof` is empty); production Vite build. |
 | V14.3.3 | No version information in headers | **problem** | The nginx image answers with `Server: nginx/<version>` (`web/deploy/nginx.conf.template` has no `server_tokens off`). [F3] |
 | V14.4.1 | Content-Type on every response | ok | JSON writers and raw/attachments set it explicitly: `services/git/internal/gitread/code_test.go#TestRaw_SafeTypes`; nginx uses `default_type`. |
-| V14.4.2 | Content-Disposition on API responses | **problem** | JSON API responses do not carry `Content-Disposition`. [F4] |
+| V14.4.2 | Content-Disposition on API responses | **problem** | JSON API responses do not carry `Content-Disposition`; the F4 fix addressed Cache-Control and nosniff only. |
 | V14.4.3 | Content-Security-Policy | **problem** | Only raw/attachment responses carry `sandbox`; the SPA and API send no CSP. [F3] |
 | V14.4.4 | X-Content-Type-Options nosniff | **problem** | Set on raw, attachments and downloads only, not on SPA and API responses. [F3] |
 | V14.4.5 | Strict-Transport-Security | **problem** | No HSTS header is configured in nginx or Traefik. [F3] |
@@ -377,7 +377,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F1 | high | **Resolved (GIT-227)**: personal token scope escalation (V4.1.3) | `services/identity/internal/httpapi/tokens_keys.go`<br>`services/identity/internal/httpapi/user_tokens.go`<br>`services/identity/internal/apitokens/apitokens.go`<br>`api/openapi.yaml` | `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateToken_ScopesNotBeyondCaller`<br>`services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateAgentToken_ScopesNotBeyondCaller` |
 | F2 | high | **Resolved (GIT-228).** Host and cluster secrets exposure (V1.6.2, V6.4.1, V6.4.2, V7.3.3) | `deploy/install.sh`<br>`admin/internal/upgrade/harden.go`<br>`admin/internal/upgrade/k3s.go` | `deploy/tests/preflight_test.sh#k3s kubeconfig is not world-readable`<br>`deploy/tests/preflight_test.sh#k3s: cifratura attiva dopo l'installazione`<br>`admin/internal/upgrade/harden_test.go#TestUpgrade_HardeningInstallazioneEsistente` |
 | F3 | medium | Web tier security headers and TLS options (V9.1.2, V9.1.3, V14.1.3, V14.3.3, V14.4.3, V14.4.4, V14.4.5, V14.4.6, V14.4.7) | `web/deploy/nginx.conf.template`<br>`deploy/gitstack/templates/ingress.yaml`<br>`web/src/lib/nginxConf.test.ts` | `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version` *(new)*<br>`deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum` *(new)* |
-| F4 | medium | Cache and content-type headers on API responses (V8.2.1, V14.4.2) | `services/gateway/internal/httpserver/router.go`<br>`services/core/internal/httpserver/repos_code.go`<br>`services/git/internal/httpserver/code.go` | `services/gateway/internal/middleware/headers_test.go#TestAPIResponses_NoStoreNosniff` *(new)* |
+| F4 | **ok** | Cache and content-type headers on API responses (V8.2.1, V14.4.2) | `services/gateway/internal/httpserver/router.go`<br>`services/core/internal/httpserver/repos_code.go`<br>`services/git/internal/httpserver/code.go`<br>`services/gateway/internal/middleware/headers.go` | `services/gateway/internal/middleware/headers_test.go#TestAPIResponses_NoStoreNosniff` |
 | F5 | medium | No request body size limit (V11.1.4) | `services/gateway/internal/proxy/proxy.go`<br>`services/core/internal/httpserver/resources.go`<br>`services/core/internal/httpserver/repos.go`<br>`services/git/internal/smarthttp/smarthttp.go` | `services/gateway/internal/httpserver/body_limit_test.go#TestBodyTooLarge_413` *(new)*<br>`services/git/internal/smarthttp/smarthttp_test.go#TestGzipBodyIsBounded` *(new)* |
 | F6 | medium | Rate limiting and abuse detection (V8.1.4, V11.1.4, V11.1.8) | `services/gateway/internal/middleware/noop.go`<br>`services/gateway/internal/httpserver/router.go` | `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP` *(new)* |
 | F7 | medium | SSRF policy allows the LAN and the node (V12.6.1) | `pkg/egress/policy.go`<br>`pkg/egress/README.md`<br>`services/core/internal/webhooks/egress.go`<br>`services/core/internal/webhooks/engine.go` | `pkg/egress/egress_test.go#TestNodeAddressesAreBlockedByDefault` *(new)*<br>`services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/webhook_to_node_address_blocked` *(new)* |

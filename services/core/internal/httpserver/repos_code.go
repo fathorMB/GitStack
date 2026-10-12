@@ -310,6 +310,7 @@ func (a codeAccess) forward(w http.ResponseWriter, r *http.Request, path string,
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Security-Policy", "sandbox")
+	w.Header().Set("Cache-Control", "no-store")
 	// Mai pagine eseguibili (B3): qualunque cosa git dichiari, html e svg no.
 	if ct := strings.ToLower(w.Header().Get("Content-Type")); strings.HasPrefix(ct, "text/html") || strings.HasPrefix(ct, "image/svg") || strings.Contains(ct, "xhtml") {
 		w.Header().Set("Content-Type", "application/octet-stream")
