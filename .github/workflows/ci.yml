@@ -953,13 +953,6 @@ jobs:
       # da github.com, come già per k3d-io/k3d/main/install.sh prima di
       # questo item.
       K3D_VERSION: v5.9.0
-      # Immagine k3s del cluster k3d: STESSA versione pinnata in
-      # deploy/install.sh (INSTALL_K3S_VERSION, GIT-9) tramite --image,
-      # invece di lasciarla risolvere a runtime dal canale "latest" di k3d
-      # (che in passato ha creato nodi con una k3s diversa da quella
-      # installata in produzione). Tenerle allineate: se INSTALL_K3S_VERSION
-      # cambia in deploy/install.sh, aggiorna anche questa.
-      K3S_IMAGE: rancher/k3s:v1.36.4-k3s1
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -1033,6 +1026,11 @@ jobs:
         run: |
           set -euo pipefail
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VERSION}" bash
+          # Immagine k3s del cluster k3d: la STESSA versione dichiarata in
+          # deploy/k3s-version (N10, GIT-210), quella che installa deploy/install.sh,
+          # invece di lasciarla risolvere al canale "latest" di k3d. Il tag
+          # dell'immagine usa '-' al posto del '+' della versione.
+          K3S_IMAGE="rancher/k3s:$(tr -d '[:space:]' < deploy/k3s-version | tr '+' '-')"
           k3d cluster create gitstack-ci --image "${K3S_IMAGE}" --port "8080:80@loadbalancer" --port "2222:2222@loadbalancer" --wait --timeout 120s
 
       # GIT-21: "k3d cluster create --wait" sopra attende solo che il nodo

@@ -41,12 +41,15 @@ trap cleanup_tmp_dirs EXIT
 
 # --- Parametri (sovrascrivibili da variabile d'ambiente o da flag) --------
 
-# Versione di k3s, pinnata: v1.36.4+k3s1 include il chart Traefik 40.1.0
+# Versione di k3s, pinnata: la v1.36 include il chart Traefik 40.1.0
 # (appVersion v3.7.0, cioè Traefik v3), richiesto dal Middleware
 # traefik.io/v1alpha1 dell'Ingress del chart (deploy/gitstack/templates/
-# ingress.yaml, criterio 1 di GIT-9). Mai "latest" non pinnato: un
-# aggiornamento controllato di k3s è fuori perimetro di M-01 (M-08).
-INSTALL_K3S_VERSION="${INSTALL_K3S_VERSION:-v1.36.4+k3s1}"
+# ingress.yaml, criterio 1 di GIT-9). Mai "latest" non pinnato.
+# La versione provata con ogni versione di GitStack è dichiarata nel file
+# deploy/k3s-version (N10, GIT-210), letto da qui (resolve_k3s_version) e da
+# `gitstack upgrade`, che aggiorna k3s in modo controllato: non va ripetuta
+# in questo script. INSTALL_K3S_VERSION, se impostata, la sovrascrive.
+INSTALL_K3S_VERSION="${INSTALL_K3S_VERSION:-}"
 
 # Versione di Helm, pinnata per lo stesso motivo (verificata in GIT-8).
 GITSTACK_HELM_VERSION="${GITSTACK_HELM_VERSION:-v3.16.3}"
@@ -805,6 +808,22 @@ resolve_image_tag() {
 
 # --- k3s -----------------------------------------------------------------
 
+# Imposta INSTALL_K3S_VERSION dal file deploy/k3s-version accanto al chart
+# (la cartella del chart è <radice>/deploy/gitstack), se non è già impostata.
+resolve_k3s_version() {
+  if [ -n "${INSTALL_K3S_VERSION}" ]; then
+    return 0
+  fi
+  local version_file="${CHART_DIR}/../k3s-version"
+  [ -f "${version_file}" ] \
+    || fail "manca ${version_file} (versione di k3s provata con questa versione di GitStack): impostala con INSTALL_K3S_VERSION."
+  INSTALL_K3S_VERSION="$(tr -d '[:space:]' < "${version_file}")"
+  case "${INSTALL_K3S_VERSION}" in
+    v[0-9]*.[0-9]*.[0-9]*+k3s[0-9]*) ;;
+    *) fail "${version_file}: versione di k3s non valida («${INSTALL_K3S_VERSION}», attesa vX.Y.Z+k3sN)." ;;
+  esac
+}
+
 install_k3s() {
   if k3s_already_installed; then
     log "k3s è già installato ($(k3s --version | head -n1)): non reinstallo (idempotenza)."
@@ -815,6 +834,7 @@ install_k3s() {
     return 0
   fi
 
+  resolve_k3s_version
   log "Installo k3s ${INSTALL_K3S_VERSION} (pinnato, include Traefik v3) ..."
   command -v curl >/dev/null 2>&1 || fail "serve 'curl' per installare k3s."
   curl -sfL https://get.k3s.io \

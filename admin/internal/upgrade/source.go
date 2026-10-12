@@ -42,6 +42,9 @@ type Target struct {
 	// Tag è il tag immagine e il nome della release GitHub: sha-<commit> o
 	// il nome del tag di versione.
 	Tag string
+	// K3sVersion è la versione di k3s dichiarata dal commit in
+	// K3sVersionFile ("" se non la dichiara): la compila FetchChart.
+	K3sVersion string
 }
 
 func (o *Options) get(ctx context.Context, rawURL string, limit int64, accept string) ([]byte, error) {
@@ -231,6 +234,18 @@ func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error 
 		// Il primo componente è <repo>-<sha>/.
 		_, rel, ok := strings.Cut(h.Name, "/")
 		if !ok {
+			continue
+		}
+		if rel == K3sVersionFile && h.Typeflag == tar.TypeReg {
+			b, err := io.ReadAll(io.LimitReader(tr, 1024))
+			if err != nil {
+				return fmt.Errorf("sorgente scaricato non valido: %w", err)
+			}
+			v, err := ParseK3sVersion(string(b))
+			if err != nil {
+				return fmt.Errorf("%s del commit %s: %w", K3sVersionFile, t.SHA, err)
+			}
+			t.K3sVersion = v.String()
 			continue
 		}
 		sub, ok := strings.CutPrefix(rel, maxChartDir)
