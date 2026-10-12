@@ -344,6 +344,32 @@ web:
     limits:
       memory: 64Mi
 
+# --- proxy e CA aziendale (N9) ------------------------------------------------
+# Rete aziendale chiusa: webhook (core), mirror (git), OIDC (identity) e SMTP
+# (core) escono dal proxy. install.sh li imposta da --http-proxy,
+# --https-proxy, --no-proxy e --ca-bundle (N9a); a mano con --set.
+# La policy di uscita (egress.*) resta SEMPRE applicata alla destinazione vera:
+# risoluzione, liste e blocchi di loopback, cluster e link-local sono giudicati
+# prima di contattare il proxy (pkg/egress/README.md).
+proxy:
+  # URL del proxy per le destinazioni http:// e https:// (CONNECT), per
+  # esempio http://proxy.corp:3128. Eventuali credenziali nell'URL finiscono
+  # nell'ambiente dei pod, non in una riga di comando.
+  http: ""
+  https: ""
+  # Elementi aggiuntivi di NO_PROXY (virgole). Il chart aggiunge da solo
+  # localhost, i Service di GitStack, .svc, .cluster.local e egress.clusterCIDRs.
+  noProxy: ""
+
+corporateCA:
+  # Nome di un ConfigMap (stesso namespace) con la chiave ca.crt: la CA del
+  # proxy che ispeziona TLS o dei servizi interni. Montata in core, git e
+  # identity: i servizi Go se ne fidano oltre alle CA di sistema
+  # (SSL_CERT_DIR). Per git (mirror) sostituisce invece le CA di sistema, come
+  # git.mirror.caConfigMap, che se impostato ha la precedenza: metti nel file
+  # anche le CA pubbliche se i mirror vanno direttamente (NO_PROXY).
+  configMap: ""
+
 # --- egress (protezione SSRF, C8) ---------------------------------------
 # Impostazioni per le chiamate in uscita verso indirizzi dati dagli utenti
 # (webhook, pkg/egress): core le legge da GITSTACK_EGRESS_ALLOW, _DENY e

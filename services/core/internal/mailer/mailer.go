@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fathorMB/GitStack/pkg/egress"
 )
 
 // Security è la protezione del canale verso il server SMTP.
@@ -74,6 +76,10 @@ type Mailer struct {
 	Cfg Config
 	// Timeout limita connessione e dialogo SMTP (default 30 s).
 	Timeout time.Duration
+	// Proxy è il proxy aziendale (N9): con un proxy la connessione al server
+	// SMTP passa da un CONNECT (HTTPS_PROXY, poi HTTP_PROXY, salvo NO_PROXY).
+	// Nil = connessione diretta.
+	Proxy *egress.ProxyConfig
 	// TLSConfig sostituisce la configurazione TLS di default (solo test).
 	TLSConfig *tls.Config
 	// Now è l'orologio per l'intestazione Date (default time.Now).
@@ -115,7 +121,7 @@ func (m *Mailer) Send(ctx context.Context, msg Message) error {
 	}
 
 	d := net.Dialer{Timeout: timeout}
-	conn, err := d.DialContext(ctx, "tcp", addr)
+	conn, err := m.Proxy.DialContext(ctx, &d, addr)
 	if err != nil {
 		return fmt.Errorf("connessione a %s: %w", addr, err)
 	}

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"syscall"
 	"time"
 )
@@ -25,6 +26,10 @@ const (
 type Options struct {
 	Timeout      time.Duration // default DefaultTimeout
 	MaxRedirects int           // default DefaultMaxRedirects; <0 disables redirects
+	// Proxy è il proxy aziendale (N9); nil = connessione diretta. La policy si
+	// applica comunque: con un proxy, alla destinazione vera prima di aprire
+	// la richiesta (vedi ProxyConfig).
+	Proxy *ProxyConfig
 
 	// lookup and connect are hooks for tests only.
 	lookup  func(ctx context.Context, host string) ([]netip.Addr, error)
@@ -57,6 +62,11 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 		}
 	}
 	dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		if viaProxy(ctx) {
+			// La connessione al proxy (non alla destinazione): la destinazione
+			// è già stata giudicata da checkedTransport prima di arrivare qui.
+			return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, network, addr)
+		}
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return nil, err
@@ -89,7 +99,9 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 		return nil, lastErr
 	}
 	tr := &http.Transport{
-		Proxy:                 nil, // never via an environment proxy: it would be the one dialed
+		// Mai ProxyFromEnvironment: il proxy è solo quello di Options.Proxy, e la
+		// destinazione si giudica prima (checkedTransport).
+		Proxy:                 func(req *http.Request) (*url.URL, error) { return opts.Proxy.For(req.URL), nil },
 		DialContext:           dialContext,
 		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: opts.Timeout,
@@ -97,8 +109,12 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 		IdleConnTimeout:       30 * time.Second,
 		ForceAttemptHTTP2:     true,
 	}
+	var rt http.RoundTripper = tr
+	if opts.Proxy != nil {
+		rt = &checkedTransport{base: tr, policy: policy, proxy: opts.Proxy, lookup: lookup}
+	}
 	return &http.Client{
-		Transport: tr,
+		Transport: rt,
 		Timeout:   opts.Timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) > maxRedirects {
@@ -144,3 +160,62 @@ func ReadBody(r io.Reader) (body []byte, truncated bool, err error) {
 
 // IsBlocked reports whether err was caused by the egress policy.
 func IsBlocked(err error) bool { return errors.Is(err, ErrBlocked) }
+
+type proxyCtxKey struct{}
+
+func viaProxy(ctx context.Context) bool { return ctx.Value(proxyCtxKey{}) != nil }
+
+// checkedTransport giudica la destinazione vera di ogni richiesta (anche di
+// ogni redirect) PRIMA che il transport apra la connessione al proxy: deny per
+// nome, poi la risoluzione e la policy su OGNI indirizzo (loopback, link-local,
+// cluster e reti speciali restano bloccati anche via proxy). Una destinazione
+// rifiutata non fa mai contattare il proxy. Le destinazioni in NO_PROXY vanno
+// dirette: le giudica il dialer come senza proxy.
+//
+// Limite: il proxy risolve il nome per conto suo, quindi fra controllo e
+// connessione una risposta DNS diversa non è visibile (nessun TOCTOU da
+// chiudere finché il proxy è quello aziendale e fidato).
+type checkedTransport struct {
+	base   *http.Transport
+	policy *Policy
+	proxy  *ProxyConfig
+	lookup func(ctx context.Context, host string) ([]netip.Addr, error)
+}
+
+func (t *checkedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.proxy.For(req.URL) == nil {
+		return t.base.RoundTrip(req)
+	}
+	if err := t.checkDestination(req.Context(), req.URL.Hostname()); err != nil {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
+		return nil, err
+	}
+	ctx := context.WithValue(req.Context(), proxyCtxKey{}, true)
+	return t.base.RoundTrip(req.WithContext(ctx))
+}
+
+func (t *checkedTransport) checkDestination(ctx context.Context, host string) error {
+	if t.policy.deny.matchHost(host) {
+		return fmt.Errorf("%w: host %s is denied by the administrator", ErrBlocked, host)
+	}
+	var ips []netip.Addr
+	if ip, err := netip.ParseAddr(host); err == nil {
+		ips = []netip.Addr{ip}
+	} else {
+		var lerr error
+		if ips, lerr = t.lookup(ctx, host); lerr != nil {
+			return lerr
+		}
+	}
+	if len(ips) == 0 {
+		return &net.DNSError{Err: "no addresses", Name: host}
+	}
+	for _, ip := range ips {
+		if err := t.policy.check(host, ip); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/cgi"
 	"net/http/httptest"
@@ -80,7 +82,7 @@ func TestArgvSenzaToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	args := buildArgs(u, ip, in.URL, []string{"refs/heads/main:refs/heads/main", "refs/tags/*:refs/tags/*"})
+	args := buildArgs(u, ip, in.URL, []string{"refs/heads/main:refs/heads/main", "refs/tags/*:refs/tags/*"}, false)
 	joined := strings.Join(args, " ")
 	cred := base64.StdEncoding.EncodeToString([]byte(in.Username + ":" + in.Token))
 	for _, secret := range []string{in.Token, cred, in.Username, "Authorization"} {
@@ -99,7 +101,7 @@ func TestArgvSenzaToken(t *testing.T) {
 	}
 	// IPv6 fra parentesi quadre per curl.
 	u6, _ := url.Parse("https://example.org:8443/x.git")
-	if a := strings.Join(pushArgs(u6, netip.MustParseAddr("2606:4700::1")), " "); !strings.Contains(a, "example.org:8443:[2606:4700::1]") {
+	if a := strings.Join(pushArgs(u6, netip.MustParseAddr("2606:4700::1"), false), " "); !strings.Contains(a, "example.org:8443:[2606:4700::1]") {
 		t.Errorf("IPv6: %s", a)
 	}
 	// L'ambiente invece sì: è l'unico canale della credenziale.
@@ -484,5 +486,135 @@ func TestPush_RepoVuoto(t *testing.T) {
 	res, err := r.svc.Push(context.Background(), "repo", r.in)
 	if err != nil || !res.OK || len(res.Refs) != 0 {
 		t.Fatalf("repo vuoto: %v %+v", err, res)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Proxy aziendale (N9)
+
+// connectProxy è un proxy HTTP finto: a ogni CONNECT annota la destinazione e
+// apre un tunnel verso `target` (il server di prova), qualunque sia l'host.
+type connectProxy struct {
+	mu      sync.Mutex
+	connect []string
+	auth    []string
+	srv     *httptest.Server
+}
+
+func newConnectProxy(t *testing.T, target string) *connectProxy {
+	t.Helper()
+	p := &connectProxy{}
+	p.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodConnect {
+			http.Error(w, "solo CONNECT", http.StatusMethodNotAllowed)
+			return
+		}
+		p.mu.Lock()
+		p.connect = append(p.connect, req.Host)
+		p.auth = append(p.auth, req.Header.Get("Proxy-Authorization"))
+		p.mu.Unlock()
+		if req.Header.Get("Proxy-Authorization") == "" {
+			// Come un proxy aziendale: prima la sfida, poi le credenziali.
+			w.Header().Set("Proxy-Authenticate", `Basic realm="proxy"`)
+			http.Error(w, "serve autenticazione", http.StatusProxyAuthRequired)
+			return
+		}
+		up, err := net.Dial("tcp", target)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "no hijack", http.StatusInternalServerError)
+			return
+		}
+		down, _, err := hj.Hijack()
+		if err != nil {
+			_ = up.Close()
+			return
+		}
+		_, _ = down.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+		go func() { _, _ = io.Copy(up, down); _ = up.Close() }()
+		go func() { _, _ = io.Copy(down, up); _ = down.Close() }()
+	}))
+	t.Cleanup(p.srv.Close)
+	return p
+}
+
+func (p *connectProxy) seen() ([]string, []string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string(nil), p.connect...), append([]string(nil), p.auth...)
+}
+
+func TestPush_ViaProxyAziendale(t *testing.T) {
+	r := newRig(t)
+	u, _ := url.Parse(r.srv.URL)
+	px := newConnectProxy(t, u.Host)
+	pu, _ := url.Parse(px.srv.URL)
+	pu.User = url.UserPassword("proxy-user", "proxy-SEGRETO")
+	r.svc.Proxy = func(*http.Request) (*url.URL, error) { return pu, nil }
+	// L'IP che core ha scelto non vale più: il proxy risolve il nome. Uno
+	// sbagliato non deve cambiare l'esito.
+	r.in.IP = "203.0.113.9"
+
+	res, err := r.svc.Push(context.Background(), "repo", r.in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.OK {
+		t.Fatalf("esito: %+v", res)
+	}
+	if r.destSHA("refs/heads/main") != r.srcSHA("refs/heads/main") {
+		t.Fatal("il branch non è arrivato alla destinazione")
+	}
+	connects, auths := px.seen()
+	want := "example.com:" + u.Port()
+	if len(connects) == 0 || connects[0] != want {
+		t.Fatalf("CONNECT visti dal proxy: %v, atteso %s", connects, want)
+	}
+	if got := auths[len(auths)-1]; got != "Basic "+base64.StdEncoding.EncodeToString([]byte("proxy-user:proxy-SEGRETO")) {
+		t.Errorf("il proxy non ha ricevuto le credenziali: %q", got)
+	}
+	// La credenziale del server di destinazione arriva comunque.
+	if r.lastAuth() != "Basic "+base64.StdEncoding.EncodeToString([]byte(user+":"+token)) {
+		t.Errorf("Authorization visto dal server: %q", r.lastAuth())
+	}
+}
+
+func TestProxy_ArgvSenzaCredenzialiDelProxy(t *testing.T) {
+	in := Input{URL: "https://github.com/o/r.git", Username: "u", Token: "tok", IP: "140.82.112.3", DefaultBranch: "main"}
+	u, ip, err := validate(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy, _ := url.Parse("http://pu:ppw@proxy.corp:3128")
+	svc := &Service{Proxy: func(*http.Request) (*url.URL, error) { return proxy, nil }}
+	p := svc.proxyFor(u)
+	if p == nil {
+		t.Fatal("proxyFor: nil")
+	}
+	args := strings.Join(buildArgs(u, ip, in.URL, []string{"refs/heads/main:refs/heads/main"}, true), " ")
+	for _, bad := range []string{"ppw", "pu:", "proxy.corp", "http.proxy=", "curloptResolve"} {
+		if strings.Contains(args, bad) {
+			t.Errorf("argv contiene %q: %s", bad, args)
+		}
+	}
+	env := strings.Join(svc.envWithProxy(in, p), "\n")
+	for _, want := range []string{"GIT_CONFIG_COUNT=2", "GIT_CONFIG_KEY_1=http.proxy", "GIT_CONFIG_VALUE_1=http://pu:ppw@proxy.corp:3128"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("l'ambiente non contiene %q", want)
+		}
+	}
+	// Senza proxy per la destinazione (NO_PROXY): come prima, IP fissato e
+	// proxy vuoto sulla riga di comando.
+	none := &Service{Proxy: func(*http.Request) (*url.URL, error) { return nil, nil }}
+	if none.proxyFor(u) != nil {
+		t.Fatal("NO_PROXY: atteso nessun proxy")
+	}
+	direct := strings.Join(buildArgs(u, ip, in.URL, nil, false), " ")
+	if !strings.Contains(direct, "http.proxy=") || !strings.Contains(direct, "curloptResolve") {
+		t.Errorf("senza proxy: %s", direct)
 	}
 }

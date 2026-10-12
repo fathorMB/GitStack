@@ -120,6 +120,7 @@ spec:
             - name: http
               containerPort: {{ .Values.identity.containerPort }}
           env:
+            {{- include "gitstack.proxy.env" . | nindent 12 }}
             - name: GITSTACK_IDENTITY_ADDR
               value: {{ printf ":%d" (.Values.identity.containerPort | int) | quote }}
             # IDENTITY_DB_PASSWORD deve precedere GITSTACK_IDENTITY_DB_URL
@@ -194,7 +195,7 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.identity.resources | nindent 12 }}
-          {{- if or $oidc $pgCA }}
+          {{- if or $oidc .Values.corporateCA.configMap $pgCA }}
           volumeMounts:
             {{- if $oidc }}
             - name: oidc
@@ -205,6 +206,9 @@ spec:
             - name: postgres-ca
               mountPath: {{ include "gitstack.postgres.caMountPath" . }}
               readOnly: true
+            {{- end }}
+            {{- if .Values.corporateCA.configMap }}
+            {{- include "gitstack.corporateCA.volumeMount" . | nindent 12 }}
             {{- end }}
           {{- end }}
       volumes:
@@ -226,5 +230,8 @@ spec:
             items:
               - key: oidc.json
                 path: oidc.json
+        {{- end }}
+        {{- if .Values.corporateCA.configMap }}
+        {{- include "gitstack.corporateCA.volume" . | nindent 8 }}
         {{- end }}
 {{- end }}

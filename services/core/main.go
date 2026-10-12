@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fathorMB/GitStack/pkg/egress"
 	"github.com/fathorMB/GitStack/services/core/internal/attachments"
 	"github.com/fathorMB/GitStack/services/core/internal/config"
 	"github.com/fathorMB/GitStack/services/core/internal/db"
@@ -197,6 +198,15 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		httpserver.WithEmail(cfg.SMTP.Enabled()),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: cfg.PublicURL, SSHHost: cfg.SSHHost, SSHPort: cfg.SSHPort, SSHOff: !cfg.SSHEnabled}),
 	)
+	// Proxy aziendale (N9): HTTP_PROXY, HTTPS_PROXY e NO_PROXY dal chart. Vale
+	// per i webhook, per l'SMTP e (via il servizio git) per i mirror; la policy
+	// di uscita si applica comunque alla destinazione vera.
+	proxy, err := egress.ProxyFromEnv()
+	if err != nil {
+		logger.Error("configurazione del proxy non valida", "err", err)
+		return 1
+	}
+
 	var disk *attachments.Disk
 	if cfg.AttachmentsDir != "" {
 		disk = &attachments.Disk{Dir: cfg.AttachmentsDir}
@@ -233,7 +243,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 				logger.Warn("identity non supporta la ricerca degli utenti: le email non partono")
 			} else {
 				eng.EmailWindow = notify.DefaultEmailWindow
-				go (&notify.EmailDispatcher{Pool: pool, Users: users, Mail: &mailer.Mailer{Cfg: cfg.SMTP},
+				go (&notify.EmailDispatcher{Pool: pool, Users: users, Mail: &mailer.Mailer{Cfg: cfg.SMTP, Proxy: proxy},
 					PublicURL: cfg.PublicURL, Log: logger}).Run(ctx)
 				logger.Info("email delle notifiche attive", "smtp_host", cfg.SMTP.Host, "smtp_port", cfg.SMTP.Port, "security", string(cfg.SMTP.Security), "window", notify.DefaultEmailWindow.String())
 			}
@@ -256,7 +266,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if !keys.Enabled() {
 		logger.Warn("GITSTACK_WEBHOOK_SECRET_KEY non impostata: i webhook con segreto rispondono 503")
 	}
-	hookHTTP, hookCheck, err := webhooks.NewEgress(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs)
+	hookHTTP, hookCheck, err := webhooks.NewEgressWithProxy(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, proxy)
 	if err != nil {
 		logger.Error("configurazione non valida", "err", err)
 		return 1
