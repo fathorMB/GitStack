@@ -288,22 +288,32 @@ function PullMirrorOrEnable({
   readOnly: boolean;
 }) {
   const [mirror, setMirror] = useState<PullMirror | null>(null);
+  const [stopped, setStopped] = useState(false);
 
   function handleSuccess(m: PullMirror) {
     setMirror(m);
   }
 
+  function handleStopped() {
+    setMirror(null);
+    setStopped(true);
+  }
+
   if (readOnly) return null;
 
-  if (!hasMirror && !mirror) {
+  if (stopped || !hasMirror && !mirror) {
     return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
   }
 
+  if (!mirror) return null;
+
   return (
     <PullMirrorSection
-      key={`${owner}/${repo}`}
+      key={`pm-${mirror.id}-${mirror.state}`}
       owner={owner}
       repo={repo}
+      initialData={mirror}
+      onStopped={handleStopped}
     />
   );
 }

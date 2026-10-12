@@ -68,7 +68,7 @@ export function EnablePullMirrorSection({
     }
   }
 
-  const valid = url.trim() !== '';
+  const valid = url.trim() !== '' && username.trim() !== '' && token !== '';
 
   return (
     <section aria-label="Enable pull mirror">
@@ -115,10 +115,19 @@ export function EnablePullMirrorSection({
               rewritten refs are flagged as <i>diverged</i> and kept as they are.
             </div>
           </div>
+          <div className="alert alert-warning" style={{ marginTop: 8 }}>
+            <svg className="icon" aria-hidden="true">
+              <use href="#i-warning" />
+            </svg>
+            <div>
+              <b>This repository already has content.</b> The mirror keeps the local branches and tags that don&apos;t match the source.
+              Refs that differ will be flagged as <i>diverged</i> and GitStack will keep its local version.
+            </div>
+          </div>
           <div className="row" style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
             <span className="sp" />
             <Button type="submit" variant="primary" disabled={busy || !valid}>
-              Enable mirror
+              Enable pull mirror
             </Button>
           </div>
         </form>

@@ -1,7 +1,8 @@
 import { AlertCircle, Check, CheckCircle, Clock, GitBranch, Key, Loader2, StopCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Button, ConfirmDialog, ErrorAlert, FormField, PasswordInput, Select, useToast } from '../../components';
+import * as Dialog from '@radix-ui/react-dialog';
+import { Button, ErrorAlert, FormField, PasswordInput, Select, useToast } from '../../components';
 import { timeAgo } from '../../lib/format';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { fetchPullMirror, fetchPullMirrorRuns, pausePullMirror, resumePullMirror, stopPullMirror, syncPullMirror, updatePullMirror } from '../../lib/pullMirrorsApi';
@@ -66,13 +67,18 @@ function intervalLabel(seconds: number): string {
 export function PullMirrorSection({
   owner,
   repo,
+  initialData,
+  onStopped,
 }: {
   owner: string;
   repo: string;
+  initialData?: PullMirror | null;
+  onStopped?: () => void;
 }) {
   const { toast } = useToast();
-  const { data, loading, error } = useLoad(() => fetchPullMirror(owner, repo));
+  const { data, loading, error, reload } = useLoad(() => fetchPullMirror(owner, repo), initialData);
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [confirmText, setConfirmText] = useState('');
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -86,12 +92,14 @@ export function PullMirrorSection({
   const isPaused = m.state === 'paused';
   const isActive = !isStopped && !isPaused;
 
-  async function action(fn: () => Promise<PullMirror>, label: string) {
+  async function action(fn: () => Promise<PullMirror>, label: string, onDone?: () => void) {
     setBusy(label);
     setActionError('');
     try {
       await fn();
       toast(`${label} completed successfully.`, 'success');
+      onDone?.();
+      await reload();
     } catch (err) {
       if (err instanceof ApiError) {
         const fields = fieldErrors(err);
@@ -131,7 +139,7 @@ export function PullMirrorSection({
 
       <div className="card card-b stack" style={{ gap: 16 }}>
         {actionError ? <ErrorAlert message={actionError} /> : null}
-        <PullMirrorForm owner={owner} repo={repo} mirror={m} />
+        <PullMirrorForm owner={owner} repo={repo} mirror={m} onSave={() => void reload()} />
         <dl className="kv">
           <dt>What is copied</dt>
           <dd className="muted">All branches and tags. Never deleted or overwritten. Issues, releases, wiki and LFS files of the source are not copied.</dd>
@@ -151,18 +159,61 @@ export function PullMirrorSection({
       <RecentRunsSection owner={owner} repo={repo} />
 
       {/* Danger zone */}
-      <DangerZone owner={owner} repo={repo} mirror={m} isPaused={isPaused} isStopped={isStopped} onAction={action} setConfirm={setConfirm} busy={busy} />
+      <DangerZone owner={owner} repo={repo} mirror={m} isPaused={isPaused} isStopped={isStopped} onAction={action} setConfirm={setConfirm} setConfirmText={setConfirmText} busy={busy} />
 
       {/* Confirm dialog per stop */}
-      <ConfirmDialog
-        open={confirm === 'stop'}
-        onOpenChange={(open: boolean) => !open && setConfirm(null)}
-        title={`Stop mirroring ${repo}?`}
-        description="The repository becomes a normal, writable repository. Source credentials are deleted; run history and diverged refs stay."
-        confirmLabel={repo}
-        destructive
-        onConfirm={() => void action(() => stopPullMirror(owner, repo, repo), 'Stopping')}
-      />
+      {confirm === 'stop' ? (
+        <Dialog.Root open={confirm === 'stop'} onOpenChange={(open: boolean) => { if (!open) { setConfirm(null); setConfirmText(''); } }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content className="dialog">
+              <Dialog.Title className="dialog-title">Moving your work to GitStack?</Dialog.Title>
+              <Dialog.Description className="dialog-desc">
+                <p>
+                  Stop the pull mirror for <span className="mono">{repo}</span>. Credentials are deleted and the repository becomes writable.
+                  Diverged refs and run history are kept. You can enable a pull mirror again later.
+                </p>
+                <label htmlFor="stop-confirm" className="small muted" style={{ display: 'block', marginTop: 8 }}>
+                  Type <b>{repo}</b> to confirm.
+                </label>
+                <input
+                  id="stop-confirm"
+                  className="mono"
+                  autoComplete="off"
+                  autoFocus
+                  value={confirmText}
+                  placeholder={repo}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  style={{
+                    width: '100%',
+                    marginTop: 4,
+                    padding: '6px 8px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 'inherit',
+                  }}
+                />
+              </Dialog.Description>
+              <div className="dialog-actions">
+                <Dialog.Close asChild>
+                  <Button>Cancel</Button>
+                </Dialog.Close>
+                <Button
+                  variant="danger"
+                  disabled={confirmText !== repo}
+                  onClick={() => {
+                    void action(() => stopPullMirror(owner, repo, confirmText), 'Stopping', onStopped);
+                    setConfirm(null);
+                    setConfirmText('');
+                  }}
+                >
+                  Stop mirroring
+                </Button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : null}
     </section>
   );
 }
@@ -174,10 +225,12 @@ function PullMirrorForm({
   owner,
   repo,
   mirror,
+  onSave,
 }: {
   owner: string;
   repo: string;
   mirror: PullMirror;
+  onSave?: () => void;
 }) {
   const { toast } = useToast();
   const [interval, setInterval] = useState(String(mirror.intervalSeconds));
@@ -200,6 +253,7 @@ function PullMirrorForm({
       }
       await updatePullMirror(owner, repo, input);
       toast('Pull mirror settings saved.', 'success');
+      onSave?.();
     } catch (err) {
       if (err instanceof ApiError && (err.status === 400 || err.status === 409 || err.status === 422)) {
         const fields = fieldErrors(err);
@@ -241,7 +295,7 @@ function PullMirrorForm({
                 aria-label="New token to replace"
               />
             </FormField>
-            <Button type="submit" variant="ghost" size="sm" disabled={busy} onClick={() => void submit(new Event('submit') as unknown as FormEvent)}>
+            <Button type="submit" variant="ghost" size="sm" disabled={busy}>
               Replace
             </Button>
             {mirror.hasToken ? (
@@ -256,6 +310,8 @@ function PullMirrorForm({
                   }).catch((err: unknown) => {
                     if (err instanceof ApiError) {
                       setErrors({ token: err.message });
+                    } else {
+                      setErrors({ token: describeError(err) });
                     }
                   });
                 }}
@@ -418,6 +474,7 @@ function DangerZone({
   isStopped,
   onAction,
   setConfirm,
+  setConfirmText,
   busy,
 }: {
   owner: string;
@@ -427,6 +484,7 @@ function DangerZone({
   isStopped: boolean;
   onAction: (fn: () => Promise<PullMirror>, label: string) => void;
   setConfirm: (c: string | null) => void;
+  setConfirmText: (t: string) => void;
   busy: string;
 }) {
   return (
@@ -469,8 +527,8 @@ function DangerZone({
           </div>
         ) : null}
 
-        {/* Stop mirroring */}
-        {!isStopped && !isPaused ? (
+        {/* Stop mirroring — disponibile anche quando in pausa */}
+        {!isStopped ? (
           <div className="list-row" style={{ padding: '14px 16px' }}>
             <div style={{ flex: 1 }}>
               <b>Stop mirroring</b>
@@ -478,7 +536,10 @@ function DangerZone({
             </div>
             <Button
               variant="danger"
-              onClick={() => setConfirm('stop')}
+              onClick={() => {
+                setConfirm('stop');
+                setConfirmText('');
+              }}
               disabled={busy !== ''}
             >
               <StopCircle size={16} aria-hidden="true" />

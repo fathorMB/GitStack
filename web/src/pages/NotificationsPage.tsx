@@ -54,11 +54,16 @@ function NotificationRow({
   const issueHref = repo && n.issue ? `/${repo}/issues/${n.issue.number}` : null;
   const actor = n.actor;
   const isAgent = actor?.kind === 'agent';
+  const isMirror = n.reason === 'mirror';
   const classes = ['list-row', 'hover', n.read ? '' : 'unread'].filter(Boolean).join(' ');
 
   return (
     <li className={classes} data-testid="notification">
-      {actor ? (
+      {isMirror ? (
+        <span className="avatar av-sys" aria-hidden="true">
+          <svg className="icon"><use href="#i-alert" /></svg>
+        </span>
+      ) : actor ? (
         <span className={`avatar${isAgent ? ' av-bot' : ''}`} aria-hidden="true">
           {isAgent ? <Bot size={14} /> : initials(actor.username)}
         </span>
@@ -69,31 +74,48 @@ function NotificationRow({
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div>
-          {actor ? (
+          {isMirror ? (
+            <Link to="/settings/pull-mirror" style={{ fontWeight: 600, color: 'var(--text)' }}>
+              {n.summary}
+            </Link>
+          ) : (
             <>
-              <b>{actor.username}</b>{' '}
-              {isAgent ? (
+              {actor ? (
                 <>
-                  <span className="badge badge-agent">agent</span>{' '}
+                  <b>{actor.username}</b>{' '}
+                  {isAgent ? (
+                    <>
+                      <span className="badge badge-agent">agent</span>{' '}
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+              <span className={actor ? undefined : 'muted'}>{n.summary}</span>
+              {issueHref && n.issue ? (
+                <>
+                  {' '}
+                  <Link to={issueHref}>{n.issue.title}</Link>
                 </>
               ) : null}
             </>
-          ) : null}
-          <span className={actor ? undefined : 'muted'}>{n.summary}</span>
-          {issueHref && n.issue ? (
-            <>
-              {' '}
-              <Link to={issueHref}>{n.issue.title}</Link>
-            </>
-          ) : null}
+          )}
         </div>
         <div className="small muted">
-          {repo ? <span className="mono">{repo}</span> : null}
-          {n.issue ? <span> #{n.issue.number}</span> : null}
-          {n.webhook ? <span className="mono"> {n.webhook.url}</span> : null}
+          {isMirror ? (
+            <>
+              {repo ? <span className="mono">{repo}</span> : null}
+              {n.issue ? <span> #{n.issue.number}</span> : null}
+            </>
+          ) : (
+            <>
+              {repo ? <span className="mono">{repo}</span> : null}
+              {n.issue ? <span> #{n.issue.number}</span> : null}
+              {n.webhook ? <span className="mono"> {n.webhook.url}</span> : null}
+            </>
+          )}
         </div>
       </div>
-      <span className="badge">{REASON_LABEL[n.reason]}</span>
+      {isMirror ? null : <span className="badge">{REASON_LABEL[n.reason]}</span>}
       {n.archived ? <span className="badge">Archived</span> : null}
       <span className="small subtle">{timeAgo(n.createdAt)}</span>
       <Button

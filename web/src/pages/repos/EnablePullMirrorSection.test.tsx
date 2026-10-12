@@ -59,7 +59,7 @@ describe('EnablePullMirrorSection', () => {
 
   it('mostra avvertenza MP1: nessun dato cancellato o sovrascritto', async () => {
     renderSection();
-    expect(await screen.findByText(/Nothing is ever deleted or overwritten/)).toBeInTheDocument();
+    expect(await screen.findByText(/nothing is deleted or overwritten/)).toBeInTheDocument();
   });
 
   it('il form contiene URL dell\'origine', async () => {
@@ -83,17 +83,17 @@ describe('EnablePullMirrorSection', () => {
     expect(screen.getByRole('combobox', { name: /Update interval/i })).toBeInTheDocument();
   });
 
-  it('il pulsante "Enable mirror" e\' spento senza URL', async () => {
+  it('il pulsante "Enable pull mirror" e\' spento senza URL', async () => {
     renderSection();
-    expect(screen.getByRole('button', { name: 'Enable mirror' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enable pull mirror' })).toBeDisabled();
   });
 
-  it('il pulsante "Enable mirror" si attiva inserendo URL', async () => {
+  it('il pulsante "Enable pull mirror" si attiva inserendo URL', async () => {
     const user = userEvent.setup();
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
-    expect(screen.getByRole('button', { name: 'Enable mirror' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enable pull mirror' })).not.toBeDisabled();
   });
 
   it('abilita il mirror con URL e intervallo', async () => {
@@ -102,7 +102,7 @@ describe('EnablePullMirrorSection', () => {
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.click(screen.getByRole('button', { name: 'Enable mirror' }));
+    await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(enablePullMirror).toHaveBeenCalledWith('acme', 'api', {
       url: 'https://github.com/acme/origin.git',
       intervalSeconds: 600,
@@ -119,7 +119,7 @@ describe('EnablePullMirrorSection', () => {
     await user.type(usernameInput, 'mirror-bot');
     const tokenInput = screen.getByLabelText('Access token (optional)');
     await user.type(tokenInput, 's3cret');
-    await user.click(screen.getByRole('button', { name: 'Enable mirror' }));
+    await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(enablePullMirror).toHaveBeenCalledWith('acme', 'api', {
       url: 'https://github.com/acme/origin.git',
       username: 'mirror-bot',
@@ -161,7 +161,17 @@ describe('EnablePullMirrorSection', () => {
     render(<ToastProvider><EnablePullMirrorSection owner="acme" repo="api" onSuccess={onSuccessMock} /></ToastProvider>);
     const urlInput = screen.getByLabelText('Source URL');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.click(screen.getByRole('button', { name: 'Enable mirror' }));
+    await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     await waitFor(() => expect(onSuccessMock).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://github.com/acme/origin.git' })));
+  });
+
+  it('mostra avvertenza sul contenuto esistente del repo', async () => {
+    renderSection();
+    expect(await screen.findByText(/This repository already has content/)).toBeInTheDocument();
+  });
+
+  it('il pulsante e\' chiamato "Enable pull mirror"', async () => {
+    renderSection();
+    expect(await screen.findByRole('button', { name: 'Enable pull mirror' })).toBeInTheDocument();
   });
 });

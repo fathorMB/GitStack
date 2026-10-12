@@ -19,9 +19,9 @@ export interface SelectProps {
 }
 
 // Select Radix: tastiera (frecce, type-ahead, Esc), ruolo combobox/listbox.
-export function Select({ options, placeholder, onValueChange, value, disabled, id, 'data-testid': testId, ...aria }: SelectProps & { 'data-testid'?: string }) {
+export function Select({ options, placeholder, onValueChange, value, disabled, id, ...aria }: SelectProps) {
   return (
-    <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled} data-testid={testId}>
+    <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <RadixSelect.Trigger id={id} className="select" {...aria}>
         <RadixSelect.Value placeholder={placeholder} />
         <RadixSelect.Icon>
