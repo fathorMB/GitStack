@@ -101,7 +101,7 @@ func Parse(p Params) (*pgx.ConnConfig, *Result, error) {
 		return nil, nil, fail("params", "manca la password del database: usa --postgres-password-file, la variabile GITSTACK_POSTGRES_PASSWORD o la password nell'URL")
 	}
 	for _, r := range pw {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~", r)) {
+		if !urlSafe(r) {
 			return nil, nil, fail("params", "la password del database contiene caratteri che GitStack non può mettere in un URL di connessione (ammessi: lettere, cifre, - . _ ~). Cambia la password dell'utente %q con una di soli caratteri URL-safe", user)
 		}
 	}
@@ -132,6 +132,11 @@ func Parse(p Params) (*pgx.ConnConfig, *Result, error) {
 		res.Warnings = append(res.Warnings, fmt.Sprintf("il database %q è quello di sistema: GitStack vuole un database dedicato (vedi deploy/postgres-prepare.sql)", db))
 	}
 	return cfg, res, nil
+}
+
+// urlSafe: i soli caratteri non riservati di un URL (RFC 3986).
+func urlSafe(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~", r)
 }
 
 // Check esegue il preflight. L'errore, se non nil, è sempre un *Failure.
