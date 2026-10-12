@@ -1,11 +1,12 @@
-import { CircleAlert, CircleCheck, CircleX, Clock, GitFork, Loader } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, CircleAlert, CircleCheck, CircleX, Clock, GitFork, Loader } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button, ConfirmDialog, ErrorAlert, FormField, PasswordInput, TextInput, useToast } from '../../components';
 import { formatDate, timeAgo } from '../../lib/format';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { addMirror, editMirror, fetchMirrorRuns, fetchMirrors, removeMirror, syncMirror } from '../../lib/mirrorsApi';
 import type { RepoMirror, RepoMirrorRun, RepoMirrorRunOutcome, RepoMirrorState } from '../../lib/mirrorsApi';
+import { fetchPullMirror } from '../../lib/pullMirrorsApi';
 import { useLoad } from '../../lib/useLoad';
 
 // Stato = colore + icona + testo (mai solo colore).
@@ -53,8 +54,21 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
   const [actionError, setActionError] = useState('');
   const [busyId, setBusyId] = useState('');
   const [runsOf, setRunsOf] = useState('');
+  const [pullOrigin, setPullOrigin] = useState<string | null>(null);
 
   const mirrors = data ?? [];
+
+  // P5: carica l'origine del pull mirror per il controllo di conflitto.
+  useEffect(() => {
+    fetchPullMirror(owner, repo).then((m) => {
+      setPullOrigin(m?.state === 'stopped' || m?.state === 'paused' || m?.state === 'in_sync' ? m.origin : null);
+    });
+  }, [owner, repo]);
+
+  // Verifica se una URL è in conflitto con l'origine del pull mirror.
+  const isConflictWithPull = (url: string): boolean => {
+    return pullOrigin !== null && url.trim() === pullOrigin;
+  };
 
   function replace(updated: RepoMirror) {
     setData(mirrors.map((m) => (m.id === updated.id ? updated : m)));
@@ -93,7 +107,7 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
       <div className="sec-h">
         <h2>Mirrors</h2>
         <span className="sp" />
-        <Button variant="primary" disabled={readOnly || form !== null} onClick={() => setForm('new')}>
+        <Button variant="primary" disabled={readOnly || form !== null || mirrors.some((m) => isConflictWithPull(m.url))} onClick={() => setForm('new')}>
           Add mirror
         </Button>
       </div>
@@ -108,6 +122,15 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
         <p className="muted">
           <GitFork size={14} aria-hidden="true" /> No mirrors yet.
         </p>
+      ) : null}
+      {/* P5: avviso se un push mirror è verso la stessa origine del pull mirror */}
+      {mirrors.some((m) => isConflictWithPull(m.url)) && pullOrigin ? (
+        <div className="alert alert-danger">
+          <AlertTriangle size={16} aria-hidden="true" />
+          <div>
+            <b>This is the source of the pull mirror.</b> Pushing to it while pulling from it would create a loop. Stop the pull mirror first (Settings · Pull mirror), then add this push mirror.
+          </div>
+        </div>
       ) : null}
       {mirrors.length > 0 ? (
         <div className="list" style={{ marginBottom: 24 }}>
@@ -137,6 +160,7 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
           owner={owner}
           repo={repo}
           mirror={form === 'new' ? null : form}
+          pullOrigin={pullOrigin}
           onCancel={() => setForm(null)}
           onSaved={(saved, created) => {
             setData(created ? [...mirrors, saved] : mirrors.map((m) => (m.id === saved.id ? saved : m)));
@@ -281,10 +305,11 @@ function MirrorForm(props: {
   owner: string;
   repo: string;
   mirror: RepoMirror | null;
+  pullOrigin: string | null;
   onCancel: () => void;
   onSaved: (m: RepoMirror, created: boolean) => void;
 }) {
-  const { owner, repo, mirror } = props;
+  const { owner, repo, mirror, pullOrigin } = props;
   const [url, setUrl] = useState(mirror?.url ?? '');
   const [username, setUsername] = useState(mirror?.username ?? '');
   const [token, setToken] = useState('');
@@ -321,11 +346,20 @@ function MirrorForm(props: {
   }
 
   const valid = url.trim() !== '' && username.trim() !== '' && (mirror !== null || token !== '');
+  const conflict = mirror === null && pullOrigin !== null && url.trim() === pullOrigin;
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
       <div className="card-h">{mirror ? 'Edit mirror' : 'Add mirror'}</div>
       <div className="card-b stack form-stack" style={{ gap: 16 }}>
         {general ? <ErrorAlert message={general} /> : null}
+        {conflict ? (
+          <div className="alert alert-danger">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <div>
+              <b>This is the source of the pull mirror.</b> Pushing to it while pulling from it would create a loop. Stop the pull mirror first (Settings · Pull mirror), then add this push mirror.
+            </div>
+          </div>
+        ) : null}
         <FormField label="Remote URL" hint="An https:// URL, without credentials." error={errors.url}>
           <TextInput className="mono" value={url} placeholder="https://github.com/example/repo.git" onChange={(e) => setUrl(e.target.value)} />
         </FormField>
@@ -345,7 +379,7 @@ function MirrorForm(props: {
         <Button type="button" onClick={props.onCancel}>
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={busy || !valid}>
+        <Button type="submit" variant="primary" disabled={busy || !valid || conflict}>
           {mirror ? 'Save mirror' : 'Add mirror'}
         </Button>
       </div>

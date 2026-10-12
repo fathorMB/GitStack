@@ -8,8 +8,11 @@ import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { useLoad } from '../../lib/useLoad';
 import { RepoMirrorsSection } from './RepoMirrorsSection';
+import { PullMirrorSection } from './PullMirrorSection';
+import { EnablePullMirrorSection } from './EnablePullMirrorSection';
 import { RepoHeader } from './RepoHeader';
 import { isRepoAdmin, loadMe } from './repoAdmin';
+import type { PullMirror } from '../../lib/pullMirrorsApi';
 
 // Impostazioni del repo, sezione General (mockup 18): solo per chi ha admin.
 // Su un repo archiviato (R10) tutto e' in sola lettura tranne «Unarchive».
@@ -196,6 +199,13 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
 
       <RepoMirrorsSection owner={repo.owner.name} repo={repo.name} readOnly={readOnly} />
 
+      <PullMirrorOrEnable
+        owner={repo.owner.name}
+        repo={repo.name}
+        hasMirror={!!repo.mirror}
+        readOnly={readOnly}
+      />
+
       <section aria-label="Danger zone">
         <div className="sec-h">
           <h2 style={{ color: 'var(--danger)' }}>Danger zone</h2>
@@ -259,5 +269,41 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
         onConfirm={() => void remove()}
       />
     </>
+  );
+}
+
+/**
+ * Mostra il PullMirrorSection se il mirror è attivo/in pausa,
+ * o EnablePullMirrorSection se il mirror è spento.
+ */
+function PullMirrorOrEnable({
+  owner,
+  repo,
+  hasMirror,
+  readOnly,
+}: {
+  owner: string;
+  repo: string;
+  hasMirror: boolean;
+  readOnly: boolean;
+}) {
+  const [mirror, setMirror] = useState<PullMirror | null>(null);
+
+  function handleSuccess(m: PullMirror) {
+    setMirror(m);
+  }
+
+  if (readOnly) return null;
+
+  if (!hasMirror && !mirror) {
+    return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
+  }
+
+  return (
+    <PullMirrorSection
+      key={`${owner}/${repo}`}
+      owner={owner}
+      repo={repo}
+    />
   );
 }
