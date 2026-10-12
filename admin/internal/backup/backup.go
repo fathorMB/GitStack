@@ -210,6 +210,9 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	if o.Cfg.ImageTag == "" {
 		return nil, errors.New("image_tag assente dal config: la versione del server non è nota")
 	}
+	if o.Cfg.Backup.S3 != nil && len(o.Key) == 0 {
+		return nil, refused("backup.s3 è configurato: gli archivi caricati su S3 sono sempre cifrati, serve la chiave (--key-file o backup.s3.key_file)")
+	}
 	dest := o.dest()
 	if err := os.MkdirAll(dest, 0o700); err != nil {
 		return nil, fmt.Errorf("cartella dei backup: %w", err)

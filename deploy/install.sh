@@ -10,9 +10,9 @@
 #   sudo ./deploy/install.sh
 #   curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/install.sh | sudo bash
 #
-# Distribuzioni supportate in M-01: solo Ubuntu Server 24.04 LTS x86_64
-# (vedi README.md di questa cartella, sezione "Requisiti minimi").
-# Debian/RHEL e WSL2 arrivano con M-08 [c_8458909a21d9035f].
+# Distribuzioni supportate (N2): Ubuntu Server 22.04 e 24.04 LTS,
+# Pop!_OS 22.04 e 24.04, solo x86_64; altri sistemi con --force.
+# (vedi README.md di questa cartella, sezione "Distribuzioni supportate").
 #
 # HTTPS (N5, GIT-143): di default l'installer crea una CA interna (chiave solo
 # sull'host, root-only) e un certificato per il nome dell'host e il suo IP;
@@ -86,6 +86,17 @@ GITSTACK_CONFIG_FILE="${GITSTACK_CONFIG_DIR}/config.yaml"
 GITSTACK_CHART_COPY="${GITSTACK_CHART_COPY:-/usr/local/share/gitstack/chart}"
 GITSTACK_BACKUP_DIR="${GITSTACK_BACKUP_DIR:-}"
 GITSTACK_BACKUP_RETENTION="${GITSTACK_BACKUP_RETENTION:-}"
+# Backup su S3 (N7): endpoint, bucket e file della chiave di cifratura sono
+# obbligatori insieme; le chiavi di accesso solo da ambiente (mai da argomento:
+# si vedono con ps).
+GITSTACK_S3_ENDPOINT="${GITSTACK_S3_ENDPOINT:-}"
+GITSTACK_S3_BUCKET="${GITSTACK_S3_BUCKET:-}"
+GITSTACK_S3_PREFIX="${GITSTACK_S3_PREFIX:-}"
+GITSTACK_S3_REGION="${GITSTACK_S3_REGION:-}"
+GITSTACK_S3_KEY_FILE="${GITSTACK_S3_KEY_FILE:-}"
+GITSTACK_S3_RETENTION="${GITSTACK_S3_RETENTION:-}"
+GITSTACK_S3_ACCESS_KEY="${GITSTACK_S3_ACCESS_KEY:-}"
+GITSTACK_S3_SECRET_KEY="${GITSTACK_S3_SECRET_KEY:-}"
 
 # Requisiti della macchina (N1 [c_d345922b89557a3f], confermati il 2026-10-05).
 # Profilo MINIMO, bloccante: 4 vCPU, 8 GB di RAM, 60 GB di disco con almeno
@@ -104,15 +115,20 @@ MIN_DISK_FREE_GB=20
 REC_CPU=8
 REC_RAM_GB=16
 REC_DISK_GB=200
-# Sistema supportato (N2): per ora solo Ubuntu Server 24.04. 22.04 e Pop!_OS
-# arrivano con M-08. Un altro sistema si installa solo con --force.
+# Sistemi supportati (N2): ubuntu 22.04, ubuntu 24.04, pop 22.04, pop 24.04,
+# solo x86_64. Un altro sistema si installa solo con --force.
 GITSTACK_FORCE="${GITSTACK_FORCE:-0}"
 # Percorsi letti dal preflight, sostituibili nei test (deploy/tests/preflight_test.sh).
 OS_RELEASE_FILE="${OS_RELEASE_FILE:-/etc/os-release}"
 MEMINFO_FILE="${MEMINFO_FILE:-/proc/meminfo}"
 SYS_CLASS_BLOCK="${SYS_CLASS_BLOCK:-/sys/class/block}"
-REQUIRED_OS_ID="ubuntu"
-REQUIRED_OS_VERSION="24.04"
+# Elenco dei sistemi supportati: coppie "ID VERSIONE" separate da spazio.
+REQUIRED_OS=(
+  "ubuntu 22.04"
+  "ubuntu 24.04"
+  "pop 22.04"
+  "pop 24.04"
+)
 REQUIRED_ARCH="x86_64"
 REQUIRED_PORTS="80 443 6443"
 # Porta SSH di git (git.ssh.port del chart, default 2222). Mai la 22: l'installer
@@ -198,6 +214,19 @@ Opzioni:
   --tls-email EMAIL         Email per Let's Encrypt (consigliata).
   --insecure-http           Solo HTTP, senza TLS: SOLO per prove locali. La UI
                              mostra un avviso.
+  --s3-endpoint HOST|URL    Backup su S3 (AWS, MinIO, B2, Wasabi): endpoint. Con
+                             gli altri --s3-* configura backup.s3; servono anche
+                             --s3-bucket e --s3-key-file, e le chiavi di accesso
+                             nelle variabili GITSTACK_S3_ACCESS_KEY e
+                             GITSTACK_S3_SECRET_KEY (non da argomento).
+  --s3-bucket NOME          Bucket dei backup.
+  --s3-prefix PREFISSO      Prefisso (cartella) nel bucket. Default: nessuno.
+  --s3-region REGIONE       Regione. Default: us-east-1.
+  --s3-key-file FILE        Chiave di cifratura degli archivi (almeno 16
+                             caratteri, per esempio openssl rand -base64 32):
+                             senza, la configurazione S3 è rifiutata.
+  --s3-retention N|bucket   Archivi da tenere su S3 (default 30) oppure «bucket»
+                             per lasciar fare al bucket.
   --values FILE             File di valori Helm aggiuntivo (-f), ripetibile.
   --set CHIAVE=VALORE       Valore Helm aggiuntivo (--set), ripetibile.
   -h, --help                Stampa questo aiuto ed esce.
@@ -210,7 +239,10 @@ GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1, GITSTACK_FORCE=1, GITSTACK_T
 (internal|letsencrypt|insecure), GITSTACK_TLS_CERT, GITSTACK_TLS_KEY,
 GITSTACK_TLS_EMAIL, GITSTACK_ADMIN_BINARY,
 GITSTACK_ADMIN_SHA256, GITSTACK_ADMIN_REQUIRED=1, GITSTACK_BACKUP_DIR,
-GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02).
+GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02),
+GITSTACK_S3_ENDPOINT, GITSTACK_S3_BUCKET, GITSTACK_S3_PREFIX,
+GITSTACK_S3_REGION, GITSTACK_S3_KEY_FILE, GITSTACK_S3_RETENTION,
+GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY.
 EOF
 }
 
@@ -276,6 +308,30 @@ while [ "$#" -gt 0 ]; do
       GITSTACK_TLS_MODE="insecure"
       shift
       ;;
+    --s3-endpoint)
+      GITSTACK_S3_ENDPOINT="$2"
+      shift 2
+      ;;
+    --s3-bucket)
+      GITSTACK_S3_BUCKET="$2"
+      shift 2
+      ;;
+    --s3-prefix)
+      GITSTACK_S3_PREFIX="$2"
+      shift 2
+      ;;
+    --s3-region)
+      GITSTACK_S3_REGION="$2"
+      shift 2
+      ;;
+    --s3-key-file)
+      GITSTACK_S3_KEY_FILE="$2"
+      shift 2
+      ;;
+    --s3-retention)
+      GITSTACK_S3_RETENTION="$2"
+      shift 2
+      ;;
     --values)
       extra_helm_values+=("$2")
       shift 2
@@ -333,22 +389,29 @@ preflight_os() {
   found_id="$(. "${OS_RELEASE_FILE}" >/dev/null 2>&1; printf '%s' "${ID:-sconosciuto}")"
   # shellcheck disable=SC1090,SC1091
   found_version="$(. "${OS_RELEASE_FILE}" >/dev/null 2>&1; printf '%s' "${VERSION_ID:-sconosciuta}")"
-  if [ "${found_id}" != "${REQUIRED_OS_ID}" ] || [ "${found_version}" != "${REQUIRED_OS_VERSION}" ]; then
+  local supported=0
+  for entry in "${REQUIRED_OS[@]}"; do
+    if [ "${found_id}" = "${entry%% *}" ] && [ "${found_version}" = "${entry#* }" ]; then
+      supported=1
+      break
+    fi
+  done
+  if [ "${supported}" -ne 1 ]; then
     unsupported_os "sistema non supportato: ${found_id} ${found_version}"
     return 0
   fi
-  log "OS: ${found_id} ${found_version} (supportato: ${REQUIRED_OS_ID} ${REQUIRED_OS_VERSION}) OK"
+  log "OS: ${found_id} ${found_version} (supportato: ${REQUIRED_OS[*]}) OK"
 }
 
-# Sistema diverso da Ubuntu Server 24.04: avviso "non supportato" e si
-# prosegue solo con --force (22.04 e Pop!_OS arrivano con M-08).
+# Sistema non nell'elenco supportato: avviso "non supportato" e si
+# prosegue solo con --force.
 unsupported_os() {
   local why="$1"
   if [ "${GITSTACK_FORCE}" = "1" ]; then
-    warn "${why}. Supportato: ${REQUIRED_OS_ID} ${REQUIRED_OS_VERSION} (22.04 e Pop!_OS arrivano con M-08 [c_8458909a21d9035f]). Procedo perché c'è --force: nessuna garanzia."
+    warn "${why}. Supportato: ${REQUIRED_OS[*]}. Procedo perché c'è --force: nessuna garanzia."
     return 0
   fi
-  fail "${why}. Supportato: Ubuntu Server ${REQUIRED_OS_VERSION} (22.04 e Pop!_OS arrivano con M-08 [c_8458909a21d9035f]). Per provare lo stesso, a tuo rischio, rilancia con --force."
+  fail "${why}. Supportato: ${REQUIRED_OS[*]}. Per provare lo stesso, a tuo rischio, rilancia con --force."
 }
 
 preflight_arch() {
@@ -969,6 +1032,74 @@ existing_config_value() {
   fi
 }
 
+# --- Backup su S3 (N7) -------------------------------------------------
+
+# Vero se almeno un'opzione S3 è stata data.
+s3_requested() {
+  [ -n "${GITSTACK_S3_ENDPOINT}${GITSTACK_S3_BUCKET}${GITSTACK_S3_PREFIX}${GITSTACK_S3_REGION}${GITSTACK_S3_KEY_FILE}${GITSTACK_S3_RETENTION}${GITSTACK_S3_ACCESS_KEY}${GITSTACK_S3_SECRET_KEY}" ]
+}
+
+# Controlla le opzioni S3 prima di toccare il sistema. Senza chiave di
+# cifratura la configurazione è rifiutata: un archivio in chiaro non lascia
+# mai la macchina. Le chiavi non compaiono mai nei messaggi.
+validate_s3_options() {
+  s3_requested || return 0
+  [ -n "${GITSTACK_S3_ENDPOINT}" ] || fail "backup S3: manca --s3-endpoint (o GITSTACK_S3_ENDPOINT)."
+  [ -n "${GITSTACK_S3_BUCKET}" ] || fail "backup S3: manca --s3-bucket (o GITSTACK_S3_BUCKET)."
+  if [ -z "${GITSTACK_S3_ACCESS_KEY}" ] || [ -z "${GITSTACK_S3_SECRET_KEY}" ]; then
+    fail "backup S3: servono GITSTACK_S3_ACCESS_KEY e GITSTACK_S3_SECRET_KEY nell'ambiente."
+  fi
+  [ -n "${GITSTACK_S3_KEY_FILE}" ] ||
+    fail "backup S3: manca --s3-key-file. Gli archivi caricati su S3 sono sempre cifrati: senza chiave la configurazione e' rifiutata (per esempio: openssl rand -base64 32 > /etc/gitstack/backup.key)."
+  case "${GITSTACK_S3_KEY_FILE}" in
+    /*) ;;
+    *) fail "backup S3: --s3-key-file deve essere un percorso assoluto." ;;
+  esac
+  [ -f "${GITSTACK_S3_KEY_FILE}" ] || fail "backup S3: il file della chiave '${GITSTACK_S3_KEY_FILE}' non esiste."
+  if [ "$(tr -d '[:space:]' <"${GITSTACK_S3_KEY_FILE}" | wc -c)" -lt 16 ]; then
+    fail "backup S3: la chiave in ${GITSTACK_S3_KEY_FILE} e' troppo corta (almeno 16 caratteri)."
+  fi
+  case "${GITSTACK_S3_RETENTION}" in
+    ''|bucket|[1-9]|[1-9][0-9]*) ;;
+    *) fail "backup S3: --s3-retention non valida: '${GITSTACK_S3_RETENTION}' (numero intero >= 1 oppure 'bucket')." ;;
+  esac
+}
+
+# Una stringa YAML tra apici singoli.
+yaml_squote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/''/g")"
+}
+
+# La sezione backup.s3 del config esistente, tale e quale (rieseguire
+# l'installer non cancella la configurazione S3 né notify_command).
+existing_s3_block() {
+  [ -f "${GITSTACK_CONFIG_FILE}" ] || return 0
+  awk '
+    /^backup:/ { insec = 1; next }
+    /^[^ #]/ { insec = 0; ins3 = 0 }
+    insec && /^  s3:/ { ins3 = 1; print; next }
+    ins3 && /^   / { print; next }
+    ins3 { ins3 = 0 }' "${GITSTACK_CONFIG_FILE}"
+}
+
+# Righe da aggiungere sotto "backup:" (vuoto se S3 non è configurato).
+s3_config_block() {
+  if ! s3_requested; then
+    existing_s3_block
+    return 0
+  fi
+  printf '  s3:\n'
+  printf '    endpoint: %s\n' "$(yaml_squote "${GITSTACK_S3_ENDPOINT}")"
+  printf '    bucket: %s\n' "$(yaml_squote "${GITSTACK_S3_BUCKET}")"
+  [ -z "${GITSTACK_S3_PREFIX}" ] || printf '    prefix: %s\n' "$(yaml_squote "${GITSTACK_S3_PREFIX}")"
+  [ -z "${GITSTACK_S3_REGION}" ] || printf '    region: %s\n' "$(yaml_squote "${GITSTACK_S3_REGION}")"
+  printf '    access_key: %s\n' "$(yaml_squote "${GITSTACK_S3_ACCESS_KEY}")"
+  printf '    secret_key: %s\n' "$(yaml_squote "${GITSTACK_S3_SECRET_KEY}")"
+  printf '    key_file: %s\n' "$(yaml_squote "${GITSTACK_S3_KEY_FILE}")"
+  [ -z "${GITSTACK_S3_RETENTION}" ] || printf '    retention: %s\n' "$(yaml_squote "${GITSTACK_S3_RETENTION}")"
+  return 0
+}
+
 # Scrive /etc/gitstack/config.yaml (0600, root). Formato e significato dei
 # campi: admin/README.md.
 write_config() {
@@ -987,6 +1118,8 @@ write_config() {
 
   # Con la CA interna, i comandi di gitstack si fidano del suo certificato per
   # parlare con GitStack in HTTPS (la chiave resta in ${TLS_DIR}/ca.key).
+  local s3_block
+  s3_block="$(s3_config_block)"
   local ca_line=""
   if [ "${GITSTACK_TLS_MODE}" = "internal" ]; then
     ca_line="ca_cert: ${TLS_DIR}/ca.crt
@@ -1013,6 +1146,7 @@ backup:
   destination: ${backup_dir}
   retention: ${retention}
 EOF
+  [ -z "${s3_block}" ] || printf '%s\n' "${s3_block}" >>"${tmp}"
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${GITSTACK_CONFIG_FILE}"
   log "Configurazione scritta in ${GITSTACK_CONFIG_FILE} (0600)."
@@ -1448,6 +1582,7 @@ EOF
 
 main() {
   check_root "$@"
+  validate_s3_options
   resolve_tls
   run_preflight
 

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
+	"github.com/fathorMB/GitStack/services/git/internal/mirrorpull"
 	"github.com/fathorMB/GitStack/services/git/internal/mirrorpush"
 	"github.com/fathorMB/GitStack/services/git/internal/repostore"
 	"github.com/fathorMB/GitStack/services/git/internal/smarthttp"
@@ -49,6 +50,8 @@ type Deps struct {
 	Reads   *gitread.Service // letture sulla storia (nil = rotte non montate)
 	// Mirror esegue i mirror in push (GIT-179); nil = rotta non montata.
 	Mirror *mirrorpush.Service
+	// Pull esegue i mirror in pull (GIT-196); nil = rotta non montata.
+	Pull   *mirrorpull.Service
 	Secret string
 	Logger *slog.Logger
 	// Git, se non nil, serve lo smart HTTP su /<owner>/<repo>.git/...
@@ -88,6 +91,9 @@ func NewRouter(d Deps) http.Handler {
 	api.HandleFunc("DELETE /internal/git/repos/{repoId}", h.purge)
 	if d.Mirror != nil {
 		api.HandleFunc("POST /internal/git/repos/{repoId}/mirror-push", h.mirrorPush)
+	}
+	if d.Pull != nil {
+		api.HandleFunc("POST /internal/git/repos/{repoId}/mirror-pull", h.mirrorPull)
 	}
 	if d.Reads != nil {
 		h.mountReads(api)

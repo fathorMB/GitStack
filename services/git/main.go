@@ -21,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
+	"github.com/fathorMB/GitStack/services/git/internal/mirrorpull"
 	"github.com/fathorMB/GitStack/services/git/internal/mirrorpush"
 	"github.com/fathorMB/GitStack/services/git/internal/pushevent"
 	"github.com/fathorMB/GitStack/services/git/internal/receiverules"
@@ -113,6 +114,7 @@ func run(out io.Writer) int {
 			Store:   store,
 			Reads:   gitread.New(runner, store.Dir),
 			Mirror:  mirrorService(runner, store, cfg),
+			Pull:    pullService(runner, store, cfg, events),
 			Content: newContent(),
 			Secret:  cfg.ServiceSecret,
 			Logger:  logger,
@@ -172,6 +174,16 @@ func mirrorService(runner *gitrun.Runner, store *repostore.Store, cfg config.Con
 	// processo (gitrun toglie solo GIT_* dai figli). A git arriva come
 	// http.proxy in GIT_CONFIG_*, mai in riga di comando.
 	svc := &mirrorpush.Service{Run: runner, Dir: store.Dir, Proxy: http.ProxyFromEnvironment}
+	if cfg.MirrorCAFile != "" {
+		svc.ExtraEnv = []string{"GIT_SSL_CAINFO=" + cfg.MirrorCAFile}
+	}
+	return svc
+}
+
+// pullService costruisce l'esecutore dei mirror in pull (GIT-196): stessa CA
+// privata del push (GITSTACK_GIT_MIRROR_CA_FILE) e stesso Notifier dei push.
+func pullService(runner *gitrun.Runner, store *repostore.Store, cfg config.Config, events *pushevent.Notifier) *mirrorpull.Service {
+	svc := &mirrorpull.Service{Run: runner, Dir: store.Dir, Events: events}
 	if cfg.MirrorCAFile != "" {
 		svc.ExtraEnv = []string{"GIT_SSL_CAINFO=" + cfg.MirrorCAFile}
 	}
