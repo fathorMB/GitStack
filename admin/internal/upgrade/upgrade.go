@@ -8,6 +8,10 @@
 //  2. backup con backup.Backup;
 //  3. helm upgrade (le migrazioni girano all'avvio dei servizi) e attesa
 //     che tutti i servizi siano sani;
+//     Se la destinazione dichiara un'altra versione di k3s (N10, K3sVersionFile)
+//     l'ordine è backup → k3s → GitStack (vedi Steps): la patch si applica
+//     da sola, la minore solo con --k3s; il ritorno indietro di k3s non è
+//     automatico.
 //  4. sostituzione del binario, della copia locale del chart e di
 //     image_tag nel config, nell'ordine in cui si disfano.
 //
@@ -83,18 +87,22 @@ type Options struct {
 	// DestDir): Run vi aggiunge il Cluster.
 	Backup backup.Options
 
-	To          string // --to
-	DryRun      bool
-	Timeout     time.Duration
-	Sets        []string // --set di helm
-	ValueFiles  []string // -f di helm
-	HelmBin     string
-	ExePath     string // binario gitstack da sostituire
-	Repo        string
-	Ref         string
-	APIBase     string
-	CodeloadURL string
-	ReleaseURL  string
+	To     string // --to
+	DryRun bool
+	// AllowK3sMinor è --k3s: consente il cambio di minore di k3s (N10).
+	AllowK3sMinor bool
+	// K3sInstallURL sostituisce lo script https://get.k3s.io (test, reti chiuse).
+	K3sInstallURL string
+	Timeout       time.Duration
+	Sets          []string // --set di helm
+	ValueFiles    []string // -f di helm
+	HelmBin       string
+	ExePath       string // binario gitstack da sostituire
+	Repo          string
+	Ref           string
+	APIBase       string
+	CodeloadURL   string
+	ReleaseURL    string
 	// ImageCheck sostituisce la verifica sul registry (test).
 	ImageCheck func(ctx context.Context, image string) error
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
@@ -181,6 +189,8 @@ type Result struct {
 	Outcome    Outcome
 	From, To   string // tag immagine
 	BackupPath string
+	// K3sFrom e K3sTo: versioni di k3s prima e dopo, se è cambiata.
+	K3sFrom, K3sTo string
 	// RolledBackChart e Restored dicono cosa ha fatto il rollback.
 	RolledBackChart bool
 	Restored        bool
@@ -477,6 +487,22 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 	o.logf("    chart: firma verificata")
 
+	var k3s K3sPlan
+	if t.K3sVersion != "" {
+		inst, err := o.installedK3s(ctx)
+		if err != nil {
+			o.logf("    k3s: versione installata non leggibile (%v): non lo aggiorno", err)
+		} else {
+			if k3s, err = PlanK3s(inst, t.K3sVersion, o.AllowK3sMinor); err != nil {
+				res.Outcome = Refused
+				return res, err
+			}
+		}
+	}
+	if k3s.Needed() {
+		res.K3sFrom, res.K3sTo = k3s.From.String(), k3s.To.String()
+	}
+
 	valuesFile := filepath.Join(work, "values.json")
 	if err := o.helmValues(ctx, valuesFile); err != nil {
 		res.Outcome = Refused
@@ -516,6 +542,9 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	if o.DryRun {
 		res.Outcome = NoChange
 		res.add("Controlli superati: %s → %s si può installare (%d immagini, binario con checksum, chart). Nessuna modifica fatta (--dry-run).", o.Cfg.ImageTag, t.Tag, len(images))
+		if k3s.Needed() {
+			res.add("k3s: %s → %s (%s): passi nell'ordine %v.", k3s.From, k3s.To, k3s.Action, Steps(k3s))
+		}
 		return res, nil
 	}
 
@@ -535,6 +564,20 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 	res.BackupPath = br.Path
 	o.logf("    %s", br.Path)
+
+	// 2b. k3s, dopo il backup e prima di GitStack (Steps).
+	if k3s.Needed() {
+		o.logf("==> Aggiorno k3s da %s a %s (%s): interruzione breve, i servizi si fermano e ripartono", k3s.From, k3s.To, k3s.Action)
+		if err := o.updateK3s(ctx, k3s); err != nil {
+			res.Outcome = Failed
+			res.Reason = err.Error()
+			res.add("Aggiornamento di k3s NON riuscito: GitStack non è stato aggiornato (il chart è com'era).")
+			res.add("Il backup preventivo è intatto: %s", br.Path)
+			res.add("Il ritorno indietro di k3s non è automatico: segui «Rolling back k3s» in docs/operations.md")
+			return res, fmt.Errorf("aggiornamento di k3s: %w", err)
+		}
+		res.add("k3s aggiornato da %s a %s.", k3s.From, k3s.To)
+	}
 
 	before, beforeErr := o.migrationState(ctx)
 	if beforeErr != nil {

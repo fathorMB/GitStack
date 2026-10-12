@@ -185,6 +185,7 @@ Sono quelli dello schema `Repository` dell'API (camelCase), più `url` (pagina w
 | `archived`, `archivedAt` | R10 |
 | `defaultBranch`, `empty`, `protectDefaultBranch` | branch principale, nessun commit, protezione R9 |
 | `cloneUrls` | `{https, ssh, sshShort}`; `ssh` è assente se il server SSH è spento |
+| `mirror` | `{origin, lastSyncedAt}` se il repo è un mirror in pull attivo (anche in pausa, MP2: il push è rifiutato), altrimenti `null` |
 | `createdAt`, `updatedAt`, `url` | date e pagina web |
 
 `gs repo list --deleted --json` elenca `DeletedRepository`: `id`, `name`, `owner`, `fullName`, `deletedAt`, `purgeAt` (dopo questo istante la cancellazione è definitiva) e `url`. Nelle due liste i campi dell'altra sono `null`.

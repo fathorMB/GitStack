@@ -89,7 +89,7 @@ Il caso reale di homehub: il router di casa (Sky) non permette record DNS locali
 
 ### k3s e Traefik v3
 
-`INSTALL_K3S_VERSION` è pinnato a `v1.36.4+k3s1` (mai `latest`): quella versione include il chart Traefik `40.1.0` (`appVersion: v3.7.0`, cioè Traefik v3), richiesto dal Middleware `traefik.io/v1alpha1` dell'Ingress del chart (`gitstack/templates/ingress.yaml`, vedi `gitstack/README.md`). Sovrascrivibile con `INSTALL_K3S_VERSION` se serve un'altra versione, purché includa Traefik v3.
+La versione di k3s è pinnata (mai `latest`) nel file `deploy/k3s-version` (oggi `v1.36.4+k3s1`), unico punto che dichiara con quale k3s è provata ogni versione di GitStack: lo leggono `install.sh` e `gitstack upgrade` (una patch nuova si applica da sola, una minore con `gitstack upgrade --k3s`, vedi `docs/operations.md`). Quella versione include il chart Traefik `40.1.0` (`appVersion: v3.7.0`, cioè Traefik v3), richiesto dal Middleware `traefik.io/v1alpha1` dell'Ingress del chart (`gitstack/templates/ingress.yaml`, vedi `gitstack/README.md`). Sovrascrivibile con la variabile `INSTALL_K3S_VERSION` se serve un'altra versione, purché includa Traefik v3.
 
 k3s installa la CRD `middlewares.traefik.io` (serve al Middleware dell'Ingress) in modo **asincrono**, tramite un HelmChart/Job interni che partono dopo che il nodo è Ready: `install.sh` aspetta esplicitamente che quella CRD compaia e diventi `Established` prima di lanciare `helm upgrade --install` del chart di GitStack, altrimenti su una macchina pulita si incontra la stessa race del job "chart" della CI (`no matches for kind Middleware`). Con la CRD già presente (esecuzioni successive) l'attesa passa subito.
 

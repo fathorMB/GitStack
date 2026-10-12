@@ -30,3 +30,7 @@ deploy/windows/tests/*.ps1 text eol=lf
 # Lo script Python copiato sulla VM dall'e2e (GIT-181): LF anche sul checkout Windows del board.
 deploy/test-vm/e2e/*.py text eol=lf
 scripts/agent-trial/** text eol=lf
+
+# La versione di k3s provata con questa versione di GitStack (N10): una riga,
+# letta da deploy/install.sh e da `gitstack upgrade`. Sempre LF.
+deploy/k3s-version text eol=lf
