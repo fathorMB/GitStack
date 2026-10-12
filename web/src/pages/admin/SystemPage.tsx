@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Database, Download, Globe, Info, Lock } from 'lucide-react';
+import { AlertTriangle, Check, Cpu, Database, Download, Globe, Info, KeyRound, Lock, Server } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ErrorAlert } from '../../components';
 import { fetchSession } from '../../lib/authApi';
@@ -9,7 +9,9 @@ import { useLoad } from '../../lib/useLoad';
 
 // Admin · System (mockup 16): database (N8), rete aziendale (N9), backup locale
 // e S3 (N7), versioni di GitStack e di k3s (N10). I dati dell'host li
-// pubblica `gitstack` e li legge core: la pagina non li inventa mai. Solo
+// pubblica `gitstack` e li legge core: la pagina non li inventa mai. GIT-218:
+// accesso (host, HTTPS, SSH), servizi e macchina (profilo N1), piu' l'avviso
+// della catena di fornitura (V5) in cima. Solo
 // l'amministratore (403 dal backend; qui si evita una pagina che non puo'
 // funzionare).
 export function SystemPage() {
@@ -93,6 +95,15 @@ export function SystemView({ sys }: { sys: AdminSystem }) {
         </span>
       </div>
 
+      {sys.supplyChainWarning ? (
+        <div className="alert alert-danger section-gap" role="alert" data-testid="supply-chain-warning">
+          <AlertTriangle size={16} aria-hidden="true" />
+          <div className="grow">
+            <b>Supply-chain warning:</b> {sys.supplyChainWarning}
+          </div>
+        </div>
+      ) : null}
+
       {!sys.published ? (
         <div className="alert alert-warning section-gap" role="status">
           <AlertTriangle size={16} aria-hidden="true" />
@@ -107,6 +118,9 @@ export function SystemView({ sys }: { sys: AdminSystem }) {
       <K3sNotice versions={v} />
 
       <div className="stack" style={{ gap: 24 }}>
+        <AccessCard sys={sys} />
+        <ServicesCard sys={sys} />
+        <NodeCard sys={sys} />
         <DatabaseCard sys={sys} />
         <NetworkCard sys={sys} />
         <BackupCard sys={sys} />
@@ -250,6 +264,176 @@ function NetworkCard({ sys }: { sys: AdminSystem }) {
           <Row label="Mirror CA">
             <span>{n.mirrorCA ? 'Private CA for push mirrors' : <span className="muted">Not configured</span>}</span>
           </Row>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TLS_MODES: Record<string, string> = {
+  internal: 'Internal CA',
+  custom: 'Custom certificate',
+  letsencrypt: "Let's Encrypt",
+  insecure: 'None (HTTP only)',
+};
+
+function daysUntil(iso: string, now: number = Date.now()): number {
+  return Math.floor((new Date(iso).getTime() - now) / 86_400_000);
+}
+
+function AccessCard({ sys }: { sys: AdminSystem }) {
+  const a = sys.access;
+  const exp = a.tlsExpiresAt;
+  let expiry: ReactNode;
+  if (a.tlsMode === 'insecure') {
+    expiry = <span className="muted">No certificate (HTTP)</span>;
+  } else if (exp) {
+    const days = daysUntil(exp);
+    expiry =
+      days < 0 ? (
+        <>
+          <Dot tone="danger" />
+          <span>Expired {formatDate(exp)}</span>
+        </>
+      ) : (
+        <>
+          <Dot tone={days < 14 ? 'warning' : 'success'} />
+          <span>{formatDate(exp)}</span>
+          <span className="muted">in {days} days</span>
+        </>
+      );
+  } else {
+    expiry = <span className="muted">Not available</span>;
+  }
+  return (
+    <div className="card">
+      <div className="card-h">
+        <KeyRound size={16} aria-hidden="true" />
+        Access
+      </div>
+      <div className="list list-clean">
+        <Row label="Hostname">
+          <span className="mono">{a.host || 'unknown'}</span>
+        </Row>
+        <Row label="HTTPS">
+          <span>{TLS_MODES[a.tlsMode] ?? 'Unknown'}</span>
+        </Row>
+        <Row label="Certificate expires">{expiry}</Row>
+        <Row label="SSH port">
+          <span className="mono">{a.sshPort || 'unknown'}</span>
+        </Row>
+      </div>
+    </div>
+  );
+}
+
+function ServicesCard({ sys }: { sys: AdminSystem }) {
+  const s = sys.services;
+  return (
+    <div className="card">
+      <div className="card-h">
+        <Server size={16} aria-hidden="true" />
+        Services
+        <span className="sp" />
+        {sys.updatedAt ? <span className="muted small">as of {formatDate(sys.updatedAt)}</span> : null}
+      </div>
+      {!s.available ? (
+        <div className="card-b small muted">Not available{s.error ? `: ${s.error}` : ''}.</div>
+      ) : s.items.length === 0 ? (
+        <div className="card-b small muted">No services found.</div>
+      ) : (
+        <div className="list list-clean">
+          {s.items.map((svc) => (
+            <Row key={svc.name} label={svc.name}>
+              <Dot tone={svc.healthy ? 'success' : 'danger'} />
+              <span>{svc.healthy ? 'Ready' : 'Not ready'}</span>
+              <span className="mono">
+                {svc.ready}/{svc.desired}
+              </span>
+              <span className="muted">replicas</span>
+              {svc.image ? <span className="mono muted">{svc.image}</span> : null}
+            </Row>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function gbText(bytes: number): string {
+  const gb = bytes / 1e9;
+  return `${gb >= 100 ? gb.toFixed(0) : gb.toFixed(1)} GB`;
+}
+
+const LEVEL_TEXT: Record<string, string> = {
+  recommended: 'Meets the recommended profile',
+  below_recommended: 'Below the recommended profile',
+  below_minimum: 'Below the minimum profile',
+};
+
+function levelTone(level: string): 'success' | 'warning' | 'danger' | 'muted' {
+  return level === 'recommended' ? 'success' : level === 'below_recommended' ? 'warning' : level === 'below_minimum' ? 'danger' : 'muted';
+}
+
+function NodeRow({
+  label,
+  metric,
+  format,
+  extra,
+}: {
+  label: string;
+  metric: { available: boolean; value: number; minimum: number; recommended: number; level: string };
+  format: (n: number) => string;
+  extra?: ReactNode;
+}) {
+  return (
+    <Row label={label}>
+      {metric.available ? (
+        <>
+          <Dot tone={levelTone(metric.level)} />
+          <span className="mono">{format(metric.value)}</span>
+          {extra}
+          <span className="muted">
+            {LEVEL_TEXT[metric.level] ?? ''} (minimum {format(metric.minimum)}, recommended {format(metric.recommended)})
+          </span>
+        </>
+      ) : (
+        <span className="muted">Not available</span>
+      )}
+    </Row>
+  );
+}
+
+function NodeCard({ sys }: { sys: AdminSystem }) {
+  const n = sys.node;
+  const d = n.disk;
+  return (
+    <div className="card">
+      <div className="card-h">
+        <Cpu size={16} aria-hidden="true" />
+        Node
+        <span className="sp" />
+        <span className="muted small">vs. recommended profile N1</span>
+      </div>
+      {!n.available ? (
+        <div className="card-b small muted">Not available: the host has not reported CPU, memory and disk.</div>
+      ) : (
+        <div className="list list-clean">
+          <NodeRow label="CPU" metric={n.cpu} format={(v) => `${v} vCPU`} />
+          <NodeRow label="Memory" metric={n.memory} format={gbText} />
+          <NodeRow
+            label="Disk"
+            metric={d}
+            format={gbText}
+            extra={
+              d.available ? (
+                <span className={d.freeBytes < d.minFreeBytes ? '' : 'muted'}>
+                  {gbText(d.freeBytes)} free{d.freeBytes < d.minFreeBytes ? ` (minimum ${gbText(d.minFreeBytes)})` : ''}
+                  {d.path ? ` on ${d.path}` : ''}
+                </span>
+              ) : null
+            }
+          />
         </div>
       )}
     </div>

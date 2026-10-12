@@ -50,6 +50,12 @@ type Info struct {
 	Backup    Backup    `json:"backup"`
 	Versions  Versions  `json:"versions"`
 	Network   Network   `json:"network"`
+	Access    Access    `json:"access"`
+	Services  Services  `json:"services"`
+	Node      Node      `json:"node"`
+	// SupplyChainWarning è l'avviso V5 (v5.allow_unsigned=true): vuoto se le
+	// firme sono verificate.
+	SupplyChainWarning string `json:"supplyChainWarning,omitempty"`
 }
 
 // Database: modo "internal" o "external", mai la password.
@@ -122,6 +128,10 @@ type Input struct {
 	// HelmValues sono i values della release (helm get values -o json); nil
 	// se non si sono potuti leggere: la rete risulta «non configurato».
 	HelmValues map[string]any
+	// Node sono le misure dell'host (ProbeNode); il valore zero = non lette.
+	Node NodeProbe
+	// CertExpiry è la scadenza del certificato HTTPS servito (nil se non letta).
+	CertExpiry *time.Time
 	Now        time.Time
 }
 
@@ -171,6 +181,15 @@ func Build(in Input) Info {
 	}
 
 	info.Network = networkFromConfig(networkFromValues(in.HelmValues), cfg.Network)
+
+	info.Access = buildAccess(cfg, in.CertExpiry)
+	info.Services = buildServices(in.Report)
+	info.Node = BuildNode(in.Node)
+	if r := in.Report; r != nil && r.SupplyChainWarning != "" {
+		info.SupplyChainWarning = r.SupplyChainWarning
+	} else if cfg.V5.AllowUnsigned {
+		info.SupplyChainWarning = status.SupplyChainUnsignedWarning
+	}
 	return info
 }
 
