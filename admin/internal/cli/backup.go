@@ -187,6 +187,7 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 	if err != nil {
 		code := a.backupFailure("backup", err)
 		a.backupStateWrite(path, false, "", err)
+		a.autoPublish(ctx, cfg, path)
 		return code
 	}
 	_, _ = fmt.Fprintf(a.Stdout, "Backup completato: %s\n  SHA-256: %s\n  Versione: %s\n  Finestra di sola lettura: %.1f s\n",
@@ -196,6 +197,7 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 	}
 	up, upErr := a.uploadBackup(ctx, cfg, o, res.Path)
 	a.backupStateWrite(path, true, res.Path, nil, up)
+	a.autoPublish(ctx, cfg, path)
 	if upErr != nil {
 		a.errorf("caricamento su S3 fallito: %v. Il backup locale è valido: %s", upErr, res.Path)
 		a.notifyUploadFailure(ctx, cfg, res.Path, upErr.Error())

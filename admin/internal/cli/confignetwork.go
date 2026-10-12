@@ -613,6 +613,10 @@ func runConfigSetNetwork(ctx context.Context, a *App, args []string) int {
 	}
 	_, _ = fmt.Fprintf(a.Stdout, "Rete aziendale aggiornata (config: %s).\n", path)
 	a.printNetworkSummary(n)
+	// Admin · System non resta vecchio dopo un cambio di rete (best effort).
+	if c2, err := config.Load(path); err == nil {
+		a.autoPublish(ctx, c2, path)
+	}
 	return ExitOK
 }
 
