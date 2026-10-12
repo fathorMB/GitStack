@@ -189,6 +189,10 @@ GITSTACK_HTTP_PROXY="${GITSTACK_HTTP_PROXY:-}"
 GITSTACK_HTTPS_PROXY="${GITSTACK_HTTPS_PROXY:-}"
 GITSTACK_NO_PROXY="${GITSTACK_NO_PROXY:-}"
 GITSTACK_REGISTRY_MIRROR="${GITSTACK_REGISTRY_MIRROR:-}"
+# Reti LAN che webhook e mirror possono raggiungere (egress.allow, F7): elenco
+# separato da virgole di IP, CIDR o nomi. Vuoto = nessuna restrizione, ma gli
+# indirizzi del nodo e le porte di Kubernetes restano sempre bloccati.
+GITSTACK_EGRESS_ALLOW="${GITSTACK_EGRESS_ALLOW:-}"
 GITSTACK_REGISTRY_USERNAME="${GITSTACK_REGISTRY_USERNAME:-}"
 # La password non si passa mai in una riga di comando: file o variabile.
 GITSTACK_REGISTRY_PASSWORD="${GITSTACK_REGISTRY_PASSWORD:-}"
@@ -316,6 +320,13 @@ Opzioni:
                              senza, la configurazione S3 è rifiutata.
   --s3-retention N|bucket   Archivi da tenere su S3 (default 30) oppure «bucket»
                              per lasciar fare al bucket.
+  --egress-allow LISTA      Reti ammesse per le chiamate in uscita di webhook e
+                             mirror (egress.allow), separate da virgole: IP,
+                             CIDR (es. 192.168.1.0/24) o nomi. Se indicata, sono
+                             ammesse solo queste destinazioni. Gli indirizzi del
+                             nodo e le porte di Kubernetes (6443, 10250, 10255,
+                             2379-2380) sono bloccati comunque. Da ripetere a
+                             ogni upgrade.
   --values FILE             File di valori Helm aggiuntivo (-f), ripetibile.
   --set CHIAVE=VALORE       Valore Helm aggiuntivo (--set), ripetibile.
   --http-proxy URL          Proxy per le destinazioni http (download di k3s e
@@ -353,6 +364,7 @@ GITSTACK_TLS_EMAIL, GITSTACK_ADMIN_BINARY,
 GITSTACK_ADMIN_SHA256, GITSTACK_ADMIN_REQUIRED=1, GITSTACK_BACKUP_DIR,
 GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02),
 GITSTACK_HTTP_PROXY, GITSTACK_HTTPS_PROXY, GITSTACK_NO_PROXY,
+GITSTACK_EGRESS_ALLOW,
 GITSTACK_REGISTRY_MIRROR, GITSTACK_REGISTRY_USERNAME, GITSTACK_REGISTRY_PASSWORD,
 GITSTACK_DOWNLOAD_MIRROR, GITSTACK_CA_BUNDLE,
 GITSTACK_POSTGRES_URL, GITSTACK_POSTGRES_PASSWORD_FILE, GITSTACK_POSTGRES_PASSWORD,
@@ -445,6 +457,11 @@ while [ "$#" -gt 0 ]; do
       ;;
     --registry-mirror)
       GITSTACK_REGISTRY_MIRROR="$2"
+      shift 2
+      ;;
+    --egress-allow)
+      [ $# -ge 2 ] || fail "--egress-allow richiede una lista (IP, CIDR o nomi separati da virgole)."
+      GITSTACK_EGRESS_ALLOW="$2"
       shift 2
       ;;
     --registry-username)
@@ -1385,6 +1402,14 @@ install_helm() {
   install -m 0755 "${workdir}/linux-amd64/helm" /usr/local/bin/helm
 }
 
+# Indirizzi IPv4 del nodo (F7): sempre bloccati dalla policy di uscita, anche se
+# una rete di egress.allow li contiene. Il chart aggiunge status.hostIP.
+egress_node_addresses() {
+  local ips
+  ips="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$' | grep -v '^127[.]' | paste -sd, - || true)"
+  printf '%s' "${ips}"
+}
+
 # Valori del chart (--set / -f) in HELM_VALUE_ARGS: gli stessi per l'elenco
 # delle immagini da verificare (helm template) e per l'installazione.
 HELM_VALUE_ARGS=()
@@ -1410,6 +1435,18 @@ helm_value_args() {
   for net_set in "${NETWORK_HELM_SETS[@]:-}"; do
     [ -n "${net_set}" ] && helm_args+=(--set "${net_set}")
   done
+  # Policy di uscita (F7): LAN ammesse (esplicite) e indirizzi del nodo.
+  local egress_nodes
+  case "${GITSTACK_EGRESS_ALLOW}" in
+    *[[:space:]]*) fail "--egress-allow: elementi separati da virgole, senza spazi." ;;
+  esac
+  if [ -n "${GITSTACK_EGRESS_ALLOW}" ]; then
+    helm_args+=(--set "egress.allow={${GITSTACK_EGRESS_ALLOW}}")
+  fi
+  egress_nodes="$(egress_node_addresses)"
+  if [ -n "${egress_nodes}" ]; then
+    helm_args+=(--set "egress.nodeAddresses={${egress_nodes}}")
+  fi
   local f
   for f in "${extra_helm_values[@]:-}"; do
     [ -n "${f}" ] && helm_args+=(-f "${f}")

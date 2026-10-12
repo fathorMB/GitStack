@@ -103,6 +103,7 @@ the admin binary if they differ, without touching k3s or the data.
 | `--http-proxy URL` | `GITSTACK_HTTP_PROXY` | — | Proxy for everything the server downloads and for the GitStack pods. See [Corporate network](#corporate-network-proxy-mirrors-and-ca). |
 | `--https-proxy URL` | `GITSTACK_HTTPS_PROXY` | (the HTTP proxy) | Proxy for `https://` destinations. |
 | `--no-proxy LIST` | `GITSTACK_NO_PROXY` | — | Comma-separated destinations that bypass the proxy (added to the cluster networks and suffixes, which never use it). |
+| `--egress-allow LIST` | `GITSTACK_EGRESS_ALLOW` | — | LAN ranges (IP, CIDR or names, comma-separated) that webhooks and mirrors may reach (`egress.allow`). If set, only these destinations are allowed. See [Egress policy and the LAN](#egress-policy-and-the-lan). |
 | `--registry-mirror URL` | `GITSTACK_REGISTRY_MIRROR` | — | Mirror for **all** images, k3s system images included (`registries.yaml`). |
 | `--registry-username U`, `--registry-password-file FILE` | `GITSTACK_REGISTRY_USERNAME`, `GITSTACK_REGISTRY_PASSWORD` | — | Optional mirror credentials. The password is never a command-line argument. |
 | `--download-mirror URL` | `GITSTACK_DOWNLOAD_MIRROR` | — | Mirror for the k3s, Helm and `gitstack` downloads. |
@@ -380,6 +381,20 @@ not run in CI. Unit tests: `deploy/tests/network_test.sh` (installer) and
 `admin/internal/cli/confignetwork_test.go` (`config set network`).
 
 ---
+
+### Egress policy and the LAN
+
+Webhooks and mirrors call addresses given by users, so every outgoing connection goes through the egress policy (`pkg/egress`, values `egress.*`). Always blocked, whatever the lists say: loopback, link-local (cloud metadata), the cluster networks (`egress.clusterCIDRs`), **the node's own addresses** and **the Kubernetes ports 6443, 10250, 10255 and 2379-2380 on any private address**. This keeps a repository admin from making core call kubelet, the k3s API or a service listening on the host.
+
+The node's addresses are `status.hostIP` of the pod (`GITSTACK_NODE_IP`), the IPv4 addresses `install.sh` finds on the host (`egress.nodeAddresses`) and any address you add to `egress.nodeAddresses`. A host with other addresses (a second NIC, a VIP) should list them there.
+
+Other hosts of your LAN stay reachable by default, because CI servers and Git hosts usually live there. To close the list, state the networks webhooks and mirrors may reach:
+
+```bash
+sudo ./install.sh --egress-allow 192.168.1.0/24,ci.example.com
+```
+
+Entries are IPs, CIDRs, names (`hooks.example.com`) or suffixes (`*.example.com`). With a non-empty list, only what it covers is allowed (public addresses included). It is written in `egress.allow`, and like any `--set` it must be given again at every upgrade. A blocked delivery fails at once, without a retry, and the delivery log shows no response.
 
 ## Backup
 
@@ -936,7 +951,7 @@ The last error is shown in the UI and as `lastError` in the API, without any cre
 
 ### Destinations on a private network or with a private CA
 
-- **Egress policy.** Like webhooks, mirror destinations go through the egress protection (`egress.*` in the chart values). Loopback, link-local and the cluster networks are always blocked. A server on your LAN is allowed by default; if you set `egress.allow`, only what it lists is allowed, so add the destination's address (an IP/CIDR, or a host name). A blocked destination ends in a `blocked` run and is not retried.
+- **Egress policy.** Like webhooks, mirror destinations go through the egress protection (`egress.*` in the chart values). Loopback, link-local, the cluster networks, the node's own addresses and the Kubernetes ports (6443, 10250, 10255, 2379-2380) on private addresses are always blocked. A server on your LAN is allowed by default; if you set `egress.allow` (see [Egress policy and the LAN](#egress-policy-and-the-lan)), only what it lists is allowed, so add the destination's address (an IP/CIDR, or a host name). A blocked destination ends in a `blocked` run and is not retried.
 - **Private CA.** Git trusts the system CAs. For a destination with a certificate from a private CA (for example a second GitStack with its internal CA) put the CA in a ConfigMap and point the chart at it:
 
   ```bash

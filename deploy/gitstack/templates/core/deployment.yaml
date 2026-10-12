@@ -168,6 +168,16 @@ spec:
             - name: GITSTACK_EGRESS_CLUSTER_CIDRS
               value: {{ join "," . | quote }}
             {{- end }}
+            # Indirizzi del nodo, sempre bloccati (F7): quello del pod host
+            # dal downward API, più egress.nodeAddresses.
+            - name: GITSTACK_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            {{- with .Values.egress.nodeAddresses }}
+            - name: GITSTACK_EGRESS_NODE_ADDRESSES
+              value: {{ join "," . | quote }}
+            {{- end }}
             {{- if include "gitstack.smtp.enabled" . }}
             # SMTP facoltativo (M-06/F, C5): senza smtp.host (o existingSecret)
             # queste variabili non esistono e core manda solo notifiche in-app.

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/fathorMB/GitStack/pkg/egress"
@@ -38,11 +39,17 @@ type Egress struct {
 
 // NewEgress costruisce il controllo dalle liste del chart.
 func NewEgress(allow, deny, clusterCIDRs []string) (*Egress, error) {
-	base, err := egress.NewPolicy(egress.Config{Deny: deny, ClusterCIDRs: clusterCIDRs})
+	return NewEgressWithNode(allow, deny, clusterCIDRs, nil)
+}
+
+// NewEgressWithNode è NewEgress con gli indirizzi del nodo (status.hostIP,
+// values egress.nodeAddresses): sempre bloccati, nessuna voce allow li sblocca.
+func NewEgressWithNode(allow, deny, clusterCIDRs, nodeAddresses []string) (*Egress, error) {
+	base, err := egress.NewPolicy(egress.Config{Deny: deny, ClusterCIDRs: clusterCIDRs, NodeAddresses: nodeAddresses})
 	if err != nil {
 		return nil, fmt.Errorf("mirrors: policy di uscita non valida: %w", err)
 	}
-	full, err := egress.NewPolicy(egress.Config{Allow: allow, Deny: deny, ClusterCIDRs: clusterCIDRs})
+	full, err := egress.NewPolicy(egress.Config{Allow: allow, Deny: deny, ClusterCIDRs: clusterCIDRs, NodeAddresses: nodeAddresses})
 	if err != nil {
 		return nil, fmt.Errorf("mirrors: policy di uscita non valida: %w", err)
 	}
@@ -101,6 +108,16 @@ func blocked(format string, args ...any) error {
 
 // CheckIP giudica un indirizzo per l'host dato.
 func (e *Egress) CheckIP(host string, ip netip.Addr) error {
+	return e.CheckAddrPort(host, ip, 0)
+}
+
+// CheckAddrPort è CheckIP per una destinazione con la porta nota: sugli IP
+// privati le porte di Kubernetes (6443, 10250, 10255, 2379-2380) sono sempre
+// vietate. Porta 0 = non nota.
+func (e *Egress) CheckAddrPort(host string, ip netip.Addr, port uint16) error {
+	if err := e.base.CheckReserved(ip, port); err != nil {
+		return err
+	}
 	if matchName(e.deny, host) {
 		return blocked("%s è vietato dall'amministratore", host)
 	}
@@ -129,7 +146,7 @@ func (e *Egress) CheckURL(raw string) error {
 		return fmt.Errorf("%w: %s è vietato dall'amministratore", ErrURLNotAllowed, host)
 	}
 	if ip, err := netip.ParseAddr(host); err == nil {
-		if err := e.CheckIP(host, ip); err != nil {
+		if err := e.CheckAddrPort(host, ip, urlPort(u)); err != nil {
 			return fmt.Errorf("%w: %s è bloccato", ErrURLNotAllowed, host)
 		}
 	}
@@ -189,7 +206,7 @@ func (e *Egress) Pick(ctx context.Context, u *url.URL) (netip.Addr, error) {
 	var pick netip.Addr
 	for _, a := range addrs {
 		a = a.WithZone("").Unmap()
-		if err := e.CheckIP(host, a); err != nil {
+		if err := e.CheckAddrPort(host, a, urlPort(u)); err != nil {
 			return netip.Addr{}, err
 		}
 		if !pick.IsValid() || (a.Is4() && !pick.Is4()) {
@@ -197,6 +214,18 @@ func (e *Egress) Pick(ctx context.Context, u *url.URL) (netip.Addr, error) {
 		}
 	}
 	return pick, nil
+}
+
+// urlPort: la porta della destinazione (443 se assente: gli URL sono https).
+func urlPort(u *url.URL) uint16 {
+	if p := u.Port(); p != "" {
+		n, err := strconv.ParseUint(p, 10, 16)
+		if err != nil {
+			return 0
+		}
+		return uint16(n)
+	}
+	return 443
 }
 
 func systemResolve(ctx context.Context, host string) ([]netip.Addr, error) {

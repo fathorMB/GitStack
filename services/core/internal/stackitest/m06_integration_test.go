@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -1144,6 +1145,58 @@ func TestM06E2E(t *testing.T) {
 		want(t, det, 200, "")
 		if strings.Contains(string(det.body), `"response"`) && !strings.Contains(string(det.body), `"response":null`) {
 			t.Fatalf("una destinazione bloccata non ha risposta da mostrare: %s", det.body)
+		}
+	})
+
+	// F7 (ASVS V12.6.1, GIT-233): l'indirizzo del nodo e le porte di
+	// Kubernetes sono bloccati sempre, anche con una LAN in allow.
+	t.Run("webhook_to_node_address_blocked", func(t *testing.T) {
+		const nodeIP = "192.168.1.5"
+		lan := []string{"192.168.1.0/24"}
+		node := []string{nodeIP}
+		real, check, err := webhooks.NewEgressForNode(lan, nil, nil, node, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Alla creazione: il nodo e le porte di Kubernetes sono rifiutati, un
+		// altro host della LAN su una porta qualunque no.
+		for _, bad := range []string{"http://" + nodeIP + ":9000/hook", "http://192.168.1.9:10250/pods", "http://192.168.1.9:6443/", "http://192.168.1.9:2379/"} {
+			if err := check(bad); !errors.Is(err, webhooks.ErrURLNotAllowed) {
+				t.Errorf("%s: voluto url_not_allowed, ottenuto %v", bad, err)
+			}
+		}
+		if err := check("http://192.168.1.9:9000/hook"); err != nil {
+			t.Errorf("host della LAN ammesso: %v", err)
+		}
+
+		// Alla consegna: nessuna connessione, consegna fallita senza risposta.
+		targets := map[string]string{"nodo": "http://" + nodeIP + ":9000/hook", "kubelet": "http://192.168.1.9:10250/pods"}
+		hooks := map[string]string{}
+		for name, target := range targets {
+			made := e.alice("POST", "/repos/alice/"+m06Lib+"/hooks", map[string]any{"url": m06HookHost + "/" + name, "events": []string{"issues"}})
+			want(t, made, 201, "")
+			id, _ := made.json()["id"].(string)
+			if _, err := e.pool.Exec(context.Background(), `UPDATE core.webhooks SET url = $2 WHERE id = $1`, id, target); err != nil {
+				t.Fatal(err)
+			}
+			hooks[name] = id
+		}
+		eng := &webhooks.Engine{Pool: e.pool, Keys: e.keys, HTTP: real, Users: e.idc, Managers: e.idc, Now: e.clock.Now,
+			Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+		e.open("alice", m06Lib, "Verso il nodo", "x", nil)
+		e.runHooks(eng)
+		e.clock.Advance(72 * time.Hour)
+		e.runHooks(eng)
+		for name, id := range hooks {
+			ds := e.deliveries(e.alice, "/repos/alice/"+m06Lib+"/hooks/"+id)
+			if len(ds) != 1 || ds[0].Status != "failed" || ds[0].Attempt != 1 || ds[0].NextAttemptAt != nil || ds[0].StatusCode != nil || ds[0].Error == nil {
+				t.Fatalf("consegna verso %s: %+v", name, ds)
+			}
+			det := e.alice("GET", "/repos/alice/"+m06Lib+"/hooks/"+id+"/deliveries/"+ds[0].Id.String(), nil)
+			want(t, det, 200, "")
+			if strings.Contains(string(det.body), `"response"`) && !strings.Contains(string(det.body), `"response":null`) {
+				t.Fatalf("%s: una destinazione bloccata non ha risposta da mostrare: %s", name, det.body)
+			}
 		}
 	})
 
