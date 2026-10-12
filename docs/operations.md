@@ -758,5 +758,157 @@ so it fails as a non-root user with a permission error.
 
 ---
 
+## V5 — Catena di fornitura: firme e SBOM
+
+GitStack firma le immagini container, il chart Helm e i binari della CLI `gs`
+con Sigstore/cosign (firma keyless tramite OIDC di GitHub Actions). Gli SBOM
+sono generati con syft (formato SPDX).
+
+### Come verificare una firma
+
+#### Prerequisiti
+
+```sh
+# Installa cosign (Sigstore) e syft (anchore)
+# macOS (Homebrew):
+brew install sigstore/cosign/cosign
+brew install anchore/syft/syft
+# Linux: scarica dal sito ufficiale di Sigstore e anchore.
+```
+
+#### Identità e issuer attesi
+
+| Parametro | Valore |
+|---|---|
+| Identity del certificato (main) | `https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main` |
+| Identity del certificato (tag v*) | `^https://github.com/fathorMB/GitStack/\.github/workflows/ci\.yml@refs/tags/v.*$` |
+| OIDC Issuer | `https://token.actions.githubusercontent.com` |
+
+> **Nota:** l'identity è l'URL del workflow GitHub Actions (`github.com/<owner>/<repo>/.github/workflows/ci.yml@refs/heads/main`), **non** l'issuer. L'issuer è `https://token.actions.githubusercontent.com`.
+
+#### Verifica di un'immagine container
+
+```sh
+# Immagine: ghcr.io/<owner>/gitstack-gateway:sha-<commit-sha>
+IMG="ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>"
+
+# Verifica la firma keyless: identity (URL del workflow) + issuer OIDC.
+cosign verify \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "${IMG}"
+```
+
+Per i tag, usare `--certificate-identity-regexp` con:
+`^https://github.com/fathorMB/GitStack/\.github/workflows/ci\.yml@refs/tags/v.*$`
+
+#### Verifica di un binario
+
+```sh
+# Scarica il binario e il suo bundle dalla release GitHub.
+# La release si chiama "sha-<commit-sha>" e contiene i file con estensione .sigstore.json.
+
+curl -fsSL -o gitstack-linux-amd64 \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64"
+curl -fsSL -o gitstack-linux-amd64.sigstore.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64.sigstore.json"
+
+# Verifica la firma del blob: usa --bundle con il file .sigstore.json.
+cosign verify-blob \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --bundle gitstack-linux-amd64.sigstore.json \
+  gitstack-linux-amd64
+```
+
+#### Verifica del chart Helm
+
+```sh
+# Scarica il chart firmato dalla release.
+curl -fsSL -o gitstack-0.1.0.tgz \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz"
+curl -fsSL -o gitstack-0.1.0.tgz.sigstore.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz.sigstore.json"
+
+# Verifica la firma del blob chart: usa --bundle con il file .sigstore.json.
+cosign verify-blob \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --bundle gitstack-0.1.0.tgz.sigstore.json \
+  gitstack-0.1.0.tgz
+```
+
+### Verifica degli SBOM
+
+Gli SBOM (Software Bill of Materials) in formato SPDX sono caricati nella release
+GitHub e disponibili come artifact del workflow di firma.
+
+```sh
+# SBOM di un'immagine: scarica dalla release o dall'artifact del workflow.
+curl -fsSL -o gitstack-gateway-sbom.spdx.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-gateway-sbom.spdx.json"
+
+# Controlla il contenuto: elencare i pacchetti rilevati.
+syft gitstack-gateway-sbom.spdx.json --quiet -o table
+
+# SBOM degli altri componenti (tutti nella release):
+# - gitstack-identity-sbom.spdx.json
+# - gitstack-git-sbom.spdx.json
+# - gitstack-core-sbom.spdx.json
+# - gitstack-web-sbom.spdx.json
+# - gitstack-chart-sbom.spdx.json
+# - gitstack-binary-sbom.spdx.json
+# - gs-binary-sbom.spdx.json
+```
+
+### Attestazioni delle immagini
+
+Ogni immagine ha un'attestazione che collega l'SBOM all'immagine stessa
+(standard Sigstore in-toto). Si verifica con `cosign verify-attestation`:
+
+```sh
+# Verifica l'attestazione di un'immagine.
+cosign verify-attestation \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --type spdxjson \
+  ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>
+```
+
+Per i tag, usare `--certificate-identity-regexp` con:
+`^https://github.com/fathorMB/GitStack/\.github/workflows/ci\.yml@refs/tags/v.*$`
+
+### File nella release GitHub
+
+La release `sha-<commit-sha>` contiene:
+
+| Tipo | File |
+|---|---|
+| Binari | `gitstack-linux-amd64`, `gitstack-linux-amd64.sha256`, `gs_linux_amd64`, … |
+| Firme blob | `*.sigstore.json` (uno per binario/chart/checksum) |
+| SBOM immagini | `gitstack-gateway-sbom.spdx.json`, `gitstack-identity-sbom.spdx.json`, `gitstack-git-sbom.spdx.json`, `gitstack-core-sbom.spdx.json`, `gitstack-web-sbom.spdx.json` |
+| SBOM chart | `gitstack-chart-sbom.spdx.json` |
+| SBOM binario | `gitstack-binary-sbom.spdx.json`, `gs-binary-sbom.spdx.json` |
+| Chart | `gitstack-<versione>.tgz`, `gitstack-<versione>.tgz.sigstore.json` |
+
+### Flusso di firma
+
+1. I job `registry`, `admin-binary` e `gs-binaries` pubblicano immagini, chart e
+   binari nella release GitHub (`sha-<commit-sha>`).
+2. Il job `sign` (dipende da tutti e tre) scarica gli asset, genera gli SBOM
+   con syft e firma con cosign:
+   - Immagini: `cosign attest --type spdxjson` (SBOM come attestazione in-toto)
+     + `cosign sign` (firma keyless OIDC).
+   - Chart: `cosign sign-blob --bundle` (firma del file .tgz, output `.sigstore.json`).
+   - Binari: `cosign sign-blob --bundle` (firma di ogni binary/checksum).
+3. Firme (.sigstore.json), SBOM (.spdx.json) e file originali vengono caricati
+   nella release GitHub con `gh release upload --clobber`.
+4. Step di verifica interna: `cosign verify` su immagine,
+   `cosign verify-blob` su chart e binario, tutti senza `|| true`.
+
+*V5 — Catena di fornitura (GIT-208)*
+
+---
+
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
 decisioni D17–D19 [c_1d1d61aca3dea601]*

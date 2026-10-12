@@ -469,6 +469,347 @@ jobs:
               --title "${IMAGE_TAG}" \
               --notes "Build del commit ${GITHUB_SHA}: CLI gs e skills (non è una release di prodotto)."
           fi
+  # V5 (GIT-208): firma keyless con Sigstore/cosign (OIDC) di immagini,
+  # chart e binari; SBOM con syft allegato alla release e attestazione delle
+  # immagini. I passi girano SOLO su main e tag; serve id-token: write
+  # (OIDC keyless), packages: write (attestazioni), contents: write (upload release).
+  sign:
+    name: Sign — cosign (immagini, chart, binari) + SBOM (syft)
+    needs: [registry, admin-binary, gs-binaries]
+    if: >-
+      !cancelled() && needs.registry.result == 'success'
+      && needs.admin-binary.result == 'success'
+      && needs.gs-binaries.result == 'success'
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write   # OIDC per firma keyless con Sigstore
+      packages: write   # Attestazioni delle immagini
+      contents: write   # Caricare firme e SBOM nella release
+    env:
+      REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+      REPO_OWNER: ${{ github.repository_owner }}
+      IMAGE_TAG: sha-${{ github.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+
+      # Supply chain: tool ufficiali pinnati
+      - name: Installa cosign
+        uses: sigstore/cosign-installer@v3.8.1
+        with:
+          cosign-release: v2.4.0
+
+      - name: Installa syft
+        uses: anchore/sbom-action/download-syft@v0.24.3
+
+      - name: Installa Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.16.3
+
+      - name: Login a ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Identità OIDC per il workflow: URL del workflow + ref
+      # Per tag: si usa --certificate-identity-regexp
+      - name: Imposta identità workflow
+        id: wf-id
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "identity=https://github.com/${{ github.repository }}/.github/workflows/ci.yml@refs/heads/main" >> "$GITHUB_OUTPUT"
+            echo "regexp=" >> "$GITHUB_OUTPUT"
+          else
+            echo "identity=" >> "$GITHUB_OUTPUT"
+            echo "regexp=^https://github.com/${{ github.repository }}/\.github/workflows/ci\.yml@refs/tags/v.*$" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Issuer OIDC: https://token.actions.githubusercontent.com"
+
+      # --- Lista immagini (registry include web/) ---
+      - name: Elenco immagini da firmare
+        id: images
+        run: |
+          set -euo pipefail
+          for svc in gateway identity git core web; do
+            img="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/gitstack-${svc}:sha-${{ github.sha }}"
+            if docker manifest inspect "${img}" >/dev/null 2>&1; then
+              echo "${svc}=${img}" >> "$GITHUB_OUTPUT"
+              echo "IMAGE_${svc}=${img}" >> "$GITHUB_ENV"
+              echo "OK: immagine trovata ${svc}"
+            else
+              echo "ERRORE: immagine ${svc} non trovata su ghcr.io: ${img}" >&2
+              exit 1
+            fi
+          done
+
+      # --- Firma delle immagini con attestazione SBOM ---
+      - name: Firma keyless immagini (cosign) con SBOM attestato
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+
+          for svc in gateway identity git core web; do
+            img_var="IMAGE_${svc}"
+            img="${!img_var}"
+            echo "=== Attestazione + firma immagine: ${img} ==="
+
+            # 1. Attestazione SBOM (sigstore in-toto)
+            cosign attest --yes \
+              --type spdxjson \
+              --predicate <(syft "${img}" --quiet -o spdx-json --scope full-sbom) \
+              "${img}"
+
+            # 2. Firma keyless (OIDC)
+            # cosign sign NON accetta --certificate-identity (flag di verifica):
+            # l'identità del certificato è determinata automaticamente dall'OIDC token.
+            echo "Firma keyless per ${img}..."
+            cosign sign --yes --recursive \
+              "${img}"
+            echo "OK: immagine firmata e attestata ${img}"
+          done
+
+      # --- SBOM delle immagini come artifact e nella release ---
+      - name: Genera SBOM immagini
+        run: |
+          set -euo pipefail
+          mkdir -p sbom
+          for svc in gateway identity git core web; do
+            img_var="IMAGE_${svc}"
+            img="${!img_var}"
+            echo "SBOM per ${svc}..."
+            syft "${img}" --quiet -o spdx-json > "sbom/gitstack-${svc}-sbom.spdx.json"
+          done
+          echo "OK: SBOM immagini generati in sbom/"
+
+      # --- Firma del chart Helm ---
+      - name: Firma chart Helm
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+
+          chart_dir="deploy/gitstack"
+          chart_name="gitstack"
+
+          # Versione dal chart (helm show chart, senza yq)
+          chart_version=$(helm show chart "${chart_dir}" | awk '/^version:/{print $2}')
+          app_version=$(helm show chart "${chart_dir}" | awk '/^appVersion:/{print $2; exit}')
+
+          # Pack del chart
+          echo "Packaging chart..."
+          helm package "${chart_dir}" --version "${chart_version}" --app-version "${app_version}" --destination /tmp
+
+          chart_file="/tmp/${chart_name}-${chart_version}.tgz"
+          if [ ! -f "${chart_file}" ]; then
+            echo "ERRORE: chart non trovato: ${chart_file}" >&2
+            exit 1
+          fi
+
+          # SBOM del chart (template e metadati)
+          mkdir -p sign sbom
+          syft dir:"${chart_dir}" --quiet -o spdx-json > "sbom/gitstack-chart-sbom.spdx.json"
+
+          # Firma del file chart come blob (bundle sigstore)
+          echo "Firma chart Helm..."
+          cosign sign-blob --yes --bundle "${chart_file}.sigstore.json" \
+            "${chart_file}"
+
+          # Copia il chart e il suo bundle nella cartella di upload (sign/)
+          cp "${chart_file}" "sign/${chart_name}-${chart_version}.tgz"
+          cp "${chart_file}.sigstore.json" "sign/${chart_name}-${chart_version}.tgz.sigstore.json"
+
+          echo "OK: chart Helm firmato ${chart_file}"
+
+      # --- Firma dei binari ---
+      - name: Firma binari
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+          mkdir -p sign sbom
+
+          # Scarica la release (asset già pubblicati da admin-binary e gs-binaries)
+          echo "Scaricamento asset della release..."
+          gh release download "${IMAGE_TAG}" --dir sign --clobber
+
+          # Verifica che gli asset esistano
+          if [ ! -f sign/gitstack-linux-amd64 ]; then
+            echo "ERRORE: gitstack-linux-amd64 non trovato nella release" >&2
+            exit 1
+          fi
+
+          # Firma di gitstack + checksum
+          echo "Firma binario gitstack..."
+          cosign sign-blob --yes --bundle sign/gitstack-linux-amd64.sigstore.json \
+            sign/gitstack-linux-amd64
+
+          if [ -f sign/gitstack-linux-amd64.sha256 ]; then
+            echo "Firma checksum gitstack..."
+            cosign sign-blob --yes --bundle sign/gitstack-linux-amd64.sha256.sigstore.json \
+              sign/gitstack-linux-amd64.sha256
+          fi
+
+          # SBOM del binario
+          syft file:sign/gitstack-linux-amd64 --quiet -o spdx-json > sbom/gitstack-binary-sbom.spdx.json
+          echo "OK: binario gitstack firmato"
+
+          # Firma dei binari gs (tutte le piattaforme)
+          for bin in sign/gs_linux_amd64 sign/gs_linux_arm64 sign/gs_darwin_amd64 sign/gs_darwin_arm64 sign/gs_windows_amd64 sign/gs_windows_arm64 sign/gs_windows_amd64.exe; do
+            if [ -f "${bin}" ]; then
+              echo "Firma ${bin}..."
+              sig_name="${bin}.sigstore.json"
+              cosign sign-blob --yes --bundle "${sig_name}" "${bin}"
+            fi
+          done
+
+          # SBOM del binario gs_linux_amd64 (rappresentativo)
+          syft file:sign/gs_linux_amd64 --quiet -o spdx-json > sbom/gs-binary-sbom.spdx.json
+
+          # Firma del file SHA256SUMS
+          if [ -f sign/SHA256SUMS ]; then
+            echo "Firma SHA256SUMS..."
+            cosign sign-blob --yes --bundle sign/SHA256SUMS.sigstore.json \
+              sign/SHA256SUMS
+          fi
+
+          # Upload firme, SBOM e chart alla release
+          echo "Upload firme, SBOM e chart alla release..."
+          upload_files=()
+          for f in sign/*.sigstore.json sign/*.tgz sbom/*.spdx.json; do
+            if [ -f "${f}" ]; then
+              upload_files+=("${f}")
+            fi
+          done
+
+          if [ ${#upload_files[@]} -gt 0 ]; then
+            gh release upload "${IMAGE_TAG}" "${upload_files[@]}" --clobber
+            echo "OK: ${#upload_files[@]} file caricati nella release"
+          else
+            echo "ERRORE: nessun file da caricare" >&2
+            exit 1
+          fi
+
+      # --- Verifica delle firme (non mascherata da || true) ---
+      - name: Verifica firma immagine gateway
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+          img="${IMAGE_gateway}"
+          echo "Verifica firma immagine: ${img}"
+          if [ -n "${identity}" ]; then
+            cosign verify \
+              --certificate-identity "${identity}" \
+              --certificate-oidc-issuer "${issuer}" \
+              "${img}"
+          else
+            cosign verify \
+              --certificate-identity-regexp "${identity_regexp}" \
+              --certificate-oidc-issuer "${issuer}" \
+              "${img}"
+          fi
+          echo "OK: firma immagine verificata"
+
+      - name: Verifica firma chart Helm
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+          chart_file="/tmp/gitstack-$(helm show chart deploy/gitstack | awk '/^version:/{print $2}').tgz"
+
+          echo "Verifica firma chart: ${chart_file}"
+          if [ -n "${identity}" ]; then
+            cosign verify-blob \
+              --certificate-identity "${identity}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle "${chart_file}.sigstore.json" \
+              "${chart_file}"
+          else
+            cosign verify-blob \
+              --certificate-identity-regexp "${identity_regexp}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle "${chart_file}.sigstore.json" \
+              "${chart_file}"
+          fi
+          echo "OK: firma chart verificata"
+
+      - name: Verifica firma binario gitstack
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+
+          echo "Verifica firma binario gitstack"
+          if [ -n "${identity}" ]; then
+            cosign verify-blob \
+              --certificate-identity "${identity}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle sign/gitstack-linux-amd64.sigstore.json \
+              sign/gitstack-linux-amd64
+          else
+            cosign verify-blob \
+              --certificate-identity-regexp "${identity_regexp}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle sign/gitstack-linux-amd64.sigstore.json \
+              sign/gitstack-linux-amd64
+          fi
+          echo "OK: firma binario verificata"
+
+      - name: Verifica checksum firmato (SHA256SUMS)
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+
+          echo "Verifica checksum SHA256SUMS..."
+          if [ -n "${identity}" ]; then
+            cosign verify-blob \
+              --certificate-identity "${identity}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle sign/SHA256SUMS.sigstore.json \
+              sign/SHA256SUMS
+          else
+            cosign verify-blob \
+              --certificate-identity-regexp "${identity_regexp}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle sign/SHA256SUMS.sigstore.json \
+              sign/SHA256SUMS
+          fi
+          echo "OK: checksum verificato"
+
+      # --- Upload artifact del workflow ---
+      - name: Upload SBOM e certificati come artifact del workflow
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: signing-artifacts
+          path: |
+            sbom/
+            sign/*.sigstore.json
+            sign/*.tgz
+          if-no-files-found: ignore
+          retention-days: 30
 
   # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
   # un'installazione di prova su un cluster effimero k3d (un k3s vero in
