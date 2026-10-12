@@ -163,7 +163,8 @@ cd <percorso>\GitStack
 
 # 3. Verifica accesso locale:
 curl.exe -k https://localhost
-ssh -p 2222 bob@localhost        # utente bob creato da install.sh
+# Verifica che k3s sia attivo:
+wsl -d GitStack -u root -- systemctl is-active k3s
 
 # 4. Con rete mirrored (richiede Windows 11 22H2, build ≥ 22621):
 .\deploy\windows\install-wsl.ps1 -ShareOnNetwork

@@ -18,6 +18,9 @@ param(
     [switch]$Uninstall
 )
 
+# Funzioni pure per conversione percorsi e .wslconfig
+. (Join-Path $PSScriptRoot 'wsl-utils.ps1')
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -61,24 +64,17 @@ function Uninstall-GitStackWSL {
         }
     }
 
-    # 3. Rimuovi solo le righe marcate # GitStack da .wslconfig
+    # 3. Rimuovi le righe marcate # GitStack da .wslconfig
     $wslconf = Join-Path $env:USERProfile '.wslconfig'
     if (Test-Path $wslconf) {
         $content = Get-Content $wslconf -Raw
         if ($content -match '# GitStack') {
             Write-Status "Rimozione configurazione GitStack da $wslconf ..."
-            $lines = $content -split "`r?`n"
-            $newLines = @()
-            $skip = $false
-            foreach ($line in $lines) {
-                if ($line -match '^# GitStack') { $skip = $true }
-                elseif ($skip -and $line -match '^[^\s#]') { $skip = $false }
-                if (-not $skip) { $newLines += $line }
-            }
-            ($newLines -join "`n").TrimEnd() | Set-Content $wslconf -Encoding ASCII
-            $newContent = Get-Content $wslconf -Raw
+            $newContent = Remove-GitStackWslconfig -Content $content
             if (-not $newContent.Trim()) {
                 Remove-Item $wslconf -Force
+            } else {
+                $newContent | Set-Content $wslconf -Encoding ASCII
             }
         }
     }
@@ -161,26 +157,6 @@ function Test-Prerequisites {
 }
 
 # ============================================================
-# Converti un percorso Windows in percorso WSL (/mnt/e/...)
-# ============================================================
-
-function Convert-WindowsToWSLPath {
-    param([string]$WinPath)
-    # Usa wsl wslpath per una conversione corretta
-    $wslPath = wsl wslpath -a "$WinPath" 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        return $wslPath.Trim()
-    }
-    # Fallback: E:\ -> /mnt/e/
-    $match = $WinPath -match '^([A-Z]):\\'
-    if ($match) {
-        $letter = $match[1].ToLower()
-        return "/mnt/$letter" + $WinPath.Substring(2).Replace('\', '/')
-    }
-    return $WinPath
-}
-
-# ============================================================
 # Configurazione systemd (dentro la distro, /etc/wsl.conf)
 # ============================================================
 
@@ -232,7 +208,7 @@ function Enable-ShareOnNetwork {
         }
     } else {
         # Aggiungi networkingMode nella sezione [wsl2] o crea la sezione
-        $nwLine = 'networkingMode=mirrored'
+        $nwLine = 'networkingMode=mirrored # GitStack'
         if ($wslConfContent -match '\[wsl2\]') {
             $wslConfContent = $wslConfContent -replace "(\[wsl2\].*?)([^\r\n])", "`$1`n# GitStack`n$nwLine`n`$2"
             if ($wslConfContent -notmatch [regex]::Escape($nwLine)) {
@@ -342,8 +318,9 @@ function Install-UbuntuAndRun {
         Enable-ShareOnNetwork -WindowsBuild $WindowsBuild
     }
 
-    # Converti il percorso del repo in formato WSL
-    $wslRepoPath = Convert-WindowsToWSLPath -WinPath $PSScriptRoot
+    # Risolvi la radice del repo (.. da deploy\windows), poi converti in formato WSL
+    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    $wslRepoPath = Convert-WindowsToWSLPath -WinPath $repoRoot -DistroName $distroName
 
     # Lancia install.sh dentro WSL
     Write-Status "  Lancio deploy/install.sh dentro WSL2 (distro: $distroName) ..."
@@ -442,5 +419,5 @@ if ($ShareOnNetwork) {
     Write-Host '  - Solo dal PC: https://localhost:443' -ForegroundColor White
 }
 Write-Host ''
-Write-Host 'Per disinstallare: .deploywindowsinstall-wsl.ps1 -Uninstall' -ForegroundColor Cyan
+Write-Host 'Per disinstallare: .\deploy\windows\install-wsl.ps1 -Uninstall' -ForegroundColor Cyan
 Write-Host ''

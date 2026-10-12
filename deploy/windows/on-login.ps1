@@ -11,22 +11,26 @@ param()
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-# Avvia WSL se non e in esecuzione
+# Nome della distro WSL creata da install-wsl.ps1
+$GS_DISTRO_NAME = 'GitStack'
+
+# Tieni viva la distro GitStack con un processo in background,
+# altrimenti WSL la ferma quando non ci sono piu' processi aperti.
 try {
     $wslRunning = wsl --status 2>&1
     if ($LASTEXITCODE -ne 0) {
-        wsl ~ 2>&1 | Out-Null
-        Start-Sleep -Seconds 5
+        Start-Sleep -Seconds 3
     }
 } catch {}
 
 # Controlla la distro GitStack e avvia i servizi se necessario
 try {
     $distros = wsl -l -q 2>&1
-    $gsDistro = $distros | Select-String -Pattern 'ubuntu|gitstack' -AllMatches | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 1
+    $gsDistro = $distros | Where-Object { $_ -match $GS_DISTRO_NAME } | Select-Object -First 1
 
     if ($gsDistro) {
-        # Avvia la distro (systemctl start senza root fallisce inside WSL)
-        wsl -d $gsDistro -- true 2>&1 | Out-Null
+        # Avvia un processo sleep infinity in background (utente root)
+        # WSL mantiene la distro viva finche' il processo e' attivo.
+        wsl -d $gsDistro -u root -- bash -c "nohup sleep infinity </dev/null >/dev/null 2>&1 &" 2>&1 | Out-Null
     }
 } catch {}

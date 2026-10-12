@@ -74,6 +74,73 @@ Check 'install-wsl usa --name'           ($content -match '\-\-name')
 Check 'install-wsl systemd inside distro' ($content -match 'wsl -d.*-u root' -and $content -match 'wsl\.conf')
 Check 'install-wsl ShareOnNetwork PRIMA' ($content -match 'PRIMA di install\.sh')
 
+# ============================================================
+# 5. Test comportamentali delle funzioni pure (wsl-utils.ps1)
+# ============================================================
+# Dot-sourcing del modulo con le funzioni pure
+$utilsPath = Join-Path $PSScriptRoot '..\wsl-utils.ps1'
+$utilsPath = (Resolve-Path -LiteralPath $utilsPath).Path
+. $utilsPath
+
+# Mock di wsl: sovrascrive il comando per restituire valori fissi
+$originalWsl = $function:wsl
+$mockWslResult = 0
+$mockWslOutput = ''
+wsl = {
+    param([string[]]$Args)
+    if ($Args -contains 'wslpath') {
+        $mockWslOutput
+        Set-Variable -Name 'LASTEXITCODE' -Value $mockWslResult -Scope 1
+        return
+    }
+    $mockWslOutput
+}
+
+# 5a. Convert-WindowsToWSLPath: wslpath fallisce → fallback E:\ -> /mnt/e/
+$mockWslResult = 1
+$mockWslOutput = ''
+$result = Convert-WindowsToWSLPath -WinPath 'E:\Aziende\GitStack\deploy\windows' -DistroName GitStack
+Check 'convert fallback: E:\ -> /mnt/e/' ($result -eq '/mnt/e/Aziende/GitStack/deploy/windows')
+
+# 5b. Convert-WindowsToWSLPath: wslpath ha successo
+$mockWslResult = 0
+$mockWslOutput = '/mnt/e/Aziende/GitStack'
+$result = Convert-WindowsToWSLPath -WinPath 'E:\Aziende\GitStack' -DistroName GitStack
+Check 'convert wslpath: successo' ($result -eq '/mnt/e/Aziende/GitStack')
+
+# 5c. Convert-WindowsToWSLPath: root repo (..) risolto prima della chiamata
+# Verifica che il file install-wsl.ps1 passi '..\..' per la radice del repo
+Check 'install-wsl usa Resolve-Path ..\..' ($content -match 'Resolve-Path')
+
+# 5d. Remove-GitStackWslconfig: rimuove solo righe marcate
+$wslconfInput = "[wsl2]
+# GitStack
+networkingMode=mirrored # GitStack
+memory=4GB
+[wsl2]
+# Altre configurazioni
+networkingMode=nat"
+$expected = "[wsl2]
+memory=4GB
+[wsl2]
+# Altre configurazioni
+networkingMode=nat"
+$result = Remove-GitStackWslconfig -Content $wslconfInput
+Check 'wslconfig: rimuove networkingMode marcato' ($result -eq $expected)
+
+# 5e. Remove-GitStackWslconfig: file senza marker
+$plain = "[wsl2]
+memory=4GB"
+$result = Remove-GitStackWslconfig -Content $plain
+Check 'wslconfig: nessun marker, nulla rimosso' ($result -eq $plain)
+
+# Ripristina wsl originale se esisteva
+if ($originalWsl) {
+    function wsl { & $originalWsl @Args }
+} else {
+    Remove-Item function:wsl -ErrorAction SilentlyContinue
+}
+
 Write-Host ""
 Write-Host "PSScriptAnalyzer: per una verifica completa (naming, best-practice), " `
     "eseguire Test-ScriptAnalyzer su un runner Windows con PSScriptInstaller." -ForegroundColor Yellow
