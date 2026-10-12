@@ -2,10 +2,13 @@ package root
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -69,6 +72,33 @@ func remoteOn(s *countingServer) string {
 	return "http://localhost:" + port + "/acme/web.git"
 }
 
+// configForDefault scrive un config.yaml con default_host in una cartella
+// temporanea e ne restituisce il percorso.
+func configForDefault(t *testing.T, host string) string {
+	dir := t.TempDir()
+	data := []byte(fmt.Sprintf("default_host: %s\n", host))
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// gsOriginWithConfig esegue gs come gsOrigin, ma usa la cartella di config
+// fornita invece di una temporanea vuota.
+func gsOriginWithConfig(t *testing.T, configDir string, origin string, env map[string]string, stdin string, args ...string) result {
+	t.Helper()
+	io_, in, out, errOut := cmdutil.Test()
+	in.WriteString(stdin)
+	f := cmdutil.New("1.2.3", io_)
+	e := map[string]string{config.EnvConfigDir: configDir, cmdutil.EnvNoKeyring: "1"}
+	for k, v := range env {
+		e[k] = v
+	}
+	f.Getenv = func(k string) string { return e[k] }
+	f.Git = originGit{url: origin}
+	return result{Run(context.Background(), f, args), out.String(), errOut.String()}
+}
+
 // GIT-189: con GS_HOST impostato e origin su un altro host (github.com nel
 // caso reale), gs usa GS_HOST: l'host del remote non riceve né richieste né token.
 func TestGSHostVinceSulRemoteOrigin(t *testing.T) {
@@ -125,6 +155,34 @@ func TestRepoDalRemoteSoloSeStessoHost(t *testing.T) {
 	}
 	if other.count() != 0 {
 		t.Errorf("l'host del remote ha ricevuto %d richieste", other.count())
+	}
+}
+
+// TestRepoDalRemoteSoloSeStessoHostConPredefinita: con la sola predefinita
+// (senza GS_HOST né --hostname) e un origin su un altro host, gs issue list
+// risponde exit 2 con un errore che nomina i due host e non fa nessuna
+// richiesta. Il caso positivo: un origin sulla predefinita (anche SSH su
+// porta 2222) fa la richiesta.
+func TestRepoDalRemoteSoloSeStessoHostConPredefinita(t *testing.T) {
+	inst, other := newCountingServer(t), newCountingServer(t)
+	cfgDir := configForDefault(t, inst.URL)
+
+	// Negativo: origin su altro host, exit 2, zero richieste all'altro host.
+	r := gsOriginWithConfig(t, cfgDir, remoteOn(other), map[string]string{"GS_TOKEN": "gst_env"}, "", "issue", "list")
+	if r.code != 2 || !strings.Contains(r.errOut, "localhost:") || !strings.Contains(r.errOut, inst.URL) {
+		t.Fatalf("negativo: %+v", r)
+	}
+	if other.count() != 0 {
+		t.Errorf("alt host: %d richieste, atteso 0", other.count())
+	}
+
+	// Positivo: origin sulla predefinita (stesso URL, non localhost) → request va a inst.
+	r = gsOriginWithConfig(t, cfgDir, inst.URL+"/acme/web.git", map[string]string{"GS_TOKEN": "gst_env"}, "", "issue", "list")
+	if r.code != 0 {
+		t.Fatalf("positivo: %+v", r)
+	}
+	if inst.count() == 0 {
+		t.Error("nessuna richiesta verso l'istanza predefinita")
 	}
 }
 
