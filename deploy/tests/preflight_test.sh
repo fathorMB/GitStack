@@ -3,7 +3,8 @@
 # Carica solo le funzioni (GITSTACK_INSTALL_LIB=1) e ridefinisce le letture
 # dell'hardware: nessun root, nessuna VM. Uso: ./deploy/tests/preflight_test.sh
 # Le variabili assegnate qui sono lette dalle funzioni di install.sh (caricate con source).
-# shellcheck disable=SC2034,SC1091,SC2329
+# SC2317 (shellcheck <= 0.10) e SC2329 (>= 0.11): stub ridefiniti e chiamati da install.sh.
+# shellcheck disable=SC2034,SC1091,SC2317,SC2329
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -448,6 +449,8 @@ if [ "$(stat -c '%a' "${KC}" 2>/dev/null)" != "600" ]; then
 fi
 chmod 0644 "${KC}"
 if kubeconfig_is_private "${KC}"; then RC=0; OUT="644 considerato privato"; bad "kubeconfig 644 considerato privato"; else ok; fi
+# secure_k3s_kubeconfig arriva da install.sh (source in testa); più sotto è ridefinita come stub.
+# shellcheck disable=SC2218
 secure_k3s_kubeconfig "${KC}"
 check "k3s kubeconfig is not world-readable" kubeconfig_is_private "${KC}"
 check "k3s kubeconfig: modo 600 dopo secure_k3s_kubeconfig" test "$(file_mode "${KC}")" = "600"
