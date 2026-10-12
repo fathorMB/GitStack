@@ -7,157 +7,122 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
-// CosignPath è il percorso del binario cosign (test: percorso alternativo).
-var CosignPath = "cosign"
+// Verifica V5 della catena di fornitura: firme Sigstore/cosign di binario,
+// chart e immagini, come le produce il job di firma di .github/workflows/ci.yml
+// (firma keyless con OIDC di GitHub Actions, tlog incluso).
 
-// V5Config raccoglie i parametri di verifica V5 (sigstore/cosign).
-// OIDCIssuer è fissato; AllowUnverified consente di saltare
-// la verifica (eccezione per mirror interni non firmati, N9).
-// Identity non viene passato a cosign: si usa sempre
-// --certificate-identity-regexp ".*" come la CI (ci.yml).
+const (
+	// DefaultOIDCIssuer è l'issuer OIDC dei certificati firmati da GitHub Actions.
+	DefaultOIDCIssuer = "https://token.actions.githubusercontent.com"
+	// DefaultCosignPath è dove deploy/install.sh installa il cosign pinnato
+	// (stessa versione della CI, SHA-256 verificato). Il config può
+	// sovrascriverlo (v5.cosign_path).
+	DefaultCosignPath = "/usr/local/bin/gitstack-cosign"
+)
+
+// ErrBundleMissing: il bundle .sigstore.json dell'artefatto non è disponibile.
+// Senza bundle la firma non si può verificare: è un rifiuto, mai un via libera.
+var ErrBundleMissing = errors.New("bundle cosign (.sigstore.json) non disponibile: l'artefatto non risulta firmato")
+
+// ErrSignature: cosign ha rifiutato la firma (artefatto alterato, non firmato
+// o firmato da un'altra identità).
+var ErrSignature = errors.New("verifica firma cosign fallita")
+
+// V5Config è la configurazione della verifica. Il valore zero VERIFICA:
+// saltare la verifica richiede AllowUnsigned esplicito (N9).
 type V5Config struct {
-	// Identity del certificato firmato (workflow URL).
-	// Non viene passato a cosign: la verifica usa sempre
-	// --certificate-identity-regexp ".*" (corrisponde a qualsiasi identità).
-	// Mantenuto per compatibilità con config.yaml esistenti.
-	Identity string
-	// OIDCIssuer è l'issuer OIDC (token.actions.githubusercontent.com).
+	// Repo è owner/nome del repository la cui CI ha firmato (default DefaultRepo).
+	Repo string
+	// OIDCIssuer (default DefaultOIDCIssuer).
 	OIDCIssuer string
-	// AllowUnverified: se true, saltare la verifica senza errore (N9).
-	AllowUnverified bool
-	// Path del binario cosign (default "cosign").
+	// CosignPath è il binario cosign pinnato (default DefaultCosignPath).
 	CosignPath string
+	// AllowUnsigned è l'eccezione N9 per i mirror interni non firmati: con
+	// true niente viene verificato (e il chiamante deve avvisare).
+	AllowUnsigned bool
 }
 
-// DefaultV5Main restituisce la configurazione V5 per il ramo main.
-func DefaultV5Main() V5Config {
-	return V5Config{
-		Identity:        "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main",
-		OIDCIssuer:      "https://token.actions.githubusercontent.com",
-		AllowUnverified: false,
-		CosignPath:      CosignPath,
+func (v V5Config) repo() string {
+	if v.Repo != "" {
+		return v.Repo
 	}
+	return DefaultRepo
 }
 
-// DefaultV5Tag restituisce la configurazione V5 per i tag di rilascio.
-// Usa --certificate-identity-regexp ".*" (corrisponde a qualsiasi identità):
-// la verifica dipende dal bundle .sigstore.json contenuto nella release,
-// non dal nome del tag (per i tag si fida del bundle).
-func DefaultV5Tag() V5Config {
-	return V5Config{
-		Identity:        "", // non usato: la verifica usa --certificate-identity-regexp ".*"
-		OIDCIssuer:      "https://token.actions.githubusercontent.com",
-		AllowUnverified: false,
-		CosignPath:      CosignPath,
+func (v V5Config) issuer() string {
+	if v.OIDCIssuer != "" {
+		return v.OIDCIssuer
 	}
+	return DefaultOIDCIssuer
 }
 
-// ErrBundleMissing è l'errore restituito quando il bundle .sigstore.json
-// non è presente e la verifica è attiva (AllowUnverified=false).
-var ErrBundleMissing = errors.New("file di bundle cosign (.sigstore.json) non trovato: la verifica non può essere eseguita")
-
-// VerifyBinary esegue `cosign verify-blob` sul binario.
-// Se AllowUnverified è true, restituisce nil senza verificare.
-func (v V5Config) VerifyBinary(ctx context.Context, path string) error {
-	if v.AllowUnverified {
-		return nil
+func (v V5Config) cosign() string {
+	if v.CosignPath != "" {
+		return v.CosignPath
 	}
-	return v.verifyBlob(ctx, path)
+	return DefaultCosignPath
 }
 
-// VerifyChart esegue `cosign verify-blob` sul file chart.
-// Se AllowUnverified è true, restituisce nil senza verificare.
-func (v V5Config) VerifyChart(ctx context.Context, path string) error {
-	if v.AllowUnverified {
-		return nil
+// IdentityRegexp è l'identità accettata per il certificato: il workflow ci.yml
+// del repository, da main o da un tag di versione (v*). Come la CI, che per i
+// tag verifica con --certificate-identity-regexp.
+func (v V5Config) IdentityRegexp() string {
+	return `^https://github\.com/` + regexp.QuoteMeta(v.repo()) +
+		`/\.github/workflows/ci\.yml@refs/(heads/main|tags/v.+)$`
+}
+
+// VerifyBlob verifica con `cosign verify-blob` il file contro il suo bundle.
+// Il bundle deve esistere: se manca è ErrBundleMissing.
+func (v V5Config) VerifyBlob(ctx context.Context, file, bundle string) error {
+	if _, err := os.Stat(bundle); err != nil {
+		return fmt.Errorf("%w: %s", ErrBundleMissing, bundle)
 	}
-	return v.verifyBlob(ctx, path)
+	return v.run(ctx, file, "verify-blob",
+		"--certificate-identity-regexp", v.IdentityRegexp(),
+		"--certificate-oidc-issuer", v.issuer(),
+		"--bundle", bundle,
+		file)
 }
 
-// VerifyImage esegue `cosign verify` sull'immagine container.
-// Se AllowUnverified è true, restituisce nil senza verificare.
+// VerifyImage verifica con `cosign verify` la firma di un'immagine.
 func (v V5Config) VerifyImage(ctx context.Context, image string) error {
-	if v.AllowUnverified {
-		return nil
-	}
-	return v.verifyImage(ctx, image)
+	return v.run(ctx, image, "verify",
+		"--certificate-identity-regexp", v.IdentityRegexp(),
+		"--certificate-oidc-issuer", v.issuer(),
+		image)
 }
 
-func (v V5Config) verifyBlob(ctx context.Context, path string) error {
-	// Se il bundle non esiste e AllowUnverified è false, è un errore:
-	// la verifica non può essere eseguita senza il bundle firmato.
-	bundlePath := path + ".sigstore.json"
-	if _, err := os.Stat(bundlePath); err != nil {
-		return fmt.Errorf("%w (per %s)", ErrBundleMissing, path)
+func (v V5Config) run(ctx context.Context, what string, args ...string) error {
+	bin := v.cosign()
+	if _, err := exec.LookPath(bin); err != nil {
+		return fmt.Errorf("cosign non trovato in %s: rilancia deploy/install.sh (installa il cosign pinnato) o imposta v5.cosign_path nel config: %w", bin, err)
 	}
-
-	bin := v.CosignPath
-	if bin == "" {
-		bin = CosignPath
-	}
-
-	// --certificate-identity-regexp ".*" come ci.yml (linea 864):
-	// il bundle .sigstore.json contenuto nella release è la prova
-	// che l'artefatto è stato firmato dalla CI (keyless OIDC).
-	args := []string{"verify-blob", "--bundle", bundlePath, path}
-	args = append([]string{"--certificate-identity-regexp", ".*"}, args...)
-	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)
-
 	cmd := execCommand(ctx, bin, args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
+		msg := strings.TrimSpace(out.String())
 		if msg == "" {
-			msg = strings.TrimSpace(stdout.String())
+			msg = err.Error()
 		}
-		if msg == "" {
-			msg = "verifica firma fallita (cosign non disponibile o errore sconosciuto)"
-		}
-		return fmt.Errorf("verifica firma cosign fallita per %s: %s", path, msg)
+		return fmt.Errorf("%w per %s: %s", ErrSignature, what, msg)
 	}
 	return nil
 }
 
-func (v V5Config) verifyImage(ctx context.Context, image string) error {
-	bin := v.CosignPath
-	if bin == "" {
-		bin = CosignPath
-	}
-
-	// --certificate-identity-regexp ".*" come ci.yml (linea 843):
-	// il bundle .sigstore.json contenuto nella release è la prova
-	// che l'immagine è stata firmata dalla CI (keyless OIDC).
-	args := []string{"verify", image}
-	args = append([]string{"--certificate-identity-regexp", ".*"}, args...)
-	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)
-
-	cmd := execCommand(ctx, bin, args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = strings.TrimSpace(stdout.String())
-		}
-		if msg == "" {
-			msg = "verifica firma fallita (cosign non disponibile o errore sconosciuto)"
-		}
-		return fmt.Errorf("verifica firma cosign fallita per immagine %s: %s", image, msg)
-	}
-	return nil
+// execCommand crea il comando di cosign (sostituibile nei test).
+var execCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, name, args...)
 }
 
-// CosignAvailable controlla che il binario cosign esista e sia eseguibile.
-func CosignAvailable() bool {
-	_, err := exec.LookPath(CosignPath)
-	return err == nil
-}
+var gitstackImageRe = regexp.MustCompile(`(^|/)gitstack-(gateway|identity|git|core|web)([:@]|$)`)
 
-// ErrNoCosign è l'errore restituito quando cosign non è installato.
-var ErrNoCosign = errors.New("cosign non trovato nel PATH: installalo per la verifica delle firme V5")
+// IsGitstackImage dice se l'immagine è una di quelle firmate dalla CI di
+// GitStack (gitstack-gateway/identity/git/core/web). Postgres e NATS sono
+// immagini di terzi: non le firma GitStack e non si verificano qui.
+func IsGitstackImage(image string) bool { return gitstackImageRe.MatchString(image) }

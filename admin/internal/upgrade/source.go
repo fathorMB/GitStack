@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 // Limiti dei download: il tarball del repository è di pochi MB.
@@ -176,9 +175,8 @@ func (o *Options) Compare(ctx context.Context, t *Target) (Direction, error) {
 	return Diverged, fmt.Errorf("stato del confronto inatteso: %q", r.Status)
 }
 
-// FetchBinary scarica il binario della release, il checksum SHA-256 e il
-// bundle cosign (.sigstore.json). Verifica SHA-256, scarica e verifica la
-// firma (V5) prima di scrivere in dest.
+// FetchBinary scarica il binario della release e ne verifica lo SHA-256
+// (V5) prima di scriverlo in dest.
 func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (string, error) {
 	base := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-linux-amd64", o.releaseBase(), o.repo(), url.PathEscape(t.Tag))
 	sum, err := o.get(ctx, base+".sha256", 4096, "")
@@ -207,168 +205,60 @@ func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (stri
 	if err := os.WriteFile(dest, bin, 0o755); err != nil { //nolint:gosec // eseguibile
 		return "", err
 	}
-
-	// Scarica il bundle cosign (.sigstore.json) accanto al binario.
-	// Senza il bundle la verifica della firma non può avvenire (V5):
-	// è il fix del fail-open, CTO GIT-209.
-	bundleURL := base + ".sigstore.json"
-	bundle, err := o.get(ctx, bundleURL, 64<<10, "")
-	if err != nil {
-		if o.V5.AllowUnverified {
-			// N9: eccezione per mirror non firmati.
-			return want, nil
-		}
-		return "", fmt.Errorf("%w (per %s, URL %s)", ErrBundleMissing, dest, bundleURL)
+	// V5: firma cosign del binario, col bundle pubblicato accanto (stessa
+	// release). Senza bundle o con una firma che non torna, niente si installa.
+	if o.v5().AllowUnsigned {
+		o.logf("    AVVISO: firma del binario NON verificata (eccezione N9 attiva)")
+		return want, nil
 	}
-	if err := os.WriteFile(dest+".sigstore.json", bundle, 0o644); err != nil {
+	bundle := dest + ".sigstore.json"
+	if err := o.fetchBundle(ctx, base+".sigstore.json", bundle); err != nil {
+		_ = os.Remove(dest)
 		return "", err
 	}
-
-	// Verifica firma cosign V5.
-	if err := o.V5.VerifyBinary(ctx, dest); err != nil {
-		return "", fmt.Errorf("verifica firma cosign fallita: %w", err)
+	defer func() { _ = os.Remove(bundle) }()
+	if err := o.v5().VerifyBlob(ctx, dest, bundle); err != nil {
+		_ = os.Remove(dest)
+		return "", fmt.Errorf("binario di gitstack: %w. Non installato. Per un mirror interno non firmato serve l'eccezione esplicita --allow-unsigned-mirrors (N9)", err)
 	}
+	o.logf("    firma cosign del binario verificata")
 	return want, nil
 }
 
-// FetchChart scarica il chart .tgz dalla release GitHub firmata con cosign,
-// ne verifica la firma con il bundle (.sigstore.json) e lo estrae in dest.
-// La verifica avviene PRIMA dell'estrazione: il .tgz pubblicato dalla CI ha
-// byte identici a quelli firmati (CTO GIT-209).
-// Legge anche k3s-version dal sorgente codeload per t.K3sVersion.
+// fetchBundle scarica il bundle cosign in dest. Se non c'è è ErrBundleMissing.
+func (o *Options) fetchBundle(ctx context.Context, rawURL, dest string) error {
+	b, err := o.get(ctx, rawURL, 1<<20, "")
+	if err != nil {
+		return fmt.Errorf("%w (%v). La release deve contenere il bundle accanto all'artefatto: la CI lo pubblica nel job di firma; per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", ErrBundleMissing, err)
+	}
+	return os.WriteFile(dest, b, 0o600)
+}
+
+// FetchChart scarica il sorgente del commit ed estrae deploy/gitstack in
+// dest (cartella nuova).
 func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error {
-	// Scarica il chart dalla release GitHub: solo il .tgz pubblicato ha
-	// i byte firmati. Il nome del file è gitstack-<versione>.tgz dove
-	// la versione si legge dal Chart.yaml estratto dal codeload prima.
-	// Prima leggiamo la versione dal sorgente (per il nome del file).
-	codeloadURL := fmt.Sprintf("%s/%s/tar.gz/%s", o.codeloadBase(), o.repo(), t.SHA)
-	src, err := o.get(ctx, codeloadURL, maxTarball, "")
+	b, err := o.get(ctx, fmt.Sprintf("%s/%s/tar.gz/%s", o.codeloadBase(), o.repo(), t.SHA), maxTarball, "")
 	if err != nil {
-		return fmt.Errorf("sorgente del chart non disponibile: %w", err)
+		return fmt.Errorf("chart non disponibile: %w", err)
 	}
-	// Estrae la versione dal Chart.yaml nel sorgente.
-	chartVersion := chartVersionFromSource(src)
-	if chartVersion == "" {
-		return fmt.Errorf("versione del chart non trovata nel sorgente")
-	}
-
-	chartURL := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-%s.tgz",
-		o.releaseBase(), o.repo(), url.PathEscape(t.Tag), chartVersion)
-	chart, err := o.get(ctx, chartURL, maxBinary, "")
+	zr, err := gzip.NewReader(strings.NewReader(string(b)))
 	if err != nil {
-		return fmt.Errorf("chart firmato non disponibile: %w", err)
+		return fmt.Errorf("sorgente scaricato non valido: %w", err)
 	}
-
-	// Scarica il bundle cosign (.sigstore.json) del chart.
-	// Senza il bundle la verifica della firma non può avvenire (V5):
-	// fix del fail-open, CTO GIT-209.
-	bundleURL := chartURL + ".sigstore.json"
-	bundle, err := o.get(ctx, bundleURL, 64<<10, "")
-	if err != nil {
-		if o.V5.AllowUnverified {
-			// N9: eccezione per mirror non firmati, estrai senza verifica.
-			if err := os.MkdirAll(dest, 0o755); err != nil { //nolint:gosec
-				return err
-			}
-			return extractTGZ(bytes.NewReader(chart), dest)
-		}
-		return fmt.Errorf("%w (chart %s, bundle %s)", ErrBundleMissing, chartURL, bundleURL)
-	}
-
-	// Verifica firma cosign del chart.
-	tmpChart, err := os.CreateTemp("", "gitstack-chart-*.tgz")
-	if err != nil {
-		return err
-	}
-	tmpChartPath := tmpChart.Name()
-	tmpBundlePath := tmpChartPath + ".sigstore.json"
-	if _, err := tmpChart.Write(chart); err != nil {
-		tmpChart.Close()
-		os.Remove(tmpChartPath)
-		return err
-	}
-	if err := tmpChart.Close(); err != nil {
-		os.Remove(tmpChartPath)
-		return err
-	}
-	if err := os.WriteFile(tmpBundlePath, bundle, 0o644); err != nil {
-		os.Remove(tmpChartPath)
-		os.Remove(tmpBundlePath)
-		return err
-	}
-
-	if err := o.V5.VerifyChart(ctx, tmpChartPath); err != nil {
-		os.Remove(tmpChartPath)
-		os.Remove(tmpBundlePath)
-		return fmt.Errorf("verifica firma cosign chart fallita: %w", err)
-	}
-	// Verifica passata: elimina temporanei.
-	_ = os.Remove(tmpBundlePath)
-	_ = os.Remove(tmpChartPath)
-
+	tr := tar.NewReader(zr)
 	if err := os.MkdirAll(dest, 0o755); err != nil { //nolint:gosec // come il chart installato
 		return err
 	}
-	if err := extractTGZ(bytes.NewReader(chart), dest); err != nil {
-		return err
-	}
-
-	// Legge k3s-version dal sorgente codeload.
-	if err := o.readK3sVersion(ctx, t, src); err != nil {
-		return err
-	}
-	return nil
-}
-
-// chartVersionFromSource estrae la versione da Chart.yaml in un tar.gz codeload.
-func chartVersionFromSource(src []byte) string {
-	zr, err := gzip.NewReader(bytes.NewReader(src))
-	if err != nil {
-		return ""
-	}
-	tr := tar.NewReader(zr)
+	n := 0
 	for {
 		h, err := tr.Next()
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return ""
+			return fmt.Errorf("sorgente scaricato non valido: %w", err)
 		}
-		_, rel, ok := strings.Cut(h.Name, "/")
-		if !ok {
-			continue
-		}
-		if rel == "deploy/gitstack/Chart.yaml" && h.Typeflag == tar.TypeReg {
-			b, err := io.ReadAll(io.LimitReader(tr, 4096))
-			if err != nil {
-				return ""
-			}
-			for _, line := range strings.Split(string(b), "\n") {
-				if strings.HasPrefix(line, "version:") {
-					return strings.TrimSpace(strings.TrimPrefix(line, "version:"))
-				}
-			}
-		}
-	}
-	return ""
-}
-
-// readK3sVersion legge k3s-version dal sorgente codeload e lo scrive in t.K3sVersion.
-func (o *Options) readK3sVersion(ctx context.Context, t *Target, src []byte) error {
-	zr, err := gzip.NewReader(strings.NewReader(string(src)))
-	if err != nil {
-		return nil // non bloccante
-	}
-	tr := tar.NewReader(zr)
-	for {
-		h, err := tr.Next()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil
-		}
+		// Il primo componente è <repo>-<sha>/.
 		_, rel, ok := strings.Cut(h.Name, "/")
 		if !ok {
 			continue
@@ -376,20 +266,142 @@ func (o *Options) readK3sVersion(ctx context.Context, t *Target, src []byte) err
 		if rel == K3sVersionFile && h.Typeflag == tar.TypeReg {
 			b, err := io.ReadAll(io.LimitReader(tr, 1024))
 			if err != nil {
-				return nil
+				return fmt.Errorf("sorgente scaricato non valido: %w", err)
 			}
 			v, err := ParseK3sVersion(string(b))
 			if err != nil {
-				return nil
+				return fmt.Errorf("%s del commit %s: %w", K3sVersionFile, t.SHA, err)
 			}
 			t.K3sVersion = v.String()
-			return nil
+			continue
+		}
+		sub, ok := strings.CutPrefix(rel, maxChartDir)
+		if !ok || sub == "" {
+			continue
+		}
+		clean := path.Clean(sub)
+		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+			return fmt.Errorf("percorso sospetto nel sorgente: %q", h.Name)
+		}
+		target := filepath.Join(dest, filepath.FromSlash(clean))
+		switch h.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0o755); err != nil { //nolint:gosec // come il chart installato
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { //nolint:gosec // come il chart installato
+				return err
+			}
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644) //nolint:gosec // percorso verificato sopra
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(f, io.LimitReader(tr, 64<<20)); err != nil { //nolint:gosec // limitato
+				_ = f.Close()
+				return err
+			}
+			if err := f.Close(); err != nil {
+				return err
+			}
+			n++
 		}
 	}
-	return nil
+	if _, err := os.Stat(filepath.Join(dest, "Chart.yaml")); err != nil || n == 0 {
+		return fmt.Errorf("il commit %s non contiene deploy/gitstack/Chart.yaml", t.SHA)
+	}
+	if o.v5().AllowUnsigned {
+		o.logf("    AVVISO: firma del chart NON verificata (eccezione N9 attiva)")
+		return nil
+	}
+	return o.useSignedChart(ctx, t, dest)
 }
 
-// extractTGZ estrae un tarball gzip in una directory.
+// useSignedChart scarica il chart .tgz pubblicato dalla CI nella release (gli
+// stessi byte firmati), ne verifica il bundle e solo dopo lo estrae al posto
+// del chart ricavato dal sorgente.
+func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) error {
+	b, err := os.ReadFile(filepath.Join(dest, "Chart.yaml"))
+	if err != nil {
+		return err
+	}
+	version := ""
+	for _, l := range strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n") {
+		if v, ok := strings.CutPrefix(l, "version:"); ok {
+			version = strings.Trim(strings.TrimSpace(v), "\"'")
+			break
+		}
+	}
+	if version == "" || !refRe.MatchString(version) {
+		return fmt.Errorf("Chart.yaml del commit %s: versione assente o non valida", t.SHA)
+	}
+	tmp, err := os.MkdirTemp("", "gitstack-chart-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	tgz := filepath.Join(tmp, "gitstack-"+version+".tgz")
+	u := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-%s.tgz", o.releaseBase(), o.repo(), url.PathEscape(t.Tag), version)
+	chart, err := o.get(ctx, u, maxTarball, "")
+	if err != nil {
+		return fmt.Errorf("chart firmato non disponibile nella release %s: %w", t.Tag, err)
+	}
+	if err := os.WriteFile(tgz, chart, 0o600); err != nil {
+		return err
+	}
+	if err := o.fetchBundle(ctx, u+".sigstore.json", tgz+".sigstore.json"); err != nil {
+		return fmt.Errorf("chart %s: %w", u, err)
+	}
+	if err := o.v5().VerifyBlob(ctx, tgz, tgz+".sigstore.json"); err != nil {
+		return fmt.Errorf("chart di %s: %w. Per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", t.Tag, err)
+	}
+	o.logf("    firma cosign del chart verificata")
+	// Il tgz di helm package ha la radice gitstack/: si estrae in tmp e si
+	// sostituisce dest con quella cartella.
+	ex := filepath.Join(tmp, "x")
+	if err := os.MkdirAll(ex, 0o700); err != nil {
+		return err
+	}
+	if err := extractTGZ(bytes.NewReader(chart), ex); err != nil {
+		return fmt.Errorf("chart firmato non valido: %w", err)
+	}
+	root := filepath.Join(ex, "gitstack")
+	if _, err := os.Stat(filepath.Join(root, "Chart.yaml")); err != nil {
+		return fmt.Errorf("il chart firmato non contiene gitstack/Chart.yaml")
+	}
+	if err := os.RemoveAll(dest); err != nil {
+		return err
+	}
+	return copyTree(root, dest)
+}
+
+// copyTree copia una cartella (solo file regolari e cartelle).
+func copyTree(src, dst string) error {
+	return filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, p)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755) //nolint:gosec // come il chart installato
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		b, err := os.ReadFile(p) //nolint:gosec // percorso nostro
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, b, 0o644) //nolint:gosec // come il chart installato
+	})
+}
+
+// extractTGZ estrae un tarball gzip in una cartella (solo file e cartelle,
+// con percorsi relativi e senza uscire da dest).
 func extractTGZ(r io.Reader, dest string) error {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -399,37 +411,41 @@ func extractTGZ(r io.Reader, dest string) error {
 	for {
 		h, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			break
+			return nil
 		}
 		if err != nil {
 			return err
 		}
 		clean := path.Clean(h.Name)
-		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+		if clean == "." {
 			continue
+		}
+		if clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+			return fmt.Errorf("percorso sospetto nel chart: %q", h.Name)
 		}
 		target := filepath.Join(dest, filepath.FromSlash(clean))
 		switch h.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
+			if err := os.MkdirAll(target, 0o755); err != nil { //nolint:gosec // come il chart installato
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { //nolint:gosec // come il chart installato
 				return err
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644) //nolint:gosec // percorso verificato sopra
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(f, io.LimitReader(tr, 64<<20)); err != nil {
-				f.Close()
+			if _, err := io.Copy(f, io.LimitReader(tr, 64<<20)); err != nil { //nolint:gosec // limitato
+				_ = f.Close()
 				return err
 			}
-			f.Close()
+			if err := f.Close(); err != nil {
+				return err
+			}
 		}
 	}
-	return nil
 }
 
 var imageLineRe = regexp.MustCompile(`(?m)^\s*-?\s*image:\s*["']?([^"'\s]+)["']?\s*$`)

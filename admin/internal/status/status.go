@@ -92,6 +92,11 @@ type Report struct {
 	// è configurato. BackupUploadFailed è vero se l'ultimo è fallito.
 	BackupUpload       string `json:"backup_upload,omitempty"`
 	BackupUploadFailed bool   `json:"backup_upload_failed,omitempty"`
+	// SupplyChainWarning è l'avviso V5: non vuoto quando l'installazione ha
+	// l'eccezione N9 (verifica delle firme disattivata per un mirror interno
+	// non firmato). Vuoto = firme verificate. Non rende l'installazione
+	// «non sana»: è un avviso, non un guasto.
+	SupplyChainWarning string `json:"supply_chain_warning,omitempty"`
 	// Database dice se Postgres è quello interno o uno esterno (N8) e la
 	// versione del server.
 	Database Database `json:"database"`
@@ -114,9 +119,12 @@ type Database struct {
 	Error string `json:"error,omitempty"`
 	// Warning: un'incongruenza che non ferma il servizio (versione del client).
 	Warning string `json:"warning,omitempty"`
-	// V5Warning: avviso sulla catena di fornitura (es. N9 eccezione).
-	V5Warning string `json:"v5_warning,omitempty"`
 }
+
+// SupplyChainUnsignedWarning è il testo dell'avviso N9, mostrato da
+// `gitstack status` (e da Admin · System, che legge lo stesso report).
+const SupplyChainUnsignedWarning = "verifica delle firme V5 DISATTIVATA (eccezione N9, mirror interno non firmato): " +
+	"binario, chart e immagini non sono verificati con cosign. Reinstalla senza --allow-unsigned-mirrors per ripristinarla."
 
 // Healthy è vero se il cluster risponde, ogni servizio è pronto e l'API
 // risponde.
@@ -169,13 +177,8 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	if cfg.Backup.S3 != nil {
 		r.BackupUpload, r.BackupUploadFailed = lastUploadState(configDir)
 	}
-	// V5: avviso eccezione N9 (mirror non firmati).
 	if cfg.V5.AllowUnsigned {
-		reason := cfg.V5.AllowUnsignedReason
-		if reason == "" {
-			reason = "eccezione N9: verifica firme cosign disattivata (--allow-unsigned-mirrors)"
-		}
-		r.V5Warning = "catena di fornitura: " + reason
+		r.SupplyChainWarning = SupplyChainUnsignedWarning
 	}
 	return r
 }

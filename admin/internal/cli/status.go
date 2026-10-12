@@ -127,11 +127,9 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	if r.BackupUpload != "" {
 		p("Backup su S3: %s", r.BackupUpload)
 	}
-	// V5: catena di fornitura.
-	if r.V5Warning != "" {
+	if r.SupplyChainWarning != "" {
 		p("")
-		p("Catena di fornitura (V5)")
-		p("  AVVISO: %s", r.V5Warning)
+		p("AVVISO catena di fornitura: %s", r.SupplyChainWarning)
 	}
 	p("")
 	switch {

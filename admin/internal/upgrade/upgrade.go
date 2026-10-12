@@ -21,9 +21,7 @@
 package upgrade
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -107,11 +105,9 @@ type Options struct {
 	ImageCheck func(ctx context.Context, image string) error
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
 	Poll time.Duration
-	// Log è il writer per i log di upgrade (test).
-	Log io.Writer
-	// V5 è la configurazione di verifica V5 (sigstore/cosign).
-	// Zero = nessuna verifica (per compatibilità con installazioni
-	// precedenti o per disabilitare in test).
+	Log  io.Writer
+	// V5 è la verifica delle firme cosign (binario, chart, immagini). Il
+	// valore zero verifica: si salta solo con V5.AllowUnsigned (N9).
 	V5 V5Config
 }
 
@@ -120,6 +116,16 @@ func (o *Options) client() *http.Client {
 		return o.HTTP
 	}
 	return &http.Client{Timeout: 5 * time.Minute}
+}
+
+// v5 è la configurazione di verifica con il repository di default: l'identità
+// accettata è sempre quella del repository da cui si scarica.
+func (o *Options) v5() V5Config {
+	v := o.V5
+	if v.Repo == "" {
+		v.Repo = o.repo()
+	}
+	return v
 }
 
 func (o *Options) repo() string {
@@ -404,8 +410,6 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		return res, refused("%v", err)
 	}
 	o.logf("    SHA-256 %s", sum)
-	// FetchBinary scarica il bundle .sigstore.json e verifica la firma cosign:
-	// qui il binario è già verificato.
 
 	newChart := chartDir + ".new"
 	_ = os.RemoveAll(newChart)
@@ -424,8 +428,6 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		res.Outcome = Refused
 		return res, refused("%v", err)
 	}
-	// FetchChart scarica il .tgz dalla release, ne verifica la firma cosign
-	// con il bundle (.sigstore.json) e poi estrae: qui il chart è già verificato.
 
 	var k3s K3sPlan
 	if t.K3sVersion != "" {
@@ -471,12 +473,18 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 			res.Outcome = Refused
 			return res, refused("%v", err)
 		}
-		// V5: verifica firma cosign dell'immagine.
-		if err := o.V5.VerifyImage(ctx, img); err != nil {
-			res.Outcome = Refused
-			return res, refused("verifica firma cosign fallita per %s: %v", img, err)
+		switch {
+		case o.v5().AllowUnsigned:
+			o.logf("    ok %s (firma NON verificata: eccezione N9)", img)
+		case !IsGitstackImage(img):
+			o.logf("    ok %s (immagine di terzi: non firmata da GitStack)", img)
+		default:
+			if err := o.v5().VerifyImage(ctx, img); err != nil {
+				res.Outcome = Refused
+				return res, refused("immagine %s: %v. Per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", img, err)
+			}
+			o.logf("    ok %s (firma cosign verificata)", img)
 		}
-		o.logf("    ok %s (firmata)", img)
 	}
 
 	if o.DryRun {
