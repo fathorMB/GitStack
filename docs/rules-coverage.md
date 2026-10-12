@@ -103,7 +103,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 | Id | Regola | Test | Stato | Cosa manca |
 |---|---|---|---|---|
 | N1 | Hardware | | da compilare | |
-| N2 | Sistemi | `deploy/tests/preflight_test.sh#Sistema operativo (N2: test rilevamento Ubuntu/Pop!_OS)` | coperta | Test shell: ubuntu 22.04, ubuntu 24.04, pop 22.04, pop 24.04 passano senza `--force`; debian, fedora falliscono; `--force` permette sistemi non supportati. |
+| N2 | Sistemi | `deploy/tests/preflight_test.sh#Sistema operativo (N2: test rilevamento Ubuntu/Pop!_OS)`<br>`.github/workflows/install.yml#Installazione del commit in prova`<br>`.github/workflows/install.yml#gitstack upgrade`<br>`deploy/ci/install-e2e.sh#verify_k3s` | parziale | Il preflight riconosce ubuntu 22.04/24.04 e pop 22.04/24.04 e rifiuta debian e fedora (`--force` per gli altri). Installazione, backup, aggiornamento (con cambio di patch di k3s) e ripristino girano in CI su ubuntu-22.04 e ubuntu-24.04 (sui tag, di notte su main e a mano). Manca Pop!_OS 22.04/24.04: GitHub non ha un runner, l'installazione reale resta sulla VM del board; proposta in `docs/operations.md` (CI tests of install, upgrade and restore). |
 | N3 | Nodi | | da compilare | |
 | N4 | Rete | | da compilare | |
 | N5 | TLS: HTTPS di default con CA interna, Let's Encrypt o certificato del cliente; `--insecure-http` con avviso | `admin/internal/status/api_test.go#TestAPI_HTTPSConCAInterna`<br>`admin/internal/status/api_test.go#TestAPI_InsecureResta_HTTP`<br>`web/src/components/InsecureHttpBanner.test.tsx#http su un host di rete` | parziale | Installazione, CA, redirect 80→443, `--tls-cert` e `--insecure-http` si provano con `deploy/test-vm/e2e.ps1` sulla VM (lanciato dal board) e a mano su `deploy/gitstack-tls.sh`, non in CI; Let's Encrypt non ha una prova reale. |
@@ -124,7 +124,7 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 
 | Id | Regola | Test | Stato | Cosa manca |
 |---|---|---|---|---|
-| V1 | Criteri di uscita, tutti obbligatori | | da compilare | |
+| V1 | Criteri di uscita, tutti obbligatori | `.github/workflows/install.yml#Dopo il restore` | parziale | Copre solo il criterio «installazione, aggiornamento e ripristino verdi in CI sui sistemi supportati» per Ubuntu 22.04 e 24.04 (GIT-203). Gli altri criteri di uscita restano da compilare, e Pop!_OS non ha un runner in CI. |
 | V2 | Sicurezza, revisione interna | | da compilare | |
 | V3 | Carico, solo test di fumo | | da compilare | |
 | V4 | Versioni e supporto | | da compilare | |
