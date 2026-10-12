@@ -15,19 +15,19 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 147 |
+| ok | 148 |
 | n/a | 52 |
-| problem | 60 |
+| problem | 59 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 2, medium 9, low 9. No critical problem was found.
+Problems by severity: critical 0, high 1, medium 9, low 9. No critical problem was found. F1 (high) was resolved by GIT-227.
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
 | V1 Architecture, Design and Threat Modeling | 28 | 0 | 10 |
 | V2 Authentication | 20 | 24 | 9 |
 | V3 Session Management | 14 | 1 | 3 |
-| V4 Access Control | 5 | 1 | 3 |
+| V4 Access Control | 6 | 1 | 2 |
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
 | V6 Stored Cryptography | 8 | 2 | 3 |
 | V7 Error Handling and Logging | 6 | 0 | 6 |
@@ -169,7 +169,7 @@ Problems by severity: critical 0, high 2, medium 9, low 9. No critical problem w
 |---|---|---|---|
 | V4.1.1 | Access control on a trusted layer | ok | `services/core/internal/stackitest/security_integration_test.go#TestSecurity`. |
 | V4.1.2 | Access control attributes not user-manipulable | ok | Visibility and grants are changed only by admin operations: `services/identity/internal/httpapi/owner_visibility_integration_test.go#TestOwnerAndVisibilityRules`; unknown JSON fields rejected. |
-| V4.1.3 | Least privilege | **problem** | A personal token can create new tokens with scopes it does not have (contract says it cannot), so `write:user` is enough to obtain any scope. [F1] |
+| V4.1.3 | Least privilege | ok | A personal token cannot create tokens (own or an agent's) with scopes it does not grant: 403 `insufficient_scope`, checked with `pkg/scopes.Grants`; browser sessions keep full scopes (resolved F1, GIT-227): `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateToken_ScopesNotBeyondCaller`, `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateAgentToken_ScopesNotBeyondCaller`. |
 | V4.1.5 | Access control fails securely | ok | `services/gateway/internal/httpserver/auth_test.go#TestAuth_IdentityGiuNonAprePerErrore`, `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_SenzaCheckerEPermessoRichiesto503`. |
 | V4.2.1 | IDOR | ok | Denied and non-existent resources look the same: `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_NegatoUgualeSeLaRisorsaNonEsiste`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/risorsa_di_altra_organizzazione`, `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_IssueNascosta`. |
 | V4.2.2 | Anti-CSRF mechanism | **problem** | Cookie-authenticated API relies only on SameSite=Lax: no Origin or Fetch-Metadata check, no token. [F16] |
@@ -374,7 +374,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 | Id | Severity | Area and requirements | Files | Test that would prove it |
 |---|---|---|---|---|
-| F1 | high | Personal token scope escalation (V4.1.3) | `services/identity/internal/httpapi/tokens_keys.go`<br>`services/identity/internal/httpapi/user_tokens.go`<br>`services/identity/internal/apitokens/apitokens.go`<br>`api/openapi.yaml` | `services/identity/internal/httpapi/tokens_keys_integration_test.go#TestCreateToken_ScopesNotBeyondCaller` *(new)*<br>`services/identity/internal/httpapi/user_tokens_integration_test.go#TestCreateAgentToken_ScopesNotBeyondCaller` *(new)* |
+| F1 | high | **Resolved (GIT-227)**: personal token scope escalation (V4.1.3) | `services/identity/internal/httpapi/tokens_keys.go`<br>`services/identity/internal/httpapi/user_tokens.go`<br>`services/identity/internal/apitokens/apitokens.go`<br>`api/openapi.yaml` | `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateToken_ScopesNotBeyondCaller`<br>`services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateAgentToken_ScopesNotBeyondCaller` |
 | F2 | high | **Resolved (GIT-228).** Host and cluster secrets exposure (V1.6.2, V6.4.1, V6.4.2, V7.3.3) | `deploy/install.sh`<br>`admin/internal/upgrade/harden.go`<br>`admin/internal/upgrade/k3s.go` | `deploy/tests/preflight_test.sh#k3s kubeconfig is not world-readable`<br>`deploy/tests/preflight_test.sh#k3s: cifratura attiva dopo l'installazione`<br>`admin/internal/upgrade/harden_test.go#TestUpgrade_HardeningInstallazioneEsistente` |
 | F3 | medium | Web tier security headers and TLS options (V9.1.2, V9.1.3, V14.1.3, V14.3.3, V14.4.3, V14.4.4, V14.4.5, V14.4.6, V14.4.7) | `web/deploy/nginx.conf.template`<br>`deploy/gitstack/templates/ingress.yaml`<br>`web/src/lib/nginxConf.test.ts` | `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version` *(new)*<br>`deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum` *(new)* |
 | F4 | medium | Cache and content-type headers on API responses (V8.2.1, V14.4.2) | `services/gateway/internal/httpserver/router.go`<br>`services/core/internal/httpserver/repos_code.go`<br>`services/git/internal/httpserver/code.go` | `services/gateway/internal/middleware/headers_test.go#TestAPIResponses_NoStoreNosniff` *(new)* |
