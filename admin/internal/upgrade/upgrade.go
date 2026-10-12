@@ -440,6 +440,12 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		return res, refused("%v", err)
 	}
 	o.logf("    SHA-256 %s", sum)
+	// V5: verifica firma cosign del binario.
+	if err := o.V5.VerifyBinary(ctx, staged); err != nil {
+		res.Outcome = Refused
+		return res, refused("verifica firma cosign fallita per il binario: %v", err)
+	}
+	o.logf("    binario: firma verificata")
 
 	newChart := chartDir + ".new"
 	_ = os.RemoveAll(newChart)
