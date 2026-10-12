@@ -240,6 +240,60 @@ jobs:
         shell: pwsh
         run: ./deploy/tests/install-gs.Tests.ps1
 
+  # Installazione reale su Ubuntu 22.04 (criterio 2 di GIT-202): lancia
+  # install.sh sul runner ubuntu-22.04, attende che i pod siano Ready e
+  # fa un smoke su https e sul comando gitstack. I requisiti hardware
+  # del runner (2 vCPU, 7 GB RAM, ~14 GB disco) sono soddisfatti con le
+  # manopole dell'installer: GITSTACK_MIN_CPU=2, GITSTACK_MIN_RAM_GB=4,
+  # GITSTACK_MIN_DISK_GB=40, GITSTACK_MIN_DISK_TOTAL_GB=40,
+  # GITSTACK_MIN_DISK_FREE_GB=10. Queste variabili riducono le soglie
+  # del preflight ma non lo disabilitano.
+  # Il job non gira su PR (serve il merge a main per avere gli asset):
+  # l'installer scarica le immagini dal commit corrente, che devono
+  # esistere. Su PR le immagini del commit non sono pubblicate.
+  install-ubuntu-22:
+    name: Installazione reale su Ubuntu 22.04 (GIT-202, criterio 2)
+    needs: [go, ts]
+    if: >-
+      !cancelled() && needs.go.result == 'success' && needs.ts.result == 'success'
+      && github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+      GITSTACK_MIN_CPU: "2"
+      GITSTACK_MIN_RAM_GB: "4"
+      GITSTACK_MIN_DISK_GB: "40"
+      GITSTACK_MIN_DISK_TOTAL_GB: "40"
+      GITSTACK_MIN_DISK_FREE_GB: "10"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Installazione GitStack
+        run: sudo ./deploy/install.sh
+
+      - name: Attesa pod Ready
+        run: |
+          set -euo pipefail
+          echo "Attesa pod Ready (max 5 minuti)..."
+          for i in $(seq 1 30); do
+            if kubectl get pods --no-headers 2>/dev/null | grep -q Running; then
+              echo "Pod Running"
+              break
+            fi
+            sleep 10
+          done
+          kubectl get pods
+
+      - name: Smoke test HTTPS
+        run: curl -kfsS https://localhost/healthz
+
+      - name: Smoke test gitstack status
+        run: sudo gitstack status
+
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
   # Sulle pull request e ogni notte su main (schedule) security.yml parte da

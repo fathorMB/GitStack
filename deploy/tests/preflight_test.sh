@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test del preflight di deploy/install.sh (N1, N2, N6; GIT-202).
+# Test del preflight di deploy/install.sh (N1, N2, N6; GIT-144, GIT-202).
 # Carica solo le funzioni (GITSTACK_INSTALL_LIB=1) e ridefinisce le letture
 # dell'hardware: nessun root, nessuna VM. Uso: ./deploy/tests/preflight_test.sh
 # Le variabili assegnate qui sono lette dalle funzioni di install.sh (caricate con source).
@@ -115,10 +115,6 @@ expect_ok "SSD sconosciuto non blocca"
 expect_has "SSD sconosciuto" "non riesco a stabilire"
 
 # --- block_rotational su un sysfs finto -----------------------------------------
-# Nota: i due test "rotational partizione" e "rotational dm su nvme" falliscono
-# su main e su questo ramo: il setup crea symlink per sda2/dm-0 ma la cartella
-# queue/rotational non esiste sotto di essi (esiste solo sotto sda/nvme0n1).
-# Bug preesistente nel setup del test, non legato a N2.
 # Ricarica install.sh: ripristina block_rotational vera (sopra era uno stub).
 . "${HERE}/../install.sh"
 set +e +o pipefail
