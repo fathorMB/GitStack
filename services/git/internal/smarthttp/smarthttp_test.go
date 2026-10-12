@@ -62,6 +62,8 @@ type fakeCore struct {
 	archived map[string]bool
 	// unprotected: repo con la protezione del branch principale spenta (R9).
 	unprotected map[string]bool
+	// mirrors: origine del mirror in pull attivo per repo (MP2).
+	mirrors map[string]string
 	// mu protegge archived e unprotected: il server li legge da un'altra goroutine.
 	mu sync.RWMutex
 }
@@ -83,7 +85,18 @@ func (c *fakeCore) ResolveRepo(ctx context.Context, caller trust.Identity, owner
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return access.RepoRef{ID: rid, Archived: c.archived[rid], DefaultBranch: "main", ProtectDefaultBranch: !c.unprotected[rid]}, nil
+	return access.RepoRef{ID: rid, Archived: c.archived[rid], DefaultBranch: "main", ProtectDefaultBranch: !c.unprotected[rid], MirrorOrigin: c.mirrors[rid]}, nil
+}
+
+// setMirror attiva (origin non vuota) o interrompe (vuota) il mirror in pull.
+func (c *fakeCore) setMirror(repo, origin string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if origin == "" {
+		delete(c.mirrors, repo)
+		return
+	}
+	c.mirrors[repo] = origin
 }
 
 func gitBin(t *testing.T) string {
@@ -147,7 +160,7 @@ func setupWith(t *testing.T, limits receiverules.Limits, events *pushevent.Notif
 	}
 	core := &fakeCore{id: ident, by: map[string]string{
 		"alice/priv": repoPriv, "alice/shared": repoInt, "alice/gone": repoGone, "alice/arch": repoArch,
-	}, archived: map[string]bool{repoArch: true}, unprotected: map[string]bool{}}
+	}, archived: map[string]bool{repoArch: true}, unprotected: map[string]bool{}, mirrors: map[string]string{}}
 	rules, err := receiverules.Install(filepath.Join(t.TempDir(), "hooks"), limits)
 	if err != nil {
 		t.Fatal(err)

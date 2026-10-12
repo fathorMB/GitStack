@@ -333,7 +333,7 @@ func (s *Server) run(ctx context.Context, u access.Principal, ch ssh.Channel, sv
 	if svc == "receive-pack" {
 		gitArgs = append(s.cfg.Rules.GitArgs(), svc, filepath.Clean(path))
 		cmd = exec.CommandContext(ctx, s.cfg.GitBin, gitArgs...)
-		cmd.Env = append(gitEnv(protocol), s.cfg.Rules.Env(receiverules.ProtectedBranch(ref))...)
+		cmd.Env = append(gitEnv(protocol), s.cfg.Rules.RepoEnv(ref)...)
 	}
 	var push *pushevent.Push
 	if svc == "receive-pack" {

@@ -35,6 +35,8 @@ type fakeDir struct {
 	archived atomic.Bool
 	// unprotected: protezione del branch principale spenta (R9).
 	unprotected atomic.Bool
+	// mirrorOrigin: origine del mirror in pull attivo (MP2); vuota = repo normale.
+	mirrorOrigin atomic.Value
 }
 
 func (f *fakeDir) LookupKey(_ context.Context, fp string) (access.KeyOwner, error) {
@@ -49,7 +51,8 @@ func (f *fakeDir) ResolveRepo(_ context.Context, c trust.Identity, owner, name s
 	if owner != "alice" || name != "app" || f.roles[c.UserID] == "" {
 		return access.RepoRef{}, access.ErrNotFound
 	}
-	return access.RepoRef{ID: repoID, Archived: f.archived.Load(), DefaultBranch: "main", ProtectDefaultBranch: !f.unprotected.Load()}, nil
+	origin, _ := f.mirrorOrigin.Load().(string)
+	return access.RepoRef{ID: repoID, Archived: f.archived.Load(), DefaultBranch: "main", ProtectDefaultBranch: !f.unprotected.Load(), MirrorOrigin: origin}, nil
 }
 
 func (f *fakeDir) VerifyToken(context.Context, string) (access.Principal, bool, error) {

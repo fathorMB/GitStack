@@ -87,6 +87,8 @@ func TestResolveRepo(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","archived":true}`))
 		case "/repos/alice/trunk":
 			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","defaultBranch":"trunk","protectDefaultBranch":true}`))
+		case "/repos/alice/mirror":
+			_, _ = w.Write([]byte(`{"id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","mirror":{"origin":"https://github.com/o/r.git","lastSyncedAt":null}}`))
 		case "/repos/alice/boom":
 			w.WriteHeader(http.StatusBadGateway)
 		default:
@@ -108,6 +110,13 @@ func TestResolveRepo(t *testing.T) {
 	// protezione si spegne senza che nessuno se ne accorga.
 	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "trunk"); err != nil || ref.DefaultBranch != "trunk" || !ref.ProtectDefaultBranch {
 		t.Fatalf("defaultBranch/protectDefaultBranch: %+v %v", ref, err)
+	}
+	// MP2: l'origine del mirror in pull arriva da core (il push è rifiutato).
+	if ref, err := c.ResolveRepo(context.Background(), caller, "alice", "mirror"); err != nil || ref.MirrorOrigin != "https://github.com/o/r.git" {
+		t.Fatalf("mirror: %+v %v", ref, err)
+	}
+	if ref, _ := c.ResolveRepo(context.Background(), caller, "alice", "app"); ref.MirrorOrigin != "" {
+		t.Errorf("repo normale con origine: %+v", ref)
 	}
 	if ref, _ := c.ResolveRepo(context.Background(), caller, "alice", "app"); ref.ProtectDefaultBranch || ref.DefaultBranch != "" {
 		t.Errorf("senza i campi la protezione non deve risultare attiva: %+v", ref)

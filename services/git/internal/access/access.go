@@ -90,6 +90,11 @@ type RepoRef struct {
 	// sua protezione (R9), come li dà core.
 	DefaultBranch        string
 	ProtectDefaultBranch bool
+	// MirrorOrigin è l'origine (https, senza credenziali) se il repo è un
+	// mirror in pull attivo, anche in pausa (MP2): vuota in un repo normale o
+	// con il mirror interrotto. Con un'origine il push è rifiutato
+	// dall'hook pre-receive (receiverules), con un messaggio che la cita.
+	MirrorOrigin string
 }
 
 // Core risolve owner/nome applicando la lettura (core risponde 404 a un repo
