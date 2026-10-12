@@ -3,7 +3,6 @@ name: Security issue
 about: Report a security vulnerability (do not use for non-security issues)
 title: ''
 labels: security
-about: Segnala un problema di sicurezza
 ---
 
 > [!WARNING]
