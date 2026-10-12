@@ -18,8 +18,8 @@ package upgrade
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -293,12 +293,17 @@ func (o *Options) helmRevision(ctx context.Context) (int, error) {
 
 // packageChart impacchetta una directory di chart in un tarball gzip per la
 // verifica cosign.
-func (o *Options) packageChart(srcDir, dest string) error {
+func (o *Options) packageChart(srcDir, dest string) (err error) {
 	f, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		cerr := f.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 	gw := gzip.NewWriter(f)
 	tw := tar.NewWriter(gw)
 

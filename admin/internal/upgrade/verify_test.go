@@ -68,8 +68,8 @@ func TestV5ChartAllowUnverifiedSkips(t *testing.T) {
 
 func TestV5ImageTagVerified(t *testing.T) {
 	tests := []struct {
-		tag    string
-		verif  bool
+		tag   string
+		verif bool
 	}{
 		{"sha-abcdef1234567890abcdef1234567890abcdef12", true},
 		{"v1.2.3", true},

@@ -30,20 +30,20 @@ type V5Config struct {
 // DefaultV5Main restituisce la configurazione V5 per il ramo main.
 func DefaultV5Main() V5Config {
 	return V5Config{
-		Identity:      "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main",
-		OIDCIssuer:    "https://token.actions.githubusercontent.com",
+		Identity:        "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main",
+		OIDCIssuer:      "https://token.actions.githubusercontent.com",
 		AllowUnverified: false,
-		CosignPath:    CosignPath,
+		CosignPath:      CosignPath,
 	}
 }
 
 // DefaultV5Tag restituisce la configurazione V5 per i tag di rilascio.
 func DefaultV5Tag() V5Config {
 	return V5Config{
-		Identity:      "",
-		OIDCIssuer:    "https://token.actions.githubusercontent.com",
+		Identity:        "",
+		OIDCIssuer:      "https://token.actions.githubusercontent.com",
 		AllowUnverified: false,
-		CosignPath:    CosignPath,
+		CosignPath:      CosignPath,
 	}
 }
 
@@ -182,10 +182,10 @@ func ImageTagVerified(tag string) bool {
 
 // MirrorStatus descrive lo stato della verifica V5 per un mirror.
 type MirrorStatus struct {
-	URL           string
-	Verified      bool
+	URL            string
+	Verified       bool
 	WarnUnverified bool
-	Reason        string
+	Reason         string
 }
 
 // CheckMirror verifica lo stato di un mirror. I mirror interni (N9) non sono firmati:
@@ -197,14 +197,14 @@ func (v V5Config) CheckMirror(url string, isInternal bool) MirrorStatus {
 				URL:            url,
 				Verified:       true,
 				WarnUnverified: true,
-				Reason:       "mirror interno non firmato (N9): eccezione esplicita",
+				Reason:         "mirror interno non firmato (N9): eccezione esplicita",
 			}
 		}
 		return MirrorStatus{
 			URL:            url,
 			Verified:       false,
 			WarnUnverified: false,
-			Reason:       "mirror interno non firmato (N9): abilita --allow-unsigned-mirrors",
+			Reason:         "mirror interno non firmato (N9): abilita --allow-unsigned-mirrors",
 		}
 	}
 	// Mirror esterno: non verificabile con cosign (non è un artefatto della CI).
@@ -212,6 +212,6 @@ func (v V5Config) CheckMirror(url string, isInternal bool) MirrorStatus {
 		URL:            url,
 		Verified:       true,
 		WarnUnverified: false,
-		Reason:       "mirror esterno: senza artefatto firmato",
+		Reason:         "mirror esterno: senza artefatto firmato",
 	}
 }
