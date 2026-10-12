@@ -14,7 +14,7 @@ import (
 )
 
 // ExitPostgres: il preflight del Postgres esterno non è superato.
-const ExitPostgres = 9
+const ExitPostgres = 10
 
 const envPostgresPassword = "GITSTACK_POSTGRES_PASSWORD"
 

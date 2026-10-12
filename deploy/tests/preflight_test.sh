@@ -246,5 +246,180 @@ check "--host .local: URL pubblico" test "${PUBLIC_HOST}" = "homehub.local"
 check "--host .local: nei SAN come nome" test "${TLS_NAMES}" = "homehub.local"
 case ",${TLS_IPS}," in *",192.168.1.20,"*) ok ;; *) RC=0; OUT="${TLS_IPS}"; bad "--host: IP sempre nei SAN" ;; esac
 
+# --- Postgres esterno (N8, GIT-205) ----------------------------------------------
+pg_reset() {
+  GITSTACK_POSTGRES_URL="" GITSTACK_POSTGRES_PASSWORD_FILE="" GITSTACK_POSTGRES_CA_FILE=""
+  unset GITSTACK_POSTGRES_PASSWORD
+  PG_EXTERNAL=0 PG_HOST="" PG_PORT=5432 PG_DB="" PG_USER="" PG_SSLMODE="require" PG_VERSION="" PG_MAJOR=""
+  PG_PASSWORD_FILE="" PG_PASSWORD_SECRET="" PG_CA_SECRET="" POSTGRES_HELM_SETS=()
+  GITSTACK_CONFIG_FILE="${WORK}/nessuna-config.yaml"
+  GITSTACK_SKIP_PREFLIGHT=0
+}
+printf 'pw-da-file.1\n' >"${WORK}/pgpw"
+
+# senza --postgres-url: niente da fare
+pg_reset
+run resolve_postgres
+expect_ok "senza --postgres-url"
+check "senza --postgres-url: non esterno" test "${PG_EXTERNAL}" = "0"
+
+# URL completo, password da file, CA
+printf -- '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n' >"${WORK}/pgca.crt"
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gsadmin@db.example.com:6432/gitstack?sslmode=verify-full"
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/pgpw"
+GITSTACK_POSTGRES_CA_FILE="${WORK}/pgca.crt"
+resolve_postgres
+check "url: host" test "${PG_HOST}" = "db.example.com"
+check "url: porta" test "${PG_PORT}" = "6432"
+check "url: database" test "${PG_DB}" = "gitstack"
+check "url: utente" test "${PG_USER}" = "gsadmin"
+check "url: sslmode" test "${PG_SSLMODE}" = "verify-full"
+check "password dal file, senza a-capo" test "$(cat "${PG_PASSWORD_FILE}")" = "pw-da-file.1"
+# i permessi POSIX hanno senso solo su Linux (su Git Bash/NTFS stat dice 644)
+if [ "$(uname -s)" = "Linux" ]; then
+  check "file password 0600" test "$(stat -c %a "${PG_PASSWORD_FILE}")" = "600"
+fi
+check "secret della CA" test "${PG_CA_SECRET}" = "gitstack-postgres-ca"
+check "secret della password" test "${PG_PASSWORD_SECRET}" = "gitstack-postgres-external"
+
+# valori Helm: bundle spento, tag del client dalla versione, mai la password
+PG_MAJOR=15
+postgres_helm_sets
+sets=" ${POSTGRES_HELM_SETS[*]} "
+case "${sets}" in *" postgres.enabled=false "*) ok ;; *) RC=0; OUT="${sets}"; bad "helm: postgres.enabled=false" ;; esac
+case "${sets}" in *" postgres.external.client.image.tag=15-alpine "*) ok ;; *) RC=0; OUT="${sets}"; bad "helm: client 15-alpine" ;; esac
+case "${sets}" in *" postgres.external.caSecret=gitstack-postgres-ca "*) ok ;; *) RC=0; OUT="${sets}"; bad "helm: caSecret" ;; esac
+case "${sets}" in *pw-da-file*) RC=0; OUT="${sets}"; bad "helm: la password non va nei --set" ;; *) ok ;; esac
+
+# sezione di config.yaml
+PG_VERSION="15.3"
+OUT="$(postgres_config_section)"
+expect_has "config: external" "external: true"
+expect_has "config: host" "host: db.example.com"
+expect_has "config: versione" 'version: "15.3"'
+expect_has "config: secret" "password_secret: gitstack-postgres-external"
+expect_lacks "config: nessuna password" "pw-da-file"
+
+# senza sslmode: require; IPv6; password da variabile
+pg_reset
+GITSTACK_POSTGRES_URL="postgresql://gs@[2001:db8::5]:5432/gitstack"
+export GITSTACK_POSTGRES_PASSWORD="da.variabile-1"
+resolve_postgres
+check "ipv6: host" test "${PG_HOST}" = "2001:db8::5"
+check "sslmode di default" test "${PG_SSLMODE}" = "require"
+check "password dalla variabile" test "$(cat "${PG_PASSWORD_FILE}")" = "da.variabile-1"
+check "url di controllo senza password" test "$(postgres_check_url)" = "postgres://gs@[2001:db8::5]:5432/gitstack?sslmode=require"
+unset GITSTACK_POSTGRES_PASSWORD
+
+# password nell'URL: avviso
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs:nell.url@db/gitstack"
+run resolve_postgres
+expect_ok "password nell'URL"
+expect_has "password nell'URL: avviso" "resta nella cronologia"
+
+# rifiuti
+pg_reset
+GITSTACK_POSTGRES_URL="mysql://gs@db/gitstack"
+run resolve_postgres
+expect_fail "schema sbagliato"
+expect_has "schema sbagliato" "--postgres-url non valido"
+
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs@db/gitstack"
+run resolve_postgres
+expect_fail "senza password"
+expect_has "senza password" "manca la password del database"
+
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs@db/gitstack"
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/non-esiste"
+run resolve_postgres
+expect_fail "file password mancante"
+expect_has "file password mancante" "non esiste"
+
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs@db/gitstack"
+printf 'p@ss/word\n' >"${WORK}/pgpw-bad"
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/pgpw-bad"
+run resolve_postgres
+expect_fail "password con caratteri riservati"
+expect_has "password con caratteri riservati" "soli caratteri URL-safe"
+expect_lacks "password con caratteri riservati: non stampata" "p@ss/word"
+
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs@db/gitstack?sslmode=boh"
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/pgpw"
+run resolve_postgres
+expect_fail "sslmode non valido"
+expect_has "sslmode non valido" "sslmode 'boh' non valido"
+
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs@db/"
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/pgpw"
+run resolve_postgres
+expect_fail "senza database"
+expect_has "senza database" "senza nome del database"
+
+pg_reset
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/pgpw"
+run resolve_postgres
+expect_fail "password senza url"
+expect_has "password senza url" "servono insieme a --postgres-url"
+
+# una riesecuzione senza --postgres-url su un'installazione esterna non
+# riporta al Postgres interno
+pg_reset
+GITSTACK_CONFIG_FILE="${WORK}/config-esterna.yaml"
+printf 'version: 1\nhost: gs\npostgres:\n  external: true\n  host: db\n' >"${GITSTACK_CONFIG_FILE}"
+run resolve_postgres
+expect_fail "riesecuzione su installazione esterna"
+expect_has "riesecuzione su installazione esterna" "usa un Postgres esterno"
+
+# preflight con un comando `gitstack` finto
+cat >"${WORK}/gitstack-ok" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"${STUB_ARGS_FILE}"
+printf 'PostgreSQL 16.4 su db:5432, database gitstack, utente gs (TLS: sì)\n'
+STUB
+cat >"${WORK}/gitstack-ko" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"${STUB_ARGS_FILE}"
+echo "ERRORE: Postgres esterno: PostgreSQL 14.12 non supportato: GitStack supporta le versioni 15, 16 e 17." >&2
+exit 9
+STUB
+chmod +x "${WORK}/gitstack-ok" "${WORK}/gitstack-ko"
+export STUB_ARGS_FILE="${WORK}/stub-args"
+
+pg_reset
+GITSTACK_POSTGRES_URL="postgres://gs@db/gitstack"
+GITSTACK_POSTGRES_PASSWORD_FILE="${WORK}/pgpw"
+resolve_postgres
+ADMIN_STAGED="${WORK}/gitstack-ok"
+preflight_postgres >/dev/null
+check "preflight: versione" test "${PG_VERSION}" = "16.4"
+check "preflight: major" test "${PG_MAJOR}" = "16"
+check "preflight: password fuori dagli argomenti" bash -c "! grep -q 'pw-da-file' '${STUB_ARGS_FILE}'"
+check "preflight: password-file passato" bash -c "grep -q -- '--password-file' '${STUB_ARGS_FILE}'"
+
+ADMIN_STAGED="${WORK}/gitstack-ko"
+run preflight_postgres
+expect_fail "preflight: versione 14"
+expect_has "preflight: versione 14" "14.12 non supportato"
+expect_has "preflight: nessuna modifica" "Nessuna modifica fatta all'host"
+
+ADMIN_STAGED=""
+run preflight_postgres
+expect_fail "preflight: senza il comando gitstack"
+expect_has "preflight: senza il comando gitstack" "--admin-binary"
+
+GITSTACK_SKIP_PREFLIGHT=1
+run preflight_postgres
+expect_ok "preflight: --skip-preflight"
+expect_has "preflight: --skip-preflight" "non è stato controllato"
+GITSTACK_SKIP_PREFLIGHT=0
+pg_reset
+
 printf '\npreflight_test: %s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]

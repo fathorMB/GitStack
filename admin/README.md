@@ -85,6 +85,23 @@ backup:
   retention: 7                         # quanti backup conservare (>= 1)
 ```
 
+Con un Postgres esterno (N8) l'installer aggiunge la sezione:
+
+```yaml
+postgres:
+  external: true
+  host: db.example.com
+  port: 5432
+  database: gitstack
+  user: gitstack
+  ssl_mode: verify-full
+  version: "16.4"                          # rilevata dal preflight dell'installer
+  password_secret: gitstack-postgres-external
+  ca_secret: gitstack-postgres-ca          # facoltativo
+```
+
+Mai password o URL completo: la password sta nel Secret del cluster. Con `external: true` backup, restore, upgrade e status eseguono i comandi di database nel pod `<release>-pgclient` e non nello StatefulSet del bundle; `gitstack postgres check` è il preflight (exit 10 se il database non è idoneo).
+
 Campi sconosciuti o valori non validi sono un errore (exit 3). L'installer
 mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 `GITSTACK_BACKUP_DIR` e `GITSTACK_BACKUP_RETENTION`.
@@ -98,6 +115,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
 | `gitstack upgrade [--to V] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
 | `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
+| `gitstack postgres check --url U [--password-file F] [--ca-file F] [--json]` | preflight del Postgres esterno: versione 15–17, connessione, permessi per creare schemi e ruoli (exit 10 se non idoneo) | no |
 | `gitstack version` | versione del binario | no |
 
 I comandi che cambiano lo stato dell'host (dai prossimi item) rifiutano di
@@ -129,6 +147,7 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
 | 7 | upgrade fallito e tornato com'era (rollback riuscito) |
 | 8 | upgrade fallito e rollback NON riuscito: serve un intervento (il messaggio dice come) |
 | 9 | restore completato nei dati ma l'istanza non risponde attraverso l'Ingress entro il timeout (120 s): il messaggio dice quale URL ha fallito e con quale stato; verifica con `gitstack status` |
+| 10 | `gitstack postgres check`: il Postgres esterno non è idoneo (versione, connessione o permessi): il messaggio dice cosa fare |
 | 70 | errore inatteso |
 
 Errori su stderr con prefisso `ERRORE:`, come `install.sh`.

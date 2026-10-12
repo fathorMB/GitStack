@@ -2,6 +2,7 @@
 
 Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno dei servizi (`gateway`, `identity`, `git`, `core`, `web`, `postgres`, `nats`), lo script di installazione a comando singolo e la VM di test riproducibile. Architettura: `.lmbrain-lite/knowledge/architecture.md`.
 
+- `postgres-prepare.sql` — script per il DBA: database e utente per un Postgres esterno (N8).
 - `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `identity`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` (GIT-36) è nel chart, con ruolo e schema Postgres dedicati e le sue rotte instradate dal gateway; `git` non ha ancora un'immagine: non è nel chart.
 - `install.sh` — Installer v0 (M-01/T-09, questo item): un solo comando installa k3s e GitStack (chart di `gitstack/`) su una macchina Linux pulita. Dettagli sotto.
 - `test-vm/` — script che creano, ripristinano e distruggono la VM Linux locale usata per provare l'installer (M-01/T-12, GIT-12). Vedi `test-vm/README.md`.
@@ -110,9 +111,21 @@ k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.pa
 
 Al primo login la password va cambiata: finché non lo fai ogni altra chiamata risponde 403 `password_change_required`. Rieseguire `install.sh` non cambia né il Secret né l'admin.
 
+### Postgres esterno (N8, GIT-205)
+
+`install.sh --postgres-url postgres://UTENTE@HOST:5432/DATABASE[?sslmode=...]` usa un PostgreSQL 15, 16 o 17 del cliente al posto del bundle. Opzioni: `--postgres-password-file FILE` (o `GITSTACK_POSTGRES_PASSWORD`: la password non passa dalla riga di comando), `--postgres-ca-file FILE` (CA privata per `verify-ca`/`verify-full`); `sslmode` di default `require`.
+
+- **Preparazione (DBA).** [`postgres-prepare.sql`](postgres-prepare.sql) crea il database dedicato e un utente `LOGIN CREATEROLE` non superuser; è idempotente e la password arriva da `GITSTACK_DB_PASSWORD` (`\getenv`, serve `psql` 15+).
+- **Preflight.** Dopo aver scaricato e verificato il comando `gitstack` e prima di installare k3s, l'installer esegue `gitstack postgres check`: versione 15–17, connessione e le prove reali (in una transazione annullata) di creare uno schema e un ruolo. Rifiuta la versione 14 e i permessi insufficienti con un messaggio che dice cosa fare; `--skip-preflight` lo salta con un avviso.
+- **Cosa crea GitStack.** Come con il bundle: lo schema `core` (dell'utente configurato) e il ruolo `identity_app` con il suo schema `identity` (initContainer `bootstrap-db` di identity, ora valido anche per un utente non superuser su PostgreSQL 15, 16 e 17). Password e CA vanno in Secret fuori da Helm (`<release>-postgres-external`, `<release>-postgres-ca`).
+- **Pod client.** Con il database esterno il chart aggiunge `<release>-pgclient` (`psql` e `pg_dump`, stessa versione principale del server, impostata dall'installer): lo usano `gitstack backup`, `restore`, `upgrade` (backup preventivo e rollback degli schemi) e `status`.
+- **Riesecuzione.** Senza gli stessi `--postgres-*` l'installer si ferma: un `helm upgrade` senza i valori riporterebbe a un bundle vuoto.
+
+Dettagli operativi: [`../docs/operations.md`](../docs/operations.md#external-postgresql).
+
 ### Opzioni principali
 
-`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi, es. `postgres.enabled=false` per un Postgres esterno del cliente — vedi `gitstack/README.md`).
+`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
 
 ### Verifica in CI
 

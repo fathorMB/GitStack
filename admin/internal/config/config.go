@@ -58,7 +58,7 @@ type Config struct {
 // capire dove sta il database (la password sta nel Secret del cluster).
 type Postgres struct {
 	// External è vero con un Postgres del cliente (chart postgres.enabled=false).
-	External bool `yaml:"external"`
+	External bool   `yaml:"external"`
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
 	Database string `yaml:"database"`

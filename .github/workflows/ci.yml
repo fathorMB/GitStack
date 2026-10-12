@@ -71,6 +71,16 @@ jobs:
         working-directory: cli
         run: go test -tags=integration -race -count=1 ./internal/cmd/auth/
 
+      # Postgres esterno (N8, GIT-205): preflight (versione 14 rifiutata,
+      # permessi, TLS e CA), backup e restore degli schemi con le migrazioni
+      # reali, contro PostgreSQL 15 e 17 in container (CLI docker). Con
+      # GITSTACK_REQUIRE_DOCKER=1 senza Docker il test fallisce, non salta.
+      - name: go test -tags=integration -race (admin, Postgres 15 e 17 esterni)
+        working-directory: admin
+        env:
+          GITSTACK_REQUIRE_DOCKER: "1"
+        run: go test -tags=integration -race -count=1 -timeout 20m ./internal/pgcheck/ ./internal/backup/
+
       # Test d'integrazione di core contro un Postgres reale (criterio di
       # accettazione di GIT-5), con testcontainers-go: il tag "integration"
       # li tiene fuori dallo step precedente (go test ./... -race, che deve

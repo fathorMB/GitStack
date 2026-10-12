@@ -88,12 +88,12 @@ type Report struct {
 // Database descrive il Postgres in uso.
 type Database struct {
 	// Mode è "bundle" (Postgres interno) o "external" (del cliente).
-	Mode     string `json:"mode"`
-	Host     string `json:"host,omitempty"`
-	Port     int    `json:"port,omitempty"`
-	Name     string `json:"name,omitempty"`
-	User     string `json:"user,omitempty"`
-	SSLMode  string `json:"ssl_mode,omitempty"`
+	Mode    string `json:"mode"`
+	Host    string `json:"host,omitempty"`
+	Port    int    `json:"port,omitempty"`
+	Name    string `json:"name,omitempty"`
+	User    string `json:"user,omitempty"`
+	SSLMode string `json:"ssl_mode,omitempty"`
 	// Version è la versione del server (es. 16.4): letta ora dal cluster, o,
 	// se non si riesce, quella rilevata dall'installer (VersionLive false).
 	Version     string `json:"version,omitempty"`
