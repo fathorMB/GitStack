@@ -210,7 +210,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request, sub, dir string, r
 	cmd := exec.CommandContext(r.Context(), bin, args...)
 	cmd.Env = append(cleanEnv(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_TERMINAL_PROMPT=0")
 	if sub == "receive-pack" {
-		cmd.Env = append(cmd.Env, h.Rules.Env(receiverules.ProtectedBranch(ref))...)
+		cmd.Env = append(cmd.Env, h.Rules.RepoEnv(ref)...)
 	}
 	if gp := r.Header.Get("Git-Protocol"); gp != "" && safeProtocol(gp) {
 		cmd.Env = append(cmd.Env, "GIT_PROTOCOL="+gp)

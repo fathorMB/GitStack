@@ -43,7 +43,14 @@ const (
 	envMaxBlob = "GITSTACK_RULE_MAX_BLOB_BYTES"
 	envWarn    = "GITSTACK_RULE_WARN_REPO_BYTES"
 	envProtect = "GITSTACK_RULE_PROTECT_BRANCH"
+	// envMirror: origine del mirror in pull (MP2); se presente ogni push è rifiutato.
+	envMirror = "GITSTACK_RULE_MIRROR_ORIGIN"
 )
+
+// MirrorCode è il codice d'errore stampato dall'hook quando il push è
+// rifiutato perché il repo è un mirror in pull (MP2). È documentato in
+// services/git/README.md.
+const MirrorCode = "mirror_read_only"
 
 // Limits sono le soglie dell'installazione; zero = regola disattivata.
 type Limits struct {
@@ -112,6 +119,16 @@ func (r *Rules) Env(protected string) []string {
 	}
 }
 
+// RepoEnv è Env per un repo risolto da core: aggiunge, se il repo è un mirror
+// in pull attivo, l'origine che fa rifiutare ogni push (MP2).
+func (r *Rules) RepoEnv(ref access.RepoRef) []string {
+	if r == nil {
+		return nil
+	}
+	env := r.Env(ProtectedBranch(ref))
+	return append(env, envMirror+"="+ref.MirrorOrigin)
+}
+
 // preReceive è l'hook. Rifiuta con exit 1; i messaggi su stderr arrivano al
 // client come «remote: ...» (sideband) sia da HTTPS sia da SSH.
 const preReceive = `#!/bin/sh
@@ -122,8 +139,17 @@ zero=0000000000000000000000000000000000000000
 max="${GITSTACK_RULE_MAX_BLOB_BYTES:-0}"
 warn="${GITSTACK_RULE_WARN_REPO_BYTES:-0}"
 protect="${GITSTACK_RULE_PROTECT_BRANCH:-}"
+mirror="${GITSTACK_RULE_MIRROR_ORIGIN:-}"
 status=0
 tab=$(printf '\t')
+
+# MP2: un mirror in pull è in sola lettura, solo il mirror aggiorna i ref.
+if [ -n "$mirror" ]; then
+  cat >/dev/null
+  echo "gitstack: push rifiutato: questo repo è una copia di $mirror (mirror in pull): il codice si cambia all'origine." >&2
+  echo "gitstack: codice: mirror_read_only. Chi ha il ruolo admin può interrompere il mirror per scrivere qui." >&2
+  exit 1
+fi
 
 while read -r old new ref; do
   # R9: il branch principale non si riscrive e non si elimina.

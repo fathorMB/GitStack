@@ -47,6 +47,26 @@ func TestInstallScriveLHook(t *testing.T) {
 	}
 }
 
+func TestRepoEnv_Mirror(t *testing.T) {
+	r, err := Install(filepath.Join(t.TempDir(), "hooks"), DefaultLimits())
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := strings.Join(r.RepoEnv(access.RepoRef{DefaultBranch: "main", MirrorOrigin: "https://github.com/o/r.git"}), " ")
+	for _, want := range []string{"GITSTACK_RULE_PROTECT_BRANCH=", "GITSTACK_RULE_MIRROR_ORIGIN=https://github.com/o/r.git"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("manca %s in %s", want, env)
+		}
+	}
+	// Repo normale: origine vuota (l'hook non rifiuta).
+	if env := strings.Join(r.RepoEnv(access.RepoRef{}), " "); !strings.HasSuffix(env, "GITSTACK_RULE_MIRROR_ORIGIN=") {
+		t.Errorf("repo normale: %s", env)
+	}
+	if (*Rules)(nil).RepoEnv(access.RepoRef{MirrorOrigin: "x"}) != nil {
+		t.Error("Rules nil: nessun ambiente")
+	}
+}
+
 func TestProtectedBranch(t *testing.T) {
 	cases := []struct {
 		ref  access.RepoRef

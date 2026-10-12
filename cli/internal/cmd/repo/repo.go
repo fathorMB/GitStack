@@ -20,7 +20,7 @@ import (
 // unarchive e restore.
 var RepoFields = []string{
 	"id", "name", "owner", "fullName", "description", "visibility", "archived", "archivedAt",
-	"defaultBranch", "empty", "protectDefaultBranch", "cloneUrls", "createdAt", "updatedAt", "url",
+	"defaultBranch", "empty", "protectDefaultBranch", "cloneUrls", "mirror", "createdAt", "updatedAt", "url",
 }
 
 // DeletedFields sono i campi di --json di `gs repo list --deleted`.

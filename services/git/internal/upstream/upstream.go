@@ -164,11 +164,18 @@ func (c *Client) ResolveRepo(ctx context.Context, caller trust.Identity, owner, 
 		Archived             bool   `json:"archived"`
 		DefaultBranch        string `json:"defaultBranch"`
 		ProtectDefaultBranch bool   `json:"protectDefaultBranch"`
+		Mirror               *struct {
+			Origin string `json:"origin"`
+		} `json:"mirror"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || out.ID == "" {
 		return access.RepoRef{}, errors.New("risposta di core non valida")
 	}
-	return access.RepoRef{ID: out.ID, Owner: out.Owner.Name, Name: out.Name, Archived: out.Archived, DefaultBranch: out.DefaultBranch, ProtectDefaultBranch: out.ProtectDefaultBranch}, nil
+	ref := access.RepoRef{ID: out.ID, Owner: out.Owner.Name, Name: out.Name, Archived: out.Archived, DefaultBranch: out.DefaultBranch, ProtectDefaultBranch: out.ProtectDefaultBranch}
+	if out.Mirror != nil {
+		ref.MirrorOrigin = out.Mirror.Origin
+	}
+	return ref, nil
 }
 
 // LookupKey implementa access.Keys: GET identity /internal/ssh-keys/{fp}

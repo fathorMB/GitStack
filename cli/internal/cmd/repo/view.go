@@ -72,6 +72,14 @@ func (e *env) renderRepo(r *gitstack.Repository) error {
 	p("Visibilità: %s\n", r.Visibility)
 	p("Proprietario: %s (%s)\n", r.Owner.Name, r.Owner.Type)
 	p("Stato: %s\n", state)
+	if r.Mirror != nil {
+		// MP7: origine e ultimo aggiornamento del mirror in pull.
+		when := "mai"
+		if r.Mirror.LastSyncedAt != nil {
+			when = r.Mirror.LastSyncedAt.UTC().Format("2006-01-02 15:04 UTC")
+		}
+		p("Mirror di %s, aggiornato %s (sola lettura: il codice si cambia all'origine)\n", r.Mirror.Origin, when)
+	}
 	if r.Empty {
 		p("Contenuto: vuoto (nessun commit)\n")
 	}
