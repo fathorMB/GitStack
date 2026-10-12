@@ -439,6 +439,30 @@ postgres:
     # Nome di un Secret esistente con la chiave `password`.
     existingSecret: ""
     sslMode: require
+    # Nome di un Secret con la CA che ha firmato il certificato del
+    # database (chiave `ca.crt`), facoltativo: serve a sslMode verify-ca
+    # e verify-full con una CA privata. Montato in sola lettura su core,
+    # identity e sul pod client.
+    caSecret: ""
+    # Pod client (N8): resta acceso con il database esterno e serve a
+    # `gitstack backup/restore/upgrade/status` (pg_dump e psql, mai sul
+    # database bundle). La versione principale del client deve essere
+    # QUELLA del server (15, 16 o 17): un pg_dump 17 scrive istruzioni
+    # (SET transaction_timeout) che un server 15 o 16 non accetta al
+    # restore. L'installer imposta il tag dalla versione rilevata dal
+    # preflight; dopo un upgrade di major di Postgres, aggiornalo
+    # (gitstack status avvisa se non coincidono).
+    client:
+      image:
+        registry: docker.io
+        repository: postgres
+        tag: "16-alpine"
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 256Mi
 
 # --- nats (JetStream, D11) -----------------------------------------------
 nats:

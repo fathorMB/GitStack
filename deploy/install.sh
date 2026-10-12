@@ -86,6 +86,11 @@ GITSTACK_CONFIG_FILE="${GITSTACK_CONFIG_DIR}/config.yaml"
 GITSTACK_CHART_COPY="${GITSTACK_CHART_COPY:-/usr/local/share/gitstack/chart}"
 GITSTACK_BACKUP_DIR="${GITSTACK_BACKUP_DIR:-}"
 GITSTACK_BACKUP_RETENTION="${GITSTACK_BACKUP_RETENTION:-}"
+# Postgres esterno (N8, GIT-205): vedi resolve_postgres. La password si dà con
+# un file o con GITSTACK_POSTGRES_PASSWORD, non sulla riga di comando.
+GITSTACK_POSTGRES_URL="${GITSTACK_POSTGRES_URL:-}"
+GITSTACK_POSTGRES_PASSWORD_FILE="${GITSTACK_POSTGRES_PASSWORD_FILE:-}"
+GITSTACK_POSTGRES_CA_FILE="${GITSTACK_POSTGRES_CA_FILE:-}"
 # Backup su S3 (N7): endpoint, bucket e file della chiave di cifratura sono
 # obbligatori insieme; le chiavi di accesso solo da ambiente (mai da argomento:
 # si vedono con ps).
@@ -240,6 +245,21 @@ Opzioni:
   --tls-email EMAIL         Email per Let's Encrypt (consigliata).
   --insecure-http           Solo HTTP, senza TLS: SOLO per prove locali. La UI
                              mostra un avviso.
+  --postgres-url URL        Usa un PostgreSQL esterno (15, 16 o 17) invece del
+                             Postgres interno: postgres://UTENTE@HOST:5432/
+                             DATABASE[?sslmode=require|verify-full|...]. Serve
+                             un database dedicato e un utente che può creare
+                             schemi e ruoli: lo prepara il DBA con
+                             deploy/postgres-prepare.sql. Il preflight controlla
+                             versione, connessione e permessi prima di toccare
+                             la macchina. Default di sslmode: require.
+  --postgres-password-file FILE
+                            File con la password dell'utente del database (o la
+                             variabile GITSTACK_POSTGRES_PASSWORD): meglio che
+                             nell'URL. Solo lettere, cifre e - . _ ~
+  --postgres-ca-file FILE   CA (PEM) che ha firmato il certificato del database,
+                             per sslmode verify-ca o verify-full con una CA
+                             privata.
   --s3-endpoint HOST|URL    Backup su S3 (AWS, MinIO, B2, Wasabi): endpoint. Con
                              gli altri --s3-* configura backup.s3; servono anche
                              --s3-bucket e --s3-key-file, e le chiavi di accesso
@@ -286,6 +306,8 @@ GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02),
 GITSTACK_HTTP_PROXY, GITSTACK_HTTPS_PROXY, GITSTACK_NO_PROXY,
 GITSTACK_REGISTRY_MIRROR, GITSTACK_REGISTRY_USERNAME, GITSTACK_REGISTRY_PASSWORD,
 GITSTACK_DOWNLOAD_MIRROR, GITSTACK_CA_BUNDLE,
+GITSTACK_POSTGRES_URL, GITSTACK_POSTGRES_PASSWORD_FILE, GITSTACK_POSTGRES_PASSWORD,
+GITSTACK_POSTGRES_CA_FILE,
 GITSTACK_S3_ENDPOINT, GITSTACK_S3_BUCKET, GITSTACK_S3_PREFIX,
 GITSTACK_S3_REGION, GITSTACK_S3_KEY_FILE, GITSTACK_S3_RETENTION,
 GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY.
@@ -384,6 +406,18 @@ while [ "$#" -gt 0 ]; do
       ;;
     --ca-bundle)
       GITSTACK_CA_BUNDLE="$2"
+      shift 2
+      ;;
+    --postgres-url)
+      GITSTACK_POSTGRES_URL="$2"
+      shift 2
+      ;;
+    --postgres-password-file)
+      GITSTACK_POSTGRES_PASSWORD_FILE="$2"
+      shift 2
+      ;;
+    --postgres-ca-file)
+      GITSTACK_POSTGRES_CA_FILE="$2"
       shift 2
       ;;
     --s3-endpoint)
@@ -1010,6 +1044,11 @@ install_gitstack() {
   for tls_set in "${TLS_HELM_SETS[@]}"; do
     helm_args+=(--set "${tls_set}")
   done
+  postgres_helm_sets
+  local pg_set
+  for pg_set in "${POSTGRES_HELM_SETS[@]:-}"; do
+    [ -n "${pg_set}" ] && helm_args+=(--set "${pg_set}")
+  done
   # Proxy e CA aziendale (N9): dopo il TLS, prima dei valori dell'utente.
   local net_set
   for net_set in "${NETWORK_HELM_SETS[@]:-}"; do
@@ -1277,7 +1316,10 @@ backup:
   destination: ${backup_dir}
   retention: ${retention}
 EOF
+  # backup.s3 sta dentro backup: va subito dopo; le sezioni di primo livello
+  # (postgres) dopo, altrimenti s3 finirebbe dentro postgres.
   [ -z "${s3_block}" ] || printf '%s\n' "${s3_block}" >>"${tmp}"
+  postgres_config_section >>"${tmp}"
   render_config_network >>"${tmp}"
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${GITSTACK_CONFIG_FILE}"
@@ -2212,6 +2254,7 @@ print_summary() {
 
 UI:            ${base}/
 API (salute):  ${base}/api/healthz
+Database:      $(if [ "${PG_EXTERNAL}" = "1" ]; then printf 'PostgreSQL %s esterno, %s:%s/%s' "${PG_VERSION:-?}" "${PG_HOST}" "${PG_PORT}" "${PG_DB}"; else printf 'Postgres interno (bundle)'; fi)
 
 Verifica lo stato (con il comando di amministrazione: sudo gitstack status):
   KUBECONFIG=${GITSTACK_KUBECONFIG} k3s kubectl get pods -n ${GITSTACK_NAMESPACE}
@@ -2236,6 +2279,237 @@ dell'admin restano quelle già generate, vedi deploy/gitstack/README.md).
 EOF
 }
 
+# --- Postgres esterno (N8, GIT-205) --------------------------------------
+# Con --postgres-url GitStack non installa il Postgres interno: usa il
+# database del cliente (PostgreSQL 15, 16 o 17, un database dedicato e un
+# utente che può creare schemi e ruoli: lo prepara il DBA con
+# deploy/postgres-prepare.sql). GitStack crea uno schema e un ruolo per
+# servizio, come con il Postgres interno.
+
+# Valorizzate da resolve_postgres. PG_PASSWORD_FILE è un file 0600 in una
+# cartella temporanea, rimossa all'uscita: la password non passa mai dalla
+# riga di comando di un processo (né qui né in kubectl).
+PG_EXTERNAL=0
+PG_HOST=""
+PG_PORT=5432
+PG_DB=""
+PG_USER=""
+PG_SSLMODE="require"
+PG_VERSION=""
+PG_MAJOR=""
+PG_PASSWORD_FILE=""
+PG_PASSWORD_SECRET=""
+PG_CA_SECRET=""
+POSTGRES_HELM_SETS=()
+
+# Legge e valida --postgres-url, la password e la CA. Non si connette.
+# Senza --postgres-url non fa nulla, tranne rifiutare una riesecuzione su
+# un'installazione che usa già un database esterno: un `helm upgrade` senza i
+# valori del database lo riporterebbe al Postgres interno, vuoto.
+resolve_postgres() {
+  local url="${GITSTACK_POSTGRES_URL}"
+  if [ -z "${url}" ]; then
+    if [ -n "${GITSTACK_POSTGRES_PASSWORD_FILE}${GITSTACK_POSTGRES_CA_FILE}" ]; then
+      fail "--postgres-password-file e --postgres-ca-file servono insieme a --postgres-url."
+    fi
+    if [ "$(existing_config_value postgres external 2>/dev/null || true)" = "true" ]; then
+      fail "questa installazione usa un Postgres esterno (${GITSTACK_CONFIG_FILE}): rilancia l'installer con gli stessi --postgres-url, --postgres-password-file e --postgres-ca-file, altrimenti passerebbe al Postgres interno e vuoto."
+    fi
+    return 0
+  fi
+  PG_EXTERNAL=1
+
+  case "${url}" in
+    postgres://*|postgresql://*) ;;
+    *) fail "--postgres-url non valido: serve postgres://UTENTE@HOST:5432/DATABASE (schema postgres:// o postgresql://)." ;;
+  esac
+  local rest="${url#*://}" query="" path="" userinfo="" hostport="" pw_url=""
+  case "${rest}" in
+    *\?*) query="${rest#*\?}"; rest="${rest%%\?*}" ;;
+  esac
+  case "${rest}" in
+    */*) path="${rest#*/}"; rest="${rest%%/*}" ;;
+  esac
+  hostport="${rest}"
+  case "${rest}" in
+    *@*) userinfo="${rest%@*}"; hostport="${rest##*@}" ;;
+  esac
+  PG_USER="${userinfo%%:*}"
+  case "${userinfo}" in
+    *:*) pw_url="${userinfo#*:}" ;;
+  esac
+  case "${hostport}" in
+    \[*\]*) # IPv6: [::1]:5432
+      PG_HOST="${hostport%%]*}"; PG_HOST="${PG_HOST#\[}"
+      case "${hostport}" in *\]:*) PG_PORT="${hostport##*]:}" ;; esac
+      ;;
+    *:*) PG_HOST="${hostport%%:*}"; PG_PORT="${hostport##*:}" ;;
+    *) PG_HOST="${hostport}" ;;
+  esac
+  PG_DB="${path}"
+
+  local kv
+  local -a params=()
+  IFS='&' read -r -a params <<<"${query}" || true
+  for kv in "${params[@]:-}"; do
+    case "${kv}" in
+      sslmode=*) PG_SSLMODE="${kv#sslmode=}" ;;
+      '') ;;
+      *) warn "parametro dell'URL del database ignorato: '${kv%%=*}' (si usano solo sslmode e, con --postgres-ca-file, la CA)." ;;
+    esac
+  done
+
+  [ -n "${PG_HOST}" ] || fail "--postgres-url senza host: postgres://UTENTE@HOST:5432/DATABASE."
+  [ -n "${PG_USER}" ] || fail "--postgres-url senza utente: postgres://UTENTE@HOST:5432/DATABASE."
+  [ -n "${PG_DB}" ] || fail "--postgres-url senza nome del database: postgres://UTENTE@HOST:5432/DATABASE."
+  case "${PG_PORT}" in
+    ''|*[!0-9]*) fail "porta del database non valida in --postgres-url: '${PG_PORT}'." ;;
+  esac
+  case "${PG_USER}${PG_DB}" in
+    *[!A-Za-z0-9_.-]*) fail "utente e database in --postgres-url devono usare solo lettere, cifre, '_', '.' e '-' (trovato: utente '${PG_USER}', database '${PG_DB}')." ;;
+  esac
+  case "${PG_HOST}" in
+    *[!A-Za-z0-9_.:-]*) fail "host del database non valido in --postgres-url: '${PG_HOST}'." ;;
+  esac
+  case "${PG_SSLMODE}" in
+    disable|allow|prefer|require|verify-ca|verify-full) ;;
+    *) fail "sslmode '${PG_SSLMODE}' non valido (disable, allow, prefer, require, verify-ca, verify-full)." ;;
+  esac
+  if [ -n "${GITSTACK_POSTGRES_CA_FILE}" ]; then
+    [ -f "${GITSTACK_POSTGRES_CA_FILE}" ] || fail "la CA del database non esiste: ${GITSTACK_POSTGRES_CA_FILE}"
+    grep -q 'BEGIN CERTIFICATE' "${GITSTACK_POSTGRES_CA_FILE}" || fail "la CA del database non è un certificato PEM: ${GITSTACK_POSTGRES_CA_FILE}"
+  fi
+
+  # Password: file, poi variabile d'ambiente, poi (sconsigliato) l'URL.
+  local workdir
+  workdir="$(mktemp -d)"
+  TMP_DIRS+=("${workdir}")
+  chmod 0700 "${workdir}"
+  PG_PASSWORD_FILE="${workdir}/password"
+  local pw=""
+  if [ -n "${GITSTACK_POSTGRES_PASSWORD_FILE}" ]; then
+    [ -f "${GITSTACK_POSTGRES_PASSWORD_FILE}" ] || fail "il file della password del database non esiste: ${GITSTACK_POSTGRES_PASSWORD_FILE}"
+    pw="$(tr -d '\r\n' <"${GITSTACK_POSTGRES_PASSWORD_FILE}")"
+  elif [ -n "${GITSTACK_POSTGRES_PASSWORD:-}" ]; then
+    pw="${GITSTACK_POSTGRES_PASSWORD}"
+  elif [ -n "${pw_url}" ]; then
+    pw="${pw_url}"
+    warn "la password del database è nell'URL: resta nella cronologia della shell e in 'ps'. Meglio --postgres-password-file FILE o la variabile GITSTACK_POSTGRES_PASSWORD."
+  fi
+  [ -n "${pw}" ] || fail "manca la password del database: usa --postgres-password-file FILE, la variabile GITSTACK_POSTGRES_PASSWORD, oppure la password nell'URL."
+  (umask 077 && printf '%s' "${pw}" >"${PG_PASSWORD_FILE}")
+  # La password finisce in un URL di connessione dentro il cluster: i
+  # caratteri riservati vanno evitati (lo stesso controllo lo fa
+  # `gitstack postgres check`, con un messaggio più preciso).
+  case "${pw}" in
+    *[!A-Za-z0-9._~-]*) fail "la password del database contiene caratteri che GitStack non può mettere in un URL di connessione (ammessi: lettere, cifre, - . _ ~). Cambia la password dell'utente '${PG_USER}' con una di soli caratteri URL-safe." ;;
+  esac
+
+  PG_PASSWORD_SECRET="${GITSTACK_RELEASE_NAME}-postgres-external"
+  PG_CA_SECRET=""
+  if [ -n "${GITSTACK_POSTGRES_CA_FILE}" ]; then
+    PG_CA_SECRET="${GITSTACK_RELEASE_NAME}-postgres-ca"
+  fi
+}
+
+# URL senza password per `gitstack postgres check` (la password va dal file).
+postgres_check_url() {
+  local host="${PG_HOST}"
+  case "${host}" in *:*) host="[${host}]" ;; esac
+  printf 'postgres://%s@%s:%s/%s?sslmode=%s' "${PG_USER}" "${host}" "${PG_PORT}" "${PG_DB}" "${PG_SSLMODE}"
+}
+
+# Preflight del database (N8): versione 15-17, connessione e permessi, con il
+# comando `gitstack postgres check` già scaricato e verificato da
+# prepare_admin. Gira prima di toccare l'host. Valorizza PG_VERSION/PG_MAJOR.
+preflight_postgres() {
+  [ "${PG_EXTERNAL}" = "1" ] || return 0
+  if [ "${GITSTACK_SKIP_PREFLIGHT}" = "1" ]; then
+    warn "--skip-preflight attivo: il Postgres esterno non è stato controllato (versione, connessione, permessi)."
+    PG_MAJOR="${GITSTACK_POSTGRES_MAJOR:-16}"
+    return 0
+  fi
+  [ -n "${ADMIN_STAGED}" ] || fail "il preflight del Postgres esterno usa il comando 'gitstack', che non è disponibile (binario non pubblicato per questo tag): passa --admin-binary PERCORSO|URL (vedi admin/README.md)."
+  log "Controllo del Postgres esterno ${PG_HOST}:${PG_PORT}/${PG_DB} (utente ${PG_USER}, sslmode ${PG_SSLMODE}) ..."
+  local args=(postgres check --url "$(postgres_check_url)" --password-file "${PG_PASSWORD_FILE}")
+  if [ -n "${GITSTACK_POSTGRES_CA_FILE}" ]; then
+    args+=(--ca-file "${GITSTACK_POSTGRES_CA_FILE}")
+  fi
+  local out rc=0
+  out="$("${ADMIN_STAGED}" "${args[@]}" 2>&1)" || rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    printf '%s\n' "${out}" >&2
+    fail "preflight del Postgres esterno non superato (versioni supportate: 15, 16, 17; serve un database dedicato e un utente che crea schemi e ruoli: deploy/postgres-prepare.sql). Nessuna modifica fatta all'host."
+  fi
+  printf '%s\n' "${out}"
+  PG_VERSION="$(printf '%s\n' "${out}" | awk 'NR==1 { print $2 }')"
+  PG_MAJOR="${PG_VERSION%%.*}"
+  case "${PG_MAJOR}" in
+    15|16|17) ;;
+    *) fail "versione di PostgreSQL non riconosciuta dal preflight: '${PG_VERSION}'." ;;
+  esac
+}
+
+# Secret con la password (e la CA) del database, fuori da Helm: il chart li
+# referenzia con existingSecret e caSecret. kubectl legge i valori da file,
+# mai dalla riga di comando.
+create_postgres_secrets() {
+  [ "${PG_EXTERNAL}" = "1" ] || return 0
+  local kc=(env "KUBECONFIG=${GITSTACK_KUBECONFIG}" k3s kubectl)
+  "${kc[@]}" create namespace "${GITSTACK_NAMESPACE}" --dry-run=client -o yaml | "${kc[@]}" apply -f - >/dev/null \
+    || fail "non riesco a creare il namespace '${GITSTACK_NAMESPACE}'."
+  log "Creo il Secret '${PG_PASSWORD_SECRET}' con la password del database ..."
+  "${kc[@]}" -n "${GITSTACK_NAMESPACE}" create secret generic "${PG_PASSWORD_SECRET}" \
+    --from-file=password="${PG_PASSWORD_FILE}" --dry-run=client -o yaml | "${kc[@]}" apply -f - >/dev/null \
+    || fail "non riesco a creare il Secret '${PG_PASSWORD_SECRET}'."
+  if [ -n "${PG_CA_SECRET}" ]; then
+    log "Creo il Secret '${PG_CA_SECRET}' con la CA del database ..."
+    "${kc[@]}" -n "${GITSTACK_NAMESPACE}" create secret generic "${PG_CA_SECRET}" \
+      --from-file=ca.crt="${GITSTACK_POSTGRES_CA_FILE}" --dry-run=client -o yaml | "${kc[@]}" apply -f - >/dev/null \
+      || fail "non riesco a creare il Secret '${PG_CA_SECRET}'."
+  fi
+}
+
+# Valori Helm del database esterno, applicati prima dei --set dell'utente.
+postgres_helm_sets() {
+  POSTGRES_HELM_SETS=()
+  [ "${PG_EXTERNAL}" = "1" ] || return 0
+  POSTGRES_HELM_SETS=(
+    "postgres.enabled=false"
+    "postgres.external.host=${PG_HOST}"
+    "postgres.external.port=${PG_PORT}"
+    "postgres.external.database=${PG_DB}"
+    "postgres.external.username=${PG_USER}"
+    "postgres.external.existingSecret=${PG_PASSWORD_SECRET}"
+    "postgres.external.sslMode=${PG_SSLMODE}"
+    # Il client (pg_dump, psql) ha la versione principale del server: un
+    # dump 17 non si ripristina su un 15.
+    "postgres.external.client.image.tag=${PG_MAJOR:-16}-alpine"
+  )
+  if [ -n "${PG_CA_SECRET}" ]; then
+    POSTGRES_HELM_SETS+=("postgres.external.caSecret=${PG_CA_SECRET}")
+  fi
+}
+
+# Sezione postgres di config.yaml (vuota con il Postgres interno).
+postgres_config_section() {
+  [ "${PG_EXTERNAL}" = "1" ] || return 0
+  cat <<EOF
+postgres:
+  external: true
+  host: ${PG_HOST}
+  port: ${PG_PORT}
+  database: ${PG_DB}
+  user: ${PG_USER}
+  ssl_mode: ${PG_SSLMODE}
+  version: "${PG_VERSION}"
+  password_secret: ${PG_PASSWORD_SECRET}
+EOF
+  if [ -n "${PG_CA_SECRET}" ]; then
+    printf '  ca_secret: %s\n' "${PG_CA_SECRET}"
+  fi
+}
+
 # --- Main ------------------------------------------------------------------
 
 main() {
@@ -2243,6 +2517,7 @@ main() {
   validate_s3_options
   resolve_tls
   resolve_network
+  resolve_postgres
   run_preflight
   if [ "${GITSTACK_SKIP_PREFLIGHT}" != "1" ]; then
     preflight_network
@@ -2260,12 +2535,16 @@ main() {
   # Il binario di gitstack si scarica e si verifica prima di toccare il
   # sistema: un checksum sbagliato ferma l'installazione senza effetti.
   prepare_admin "${image_tag}"
+  # Postgres esterno: versione, connessione e permessi, ancora prima di
+  # installare k3s.
+  preflight_postgres
 
   apply_k3s_network
   install_k3s
   wait_for_k3s_ready
   wait_for_traefik_crd
   install_helm
+  create_postgres_secrets
   ensure_corporate_ca_configmap
   setup_tls "${chart_dir}"
   install_gitstack "${chart_dir}" "${image_tag}"

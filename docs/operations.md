@@ -94,6 +94,9 @@ the admin binary if they differ, without touching k3s or the data.
 | `--tls-cert FILE --tls-key FILE` | `GITSTACK_TLS_CERT`, `GITSTACK_TLS_KEY` | — | Client-supplied PEM certificate and key. |
 | `--tls-email EMAIL` | `GITSTACK_TLS_EMAIL` | — | Email for Let's Encrypt (recommended). |
 | `--insecure-http` | `GITSTACK_TLS_MODE=insecure` | — | HTTP only, no TLS. **Only for local tests**; the web UI shows a warning. |
+| `--postgres-url URL` | `GITSTACK_POSTGRES_URL` | — | Use an external PostgreSQL 15–17 instead of the bundled one (see [External PostgreSQL](#external-postgresql)). |
+| `--postgres-password-file FILE` | `GITSTACK_POSTGRES_PASSWORD_FILE`, or `GITSTACK_POSTGRES_PASSWORD` | — | Password of the database user. Keep it out of the command line. |
+| `--postgres-ca-file FILE` | `GITSTACK_POSTGRES_CA_FILE` | — | PEM CA that signed the database server certificate (private CA with `verify-ca`/`verify-full`). |
 | `--values FILE` | — | — | Additional Helm values file (`-f`). Repeatable. |
 | `--set KEY=VALUE` | — | — | Additional Helm value (`--set`). Repeatable. |
 | `--http-proxy URL` | `GITSTACK_HTTP_PROXY` | — | Proxy for everything the server downloads and for the GitStack pods. See [Corporate network](#corporate-network-proxy-mirrors-and-ca). |
@@ -107,6 +110,82 @@ the admin binary if they differ, without touching k3s or the data.
 Other environment variables: `INSTALL_K3S_VERSION`,
 `GITSTACK_BACKUP_DIR`, `GITSTACK_BACKUP_RETENTION`,
 `GITSTACK_BACKUP_TIMER_HOUR` (0–23, default `02`).
+
+### External PostgreSQL
+
+By default GitStack runs its own PostgreSQL inside the cluster. To use the
+customer's server instead (N8), PostgreSQL **15, 16 or 17** is supported.
+
+**1. The DBA prepares the database once.** The installer needs a dedicated
+database and a user that can create schemas and roles (not a superuser).
+`deploy/postgres-prepare.sql` does it, idempotently:
+
+```sh
+export GITSTACK_DB_PASSWORD='<password for the GitStack user>'   # letters, digits and - . _ ~
+psql "postgres://postgres@db.example.com:5432/postgres?sslmode=require" \
+     -v ON_ERROR_STOP=1 -f deploy/postgres-prepare.sql
+```
+
+It creates the `gitstack` user (`LOGIN CREATEROLE`) and the `gitstack`
+database it owns (`GITSTACK_DB_NAME` and `GITSTACK_DB_USER` change the
+names). It never grants superuser. Do not revoke `CONNECT` from `PUBLIC`:
+the application role that GitStack creates for identity must connect.
+
+**2. Install.** The password goes in a file (or in `GITSTACK_POSTGRES_PASSWORD`),
+not on the command line:
+
+```sh
+sudo ./deploy/install.sh \
+  --postgres-url 'postgres://gitstack@db.example.com:5432/gitstack?sslmode=verify-full' \
+  --postgres-password-file /root/gitstack-db.pw \
+  --postgres-ca-file /root/db-ca.crt
+```
+
+`sslmode` defaults to `require`; the CA is optional (needed for
+`verify-ca`/`verify-full` with a private CA); `sslmode=disable` only on a
+trusted network. Before touching the machine the installer runs the
+**preflight** (`gitstack postgres check`): connection, supported version
+(15–17), and the permission to create schemas and roles. Each failure says
+what to do, e.g. `PostgreSQL 14.12 non supportato` or `l'utente "x" non può
+creare ruoli (manca CREATEROLE)`. The same check can be run any time:
+
+```sh
+gitstack postgres check --url 'postgres://gitstack@db.example.com:5432/gitstack?sslmode=require' \
+  --password-file /root/gitstack-db.pw [--ca-file /root/db-ca.crt] [--json]
+```
+
+(exit code `11` when the database is not suitable.) The password and CA are
+stored as Kubernetes Secrets (`<release>-postgres-external`,
+`<release>-postgres-ca`) managed outside Helm; `config.yaml` records host,
+database, user, `sslmode` and the detected version, never the password.
+
+What GitStack creates in the database, as with the bundled PostgreSQL: the
+`core` schema (owned by the configured user), the `identity_app` role and
+the `identity` schema it owns. Nothing outside these schemas is touched.
+
+**Operations work the same.** `gitstack backup` dumps the `identity` and
+`core` schemas from the external database (through the `<release>-pgclient`
+pod, a small `psql`/`pg_dump` pod the chart adds), `gitstack restore`
+recreates them in a single transaction, `gitstack upgrade` takes the same
+pre-upgrade backup and, on failure, restores the schemas. Backups are copied
+off the machine as usual
+([Copying backups off the machine](#copying-backups-off-the-machine)).
+Notes:
+
+- The pod client has the **same major version as the server**
+  (`postgres.external.client.image.tag`, set by the installer). If you upgrade
+  PostgreSQL's major version, change that tag too: `gitstack status` warns when
+  they differ.
+- A restore needs the same database user that owned the objects at backup time.
+- The database password must be URL-safe (letters, digits, `- . _ ~`) because
+  services receive it inside a connection URL.
+- Re-running `install.sh` on an external-database installation requires the
+  same `--postgres-*` options; without them it stops instead of switching to
+  the bundled PostgreSQL.
+- An installation made earlier with `--set postgres.enabled=false` is adopted
+  by re-running the installer with the `--postgres-*` options.
+
+`gitstack status` shows the database (see [`gitstack status`](#gitstack-status)).
 
 ### HTTPS modes
 
@@ -249,6 +328,15 @@ sudo gitstack config set network --clear              # remove everything
 An option given with an empty value removes that setting. `gitstack upgrade`
 keeps the network values (they are Helm values) and uses the configured proxy
 for its own downloads.
+
+**External PostgreSQL (N8) on a corporate network.** The database speaks the
+PostgreSQL protocol over plain TCP, not HTTP: the proxy settings do not apply to
+it. The installer's Postgres preflight and the services connect to the database
+directly, and the network preflight does not probe it, so the database host
+needs no `--no-proxy` entry. Its CA (`--postgres-ca-file`, Secret `caSecret`,
+mounted at `/etc/gitstack/postgres-ca` and passed as `sslrootcert`) and the
+corporate CA (`corporateCA.configMap`, mounted at `/etc/gitstack/corporate-ca`,
+`SSL_CERT_DIR`) are separate volumes and do not override each other.
 
 **Test.** `deploy/test-network/run.sh all` (`seed`, then `verify`) installs
 GitStack on the Hyper-V test VM of `deploy/test-vm` (Ubuntu Server 24.04),
@@ -755,6 +843,10 @@ Servizi
   gitstack-web                 1/1 pronti  OK
   api (gateway /healthz)         OK (https://172.28.5.19/api/healthz: HTTP 200)
 
+Database
+  Postgres ESTERNO             db.example.com:5432/gitstack (utente gitstack, sslmode verify-full)
+  Versione PostgreSQL          16.4
+
 Ultimo backup: ultimo successo: 2026-10-06 15:46:27 (/var/backups/gitstack/gitstack-backup-20261006T154627Z-sha-20636805d1756798054dd0b7c570ae0a3d4cc6ee.tar.gz.enc)
 
 Stato: sano
@@ -773,6 +865,13 @@ sudo gitstack status --json
 
 The command reads `/etc/gitstack/config.yaml` (mode `0600`); run it
 under `sudo` or with `GITSTACK_CONFIG` pointing to an accessible file.
+
+With the bundled PostgreSQL the Database section reads
+`Postgres interno (bundle)` and the server version. With an external database
+`status` shows host, database, user, `sslmode` and the version read live from
+the cluster (the one detected at install time, marked as such, if the cluster
+cannot be queried). If the database cannot be queried from the `pgclient` pod,
+the overall state is not healthy.
 
 Exit codes: `0` (all healthy), `1` (at least one service unhealthy),
 `4` (cannot query the cluster), `3` (configuration error).
@@ -856,6 +955,7 @@ so it fails as a non-root user with a permission error.
 | `8` | Upgrade failed and rollback also failed — manual intervention needed |
 | `9` | Data restored but the instance does not answer through the Ingress |
 | `10` | Local backup done, upload to S3 failed (the local archive is valid) |
+| `11` | `gitstack postgres check`: external PostgreSQL not suitable |
 | `70` | Unexpected error (backup failure, network, unrecoverable) |
 
 ### Configuration files
@@ -867,6 +967,7 @@ so it fails as a non-root user with a permission error.
 | `/etc/gitstack/network/ca.crt` | Corporate CA copy (only with `--ca-bundle`) |
 | `/etc/rancher/k3s/registries.yaml` | k3s registry mirror (mode `0600`, may hold the mirror password) |
 | `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf` | Proxy for k3s and containerd |
+| `deploy/postgres-prepare.sql` | Script for the DBA: database and user for an external PostgreSQL |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
 
 ---

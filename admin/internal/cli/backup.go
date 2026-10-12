@@ -84,7 +84,7 @@ func (a *App) cluster(cfg *config.Config) (backup.Cluster, error) {
 	if look == nil {
 		look = exec.LookPath
 	}
-	k := &backup.KubectlCluster{Kubeconfig: cfg.Kubeconfig, Namespace: cfg.Namespace, Release: cfg.Release}
+	k := &backup.KubectlCluster{Kubeconfig: cfg.Kubeconfig, Namespace: cfg.Namespace, Release: cfg.Release, ExternalPG: cfg.Postgres.External}
 	if p, err := look("kubectl"); err == nil {
 		k.Bin = p
 	} else if p, err := look("k3s"); err == nil {

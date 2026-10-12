@@ -16,6 +16,15 @@
 {{- $pgAdmin = .Values.postgres.external.username -}}
 {{- $pgSSL = .Values.postgres.external.sslMode -}}
 {{- end -}}
+{{- $pgCA := and (not .Values.postgres.enabled) .Values.postgres.external.caSecret -}}
+{{- $pgSSLQuery := printf "sslmode=%s" $pgSSL -}}
+{{- if $pgCA -}}
+{{- $pgSSLQuery = printf "%s&sslrootcert=%s/ca.crt" $pgSSLQuery (include "gitstack.postgres.caMountPath" .) -}}
+{{- end -}}
+{{- $pgClientImage := include "gitstack.image" (dict "root" $ "component" .Values.postgres) -}}
+{{- if not .Values.postgres.enabled -}}
+{{- $pgClientImage = include "gitstack.image" (dict "root" $ "component" .Values.postgres.external.client) -}}
+{{- end -}}
 {{- $svcSecret := include "gitstack.serviceSecret.name" . -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
 {{- $adminSecret := .Values.identity.admin.existingSecret | default (printf "%s-identity-admin" (include "gitstack.fullname" .)) -}}
@@ -60,7 +69,7 @@ spec:
       # identity, che si connette solo come identity_app.
       initContainers:
         - name: bootstrap-db
-          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.postgres) }}
+          image: {{ $pgClientImage }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           env:
             - name: PGHOST
@@ -73,6 +82,10 @@ spec:
               value: {{ $pgAdmin | quote }}
             - name: PGSSLMODE
               value: {{ $pgSSL | quote }}
+            {{- if $pgCA }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "%s/ca.crt" (include "gitstack.postgres.caMountPath" .) | quote }}
+            {{- end }}
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
@@ -94,6 +107,11 @@ spec:
             - name: bootstrap
               mountPath: /bootstrap
               readOnly: true
+            {{- if $pgCA }}
+            - name: postgres-ca
+              mountPath: {{ include "gitstack.postgres.caMountPath" . }}
+              readOnly: true
+            {{- end }}
       containers:
         - name: identity
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.identity) }}
@@ -113,7 +131,7 @@ spec:
                   name: {{ $dbSecret }}
                   key: password
             - name: GITSTACK_IDENTITY_DB_URL
-              value: {{ printf "postgres://identity_app:$(IDENTITY_DB_PASSWORD)@%s:%d/%s?sslmode=%s" $pgHost ($pgPort | int) $pgDatabase $pgSSL | quote }}
+              value: {{ printf "postgres://identity_app:$(IDENTITY_DB_PASSWORD)@%s:%d/%s?%s" $pgHost ($pgPort | int) $pgDatabase $pgSSLQuery | quote }}
             - name: GITSTACK_IDENTITY_DB_MAX_CONNS
               value: {{ .Values.identity.env.dbMaxConns | quote }}
             - name: GITSTACK_IDENTITY_MIGRATIONS_TIMEOUT
@@ -177,11 +195,16 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.identity.resources | nindent 12 }}
-          {{- if or $oidc .Values.corporateCA.configMap }}
+          {{- if or $oidc .Values.corporateCA.configMap $pgCA }}
           volumeMounts:
             {{- if $oidc }}
             - name: oidc
               mountPath: /etc/gitstack/oidc
+              readOnly: true
+            {{- end }}
+            {{- if $pgCA }}
+            - name: postgres-ca
+              mountPath: {{ include "gitstack.postgres.caMountPath" . }}
               readOnly: true
             {{- end }}
             {{- if .Values.corporateCA.configMap }}
@@ -192,6 +215,14 @@ spec:
         - name: bootstrap
           configMap:
             name: {{ include "gitstack.fullname" . }}-identity-bootstrap
+        {{- if $pgCA }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgCA }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+        {{- end }}
         {{- if $oidc }}
         - name: oidc
           secret:

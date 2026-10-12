@@ -254,6 +254,27 @@ expect_has "preflight senza opzioni: avviso" "${OUT}" "ATTENZIONE: preflight di 
 expect_has "preflight senza opzioni: prosegue" "${OUT}" "rc=0"
 expect_has "preflight senza opzioni: suggerisce le opzioni" "${OUT}" "--registry-mirror"
 
+# Postgres esterno (GIT-205) con la rete aziendale: il database parla il
+# protocollo Postgres su TCP, non HTTP: i proxy non c'entrano. Il preflight di
+# rete non lo tocca (nessuna prova verso l'host del database) e i valori Helm
+# del proxy non finiscono nel DSN.
+printf 'pgpass-1.2\n' >"${WORK}/pgpw"
+chmod 0600 "${WORK}/pgpw" 2>/dev/null
+OUT="$(in_install --http-proxy http://proxy.corp:3128 --registry-mirror http://registry.corp:5000 \
+  --postgres-url 'postgres://gs@db.corp:5432/gitstack?sslmode=require' --postgres-password-file "${WORK}/pgpw" \
+  -- "${STUBS}"'net_probe_url() { echo "$1" >>"${WORK}/probed"; printf 200; }
+resolve_postgres; resolve_network; preflight_network
+printf "probed:%s\n" "$(tr "\n" " " <"${WORK}/probed")"
+printf "pg:%s\n" "$(postgres_check_url)"
+printf "net:%s\n" "${NETWORK_HELM_SETS[*]}"')"
+expect_has "postgres+rete: il preflight di rete prova il mirror" "${OUT}" "registry.corp:5000/v2/"
+PROBED_LINE="$(echo "${OUT}" | grep '^probed:')"
+PG_LINE="$(echo "${OUT}" | grep '^pg:')"
+expect_lacks "postgres+rete: il database non va provato col preflight HTTP" "${PROBED_LINE}" "db.corp"
+expect_lacks "postgres+rete: il proxy non è nell'URL del database" "${PG_LINE}" "proxy"
+expect_has "postgres+rete: valori Helm del proxy intatti" "${OUT}" "proxy.http=http://proxy.corp:3128"
+expect_lacks "postgres+rete: nessun valore postgres fra quelli di rete" "${OUT}" "net:postgres"
+
 # la password non finisce nei messaggi
 expect_lacks "nessuna password nei messaggi" "${OUT}" 's3cr'
 

@@ -1,0 +1,84 @@
+{{- if not .Values.postgres.enabled -}}
+{{- if or (not .Values.postgres.external.host) (not .Values.postgres.external.database) (not .Values.postgres.external.username) (not .Values.postgres.external.existingSecret) -}}
+{{- fail "postgres.enabled=false (Postgres esterno del cliente, D6): compila postgres.external.host, .database, .username e .existingSecret (Secret con chiave 'password')." -}}
+{{- end -}}
+{{- $pgCA := .Values.postgres.external.caSecret -}}
+# Pod client del Postgres esterno (N8): non serve traffico, resta acceso con
+# psql e pg_dump già configurati (PG*) perché `gitstack backup`, `restore`,
+# `upgrade` e `status` vi eseguano comandi con `kubectl exec`, come fanno
+# con il pod del Postgres bundle. La password arriva solo dal Secret.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitstack.fullname" . }}-pgclient
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $ "component" "pgclient") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $ "component" "pgclient") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitstack.componentLabels" (dict "root" $ "component" "pgclient") | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: pgclient
+          image: {{ include "gitstack.image" (dict "root" $ "component" .Values.postgres.external.client) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              trap 'exit 0' TERM INT
+              while true; do sleep 3600 & wait $!; done
+          env:
+            - name: PGHOST
+              value: {{ .Values.postgres.external.host | quote }}
+            - name: PGPORT
+              value: {{ .Values.postgres.external.port | int | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.postgres.external.database | quote }}
+            - name: PGUSER
+              value: {{ .Values.postgres.external.username | quote }}
+            - name: PGSSLMODE
+              value: {{ .Values.postgres.external.sslMode | quote }}
+            {{- if $pgCA }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "%s/ca.crt" (include "gitstack.postgres.caMountPath" .) | quote }}
+            {{- end }}
+            # Gli stessi nomi del pod Postgres bundle: i comandi di gitstack
+            # (dump, restore, versioni di schema) usano $POSTGRES_USER e
+            # $POSTGRES_DB e non sanno se il database è bundle o esterno.
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.external.username | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.external.database | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gitstack.postgres.secretName" . }}
+                  key: password
+          resources:
+            {{- toYaml .Values.postgres.external.client.resources | nindent 12 }}
+          {{- if $pgCA }}
+          volumeMounts:
+            - name: postgres-ca
+              mountPath: {{ include "gitstack.postgres.caMountPath" . }}
+              readOnly: true
+          {{- end }}
+      {{- if $pgCA }}
+      volumes:
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgCA }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+      {{- end }}
+{{- end }}

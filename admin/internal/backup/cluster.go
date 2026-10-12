@@ -37,7 +37,8 @@ type Cluster interface {
 	// Restart fa ripartire i pod del Deployment (rollout restart); chi
 	// chiama aspetta poi WaitReady.
 	Restart(ctx context.Context, deployment string) error
-	// PGExec esegue `args` nel pod di Postgres con stdin/stdout collegati.
+	// PGExec esegue `args` nel pod di Postgres (o, con il database esterno,
+	// nel pod client) con stdin/stdout collegati.
 	PGExec(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error
 	// VolumePath è la cartella sull'host del volume del PVC (ErrNotFound se
 	// il PVC non esiste).
@@ -81,6 +82,11 @@ type KubectlCluster struct {
 	Kubeconfig string
 	Namespace  string
 	Release    string
+	// ExternalPG: il database è un Postgres esterno (N8). I comandi di
+	// database girano nel pod client <release>-pgclient (psql e pg_dump già
+	// configurati con host, utente, TLS e password del Secret), non nello
+	// StatefulSet del Postgres bundle, che in questo caso non esiste.
+	ExternalPG bool
 	Exec       ExecFunc
 }
 
@@ -154,7 +160,11 @@ func (k *KubectlCluster) Restart(ctx context.Context, deployment string) error {
 
 // PGExec implementa Cluster.
 func (k *KubectlCluster) PGExec(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) error {
-	full := []string{"exec", "-i", "statefulset/" + k.Release + "-postgres", "--"}
+	target := "statefulset/" + k.Release + "-postgres"
+	if k.ExternalPG {
+		target = "deployment/" + k.Release + "-pgclient"
+	}
+	full := []string{"exec", "-i", target, "--"}
 	return k.run(ctx, stdin, stdout, append(full, args...)...)
 }
 
