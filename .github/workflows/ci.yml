@@ -240,6 +240,21 @@ jobs:
         shell: pwsh
         run: ./deploy/tests/install-gs.Tests.ps1
 
+  # GIT-211 (W1/W2): verifica statica di install-wsl.ps1 (parser PowerShell,
+  # ASCII puro, struttura). I runner Windows di GitHub non hanno
+  # virtualizzazione annidata per WSL2, quindi non è possibile un test di
+  # installazione reale: il board verifica su un PC Windows 11.
+  pwsh:
+    name: PowerShell — install-wsl.ps1 (W1/W2)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test PowerShell install-wsl.ps1
+        shell: pwsh
+        run: ./deploy/windows/tests/install-wsl.Tests.ps1
+
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
   # Sulle pull request e ogni notte su main (schedule) security.yml parte da

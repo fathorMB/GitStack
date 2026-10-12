@@ -113,8 +113,8 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 
 | Id | Regola | Test | Stato | Cosa manca |
 |---|---|---|---|---|
-| W1 | Windows via WSL2 di prova (script PowerShell, avvio al login) | | da compilare | |
-| W2 | Windows via WSL2 di prova (accesso locale, rete opzionale) | | da compilare | |
+| W1 | Windows via WSL2 di prova (script PowerShell, avvio al login) | `deploy/windows/tests/install-wsl.Tests.ps1#parser: nessun errore di sintassi`<br>`deploy/windows/tests/install-wsl.Tests.ps1#contiene Register-ScheduledTask`<br>`deploy/windows/tests/install-wsl.Tests.ps1#contiene systemd` | parziale | Lo script install-wsl.ps1 è verificato con il parser PowerShell e controlli strutturali (sezione W1). Il test CI non può installare WSL2 sui runner GitHub: serve una prova reale su Windows con virtualizzazione annidata. |
+| W2 | Windows via WSL2 di prova (accesso locale, rete opzionale) | `deploy/windows/tests/install-wsl.Tests.ps1#contiene networkingMode`<br>`deploy/windows/tests/install-wsl.Tests.ps1#contiene New-NetFirewallRule`<br>`deploy/windows/tests/install-wsl.Tests.ps1#contiene controllo build 22621` | parziale | Lo script install-wsl.ps1 è verificato con controlli strutturali (porte 443/2222, networkingMode, controllo build Windows per mirrored). Il test CI è statico: serve una prova reale su Windows 11 22H2 per verificare firewall e rete mirrored. |
 
 ## V — Rilascio v1.0 (`rilascio-v1.md`)
 
