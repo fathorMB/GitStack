@@ -992,7 +992,7 @@ function Main {
             $mkAgent = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Method 'POST' -Cookie $ck -Body (@{ username = $agentName; kind = 'agent'; email = "$agentName@agents.example.com" } | ConvertTo-Json)
             if ($mkAgent.StatusCode -ne 201) { throw "creazione utente agente: status $($mkAgent.StatusCode), corpo '$($mkAgent.Body)' $($mkAgent.Error)" }
             $e8Expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
-            $mkAdminTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-gs-admin'; scopes = @('read:user', 'write:user'); expiresAt = $e8Expires } | ConvertTo-Json)
+            $mkAdminTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-gs-admin'; scopes = @('read:user', 'write:user', 'read:resource'); expiresAt = $e8Expires } | ConvertTo-Json)
             if ($mkAdminTok.StatusCode -ne 201) { throw "token dell'admin: status $($mkAdminTok.StatusCode) $($mkAdminTok.Body)" }
             $adminGsToken = ($mkAdminTok.Body | ConvertFrom-Json).token
             if (-not $adminGsToken) { throw "token dell'admin: risposta senza 'token'" }
