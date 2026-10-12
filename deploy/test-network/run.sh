@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015,SC2016,SC2034
 # Prova ripetibile di N9a (GIT-206): install.sh in una rete aziendale chiusa.
 #
 #   deploy/test-network/run.sh all        # seed + verify

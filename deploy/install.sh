@@ -1603,7 +1603,7 @@ resolve_network() {
   local user_given="${GITSTACK_REGISTRY_USERNAME}" v var key saved_ca
   for v in HTTP_PROXY HTTPS_PROXY NO_PROXY REGISTRY_MIRROR REGISTRY_USERNAME DOWNLOAD_MIRROR; do
     var="GITSTACK_${v}"
-    key="$(printf '%s' "${v}" | tr 'A-Z' 'a-z')"
+    key="$(printf '%s' "${v}" | tr '[:upper:]' '[:lower:]')"
     if [ -z "${!var}" ]; then
       printf -v "${var}" '%s' "$(existing_network_value "${key}")"
     fi
@@ -1655,11 +1655,12 @@ resolve_network() {
   if [ -n "${GITSTACK_HTTP_PROXY}" ]; then
     export HTTP_PROXY="${GITSTACK_HTTP_PROXY}" http_proxy="${GITSTACK_HTTP_PROXY}"
   fi
-  if [ -n "$(net_https_proxy)" ]; then
-    export HTTPS_PROXY="$(net_https_proxy)" https_proxy="$(net_https_proxy)"
-  fi
-  if [ -n "$(net_https_proxy)" ]; then
-    export NO_PROXY="$(net_k3s_no_proxy)" no_proxy="$(net_k3s_no_proxy)"
+  local https_proxy_value no_proxy_value
+  https_proxy_value="$(net_https_proxy)"
+  if [ -n "${https_proxy_value}" ]; then
+    export HTTPS_PROXY="${https_proxy_value}" https_proxy="${https_proxy_value}"
+    no_proxy_value="$(net_k3s_no_proxy)"
+    export NO_PROXY="${no_proxy_value}" no_proxy="${no_proxy_value}"
   fi
 
   # Valori del chart (contratto di N9b: proxy.http, proxy.https, proxy.noProxy,

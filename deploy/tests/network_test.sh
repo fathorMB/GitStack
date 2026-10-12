@@ -4,7 +4,7 @@
 # Helm di N9b, sezione network di config.yaml, preflight di rete. Nessun root,
 # nessuna rete: le prove di raggiungibilità sono funzioni ridefinite.
 # Uso: ./deploy/tests/network_test.sh
-# shellcheck disable=SC2034,SC1091,SC2030,SC2031
+# shellcheck disable=SC2034,SC1090,SC1091,SC2016,SC2030,SC2031
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
