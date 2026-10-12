@@ -33,6 +33,7 @@ client/     client Go e TypeScript generati dal contratto OpenAPI
 skills/     pacchetto di skills per agenti di coding
 deploy/     manifest k3s / Helm chart interno e installer
 docs/       documentazione per chi installa e usa GitStack
+docs-site/  sito di documentazione pubblico in inglese (Docusaurus), vedi sotto
 ```
 
 Ogni cartella ha un proprio README con lo stato e i rimandi alle milestone che la riguardano.
@@ -148,12 +149,26 @@ Riepilogo di quando gira ogni workflow e perché:
 | `ci.yml` | ogni pull request; push su `main` e sui tag `v*` | build, lint e test a ogni cambio che entra; pubblicazione delle immagini solo da `main` e dai tag |
 | `api-contract.yml` | push su `main` e ogni pull request, senza filtro `paths:` | il contratto e i client generati non devono derivare, anche per cambi a soli `go.work`/`go.mod`/`go.sum` |
 | `security.yml` | ogni pull request; ogni notte alle 03:17 UTC su `main` (schedule); a mano (`workflow_dispatch`, con `release` per il dry-run); sui tag `v*`, richiamato da `ci.yml` in modalità release, bloccante | le scansioni sono lente e lanciano circa 15 job: a ogni push su `main` consumavano troppi minuti e job paralleli del piano gratuito (decisione del board del 2026-10-05), quindi su `main` girano di notte, in segnalazione |
+| `docs.yml` | ogni pull request; push su `main`; a mano | build del sito `docs-site/` con controllo dei link (un link rotto fa fallire la build); la pubblicazione su GitHub Pages (`deploy`) parte solo su `main` |
 
 Il contratto API ha il suo workflow dedicato, `.github/workflows/api-contract.yml` (vedi sopra, sezione "Contratto API e client generati"), che gira sia su push a `main` sia su pull request, su qualunque file cambi (nessun filtro `paths:`), così anche un cambio ai soli `go.work`/`go.mod`/`go.sum` fa girare `workspace-sync`.
 
 Stato (M-01): la struttura del monorepo, le licenze, il contratto API e la pipeline CI sono a posto (T-01, T-02, T-03); il codice vero dei servizi, della web UI, della CLI e del deploy arriva con gli item successivi di M-01. I moduli Go hanno solo un package `doc.go`/`main.go` minimo, così build/lint/test hanno qualcosa su cui lavorare.
 
 Oltre alla CI su GitHub Actions, il motore GalaxyLab legge `.galaxylab/checks.toml` (solo dal ramo `main`) ed esegue i controlli lì dichiarati a ogni `integrate`. Per ora c'è un solo controllo, `go-build`, con i pattern espliciti dei moduli del workspace (niente bash/pnpm/golangci-lint: prerequisiti e motivazioni sono commentati in testa al file).
+
+## Sito di documentazione (inglese)
+
+`docs-site/` (GIT-223, regola V6a) è il sito pubblico, solo in inglese, senza traduzioni e senza copia nell'istanza: Docusaurus con versione esatta pinnata, `corepack pnpm` come `web/`. Quattro sezioni: User, Admin, API, CLI. Niente della reference si scrive a mano: `pnpm run build` rigenera (output ignorati da git) la reference CLI dai comandi cobra (`cli/cmd/gsdocs`, `cobra/doc`), la reference API da `api/openapi.yaml` (`@redocly/cli build-docs`, stessa versione di `scripts/generate-api.sh`) e copia `docs/operations.md`, `docs/versioning.md` e `SECURITY.md` nella sezione Admin. Un link o un'ancora rotti fanno fallire la build (`throw`).
+
+```sh
+cd docs-site
+corepack pnpm install --frozen-lockfile
+corepack pnpm run build   # genera e costruisce in docs-site/build
+corepack pnpm run serve
+```
+
+Il workflow `docs.yml` costruisce il sito su ogni pull request e, solo su `main`, lo pubblica su GitHub Pages (`actions/upload-pages-artifact` + `actions/deploy-pages`). Attivazione manuale, una tantum, sul repository del mirror pubblico: Settings → Pages → Build and deployment → Source: «GitHub Actions». L'indirizzo predefinito è `https://fathormb.github.io/GitStack/`; con un dominio proprio si impostano `DOCS_SITE_URL` e `DOCS_BASE_URL` nel passo di build. Il lockfile di `docs-site/` entra nell'audit di `security.yml` come quello di `web/`.
 
 ## Scansioni di sicurezza
 

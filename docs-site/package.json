@@ -1,0 +1,26 @@
+{
+  "name": "@gitstack/docs-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitStack public documentation site (English only, Docusaurus).",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "generate:pages": "node scripts/sync-pages.mjs",
+    "generate:cli": "cd ../cli && go run ./cmd/gsdocs ../docs-site/docs/cli/reference",
+    "generate:api": "redocly build-docs ../api/openapi.yaml --config ../api/redocly.yaml --output static/api-reference/index.html",
+    "generate": "npm run generate:pages && npm run generate:cli && npm run generate:api",
+    "start": "npm run generate && docusaurus start",
+    "build": "npm run generate && docusaurus build",
+    "serve": "docusaurus serve"
+  },
+  "packageManager": "pnpm@11.28.1",
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.54.3"
+  }
+}
