@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -80,6 +81,13 @@ type Report struct {
 	APIHealthy    bool      `json:"api_healthy"`
 	APIDetail     string    `json:"api_detail"`
 	LastBackup    string    `json:"last_backup"`
+	// K3sVersion è la versione di k3s in esecuzione ("" se non leggibile).
+	K3sVersion string `json:"k3s_version,omitempty"`
+	// K3sDeclared è la versione di k3s dichiarata dal ramo di destinazione
+	// (deploy/k3s-version) e K3sUpdate il tipo di aggiornamento:
+	// "patch" (automatico), "minor" (serve gitstack upgrade --k3s) o "".
+	K3sDeclared string `json:"k3s_declared,omitempty"`
+	K3sUpdate   string `json:"k3s_update,omitempty"`
 }
 
 // Healthy è vero se il cluster risponde, ogni servizio è pronto e l'API
@@ -114,6 +122,7 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 		Release:   cfg.Release,
 		Namespace: cfg.Namespace,
 	}
+	r.K3sVersion = c.k3sVersion(ctx)
 	svcs, err := c.services(ctx, cfg)
 	if err != nil {
 		r.ClusterError = err.Error()
@@ -123,6 +132,28 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
 	r.LastBackup = lastBackupState(configDir)
 	return r
+}
+
+var k3sVersionRe = regexp.MustCompile(`v\d+\.\d+\.\d+\+k3s\d+`)
+
+// k3sVersion legge `k3s --version`; "" se k3s non c'è nel PATH o non risponde
+// (la versione è un'informazione in più: non rende il report un errore).
+func (c *Collector) k3sVersion(ctx context.Context) string {
+	look := c.LookPath
+	if look == nil {
+		look = exec.LookPath
+	}
+	bin, err := look("k3s")
+	if err != nil {
+		return ""
+	}
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	out, err := c.Runner.Run(cctx, nil, bin, "--version")
+	if err != nil {
+		return ""
+	}
+	return k3sVersionRe.FindString(string(out))
 }
 
 // kubectlCommand sceglie `kubectl` se c'è, altrimenti `k3s kubectl` (k3s lo

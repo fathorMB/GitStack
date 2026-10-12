@@ -36,6 +36,7 @@ func runStatus(ctx context.Context, a *App, args []string) int {
 	path := a.configPath(*cfgPath)
 	col := &status.Collector{Runner: a.Runner, HTTP: a.HTTP, LookPath: a.LookPath}
 	rep := col.Collect(ctx, cfg, a.configDir(path))
+	a.k3sAvailable(ctx, rep)
 
 	if *asJSON {
 		enc := json.NewEncoder(a.Stdout)
@@ -67,6 +68,16 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p("  Versione gitstack: %s", binVersion)
 	p("  Host: %s (SSH git: porta %d)", r.Host, r.SSHPort)
 	p("  Release: %s (namespace %s)", r.Release, r.Namespace)
+	switch {
+	case r.K3sVersion == "":
+		p("  Versione k3s: non leggibile (k3s non è nel PATH)")
+	case r.K3sUpdate == "patch":
+		p("  Versione k3s: %s — aggiornamento disponibile: %s (patch, si applica da solo con gitstack upgrade)", r.K3sVersion, r.K3sDeclared)
+	case r.K3sUpdate == "minor":
+		p("  Versione k3s: %s — aggiornamento disponibile: %s (nuova minore: gitstack upgrade --k3s)", r.K3sVersion, r.K3sDeclared)
+	default:
+		p("  Versione k3s: %s (aggiornata)", r.K3sVersion)
+	}
 	p("")
 	p("Servizi")
 	if r.ClusterError != "" {

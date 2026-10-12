@@ -136,7 +136,7 @@ func (h *fakeHelm) has(sub string) bool {
 	return false
 }
 
-func chartTarball(t *testing.T, sha string) []byte {
+func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
@@ -148,6 +148,11 @@ func chartTarball(t *testing.T, sha string) []byte {
 		_, _ = tw.Write([]byte(body))
 	}
 	add("GitStack-"+sha+"/README.md", "no")
+	for _, v := range k3sFile {
+		if v != "" {
+			add("GitStack-"+sha+"/deploy/k3s-version", v+"\n")
+		}
+	}
 	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\n")
 	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", "NUOVO: 1\n")
 	add("GitStack-"+sha+"/deploy/gitstack/templates/a.yaml", "x")
@@ -170,6 +175,7 @@ type world struct {
 	compare string // risposta del confronto
 	badSum  bool
 	noBin   bool
+	k3sFile string // contenuto di deploy/k3s-version nel commit nuovo
 }
 
 func newWorld(t *testing.T) *world {
@@ -215,7 +221,7 @@ func newWorld(t *testing.T) *world {
 			}
 			_, _ = io.WriteString(rw, newBin)
 		case strings.HasSuffix(p, "/tar.gz/"+newSHA):
-			_, _ = rw.Write(chartTarball(t, newSHA))
+			_, _ = rw.Write(chartTarball(t, newSHA, w.k3sFile))
 		default:
 			http.NotFound(rw, r)
 		}
