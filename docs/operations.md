@@ -975,6 +975,68 @@ The script `deploy/gitstack/tls/gitstack-tls.sh` (installed as
 Both need `sudo` on internal CA because they read/write under
 `/etc/gitstack/`.
 
+### CI tests of install, upgrade and restore (N2, V1)
+
+The workflow `.github/workflows/install.yml` proves on a real runner what
+used to be tried only on the board's VM. It does **not** run on every push
+or pull request (each job installs k3s and every service and takes a long time):
+
+| Trigger | When |
+|---|---|
+| `push` of a `v*` tag | at every release |
+| `schedule` | every night at 02:30 UTC, on `main` |
+| `workflow_dispatch` | by hand, on any branch (inputs `previous_commit` and `k3s_from` are optional) |
+
+It runs two scenarios on `ubuntu-22.04` and `ubuntu-24.04`:
+
+- **fresh**: `install.sh` of the commit under test → `gitstack backup`
+  (encrypted) → more data → `gitstack restore` → the data written after the
+  backup is gone.
+- **upgrade**: `install.sh` of the **previous commit** (latest green CI run on
+  `main`, strict ancestor, with its images and binary published) with a k3s
+  **one patch older** than `deploy/k3s-version` → data → `gitstack upgrade`
+  (preventive backup → k3s patch → GitStack, N10) → k3s checked with
+  `k3s --version`, `kubectl version` and `gitstack status --json`
+  (`k3s_version`) → backup → more data → restore.
+
+Both check health, the admin login with the forced password change, user and
+token creation, repository creation, `git clone` and `git push` over HTTPS.
+The steps are in `deploy/ci/install-e2e.sh` (shellcheck in `ci.yml`).
+
+The job `images` and `admin-binary` publish the images (`ghcr.io`) and the
+`gitstack` binary (release `sha-<commit>`) of the commit when CI has not done
+it yet, with the same tags: `gitstack upgrade` always downloads from GitHub,
+there is no local source for it. To try a change, push the branch and run the
+workflow by hand on it:
+
+```sh
+gh workflow run install.yml --ref my-branch
+gh run watch
+```
+
+Runners start with about 14 GB free: the installer is called with
+`--skip-preflight` (the hardware profile is covered by
+`deploy/tests/preflight_test.sh`).
+
+#### Pop!_OS 22.04 and 24.04
+
+Not covered in CI: GitHub hosts no Pop!_OS runner, and System76 does not
+publish a cloud image or a container with systemd that stands for the real
+system (to be verified again before deciding). What CI gives instead: Pop!_OS
+22.04 and 24.04 are Ubuntu 22.04 and 24.04 with the System76 packages, so the
+same installer path runs on the same base; the `ID=pop` detection is covered
+by `deploy/tests/preflight_test.sh`. The real run on Pop!_OS stays manual,
+on the test VM (`deploy/test-vm/`). Options, from the cheapest, for the CEO
+to choose:
+
+1. **Keep as is** (declared limit): Ubuntu in CI, Pop!_OS by hand before each
+   release, noted in the release checklist.
+2. **Self-hosted runner** on a Pop!_OS machine of the company (the board's
+   homehub): exact, but a permanent machine and a runner open to the repo.
+3. **KVM VM on the runner** with the Pop!_OS ISO: the installer of the ISO is
+   interactive, so it needs a preseeded image built and kept by us; the most
+   work, and the result is still a copy of the real system.
+
 ---
 
 ## Quick reference

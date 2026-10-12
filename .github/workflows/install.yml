@@ -1,0 +1,317 @@
+name: Installazione, aggiornamento e ripristino
+
+# GIT-203 (regole N2 e V1): installazione, backup, aggiornamento e ripristino
+# provati su Ubuntu 22.04 e 24.04, i sistemi supportati che GitHub ospita
+# (Pop!_OS: vedi docs/operations.md, «CI tests of install, upgrade and restore»).
+#
+# Dura a lungo (ogni job installa k3s e tutti i servizi), quindi NON gira a
+# ogni push o PR: sui tag di versione, ogni notte su main e a mano.
+on:
+  push:
+    tags: ['v*']
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      previous_commit:
+        description: 'Commit da cui aggiornare (default: ultimo commit di main con CI verde, antenato del commit in prova)'
+        required: false
+        default: ''
+      k3s_from:
+        description: 'Versione di k3s da cui partire (default: la patch precedente a deploy/k3s-version)'
+        required: false
+        default: ''
+
+# Un solo giro per ramo o tag; un giro nuovo non interrompe uno in corso
+# (installare a metà lascia il runner in uno stato che nessuno guarda).
+concurrency:
+  group: install-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+
+jobs:
+  # Immagini e binario `gitstack` del commit in prova. `gitstack upgrade` e
+  # install.sh li scaricano dal registry e dalla release sha-<commit>, che la
+  # CI di ci.yml pubblica solo dopo un push su main o su un tag: per un ramo
+  # (prova a mano) o un commit non ancora pubblicato si costruiscono qui, con
+  # gli stessi tag. Se esistono già non si rifà niente.
+  images:
+    name: Immagine ${{ matrix.service }} del commit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            context: .
+            dockerfile: services/gateway/Dockerfile
+          - service: identity
+            context: .
+            dockerfile: services/identity/Dockerfile
+          - service: git
+            context: .
+            dockerfile: services/git/Dockerfile
+          - service: core
+            context: .
+            dockerfile: services/core/Dockerfile
+          - service: web
+            context: .
+            dockerfile: web/Dockerfile
+            build_args: VERSION=sha-${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Log in a ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: L'immagine esiste già?
+        id: exists
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${OWNER,,}/gitstack-${{ matrix.service }}:sha-${GITHUB_SHA}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          if docker buildx imagetools inspect "${image}" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${image} è già pubblicata: niente da costruire."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & push
+        if: steps.exists.outputs.found == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args }}
+          push: true
+          tags: ${{ steps.exists.outputs.image }}
+
+  admin-binary:
+    name: Binario gitstack del commit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: La release esiste già?
+        id: exists
+        run: |
+          set -euo pipefail
+          assets="$(gh release view "${IMAGE_TAG}" --json assets -q '.assets[].name' 2>/dev/null || true)"
+          if printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64.sha256' \
+            && printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64'; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::release ${IMAGE_TAG} già pubblicata: niente da costruire."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@v6
+        if: steps.exists.outputs.found == 'false'
+        with:
+          go-version-file: go.work
+
+      # Stessi comandi del job admin-binary di ci.yml.
+      - name: Build gitstack-linux-amd64
+        if: steps.exists.outputs.found == 'false'
+        working-directory: admin
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w -X main.version=sha-${GITHUB_SHA}" \
+            -o gitstack-linux-amd64 ./cmd/gitstack
+          sha256sum gitstack-linux-amd64 > gitstack-linux-amd64.sha256
+
+      - name: Pubblica gli asset nella release sha-<commit>
+        if: steps.exists.outputs.found == 'false'
+        working-directory: admin
+        run: |
+          if gh release view "${IMAGE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${IMAGE_TAG}" gitstack-linux-amd64 gitstack-linux-amd64.sha256 --clobber
+          else
+            gh release create "${IMAGE_TAG}" gitstack-linux-amd64 gitstack-linux-amd64.sha256 \
+              --prerelease --target "${GITHUB_SHA}" \
+              --title "${IMAGE_TAG}" \
+              --notes "Build del commit ${GITHUB_SHA}: comando gitstack per install.sh (non è una release di prodotto)."
+          fi
+
+  # Due scenari per sistema:
+  #  - fresh: installa il commit in prova, fa il backup, scrive altri dati,
+  #    ripristina e verifica che i dati successivi al backup siano spariti;
+  #  - upgrade: installa il commit precedente con k3s di una patch precedente
+  #    a deploy/k3s-version, poi `gitstack upgrade` (backup → k3s → GitStack)
+  #    al commit in prova, verifica la versione di k3s dichiarata, e infine
+  #    backup e restore del sistema aggiornato.
+  # In entrambi: salute, login API (con cambio password obbligatorio),
+  # clone e push via HTTPS.
+  e2e:
+    name: ${{ matrix.scenario }} su ${{ matrix.os }}
+    needs: [images, admin-binary]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        scenario: [fresh, upgrade]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TARGET_SHA: ${{ github.sha }}
+      GITSTACK_REPO: ${{ github.repository }}
+      E2E_STATE_DIR: /var/tmp/gitstack-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Un runner ha circa 14 GB liberi: servono k3s, le immagini (due
+      # versioni nello scenario upgrade) e gli archivi.
+      - name: Libera spazio
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Indirizzo della macchina
+        run: |
+          set -euo pipefail
+          ip="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
+          [ -n "${ip}" ] || { echo "indirizzo IPv4 non trovato" >&2; exit 1; }
+          echo "E2E_HOST=${ip}" >> "$GITHUB_ENV"
+          echo "Indirizzo: ${ip}"
+
+      - name: Commit e k3s di partenza
+        if: matrix.scenario == 'upgrade'
+        env:
+          INPUT_PREVIOUS: ${{ inputs.previous_commit }}
+          INPUT_K3S: ${{ inputs.k3s_from }}
+        run: |
+          set -euo pipefail
+          prev="${INPUT_PREVIOUS:-}"
+          if [ -z "${prev}" ]; then prev="$(./deploy/ci/install-e2e.sh previous-commit)"; fi
+          prev="$(git rev-parse "${prev}^{commit}")"
+          k3s_from="${INPUT_K3S:-}"
+          if [ -z "${k3s_from}" ]; then k3s_from="$(./deploy/ci/install-e2e.sh older-k3s)"; fi
+          declared="$(tr -d '[:space:]' < deploy/k3s-version)"
+          {
+            echo "PREV_SHA=${prev}"
+            echo "K3S_FROM=${k3s_from}"
+            echo "K3S_TO=${declared}"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### Aggiornamento"
+            echo "- da: \`${prev}\` con k3s \`${k3s_from}\`"
+            echo "- a: \`${GITHUB_SHA}\` con k3s \`${declared}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          git worktree add --detach "${RUNNER_TEMP}/previous" "${prev}"
+
+      # sudo azzera l'ambiente: le variabili si passano con `sudo env`.
+      # --skip-preflight: il runner non ha i 60 GB del profilo minimo (N1,
+      # coperto da deploy/tests/preflight_test.sh).
+      - name: Installazione del commit in prova
+        if: matrix.scenario == 'fresh'
+        run: |
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 \
+            ./deploy/install.sh --skip-preflight --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}"
+
+      - name: Installazione del commit precedente (k3s più vecchio)
+        if: matrix.scenario == 'upgrade'
+        working-directory: ${{ runner.temp }}/previous
+        run: |
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 INSTALL_K3S_VERSION="${K3S_FROM}" \
+            ./deploy/install.sh --skip-preflight --host "${E2E_HOST}" --image-tag "sha-${PREV_SHA}"
+
+      - name: Salute
+        run: ./deploy/ci/install-e2e.sh wait-healthy 900
+
+      - name: Versione di partenza
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh verify-k3s "${K3S_FROM}"
+          sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.server_version == $v'
+
+      - name: Dati di prova (login admin, utente, token, repo, push, issue)
+        run: ./deploy/ci/install-e2e.sh seed
+
+      - name: gitstack upgrade --dry-run
+        if: matrix.scenario == 'upgrade'
+        run: sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --dry-run
+
+      # Backup preventivo → k3s (cambio di patch) → GitStack, tutto da `gitstack upgrade`.
+      - name: gitstack upgrade
+        if: matrix.scenario == 'upgrade'
+        run: sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m
+
+      - name: Dopo l'upgrade (salute, k3s dichiarato, dati intatti, push)
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh wait-healthy 600
+          ./deploy/ci/install-e2e.sh verify-k3s "${K3S_TO}"
+          sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.server_version == $v and .api_healthy == true'
+          ./deploy/ci/install-e2e.sh verify-seed --push
+
+      - name: gitstack backup (cifrato)
+        run: |
+          set -euo pipefail
+          sudo install -d -m 700 /var/lib/gitstack-ci
+          sudo sh -c 'umask 077; openssl rand -base64 32 > /var/lib/gitstack-ci/backup.key'
+          sudo gitstack backup --key-file /var/lib/gitstack-ci/backup.key
+          archive="$(./deploy/ci/install-e2e.sh latest-backup)"
+          echo "BACKUP_ARCHIVE=${archive}" >> "$GITHUB_ENV"
+          echo "Archivio: ${archive}"
+
+      - name: Dati scritti dopo il backup
+        run: |
+          ./deploy/ci/install-e2e.sh mutate
+          ./deploy/ci/install-e2e.sh verify-after-mutate
+
+      - name: gitstack restore
+        run: |
+          set -euo pipefail
+          sudo gitstack restore --key-file /var/lib/gitstack-ci/backup.key "${BACKUP_ARCHIVE}"
+          ./deploy/ci/install-e2e.sh wait-healthy 600
+          sudo gitstack status
+
+      - name: Dopo il restore (dati del backup, niente dati successivi, clone e push)
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh verify-seed --push
+          sudo gitstack status --json | jq -e '.api_healthy == true'
+
+      - name: Diagnostica
+        if: failure()
+        run: ./deploy/ci/install-e2e.sh diagnostics "${RUNNER_TEMP}/diagnostica"
+
+      - name: Carica la diagnostica
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnostica-${{ matrix.scenario }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/diagnostica
+          if-no-files-found: ignore
+          retention-days: 7
