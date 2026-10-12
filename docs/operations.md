@@ -285,12 +285,25 @@ sudo ./deploy/install.sh \
 | `k3s/install.sh` | The k3s install script (from `https://get.k3s.io`) |
 | `k3s/releases/download/<version>/k3s` and `sha256sum-amd64.txt` | The k3s binary and its checksums (what the script downloads from GitHub releases) |
 | `helm/helm-<version>-linux-amd64.tar.gz` and `.sha256sum` | The Helm tarball |
-| `gitstack/<image-tag>/gitstack-linux-amd64` and `.sha256` | The `gitstack` binary |
+| `gitstack/<image-tag>/gitstack-linux-amd64`, `.sha256` and `.sigstore.json` | The `gitstack` binary, its checksum and its cosign bundle (V5) |
+| `gitstack/<image-tag>/gitstack-<chart-version>.tgz` and `.sigstore.json` | The signed Helm chart package and its cosign bundle (V5) |
+| `cosign/<version>/cosign-linux-amd64` | The pinned cosign (`v2.4.0`; its SHA-256 is still checked) |
 | `gitstack/source/<sha>.tar.gz`, `gitstack/source/<ref>.sha` | Repository source and the commit of a ref (only when running the script without a checkout) |
 
-The signature rules do not change (V5): k3s, Helm and `gitstack` are still
-verified against their SHA-256 checksums, which are fetched from the same
-mirror; for a stronger guarantee pass `--admin-sha256` from a trusted channel.
+The signature rules do not change (V5): k3s and Helm are verified against their
+SHA-256 checksums fetched from the same mirror, and the `gitstack` binary, the
+chart and the `gitstack-*` images are verified with cosign exactly as when they
+come from GitHub (same workflow identity and OIDC issuer, bundle required): a
+mirror must therefore carry the `.sigstore.json` bundles above and, for the
+images, the signatures (a pull-through cache of `ghcr.io` has them; a registry
+you filled yourself needs them copied with the images, for example with
+`cosign copy`). The images are verified on the `--registry-mirror` under their
+original name without the host, with the mirror credentials, and
+`--allow-insecure-registry` for an `http://` mirror. The proxy and the
+corporate CA apply to cosign as to the other downloads. A mirror without
+signatures is refused unless you state the exception explicitly with
+`--allow-unsigned-mirrors` (see V5 below); for a stronger guarantee on the
+binary also pass `--admin-sha256` from a trusted channel.
 Outbound rules (C8) do not change either: the GitStack services apply
 `egress.*` to the real destination before talking to the proxy.
 
@@ -1070,11 +1083,28 @@ Both check health, the admin login with the forced password change, user and
 token creation, repository creation, `git clone` and `git push` over HTTPS.
 The steps are in `deploy/ci/install-e2e.sh` (shellcheck in `ci.yml`).
 
-The job `images` and `admin-binary` publish the images (`ghcr.io`) and the
-`gitstack` binary (release `sha-<commit>`) of the commit when CI has not done
-it yet, with the same tags: `gitstack upgrade` always downloads from GitHub,
-there is no local source for it. To try a change, push the branch and run the
-workflow by hand on it:
+**Signatures (V5).** `install.sh` and `gitstack upgrade` verify the cosign
+signatures of the binary, the chart and the images, so the run tests that
+verification too. The job `release` decides where the artefacts of the commit
+come from:
+
+| Run | Artefacts | Signatures |
+|---|---|---|
+| `schedule` (main) and `v*` tag | only the signed release `sha-<commit>` and its images, published by `ci.yml` | **verified**. If the `.sigstore.json` bundles are not there yet (on a tag push `ci.yml` and this workflow start together) the job waits for them up to 75 minutes, then fails with an explicit error; it never builds artefacts itself and never passes the exception |
+| `workflow_dispatch` on a commit whose release is already signed | that release | **verified** |
+| `workflow_dispatch` on a branch or an unsigned commit | built by the jobs `images` and `admin-binary` | **not verified: exception N9**, passed explicitly as `--allow-unsigned-mirrors` to `install.sh` and to `gitstack upgrade` (only if the installed `gitstack` of the previous commit knows the flag; an older one verifies nothing), and written in the run summary (`GITHUB_STEP_SUMMARY`) |
+
+In the upgrade scenario the previous commit is installed with its own
+`install.sh` and its own signed artefacts, without the exception; then the
+installed `gitstack` (which already verifies, from GIT-209 on) checks the
+artefacts of the commit under test. The exception is never silent, and never
+on the runs of `main` and of the tags.
+
+The jobs `images` and `admin-binary` therefore run only in the last case: they
+publish the images (`ghcr.io`) and the `gitstack` binary (release
+`sha-<commit>`) with the same tags, because `gitstack upgrade` always downloads
+from GitHub, there is no local source for it. To try a change, push the branch
+and run the workflow by hand on it:
 
 ```sh
 gh workflow run install.yml --ref my-branch
@@ -1322,7 +1352,63 @@ La release `sha-<commit-sha>` contiene:
 4. Step di verifica interna: `cosign verify` su immagine,
    `cosign verify-blob` su chart e binario, tutti senza `|| true`.
 
-*V5 — Catena di fornitura (GIT-208)*
+### Verifica automatica in `install.sh` e `gitstack upgrade` (GIT-209)
+
+Binario, chart e immagini si verificano da soli, a ogni installazione e a ogni
+aggiornamento, con le stesse regole della CI. Se una firma manca o non torna,
+l'operazione si ferma **prima di toccare il sistema** con un messaggio che dice
+quale artefatto è in causa.
+
+| Artefatto | Come si verifica |
+|---|---|
+| Binario `gitstack` | SHA-256 (`.sha256` della release o `--admin-sha256`) **e** `cosign verify-blob` col bundle `gitstack-linux-amd64.sigstore.json` scaricato accanto al binario |
+| Chart Helm | si scarica il `.tgz` pubblicato dalla CI (`gitstack-<versione>.tgz` nella release `sha-<commit>`) con il suo `.sigstore.json`, si verifica e solo dopo si estrae: il sorgente di codeload non ha i byte firmati e non si usa |
+| Immagini `gitstack-gateway/identity/git/core/web` | `cosign verify` sull'immagine che il chart distribuirebbe (stessi `--set`/`-f` dell'installazione), prima di `helm upgrade --install`. Postgres e NATS sono immagini di terzi: non le firma GitStack |
+
+- **Identità fissata**: il workflow `ci.yml` del repository (`GITSTACK_REPO`,
+  default `fathorMB/GitStack`) da `main` o da un tag `v*`, regexp
+  `^https://github\.com/<repo>/\.github/workflows/ci\.yml@refs/(heads/main|tags/v.+)$`;
+  issuer `https://token.actions.githubusercontent.com`. Nessun flag che
+  salti il controllo del registro di trasparenza.
+- **Bundle obbligatorio**: senza `.sigstore.json` l'artefatto «non risulta
+  firmato» ed è rifiutato, mai accettato. Una release `sha-<commit>` ha i bundle
+  solo dopo che il job `sign` della CI è finito.
+- **cosign pinnato come Helm**: `install.sh` installa cosign `v2.4.0` (la
+  versione della CI) in `/usr/local/bin/gitstack-cosign` verificandone lo
+  SHA-256 pinnato; non usa un cosign trovato nel `PATH`. `gitstack upgrade` usa
+  lo stesso binario (`v5.cosign_path` in `/etc/gitstack/config.yaml`). In una
+  rete chiusa: `GITSTACK_COSIGN_URL` (percorso o URL del mirror interno di
+  cosign) e `GITSTACK_COSIGN_SHA256`; il checksum resta verificato.
+- **Chart da cartella locale** (`--chart-dir` o checkout): non è un artefatto
+  firmato e non si può verificare; `install.sh` lo dice con un avviso, e le
+  immagini si verificano comunque.
+
+#### Eccezione per mirror interni non firmati (N9)
+
+Per un mirror interno che copia release e immagini senza le firme esiste
+un'eccezione **esplicita**, mai il default:
+
+```sh
+sudo ./deploy/install.sh --allow-unsigned-mirrors     # installazione
+sudo gitstack upgrade --allow-unsigned-mirrors        # aggiornamento, solo per questa volta
+```
+
+- Salta **tutte** le verifiche cosign (binario, chart, immagini); il checksum
+  SHA-256 del binario resta obbligatorio.
+- Emette un avviso `ECCEZIONE N9 ATTIVA` a ogni passo saltato e nel riepilogo
+  finale.
+- Con l'installer l'eccezione è **salvata** in `/etc/gitstack/config.yaml`
+  (`v5.allow_unsigned: true`): `gitstack upgrade` la rispetta e
+  `gitstack status` mostra «AVVISO catena di fornitura» (campo
+  `supply_chain_warning` con `--json`). Non rende «non sano» lo stato: è un
+  avviso, non un guasto.
+- Rieseguire `install.sh` **senza** il flag la rimuove e ripristina la
+  verifica.
+- La pagina Admin · System (mockup 16) non esiste ancora nel web: finché non
+  c'è, l'avviso si vede in `gitstack status`; la pagina leggerà lo stesso
+  report.
+
+*V5 — Catena di fornitura (GIT-208, GIT-209)*
 
 ---
 

@@ -153,7 +153,7 @@ func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
 			add("GitStack-"+sha+"/deploy/k3s-version", v+"\n")
 		}
 	}
-	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\n")
+	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n")
 	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", "NUOVO: 1\n")
 	add("GitStack-"+sha+"/deploy/gitstack/templates/a.yaml", "x")
 	_ = tw.Close()
@@ -176,6 +176,17 @@ type world struct {
 	badSum  bool
 	noBin   bool
 	k3sFile string // contenuto di deploy/k3s-version nel commit nuovo
+
+	// Firme (V5): la release pubblica i bundle cosign accanto agli artefatti.
+	noBundle   bool   // nessun bundle pubblicato (artefatto non firmato)
+	signer     string // identità del certificato (vuoto: quella valida)
+	binSigned  string // contenuto realmente firmato per il binario (vuoto: newBin)
+	chartTgz   []byte // chart firmato pubblicato nella release
+	chartSign  []byte // contenuto firmato per il chart (nil: chartTgz)
+	imgSigners string // file delle immagini firmate (per il cosign finto)
+
+	hitMu sync.Mutex
+	hits  []string // percorsi richiesti al server
 }
 
 func newWorld(t *testing.T) *world {
@@ -201,6 +212,9 @@ func newWorld(t *testing.T) *world {
 	sum := sha256.Sum256([]byte(newBin))
 	w.srv = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
+		w.hitMu.Lock()
+		w.hits = append(w.hits, p)
+		w.hitMu.Unlock()
 		switch {
 		case strings.HasSuffix(p, "/commits/"+newSHA), strings.HasSuffix(p, "/commits/main"), strings.HasSuffix(p, "/commits/2222222"):
 			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
@@ -220,7 +234,29 @@ func newWorld(t *testing.T) *world {
 				return
 			}
 			_, _ = io.WriteString(rw, newBin)
-		case strings.HasSuffix(p, "/tar.gz/"+newSHA):
+		case strings.HasSuffix(p, "/gitstack-linux-amd64.sigstore.json"):
+			if w.noBundle {
+				http.NotFound(rw, r)
+				return
+			}
+			signed := []byte(newBin)
+			if w.binSigned != "" {
+				signed = []byte(w.binSigned)
+			}
+			_, _ = rw.Write(fakeBundle(signed, w.identity()))
+		case strings.HasSuffix(p, "/gitstack-0.1.0.tgz"):
+			_, _ = rw.Write(w.chartTgz)
+		case strings.HasSuffix(p, "/gitstack-0.1.0.tgz.sigstore.json"):
+			if w.noBundle {
+				http.NotFound(rw, r)
+				return
+			}
+			signed := w.chartTgz
+			if w.chartSign != nil {
+				signed = w.chartSign
+			}
+			_, _ = rw.Write(fakeBundle(signed, w.identity()))
+		case strings.HasSuffix(p, "/tar.gz/"+newSHA), strings.HasSuffix(p, "/gitstack/source/"+newSHA+".tar.gz"):
 			_, _ = rw.Write(chartTarball(t, newSHA, w.k3sFile))
 		default:
 			http.NotFound(rw, r)
@@ -236,6 +272,7 @@ func newWorld(t *testing.T) *world {
 	w.cl = &fakeCluster{git: git, schema: "identity|5|f\ncore|11|f"}
 	w.helm = &fakeHelm{cluster: w.cl, images: "image: \"mirror.example/fathormb/gitstack-core:sha-" + newSHA + "\"\n      - image: busybox:1\n"}
 	w.healthy = func() bool { return true }
+	w.chartTgz = signedChartTgz(t)
 	w.o = &Options{
 		Cfg: cfg, ConfigFile: w.cfgFile, Cluster: w.cl, Runner: w.helm,
 		Health: func(context.Context) *status.Report {
@@ -255,6 +292,7 @@ func newWorld(t *testing.T) *world {
 		CodeloadURL: w.srv.URL + "/codeload",
 		ReleaseURL:  w.srv.URL + "/gh",
 		ImageCheck:  func(context.Context, string) error { return nil },
+		V5:          useFakeCosign(t, w),
 	}
 	// l'API è montata sotto /repos-api: il server risponde per suffisso, ma
 	// il percorso reale è <base>/repos/<repo>/...
