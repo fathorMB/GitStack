@@ -11,6 +11,6 @@ func diskUsage(path string) (total, free int64) {
 	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, 0
 	}
-	bs := int64(st.Bsize) //nolint:unconvert // il tipo varia con l'architettura
+	bs := int64(st.Bsize)                               //nolint:unconvert // il tipo varia con l'architettura
 	return int64(st.Blocks) * bs, int64(st.Bavail) * bs //nolint:unconvert
 }

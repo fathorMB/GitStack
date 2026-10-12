@@ -261,7 +261,7 @@ func TestBuildClusterNonRaggiungibile(t *testing.T) {
 
 func TestBuildNodeSoglieEParseMemTotal(t *testing.T) {
 	cases := []struct {
-		p                 NodeProbe
+		p              NodeProbe
 		cpu, mem, disk string
 	}{
 		{NodeProbe{CPUCores: 4, MemoryBytes: 8 * gb, DiskTotalBytes: 60 * gb, DiskFreeBytes: 20 * gb}, "below_recommended", "below_recommended", "below_recommended"},
