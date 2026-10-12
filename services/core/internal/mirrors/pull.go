@@ -374,12 +374,21 @@ func (e *PullEngine) pull(ctx context.Context, j pullJob) (oc pullOutcome) {
 	}
 	oc.refs = res.Refs
 	oc.headBranch = res.HeadBranch
+	// Il servizio git valorizza `error` con il testo dei ref divergenti anche
+	// quando il fetch è riuscito: con ref divergenti e nessun ref in errore
+	// l'esito è `diverged` (MP1), non un errore da ritentare.
+	refErr := false
+	for _, r := range res.Refs {
+		if r.Status == "error" {
+			refErr = true
+		}
+	}
 	switch {
+	case res.Diverged && !refErr:
+		oc.kind = OutcomeDiverged
 	case strings.TrimSpace(res.Error) != "":
 		oc.kind, oc.retry = OutcomeError, true
 		oc.err = res.Error
-	case res.Diverged:
-		oc.kind = OutcomeDiverged
 	case res.OK:
 		oc.kind = OutcomeSuccess
 	default:

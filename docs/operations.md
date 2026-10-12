@@ -883,6 +883,73 @@ To resolve it, first decide which side is right, look at the run log to see whic
 
 Then press **Sync now** (or `POST /api/v1/repos/{owner}/{repo}/mirrors/{id}/sync`, which answers `202`). The mirror pushes again and, if nothing else is different, goes back to **In sync**. A mirror stays `diverged` until you do: new pushes to GitStack do not restart it.
 
+## Pull mirror
+
+A **pull mirror** is the opposite of the [push mirror](#mirror): GitStack periodically downloads an external Git repository (for example one on GitHub) and keeps a **read-only** copy of it. Uses: a backup copy of a GitHub repository on your own machine, and the first step of moving a team off GitHub.
+
+What it does, and what it deliberately does not do:
+
+- **Prudent copy.** All branches and all tags are copied. GitStack **never deletes and never overwrites** anything. If the origin rewrites a branch (force-push) or a tag, or deletes a ref, the copy on GitStack keeps the previous version, the ref is marked **diverged** and the repository's admins are notified. All the other refs keep updating.
+- **Code is read-only, issues are normal.** While the mirror is active every push (HTTPS, SSH, `gs`) is rejected with a message that names the origin (`mirror_read_only`). Only the mirror updates refs. The repository shows a **Mirror** label with the origin and the time of the last update. Issues, labels, milestones and comments work as in any repository.
+- **Only Git content.** Issues, pull requests, releases, wikis and labels of the origin are not copied, and neither is Git LFS.
+- **Origins.** Only `https://` addresses, without credentials in the address, checked by the same egress protection as webhooks and push mirrors (loopback, cluster and link-local networks are always blocked; see [Destinations on a private network or with a private CA](#destinations-on-a-private-network-or-with-a-private-ca), which applies to pull mirrors too, including `git.mirror.caConfigMap`). SSH and `git://` origins are not supported.
+- **Same-address guard.** While a pull mirror is active you cannot configure a push mirror to the same address as its origin.
+
+Creating and managing a pull mirror needs the `admin` role on the repository, or being the installation administrator. The token (optional) is stored encrypted and is never shown again, nor written to logs or to the Git command line. Without the secret encryption key (`GITSTACK_WEBHOOK_SECRET_KEY`) the API answers `503 mirror_secrets_unavailable`.
+
+### Recipe: stage 1, a copy of `github.com/<org>/GitStack` on homehub
+
+Goal: homehub holds an up-to-date, read-only copy of the GitHub repository, as a backup and as the code that dogfooding builds on.
+
+1. **Decide the name.** For example `<org>/gitstack` (the owner can be a user or an organization on homehub); visibility **private** unless you want it public. The name must be free: the import creates the repository.
+2. **Credentials.**
+   - If `github.com/<org>/GitStack` is **public**, leave username and token empty: the origin is read anonymously.
+   - If it is **private**, create a **fine-grained personal access token** on GitHub: *Repository access* → **Only select repositories** → that repository; *Repository permissions* → **Contents: Read-only** (GitHub adds *Metadata: Read-only* by itself). Nothing else, and **no write permission**: this mirror never pushes. Note the expiry date; when the token expires the mirror goes to `error` until you replace it.
+3. **Create the mirror.** In the web UI: **New repository → Import from URL**, fill in `https://github.com/<org>/GitStack.git`, choose **Keep in sync** (not *Copy once*), set the interval and, for a private origin, the GitHub user name and the token. The repository appears immediately (empty) and the first copy starts in the background.
+
+   The same through the API (the token is only sent in this request):
+
+   ```bash
+   curl -fsS -X POST "https://homehub.example/api/v1/repos/import" \
+     -H "Authorization: Bearer $GITSTACK_TOKEN" -H "Content-Type: application/json" \
+     -d '{"owner":"<org>","name":"gitstack","visibility":"private",
+          "url":"https://github.com/<org>/GitStack.git","mode":"mirror","intervalSeconds":3600}'
+   # private origin: add  "username":"<github user>","token":"'"$GITHUB_TOKEN"'"
+   ```
+
+   On an **existing, empty** repository use **Settings → Pull mirror → Enable** (mockup P3–P6) or `POST /api/v1/repos/{owner}/{repo}/pull-mirror` with `{"url": …, "username": …, "token": …, "intervalSeconds": …}`.
+4. **Interval.** For a backup copy use **1 hour** (`intervalSeconds: 3600`): it is plenty for a backup and gentle with GitHub. The default is **10 minutes**; the allowed range is 5 minutes to 24 hours. **Sync now** (`POST /api/v1/repos/{owner}/{repo}/pull-mirror/sync`, answers `202`) updates immediately and does not change the interval.
+5. **Check it.** The mirror is healthy when its state is `in_sync` and `lastSyncedAt` is recent (`GET /api/v1/repos/{owner}/{repo}/pull-mirror`; the run log is `GET …/pull-mirror/runs`). Compare the tips:
+
+   ```bash
+   git ls-remote https://github.com/<org>/GitStack.git refs/heads/main
+   git ls-remote https://homehub.example/<org>/gitstack.git refs/heads/main   # same SHA
+   ```
+
+### States
+
+| State | Meaning |
+|---|---|
+| `pending` | Queued: first copy, or next round due. |
+| `syncing` | A fetch is running (one at a time per repository, with a timeout). |
+| `in_sync` | The last update succeeded. Refs listed in `divergedRefs` are kept as they were; the others are up to date. |
+| `error` | The last attempt failed. It retries after 30 s, 2 min, 10 min, 1 h, 3 h, then every 6 h. A destination blocked by the egress policy is **not** retried: fix the policy (or the origin) and press **Sync now**. |
+| `paused` | Updates are stopped by an admin; the repository stays read-only. **Resume** (`POST …/pull-mirror/resume`) brings it back. |
+| `stopped` | Interrupted: the repository is normal and writable, credentials are deleted, the run log and the `diverged` refs are kept. |
+
+The admins are also notified when there has been no successful update for more than 24 hours. The run log keeps the last 50 runs, for 30 days.
+
+### When a ref is `diverged`
+
+It means the origin rewrote or deleted a ref that GitStack already had. Nothing was lost: GitStack still has the old version, shown in **Settings → Pull mirror → Diverged refs** (`divergedRefs` in the API, with `localSha` and `remoteSha`). Decide which side is right. If the origin is right and you want its version, **Stop** the mirror, fix the ref in the now-writable repository, and enable the mirror again later; a mirror never accepts a rewrite on its own.
+
+### Stop, or copy once
+
+- **Stop** (**Settings → Pull mirror → Stop**, `POST …/pull-mirror/stop`): type the repository name to confirm (`{"confirm":"gitstack"}`). The repository becomes a normal one, credentials are deleted. This is how a copy becomes the new home after a migration. It can be enabled again later.
+- **Copy once** (**Import from URL → Copy once**, or `"mode":"once"` in `POST /api/v1/repos/import`) is "create the mirror, sync, stop" in one step: all branches and tags are copied once, then the credentials are deleted and the repository is normal and writable, with no link to the origin. If the copy fails the repository stays with the error visible and you can retry with **Sync now**.
+
+The pull mirror is proved end to end by `deploy/test-vm/e2e.ps1` (step e10) and by the stack test `TestPullMirrorGiroCompleto`.
+
 ---
 
 ## Diagnostics

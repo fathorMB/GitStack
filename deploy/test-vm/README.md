@@ -390,6 +390,7 @@ Parametri principali (tutti con un default sensato):
 | `-Ref` | SHA corrente di `origin/main`, risolto con `git ls-remote` e stampato | Commit da provare. |
 | `-OutDir` | `%LOCALAPPDATA%\GitStack\e2e-runs\<timestamp>` | Log, diagnostica della VM e `known_hosts` isolato; a fine esecuzione anche `<OutDir>.zip`. |
 | `-GitSshPort` | `2222` | Passo (e5): porta SSH del servizio git sulla VM. |
+| `-MirrorOriginPort` | `8443` | Passo e10 (GIT-201): porta HTTPS sulla VM dell'origine di prova del mirror in pull (lo stesso server di e9, che a quel punto e' fermo). |
 | `-PreviousRef` | primo genitore di `-Ref` (API GitHub) | Passo j (GIT-148): commit da installare prima dell'upgrade. Deve avere gia `gitstack upgrade` (GIT-147) e immagini e binario pubblicati dalla CI. |
 | `-SkipBackupRestore` / `-SkipUpgrade` | (assenti) | Saltano i passi h-i e j. Solo per il debug: una prova valida li esegue tutti. |
 | `-SkipReset` | (assente) | Salta il passo (a): riusa la VM nello stato attuale. Solo per il debug di questo script, mai per una prova valida. |
@@ -410,7 +411,8 @@ esecuzione verde sono **8 righe `[PASS]`** (7 nell'output reale di Atlas del 28/
 [PASS] e. UI, /api/healthz, create+read risorsa di prova, evento JetStream
 [PASS] e2. identity via gateway: sessione assente 401 unauthenticated, login inventato 401 invalid_credentials, /internal non esposto
 [PASS] f. idempotenza (seconda esecuzione, k3s non reinstallato, password invariata, healthz OK)
-... (d3, e3-e7, f2, f3 come sopra)
+... (d3, e3-e10, f2, f3 come sopra)
+[PASS] e10. mirror in pull (GIT-201): origine HTTPS sulla VM con la CA della VM, push sul mirror rifiutato (sola lettura), Sincronizza ora e main con lo stesso SHA dell origine
 [PASS] h. dati di prova ... e gitstack backup cifrato ...
 [PASS] i. reset, reinstallazione della stessa versione, gitstack restore ...
 [PASS] j. upgrade: installazione del commit precedente, dati, ... gitstack upgrade ...
@@ -450,6 +452,25 @@ Cosa controlla ciascun passo:
   (timeout 5s), quindi il conteggio e' un polling
   (`-JetStreamPollAttempts` tentativi ogni `-JetStreamPollIntervalSeconds`,
   default 6x5s), e ogni tentativo e' scritto nel log.
+- **e10.** (GIT-201, M-09/A7, mirror in pull) riusa l'impianto di e9 con il
+  server HTTPS della VM (`e2e/mirror-dest.py`, porta `-MirrorOriginPort`,
+  default 8443, certificato e CA della VM) come **origine**: nessun accesso a
+  Internet. Il passo: avvia l'origine con un commit (`remote.sh
+  mirror-dest-commit`, un commit fatto con i comandi idraulici sul repo bare);
+  fa fidare git della CA e mette `egress.allow` sull'IP della VM
+  (`mirror-enable`, stesso cablaggio di e9, tolto a fine passo); importa
+  l'origine come mirror con `POST /api/v1/repos/import` (`mode: mirror`,
+  utente e token di prova) e aspetta `state: in_sync` su
+  `GET /api/v1/repos/<utente>/<repo>/pull-mirror`; verifica che `main` del repo
+  mirror abbia lo SHA dell'origine e che il token non compaia nelle risposte;
+  prova che un `git push` sul repo mirror sia **rifiutato** con il codice
+  `mirror_read_only` (sola lettura, MP2); aggiunge un secondo commit
+  nell'origine, lancia «Sincronizza ora» (`POST .../pull-mirror/sync`, 202) e
+  aspetta che `main` abbia lo SHA del nuovo commit (fino a 3 minuti). In ogni
+  caso (anche dopo un fallimento) interrompe il mirror, elimina il repo di
+  prova, toglie il cablaggio e ferma l'origine. Se e5 non e' riuscito il passo
+  fallisce con `e5 non riuscito`. La scheda **Settings · Pull mirror** della UI
+  (GIT-200) non e' provata dal passo: usa solo l'API.
 - **f.** idempotenza: seconda esecuzione (`installer-run2.log`) -> exit 0,
   hash della password di Postgres invariato, `ActiveEnterTimestamp` di
   `k3s` invariato, `/api/healthz` ancora 200.
@@ -519,6 +540,21 @@ non compare.
 Alla fine: il riepilogo, il percorso dello zip `<OutDir>.zip` (log +
 diagnostica, **sempre creato**) e `RISULTATO: VERDE` o `RISULTATO: ROSSO`.
 Il codice di uscita e' diverso da zero se un passo e' fallito.
+
+### Istruzioni per il board: passo e10 (GIT-201)
+
+Dopo il reintegro di GIT-201, da PowerShell come amministratore, dalla radice
+di un checkout di `main`:
+
+```powershell
+git fetch origin; git checkout --detach origin/main
+.\deploy\test-vm\e2e.ps1 -Ref <SHA di main dopo il reintegro> -OutDir C:\gitstack-e2e\GIT-201
+```
+
+Il passo **e10** deve risultare `[PASS]` insieme agli altri. Nell'item si
+incolla il riepilogo PASS/FAIL e, se c'e' un errore, lo zip della diagnostica
+(`C:\gitstack-e2e\GIT-201.zip`). Non servono parametri nuovi:
+`-MirrorOriginPort` ha un default.
 
 ### Cosa mandare al team
 
