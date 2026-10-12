@@ -131,7 +131,7 @@ func (r *hardenRunner) Run(ctx context.Context, env []string, name string, args 
 		return nil, nil
 	case "k3s":
 		if args[0] == "--version" {
-			return []byte("k3s version " + r.installed + " (deadbeef)"+string(rune(10))), nil
+			return []byte("k3s version " + r.installed + " (deadbeef)" + string(rune(10))), nil
 		}
 		if args[0] == "secrets-encrypt" {
 			r.events = append(r.events, "k3s "+strings.Join(args, " "))
