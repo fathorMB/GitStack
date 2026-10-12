@@ -28,11 +28,11 @@ curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/insta
 
 L'installer installa k3s e i servizi allo stesso modo su tutti e quattro i sistemi. Di seguito le differenze che l'operatore o l'installer devono gestire.
 
-**cgroup v2.** Ubuntu 22.04 usa cgroup v2 di default; Ubuntu 24.04 e Pop!_OS 24.04 lo danno per scontato. L'installer verifica che `/sys/fs/cgroup/cgroup.controllers` esista (criterio del preflight); se manca, stampa un avviso e continua — k3s può fallire dopo, ma non è un blocco dell'installer.
+**cgroup v2.** Ubuntu 22.04 usa cgroup v2 di default; Ubuntu 24.04 e Pop!_OS 24.04 lo danno per scontato. Verificare che `/sys/fs/cgroup/cgroup.controllers` esista: è un requisito di k3s, non controllato dall'installer.
 
-**iptables vs nftables.** Ubuntu 22.04 usa `iptables-legacy` di default; Ubuntu 24.04 passa a `nftables` (con `iptables` come alias verso `iptables-nft`). k3s funziona con entrambi: l'installer non interviene, ma su una rete personalizzata un operatore potrebbe dover verificare le regole con `iptables -L` (legacy) o `iptables-nft -L` (nft).
+**iptables/nftables.** Dal 21.04 Ubuntu usa `iptables-nft` come alternativa di default (iptables-nft è un wrapper verso nftables, non `iptables-legacy`). k3s usa il proprio iptables interno o quello di sistema, e funziona con entrambe le versioni. Nessun intervento dell'installer necessario.
 
-**systemd-resolved.** Su Ubuntu 22.04 e 24.04 il resolver systemd (`systemd-resolved`) gestisce la risoluzione DNS; su Pop!_OS la configurazione è analoga. Se si usa `--host` con un nome DNS, verificare che resolved lo risolva (es. `systemd-resolve --status <nome>`). I pod di k3s usano il DNS del cluster, non resolved.
+**systemd-resolved.** Su Ubuntu 22.04 e 24.04 il resolver systemd (`systemd-resolved`) gestisce la risoluzione DNS; su Pop!_OS la configurazione è analoga. Se si usa `--host` con un nome DNS, verificare la risoluzione con `resolvectl query <nome>`. I pod di k3s usano il DNS del cluster, non systemd-resolved.
 
 **NetworkManager e firewall su Pop!_OS.** Pop!_OS usa NetworkManager per gestire le interfacce di rete. k3s crea le interfacce `cni0` e `flannel.*` durante l'installazione: per evitare che NetworkManager le gestisca, aggiungere la configurazione `/etc/NetworkManager/conf.d/10-k3s.conf` (o un file in `/etc/NetworkManager/conf.d/` con estensione `.conf`) con:
 
@@ -43,9 +43,9 @@ unmanaged-devices=interface-name:cni0;interface-name:flannel.*;interface-name:fl
 
 Pop!_OS include anche `ufw` (uncomplicated firewall) disabilitato di default; se attivo, aprire le porte 80, 443, 6443 e la porta SSH di git (default 2222). L'installer non modifica ufw.
 
-**AppArmor.** Le distribazioni basate su Ubuntu includono AppArmor, di default in modalità complain per i profili di sistema. Non dovrebbe bloccare i servizi k3s, ma su configurazioni hardenable verificare con `aa-status` che non ci siano profili in enforce che interferiscano.
+**AppArmor.** Le distribuzioni basate su Ubuntu includono AppArmor, di default in modalità complain per i profili di sistema. Non dovrebbe bloccare i servizi k3s, ma su configurazioni harden verificare con `aa-status` che non ci siano profili in enforce che interferiscano.
 
-**Comando `gitstack` e timer di backup.** Entrambi funzionano identicamente su tutti e quattro i sistemi. Il comando `gitstack` è installato in `/usr/local/bin/gitstack` (visibile con `sudo gitstack status`). Il timer di backup (`gitstack-backup.timer`) è configurato da k3s tramite manifest e non dipende dal sistema.
+**Comando `gitstack` e timer di backup.** Entrambi funzionano identicamente su tutti e quattro i sistemi (systemd è presente su tutti). Il comando `gitstack` è installato in `/usr/local/bin/gitstack` (visibile con `sudo gitstack status`). Il timer di backup (`gitstack-backup.timer`) è installato da `install.sh` in `enable_backup_timer` (riga ~1240): crea il file unit in `/etc/systemd/system/gitstack-backup.timer` e lancia `systemctl enable --now gitstack-backup.timer`, invocando `/usr/local/bin/gitstack backup` all'orario configurato (default alle 3:00).
 
 ### Requisiti: due profili (N1)
 
