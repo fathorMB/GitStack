@@ -765,7 +765,9 @@ func TestPullMirror_Import_CopiaUnaVoltaSola(t *testing.T) {
 func TestPullMirror_Import_PermessiEValidazione(t *testing.T) {
 	e := newPullEnv(t)
 	e.repo("esiste", true)
-	imp := func(user, body string) *httptest.ResponseRecorder { return e.do(http.MethodPost, "/repos/import", user, body) }
+	imp := func(user, body string) *httptest.ResponseRecorder {
+		return e.do(http.MethodPost, "/repos/import", user, body)
+	}
 	ok := fmt.Sprintf(`{"owner":"alice","name":"nuovo","url":%q,"mode":"once"}`, pullURL)
 
 	e.want(imp("bob", ok), http.StatusForbidden, "forbidden") // non è admin dell'owner
@@ -774,9 +776,9 @@ func TestPullMirror_Import_PermessiEValidazione(t *testing.T) {
 	}
 	e.want(imp("alice", fmt.Sprintf(`{"owner":"alice","name":"esiste","url":%q,"mode":"once"}`, pullURL)), http.StatusConflict, "conflict")
 	for name, body := range map[string]string{
-		"http":      `{"owner":"alice","name":"x1","url":"http://mirror.example.test/a.git","mode":"once"}`,
-		"loopback":  `{"owner":"alice","name":"x2","url":"https://127.0.0.1/a.git","mode":"once"}`,
-		"modo":      `{"owner":"alice","name":"x3","url":"https://mirror.example.test/a.git","mode":"boh"}`,
+		"http":       `{"owner":"alice","name":"x1","url":"http://mirror.example.test/a.git","mode":"once"}`,
+		"loopback":   `{"owner":"alice","name":"x2","url":"https://127.0.0.1/a.git","mode":"once"}`,
+		"modo":       `{"owner":"alice","name":"x3","url":"https://mirror.example.test/a.git","mode":"boh"}`,
 		"intervallo": `{"owner":"alice","name":"x4","url":"https://mirror.example.test/a.git","mode":"mirror","intervalSeconds":10}`,
 		"solo token": `{"owner":"alice","name":"x5","url":"https://mirror.example.test/a.git","mode":"once","token":"t"}`,
 	} {

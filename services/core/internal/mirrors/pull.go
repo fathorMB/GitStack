@@ -708,7 +708,7 @@ func NormalizeOrigin(raw string) string {
 	if strings.Contains(host, ":") {
 		host = "[" + host + "]"
 	}
-	if p := u.Port(); p != "" && !(p == "443" && strings.EqualFold(u.Scheme, "https")) {
+	if p := u.Port(); p != "" && (p != "443" || !strings.EqualFold(u.Scheme, "https")) {
 		host += ":" + p
 	}
 	path := strings.ToLower(strings.TrimRight(u.EscapedPath(), "/"))
