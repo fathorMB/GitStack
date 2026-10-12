@@ -150,7 +150,8 @@ describe('Schede del repo nelle pagine', () => {
     asRole('owner');
     renderAt('/acme/api-gateway/settings');
     expect(await screen.findByRole('region', { name: 'General' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /mirror/i })).toBeInTheDocument();
+    const mirrors = await screen.findAllByRole('region', { name: /mirror/i });
+    expect(mirrors.length).toBeGreaterThanOrEqual(2);
     expect(tab('Settings')).toHaveClass('active');
     expect(tab('Code')).not.toHaveClass('active');
     expect(tab('Issues')).not.toHaveClass('active');
