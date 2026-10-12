@@ -79,6 +79,8 @@ func fakeCosign(args []string) int {
 		case "--bundle":
 			i++
 			bundle = rest[i]
+		case "--allow-insecure-registry":
+			// ammesso solo verso un mirror http: lo prova il test
 		default:
 			if strings.HasPrefix(rest[i], "--") {
 				return fail("flag non ammesso: %s", rest[i])
@@ -368,6 +370,137 @@ func TestIsGitstackImage(t *testing.T) {
 	} {
 		if got := IsGitstackImage(img); got != want {
 			t.Errorf("%s: %v, atteso %v", img, got, want)
+		}
+	}
+}
+
+// --- mirror dei download e delle immagini (N9a) -------------------------------
+
+func (w *world) hitsWith(sub string) int {
+	w.hitMu.Lock()
+	defer w.hitMu.Unlock()
+	n := 0
+	for _, h := range w.hits {
+		if strings.Contains(h, sub) {
+			n++
+		}
+	}
+	return n
+}
+
+// Con network.download_mirror binario, chart, bundle e sorgente vengono dal
+// mirror e si verificano come quelli di GitHub.
+func TestV5MirrorDownloadVerificato(t *testing.T) {
+	w := newWorld(t)
+	w.o.DownloadMirror = w.srv.URL + "/mirror"
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	for _, p := range []string{
+		"/mirror/gitstack/sha-" + newSHA + "/gitstack-linux-amd64",
+		"/mirror/gitstack/sha-" + newSHA + "/gitstack-linux-amd64.sigstore.json",
+		"/mirror/gitstack/sha-" + newSHA + "/gitstack-0.1.0.tgz.sigstore.json",
+		"/mirror/gitstack/source/" + newSHA + ".tar.gz",
+	} {
+		if w.hitsWith(p) == 0 {
+			t.Errorf("non richiesto al mirror: %s", p)
+		}
+	}
+	if w.hitsWith("/gh/") != 0 {
+		t.Errorf("con il mirror non si va su GitHub: %v", w.hits)
+	}
+	var blob int
+	for _, c := range cosignCalls(t) {
+		if strings.HasPrefix(c, "verify-blob ") {
+			blob++
+		}
+	}
+	if blob != 2 {
+		t.Errorf("verify-blob=%d, attesi 2 (binario e chart dal mirror)", blob)
+	}
+}
+
+func TestV5MirrorDownloadSenzaBundleRifiutato(t *testing.T) {
+	w := newWorld(t)
+	w.o.DownloadMirror = w.srv.URL + "/mirror"
+	w.noBundle = true
+	runRefused(t, w, "bundle", "non risulta firmato")
+}
+
+func TestV5MirrorDownloadAlteratoRifiutato(t *testing.T) {
+	w := newWorld(t)
+	w.o.DownloadMirror = w.srv.URL + "/mirror"
+	w.binSigned = "BINARIO-ORIGINALE"
+	runRefused(t, w, "verifica firma cosign fallita")
+}
+
+func TestV5MirrorDownloadN9(t *testing.T) {
+	w := newWorld(t)
+	w.o.DownloadMirror = w.srv.URL + "/mirror"
+	w.noBundle = true
+	w.o.V5.AllowUnsigned = true
+	if err := os.WriteFile(w.imgSigners, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if calls := cosignCalls(t); len(calls) != 0 {
+		t.Errorf("con N9 cosign non va chiamato: %v", calls)
+	}
+}
+
+// Con un registry mirror l'immagine si verifica sul mirror (nome senza host,
+// --allow-insecure-registry solo se http) e senza firma lì è rifiutata.
+func TestV5MirrorImmaginiVerificate(t *testing.T) {
+	w := newWorld(t)
+	w.o.V5.RegistryMirror = "http://registry.corp:5000"
+	onMirror := "registry.corp:5000/fathormb/gitstack-core:sha-" + newSHA
+	if err := os.WriteFile(w.imgSigners, []byte(onMirror+" "+validIdentity+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Il nome nel chart ha un altro host: conta il percorso.
+	w.helm.images = "image: \"ghcr.io/fathormb/gitstack-core:sha-" + newSHA + "\"\n"
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	found := false
+	for _, c := range cosignCalls(t) {
+		if strings.HasPrefix(c, "verify ") && strings.Contains(c, onMirror) {
+			found = true
+			if !strings.Contains(c, "--allow-insecure-registry") {
+				t.Errorf("mirror http senza --allow-insecure-registry: %s", c)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("immagine non verificata sul mirror: %v", cosignCalls(t))
+	}
+}
+
+func TestV5MirrorImmaginiNonFirmateRifiutate(t *testing.T) {
+	w := newWorld(t)
+	w.o.V5.RegistryMirror = "https://registry.corp:5000"
+	// Le firme stanno solo sul registry originale: sul mirror non ci sono.
+	w.helm.images = "image: \"ghcr.io/fathormb/gitstack-core:sha-" + newSHA + "\"\n"
+	runRefused(t, w, "registry.corp:5000/fathormb/gitstack-core", "no signatures found")
+}
+
+func TestV5MirroredImage(t *testing.T) {
+	for _, c := range []struct {
+		mirror, in, want string
+		insecure         bool
+	}{
+		{"", "ghcr.io/o/gitstack-core:t", "ghcr.io/o/gitstack-core:t", false},
+		{"https://r.corp:5000/", "ghcr.io/o/gitstack-core:t", "r.corp:5000/o/gitstack-core:t", false},
+		{"http://r.corp:5000", "ghcr.io/o/gitstack-core@sha256:ab", "r.corp:5000/o/gitstack-core@sha256:ab", true},
+	} {
+		got, ins := V5Config{RegistryMirror: c.mirror}.mirroredImage(c.in)
+		if got != c.want || ins != c.insecure {
+			t.Errorf("%q con %q: %q,%v atteso %q,%v", c.in, c.mirror, got, ins, c.want, c.insecure)
 		}
 	}
 }

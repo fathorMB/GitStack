@@ -178,7 +178,7 @@ func (o *Options) Compare(ctx context.Context, t *Target) (Direction, error) {
 // FetchBinary scarica il binario della release e ne verifica lo SHA-256
 // (V5) prima di scriverlo in dest.
 func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (string, error) {
-	base := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-linux-amd64", o.releaseBase(), o.repo(), url.PathEscape(t.Tag))
+	base := o.assetBase(t.Tag) + "/gitstack-linux-amd64"
 	sum, err := o.get(ctx, base+".sha256", 4096, "")
 	if err != nil {
 		return "", fmt.Errorf("checksum del binario non disponibile: %w", err)
@@ -225,6 +225,25 @@ func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (stri
 	return want, nil
 }
 
+// assetBase è la cartella degli asset di una release (binario, chart, bundle):
+// la release GitHub, o con network.download_mirror <mirror>/gitstack/<tag>
+// (stessa struttura di deploy/install.sh). Cosa arriva da lì si verifica come
+// ciò che arriva da GitHub: stesso bundle, stessa identità.
+func (o *Options) assetBase(tag string) string {
+	if m := strings.TrimRight(o.DownloadMirror, "/"); m != "" {
+		return m + "/gitstack/" + url.PathEscape(tag)
+	}
+	return fmt.Sprintf("%s/%s/releases/download/%s", o.releaseBase(), o.repo(), url.PathEscape(tag))
+}
+
+// sourceURL è il tarball del sorgente del commit (GitHub o mirror).
+func (o *Options) sourceURL(sha string) string {
+	if m := strings.TrimRight(o.DownloadMirror, "/"); m != "" {
+		return m + "/gitstack/source/" + sha + ".tar.gz"
+	}
+	return fmt.Sprintf("%s/%s/tar.gz/%s", o.codeloadBase(), o.repo(), sha)
+}
+
 // fetchBundle scarica il bundle cosign in dest. Se non c'è è ErrBundleMissing.
 func (o *Options) fetchBundle(ctx context.Context, rawURL, dest string) error {
 	b, err := o.get(ctx, rawURL, 1<<20, "")
@@ -237,7 +256,7 @@ func (o *Options) fetchBundle(ctx context.Context, rawURL, dest string) error {
 // FetchChart scarica il sorgente del commit ed estrae deploy/gitstack in
 // dest (cartella nuova).
 func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error {
-	b, err := o.get(ctx, fmt.Sprintf("%s/%s/tar.gz/%s", o.codeloadBase(), o.repo(), t.SHA), maxTarball, "")
+	b, err := o.get(ctx, o.sourceURL(t.SHA), maxTarball, "")
 	if err != nil {
 		return fmt.Errorf("chart non disponibile: %w", err)
 	}
@@ -341,7 +360,7 @@ func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) er
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
 	tgz := filepath.Join(tmp, "gitstack-"+version+".tgz")
-	u := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-%s.tgz", o.releaseBase(), o.repo(), url.PathEscape(t.Tag), version)
+	u := fmt.Sprintf("%s/gitstack-%s.tgz", o.assetBase(t.Tag), version)
 	chart, err := o.get(ctx, u, maxTarball, "")
 	if err != nil {
 		return fmt.Errorf("chart firmato non disponibile nella release %s: %w", t.Tag, err)

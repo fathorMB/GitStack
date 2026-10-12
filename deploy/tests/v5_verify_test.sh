@@ -40,6 +40,7 @@ FAKE="${WORK}/cosign"
 cat >"${FAKE}" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >>"${FAKE_COSIGN_LOG:-/dev/null}"
+[ -z "${DOCKER_CONFIG:-}" ] || [ ! -f "${DOCKER_CONFIG}/config.json" ] || cat "${DOCKER_CONFIG}/config.json" >>"${FAKE_COSIGN_LOG:-/dev/null}"
 cmd="$1"; shift
 re=""; iss=""; bundle=""; pos=""
 while [ "$#" -gt 0 ]; do
@@ -47,6 +48,7 @@ while [ "$#" -gt 0 ]; do
     --certificate-identity-regexp) re="$2"; shift 2 ;;
     --certificate-oidc-issuer) iss="$2"; shift 2 ;;
     --bundle) bundle="$2"; shift 2 ;;
+    --allow-insecure-registry) echo "insecure-registry" >>"${FAKE_COSIGN_LOG:-/dev/null}"; shift ;;
     --*) echo "flag non ammesso: $1" >&2; exit 1 ;;
     *) pos="$1"; shift ;;
   esac
@@ -256,6 +258,115 @@ expect_ok "N9: immagini non firmate accettate"
 expect_has "N9: avviso immagini" "ECCEZIONE N9 ATTIVA"
 GITSTACK_ALLOW_UNSIGNED=0
 UNSIGNED_WARNED=0
+PATH="${PATH_ORIG}"
+
+# --- Mirror dei download (--download-mirror, N9a) --------------------------------
+# Ciò che arriva dal mirror si verifica come ciò che arriva da GitHub.
+MIRROR="${WORK}/mirror"
+mkdir -p "${MIRROR}/gitstack/sha-abc" "${MIRROR}/cosign/${COSIGN_VERSION}"
+cp "${WORK}/rel/sha-abc/gitstack-0.1.0.tgz" "${MIRROR}/gitstack/sha-abc/gitstack-0.1.0.tgz"
+printf 'BINARIO-DAL-MIRROR' >"${MIRROR}/gitstack/sha-abc/gitstack-linux-amd64"
+sha256sum "${MIRROR}/gitstack/sha-abc/gitstack-linux-amd64" | awk '{ print $1 }' >"${MIRROR}/gitstack/sha-abc/gitstack-linux-amd64.sha256"
+cp "${FAKE}" "${MIRROR}/cosign/${COSIGN_VERSION}/cosign-linux-amd64"
+GITSTACK_DOWNLOAD_MIRROR="${MIRROR}"
+GITSTACK_COSIGN_URL=""
+GITSTACK_ADMIN_BINARY=""
+GITSTACK_ADMIN_SHA256=""
+GITSTACK_ADMIN_REQUIRED=1
+MBIN="${MIRROR}/gitstack/sha-abc/gitstack-linux-amd64"
+MTGZ="${MIRROR}/gitstack/sha-abc/gitstack-0.1.0.tgz"
+
+run release_base sha-abc
+expect_has "mirror: release_base punta al mirror" "${MIRROR}/gitstack/sha-abc"
+run admin_default_url sha-abc
+expect_has "mirror: binario dal mirror" "${MIRROR}/gitstack/sha-abc/gitstack-linux-amd64"
+run cosign_url
+expect_has "mirror: cosign dal mirror" "${MIRROR}/cosign/${COSIGN_VERSION}/cosign-linux-amd64"
+
+# cosign dal mirror: checksum pinnato verificato anche lì.
+COSIGN_PATH="${WORK}/dalmirror/cosign"
+COSIGN_READY=0
+run ensure_cosign
+expect_ok "mirror: cosign dal mirror con checksum giusto"
+GITSTACK_COSIGN_SHA256="$(printf '1%.0s' $(seq 1 64))"
+COSIGN_PATH="${WORK}/dalmirror2/cosign"
+COSIGN_READY=0
+run ensure_cosign
+expect_fail "mirror: cosign dal mirror con checksum sbagliato"
+GITSTACK_COSIGN_SHA256="${FAKE_SHA}"
+COSIGN_PATH="${FAKE}"
+COSIGN_READY=0
+
+# binario dal mirror
+rm -f "${MBIN}.sigstore.json"
+run prepare_admin sha-abc
+expect_fail "mirror: binario senza bundle"
+expect_has "mirror: binario senza bundle, messaggio" "non risulta firmato"
+bundle_for "${MBIN}" "${OTHER_ID}"
+run prepare_admin sha-abc
+expect_fail "mirror: binario firmato da un'altra identità"
+printf 'ALTERATO' >"${MBIN}.alt" && bundle_for "${MBIN}.alt" "${VALID_ID}"
+cp "${MBIN}.alt.sigstore.json" "${MBIN}.sigstore.json"
+run prepare_admin sha-abc
+expect_fail "mirror: binario alterato (bundle di un altro contenuto)"
+bundle_for "${MBIN}" "${VALID_ID}"
+run prepare_admin sha-abc
+expect_ok "mirror: binario firmato dal workflow"
+expect_has "mirror: binario verificato" "Firma cosign verificata: il binario di gitstack"
+rm -f "${MBIN}.sigstore.json"
+GITSTACK_ALLOW_UNSIGNED=1
+UNSIGNED_WARNED=0
+run prepare_admin sha-abc
+expect_ok "mirror N9: binario non firmato accettato"
+expect_has "mirror N9: avviso" "ECCEZIONE N9 ATTIVA"
+GITSTACK_ALLOW_UNSIGNED=0
+UNSIGNED_WARNED=0
+
+# chart dal mirror
+mirror_chart_case() {
+  CHART_DIR="${WORK}/src/deploy/gitstack"
+  mkdir -p "${CHART_DIR}"
+  printf 'apiVersion: v2\nname: gitstack\nversion: 0.1.0\n' >"${CHART_DIR}/Chart.yaml"
+  rm -rf "${CHART_DIR}/templates"
+  verify_downloaded_chart abc "${WORK}/w"
+  [ -f "${CHART_DIR}/templates/a.yaml" ]
+}
+run mirror_chart_case
+expect_fail "mirror: chart senza bundle"
+expect_has "mirror: chart, URL del mirror" "${MIRROR}/gitstack/sha-abc/gitstack-0.1.0.tgz"
+bundle_for "${MTGZ}" "${OTHER_ID}"
+run mirror_chart_case
+expect_fail "mirror: chart firmato da un'altra identità"
+bundle_for "${MTGZ}" "${VALID_ID}"
+run mirror_chart_case
+expect_ok "mirror: chart firmato dal workflow"
+
+# immagini dal registry mirror
+GITSTACK_DOWNLOAD_MIRROR=""
+GITSTACK_REGISTRY_MIRROR="http://registry.corp:5000"
+GITSTACK_REGISTRY_USERNAME="puller"
+GITSTACK_REGISTRY_PASSWORD="segreto"
+PATH="${WORK}/bin:${PATH}"
+printf 'registry.corp:5000/o/gitstack-core:sha-abc %s\nregistry.corp:5000/o/gitstack-web:sha-abc %s\n' "${VALID_ID}" "${VALID_ID}" >"${FAKE_COSIGN_IMAGES}"
+: >"${FAKE_COSIGN_LOG}"
+run verify_deployed_images "${WORK}/src/deploy/gitstack" sha-abc
+expect_ok "mirror immagini: firmate sul mirror"
+if grep -q "registry.corp:5000/o/gitstack-core" "${FAKE_COSIGN_LOG}" && grep -q "^insecure-registry" "${FAKE_COSIGN_LOG}"; then ok; else RC=0; OUT="$(cat "${FAKE_COSIGN_LOG}")"; bad "mirror immagini: verifica sul mirror con --allow-insecure-registry"; fi
+if grep -q "ghcr.io" "${FAKE_COSIGN_LOG}"; then RC=0; OUT="$(cat "${FAKE_COSIGN_LOG}")"; bad "mirror immagini: non si va sul registry originale"; else ok; fi
+if grep -q '"registry.corp:5000"' "${FAKE_COSIGN_LOG}"; then ok; else RC=0; OUT="$(cat "${FAKE_COSIGN_LOG}")"; bad "mirror immagini: credenziali nel config docker temporaneo"; fi
+if grep -q "segreto" "${FAKE_COSIGN_LOG}"; then RC=0; OUT="password negli argomenti"; bad "mirror immagini: password mai negli argomenti"; else ok; fi
+printf 'registry.corp:5000/o/gitstack-core:sha-abc %s\n' "${VALID_ID}" >"${FAKE_COSIGN_IMAGES}"
+run verify_deployed_images "${WORK}/src/deploy/gitstack" sha-abc
+expect_fail "mirror immagini: immagine senza firma sul mirror"
+expect_has "mirror immagini: messaggio con l'immagine del mirror" "registry.corp:5000/o/gitstack-web"
+GITSTACK_ALLOW_UNSIGNED=1
+UNSIGNED_WARNED=0
+run verify_deployed_images "${WORK}/src/deploy/gitstack" sha-abc
+expect_ok "mirror N9: immagini senza firma accettate"
+GITSTACK_ALLOW_UNSIGNED=0
+UNSIGNED_WARNED=0
+GITSTACK_REGISTRY_MIRROR=""
+GITSTACK_REGISTRY_USERNAME=""
 PATH="${PATH_ORIG}"
 
 # --- Config e riepilogo --------------------------------------------------------

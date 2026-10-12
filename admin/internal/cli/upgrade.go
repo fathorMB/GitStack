@@ -99,15 +99,24 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		HelmBin:       a.helmBin(),
 		ExePath:       a.exePath(),
 		Repo:          a.Getenv("GITSTACK_REPO"),
-		Ref:           a.Getenv("GITSTACK_REF"),
-		Log:           a.Stdout,
+		// N9a: k3s si aggiorna dal mirror dei download, se configurato, e il
+		// proxy arriva dall'ambiente (exportProxyEnv in loadConfig).
+		K3sDownloadMirror: cfg.Network.DownloadMirror,
+		SystemdDir:        a.networkPaths().SystemdDir,
+		Ref:               a.Getenv("GITSTACK_REF"),
+		Log:               a.Stdout,
 		// V5: firme cosign di binario, chart e immagini, col cosign pinnato
 		// dall'installer. L'eccezione N9 è quella dell'installazione (config)
-		// o, per questo solo aggiornamento, il flag.
+		// o, per questo solo aggiornamento, il flag. Mirror dei download e delle
+		// immagini (N9a): anche ciò che ne arriva si verifica.
+		DownloadMirror: cfg.Network.DownloadMirror,
 		V5: upgrade.V5Config{
-			Repo:          a.Getenv("GITSTACK_REPO"),
-			CosignPath:    cfg.V5.CosignPath,
-			AllowUnsigned: cfg.V5.AllowUnsigned || *allowUnsigned,
+			Repo:             a.Getenv("GITSTACK_REPO"),
+			CosignPath:       cfg.V5.CosignPath,
+			AllowUnsigned:    cfg.V5.AllowUnsigned || *allowUnsigned,
+			RegistryMirror:   cfg.Network.RegistryMirror,
+			RegistryUsername: cfg.Network.RegistryUsername,
+			RegistryPassword: cfg.Network.RegistryPassword,
 		},
 	}
 	if o.V5.AllowUnsigned {

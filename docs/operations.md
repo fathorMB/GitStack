@@ -99,6 +99,13 @@ the admin binary if they differ, without touching k3s or the data.
 | `--postgres-ca-file FILE` | `GITSTACK_POSTGRES_CA_FILE` | — | PEM CA that signed the database server certificate (private CA with `verify-ca`/`verify-full`). |
 | `--values FILE` | — | — | Additional Helm values file (`-f`). Repeatable. |
 | `--set KEY=VALUE` | — | — | Additional Helm value (`--set`). Repeatable. |
+| `--http-proxy URL` | `GITSTACK_HTTP_PROXY` | — | Proxy for everything the server downloads and for the GitStack pods. See [Corporate network](#corporate-network-proxy-mirrors-and-ca). |
+| `--https-proxy URL` | `GITSTACK_HTTPS_PROXY` | (the HTTP proxy) | Proxy for `https://` destinations. |
+| `--no-proxy LIST` | `GITSTACK_NO_PROXY` | — | Comma-separated destinations that bypass the proxy (added to the cluster networks and suffixes, which never use it). |
+| `--registry-mirror URL` | `GITSTACK_REGISTRY_MIRROR` | — | Mirror for **all** images, k3s system images included (`registries.yaml`). |
+| `--registry-username U`, `--registry-password-file FILE` | `GITSTACK_REGISTRY_USERNAME`, `GITSTACK_REGISTRY_PASSWORD` | — | Optional mirror credentials. The password is never a command-line argument. |
+| `--download-mirror URL` | `GITSTACK_DOWNLOAD_MIRROR` | — | Mirror for the k3s, Helm and `gitstack` downloads. |
+| `--ca-bundle FILE` | `GITSTACK_CA_BUNDLE` | — | Corporate CA (PEM): trusted by the system, by containerd and by the pods. |
 
 Other environment variables: `INSTALL_K3S_VERSION`,
 `GITSTACK_BACKUP_DIR`, `GITSTACK_BACKUP_RETENTION`,
@@ -248,6 +255,128 @@ KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-
 ```
 
 On first login the admin must change this password.
+
+### Corporate network: proxy, mirrors and CA
+
+For a server that has no direct way out (rules N4 and N9). Every option is
+optional and they combine; the installer remembers them for the next run (the
+`network:` section of `/etc/gitstack/config.yaml`).
+
+```sh
+sudo ./deploy/install.sh \
+  --http-proxy http://proxy.corp:3128 --no-proxy registry.corp,git.corp \
+  --registry-mirror https://registry.corp:5000 \
+  --registry-username puller --registry-password-file /root/registry.pw \
+  --download-mirror https://files.corp/gitstack \
+  --ca-bundle /root/corp-ca.pem
+```
+
+| What | Where it applies |
+|---|---|
+| `--http-proxy`, `--https-proxy`, `--no-proxy` | The installer's own downloads (curl, the k3s script, Helm); **k3s and containerd** (systemd drop-in `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf`); the **GitStack pods** (chart values `proxy.http`, `proxy.https`, `proxy.noProxy`: webhooks, mirrors, OIDC, SMTP). `NO_PROXY` for k3s always includes `localhost`, `10.42.0.0/16`, `10.43.0.0/16`, `.svc`, `.cluster.local` and the machine's own IPv4 addresses (the API server reaches the kubelet on `<node IP>:10250`; if the address changes, run `gitstack config set network --no-proxy ...` again to refresh it). Without `--https-proxy` the HTTP proxy is used for `https://` too. |
+| `--registry-mirror` | `/etc/rancher/k3s/registries.yaml` (mode `0600`) with a `"*"` mirror: every image is requested from the mirror first, including k3s system images (pause, coredns, traefik...). The mirror must serve images under their original name without the registry host (`ghcr.io/fathormb/gitstack-core` is `fathormb/gitstack-core`), as a pull-through cache or a registry you filled yourself. With `--ca-bundle` and an `https://` mirror, `registries.yaml` also trusts the CA. |
+| `--download-mirror` | See the layout below. |
+| `--ca-bundle` | Copied to `/etc/gitstack/network/ca.crt`; added to the system trust store (`update-ca-certificates`); referenced by `registries.yaml`; ConfigMap `<release>-corporate-ca` (key `ca.crt`) mounted in core, git and identity (chart value `corporateCA.configMap`). The ConfigMap holds the system CAs **plus** the corporate CA: for git mirrors the chart *replaces* the system CAs with this file, so a mirror to a public host reached directly (in `--no-proxy`) keeps trusting the public CAs. The Go services trust it in addition to their own CAs. After a system CA update, re-run `install.sh` or `gitstack config set network --ca-bundle FILE` to refresh the ConfigMap. |
+
+**Download mirror layout** (paths under the URL you give):
+
+| Path | Content |
+|---|---|
+| `k3s/install.sh` | The k3s install script (from `https://get.k3s.io`) |
+| `k3s/releases/download/<version>/k3s` and `sha256sum-amd64.txt` | The k3s binary and its checksums (what the script downloads from GitHub releases) |
+| `helm/helm-<version>-linux-amd64.tar.gz` and `.sha256sum` | The Helm tarball |
+| `gitstack/<image-tag>/gitstack-linux-amd64`, `.sha256` and `.sigstore.json` | The `gitstack` binary, its checksum and its cosign bundle (V5) |
+| `gitstack/<image-tag>/gitstack-<chart-version>.tgz` and `.sigstore.json` | The signed Helm chart package and its cosign bundle (V5) |
+| `cosign/<version>/cosign-linux-amd64` | The pinned cosign (`v2.4.0`; its SHA-256 is still checked) |
+| `gitstack/source/<sha>.tar.gz`, `gitstack/source/<ref>.sha` | Repository source and the commit of a ref (only when running the script without a checkout) |
+
+The signature rules do not change (V5): k3s and Helm are verified against their
+SHA-256 checksums fetched from the same mirror, and the `gitstack` binary, the
+chart and the `gitstack-*` images are verified with cosign exactly as when they
+come from GitHub (same workflow identity and OIDC issuer, bundle required): a
+mirror must therefore carry the `.sigstore.json` bundles above and, for the
+images, the signatures (a pull-through cache of `ghcr.io` has them; a registry
+you filled yourself needs them copied with the images, for example with
+`cosign copy`). The images are verified on the `--registry-mirror` under their
+original name without the host, with the mirror credentials, and
+`--allow-insecure-registry` for an `http://` mirror. The proxy and the
+corporate CA apply to cosign as to the other downloads. A mirror without
+signatures is refused unless you state the exception explicitly with
+`--allow-unsigned-mirrors` (see V5 below); for a stronger guarantee on the
+binary also pass `--admin-sha256` from a trusted channel.
+Outbound rules (C8) do not change either: the GitStack services apply
+`egress.*` to the real destination before talking to the proxy.
+
+**Preflight.** Before touching the system, the installer tries to reach the
+proxy, the mirrors and (without a mirror) the usual sources (`get.k3s.io`, GitHub
+releases, `get.helm.sh`, `ghcr.io`, Docker Hub, `registry.k8s.io`), through the
+proxy, and lists what does not answer:
+
+```
+ERRORE: preflight di rete: non rispondono:
+  - mirror delle immagini: https://registry.corp:5000/v2/ non risponde (via proxy http://proxy.corp:3128)
+  - proxy: http://proxy.corp:3128 non raggiungibile (proxy.corp:3128)
+```
+
+With any network option a failure stops the installation; without options it is
+only a warning. A mirror that answers 401 to the supplied credentials is also
+reported. Internal hosts (the mirror itself, usually) belong in `--no-proxy`
+unless the proxy can reach them.
+
+**Changing it later.** `gitstack config set network` (root) changes the same
+settings. It checks reachability first and changes nothing if something does
+not answer (`--force` applies anyway), regenerates `registries.yaml`, the k3s
+drop-in and the CA copies, restarts k3s only if those files changed (and waits
+for the node to be `Ready`), then updates the chart (`helm upgrade
+--reuse-values`) and finally `config.yaml`.
+
+```sh
+sudo gitstack config set network --no-proxy registry.corp,git.corp,10.1.0.0/16
+sudo gitstack config set network --registry-mirror https://registry2.corp:5000 \
+  --registry-username puller --registry-password-file /root/registry.pw
+sudo gitstack config set network --http-proxy ""      # remove the proxy
+sudo gitstack config set network --clear              # remove everything
+```
+
+An option given with an empty value removes that setting. `gitstack upgrade`
+keeps the network values (they are Helm values) and uses the configured proxy
+for its own downloads. This includes the k3s update step (N10): with a
+`--download-mirror` configured, `gitstack upgrade` fetches the k3s install script
+and binary from `<mirror>/k3s/install.sh` and `<mirror>/k3s/releases` (the same
+layout as the installer), not from `get.k3s.io`; afterwards it removes the
+`*_PROXY` lines that the k3s script copies into `k3s.service.env`, so the systemd
+drop-in stays the only source. The mirror must therefore also hold the k3s
+version declared in `deploy/k3s-version` of the version you upgrade to.
+
+**External PostgreSQL (N8) on a corporate network.** The database speaks the
+PostgreSQL protocol over plain TCP, not HTTP: the proxy settings do not apply to
+it. The installer's Postgres preflight and the services connect to the database
+directly, and the network preflight does not probe it, so the database host
+needs no `--no-proxy` entry. Its CA (`--postgres-ca-file`, Secret `caSecret`,
+mounted at `/etc/gitstack/postgres-ca` and passed as `sslrootcert`) and the
+corporate CA (`corporateCA.configMap`, mounted at `/etc/gitstack/corporate-ca`,
+`SSL_CERT_DIR`) are separate volumes and do not override each other.
+
+**Test.** `deploy/test-network/run.sh all` (`seed`, then `verify`) installs
+GitStack on the Hyper-V test VM of `deploy/test-vm` (Ubuntu Server 24.04),
+restored to its `clean` checkpoint before every run. The VM has no direct way
+out: iptables rules in `OUTPUT` let through only the proxy and the mirror on the
+host. On the host, Docker runs a Squid proxy (which in `verify` denies the image
+registries, so images can only come from the mirror) and a `registry:2` mirror;
+`seed` fills the mirror with the images k3s really pulled. `verify` checks the
+closed network, the preflight failure, the installation through proxy and mirror,
+what the proxy and the registry logged, and `gitstack config set network`.
+
+Requirements: Hyper-V with the test VM created by `deploy/test-vm/new-vm.ps1`,
+PowerShell as administrator (the script restores the checkpoint with
+`reset-vm.ps1`), Docker (Linux engine), `ssh`, `curl` and `go`. Variables:
+`GITSTACK_TEST_VM_NAME` (default `gitstack-test-vm`), `GITSTACK_TEST_VM_KEY`
+(SSH private key, default `~/.ssh/gitstack_vm`), `GITSTACK_TEST_HOST_IP` (the
+host address as seen by the VM; default: the host address on the Default
+Switch). A container as the node was discarded: on Docker Desktop/WSL2 the
+kernel uses cgroup v1 and the k3s kubelet does not start there. The test does
+not run in CI. Unit tests: `deploy/tests/network_test.sh` (installer) and
+`admin/internal/cli/confignetwork_test.go` (`config set network`).
 
 ---
 
@@ -878,6 +1007,7 @@ Both need `sudo` on internal CA because they read/write under
 | `gitstack upgrade` | yes | Upgrade with preventive backup and automatic rollback |
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
+| `gitstack config set network [options]` | yes | Change proxy, registry mirror, download mirror and corporate CA (see [Corporate network](#corporate-network-proxy-mirrors-and-ca)) |
 
 \* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),
 so it fails as a non-root user with a permission error.
@@ -920,6 +1050,9 @@ so it fails as a non-root user with a permission error.
 |---|---|
 | `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
 | `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
+| `/etc/gitstack/network/ca.crt` | Corporate CA copy (only with `--ca-bundle`) |
+| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror (mode `0600`, may hold the mirror password) |
+| `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf` | Proxy for k3s and containerd |
 | `deploy/postgres-prepare.sql` | Script for the DBA: database and user for an external PostgreSQL |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
 

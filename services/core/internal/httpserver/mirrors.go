@@ -230,7 +230,7 @@ func (s *apiServer) CreateRepoMirror(w http.ResponseWriter, r *http.Request, own
 	if !decodeIssueJSON(w, r, &in, false) {
 		return
 	}
-	if !s.validateMirrorURL(w, in.Url) {
+	if !s.validateMirrorURL(w, in.Url) || s.rejectPullOrigin(w, r.Context(), sc.repo.ID, in.Url) {
 		return
 	}
 	if in.Token == nil {
@@ -279,7 +279,7 @@ func (s *apiServer) UpdateRepoMirror(w http.ResponseWriter, r *http.Request, own
 	if !decodeIssueJSON(w, r, &in, false) {
 		return
 	}
-	if in.Url != nil && !s.validateMirrorURL(w, *in.Url) {
+	if in.Url != nil && (!s.validateMirrorURL(w, *in.Url) || s.rejectPullOrigin(w, r.Context(), sc.repo.ID, *in.Url)) {
 		return
 	}
 	if !validateMirrorCredential(w, in.Username, in.Token) {

@@ -184,6 +184,9 @@ type world struct {
 	chartTgz   []byte // chart firmato pubblicato nella release
 	chartSign  []byte // contenuto firmato per il chart (nil: chartTgz)
 	imgSigners string // file delle immagini firmate (per il cosign finto)
+
+	hitMu sync.Mutex
+	hits  []string // percorsi richiesti al server
 }
 
 func newWorld(t *testing.T) *world {
@@ -209,6 +212,9 @@ func newWorld(t *testing.T) *world {
 	sum := sha256.Sum256([]byte(newBin))
 	w.srv = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
+		w.hitMu.Lock()
+		w.hits = append(w.hits, p)
+		w.hitMu.Unlock()
 		switch {
 		case strings.HasSuffix(p, "/commits/"+newSHA), strings.HasSuffix(p, "/commits/main"), strings.HasSuffix(p, "/commits/2222222"):
 			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
@@ -250,7 +256,7 @@ func newWorld(t *testing.T) *world {
 				signed = w.chartSign
 			}
 			_, _ = rw.Write(fakeBundle(signed, w.identity()))
-		case strings.HasSuffix(p, "/tar.gz/"+newSHA):
+		case strings.HasSuffix(p, "/tar.gz/"+newSHA), strings.HasSuffix(p, "/gitstack/source/"+newSHA+".tar.gz"):
 			_, _ = rw.Write(chartTarball(t, newSHA, w.k3sFile))
 		default:
 			http.NotFound(rw, r)
