@@ -16,11 +16,12 @@ var CosignPath = "cosign"
 // V5Config raccoglie i parametri di verifica V5 (sigstore/cosign).
 // OIDCIssuer è fissato; AllowUnverified consente di saltare
 // la verifica (eccezione per mirror interni non firmati, N9).
-// Identity non viene più passato a cosign: si usa sempre
+// Identity non viene passato a cosign: si usa sempre
 // --certificate-identity-regexp ".*" come la CI (ci.yml).
 type V5Config struct {
-	// Identity del certificato firmato (workflow URL). Attualmente non usato
-	// per la verifica (si usa sempre --certificate-identity-regexp ".*" come la CI).
+	// Identity del certificato firmato (workflow URL).
+	// Non viene passato a cosign: la verifica usa sempre
+	// --certificate-identity-regexp ".*" (corrisponde a qualsiasi identità).
 	// Mantenuto per compatibilità con config.yaml esistenti.
 	Identity string
 	// OIDCIssuer è l'issuer OIDC (token.actions.githubusercontent.com).
@@ -42,10 +43,12 @@ func DefaultV5Main() V5Config {
 }
 
 // DefaultV5Tag restituisce la configurazione V5 per i tag di rilascio.
-// Usa un regexp per l'identità in modo da coprire tutti i workflow branch.
+// Usa --certificate-identity-regexp ".*" (corrisponde a qualsiasi identità):
+// la verifica dipende dal bundle .sigstore.json contenuto nella release,
+// non dal nome del tag (per i tag si fida del bundle).
 func DefaultV5Tag() V5Config {
 	return V5Config{
-		Identity:        "",
+		Identity:        "", // non usato: la verifica usa --certificate-identity-regexp ".*"
 		OIDCIssuer:      "https://token.actions.githubusercontent.com",
 		AllowUnverified: false,
 		CosignPath:      CosignPath,
@@ -96,9 +99,9 @@ func (v V5Config) verifyBlob(ctx context.Context, path string) error {
 		bin = CosignPath
 	}
 
-	// Usiamo sempre --certificate-identity-regexp ".*" come fa la CI
-	// di ci.yml (linea 864): non fissa l'identità del firmatario, ma
-	// verifica solo l'issuer OIDC e il bundle (che contiene il certificato).
+	// --certificate-identity-regexp ".*" come ci.yml (linea 864):
+	// il bundle .sigstore.json contenuto nella release è la prova
+	// che l'artefatto è stato firmato dalla CI (keyless OIDC).
 	args := []string{"verify-blob", "--bundle", bundlePath, path}
 	args = append([]string{"--certificate-identity-regexp", ".*"}, args...)
 	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)
@@ -126,9 +129,9 @@ func (v V5Config) verifyImage(ctx context.Context, image string) error {
 		bin = CosignPath
 	}
 
-	// Usiamo sempre --certificate-identity-regexp ".*" come fa la CI
-	// di ci.yml (linea 843): non fissa l'identità del firmatario, ma
-	// verifica solo l'issuer OIDC e il bundle (che contiene il certificato).
+	// --certificate-identity-regexp ".*" come ci.yml (linea 843):
+	// il bundle .sigstore.json contenuto nella release è la prova
+	// che l'immagine è stata firmata dalla CI (keyless OIDC).
 	args := []string{"verify", image}
 	args = append([]string{"--certificate-identity-regexp", ".*"}, args...)
 	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)

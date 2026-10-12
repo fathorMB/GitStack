@@ -176,6 +176,33 @@ func TestV5IdentityRegexVerifies(t *testing.T) {
 	}
 }
 
+// TestV5AllowUnverifiedN9Accepts verifica che AllowUnverified=true (N9)
+// accetti senza errore anche senza bundle.
+func TestV5AllowUnverifiedN9Accepts(t *testing.T) {
+	v := V5Config{
+		AllowUnverified: true,
+		Identity:        "https://example.com/workflow",
+		OIDCIssuer:      "https://token.actions.githubusercontent.com",
+	}
+	// Anche senza bundle, N9 salta la verifica.
+	err := v.VerifyBinary(context.Background(), "/tmp/non-esiste")
+	if err != nil {
+		t.Fatalf("N9 (AllowUnverified=true) non dovrebbe fallire: %v", err)
+	}
+
+	// Lo stesso per VerifyChart.
+	err = v.VerifyChart(context.Background(), "/tmp/non-esiste-chart")
+	if err != nil {
+		t.Fatalf("N9 (AllowUnverified=true) chart non dovrebbe fallire: %v", err)
+	}
+
+	// Lo stesso per VerifyImage.
+	err = v.VerifyImage(context.Background(), "ghcr.io/test:latest")
+	if err != nil {
+		t.Fatalf("N9 (AllowUnverified=true) immagine non dovrebbe fallire: %v", err)
+	}
+}
+
 // execCommand è la funzione usata per creare i comandi (test: mock).
 var execCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, name, args...)

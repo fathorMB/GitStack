@@ -780,3 +780,42 @@ func downloadBinary(url, dest string) error {
 	}
 	return os.WriteFile(dest, io.ReadAll(resp.Body), 0o755)
 }
+
+// TestV5RunAcceptsWithN9 verifica che, con AllowUnverified=true (N9),
+// il flusso Run completo passi anche senza un cosign reale.
+func TestV5RunAcceptsWithN9(t *testing.T) {
+	w := newWorld(t)
+	w.o.V5 = V5Config{
+		AllowUnverified: true,
+		Identity:        "https://example.com/workflow",
+		OIDCIssuer:      "https://token.actions.githubusercontent.com",
+	}
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if got := readFile(t, w.exe); got != newBin {
+		t.Errorf("binario: %q", got)
+	}
+}
+
+// TestV5RunRejectsWithNoBundle verifica che, senza bundle cosign,
+// il flusso Run completo rifiuti l'upgrade.
+func TestV5RunRejectsWithNoBundle(t *testing.T) {
+	w := newWorld(t)
+	w.o.V5 = V5Config{
+		AllowUnverified: false,
+		OIDCIssuer:      "https://token.actions.githubusercontent.com",
+		CosignPath:      "/non/esiste/cosign",
+	}
+	res, err := Run(context.Background(), w.o)
+	if err == nil {
+		t.Fatal("atteso rifiuto senza bundle")
+	}
+	if res.Outcome != Refused {
+		t.Fatalf("esito non Refused: %+v", res)
+	}
+	if !strings.Contains(err.Error(), "bundle") && !strings.Contains(err.Error(), "cosign") {
+		t.Fatalf("errore inatteso: %v", err)
+	}
+}
