@@ -20,7 +20,9 @@
 --     identity; schema core), come con il Postgres interno;
 --   * un database dedicato, di cui l'utente è proprietario: GitStack non
 --     usa mai il database `postgres` né altri database;
---   * nessun permesso per gli altri utenti sul database (REVOKE da PUBLIC).
+--   * nessun REVOKE di CONNECT da PUBLIC: il ruolo applicativo che GitStack
+--     crea per identity (identity_app) deve potersi connettere. Se la tua
+--     politica lo vieta, concedi CONNECT a identity_app dopo l'installazione.
 --
 -- Cosa NON serve: superuser, estensioni, replica. PostgreSQL supportato: 15,
 -- 16 e 17.
@@ -70,7 +72,6 @@ SELECT format('CREATE DATABASE %I OWNER %I', :'gs_db', :'gs_user')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'gs_db')
 \gexec
 
-SELECT format('REVOKE ALL ON DATABASE %I FROM PUBLIC', :'gs_db') \gexec
 SELECT format('GRANT ALL ON DATABASE %I TO %I', :'gs_db', :'gs_user') \gexec
 
 \echo 'Pronto: database' :gs_db 'e utente' :gs_user '.'

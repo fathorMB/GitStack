@@ -36,6 +36,25 @@ type Server struct {
 	Container string
 	Port      int
 	Major     int
+	// Client, se non vuoto, è il container da cui girano psql e pg_dump:
+	// vedi WithClient.
+	Client string
+}
+
+// WithClient avvia un container client postgres:<major>-alpine nello stesso
+// spazio di rete del server: è la forma del pod client del chart
+// (templates/postgres/client-deployment.yaml, stessa versione principale
+// del server). Da qui Exec esegue i comandi nel client.
+func (s *Server) WithClient(t testing.TB, major int) {
+	t.Helper()
+	image := fmt.Sprintf("postgres:%d-alpine", major)
+	out, err := exec.Command("docker", "run", "-d", "--rm", "--network", "container:"+s.Container,
+		"--entrypoint", "sleep", image, "3600").CombinedOutput()
+	if err != nil {
+		t.Fatalf("docker run client %s: %v: %s", image, err, out)
+	}
+	s.Client = strings.TrimSpace(string(out))
+	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", s.Client).Run() })
 }
 
 // Start avvia postgres:<major>-alpine e aspetta che accetti connessioni TCP.
@@ -171,7 +190,11 @@ func (s *Server) Exec(ctx context.Context, env []string, stdin io.Reader, stdout
 	for _, e := range env {
 		full = append(full, "-e", e)
 	}
-	full = append(full, s.Container)
+	target := s.Container
+	if s.Client != "" {
+		target = s.Client
+	}
+	full = append(full, target)
 	full = append(full, args...)
 	cmd := exec.CommandContext(ctx, "docker", full...)
 	cmd.Stdin = stdin

@@ -100,6 +100,8 @@ type Database struct {
 	VersionLive bool   `json:"version_live"`
 	// Error: con il database esterno, perché non si è potuto interrogare.
 	Error string `json:"error,omitempty"`
+	// Warning: un'incongruenza che non ferma il servizio (versione del client).
+	Warning string `json:"warning,omitempty"`
 }
 
 // Healthy è vero se il cluster risponde, ogni servizio è pronto e l'API
@@ -147,11 +149,40 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.ServerVersion = serverVersion(svcs, cfg)
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
 	r.Database = c.database(ctx, cfg, r.ClusterError == "")
+	r.Database.warnClientMismatch(svcs)
 	r.LastBackup = lastBackupState(configDir)
 	return r
 }
 
 const versionQuery = `exec psql -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SHOW server_version"`
+
+// warnClientMismatch avvisa se il pod client (pg_dump, psql) ha una versione
+// principale diversa dal server: i dump non si ripristinerebbero.
+func (d *Database) warnClientMismatch(svcs []Service) {
+	if d.Mode != "external" || d.Version == "" || d.Error != "" {
+		return
+	}
+	major := leadingInt(d.Version)
+	for _, s := range svcs {
+		if !strings.HasSuffix(s.Name, "-pgclient") {
+			continue
+		}
+		if cm := leadingInt(imageTag(s.Image)); cm != 0 && major != 0 && cm != major {
+			d.Warning = fmt.Sprintf("il pod client ha PostgreSQL %d ma il server è %d: backup e restore potrebbero fallire. Imposta postgres.external.client.image.tag=%d-alpine (helm upgrade)", cm, major, major)
+		}
+	}
+}
+
+func leadingInt(s string) int {
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			break
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
+}
 
 // database ricava modo e versione di Postgres. La versione si legge dal pod
 // del database (statefulset bundle o pod client del database esterno).

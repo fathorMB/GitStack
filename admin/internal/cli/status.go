@@ -77,6 +77,9 @@ func printDatabase(p func(string, ...any), d status.Database) {
 	if d.Error != "" {
 		p("  ATTENZIONE: %s", d.Error)
 	}
+	if d.Warning != "" {
+		p("  AVVISO: %s", d.Warning)
+	}
 }
 
 func printReport(w io.Writer, binVersion string, r *status.Report) {
