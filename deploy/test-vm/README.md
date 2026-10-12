@@ -548,7 +548,7 @@ di un checkout di `main`:
 
 ```powershell
 git fetch origin; git checkout --detach origin/main
-.\deploy	est-vm\e2e.ps1 -Ref <SHA di main dopo il reintegro> -OutDir C:\gitstack-e2e\GIT-201
+.\deploy\test-vm\e2e.ps1 -Ref <SHA di main dopo il reintegro> -OutDir C:\gitstack-e2e\GIT-201
 ```
 
 Il passo **e10** deve risultare `[PASS]` insieme agli altri. Nell'item si

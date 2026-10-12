@@ -358,10 +358,8 @@ mirror_dest_commit() {
   local msg="${1:?messaggio}" dir="${MIRROR_DIR}/repos/mirror.git"
   local blob tree parent commit
   [ -d "${dir}" ] || fail "manca il repo bare della destinazione"
-  blob="$(printf '%s
-' "${msg}" | git --git-dir="${dir}" hash-object -w --stdin)" || fail "hash-object non riuscito"
-  tree="$(printf '100644 blob %s	origine.txt
-' "${blob}" | git --git-dir="${dir}" mktree)" || fail "mktree non riuscito"
+  blob="$(printf '%s\n' "${msg}" | git --git-dir="${dir}" hash-object -w --stdin)" || fail "hash-object non riuscito"
+  tree="$(printf '100644 blob %s\torigine.txt\n' "${blob}" | git --git-dir="${dir}" mktree)" || fail "mktree non riuscito"
   parent="$(git --git-dir="${dir}" rev-parse --verify -q refs/heads/main || true)"
   export GIT_AUTHOR_NAME="E2E" GIT_AUTHOR_EMAIL="e2e@example.com" GIT_COMMITTER_NAME="E2E" GIT_COMMITTER_EMAIL="e2e@example.com"
   if [ -n "${parent}" ]; then
