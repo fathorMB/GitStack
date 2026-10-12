@@ -64,7 +64,7 @@ The installer:
 
 1. Checks OS, CPU, RAM, disk, port availability, and hostname resolution
    (skip with `--skip-preflight` only if you have already verified).
-2. Installs k3s (`v1.36.4+k3s1`, pinned) and Helm (`v3.16.3`, pinned).
+2. Installs k3s (pinned in `deploy/k3s-version`, today `v1.36.4+k3s1`) and Helm (`v3.16.3`, pinned).
 3. Generates an internal CA and a server certificate (see [HTTPS](#https)).
 4. Pulls GitStack images and deploys the Helm chart (`deploy/gitstack`) with
    `helm upgrade --install`.
@@ -674,10 +674,13 @@ sudo gitstack upgrade
 Steps executed:
 
 1. **Checks** (same as dry-run): target version, no downgrade, current
-   health, binary with checksum, chart and images exist. If any check
+   health, binary with checksum, chart and images exist, and the k3s
+   version the target declares (see *Upgrading k3s*). If any check
    fails, exit `6` (`ExitRefused`), nothing changed.
 2. **Preventive backup** of the current state (same options as
    `gitstack backup`).
+2b. **k3s**, only if the target declares another version: patch in
+   automatic, minor with `--k3s`; short outage announced.
 3. **Helm upgrade** of the chart (migrations run when services start),
    then wait for all services to become healthy (default timeout 10 min;
    override with `--timeout`).
@@ -709,6 +712,7 @@ sudo gitstack upgrade --to v0.2.0 --dest /mnt/backup/gitstack \
 | `--dest DIR` | Override backup destination directory | `backup.destination` from config |
 | `--key-file FILE` | Path to AES-256-GCM encryption key | none (unencrypted backup) |
 | `--timeout D` | Max time for service health checks | `10m` |
+| `--k3s` | Allow updating k3s to a new minor (one at a time); patches need no flag | off |
 | `--set KEY=VAL` | Helm value override | — (repeatable) |
 | `--values FILE` | Additional Helm values file | — (repeatable) |
 
@@ -726,6 +730,69 @@ Environment variables: `GITSTACK_REPO` (default `fathorMB/GitStack`),
 | `7` | **Rolled back** — the upgrade failed and the previous state was restored automatically |
 | `8` | **Broken** — the upgrade failed and the rollback also failed; manual intervention required |
 | `70` | Unexpected error (backup, network, or other unrecoverable failure) |
+
+### Upgrading k3s (rule N10)
+
+Each GitStack version declares the k3s version it was tested with in
+`deploy/k3s-version` (one line, e.g. `v1.36.4+k3s1`). `install.sh` installs
+that version and `gitstack upgrade` compares it with the one running
+(`k3s --version`; `gitstack status` shows both):
+
+| Change | What `gitstack upgrade` does |
+|---|---|
+| Same version | nothing to do for k3s |
+| **Patch** (`v1.36.4` → `v1.36.7`, or a new `+k3sN` revision) | updates k3s **automatically**, after the preventive backup, announcing a short outage |
+| **Minor** (`v1.36` → `v1.37`) | refused without the flag, with the explanation; with `--k3s` it proceeds, one minor at a time |
+| More than one minor ahead | refused even with `--k3s`: upgrade to a GitStack version tested with the intermediate minor first |
+| k3s newer than the declared one | refused: k3s is never downgraded automatically (see below) |
+
+Order of the steps (always): **preventive backup → k3s → GitStack**. The checks
+come first and change nothing, so a refusal leaves the system untouched.
+While k3s restarts, all services stop for a few minutes: schedule the upgrade
+accordingly. `--dry-run` (add `--k3s` to see a minor) prints the plan.
+
+```sh
+sudo gitstack upgrade --dry-run --k3s   # what would change
+sudo gitstack upgrade --k3s             # k3s minor + GitStack
+```
+
+If the k3s step fails, GitStack is **not** upgraded (the chart stays as it
+was), the command exits `70` and prints the path of the preventive backup.
+There is no automatic rollback of k3s: follow the procedure below.
+
+### Rolling back k3s
+
+Not automatic, on purpose: Kubernetes does not support downgrading the
+datastore across minors. Use the preventive backup printed by
+`gitstack upgrade` (or the latest in `backup.destination`).
+
+**After a patch update** (same minor): the datastore is compatible, so it is
+enough to reinstall the previous version with the same options as the
+installer:
+
+```sh
+curl -sfL https://get.k3s.io | sudo INSTALL_K3S_VERSION=v1.36.4+k3s1 \
+  INSTALL_K3S_EXEC="server --write-kubeconfig-mode 644" sh -
+k3s --version            # the version you asked for
+sudo gitstack status     # wait until all services are ready
+```
+
+**After a minor update**: k3s cannot go back over the existing datastore.
+Rebuild the cluster on the old version and restore the backup:
+
+1. Keep the backup archive (and its key, if encrypted) **outside** the cluster
+   (`/var/lib/rancher/k3s` is deleted by the next step).
+2. `sudo /usr/local/bin/k3s-uninstall.sh` — removes k3s and **all the
+   cluster data**, including the volumes of the services.
+3. Reinstall GitStack with the *old* GitStack version and its k3s:
+   `sudo INSTALL_K3S_VERSION=<old k3s> GITSTACK_IMAGE_TAG=<old tag> ./install.sh`
+   from a checkout of that version (the old tag is in the backup file name,
+   `sha-...`).
+4. `sudo gitstack restore <archive>` (same server version as the archive,
+   see *Restore*) and `gitstack status` until the state is `sano`.
+
+Data written after the preventive backup is lost; run `gitstack backup`
+first if the instance is still reachable and you want to compare.
 
 ---
 

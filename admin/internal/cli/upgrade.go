@@ -36,6 +36,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	keyFile := fs.String("key-file", "", "file con la chiave per cifrare il backup preventivo (AES-256-GCM)")
 	timeout := fs.Duration("timeout", upgrade.DefaultTimeout, "tempo massimo per l'aggiornamento dei servizi e per la loro salute")
 	dry := fs.Bool("dry-run", false, "esegue solo i controlli sulla destinazione, senza modificare nulla")
+	k3sMinor := fs.Bool("k3s", false, "consente l'aggiornamento di k3s a una nuova minore (una alla volta); le patch si applicano da sole")
 	var sets, values multiFlag
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
@@ -82,22 +83,27 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	col := &status.Collector{Runner: a.Runner, HTTP: a.HTTP, LookPath: a.LookPath}
 	configDir := a.configDir(path)
 	o := &upgrade.Options{
-		Cfg:        cfg,
-		ConfigFile: bo.ConfigFile,
-		Cluster:    cl,
-		Runner:     a.Runner,
-		Health:     func(ctx context.Context) *status.Report { return col.Collect(ctx, cfg, configDir) },
-		Backup:     *bo,
-		To:         *to,
-		DryRun:     *dry,
-		Timeout:    *timeout,
-		Sets:       sets,
-		ValueFiles: values,
-		HelmBin:    a.helmBin(),
-		ExePath:    a.exePath(),
-		Repo:       a.Getenv("GITSTACK_REPO"),
-		Ref:        a.Getenv("GITSTACK_REF"),
-		Log:        a.Stdout,
+		Cfg:           cfg,
+		ConfigFile:    bo.ConfigFile,
+		Cluster:       cl,
+		Runner:        a.Runner,
+		Health:        func(ctx context.Context) *status.Report { return col.Collect(ctx, cfg, configDir) },
+		Backup:        *bo,
+		To:            *to,
+		DryRun:        *dry,
+		AllowK3sMinor: *k3sMinor,
+		Timeout:       *timeout,
+		Sets:          sets,
+		ValueFiles:    values,
+		HelmBin:       a.helmBin(),
+		ExePath:       a.exePath(),
+		Repo:          a.Getenv("GITSTACK_REPO"),
+		// N9a: k3s si aggiorna dal mirror dei download, se configurato, e il
+		// proxy arriva dall'ambiente (exportProxyEnv in loadConfig).
+		K3sDownloadMirror: cfg.Network.DownloadMirror,
+		SystemdDir:        a.networkPaths().SystemdDir,
+		Ref:           a.Getenv("GITSTACK_REF"),
+		Log:           a.Stdout,
 	}
 	if status.ServesCA(cfg) {
 		o.CheckCA = func(ctx context.Context) error { return status.CheckCA(ctx, cfg, nil) }

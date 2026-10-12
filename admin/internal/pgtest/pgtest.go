@@ -53,7 +53,7 @@ func (s *Server) WithClient(t testing.TB, major int) {
 	if err != nil {
 		t.Fatalf("docker run client %s: %v: %s", image, err, out)
 	}
-	s.Client = strings.TrimSpace(string(out))
+	s.Client = containerID(out)
 	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", s.Client).Run() })
 }
 
@@ -136,18 +136,10 @@ func start(t testing.TB, major int, tlsEnv []string) *Server {
 	if err != nil {
 		t.Fatalf("docker run %s: %v: %s", image, err, out)
 	}
-	s := &Server{Container: strings.TrimSpace(string(out)), Major: major}
+	s := &Server{Container: containerID(out), Major: major}
 	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", s.Container).Run() })
 
-	pout, err := exec.Command("docker", "port", s.Container, "5432/tcp").CombinedOutput()
-	if err != nil {
-		t.Fatalf("docker port: %v: %s", err, pout)
-	}
-	line := strings.Split(strings.TrimSpace(string(pout)), "\n")[0]
-	s.Port, err = strconv.Atoi(line[strings.LastIndex(line, ":")+1:])
-	if err != nil {
-		t.Fatalf("porta non leggibile da %q", line)
-	}
+	s.Port = publishedPort(t, s.Container)
 	// Il container avvia un server temporaneo solo su socket unix per
 	// l'init, poi quello definitivo: la prova via TCP dentro il container
 	// ripetuta due volte distingue i due.
@@ -168,6 +160,41 @@ func start(t testing.TB, major int, tlsEnv []string) *Server {
 	}
 	t.Fatalf("postgres %d non pronto in 90 s", major)
 	return nil
+}
+
+// containerID estrae l'id del container dall'output di `docker run -d`. Se
+// l'immagine non è in locale, docker scrive prima le righe del pull
+// ("Unable to find image ... locally", "Pulling from library/postgres"...)
+// e l'id è solo l'ultima riga: sul runner di CI questo faceva diventare il
+// "nome" del container un testo con barre, e `docker port` rispondeva 404
+// «page not found».
+func containerID(out []byte) string {
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	return strings.TrimSpace(lines[len(lines)-1])
+}
+
+// publishedPort legge la porta host pubblicata per 5432/tcp con docker
+// inspect, riprovando finché non c'è; se non arriva, stampa docker version e
+// docker logs del container.
+func publishedPort(t testing.TB, container string) int {
+	t.Helper()
+	const format = `{{with index .NetworkSettings.Ports "5432/tcp"}}{{(index . 0).HostPort}}{{end}}`
+	var last string
+	for i := 0; i < 20; i++ {
+		out, err := exec.Command("docker", "inspect", "--format", format, container).CombinedOutput()
+		last = strings.TrimSpace(string(out))
+		if err == nil {
+			if p, perr := strconv.Atoi(last); perr == nil && p > 0 {
+				return p
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	ver, _ := exec.Command("docker", "version").CombinedOutput()
+	logs, _ := exec.Command("docker", "logs", "--tail", "50", container).CombinedOutput()
+	t.Fatalf("porta 5432/tcp non pubblicata per il container %q (ultimo output %q)\ndocker version:\n%s\ndocker logs:\n%s",
+		container, last, ver, logs)
+	return 0
 }
 
 func skipOrFail(t testing.TB, why string) {

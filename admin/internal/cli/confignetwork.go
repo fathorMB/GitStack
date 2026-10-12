@@ -15,12 +15,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/fathorMB/GitStack/admin/internal/config"
+	"github.com/fathorMB/GitStack/admin/internal/upgrade"
 )
 
 // Percorsi di rete aziendale (N9). Come per GITSTACK_TLS_DIR, i test li
@@ -207,31 +207,6 @@ func writeIfChanged(path, content string, mode os.FileMode) (bool, error) {
 		return false, err
 	}
 	return true, os.Rename(tmp.Name(), path)
-}
-
-var proxyEnvLine = regexp.MustCompile(`(?i)^(http_proxy|https_proxy|no_proxy)=`)
-
-// stripK3sEnvProxy toglie le variabili di proxy da k3s.service.env, dove le
-// mette lo script di k3s se le vede nell'ambiente: il drop-in resta l'unica
-// fonte. Best effort.
-func stripK3sEnvProxy(systemdDir string) {
-	p := filepath.Join(systemdDir, "k3s.service.env")
-	b, err := os.ReadFile(p)
-	if err != nil {
-		return
-	}
-	var out []string
-	changed := false
-	for _, l := range strings.Split(string(b), "\n") {
-		if proxyEnvLine.MatchString(l) {
-			changed = true
-			continue
-		}
-		out = append(out, l)
-	}
-	if changed {
-		_ = os.WriteFile(p, []byte(strings.Join(out, "\n")), 0o600)
-	}
 }
 
 // readCABundle legge un file PEM e controlla che contenga almeno un
@@ -555,7 +530,7 @@ func runConfigSetNetwork(ctx context.Context, a *App, args []string) int {
 		a.errorf("config set network: drop-in di k3s: %v", err)
 		return ExitUnexpected
 	}
-	stripK3sEnvProxy(paths.SystemdDir)
+	upgrade.StripK3sEnvProxy(paths.SystemdDir)
 	k3sChanged = regCh || dropCh || (caCh && n.RegistryMirror != "")
 	if caCh {
 		if out, err := a.Runner.Run(ctx, nil, "update-ca-certificates"); err != nil {
