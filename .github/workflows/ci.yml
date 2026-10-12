@@ -71,6 +71,13 @@ jobs:
         working-directory: cli
         run: go test -tags=integration -race -count=1 ./internal/cmd/auth/
 
+      # Backup su S3 (N7, GIT-204) contro un MinIO vero avviato col CLI di
+      # Docker (il modulo admin non porta testcontainers): archivio cifrato,
+      # conservazione su S3 e restore su un ambiente pulito.
+      - name: go test -tags=integration (admin, MinIO via Docker)
+        working-directory: admin
+        run: go test -tags=integration -run S3MinIO -v -count=1 -timeout 15m ./internal/backup/
+
       # Test d'integrazione di core contro un Postgres reale (criterio di
       # accettazione di GIT-5), con testcontainers-go: il tag "integration"
       # li tiene fuori dallo step precedente (go test ./... -race, che deve
