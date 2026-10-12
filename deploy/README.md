@@ -45,7 +45,7 @@ Pop!_OS include anche `ufw` (uncomplicated firewall) disabilitato di default; se
 
 **AppArmor.** Le distribuzioni basate su Ubuntu includono AppArmor, di default in modalità complain per i profili di sistema. Non dovrebbe bloccare i servizi k3s, ma su configurazioni harden verificare con `aa-status` che non ci siano profili in enforce che interferiscano.
 
-**Comando `gitstack` e timer di backup.** Entrambi funzionano identicamente su tutti e quattro i sistemi (systemd è presente su tutti). Il comando `gitstack` è installato in `/usr/local/bin/gitstack` (visibile con `sudo gitstack status`). Il timer di backup (`gitstack-backup.timer`) è installato da `install.sh` in `enable_backup_timer` (riga ~1240): crea il file unit in `/etc/systemd/system/gitstack-backup.timer` e lancia `systemctl enable --now gitstack-backup.timer`, invocando `/usr/local/bin/gitstack backup` all'orario configurato (default alle 3:00).
+**Comando `gitstack` e timer di backup.** Entrambi funzionano identicamente su tutti e quattro i sistemi (systemd è presente su tutti). Il comando `gitstack` è installato in `/usr/local/bin/gitstack` (visibile con `sudo gitstack status`). Il timer di backup (`gitstack-backup.timer`) è installato da `install.sh` in `enable_backup_timer`: crea il file unit in `/etc/systemd/system/gitstack-backup.timer` e lancia `systemctl enable --now gitstack-backup.timer`, invocando `/usr/local/bin/gitstack backup` all'orario configurato (default alle 02:00, variabile `GITSTACK_BACKUP_TIMER_HOUR`).
 
 ### Requisiti: due profili (N1)
 

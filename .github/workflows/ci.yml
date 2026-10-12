@@ -256,21 +256,29 @@ jobs:
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-22.04
-    env:
-      GITSTACK_IMAGE_TAG: sha-${{ github.sha }}
-      GITSTACK_SKIP_PREFLIGHT: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
+      # sudo azzera l'ambiente (env_reset): le opzioni vanno passate per linea
+      # di comando, non via variabili d'ambiente. --skip-preflight perché il
+      # runner ha ~14 GB liberi (il preflight si ferma), e --image-tag perché
+      # install.sh scarica il binario gitstack dai releases del commit (riga 913
+      # di install.sh). Il preflight hardware è già coperto da preflight_test.sh.
       - name: Installazione GitStack
-        run: sudo ./deploy/install.sh
+        run: sudo ./deploy/install.sh --skip-preflight --image-tag "sha-${GITHUB_SHA}"
 
-      - name: Attesa pod Ready
+      # gitstack si installa nel namespace default (GITSTACK_NAMESPACE,
+      # riga 62 di install.sh). Non si aspetta sui pod (un Job Completed
+      # rompe --for=condition=Ready): si aspetta sui deployment e sui
+      # statefulset (Postgres).
+      - name: Attesa deployment e statefulset Ready
         run: |
-          sudo k3s kubectl -n gitstack wait --for=condition=Ready pod --all --timeout=600s
+          set -euo pipefail
+          sudo k3s kubectl -n default wait --for=condition=Available deployment --all --timeout=600s
+          sudo k3s kubectl -n default rollout status statefulset --timeout=600s
 
       - name: Smoke test HTTPS
         run: |
