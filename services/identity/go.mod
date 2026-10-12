@@ -13,6 +13,11 @@ require (
 )
 
 require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
+)
+
+require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect

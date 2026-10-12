@@ -80,6 +80,10 @@ type Report struct {
 	APIHealthy    bool      `json:"api_healthy"`
 	APIDetail     string    `json:"api_detail"`
 	LastBackup    string    `json:"last_backup"`
+	// BackupUpload è l'esito dell'ultimo caricamento su S3; vuoto se S3 non
+	// è configurato. BackupUploadFailed è vero se l'ultimo è fallito.
+	BackupUpload       string `json:"backup_upload,omitempty"`
+	BackupUploadFailed bool   `json:"backup_upload_failed,omitempty"`
 }
 
 // Healthy è vero se il cluster risponde, ogni servizio è pronto e l'API
@@ -122,6 +126,9 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.ServerVersion = serverVersion(svcs, cfg)
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
 	r.LastBackup = lastBackupState(configDir)
+	if cfg.Backup.S3 != nil {
+		r.BackupUpload, r.BackupUploadFailed = lastUploadState(configDir)
+	}
 	return r
 }
 
@@ -292,4 +299,20 @@ func lastBackupState(configDir string) string {
 		return fmt.Sprintf("ultimo successo: %s (%s)", at, s.Path)
 	}
 	return fmt.Sprintf("ultimo errore: %s — %s", at, s.Error)
+}
+
+// lastUploadState descrive l'ultimo caricamento su S3 e dice se è fallito.
+func lastUploadState(configDir string) (string, bool) {
+	if configDir == "" {
+		configDir = "/etc/gitstack"
+	}
+	u := backupstate.Read(configDir).Upload
+	if u == nil || u.At.IsZero() {
+		return "nessuno", false
+	}
+	at := u.At.Format("2006-01-02 15:04:05")
+	if u.Success {
+		return fmt.Sprintf("ultimo successo: %s (%s)", at, u.Name), false
+	}
+	return fmt.Sprintf("ULTIMO CARICAMENTO FALLITO: %s — %s (il backup locale è valido)", at, u.Error), true
 }

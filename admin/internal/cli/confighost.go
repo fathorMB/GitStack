@@ -55,15 +55,17 @@ func notPublicName(h string) bool {
 
 func runConfig(ctx context.Context, a *App, args []string) int {
 	if len(args) < 2 || args[0] != "set" {
-		a.errorf("config: uso: gitstack config set host <nome> [--config PERCORSO]")
+		a.errorf("config: uso: gitstack config set host <nome> [--config PERCORSO] | gitstack config set backup.s3 --endpoint E --bucket B --key-file F …")
 		a.usage(a.Stderr)
 		return ExitUsage
 	}
 	switch args[1] {
 	case "host":
 		return runConfigSetHost(ctx, a, args[2:])
+	case "backup.s3":
+		return runConfigSetBackupS3(ctx, a, args[2:])
 	default:
-		a.errorf("config set: chiave sconosciuta %q (oggi: host)", args[1])
+		a.errorf("config set: chiave sconosciuta %q (oggi: host, backup.s3)", args[1])
 		return ExitUsage
 	}
 }

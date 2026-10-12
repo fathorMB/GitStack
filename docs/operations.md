@@ -279,6 +279,99 @@ rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* \
 > **Keep the encryption key separate from the archive.** Store the key on a
 > different disk or off-site; never put it in the backup destination folder.
 > An encrypted archive without the key is unrecoverable.
+
+### Backup to S3 (N7)
+
+In addition to the local copy, every backup can be uploaded to any
+S3-compatible storage (AWS S3, MinIO, Backblaze B2, Wasabi, a NAS with an S3
+API). The daily backup first creates the archive locally and then uploads it.
+
+**Archives uploaded to S3 are always encrypted** with the same key as
+`--key-file`: a configuration without a key file is refused (by
+`gitstack config set backup.s3` and by `install.sh`), and
+`gitstack backup` never uploads an unencrypted archive. With S3
+configured, the local archive is encrypted too, with the key from
+`backup.s3.key_file`, so the timer needs no arguments.
+
+**Configure it after installation:**
+
+```sh
+export GITSTACK_S3_ACCESS_KEY=... GITSTACK_S3_SECRET_KEY=...
+openssl rand -base64 32 | sudo tee /etc/gitstack/backup.key >/dev/null
+sudo chmod 0600 /etc/gitstack/backup.key
+sudo -E gitstack config set backup.s3 \
+  --endpoint s3.eu-central-003.backblazeb2.com --bucket gitstack-backups \
+  --prefix prod --region eu-central-003 --key-file /etc/gitstack/backup.key
+```
+
+**Or at install time** (the access keys only from the environment, never as
+arguments, so they do not show up in `ps`):
+
+```sh
+sudo GITSTACK_S3_ACCESS_KEY=... GITSTACK_S3_SECRET_KEY=... ./deploy/install.sh \
+  --s3-endpoint s3.example.com --s3-bucket gitstack-backups \
+  --s3-key-file /etc/gitstack/backup.key
+```
+
+The settings live in the `backup.s3` section of
+`/etc/gitstack/config.yaml` (owner root, mode `0600`, the file is
+refused otherwise): `endpoint` (host[:port], or a URL with `http://` for a
+MinIO without TLS), `bucket`, `prefix`, `region` (default `us-east-1`),
+`access_key`, `secret_key`, `key_file`, `retention` and `notify_command`.
+`gitstack config set backup.s3` checks the bucket before writing
+(`--no-check` skips it) and `--remove` drops the section. The access keys
+are never printed or logged: errors from the S3 client are scrubbed before they
+reach the terminal, `gitstack status`, the state file or a notification.
+The archive contains a copy of `/etc/gitstack/`, which holds the keys:
+that is one more reason the archive is always encrypted.
+
+**Retention on S3** is separate from the local one:
+
+| `backup.s3.retention` | Effect |
+|---|---|
+| (not set) | keep the newest **30** archives on S3 |
+| a number `N` | keep the newest N archives (and remove the older ones with their `.sha256`) |
+| `bucket` | never delete anything: leave it to the bucket's lifecycle rules |
+
+Only objects named `gitstack-backup-*.tar.gz[.enc]` under the prefix are
+considered. The local retention (`backup.retention`, default 7) is unchanged.
+
+**If the upload fails** the local backup is still valid and kept. The command
+exits with code `10` (so `systemctl status gitstack-backup.service` shows the
+failure), `gitstack status` prints `Backup su S3: ULTIMO CARICAMENTO FALLITO`
+with the cause (JSON: `backup_upload_failed`), and, if set,
+`backup.s3.notify_command` is run with `sh -c` and these variables:
+`GITSTACK_BACKUP_EVENT=s3-upload-failed`, `GITSTACK_BACKUP_ARCHIVE`,
+`GITSTACK_BACKUP_ERROR`, `GITSTACK_HOST`. Example, with mail:
+
+```yaml
+backup:
+  s3:
+    notify_command: 'echo "$GITSTACK_BACKUP_ERROR" | mail -s "GitStack: backup S3 fallito" admin@example.com'
+```
+
+(The administrators' notification does not go through the core internal API:
+the admin tool runs on the host, outside the cluster, and has no credential
+for it; `notify_command` reaches whatever channel the administrators already
+use.)
+
+**Restore on a new machine (N3):** install the same GitStack version with
+`install.sh`, giving the same `--s3-*` options and the key file, then:
+
+```sh
+sudo gitstack restore --from s3            # the newest archive on S3
+sudo gitstack restore --from s3 gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz.enc
+```
+
+If you ran `gitstack backup --key-file X` with a key different from
+`backup.s3.key_file`, the uploaded archive is encrypted with X (a warning is
+printed at upload time): `restore --from s3` then needs `--key-file X`, because
+without it the key from `backup.s3.key_file` is used and fails.
+
+The archive is downloaded into a temporary folder inside the backup
+destination (mode `0700`), verified against its `.sha256`, restored and
+removed.
+
 ---
 
 ## Restore
@@ -344,7 +437,7 @@ services.
 | `3` | Configuration file missing or unreadable |
 | `4` | Cannot reach the Kubernetes cluster |
 | `5` | Requires root (re-run with `sudo`) |
-| `6` | Restore refused — version mismatch, corrupted archive, or encrypted archive without `--key-file` |
+| `6` | Restore refused — version mismatch, corrupted archive, wrong checksum, or encrypted archive without `--key-file` |
 | `70` | Unexpected error |
 
 ---
@@ -558,6 +651,11 @@ Ultimo backup: ultimo successo: 2026-10-06 15:46:27 (/var/backups/gitstack/gitst
 Stato: sano
 ```
 
+With S3 backup configured, a line `Backup su S3: ...` shows the result of the
+last upload (`ultimo successo` or `ULTIMO CARICAMENTO FALLITO` with the cause).
+The overall health line does not depend on it: a failed upload is shown, and
+the backup service exits with code `10`.
+
 **JSON mode** (`--json`): produces structured output for scripting:
 
 ```sh
@@ -610,6 +708,8 @@ Both need `sudo` on internal CA because they read/write under
 | `gitstack backup --key-file KEYFILE` | yes | Same, encrypted with AES-256-GCM |
 | `gitstack restore ARCHIVE` | yes | Restore an archive (same version only) |
 | `gitstack restore --key-file KEYFILE ARCHIVE` | yes | Restore an encrypted archive |
+| `gitstack restore --from s3 [NAME]` | yes | Download from S3 (newest, or NAME) and restore |
+| `gitstack config set backup.s3 --endpoint E --bucket B --key-file F` | yes | Configure the encrypted S3 copy of backups |
 | `gitstack upgrade` | yes | Upgrade with preventive backup and automatic rollback |
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
@@ -644,6 +744,8 @@ so it fails as a non-root user with a permission error.
 | `6` | Refused: incompatible version, corrupted archive, or missing key |
 | `7` | Upgrade rolled back automatically |
 | `8` | Upgrade failed and rollback also failed — manual intervention needed |
+| `9` | Data restored but the instance does not answer through the Ingress |
+| `10` | Local backup done, upload to S3 failed (the local archive is valid) |
 | `70` | Unexpected error (backup failure, network, unrecoverable) |
 
 ### Configuration files
