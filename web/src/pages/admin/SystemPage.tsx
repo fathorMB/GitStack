@@ -208,7 +208,7 @@ function NetworkCard({ sys }: { sys: AdminSystem }) {
         Network
       </div>
       {!n.configured ? (
-        <div className="card-b small muted">Not configured: no proxy and no company CA.</div>
+        <div className="card-b small muted">Not configured: no proxy, no mirror and no company CA.</div>
       ) : (
         <div className="list list-clean">
           <Row label="Proxy">
@@ -230,6 +230,19 @@ function NetworkCard({ sys }: { sys: AdminSystem }) {
             ) : (
               <span className="muted">Not configured</span>
             )}
+          </Row>
+          <Row label="Image mirror">
+            {n.registryMirror ? (
+              <>
+                <span className="mono">{n.registryMirror}</span>
+                {n.registryHasCredentials ? <span className="badge">credentials set (not shown)</span> : null}
+              </>
+            ) : (
+              <span className="muted">Not configured</span>
+            )}
+          </Row>
+          <Row label="Download mirror">
+            {n.downloadMirror ? <span className="mono">{n.downloadMirror}</span> : <span className="muted">Not configured</span>}
           </Row>
           <Row label="Company CA">
             <span>{n.corporateCA ? 'Installed in GitStack services' : <span className="muted">Not configured</span>}</span>

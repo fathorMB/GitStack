@@ -20,7 +20,7 @@ const base: AdminSystem = {
     s3: { configured: false, upload: { state: 'none' } },
   },
   versions: { gitstack: 'v1.0.0', k3s: 'v1.36.4+k3s1', k3sDeclared: 'v1.36.4+k3s1', k3sUpdate: 'none' },
-  network: { configured: false, corporateCA: false, mirrorCA: false, proxyHasCredentials: false },
+  network: { configured: false, corporateCA: false, mirrorCA: false, proxyHasCredentials: false, registryHasCredentials: false },
 };
 
 function setup(sys: AdminSystem, isAdmin = true) {
@@ -46,7 +46,7 @@ describe('SystemPage', () => {
     expect(screen.getByText('16.4')).toBeInTheDocument();
     expect(screen.getByText(/read now from the core connection/i)).toBeInTheDocument();
     expect(screen.queryByText('Host')).not.toBeInTheDocument();
-    expect(screen.getByText(/not configured: no proxy and no company ca/i)).toBeInTheDocument();
+    expect(screen.getByText(/not configured: no proxy, no mirror and no company ca/i)).toBeInTheDocument();
     expect(screen.getByText('keep last 7')).toBeInTheDocument();
     expect(screen.getAllByText('Not configured').length).toBeGreaterThan(0); // S3
   });
@@ -115,11 +115,16 @@ describe('SystemPage', () => {
         proxyHasCredentials: true,
         corporateCA: true,
         mirrorCA: false,
+        registryMirror: 'https://registry.acme.local',
+        registryHasCredentials: true,
+        downloadMirror: 'https://mirror.acme.local/gitstack',
       },
     });
     expect(await screen.findByText('http://proxy.acme.local:3128')).toBeInTheDocument();
-    expect(screen.getByText(/credentials set \(not shown\)/i)).toBeInTheDocument();
     expect(screen.getByText(/installed in gitstack services/i)).toBeInTheDocument();
+    expect(screen.getByText('https://registry.acme.local')).toBeInTheDocument();
+    expect(screen.getByText('https://mirror.acme.local/gitstack')).toBeInTheDocument();
+    expect(screen.getAllByText(/credentials set \(not shown\)/i)).toHaveLength(2);
   });
 
   it('informazioni dell host non pubblicate: avviso con il comando', async () => {

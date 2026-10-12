@@ -156,6 +156,18 @@ export type AdminSystemNetwork = {
      * Una CA privata è usata per i mirror in push.
      */
     mirrorCA: boolean;
+    /**
+     * Mirror delle immagini (N9a), senza credenziali.
+     */
+    registryMirror?: string;
+    /**
+     * Il mirror delle immagini richiede credenziali (non mostrate).
+     */
+    registryHasCredentials: boolean;
+    /**
+     * Mirror dei download di k3s, Helm e binari (N9a), senza credenziali.
+     */
+    downloadMirror?: string;
 };
 
 /**

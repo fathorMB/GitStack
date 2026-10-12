@@ -107,6 +107,43 @@ backup:
 	}
 }
 
+func TestBuildReteDaConfigSenzaSegreti(t *testing.T) {
+	cfg := cfgFrom(t, `version: 1
+host: git.example.com
+network:
+  http_proxy: http://proxyuser:`+secretValue+`@proxy.acme.local:3128
+  no_proxy: .acme.local
+  registry_mirror: https://registry.acme.local
+  registry_username: USER-`+secretValue+`
+  registry_password: PW-`+secretValue+`
+  download_mirror: https://dl-user:`+secretValue+`@mirror.acme.local/gitstack
+  ca_bundle: /etc/gitstack/network/ca.crt
+`)
+	// Senza values di helm: ripiego su config.yaml.
+	info := Build(Input{Cfg: cfg, Now: now})
+	n := info.Network
+	if !n.Configured || n.RegistryMirror != "https://registry.acme.local" || n.DownloadMirror != "https://mirror.acme.local/gitstack" {
+		t.Errorf("mirror: %+v", n)
+	}
+	if !n.RegistryHasCredentials || !n.CorporateCA || n.HTTPProxy != "http://proxy.acme.local:3128" || !n.ProxyHasCredentials || n.NoProxy != ".acme.local" {
+		t.Errorf("rete: %+v", n)
+	}
+	m, err := Manifest(cfg, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{secretValue, "registry_password", "registry_username", "dl-user", "proxyuser"} {
+		if strings.Contains(string(m), leak) {
+			t.Errorf("il documento contiene %q: %s", leak, m)
+		}
+	}
+	// Solo mirror: network.configured lo conta.
+	only := cfgFrom(t, "version: 1\nhost: g.example.com\nnetwork:\n  download_mirror: https://mirror.acme.local\n")
+	if !Build(Input{Cfg: only, Now: now}).Network.Configured {
+		t.Error("un mirror da solo deve rendere la rete configurata")
+	}
+}
+
 func TestNetworkFromValues(t *testing.T) {
 	var v map[string]any
 	if err := json.Unmarshal([]byte(`{

@@ -122,7 +122,19 @@ func buildAdminSystem(raw []byte) openapi.AdminSystem {
 			out.Network.ProxyHasCredentials = true
 		}
 	}
-	if out.Network.HttpProxy != nil || out.Network.HttpsProxy != nil || out.Network.CorporateCA || out.Network.MirrorCA {
+	for _, p := range []**string{&out.Network.RegistryMirror, &out.Network.DownloadMirror} {
+		if *p == nil {
+			continue
+		}
+		clean, had := stripCredentials(**p)
+		*p = &clean
+		if had {
+			out.Network.RegistryHasCredentials = true
+		}
+	}
+	if out.Network.HttpProxy != nil || out.Network.HttpsProxy != nil || out.Network.CorporateCA || out.Network.MirrorCA ||
+		(out.Network.RegistryMirror != nil && *out.Network.RegistryMirror != "") ||
+		(out.Network.DownloadMirror != nil && *out.Network.DownloadMirror != "") {
 		out.Network.Configured = true
 	}
 	return out

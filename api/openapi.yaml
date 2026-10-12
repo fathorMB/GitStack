@@ -6717,7 +6717,7 @@ components:
       type: object
       description: Rete aziendale (N9). Mai credenziali del proxy.
       additionalProperties: false
-      required: [configured, corporateCA, mirrorCA, proxyHasCredentials]
+      required: [configured, corporateCA, mirrorCA, proxyHasCredentials, registryHasCredentials]
       properties:
         configured:
           type: boolean
@@ -6738,6 +6738,15 @@ components:
         mirrorCA:
           type: boolean
           description: Una CA privata è usata per i mirror in push.
+        registryMirror:
+          type: string
+          description: Mirror delle immagini (N9a), senza credenziali.
+        registryHasCredentials:
+          type: boolean
+          description: Il mirror delle immagini richiede credenziali (non mostrate).
+        downloadMirror:
+          type: string
+          description: Mirror dei download di k3s, Helm e binari (N9a), senza credenziali.
 
     Resource:
       type: object

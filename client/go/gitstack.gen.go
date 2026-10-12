@@ -1718,6 +1718,9 @@ type AdminSystemNetwork struct {
 	// CorporateCA Una CA aziendale è installata nei servizi.
 	CorporateCA bool `json:"corporateCA"`
 
+	// DownloadMirror Mirror dei download di k3s, Helm e binari (N9a), senza credenziali.
+	DownloadMirror *string `json:"downloadMirror,omitempty"`
+
 	// HttpProxy URL del proxy senza credenziali.
 	HttpProxy  *string `json:"httpProxy,omitempty"`
 	HttpsProxy *string `json:"httpsProxy,omitempty"`
@@ -1728,6 +1731,12 @@ type AdminSystemNetwork struct {
 
 	// ProxyHasCredentials Il proxy richiede credenziali (non mostrate).
 	ProxyHasCredentials bool `json:"proxyHasCredentials"`
+
+	// RegistryHasCredentials Il mirror delle immagini richiede credenziali (non mostrate).
+	RegistryHasCredentials bool `json:"registryHasCredentials"`
+
+	// RegistryMirror Mirror delle immagini (N9a), senza credenziali.
+	RegistryMirror *string `json:"registryMirror,omitempty"`
 }
 
 // AdminSystemVersions defines model for AdminSystemVersions.

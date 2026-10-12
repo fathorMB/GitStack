@@ -105,6 +105,11 @@ type Network struct {
 	ProxyHasCredentials bool   `json:"proxyHasCredentials"`
 	CorporateCA         bool   `json:"corporateCA"`
 	MirrorCA            bool   `json:"mirrorCA"`
+	// RegistryMirror e DownloadMirror sono gli URL dei mirror (N9a) senza
+	// credenziali; RegistryHasCredentials dice solo che ce ne sono.
+	RegistryMirror         string `json:"registryMirror,omitempty"`
+	RegistryHasCredentials bool   `json:"registryHasCredentials"`
+	DownloadMirror         string `json:"downloadMirror,omitempty"`
 }
 
 // Input sono le fonti da cui si compone il documento.
@@ -165,7 +170,7 @@ func Build(in Input) Info {
 		}
 	}
 
-	info.Network = networkFromValues(in.HelmValues)
+	info.Network = networkFromConfig(networkFromValues(in.HelmValues), cfg.Network)
 	return info
 }
 
@@ -240,6 +245,33 @@ func networkFromValues(v map[string]any) Network {
 	n.CorporateCA = str(v, "corporateCA", "configMap") != ""
 	n.MirrorCA = str(v, "git", "mirror", "caConfigMap") != ""
 	n.Configured = n.HTTPProxy != "" || n.HTTPSProxy != "" || n.ProxyHasCredentials || n.CorporateCA || n.MirrorCA
+	return n
+}
+
+// networkFromConfig completa la rete con la sezione network: di config.yaml
+// (N9): mirror delle immagini e dei download, che non stanno nei values di
+// helm, e, come ripiego quando i values mancano, proxy e CA aziendale. Di
+// registry_username e registry_password si legge solo se ci sono.
+func networkFromConfig(n Network, c config.Network) Network {
+	var cred bool
+	if n.HTTPProxy == "" && n.HTTPSProxy == "" {
+		n.HTTPProxy, cred = stripCredentials(c.HTTPProxy)
+		var c2 bool
+		n.HTTPSProxy, c2 = stripCredentials(c.HTTPSProxy)
+		n.ProxyHasCredentials = n.ProxyHasCredentials || cred || c2
+		if n.NoProxy == "" {
+			n.NoProxy = c.NoProxy
+		}
+	}
+	if c.CABundle != "" {
+		n.CorporateCA = true
+	}
+	var rc, dc bool
+	n.RegistryMirror, rc = stripCredentials(c.RegistryMirror)
+	n.DownloadMirror, dc = stripCredentials(c.DownloadMirror)
+	n.RegistryHasCredentials = rc || dc || c.RegistryUsername != "" || c.RegistryPassword != ""
+	n.Configured = n.Configured || n.HTTPProxy != "" || n.HTTPSProxy != "" || n.CorporateCA ||
+		n.RegistryMirror != "" || n.DownloadMirror != ""
 	return n
 }
 

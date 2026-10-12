@@ -35,7 +35,9 @@ func TestBuildAdminSystem_FileCompletoSenzaSegreti(t *testing.T) {
 	                    "upload": {"state": "failed", "at": "2026-10-12T02:03:00Z", "error": "timeout"}}},
 	  "versions": {"gitstack": "v1.0.0", "k3s": "v1.36.4+k3s1", "k3sDeclared": "v1.37.0+k3s1", "k3sUpdate": "minor"},
 	  "network": {"httpProxy": "http://u:` + leakMarker + `@proxy.acme.local:3128", "noProxy": ".acme.local",
-	              "corporateCA": true, "mirrorCA": false}
+	              "corporateCA": true, "mirrorCA": false,
+	              "registryMirror": "https://u:` + leakMarker + `@registry.acme.local", "downloadMirror": "https://mirror.acme.local/gitstack",
+	              "registry_password": "` + leakMarker + `"}
 	}`
 	out := buildAdminSystem([]byte(raw))
 	if !out.Published || out.Database.Mode != "external" || *out.Database.Host != "pg.acme.local" ||
@@ -45,6 +47,10 @@ func TestBuildAdminSystem_FileCompletoSenzaSegreti(t *testing.T) {
 	}
 	if !out.Network.ProxyHasCredentials || *out.Network.HttpProxy != "http://proxy.acme.local:3128" {
 		t.Errorf("proxy: %+v", out.Network)
+	}
+	if *out.Network.RegistryMirror != "https://registry.acme.local" || !out.Network.RegistryHasCredentials ||
+		*out.Network.DownloadMirror != "https://mirror.acme.local/gitstack" {
+		t.Errorf("mirror: %+v", out.Network)
 	}
 	b, err := json.Marshal(out)
 	if err != nil {
