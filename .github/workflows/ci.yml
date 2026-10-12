@@ -568,18 +568,11 @@ jobs:
               "${img}"
 
             # 2. Firma keyless (OIDC)
+            # cosign sign NON accetta --certificate-identity (flag di verifica):
+            # l'identità del certificato è determinata automaticamente dall'OIDC token.
             echo "Firma keyless per ${img}..."
-            if [ -n "${identity}" ]; then
-              cosign sign --yes --recursive \
-                --certificate-identity "${identity}" \
-                --certificate-oidc-issuer "${issuer}" \
-                "${img}"
-            else
-              cosign sign --yes --recursive \
-                --certificate-identity-regexp "${identity_regexp}" \
-                --certificate-oidc-issuer "${issuer}" \
-                "${img}"
-            fi
+            cosign sign --yes --recursive \
+              "${img}"
             echo "OK: immagine firmata e attestata ${img}"
           done
 
@@ -780,7 +773,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-  # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
   # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
   # un'installazione di prova su un cluster effimero k3d (un k3s vero in
   # Docker: Traefik e le sue CRD, incluso il Middleware usato dall'Ingress
