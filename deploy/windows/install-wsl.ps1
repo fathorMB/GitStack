@@ -1,40 +1,17 @@
 <#PSScriptInfo
 .VERSION 1.0.0
-.GUID 00000000-0000-0000-0000-000000000000
 .AUTHOR GitStack
-.COMPANYNAME GitStack
-.PROJECTURI
+.DESCRIPTION Installa GitStack su WSL2 per prove, demo, piccoli team (W1, W2).
 .CALLOFTEXT Installa GitStack su WSL2 (prova/demo, W1/W2).
 .PROJECTNAME GitStack-WSL-Deploy
 .TAGS GitStack WSL2 Ubuntu
-.LICENSEURI
-.REQUIRESELEVATIONATIONS $false
 .REQUIRES powershell 5.1
-.DOCUMENTATION
-# install-wsl.ps1 — Installazione di prova di GitStack su Windows via WSL2 (W1, W2)
-
-## Scopo
-Installa GitStack dentro WSL2 su Windows 10/11 per prove, demo e piccoli team.
-NON è progettato per la produzione: WSL2 ha limitazioni note di rete (IP dinamico,
-firewall di Windows non esposto a un cliente esterno), gestione dei servizi e
-affidabilità (vedere D14 [c_cf5bc915298b97db]).
-
-## Requisiti
-- Windows 10 build 22621+ (21H2) o Windows 11 (per WSL2 e networkingMode=mirrored)
-- Abilitazione Virtualizzazione nel BIOS/UEFI
-- Per -ShareOnNetwork: Windows 11 22H2 (build ≥ 22621)
-
-## Uso
-# Installazione interattiva (default, solo accesso locale):
-.\deploy\windows\install-wsl.ps1
-
-# Con abilitazione della rete mirrored (Windows 11 22H2+):
-.\deploy\windows\install-wsl.ps1 -ShareOnNetwork
-
-# Disinstallazione:
-.\deploy\windows\install-wsl.ps1 -Uninstall
 #>
+#requires -RunAsAdministrator
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingComputerNameHardcoded', '')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
 [CmdletBinding()]
 param(
     [switch]$ShareOnNetwork,
@@ -44,8 +21,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Imposta output UTF-8 per wsl --list (che produce UTF-16)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$env:WSL_UTF8 = '1'
+
+# Nome della distro WSL creata da questo script
+$GS_DISTRO_NAME = 'GitStack'
+
 # ============================================================
-# Utilità di logging
+# Utilita' di logging
 # ============================================================
 
 function Write-Status { param([string]$Msg) Write-Host "==> $Msg" }
@@ -57,53 +41,56 @@ function Write-Fail  { param([string]$Msg); Write-Error $Msg; exit 1 }
 # ============================================================
 
 function Uninstall-GitStackWSL {
-    Write-Status "Disinstallazione di GitStack da WSL2 ..."
+    Write-Status 'Disinstallazione di GitStack da WSL2 ...'
 
-    # 1. Rimuovi l'attività pianificata
+    # 1. Rimuovi l'attivita' pianificata
     $taskName = 'GitStack-WSL-Login'
-    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
-        Write-Status "Rimozione attività pianificata '$taskName' ..."
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($task) {
+        Write-Status "Rimozione attivita' pianificata $taskName ..."
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
     }
 
-    # 2. Rimuovi le regole del firewall
-    if ($ShareOnNetwork) {
-        foreach ($port in @(443, 2222)) {
-            $ruleName = "GitStack-WSL-$port"
-            if (Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue) {
-                Write-Status "Rimozione regola firewall '$ruleName' ..."
-                Remove-NetFirewallRule -Name $ruleName
-            }
+    # 2. Rimuovi le regole del firewall (sempre, non solo con -ShareOnNetwork)
+    foreach ($port in @(443, 2222)) {
+        $ruleName = "GitStack-WSL-$port"
+        $rule = Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue
+        if ($rule) {
+            Write-Status "Rimozione regola firewall $ruleName ..."
+            Remove-NetFirewallRule -Name $ruleName
         }
     }
 
-    # 3. Rimuovi .wslconfig dell'utente se esiste
-    $wslconf = Join-Path $env:USERPROFILE '.wslconfig'
+    # 3. Rimuovi solo le righe marcate # GitStack da .wslconfig
+    $wslconf = Join-Path $env:USERProfile '.wslconfig'
     if (Test-Path $wslconf) {
         $content = Get-Content $wslconf -Raw
-        if ($content -match 'GitStack|wsstack') {
-            Write-Status "Rimozione configurazione WSL di GitStack da $wslconf ..."
-            # Rimuovi solo le sezioni GitStack/WSStack
-            $newContent = $content -replace '^\[(wsstack|gitstack)[\r\n]*.*?\]\r?\n' -replace '^\[wsl\].*?\]\r?\n' -replace 'networkingMode\s*=\s*mirrored.*?\r?\n', ''
-            if ($newContent.Trim()) {
-                $newContent | Set-Content $wslconf -Encoding UTF8
-            } else {
+        if ($content -match '# GitStack') {
+            Write-Status "Rimozione configurazione GitStack da $wslconf ..."
+            $lines = $content -split "`r?`n"
+            $newLines = @()
+            $skip = $false
+            foreach ($line in $lines) {
+                if ($line -match '^# GitStack') { $skip = $true }
+                elseif ($skip -and $line -match '^[^\s#]') { $skip = $false }
+                if (-not $skip) { $newLines += $line }
+            }
+            ($newLines -join "`n").TrimEnd() | Set-Content $wslconf -Encoding ASCII
+            $newContent = Get-Content $wslconf -Raw
+            if (-not $newContent.Trim()) {
                 Remove-Item $wslconf -Force
             }
         }
     }
 
-    # 4. Disinstalla la distro Ubuntu da WSL
-    Write-Status "Rimozione della distro Ubuntu da WSL ..."
-    $distros = wsl --list --quiet 2>$null
-    foreach ($d in $distros) {
-        if ($d -match 'ubuntu|GitStack') {
-            Write-Status "Rimozione distro '$d' ..."
-            wsl --unregister $d
-        }
+    # 4. Rimuovi SOLO la distro GitStack che abbiamo creato
+    $gsDistro = wsl -l -q 2>$null | Where-Object { $_ -match $GS_DISTRO_NAME } | Select-Object -First 1
+    if ($gsDistro) {
+        Write-Status "Rimozione distro $gsDistro creata da GitStack ..."
+        wsl --unregister $gsDistro
     }
 
-    Write-Status "Disinstallazione completata."
+    Write-Status 'Disinstallazione completata.'
 }
 
 if ($Uninstall) {
@@ -116,224 +103,155 @@ if ($Uninstall) {
 # ============================================================
 
 function Test-Prerequisites {
-    Write-Status "Verifica dei prerequisiti di Windows ..."
+    Write-Status 'Verifica dei prerequisiti di Windows ...'
 
-    # 1. Versione di Windows
+    # 1. Versione di Windows (build >= 19041 per WSL2)
     $os = Get-CimInstance Win32_OperatingSystem
     $build = [int]$os.BuildNumber
 
     if ($build -lt 19041) {
-        Write-Fail "Windows 10 build 19041 (20H2) o superiore è richiesto. `
-Trova: build $build. Scarica l'ultimo aggiornamento o passa a Windows 11."
+        Write-Fail "Windows 10 build 19041 (2004) o superiore e' richiesto. Trovata: build ${build}."
     }
-    Write-Status "  Windows build $build: OK"
+    Write-Host "  Windows build ${build}: OK"
 
-    # 2. WSL2
-    $wslInstalled = $false
+    # 2. Verifica VirtualMachinePlatform
+    $vmFeature = Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -ErrorAction SilentlyContinue
+    if ($vmFeature.State -ne 'Enabled') {
+        Write-Status "  Abilitazione VirtualMachinePlatform ..."
+        Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart -ErrorAction Stop
+        Write-Fail "VirtualMachinePlatform abilitato: devi riavviare il PC. Riavvia e rilancia questo script."
+    }
+    Write-Host '  VirtualMachinePlatform: OK'
+
+    # 3. WSL
+    $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction SilentlyContinue
+    if ($wslFeature.State -ne 'Enabled') {
+        Write-Status "  WSL non installato: abilitazione ..."
+        Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart -ErrorAction Stop
+        Write-Fail "WSL abilitato: devi riavviare il PC. Riavvia e rilancia questo script."
+    }
+    Write-Host '  WSL: OK'
+
+    # 4. Abilita WSL2 come default
     try {
-        $wslCheck = wsl --status 2>&1
-        $wslInstalled = ($LASTEXITCODE -eq 0)
+        wsl --set-default-version 2 2>&1 | Out-Null
     } catch {
-        $wslInstalled = $false
+        Write-Warn "Impossibile impostare WSL2 come default."
     }
 
-    if (-not $wslInstalled) {
-        Write-Status "  WSL2 non installato: abilitazione in corso ..."
-        try {
-            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart -ErrorAction Stop
-        } catch {
-            Write-Warn "Enable-WindowsOptionalFeature non ha funzionato: provo con dism.exe ..."
-            dism /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-        }
-    }
-
-    # 3. Versione WSL (deve essere 2 di default)
-    $wslDefaultVersion = wsl --set-default-version 2 2>&1
-    $wslDefaultVersion = $wslDefaultVersion | Select-String "default version"
-
-    # Verifica che il kernel sia aggiornato
+    # 5. Aggiorna il kernel WSL (controlla exit code, non try/catch)
     try {
         wsl --update 2>&1 | Out-Null
-    } catch {
-        Write-Warn "Impossibile aggiornare il kernel WSL (fuori dai prerequisiti minimi, ignorato)."
-    }
-
-    Write-Status "  WSL2: OK"
-
-    # 4. Virtualizzazione
-    $hv = Get-ComputerInfo | Select-Object -ExpandProperty HyperVisorPresent
-    if (-not $hv) {
-        Write-Warn "La virtualizzazione non risulta attiva nel BIOS/UEFI. `
-WSL2 potrebbe non funzionare. Verifica nel BIOS di abilitare VT-x/AMD-V."
-    } else {
-        Write-Status "  Virtualizzazione: OK"
-    }
-
-    # 5. Abilita systemd (WSL2, richiede build ≥ 22621)
-    $wslConfPath = Join-Path $env:USERPROFILE '.wslconfig'
-    $needsSystemd = $false
-    $wslConfContent = ''
-
-    if (Test-Path $wslConfPath) {
-        $wslConfContent = Get-Content $wslConfPath -Raw
-    }
-
-    if ($wslConfContent -notmatch '\[wsl\]|features') {
-        $needsSystemd = $true
-    } elseif ($wslConfContent -match '\[wsl\]' -and $wslConfContent -notmatch 'systemd\s*=\s*(true|1)') {
-        $needsSystemd = $true
-    }
-
-    if ($needsSystemd) {
-        Write-Status "  Abilitazione di systemd in .wslconfig ..."
-        $wslConfBlock = "`n[wsl2]`n systemd=true`n"
-        if ($wslConfContent.Trim()) {
-            # Aggiungi prima della sezione [wsl] se esiste, altrimenti alla fine
-            if ($wslConfContent -match '\[wsl\]') {
-                $wslConfContent = $wslConfContent -replace '(\[wsl\].*)', "${wslConfBlock}\$1"
-            } else {
-                $wslConfContent = $wslConfContent.TrimEnd() + $wslConfBlock
-            }
-        } else {
-            $wslConfContent = $wslConfBlock.Trim()
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "Impossibile aggiornare il kernel WSL (ignorato)."
         }
-        $wslConfContent | Set-Content $wslConfPath -Encoding UTF8
+    } catch {
+        Write-Warn "Errore nell'aggiornamento del kernel WSL (ignorato)."
+    }
+
+    # 6. Virtualizzazione
+    $hv = Get-CimInstance Win32_ComputerSystem | Select-Object -ExpandProperty HypervisorPresent
+    if ($hv) {
+        Write-Host '  Virtualizzazione: rilevata OK'
     } else {
-        Write-Status "  systemd già configurato in .wslconfig."
+        Write-Warn 'La virtualizzazione non risulta attiva nel BIOS/UEFI. WSL2 potrebbe non funzionare.'
     }
 
     return $build
 }
 
 # ============================================================
-# Installazione di Ubuntu e lancio di install.sh
+# Converti un percorso Windows in percorso WSL (/mnt/e/...)
 # ============================================================
 
-function Install-UbuntuAndRun {
-    param([int]$WindowsBuild)
-
-    Write-Status "Installazione di Ubuntu 24.04 LTS in WSL2 ..."
-
-    # Controlla se Ubuntu è già installato
-    $existingDistros = wsl --list --quiet 2>$null
-    $ubuntuInstalled = $false
-    foreach ($d in $existingDistros) {
-        if ($d -match 'ubuntu-24\.04|ubuntu-22\.04|GitStack') {
-            $ubuntuInstalled = $true
-            Write-Status "  Distro '$d' già installata, la uso."
-            $distroName = $d
-            break
-        }
+function Convert-WindowsToWSLPath {
+    param([string]$WinPath)
+    # Usa wsl wslpath per una conversione corretta
+    $wslPath = wsl wslpath -a "$WinPath" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        return $wslPath.Trim()
     }
-
-    if (-not $ubuntuInstalled) {
-        try {
-            wsl --install -d Ubuntu-24.04
-        } catch {
-            # Tentativo alternativo con Ubuntu 22.04
-            Write-Warn "Ubuntu 24.04 non disponibile, provo con Ubuntu 22.04 ..."
-            wsl --install -d Ubuntu-22.04
-            $distroName = 'Ubuntu-22.04'
-        }
-        $distroName = 'Ubuntu-24.04'
-
-        # Attendi che l'installazione termini
-        Write-Status "  Attendo il completamento dell'installazione di Ubuntu ..."
-        $maxWait = 300  # 5 minuti
-        $elapsed = 0
-        while ($elapsed -lt $maxWait) {
-            try {
-                $check = wsl --list --quiet 2>&1
-                if ($check -match 'ubuntu') {
-                    break
-                }
-            } catch {}
-            Start-Sleep -Seconds 5
-            $elapsed += 5
-        }
-
-        if ($elapsed -ge $maxWait) {
-            Write-Fail "Timeout: Ubuntu non è stato installato entro 5 minuti. `
-Rilancia lo script dopo un riavvio del PC se richiesto."
-        }
+    # Fallback: E:\ -> /mnt/e/
+    $match = $WinPath -match '^([A-Z]):\\'
+    if ($match) {
+        $letter = $match[1].ToLower()
+        return "/mnt/$letter" + $WinPath.Substring(2).Replace('\', '/')
     }
-
-    # Imposta come default
-    wsl --set-default $distroName 2>$null | Out-Null
-
-    # Restart WSL per applicare systemd
-    Write-Status "  Riavvio di WSL per abilitare systemd ..."
-    wsl --shutdown 2>$null | Out-Null
-    Start-Sleep -Seconds 3
-
-    # Lancia install.sh dentro WSL
-    Write-Status "  Lancio deploy/install.sh dentro WSL2 ..."
-    $installScript = Join-Path $PSScriptRoot '../install.sh'
-    $deployDir = Join-Path $PSScriptRoot '..'
-
-    # Copia il deploy directory dentro WSL se non esiste già
-    $wslDeployPath = '/mnt/c/ProgramData/GitStack-deploy'
-    $localDeployPath = $deployDir
-
-    # Usa il percorso WSL assoluto del repo
-    $repoPath = $PSScriptRoot -replace '^([A-Z]):', '/$1' -replace '\\', '/'
-
-    try {
-        # Esegui install.sh in WSL con systemd attivo
-        $output = wsl -d $distroName -- bash -c "
-            set -e
-            echo '==> Install.sh avviato da install-wsl.ps1 (W1/W2)'
-            cd '$repoPath'
-            echo '==> Directory corrente: ' \$(pwd)
-            echo '==> Script install.sh: ' \$(ls -la deploy/install.sh)
-            sudo bash deploy/install.sh --skip-preflight
-        " 2>&1
-
-        if ($LASTEXITCODE -ne 0 -and $output) {
-            Write-Host "`n$($output -join [Environment]::NewLine)" -ForegroundColor Yellow
-        }
-    } catch {
-        Write-Fail "Errore durante l'esecuzione di install.sh in WSL2: $_"
-    }
-
-    Write-Status "  install.sh completato (o fallito con errore sopra)."
+    return $WinPath
 }
 
 # ============================================================
-# Configurazione -ShareOnNetwork (porte 443 e 2222)
+# Configurazione systemd (dentro la distro, /etc/wsl.conf)
+# ============================================================
+
+function Enable-SystemdInDistro {
+    param([string]$DistroName)
+
+    Write-Status '  Abilitazione systemd in /etc/wsl.conf ...'
+    $result = wsl -d $DistroName -u root -- bash -c "
+        if [ -f /etc/wsl.conf ] && grep -q '^systemd' /etc/wsl.conf; then
+            echo 'systemd gia configurato'
+        else
+            printf '[boot]\nsystemd=true\n' > /etc/wsl.conf
+            echo 'wsl.conf configurato'
+        fi
+    " 2>&1
+    Write-Status "    $result"
+
+    # Riavvia WSL per applicare
+    Write-Status '  Riavvio di WSL per abilitare systemd ...'
+    wsl --shutdown 2>$null | Out-Null
+    Start-Sleep -Seconds 3
+}
+
+# ============================================================
+# Configurazione -ShareOnNetwork (PRIMA di install.sh)
 # ============================================================
 
 function Enable-ShareOnNetwork {
     param([int]$WindowsBuild)
 
     if ($WindowsBuild -lt 22621) {
-        Write-Fail "-ShareOnNetwork richiede Windows 11 22H2 (build ≥ 22621). `
-Trova: build $WindowsBuild. Usa senza -ShareOnNetwork per l'accesso solo dal PC."
+        Write-Fail "-ShareOnNetwork richiede Windows 11 22H2 (build >= 22621). Trovata: build ${WindowsBuild}."
     }
 
-    Write-Status "  Configurazione della rete mirrored (ShareOnNetwork) ..."
+    Write-Status '  Configurazione della rete mirrored (ShareOnNetwork) ...'
 
-    # Imposta networkingMode=mirrored in .wslconfig
-    $wslConfPath = Join-Path $env:USERPROFILE '.wslconfig'
+    # networkingMode=mirrored va nella sezione [wsl2] di .wslconfig
+    $wslConfPath = Join-Path $env:USERProfile '.wslconfig'
     $wslConfContent = ''
     if (Test-Path $wslConfPath) {
         $wslConfContent = Get-Content $wslConfPath -Raw
     }
 
-    # Aggiungi la sezione networking se manca
-    if ($wslConfContent -notmatch 'networkingMode') {
-        $networkingBlock = "`n[experimental]`n networkingMode=mirrored`n"
-        if ($wslConfContent.Trim()) {
-            $wslConfContent = $wslConfContent.TrimEnd() + $networkingBlock
-        } else {
-            $wslConfContent = '[experimental]' + $networkingBlock
+    # Controlla se networkingMode e' gia' presente con un altro valore
+    if ($wslConfContent -match 'networkingMode\s*=\s*(\S+)') {
+        $currentValue = $matches[1]
+        if ($currentValue -ne 'mirrored') {
+            Write-Fail "networkingMode e' gia' impostato a $currentValue in .wslconfig. Cambia il valore in mirrored e rilancia."
         }
-        $wslConfContent | Set-Content $wslConfPath -Encoding UTF8
-        Write-Status "    networkingMode=mirrored aggiunto a .wslconfig."
+    } else {
+        # Aggiungi networkingMode nella sezione [wsl2] o crea la sezione
+        $nwLine = 'networkingMode=mirrored'
+        if ($wslConfContent -match '\[wsl2\]') {
+            $wslConfContent = $wslConfContent -replace "(\[wsl2\].*?)([^\r\n])", "`$1`n# GitStack`n$nwLine`n`$2"
+            if ($wslConfContent -notmatch [regex]::Escape($nwLine)) {
+                $wslConfContent = $wslConfContent -replace "(\[wsl2\])", "`$1`n# GitStack`n$nwLine"
+            }
+        } else {
+            $wslBlock = "`n[wsl2]`n# GitStack`n$nwLine"
+            if ($wslConfContent.Trim()) {
+                $wslConfContent = $wslConfContent.TrimEnd() + $wslBlock
+            } else {
+                $wslConfContent = '[wsl2]' + $wslBlock.Trim()
+            }
+        }
+        $wslConfContent | Set-Content $wslConfPath -Encoding ASCII
+        Write-Status '    networkingMode=mirrored aggiunto a .wslconfig.'
     }
 
     # Riavvia WSL per applicare il networking
-    Write-Status "    Riavvio di WSL per applicare networkingMode=mirrored ..."
+    Write-Status '    Riavvio di WSL per applicare networkingMode=mirrored ...'
     wsl --shutdown 2>$null | Out-Null
     Start-Sleep -Seconds 3
 
@@ -341,7 +259,7 @@ Trova: build $WindowsBuild. Usa senza -ShareOnNetwork per l'accesso solo dal PC.
     foreach ($port in @(443, 2222)) {
         $ruleName = "GitStack-WSL-$port"
         if (-not (Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue)) {
-            Write-Status "    Creazione regola firewall '$ruleName' (porta $port) ..."
+            Write-Status "    Creazione regola firewall $ruleName (porta $port) ..."
             New-NetFirewallRule -Name $ruleName `
                 -DisplayName $ruleName `
                 -Direction Inbound `
@@ -350,11 +268,103 @@ Trova: build $WindowsBuild. Usa senza -ShareOnNetwork per l'accesso solo dal PC.
                 -Action Allow `
                 -Profile Any
         } else {
-            Write-Status "    Regola firewall '$ruleName' già esistente."
+            Write-Status "    Regola firewall $ruleName gia' esistente."
         }
     }
 
-    Write-Status "  ShareOnNetwork: configurato."
+    Write-Status '  ShareOnNetwork: configurato.'
+}
+
+# ============================================================
+# Installazione di Ubuntu e lancio di install.sh
+# ============================================================
+
+function Install-UbuntuAndRun {
+    param([int]$WindowsBuild, [bool]$DoShareOnNetwork)
+
+    Write-Status 'Installazione di Ubuntu in WSL2 ...'
+
+    # Controlla se la distro GitStack e' gia' installata
+    $existingDistro = wsl -l -q 2>$null | Where-Object { $_ -match $GS_DISTRO_NAME } | Select-Object -First 1
+    $distroName = ''
+
+    if ($existingDistro) {
+        $distroName = $existingDistro
+        Write-Host "  Distro ${distroName} gia' installata, la uso."
+    }
+
+    if (-not $distroName) {
+        # Installa con --name GitStack --no-launch
+        Write-Status "  Installazione Ubuntu 24.04 con nome $GS_DISTRO_NAME ..."
+
+        $installOk = $false
+
+        # Tentativo con Ubuntu 24.04
+        try {
+            wsl --install -d Ubuntu-24.04 --name $GS_DISTRO_NAME --no-launch 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                $distroName = $GS_DISTRO_NAME
+                $installOk = $true
+            }
+        } catch {
+            # Continua al fallback
+        }
+
+        if (-not $installOk) {
+            # Fallback: Ubuntu 22.04
+            Write-Warn "Ubuntu 24.04 non disponibile, provo con Ubuntu 22.04 ..."
+            try {
+                wsl --install -d Ubuntu-22.04 --name $GS_DISTRO_NAME --no-launch 2>&1 | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                    $distroName = $GS_DISTRO_NAME
+                    $installOk = $true
+                }
+            } catch {
+                # Continua
+            }
+        }
+
+        if (-not $installOk) {
+            Write-Fail "Impossibile installare la distro $GS_DISTRO_NAME. Verifica che wsl sia installato e riprova."
+        }
+
+        Write-Host "  Distro ${distroName} installata (senza lancio interattivo)."
+
+        # Imposta come default
+        wsl --set-default $distroName 2>$null | Out-Null
+    }
+
+    # Abilita systemd
+    Enable-SystemdInDistro -DistroName $distroName
+
+    # Se -ShareOnNetwork, applica PRIMA di install.sh
+    if ($DoShareOnNetwork) {
+        Enable-ShareOnNetwork -WindowsBuild $WindowsBuild
+    }
+
+    # Converti il percorso del repo in formato WSL
+    $wslRepoPath = Convert-WindowsToWSLPath -WinPath $PSScriptRoot
+
+    # Lancia install.sh dentro WSL
+    Write-Status "  Lancio deploy/install.sh dentro WSL2 (distro: $distroName) ..."
+    try {
+        $output = wsl -d $distroName -- bash -c "
+            set -e
+            echo '==> install.sh avviato da install-wsl.ps1 (W1/W2)'
+            cd '$wslRepoPath'
+            echo '==> Directory corrente: ' \$(pwd)
+            echo '==> Script install.sh: ' \$(ls -la deploy/install.sh)
+            sudo bash deploy/install.sh --skip-preflight
+        " 2>&1
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "install.sh e' uscito con codice ${LASTEXITCODE}. Output:`n$(($output -join [Environment]::NewLine))"
+        }
+
+        Write-Status '  install.sh completato con successo.'
+    } catch {
+        Write-Fail "Errore durante l'esecuzione di install.sh in WSL2: $_"
+    }
 }
 
 # ============================================================
@@ -362,55 +372,29 @@ Trova: build $WindowsBuild. Usa senza -ShareOnNetwork per l'accesso solo dal PC.
 # ============================================================
 
 function Register-LoginTask {
-    Write-Status "  Registrazione dell'attività di avvio al login ..."
+    param([string]$DistroName)
+
+    Write-Status '  Registrazione dell''attivita'' di avvio al login ...'
 
     $taskName = 'GitStack-WSL-Login'
     $scriptPath = Join-Path $PSScriptRoot 'on-login.ps1'
 
-    # Crea lo script di avvio al login
-    $loginScript = @'
-# on-login.ps1 — Avvia WSL e GitStack all'accesso di Windows (W1)
-param()
-
-$ErrorActionPreference = 'SilentlyContinue'
-
-# Avvia WSL se non è in esecuzione
-$wslRunning = wsl --status 2>$null
-if ($LASTEXITCODE -ne 0) {
-    wsl ~ &>/dev/null
-    Start-Sleep -Seconds 5
-}
-
-# Controlla se GitStack è già in esecuzione (processo k3s)
-$k3sRunning = wsl -l -q 2>$null | Select-String -Pattern 'ubuntu|gitstack'
-if ($k3sRunning) {
-    wsl -d $k3sRunning[0] -- pgrep -f k3s >$null 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        # k3s non in esecuzione: avvia install.sh se necessario
-        # (il primo avvio l'ha lanciato l'installatore, i successivi no)
-        $k3sActive = wsl -d $k3sRunning[0] -- systemctl is-active k3s 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            wsl -d $k3sRunning[0] -- systemctl start k3s 2>/dev/null
-            wsl -d $k3sRunning[0] -- systemctl start gitstack 2>/dev/null
-        }
+    # Usa il file committato on-login.ps1 (non lo riscriviamo qui)
+    if (-not (Test-Path $scriptPath)) {
+        Write-Warn "on-login.ps1 non trovato in $scriptPath."
+        return
     }
-}
-'@
 
-    $loginScript | Set-Content $scriptPath -Encoding UTF8
-
-    # Crea l'attività pianificata
     $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
         -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
 
     $trigger = New-ScheduledTaskTrigger -AtLogOn
 
     $settings = New-ScheduledTaskSettingsSet `
-        -StartWhenAvailable `
         -DontStopIfGoingOnBatteries `
         -AllowStartIfOnBatteries `
-        -StartWhenAvailable `
-        -ExecutionTimeLimit (New-TimeSpan -Minutes 0)
+        -ExecutionTimeLimit (New-TimeSpan -Minutes 0) `
+        -StartWhenAvailable
 
     try {
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
@@ -420,46 +404,43 @@ if ($k3sRunning) {
         -Action $action `
         -Trigger $trigger `
         -Settings $settings `
-        -Description "Avvia WSL e GitStack all'accesso di Windows (W1)" `
+        -Description 'Avvia WSL e GitStack all''accesso di Windows (W1)' `
         -Force
 
-    Write-Status "  Attività pianificata '$taskName' registrata."
+    Write-Status "  Attivita' pianificata $taskName registrata."
 }
 
 # ============================================================
 # Main
 # ============================================================
 
-Write-Host ""
-Write-Host "GitStack WSL2 Installer (W1/W2 — prova/demo)" -ForegroundColor Cyan
-Write-Host "Non per la produzione: WSL2 ha limiti di rete e affidabilità (D14 [c_cf5bc915298b97db])." -ForegroundColor Yellow
-Write-Host ""
+Write-Host ''
+Write-Host 'GitStack WSL2 Installer (W1/W2 -- prova/demo)' -ForegroundColor Cyan
+Write-Host 'NON per la produzione: WSL2 ha limiti di rete e affidabilita' -ForegroundColor Yellow
+Write-Host '(riferimento D14 [c_cf5bc915298b97db]).' -ForegroundColor Yellow
+Write-Host ''
 
 # 1. Verifica prerequisiti
 $windowsBuild = Test-Prerequisites
 
-# 2. Avvia l'installazione e lancia install.sh
-Install-UbuntuAndRun -WindowsBuild $windowsBuild
+# 2. Installa Ubuntu, abilita systemd, configura ShareOnNetwork PRIMA, poi lancia install.sh
+Install-UbuntuAndRun -WindowsBuild $windowsBuild -DoShareOnNetwork ($ShareOnNetwork.IsPresent)
 
-# 3. Configurazione ShareOnNetwork (se richiesta)
+# 3. Registrazione avvio al login
+$foundDistro = wsl -l -q 2>$null | Where-Object { $_ -match $GS_DISTRO_NAME } | Select-Object -First 1
+Register-LoginTask -DistroName $foundDistro
+
+Write-Host ''
+Write-Host 'Installazione completata.' -ForegroundColor Green
+Write-Host ''
+Write-Host 'Accesso:' -ForegroundColor Cyan
 if ($ShareOnNetwork) {
-    Enable-ShareOnNetwork -WindowsBuild $windowsBuild
-}
-
-# 4. Registrazione avvio al login
-Register-LoginTask
-
-Write-Host ""
-Write-Host "Installazione completata." -ForegroundColor Green
-Write-Host ""
-Write-Host "Accesso:" -ForegroundColor Cyan
-if ($ShareOnNetwork) {
-    Write-Host "  - Dal PC: https://localhost:443 (oppure https://<IP-WSL>:443)" -ForegroundColor White
-    Write-Host "  - SSH:    ssh -p 2222 utente@<IP-WSL>" -ForegroundColor White
-    Write-Host "  - Porte 443 e 2222 aperte nel firewall." -ForegroundColor White
+    Write-Host '  - Dal PC: https://localhost:443 (oppure https://<IP-del-PC>:443)' -ForegroundColor White
+    Write-Host '  - SSH:    ssh -p 2222 utente@<IP-del-PC>' -ForegroundColor White
+    Write-Host '  - Porte 443 e 2222 aperte nel firewall.' -ForegroundColor White
 } else {
-    Write-Host "  - Solo dal PC: https://localhost:443" -ForegroundColor White
+    Write-Host '  - Solo dal PC: https://localhost:443' -ForegroundColor White
 }
-Write-Host ""
-Write-Host "Per disinstallare: .\deploy\windows\install-wsl.ps1 -Uninstall" -ForegroundColor Cyan
-Write-Host ""
+Write-Host ''
+Write-Host 'Per disinstallare: .deploywindowsinstall-wsl.ps1 -Uninstall' -ForegroundColor Cyan
+Write-Host ''

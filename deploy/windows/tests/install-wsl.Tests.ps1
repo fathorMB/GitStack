@@ -1,10 +1,11 @@
 # Test CI per install-wsl.ps1 (GIT-211, W1/W2): verifica statica
 #
-# I runner Windows di GitHub non hanno virtualizzazione annidata per WSL2,
-# quindi non è possibile un test di installazione reale. Questo test:
+# I runner Windows di GitHub non hanno virtualizzazione annidata per WSL2
+# quindi non e possibile un test di installazione reale. Questo test:
 # 1. Verifica che il parser PowerShell non sollevi errori (syntax check).
 # 2. Verifica che lo script sia ASCII puro (senza BOM, compatibile con PS 5.1).
 # 3. Verifica che le sezioni critiche siano presenti (controllo strutturale).
+# 4. Verifica on-login.ps1 e comportamenti critici.
 #
 # Esecuzione:
 #   powershell.exe -NoProfile -File deploy\windows\tests\install-wsl.Tests.ps1
@@ -25,6 +26,19 @@ $tokens = $null; $errors = $null
     $scriptPath, [ref]$tokens, [ref]$errors
 )
 Check 'parser: nessun errore di sintassi' ($errors.Count -eq 0)
+
+# Parser e ASCII per on-login.ps1
+$loginPath = Join-Path $PSScriptRoot '..\on-login.ps1'
+$loginPath = (Resolve-Path -LiteralPath $loginPath).Path
+$loginTokens = $null; $loginErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    $loginPath, [ref]$loginTokens, [ref]$loginErrors
+)
+Check 'on-login parser: nessun errore di sintassi' ($loginErrors.Count -eq 0)
+$loginBytes = [IO.File]::ReadAllBytes($loginPath)
+$loginHasBom = ($loginBytes[0] -eq 0xEF -and $loginBytes[1] -eq 0xBB -and $loginBytes[2] -eq 0xBF)
+$loginHasNonAscii = ($loginBytes | Where-Object { $_ -gt 127 }).Count -gt 0
+Check 'on-login file: solo ASCII, senza BOM' (-not $loginHasBom -and -not $loginHasNonAscii)
 
 # 2. ASCII puro, senza BOM (compatibilità PowerShell 5.1)
 $bytes = [IO.File]::ReadAllBytes($scriptPath)
@@ -49,7 +63,16 @@ Check 'contiene porta 443'           ($content -match '443')
 Check 'contiene porta 2222'          ($content -match '2222')
 Check 'contiene install.sh'          ($content -match 'install\.sh')
 Check 'contiene riferimento D14'     ($content -match 'D14')
-Check 'contiene warning produzione'  ($content -match 'produzione|produzione|non per la produzione')
+Check 'contiene warning produzione'  ($content -match 'produzione|non per la produzione')
+
+# 4. Verifiche on-login.ps1 e comportamenti critici
+$loginContent = [IO.File]::ReadAllText($loginPath)
+Check 'on-login contiene "wsl -d"'       ($loginContent -match 'wsl -d')
+Check 'on-login non usa &>/dev/null'     ($loginContent -notmatch '&>/dev/null')
+Check 'install-wsl usa --no-launch'      ($content -match '\-\-no-launch')
+Check 'install-wsl usa --name'           ($content -match '\-\-name')
+Check 'install-wsl systemd inside distro' ($content -match 'wsl -d.*-u root' -and $content -match 'wsl\.conf')
+Check 'install-wsl ShareOnNetwork PRIMA' ($content -match 'PRIMA di install\.sh')
 
 Write-Host ""
 Write-Host "PSScriptAnalyzer: per una verifica completa (naming, best-practice), " `

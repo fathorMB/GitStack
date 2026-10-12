@@ -124,7 +124,7 @@ Script in `deploy/windows/` per installare GitStack su Windows 10/11 tramite WSL
 
 ### Requisiti
 
-- Windows 10 build 19041 (20H2) o superiore per WSL2; build 22621 (Windows 11 22H2) per `-ShareOnNetwork` (rete mirrored)
+- Windows 10 build 19041 (2004) o superiore per WSL2; build 22621 (Windows 11 22H2) per `-ShareOnNetwork` (rete mirrored)
 - Virtualizzazione attiva nel BIOS/UEFI
 - PowerShell 5.1+ (incluso in Windows) o pwsh
 
@@ -144,11 +144,37 @@ Script in `deploy/windows/` per installare GitStack su Windows 10/11 tramite WSL
 Lo script:
 1. Verifica e abilita WSL2 se necessario;
 2. Installa Ubuntu 24.04 (o 22.04 come fallback);
-3. Abilita systemd in `.wslconfig`;
+3. Abilita systemd in `/etc/wsl.conf` dentro la distro;
 4. Lancia `deploy/install.sh` dentro WSL con `--skip-preflight` (l'hardware di un PC Windows non ha Ubuntu):
 5. Opzionalmente configura `networkingMode=mirrored` con regole firewall per 443/2222;
 6. Registra un'attività di Windows per avviare WSL e GitStack all'accesso utente.
 
-### Verifica in CI
+### Prova del board (Windows 11 con WSL2)
 
-Il job PowerShell del CI (`.github/workflows/ci.yml`, job `pwsh`) esegue `deploy/windows/tests/install-wsl.Tests.ps1`: verifica che il parser PowerShell non sollevi errori di sintassi e che lo script sia ASCII puro. I runner Windows di GitHub non hanno virtualizzazione annidata per WSL2, quindi non è possibile un test di installazione reale. Per la prova reale su un PC Windows, il board esegue i comandi sopra su una macchina Windows 11 con WSL2.
+I runner CI non hanno WSL2 reale; per la prova vera su un PC Windows 11 22H2+:
+
+```powershell
+# 1. Da terminale PowerShell come amministratore:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd <percorso>\GitStack
+
+# 2. Installazione:
+.\deploy\windows\install-wsl.ps1
+
+# 3. Verifica accesso locale:
+curl.exe -k https://localhost
+ssh -p 2222 bob@localhost        # utente bob creato da install.sh
+
+# 4. Con rete mirrored (richiede Windows 11 22H2, build ≥ 22621):
+.\deploy\windows\install-wsl.ps1 -ShareOnNetwork
+# Da un altro PC nella stessa rete:
+curl.exe -k https://<IP-del-PC>
+
+# 5. Disinstallazione:
+.\deploy\windows\install-wsl.ps1 -Uninstall
+# Verificare che:
+# - la distro "GitStack" sia stata rimossa (wsl -l -q)
+# - le regole firewall GitStack-WSL-443 e GitStack-WSL-2222 siano rimosse
+# - l'attivita pianificata "GitStack-WSL-Login" sia rimossa
+# - le righe marcate # GitStack siano rimosse da .wslconfig (il file resta)
+```
