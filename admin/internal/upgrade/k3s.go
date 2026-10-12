@@ -30,9 +30,10 @@ const K3sVersionFile = "deploy/k3s-version"
 const K3sInstallURL = "https://get.k3s.io"
 
 // K3sInstallExec è INSTALL_K3S_EXEC con cui install.sh installa k3s: va
-// ripetuto identico, o l'installer riscriverebbe l'unità systemd senza
-// --write-kubeconfig-mode 644. Un test lo confronta con deploy/install.sh.
-const K3sInstallExec = "server --write-kubeconfig-mode 644"
+// ripetuto identico, o l'installer riscriverebbe l'unità systemd col vecchio
+// kubeconfig 644 e senza cifratura dei Secret (GIT-228, F2). Un test lo
+// confronta con K3S_INSTALL_EXEC di deploy/install.sh.
+const K3sInstallExec = "server --write-kubeconfig-mode 600 --secrets-encryption"
 
 var k3sVersionRe = regexp.MustCompile(`v(\d+)\.(\d+)\.(\d+)\+k3s(\d+)`)
 

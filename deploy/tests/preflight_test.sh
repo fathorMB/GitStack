@@ -3,7 +3,7 @@
 # Carica solo le funzioni (GITSTACK_INSTALL_LIB=1) e ridefinisce le letture
 # dell'hardware: nessun root, nessuna VM. Uso: ./deploy/tests/preflight_test.sh
 # Le variabili assegnate qui sono lette dalle funzioni di install.sh (caricate con source).
-# shellcheck disable=SC2034,SC1091
+# shellcheck disable=SC2034,SC1091,SC2329
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -429,6 +429,52 @@ expect_ok "preflight: --skip-preflight"
 expect_has "preflight: --skip-preflight" "non è stato controllato"
 GITSTACK_SKIP_PREFLIGHT=0
 pg_reset
+
+# --- k3s: kubeconfig privato e Secret cifrati (GIT-228, F2) ---------------------
+# k3s è avviato con --write-kubeconfig-mode 600 e --secrets-encryption, mai 644.
+check "k3s: argomenti con modo 600" bash -c "case '${K3S_INSTALL_EXEC}' in *'--write-kubeconfig-mode 600'*) true ;; *) false ;; esac"
+check "k3s: argomenti con --secrets-encryption" bash -c "case '${K3S_INSTALL_EXEC}' in *'--secrets-encryption'*) true ;; *) false ;; esac"
+check "k3s: nessun modo 644 nell'installer" bash -c "! grep -q 'write-kubeconfig-mode 644' '${HERE}/../install.sh'"
+
+# k3s kubeconfig is not world-readable: un kubeconfig 644 viene portato a 600.
+KC="${WORK}/k3s.yaml"
+printf 'apiVersion: v1\n' >"${KC}"
+# Su filesystem che non rispettano i modi (NTFS con Git Bash) chmod e stat si
+# simulano: su Linux girano quelli veri.
+chmod 0600 "${KC}"
+if [ "$(stat -c '%a' "${KC}" 2>/dev/null)" != "600" ]; then
+  chmod() { printf '%s' "$1" >"$2.mode"; }
+  file_mode() { local m; m="$(cat "$1.mode" 2>/dev/null)"; printf '%s' "${m#0}"; }
+fi
+chmod 0644 "${KC}"
+if kubeconfig_is_private "${KC}"; then RC=0; OUT="644 considerato privato"; bad "kubeconfig 644 considerato privato"; else ok; fi
+secure_k3s_kubeconfig "${KC}"
+check "k3s kubeconfig is not world-readable" kubeconfig_is_private "${KC}"
+check "k3s kubeconfig: modo 600 dopo secure_k3s_kubeconfig" test "$(file_mode "${KC}")" = "600"
+
+# Dopo l'installazione la cifratura dei Secret è attiva: `k3s secrets-encrypt
+# status` la dichiara; se non lo è, un'installazione nuova fallisce.
+GITSTACK_KUBECONFIG="${KC}"
+k3s_secrets_encryption_enabled() { return 0; }
+K3S_FRESH_INSTALL=1
+run verify_k3s_hardening
+expect_ok "k3s: cifratura attiva dopo l'installazione"
+expect_has "k3s: cifratura attiva" "cifratura dei Secret attiva"
+k3s_secrets_encryption_enabled() { return 1; }
+run verify_k3s_hardening
+expect_fail "k3s: installazione nuova senza cifratura"
+expect_has "k3s: installazione nuova senza cifratura" "cifratura dei Secret non risulta attiva"
+K3S_FRESH_INSTALL=0
+run verify_k3s_hardening
+expect_ok "k3s: installazione esistente senza cifratura avvisa"
+expect_has "k3s: installazione esistente" "gitstack upgrade"
+# Un kubeconfig che resta largo (chmod senza effetto) ferma l'installer.
+secure_k3s_kubeconfig() { :; }
+chmod 0644 "${KC}"
+k3s_secrets_encryption_enabled() { return 0; }
+run verify_k3s_hardening
+expect_fail "k3s: kubeconfig 644 ferma l'installer"
+expect_has "k3s: kubeconfig 644" "leggibile da altri account"
 
 printf '\npreflight_test: %s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]

@@ -252,7 +252,7 @@ password stored in a Kubernetes Secret (`<release>-identity-admin`). It is not
 printed by the installer. To read it:
 
 ```sh
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
 On first login the admin must change this password.
@@ -781,6 +781,76 @@ If the k3s step fails, GitStack is **not** upgraded (the chart stays as it
 was), the command exits `70` and prints the path of the preventive backup.
 There is no automatic rollback of k3s: follow the procedure below.
 
+### Hardening k3s: private kubeconfig and encrypted Secrets (F2, GIT-228)
+
+`/etc/rancher/k3s/k3s.yaml` is cluster-admin: whoever reads it reads every
+Secret (database password, service secret, webhook and OIDC keys, admin
+password). Since GIT-228 the installer starts k3s with
+
+```
+server --write-kubeconfig-mode 600 --secrets-encryption
+```
+
+- the kubeconfig is `root:root` mode `600`: `kubectl`, `k3s kubectl` and
+  `helm` need `sudo` (or `sudo -i`); `gitstack` already runs as root;
+- the Secrets are encrypted at rest in the k3s datastore (AES-CBC, key in
+  `/var/lib/rancher/k3s/server/cred/encryption-config.json`, root only). The key
+  lives on the same disk: it protects copies of the datastore and backups of
+  the disk, not an attacker who is already root;
+- after an install check with `sudo k3s secrets-encrypt status`
+  (`Encryption Status: Enabled`) and `stat -c %a /etc/rancher/k3s/k3s.yaml` (`600`).
+  `install.sh` makes both checks and stops if they fail.
+
+**Existing installations.** An installation made before GIT-228 has mode 644 and
+plain Secrets. `sudo gitstack upgrade` fixes it, also when GitStack is already at
+the requested version (`--dry-run` shows the plan: "Hardening di k3s"):
+
+1. health check and preventive backup, as in every upgrade;
+2. a copy of the unit is kept in `/etc/systemd/system/k3s.service.pre-hardening`,
+   then `k3s.service` is rewritten (mode `600`, `--secrets-encryption`);
+3. `systemctl daemon-reload`, `systemctl restart k3s` and wait until all
+   services are healthy (a short interruption, like a k3s patch update);
+4. `k3s secrets-encrypt status` must say `Enabled`; then
+   `k3s secrets-encrypt rotate-keys` re-encrypts the Secrets that were in plain text;
+5. if step 3 or the check in step 4 fails, the unit is put back as it was, k3s is
+   restarted and the upgrade stops with exit code `70` before touching GitStack.
+   Once the encryption is active the flag is **not** removed automatically:
+   Secrets written after that would become unreadable.
+
+**When the same upgrade also updates k3s** (the usual case): the k3s installer
+script rewrites `k3s.service` itself with the new arguments (mode `600`,
+`--secrets-encryption`) and restarts k3s. `gitstack upgrade` then does only the
+encryption phase: `k3s secrets-encrypt status` must say `Enabled`, then
+`rotate-keys` re-encrypts the Secrets that were in plain text, before GitStack
+itself is updated. If `status` does not say `Enabled`, the upgrade stops before
+the chart (exit code `70`, the preventive backup is printed). There is **no
+automatic rollback of the unit** in this case, because k3s is already at the new
+version (see "Rolling back k3s"): fix the cause with `journalctl -u k3s`, check
+`sudo k3s secrets-encrypt status`, then run `sudo gitstack upgrade` again.
+
+If `rotate-keys` fails, encryption is active for new writes but the old Secrets are
+still plain: run `sudo k3s secrets-encrypt rotate-keys` again and check
+`k3s secrets-encrypt status` (`Current Rotation Stage: reencrypt_finished`).
+
+**Manual procedure** (unit in a format `gitstack upgrade` does not recognise, or a
+k3s not managed by `gitstack`). Take a backup first (`sudo gitstack backup`), then:
+
+```sh
+sudo cp /etc/systemd/system/k3s.service /root/k3s.service.pre-hardening
+# edit ExecStart: '--write-kubeconfig-mode' '600' and '--secrets-encryption'
+sudo systemctl daemon-reload && sudo systemctl restart k3s
+sudo k3s secrets-encrypt status          # Encryption Status: Enabled
+sudo k3s secrets-encrypt rotate-keys     # re-encrypts the existing Secrets
+sudo chmod 600 /etc/rancher/k3s/k3s.yaml # if k3s has not rewritten it yet
+sudo gitstack status
+```
+
+To undo **before** any Secret is written encrypted: restore the saved unit,
+`daemon-reload`, `restart k3s`. **After** the encryption is active, first run
+`sudo k3s secrets-encrypt disable` and `sudo k3s secrets-encrypt reencrypt`, then
+remove the flag from the unit and restart; otherwise restore the backup with
+`gitstack restore`.
+
 ### Rolling back k3s
 
 Not automatic, on purpose: Kubernetes does not support downgrading the
@@ -793,7 +863,7 @@ installer:
 
 ```sh
 curl -sfL https://get.k3s.io | sudo INSTALL_K3S_VERSION=v1.36.4+k3s1 \
-  INSTALL_K3S_EXEC="server --write-kubeconfig-mode 644" sh -
+  INSTALL_K3S_EXEC="server --write-kubeconfig-mode 600 --secrets-encryption" sh -
 k3s --version            # the version you asked for
 sudo gitstack status     # wait until all services are ready
 ```

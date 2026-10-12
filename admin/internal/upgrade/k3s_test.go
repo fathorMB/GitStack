@@ -245,8 +245,11 @@ func TestDeclaredFile_InstallSh(t *testing.T) {
 	if !strings.Contains(s, "k3s-version") {
 		t.Error("install.sh non legge deploy/k3s-version")
 	}
-	if !strings.Contains(s, "INSTALL_K3S_EXEC="+K3sInstallExec) {
-		t.Errorf("install.sh non usa INSTALL_K3S_EXEC=%q", K3sInstallExec)
+	if !strings.Contains(s, "K3S_INSTALL_EXEC=\""+K3sInstallExec+"\"") {
+		t.Errorf("install.sh non definisce K3S_INSTALL_EXEC=%q", K3sInstallExec)
+	}
+	if !strings.Contains(s, "INSTALL_K3S_EXEC=${K3S_INSTALL_EXEC}") {
+		t.Error("install.sh non passa K3S_INSTALL_EXEC a INSTALL_K3S_EXEC")
 	}
 	if strings.Contains(s, strings.TrimSpace(string(b))) {
 		t.Error("install.sh duplica la versione di k3s")
@@ -258,7 +261,7 @@ func TestInstallerScript(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `curl -sfL 'https://get.k3s.io' | INSTALL_K3S_VERSION=v1.36.5+k3s1 INSTALL_K3S_EXEC='server --write-kubeconfig-mode 644' sh -`
+	want := `curl -sfL 'https://get.k3s.io' | INSTALL_K3S_VERSION=v1.36.5+k3s1 INSTALL_K3S_EXEC='server --write-kubeconfig-mode 600 --secrets-encryption' sh -`
 	if got := installerScript(K3sInstallURL, v, ""); got != want {
 		t.Errorf("script:\n got %s\nwant %s", got, want)
 	}

@@ -72,6 +72,13 @@ GITSTACK_VERSION="${GITSTACK_VERSION:-}"
 GITSTACK_IMAGE_REGISTRY="${GITSTACK_IMAGE_REGISTRY:-}"
 GITSTACK_SKIP_PREFLIGHT="${GITSTACK_SKIP_PREFLIGHT:-0}"
 GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+# Argomenti di k3s (GIT-228, F2 del registro ASVS): kubeconfig cluster-admin
+# leggibile solo da root e Secret cifrati a riposo. Il valore è lo stesso di
+# K3sInstallExec in admin/internal/upgrade/k3s.go (un test li confronta).
+K3S_INSTALL_EXEC="server --write-kubeconfig-mode 600 --secrets-encryption"
+# 1 se questa esecuzione ha installato k3s (le installazioni nuove devono
+# avere la cifratura attiva; su quelle esistenti la abilita gitstack upgrade).
+K3S_FRESH_INSTALL=0
 
 # Comando di amministrazione `gitstack` (admin/, GIT-142). Sorgente del
 # binario: un percorso locale o un URL http(s). Senza, si prova la release
@@ -1012,7 +1019,7 @@ install_k3s() {
   resolve_k3s_version
   log "Installo k3s ${INSTALL_K3S_VERSION} (pinnato, include Traefik v3) ..."
   command -v curl >/dev/null 2>&1 || fail "serve 'curl' per installare k3s."
-  local k3s_env=("INSTALL_K3S_VERSION=${INSTALL_K3S_VERSION}" "INSTALL_K3S_EXEC=server --write-kubeconfig-mode 644")
+  local k3s_env=("INSTALL_K3S_VERSION=${INSTALL_K3S_VERSION}" "INSTALL_K3S_EXEC=${K3S_INSTALL_EXEC}")
   if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
     # Lo script di k3s scarica binario e checksum da ${GITHUB_URL}/download/<versione>/.
     k3s_env+=("GITHUB_URL=${GITSTACK_DOWNLOAD_MIRROR}/k3s/releases")
@@ -1021,7 +1028,59 @@ install_k3s() {
     | env "${k3s_env[@]}" sh - \
     || fail "installazione di k3s fallita (script: $(k3s_script_url))."
   NETWORK_K3S_CHANGED=0
+  K3S_FRESH_INSTALL=1
   strip_k3s_env_proxy
+}
+
+# Modo ottale del file (es. 600). Ridefinibile nei test.
+file_mode() {
+  stat -c '%a' "$1" 2>/dev/null
+}
+
+# Vero se il file non ha permessi per gruppo e altri.
+kubeconfig_is_private() {
+  local m
+  m="$(file_mode "$1")" || return 1
+  [ -n "${m}" ] || return 1
+  # Le ultime due cifre (gruppo, altri) devono essere 0.
+  case "${m}" in
+    *00) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Vero se `k3s secrets-encrypt status` dice che la cifratura è attiva.
+# Ridefinibile nei test.
+k3s_secrets_encryption_enabled() {
+  k3s secrets-encrypt status 2>/dev/null | grep -q 'Encryption Status: Enabled'
+}
+
+# F2: il kubeconfig è cluster-admin, quindi legge tutti i Secret. Lo porta a
+# 600 anche se k3s lo aveva scritto più largo (k3s lo riscrive all'avvio col
+# modo dell'unità: su un'installazione vecchia lo corregge gitstack upgrade).
+secure_k3s_kubeconfig() {
+  local f="${1:-${GITSTACK_KUBECONFIG}}"
+  [ -f "${f}" ] || return 0
+  chmod 0600 "${f}" || fail "impossibile portare ${f} a 600."
+}
+
+# Dopo l'installazione di k3s: kubeconfig privato e, sulle installazioni
+# nuove, cifratura dei Secret attiva. Su un'installazione esistente senza
+# cifratura avvisa e indica `gitstack upgrade`: non riavvia k3s da qui.
+verify_k3s_hardening() {
+  local f="${GITSTACK_KUBECONFIG}"
+  secure_k3s_kubeconfig "${f}"
+  if [ -f "${f}" ] && ! kubeconfig_is_private "${f}"; then
+    fail "${f} è ancora leggibile da altri account (modo $(file_mode "${f}")): è un cluster-admin."
+  fi
+  if k3s_secrets_encryption_enabled; then
+    log "k3s: kubeconfig 600 e cifratura dei Secret attiva."
+    return 0
+  fi
+  if [ "${K3S_FRESH_INSTALL}" -eq 1 ]; then
+    fail "k3s è stato installato ma la cifratura dei Secret non risulta attiva (k3s secrets-encrypt status). Diagnostica: journalctl -u k3s -n 100."
+  fi
+  warn "k3s è già installato e i Secret non sono cifrati a riposo, oppure il kubeconfig è stato riscritto col vecchio modo dell'unità: esegui 'sudo gitstack upgrade' (abilita la cifratura e sistema i permessi) o segui docs/operations.md, sezione «Hardening di k3s»."
 }
 
 wait_for_k3s_ready() {
@@ -2904,6 +2963,7 @@ main() {
   apply_k3s_network
   install_k3s
   wait_for_k3s_ready
+  verify_k3s_hardening
   wait_for_traefik_crd
   install_helm
   create_postgres_secrets
