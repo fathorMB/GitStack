@@ -333,7 +333,7 @@ func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) er
 		}
 	}
 	if version == "" || !refRe.MatchString(version) {
-		return fmt.Errorf("Chart.yaml del commit %s: versione assente o non valida", t.SHA)
+		return fmt.Errorf("il Chart.yaml del commit %s non ha una versione valida", t.SHA)
 	}
 	tmp, err := os.MkdirTemp("", "gitstack-chart-")
 	if err != nil {
