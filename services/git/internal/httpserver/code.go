@@ -55,11 +55,12 @@ func (h *handler) tags(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-// securityHeaders sono le intestazioni della regola B3: le scrive il
+// securityHeaders sono le intestazioni di sicurezza B3 e F4: le scrive il
 // servizio, né nginx né core le riscrivono.
 func securityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Security-Policy", "sandbox")
+	w.Header().Set("Cache-Control", "no-store")
 }
 
 // raw manda i byte del file in streaming. Content-Type e disposizione sono

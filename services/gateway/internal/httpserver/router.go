@@ -75,6 +75,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	// finiscono comunque nei log anche le richieste che in M-02 verranno
 	// rifiutate.
 	apiMiddlewares := []openapi.MiddlewareFunc{
+		middleware.SecurityHeaders,
 		middleware.RateLimit,
 		middleware.Auth(middleware.AuthConfig{
 			Table: table, Verifier: verifier, Permissions: o.permissions, Forgetter: forgetter,
