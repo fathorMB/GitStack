@@ -67,3 +67,58 @@ func TestBuildAdminSystem_JsonNonValido(t *testing.T) {
 		t.Errorf("%+v", out)
 	}
 }
+
+func TestBuildAdminSystem_AccessServicesNodeEAvviso(t *testing.T) {
+	raw := `{
+	  "schema": 1,
+	  "database": {"mode": "internal"},
+	  "backup": {"last": {"state": "none"}, "s3": {"configured": false, "upload": {"state": "none"}}},
+	  "versions": {"gitstack": "v1.0.0", "k3sUpdate": "none"},
+	  "network": {"configured": false},
+	  "access": {"host": "git.acme.local", "tlsMode": "internal", "tlsExpiresAt": "2027-01-02T03:04:05Z", "sshPort": 2222,
+	             "tlsKey": "` + leakMarker + `"},
+	  "services": {"available": true, "items": [
+	    {"name": "gs-core", "kind": "Deployment", "desired": 2, "ready": 1, "image": "x/core:v1", "healthy": false}]},
+	  "node": {"available": true,
+	           "cpu": {"available": true, "value": 4, "minimum": 4, "recommended": 8, "level": "below_recommended"},
+	           "memory": {"available": true, "value": 16000000000, "minimum": 8000000000, "recommended": 16000000000, "level": "recommended"},
+	           "disk": {"available": true, "value": 90000000000, "minimum": 60000000000, "recommended": 200000000000,
+	                    "level": "below_minimum", "path": "/var/lib/rancher", "freeBytes": 5000000000, "minFreeBytes": 20000000000}},
+	  "supplyChainWarning": "firme non verificate"
+	}`
+	out := buildAdminSystem([]byte(raw))
+	if out.Access.Host != "git.acme.local" || out.Access.TlsMode != "internal" || out.Access.SshPort != 2222 || out.Access.TlsExpiresAt == nil {
+		t.Errorf("access: %+v", out.Access)
+	}
+	if !out.Services.Available || len(out.Services.Items) != 1 || out.Services.Items[0].Ready != 1 || out.Services.Items[0].Healthy {
+		t.Errorf("services: %+v", out.Services)
+	}
+	if out.Node.Cpu.Level != "below_recommended" || out.Node.Disk.Level != "below_minimum" || out.Node.Disk.FreeBytes != 5000000000 {
+		t.Errorf("node: %+v", out.Node)
+	}
+	if out.SupplyChainWarning == nil || *out.SupplyChainWarning != "firme non verificate" {
+		t.Errorf("avviso: %v", out.SupplyChainWarning)
+	}
+	b, _ := json.Marshal(out)
+	if strings.Contains(string(b), leakMarker) {
+		t.Errorf("segreto nella risposta: %s", b)
+	}
+}
+
+func TestBuildAdminSystem_SezioniNuoveAssentiNonDisponibili(t *testing.T) {
+	// system.json di un gitstack precedente a GIT-218.
+	out := buildAdminSystem([]byte(`{"schema": 1, "database": {"mode": "internal"}}`))
+	if out.Access.TlsMode != "unknown" || out.Services.Available || out.Services.Items == nil || len(out.Services.Items) != 0 {
+		t.Errorf("access/services: %+v %+v", out.Access, out.Services)
+	}
+	if out.Node.Available || out.Node.Cpu.Level != "unknown" || out.Node.Memory.Level != "unknown" || out.Node.Disk.Level != "unknown" {
+		t.Errorf("node: %+v", out.Node)
+	}
+	if out.SupplyChainWarning != nil {
+		t.Errorf("avviso inatteso: %v", *out.SupplyChainWarning)
+	}
+	b, _ := json.Marshal(out)
+	if strings.Contains(string(b), "supplyChainWarning") {
+		t.Errorf("chiave presente senza avviso: %s", b)
+	}
+}

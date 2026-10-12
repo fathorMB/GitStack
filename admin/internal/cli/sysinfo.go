@@ -30,13 +30,22 @@ func (a *App) systemInfo(ctx context.Context, cfg *config.Config, cfgPath string
 	if a.Now != nil {
 		now = a.Now()
 	}
-	return sysinfo.Build(sysinfo.Input{
+	in := sysinfo.Input{
 		Cfg:        cfg,
 		Report:     rep,
 		Backup:     backupstate.Read(dir),
 		HelmValues: a.helmValues(ctx, cfg),
 		Now:        now,
-	})
+	}
+	if a.NodeProbe != nil {
+		in.Node = a.NodeProbe()
+	}
+	if a.CertExpiry != nil && cfg.TLS != "" && cfg.TLS != "insecure" {
+		if at, err := a.CertExpiry(ctx, cfg.Host); err == nil {
+			in.CertExpiry = &at
+		}
+	}
+	return sysinfo.Build(in)
 }
 
 // helmValues legge i values della release; nil se non si riesce (la rete

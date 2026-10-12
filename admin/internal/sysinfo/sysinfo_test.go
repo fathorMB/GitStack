@@ -198,3 +198,86 @@ func TestPublishApplicaConfigMap(t *testing.T) {
 		t.Errorf("documento: %v %s", err, cm.Data[Key])
 	}
 }
+
+func TestBuildAccessServicesNodeSupplyChain(t *testing.T) {
+	cfg := cfgFrom(t, "version: 1\nhost: git.example.com\nssh_port: 2222\ntls: internal\nimage_tag: v1.0.0\nv5:\n  allow_unsigned: true\n")
+	exp := time.Date(2027, 1, 2, 3, 4, 5, 0, time.UTC)
+	rep := &status.Report{Services: []status.Service{
+		{Name: "gs-core", Kind: "Deployment", Desired: 2, Ready: 2, Image: "x/core:v1"},
+		{Name: "gs-git", Kind: "StatefulSet", Desired: 1, Ready: 0, Image: "x/git:v1"},
+	}}
+	info := Build(Input{Cfg: cfg, Report: rep, Now: now, CertExpiry: &exp, Node: NodeProbe{
+		CPUCores: 8, MemoryBytes: 12 * gb, DiskPath: "/var/lib/rancher", DiskTotalBytes: 250 * gb, DiskFreeBytes: 10 * gb}})
+
+	a := info.Access
+	if a.Host != "git.example.com" || a.TLSMode != "internal" || a.SSHPort != 2222 || a.TLSExpiresAt == nil || !a.TLSExpiresAt.Equal(exp) {
+		t.Errorf("access: %+v", a)
+	}
+	if !info.Services.Available || len(info.Services.Items) != 2 || !info.Services.Items[0].Healthy || info.Services.Items[1].Healthy {
+		t.Errorf("services: %+v", info.Services)
+	}
+	n := info.Node
+	if !n.Available || n.CPU.Level != "recommended" || n.Memory.Level != "below_recommended" || n.Disk.Level != "below_minimum" {
+		t.Errorf("node: %+v", n)
+	}
+	if info.SupplyChainWarning == "" {
+		t.Error("avviso della catena di fornitura assente con allow_unsigned")
+	}
+	b, _ := json.Marshal(info)
+	if strings.Contains(string(b), `"tlsExpiresAt":"2027-01-02T03:04:05Z"`) == false {
+		t.Errorf("tlsExpiresAt non serializzata: %s", b)
+	}
+}
+
+func TestBuildHttpSenzaAvvisoEHostNonDisponibile(t *testing.T) {
+	cfg := cfgFrom(t, "version: 1\nhost: 10.0.0.5\nssh_port: 2222\n")
+	exp := now
+	info := Build(Input{Cfg: cfg, Now: now, CertExpiry: &exp})
+	if info.Access.TLSMode != "insecure" || info.Access.TLSExpiresAt != nil {
+		t.Errorf("access: %+v", info.Access)
+	}
+	if info.Services.Available || info.Services.Error == "" || info.Services.Items == nil {
+		t.Errorf("services: %+v", info.Services)
+	}
+	if info.Node.Available || info.Node.CPU.Level != "unknown" || info.Node.Disk.Level != "unknown" {
+		t.Errorf("node: %+v", info.Node)
+	}
+	if info.SupplyChainWarning != "" {
+		t.Errorf("avviso inatteso: %q", info.SupplyChainWarning)
+	}
+	b, _ := json.Marshal(info)
+	if strings.Contains(string(b), "supplyChainWarning") {
+		t.Errorf("chiave presente senza avviso: %s", b)
+	}
+}
+
+func TestBuildClusterNonRaggiungibile(t *testing.T) {
+	cfg := cfgFrom(t, "version: 1\nhost: h\n")
+	info := Build(Input{Cfg: cfg, Now: now, Report: &status.Report{ClusterError: "cluster non interrogabile: x"}})
+	if info.Services.Available || !strings.Contains(info.Services.Error, "cluster") {
+		t.Errorf("services: %+v", info.Services)
+	}
+}
+
+func TestBuildNodeSoglieEParseMemTotal(t *testing.T) {
+	cases := []struct {
+		p              NodeProbe
+		cpu, mem, disk string
+	}{
+		{NodeProbe{CPUCores: 4, MemoryBytes: 8 * gb, DiskTotalBytes: 60 * gb, DiskFreeBytes: 20 * gb}, "below_recommended", "below_recommended", "below_recommended"},
+		{NodeProbe{CPUCores: 2, MemoryBytes: 4 * gb, DiskTotalBytes: 30 * gb, DiskFreeBytes: 30 * gb}, "below_minimum", "below_minimum", "below_minimum"},
+		{NodeProbe{CPUCores: 16, MemoryBytes: 32 * gb, DiskTotalBytes: 500 * gb, DiskFreeBytes: 400 * gb}, "recommended", "recommended", "recommended"},
+	}
+	for i, c := range cases {
+		n := BuildNode(c.p)
+		if n.CPU.Level != c.cpu || n.Memory.Level != c.mem || n.Disk.Level != c.disk {
+			t.Errorf("caso %d: %+v", i, n)
+		}
+	}
+	if got := parseMemTotal("MemTotal:       16384000 kB\nMemFree: 1 kB\n"); got != 16384000*1024 {
+		t.Errorf("parseMemTotal = %d", got)
+	}
+	if parseMemTotal("niente") != 0 {
+		t.Error("parseMemTotal senza riga deve dare 0")
+	}
+}

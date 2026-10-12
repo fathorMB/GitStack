@@ -109,6 +109,22 @@ func buildAdminSystem(raw []byte) openapi.AdminSystem {
 			run.State = openapi.AdminSystemBackupRunStateNone
 		}
 	}
+	// Sezioni di GIT-218: un system.json pubblicato da un gitstack più vecchio
+	// non le ha; i valori «non disponibile» sono quelli del contratto.
+	if out.Access.TlsMode == "" {
+		out.Access.TlsMode = openapi.AdminSystemAccessTlsModeUnknown
+	}
+	if out.Services.Items == nil {
+		out.Services.Items = []openapi.AdminSystemService{}
+	}
+	for _, m := range []*openapi.AdminSystemMetric{&out.Node.Cpu, &out.Node.Memory} {
+		if m.Level == "" {
+			m.Level = openapi.AdminSystemMetricLevelUnknown
+		}
+	}
+	if out.Node.Disk.Level == "" {
+		out.Node.Disk.Level = openapi.AdminSystemDiskLevelUnknown
+	}
 	if out.Versions.K3sUpdate == "" {
 		out.Versions.K3sUpdate = openapi.AdminSystemVersionsK3sUpdateNone
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/fathorMB/GitStack/admin/internal/backup"
 	"github.com/fathorMB/GitStack/admin/internal/config"
 	"github.com/fathorMB/GitStack/admin/internal/status"
+	"github.com/fathorMB/GitStack/admin/internal/sysinfo"
 	"github.com/fathorMB/GitStack/admin/internal/upgrade"
 )
 
@@ -67,6 +68,11 @@ type App struct {
 	AutoPublish bool
 	// ApplyManifest, se non nil, sostituisce kubectl apply del ConfigMap (test).
 	ApplyManifest func(ctx context.Context, manifest []byte) error
+	// NodeProbe misura CPU, memoria e disco dell'host; CertExpiry legge la
+	// scadenza del certificato HTTPS (Admin · System, GIT-218). nil = non
+	// disponibile: i test non toccano la macchina né la rete.
+	NodeProbe  func() sysinfo.NodeProbe
+	CertExpiry func(ctx context.Context, host string) (time.Time, error)
 }
 
 // NewApp è l'App di produzione.
@@ -79,6 +85,8 @@ func NewApp(version string) *App {
 		Geteuid:     os.Geteuid,
 		Runner:      status.ExecRunner{},
 		AutoPublish: true,
+		NodeProbe:   sysinfo.ProbeNode,
+		CertExpiry:  sysinfo.ProbeCertExpiry,
 	}
 }
 

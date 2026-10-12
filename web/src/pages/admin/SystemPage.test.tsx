@@ -21,6 +21,29 @@ const base: AdminSystem = {
   },
   versions: { gitstack: 'v1.0.0', k3s: 'v1.36.4+k3s1', k3sDeclared: 'v1.36.4+k3s1', k3sUpdate: 'none' },
   network: { configured: false, corporateCA: false, mirrorCA: false, proxyHasCredentials: false, registryHasCredentials: false },
+  access: { host: 'git.acme.local', tlsMode: 'internal', tlsExpiresAt: '2099-01-01T00:00:00Z', sshPort: 2222 },
+  services: {
+    available: true,
+    items: [
+      { name: 'gs-core', kind: 'Deployment', desired: 2, ready: 2, image: 'reg/core:v1.0.0', healthy: true },
+      { name: 'gs-git', kind: 'StatefulSet', desired: 1, ready: 0, image: 'reg/git:v1.0.0', healthy: false },
+    ],
+  },
+  node: {
+    available: true,
+    cpu: { available: true, value: 8, minimum: 4, recommended: 8, level: 'recommended' },
+    memory: { available: true, value: 12_000_000_000, minimum: 8_000_000_000, recommended: 16_000_000_000, level: 'below_recommended' },
+    disk: {
+      available: true,
+      value: 50_000_000_000,
+      minimum: 60_000_000_000,
+      recommended: 200_000_000_000,
+      level: 'below_minimum',
+      path: '/var/lib/rancher',
+      freeBytes: 30_000_000_000,
+      minFreeBytes: 20_000_000_000,
+    },
+  },
 };
 
 function setup(sys: AdminSystem, isAdmin = true) {
@@ -136,5 +159,89 @@ describe('SystemPage', () => {
     });
     await waitFor(() => expect(screen.getByText(/host information not published/i)).toBeInTheDocument());
     expect(screen.getByText('sudo gitstack system-info publish')).toBeInTheDocument();
+  });
+
+  it('avviso della catena di fornitura: in evidenza in cima quando presente', async () => {
+    setup({ ...base, supplyChainWarning: 'Firme non verificate: mirror interno non firmato (v5.allow_unsigned=true).' });
+    const alert = await screen.findByTestId('supply-chain-warning');
+    expect(alert).toHaveAttribute('role', 'alert');
+    expect(within(alert).getByText(/mirror interno non firmato/i)).toBeInTheDocument();
+    // in cima: prima di tutte le carte
+    const card = screen.getByText('Access').closest('.card') as HTMLElement;
+    expect(alert.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('avviso della catena di fornitura: assente quando non c e', async () => {
+    setup(base);
+    await screen.findByText('Internal (bundled)');
+    expect(screen.queryByTestId('supply-chain-warning')).not.toBeInTheDocument();
+    expect(screen.queryByText(/supply-chain warning/i)).not.toBeInTheDocument();
+  });
+
+  it('Access: host, modo HTTPS, scadenza del certificato e porta SSH', async () => {
+    setup(base);
+    const card = (await screen.findByText('Access')).closest('.card') as HTMLElement;
+    expect(within(card).getByText('git.acme.local')).toBeInTheDocument();
+    expect(within(card).getByText('Internal CA')).toBeInTheDocument();
+    expect(within(card).getByText(/in \d+ days/)).toBeInTheDocument();
+    expect(within(card).getByText('2222')).toBeInTheDocument();
+  });
+
+  it('Access: certificato scaduto, HTTP senza certificato, scadenza non disponibile', async () => {
+    const { unmount } = setup({ ...base, access: { ...base.access, tlsExpiresAt: '2020-01-01T00:00:00Z' } });
+    expect(await screen.findByText(/^Expired /)).toBeInTheDocument();
+    unmount();
+    const second = setup({ ...base, access: { host: '10.0.0.5', tlsMode: 'insecure', sshPort: 2222 } });
+    expect(await screen.findByText(/no certificate \(http\)/i)).toBeInTheDocument();
+    second.unmount();
+    setup({ ...base, access: { ...base.access, tlsExpiresAt: null } });
+    const card = (await screen.findByText('Access')).closest('.card') as HTMLElement;
+    expect(within(card).getByText('Not available')).toBeInTheDocument();
+  });
+
+  it('Services: stato e repliche di ogni deployment con la data di pubblicazione', async () => {
+    setup(base);
+    const card = (await screen.findByText('Services')).closest('.card') as HTMLElement;
+    const core = within(card).getByText('gs-core').closest('.list-row') as HTMLElement;
+    expect(within(core).getByText('Ready')).toBeInTheDocument();
+    expect(within(core).getByText('2/2')).toBeInTheDocument();
+    const git = within(card).getByText('gs-git').closest('.list-row') as HTMLElement;
+    expect(within(git).getByText('Not ready')).toBeInTheDocument();
+    expect(within(git).getByText('0/1')).toBeInTheDocument();
+    expect(within(card).getByText(/^as of /)).toBeInTheDocument();
+  });
+
+  it('Services: cluster non interrogabile', async () => {
+    setup({ ...base, services: { available: false, error: 'cluster non interrogabile', items: [] } });
+    const card = (await screen.findByText('Services')).closest('.card') as HTMLElement;
+    expect(within(card).getByText(/not available: cluster non interrogabile/i)).toBeInTheDocument();
+  });
+
+  it('Node: CPU, memoria e disco confrontati con il profilo consigliato', async () => {
+    setup(base);
+    const card = (await screen.findByText('Node')).closest('.card') as HTMLElement;
+    const cpu = within(card).getByText('CPU').closest('.list-row') as HTMLElement;
+    expect(within(cpu).getByText('8 vCPU')).toBeInTheDocument();
+    expect(within(cpu).getByText(/meets the recommended profile/i)).toBeInTheDocument();
+    const mem = within(card).getByText('Memory').closest('.list-row') as HTMLElement;
+    expect(within(mem).getByText('12.0 GB')).toBeInTheDocument();
+    expect(within(mem).getByText(/below the recommended profile \(minimum 8.0 GB, recommended 16.0 GB\)/i)).toBeInTheDocument();
+    const disk = within(card).getByText('Disk').closest('.list-row') as HTMLElement;
+    expect(within(disk).getByText(/below the minimum profile/i)).toBeInTheDocument();
+    expect(within(disk).getByText(/30\.0 GB free on \/var\/lib\/rancher/)).toBeInTheDocument();
+  });
+
+  it('Node: non disponibile', async () => {
+    setup({
+      ...base,
+      node: {
+        available: false,
+        cpu: { available: false, value: 0, minimum: 4, recommended: 8, level: 'unknown' },
+        memory: { available: false, value: 0, minimum: 8_000_000_000, recommended: 16_000_000_000, level: 'unknown' },
+        disk: { available: false, value: 0, minimum: 60_000_000_000, recommended: 200_000_000_000, level: 'unknown', freeBytes: 0, minFreeBytes: 20_000_000_000 },
+      },
+    });
+    const card = (await screen.findByText('Node')).closest('.card') as HTMLElement;
+    expect(within(card).getByText(/not available/i)).toBeInTheDocument();
   });
 });

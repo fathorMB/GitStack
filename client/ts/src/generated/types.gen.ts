@@ -41,6 +41,108 @@ export type AdminSystem = {
     backup: AdminSystemBackup;
     versions: AdminSystemVersions;
     network: AdminSystemNetwork;
+    access: AdminSystemAccess;
+    services: AdminSystemServices;
+    node: AdminSystemNode;
+    /**
+     * Avviso della catena di fornitura (V5): presente solo quando l'installazione ha `v5.allow_unsigned=true` (verifica delle firme disattivata per un mirror interno non firmato). Assente se le firme sono verificate. Lo stesso testo di `supply_chain_warning` in `gitstack status --json`.
+     *
+     */
+    supplyChainWarning?: string;
+};
+
+/**
+ * Come si raggiunge GitStack. Nessun segreto.
+ */
+export type AdminSystemAccess = {
+    host: string;
+    /**
+     * Modo HTTPS scelto dall'installer; `insecure` = solo HTTP.
+     */
+    tlsMode: 'internal' | 'custom' | 'letsencrypt' | 'insecure' | 'unknown';
+    /**
+     * Scadenza del certificato che il server presenta ora; assente se non è stato possibile leggerla o con HTTP.
+     *
+     */
+    tlsExpiresAt?: string | null;
+    /**
+     * Porta SSH del servizio git.
+     */
+    sshPort: number;
+};
+
+/**
+ * Stato dei workload della release, come `gitstack status`. È un'istantanea: la data di pubblicazione è `updatedAt` di AdminSystem.
+ *
+ */
+export type AdminSystemServices = {
+    /**
+     * Falso se il cluster non si è potuto interrogare.
+     */
+    available: boolean;
+    error?: string;
+    items: Array<AdminSystemService>;
+};
+
+export type AdminSystemService = {
+    name: string;
+    /**
+     * Deployment o StatefulSet.
+     */
+    kind: string;
+    desired: number;
+    ready: number;
+    image?: string;
+    /**
+     * Almeno una replica desiderata e tutte pronte.
+     */
+    healthy: boolean;
+};
+
+/**
+ * Una misura dell'host confrontata con il profilo N1. Unità: core per la CPU, byte (GB decimali) per memoria e disco.
+ *
+ */
+export type AdminSystemMetric = {
+    available: boolean;
+    value: number;
+    minimum: number;
+    recommended: number;
+    level: 'recommended' | 'below_recommended' | 'below_minimum' | 'unknown';
+};
+
+/**
+ * Il filesystem che ospita i dati di k3s: dimensione (`value`) e spazio libero, confrontati con minimo e consigliato.
+ *
+ */
+export type AdminSystemDisk = {
+    available: boolean;
+    /**
+     * Dimensione del filesystem in byte.
+     */
+    value: number;
+    minimum: number;
+    recommended: number;
+    /**
+     * `below_minimum` anche se lo spazio libero è sotto `minFreeBytes`.
+     */
+    level: 'recommended' | 'below_recommended' | 'below_minimum' | 'unknown';
+    path?: string;
+    freeBytes: number;
+    minFreeBytes: number;
+};
+
+/**
+ * La macchina, confrontata con il profilo N1.
+ */
+export type AdminSystemNode = {
+    /**
+     * Falso se nessuna misura è stata possibile («non disponibile»).
+     */
+    available: boolean;
+    cpu: AdminSystemMetric;
+    memory: AdminSystemMetric;
+    disk: AdminSystemDisk;
 };
 
 export type AdminSystemDatabase = {

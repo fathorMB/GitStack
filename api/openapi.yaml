@@ -6588,7 +6588,7 @@ components:
         `published` dice se l'host ha pubblicato le sue informazioni: se no,
         le sezioni dell'host hanno `configured: false` o stati `none`.
       additionalProperties: false
-      required: [published, database, backup, versions, network]
+      required: [published, database, backup, versions, network, access, services, node]
       properties:
         published:
           type: boolean
@@ -6608,6 +6608,153 @@ components:
           $ref: "#/components/schemas/AdminSystemVersions"
         network:
           $ref: "#/components/schemas/AdminSystemNetwork"
+        access:
+          $ref: "#/components/schemas/AdminSystemAccess"
+        services:
+          $ref: "#/components/schemas/AdminSystemServices"
+        node:
+          $ref: "#/components/schemas/AdminSystemNode"
+        supplyChainWarning:
+          type: string
+          description: >
+            Avviso della catena di fornitura (V5): presente solo quando
+            l'installazione ha `v5.allow_unsigned=true` (verifica delle
+            firme disattivata per un mirror interno non firmato). Assente se
+            le firme sono verificate. Lo stesso testo di
+            `supply_chain_warning` in `gitstack status --json`.
+
+    AdminSystemAccess:
+      type: object
+      description: Come si raggiunge GitStack. Nessun segreto.
+      additionalProperties: false
+      required: [host, tlsMode, sshPort]
+      properties:
+        host:
+          type: string
+        tlsMode:
+          type: string
+          enum: [internal, custom, letsencrypt, insecure, unknown]
+          description: Modo HTTPS scelto dall'installer; `insecure` = solo HTTP.
+        tlsExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Scadenza del certificato che il server presenta ora; assente se
+            non è stato possibile leggerla o con HTTP.
+        sshPort:
+          type: integer
+          description: Porta SSH del servizio git.
+
+    AdminSystemServices:
+      type: object
+      description: >
+        Stato dei workload della release, come `gitstack status`. È
+        un'istantanea: la data di pubblicazione è `updatedAt` di AdminSystem.
+      additionalProperties: false
+      required: [available, items]
+      properties:
+        available:
+          type: boolean
+          description: Falso se il cluster non si è potuto interrogare.
+        error:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminSystemService"
+
+    AdminSystemService:
+      type: object
+      additionalProperties: false
+      required: [name, kind, desired, ready, healthy]
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          description: Deployment o StatefulSet.
+        desired:
+          type: integer
+        ready:
+          type: integer
+        image:
+          type: string
+        healthy:
+          type: boolean
+          description: Almeno una replica desiderata e tutte pronte.
+
+    AdminSystemMetric:
+      type: object
+      description: >
+        Una misura dell'host confrontata con il profilo N1. Unità: core per
+        la CPU, byte (GB decimali) per memoria e disco.
+      additionalProperties: false
+      required: [available, value, minimum, recommended, level]
+      properties:
+        available:
+          type: boolean
+        value:
+          type: integer
+          format: int64
+        minimum:
+          type: integer
+          format: int64
+        recommended:
+          type: integer
+          format: int64
+        level:
+          type: string
+          enum: [recommended, below_recommended, below_minimum, unknown]
+
+    AdminSystemDisk:
+      type: object
+      description: >
+        Il filesystem che ospita i dati di k3s: dimensione (`value`) e spazio
+        libero, confrontati con minimo e consigliato.
+      additionalProperties: false
+      required: [available, value, minimum, recommended, level, freeBytes, minFreeBytes]
+      properties:
+        available:
+          type: boolean
+        value:
+          type: integer
+          format: int64
+          description: Dimensione del filesystem in byte.
+        minimum:
+          type: integer
+          format: int64
+        recommended:
+          type: integer
+          format: int64
+        level:
+          type: string
+          enum: [recommended, below_recommended, below_minimum, unknown]
+          description: "`below_minimum` anche se lo spazio libero è sotto `minFreeBytes`."
+        path:
+          type: string
+        freeBytes:
+          type: integer
+          format: int64
+        minFreeBytes:
+          type: integer
+          format: int64
+
+    AdminSystemNode:
+      type: object
+      description: La macchina, confrontata con il profilo N1.
+      additionalProperties: false
+      required: [available, cpu, memory, disk]
+      properties:
+        available:
+          type: boolean
+          description: Falso se nessuna misura è stata possibile («non disponibile»).
+        cpu:
+          $ref: "#/components/schemas/AdminSystemMetric"
+        memory:
+          $ref: "#/components/schemas/AdminSystemMetric"
+        disk:
+          $ref: "#/components/schemas/AdminSystemDisk"
 
     AdminSystemDatabase:
       type: object
