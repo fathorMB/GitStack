@@ -24,6 +24,7 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Operazioni del tag `repos` (M-03, GIT-67): creazione, lettura, elenco,
@@ -323,6 +324,24 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	s.createRepo(w, r, createRepoParams{body: body, description: description, visibility: visibility})
+}
+
+// createRepoParams sono i dati già validati di una creazione. inTx, se non
+// nil, gira nella transazione dopo l'inserimento del repo (l'import da URL ci
+// scrive il mirror in pull: o nascono tutti e due o nessuno).
+type createRepoParams struct {
+	body        openapi.CreateRepositoryInput
+	description string
+	visibility  string
+	inTx        func(ctx context.Context, tx pgx.Tx, repo store.Repo, creator uuid.UUID) error
+}
+
+// createRepo è il corpo di createRepository e importRepository: attributi in
+// identity, permesso di creazione, riga, repo su disco, grant al creatore ed
+// evento. Risponde 201 col repo.
+func (s *apiServer) createRepo(w http.ResponseWriter, r *http.Request, p createRepoParams) {
+	body, description, visibility := p.body, p.description, p.visibility
 	caller, creatorID, ok := callerIdentity(w, r)
 	if !ok {
 		return
@@ -395,6 +414,14 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if p.inTx != nil {
+		if err := p.inTx(r.Context(), tx.Tx(), repo, creatorID); err != nil {
+			slog.Default().Error("scrittura nella transazione di creazione non riuscita", "repo_id", repoID, "err", err)
+			writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante la creazione del repo.")
+			return
+		}
+	}
+
 	in := gitclient.CreateInput{
 		RepoID:        repoID,
 		Name:          body.Name,
@@ -442,7 +469,7 @@ func (s *apiServer) CreateRepository(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Location", "/repos/"+repo.OwnerName+"/"+repo.Name)
-	writeJSON(w, http.StatusCreated, s.toAPIRepo(r, repo, empty))
+	writeJSON(w, http.StatusCreated, s.repoWithMirror(r, repo, empty))
 }
 
 // discardOnDisk toglie dal disco un repo appena creato la cui creazione in

@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,8 +15,7 @@ import (
 
 // MP2/MP7 (GIT-195): un repo con un mirror in pull attivo (anche in pausa) mostra
 // `mirror: {origin, lastSyncedAt}` nella lettura e nell'elenco; un repo normale,
-// o con il mirror interrotto, no. Le operazioni del mirror in pull rispondono
-// 501 finché non arrivano gli item a valle, e non fanno uscire nessun token.
+// o con il mirror interrotto, no. Le operazioni sono provate in mirrors_pull_engine_integration_test.go.
 func TestPullMirror_CampoMirrorNelRepo(t *testing.T) {
 	e := newMirrorEnv(t)
 	repoID := e.repo("app", true)
@@ -73,21 +71,5 @@ func TestPullMirror_CampoMirrorNelRepo(t *testing.T) {
 	}
 	if getRepo("app").Mirror != nil {
 		t.Fatal("un mirror interrotto non compare nel repo")
-	}
-
-	// Le operazioni sono nel contratto e rispondono 501 (poi 403/404 sui permessi
-	// quando arrivano gli handler); nessun corpo contiene un token.
-	base := "/repos/alice/app/pull-mirror"
-	for _, c := range []struct{ method, path, body string }{
-		{http.MethodGet, base, ""}, {http.MethodPost, base, `{"url":"https://github.com/o/r.git","token":"segreto"}`},
-		{http.MethodPatch, base, `{"intervalSeconds":600}`}, {http.MethodPost, base + "/sync", ""},
-		{http.MethodPost, base + "/pause", ""}, {http.MethodPost, base + "/resume", ""},
-		{http.MethodPost, base + "/stop", `{"confirm":"app"}`}, {http.MethodGet, base + "/runs", ""},
-		{http.MethodPost, "/repos/import", `{"owner":"alice","name":"x","url":"https://github.com/o/r.git","mode":"once"}`},
-	} {
-		rec := e.do(c.method, c.path, "alice", c.body)
-		if rec.Code != http.StatusNotImplemented || strings.Contains(rec.Body.String(), "segreto") {
-			t.Errorf("%s %s: %d %s", c.method, c.path, rec.Code, rec.Body.String())
-		}
 	}
 }
