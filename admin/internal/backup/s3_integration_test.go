@@ -33,8 +33,10 @@ import (
 
 const (
 	// Docker Hub non pubblica più minio/minio e quay.io chiede il login: di
-	// default l'immagine Chainguard; GITSTACK_TEST_MINIO_IMAGE la sostituisce.
-	minioImage  = "cgr.dev/chainguard/minio:latest"
+	// default l'immagine Chainguard fissata per digest (un tag mobile potrebbe
+	// rompere la CI senza nessun commit nostro); GITSTACK_TEST_MINIO_IMAGE la
+	// sostituisce.
+	minioImage  = "cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56"
 	minioAccess = "minioadmin-test"
 	minioSecret = "minioadmin-secret-test-0123"
 )

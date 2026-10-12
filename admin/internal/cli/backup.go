@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -151,6 +152,13 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 		if key, err = readKey(*keyFile); err != nil {
 			a.errorf("backup: %v", err)
 			return ExitUsage
+		}
+		// L'archivio va su S3 cifrato con questa chiave, ma `restore --from s3`
+		// senza --key-file usa backup.s3.key_file: se differiscono lo si dice.
+		if cfg.Backup.S3 != nil {
+			if cfgKey, kerr := s3Key(cfg); kerr == nil && !bytes.Equal(cfgKey, key) {
+				_, _ = fmt.Fprintf(a.Stderr, "ATTENZIONE: --key-file è diverso da backup.s3.key_file: l'archivio caricato su S3 è cifrato con --key-file, e `gitstack restore --from s3` senza --key-file userà backup.s3.key_file e non lo aprirà. Conserva quella chiave o allinea backup.s3.key_file.\n")
+			}
 		}
 	} else if cfg.Backup.S3 != nil {
 		// Con S3 configurato gli archivi sono sempre cifrati con la chiave

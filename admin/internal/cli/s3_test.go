@@ -357,3 +357,36 @@ func TestS3ConfigSenzaChiaveRifiutataAlCaricamento(t *testing.T) {
 		noSecrets(t, "String()", txt)
 	}
 }
+
+func TestS3KeyFileDiversoDaConfigAvvisaEdIlRestoreDefaultFallisce(t *testing.T) {
+	store := newMemStore()
+	a, cfg, _, _, errb, _ := s3App(t, store, "")
+	other := filepath.Join(t.TempDir(), "altra-chiave")
+	if err := os.WriteFile(other, []byte("un'altra-chiave-di-prova-lunga-abbastanza\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dest := t.TempDir()
+	if code := a.Run(context.Background(), []string{"backup", "--config", cfg, "--dest", dest, "--key-file", other}); code != ExitOK {
+		t.Fatalf("backup: %d %s", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "diverso da backup.s3.key_file") {
+		t.Errorf("manca l'avviso: %q", errb.String())
+	}
+	// Senza --key-file il restore usa la chiave del config e non apre l'archivio...
+	fresh := t.TempDir()
+	if code := a.Run(context.Background(), []string{"restore", "--from", "s3", "--config", cfg, "--dest", fresh}); code != ExitRefused {
+		t.Errorf("restore con la chiave del config: exit %d, atteso %d", code, ExitRefused)
+	}
+	// ...con la chiave usata per il backup sì.
+	if code := a.Run(context.Background(), []string{"restore", "--from", "s3", "--config", cfg, "--dest", fresh, "--key-file", other}); code != ExitOK {
+		t.Errorf("restore con --key-file: exit %d", code)
+	}
+	// Stessa chiave del config: nessun avviso.
+	b, cfg2, keyFile, _, errb2, _ := s3App(t, newMemStore(), "")
+	if code := b.Run(context.Background(), []string{"backup", "--config", cfg2, "--dest", t.TempDir(), "--key-file", keyFile}); code != ExitOK {
+		t.Fatalf("backup 2: %d", code)
+	}
+	if strings.Contains(errb2.String(), "diverso") {
+		t.Errorf("avviso inutile: %q", errb2.String())
+	}
+}

@@ -363,6 +363,11 @@ sudo gitstack restore --from s3            # the newest archive on S3
 sudo gitstack restore --from s3 gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz.enc
 ```
 
+If you ran `gitstack backup --key-file X` with a key different from
+`backup.s3.key_file`, the uploaded archive is encrypted with X (a warning is
+printed at upload time): `restore --from s3` then needs `--key-file X`, because
+without it the key from `backup.s3.key_file` is used and fails.
+
 The archive is downloaded into a temporary folder inside the backup
 destination (mode `0700`), verified against its `.sha256`, restored and
 removed.
