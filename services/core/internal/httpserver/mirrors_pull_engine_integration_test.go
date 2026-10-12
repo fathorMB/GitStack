@@ -315,6 +315,7 @@ func TestPullMirror_Pianificazione_IntervalloESyncNow(t *testing.T) {
 		t.Fatalf("dopo la modifica: %s, voluto %s", e.nextAttempt(m.Id), want)
 	}
 
+	e.clock.Advance(time.Second) // le esecuzioni si ordinano per inizio
 	// «Sincronizza ora»: 202, in coda subito, esegue prima dell'intervallo.
 	rec := e.do(http.MethodPost, "/repos/alice/app/pull-mirror/sync", "alice", "")
 	e.want(rec, http.StatusAccepted, "")
