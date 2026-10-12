@@ -3,9 +3,12 @@ package oidc
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -499,5 +502,51 @@ func TestNormalizeUsername(t *testing.T) {
 	}
 	if got := usernameWithSuffix(strings.Repeat("a", 39), 12); len(got) != 39 || !strings.HasSuffix(got, "-12") {
 		t.Errorf("suffisso oltre i 39 caratteri: %q", got)
+	}
+}
+
+// N9: discovery, JWKS e token endpoint escono dal proxy aziendale quando il
+// client è quello di default.
+func TestDiscovery_PassaDalProxyAziendale(t *testing.T) {
+	r := newRig(t, nil)
+	var seen []string
+	var mu sync.Mutex
+	px := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		mu.Lock()
+		seen = append(seen, req.Method+" "+req.URL.String())
+		mu.Unlock()
+		// Inoltra al provider di prova.
+		out, err := http.NewRequestWithContext(req.Context(), req.Method, req.URL.String(), req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		resp, err := http.DefaultTransport.RoundTrip(out)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer func() { _ = resp.Body.Close() }()
+		for k, v := range resp.Header {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(resp.StatusCode)
+		_, _ = io.Copy(w, resp.Body)
+	}))
+	defer px.Close()
+	pu, _ := url.Parse(px.URL)
+	r.svc.HTTPClient = nil
+	r.svc.Proxy = func(*http.Request) (*url.URL, error) { return pu, nil }
+	res, err := r.svc.Start(context.Background(), "kc", "/", true)
+	if err != nil {
+		t.Fatalf("Start via proxy: %v", err)
+	}
+	if res.URL == "" {
+		t.Fatal("URL di autorizzazione vuoto")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) == 0 || !strings.Contains(seen[0], "/.well-known/openid-configuration") {
+		t.Fatalf("il proxy non ha visto la discovery: %v", seen)
 	}
 }

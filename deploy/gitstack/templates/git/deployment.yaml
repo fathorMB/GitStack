@@ -41,6 +41,7 @@ spec:
               containerPort: {{ .Values.git.ssh.port }}
             {{- end }}
           env:
+            {{- include "gitstack.proxy.env" . | nindent 12 }}
             - name: GITSTACK_GIT_ADDR
               value: {{ printf ":%d" (.Values.git.containerPort | int) | quote }}
             - name: GITSTACK_GIT_DATA_DIR
@@ -75,6 +76,11 @@ spec:
             {{- if .Values.git.mirror.caConfigMap }}
             - name: GITSTACK_GIT_MIRROR_CA_FILE
               value: /etc/gitstack/mirror-ca/ca.crt
+            {{- else if .Values.corporateCA.configMap }}
+            # Senza una CA dedicata ai mirror vale la CA aziendale (N9): per
+            # git SOSTITUISCE le CA di sistema (vedi values.yaml, corporateCA).
+            - name: GITSTACK_GIT_MIRROR_CA_FILE
+              value: /etc/gitstack/corporate-ca/ca.crt
             {{- end }}
           volumeMounts:
             - name: data
@@ -83,6 +89,9 @@ spec:
             - name: mirror-ca
               mountPath: /etc/gitstack/mirror-ca
               readOnly: true
+            {{- end }}
+            {{- if .Values.corporateCA.configMap }}
+            {{- include "gitstack.corporateCA.volumeMount" . | nindent 12 }}
             {{- end }}
             {{- if .Values.git.ssh.enabled }}
             - name: ssh-host-key
@@ -111,6 +120,9 @@ spec:
         - name: mirror-ca
           configMap:
             name: {{ .Values.git.mirror.caConfigMap | quote }}
+        {{- end }}
+        {{- if .Values.corporateCA.configMap }}
+        {{- include "gitstack.corporateCA.volume" . | nindent 8 }}
         {{- end }}
         {{- if .Values.git.ssh.enabled }}
         - name: ssh-host-key
