@@ -341,30 +341,34 @@ func probeNetwork(ctx context.Context, n config.Network, ca []byte) []probeResul
 		_ = resp.Body.Close()
 		return resp.StatusCode, nil
 	}
+	// Un proxy che nega la destinazione risponde (403, 503...) ma non è la
+	// destinazione: si accetta solo la risposta giusta del mirror.
 	if n.RegistryMirror != "" {
 		u := strings.TrimRight(n.RegistryMirror, "/") + "/v2/"
+		what := "mirror delle immagini " + u
 		code, err := httpGet(u, n.RegistryUsername, "")
 		switch {
 		case err != nil:
-			out = append(out, probeResult{"mirror delle immagini " + u, false, err.Error()})
+			out = append(out, probeResult{what, false, err.Error()})
 		case code == http.StatusUnauthorized && n.RegistryUsername != "":
-			out = append(out, probeResult{"mirror delle immagini " + u, false, "credenziali rifiutate (401)"})
-		case code >= 500:
-			out = append(out, probeResult{"mirror delle immagini " + u, false, fmt.Sprintf("risponde %d", code)})
+			out = append(out, probeResult{what, false, "credenziali rifiutate (401)"})
+		case code == http.StatusOK || code == http.StatusUnauthorized:
+			out = append(out, probeResult{what, true, ""})
 		default:
-			out = append(out, probeResult{"mirror delle immagini " + u, true, ""})
+			out = append(out, probeResult{what, false, fmt.Sprintf("risponde HTTP %d (atteso 200 o 401)", code)})
 		}
 	}
 	if n.DownloadMirror != "" {
-		u := strings.TrimRight(n.DownloadMirror, "/") + "/"
+		u := strings.TrimRight(n.DownloadMirror, "/") + "/k3s/install.sh"
+		what := "mirror dei download " + u
 		code, err := httpGet(u, "", "")
 		switch {
 		case err != nil:
-			out = append(out, probeResult{"mirror dei download " + u, false, err.Error()})
-		case code >= 500:
-			out = append(out, probeResult{"mirror dei download " + u, false, fmt.Sprintf("risponde %d", code)})
+			out = append(out, probeResult{what, false, err.Error()})
+		case code >= 200 && code < 400:
+			out = append(out, probeResult{what, true, ""})
 		default:
-			out = append(out, probeResult{"mirror dei download " + u, true, ""})
+			out = append(out, probeResult{what, false, fmt.Sprintf("risponde HTTP %d (atteso 2xx)", code)})
 		}
 	}
 	return out

@@ -209,7 +209,7 @@ k3s_already_installed() { return 1; }
 helm() { :; }
 command() { if [ "$1" = "-v" ] && [ "$2" = "helm" ]; then return 1; fi; builtin command "$@"; }
 net_probe_tcp() { [ "$1" != "down.corp" ]; }
-net_probe_url() { case "$1" in *dead.corp*) printf 000 ;; *registry.corp*) [ "${2:-}" = "u" ] && printf 200 || printf 401 ;; *) printf 200 ;; esac; }
+net_probe_url() { case "$1" in *dead.corp*) printf 000 ;; *forbidden.corp*) printf 403 ;; *registry.corp*) [ "${2:-}" = "u" ] && printf 200 || printf 401 ;; *) printf 200 ;; esac; }
 '
 # tutto risponde
 OUT="$(in_install --http-proxy http://proxy.corp:3128 --registry-mirror http://registry.corp:5000 --download-mirror http://dl.corp:8080 \
@@ -227,6 +227,11 @@ expect_has "preflight: mirror che non risponde" "${OUT}" "mirror delle immagini:
 expect_has "preflight: si ferma" "${OUT}" "preflight di rete:"
 expect_lacks "preflight: non prosegue" "${OUT}" "rc=0"
 expect_lacks "preflight: il mirror dei download risponde" "${OUT}" "dl.corp:8080/k3s/install.sh non risponde"
+
+# un proxy che nega la destinazione risponde 403: non è il mirror
+OUT="$(in_install --http-proxy http://proxy.corp:3128 --registry-mirror http://forbidden.corp:5000   -- "${STUBS}"'resolve_network; preflight_network; echo "rc=$?"')"
+expect_has "preflight: 403 del proxy è un guasto" "${OUT}" "forbidden.corp:5000/v2/ risponde HTTP 403 (atteso 200 o 401)"
+expect_lacks "preflight: 403 non prosegue" "${OUT}" "rc=0"
 
 # credenziali rifiutate (il mirror risponde 401 anche con le credenziali)
 OUT="$(in_install --registry-mirror http://registry.corp:5000 --registry-username bad --registry-password-file "${WORK}/pw" \

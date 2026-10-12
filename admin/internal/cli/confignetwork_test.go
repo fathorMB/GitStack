@@ -125,9 +125,12 @@ func fakeProxy(t *testing.T, status int) (*httptest.Server, *[]string) {
 		seen = append(seen, r.URL.String())
 		mu.Unlock()
 		// Un registry risponde 401 senza credenziali e 200 con quelle giuste.
-		code := status
-		if code == http.StatusUnauthorized && r.Header.Get("Authorization") != "" {
-			code = http.StatusOK
+		code := http.StatusOK
+		if strings.HasSuffix(r.URL.Path, "/v2/") {
+			code = status
+			if code == http.StatusUnauthorized && r.Header.Get("Authorization") != "" {
+				code = http.StatusOK
+			}
 		}
 		w.WriteHeader(code)
 	}))
@@ -311,6 +314,21 @@ func TestConfigSetNetworkForceEClear(t *testing.T) {
 	b, _ := os.ReadFile(f.cfg)
 	if strings.Contains(string(b), "network:") || !strings.Contains(string(b), "namespace: default") {
 		t.Errorf("config:\n%s", b)
+	}
+}
+
+// Un proxy che nega la destinazione (403) risponde, ma non è il mirror: la
+// prova deve segnalarlo, non darlo per raggiungibile.
+func TestConfigSetNetworkProxyCheNega(t *testing.T) {
+	f := newNetFixture(t)
+	proxy, _ := fakeProxy(t, http.StatusForbidden)
+	args := []string{"config", "set", "network", "--config", f.cfg,
+		"--http-proxy", proxy.URL, "--registry-mirror", "http://registry.corp.test:5000"}
+	if code := f.app.Run(context.Background(), args); code != ExitConfig {
+		t.Fatalf("exit %d, atteso ExitConfig: out=%s err=%s", code, f.out, f.err)
+	}
+	if !strings.Contains(f.out.String(), "HTTP 403") || !strings.Contains(f.err.String(), "mirror delle immagini") {
+		t.Errorf("il 403 del proxy non è segnalato: out=%s err=%s", f.out, f.err)
 	}
 }
 

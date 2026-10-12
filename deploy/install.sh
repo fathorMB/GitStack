@@ -1889,30 +1889,38 @@ net_probe_tcp() {
 
 NET_PROBE_BAD=()
 
-# net_probe_check ETICHETTA URL [UTENTE PASSWORD]
+# net_probe_check ETICHETTA URL TIPO [UTENTE PASSWORD]
+# TIPO: "registry" (un endpoint /v2/: risponde 200, o 401 se chiede le
+# credenziali) o "file" (un file da scaricare: 2xx o reindirizzamento).
+# Altri codici, il 403 o il 503 di un proxy compresi, sono un guasto: un proxy
+# che nega la destinazione risponde, ma non è la destinazione.
 net_probe_check() {
-  local label="$1" url="$2" user="${3:-}" pass="${4:-}" code via=""
+  local label="$1" url="$2" kind="$3" user="${4:-}" pass="${5:-}" code via=""
   code="$(net_probe_url "${url}" "${user}" "${pass}")"
   case "${url}" in
     https://*) [ -z "$(net_https_proxy)" ] || via=" (via proxy $(net_redact "$(net_https_proxy)"))" ;;
     http://*) [ -z "${GITSTACK_HTTP_PROXY}" ] || via=" (via proxy $(net_redact "${GITSTACK_HTTP_PROXY}"))" ;;
   esac
-  case "${code}" in
-    000)
-      NET_PROBE_BAD+=("${label}: ${url} non risponde${via}")
+  if [ "${code}" = "000" ]; then
+    NET_PROBE_BAD+=("${label}: ${url} non risponde${via}")
+    return 0
+  fi
+  case "${kind}:${code}" in
+    registry:200)
+      log "Rete: ${label} risponde (HTTP ${code})${via} OK"
       ;;
-    401|403)
+    registry:401)
       if [ -n "${user}" ]; then
-        NET_PROBE_BAD+=("${label}: ${url} rifiuta le credenziali (HTTP ${code})")
+        NET_PROBE_BAD+=("${label}: ${url} rifiuta le credenziali (HTTP 401)")
       else
-        log "Rete: ${label} risponde (HTTP ${code})${via} OK"
+        log "Rete: ${label} risponde (HTTP 401, chiede le credenziali)${via} OK"
       fi
       ;;
-    5??)
-      NET_PROBE_BAD+=("${label}: ${url} risponde con un errore del server (HTTP ${code})${via}")
+    file:2??|file:3??)
+      log "Rete: ${label} risponde (HTTP ${code})${via} OK"
       ;;
     *)
-      log "Rete: ${label} risponde (HTTP ${code})${via} OK"
+      NET_PROBE_BAD+=("${label}: ${url} risponde HTTP ${code} (atteso $([ "${kind}" = registry ] && echo '200 o 401' || echo '2xx o 3xx'))${via}")
       ;;
   esac
 }
@@ -1943,22 +1951,22 @@ preflight_network() {
   fi
 
   if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
-    k3s_already_installed || net_probe_check "download di k3s (mirror)" "$(k3s_script_url)"
+    k3s_already_installed || net_probe_check "download di k3s (mirror)" "$(k3s_script_url)" file
     command -v helm >/dev/null 2>&1 || net_probe_check "download di Helm (mirror)" \
-      "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+      "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum" file
   else
-    k3s_already_installed || net_probe_check "download di k3s" "$(k3s_script_url)"
-    k3s_already_installed || net_probe_check "binario di k3s" "https://github.com/k3s-io/k3s/releases"
+    k3s_already_installed || net_probe_check "download di k3s" "$(k3s_script_url)" file
+    k3s_already_installed || net_probe_check "binario di k3s" "https://github.com/k3s-io/k3s/releases" file
     command -v helm >/dev/null 2>&1 || net_probe_check "download di Helm" \
-      "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+      "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum" file
   fi
   if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
-    net_probe_check "mirror delle immagini" "${GITSTACK_REGISTRY_MIRROR}/v2/" \
+    net_probe_check "mirror delle immagini" "${GITSTACK_REGISTRY_MIRROR}/v2/" registry \
       "${GITSTACK_REGISTRY_USERNAME}" "${GITSTACK_REGISTRY_PASSWORD}"
   else
     local reg
     for reg in https://ghcr.io/v2/ https://registry-1.docker.io/v2/ https://registry.k8s.io/v2/; do
-      net_probe_check "registry delle immagini" "${reg}"
+      net_probe_check "registry delle immagini" "${reg}" registry
     done
   fi
 
