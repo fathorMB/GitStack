@@ -65,7 +65,7 @@ The installer:
 1. Checks OS, CPU, RAM, disk, port availability, and hostname resolution
    (skip with `--skip-preflight` only if you have already verified).
 2. Installs k3s (pinned in `deploy/k3s-version`, today `v1.36.4+k3s1`) and Helm (`v3.16.3`, pinned).
-3. Generates an internal CA and a server certificate (see [HTTPS](#https)).
+3. Generates an internal CA and a server certificate (see [HTTPS](#https-modes)).
 4. Pulls GitStack images and deploys the Helm chart (`deploy/gitstack`) with
    `helm upgrade --install`.
 5. Installs the `gitstack` admin binary in `/usr/local/bin/gitstack`.

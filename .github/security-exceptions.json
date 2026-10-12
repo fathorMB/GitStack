@@ -1,4 +1,11 @@
 {
   "$comment": "Eccezioni alle scansioni di sicurezza (GIT-114). Ogni voce: id (GO-... per govulncheck, GHSA-... per pnpm-audit, CVE-... per trivy, regola per gosec/eslint-security), tool (govulncheck | gosec | eslint-security | pnpm-audit | trivy), reason (perche' e' un falso positivo o accettato), expires (AAAA-MM-GG: dal giorno indicato la voce non vale piu'), path facoltativo (sottostringa del luogo del finding, per gosec/eslint/govulncheck-modulo/trivy-immagine). Documentazione: docs/security-scans.md.",
-  "exceptions": []
+  "exceptions": [
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "tool": "pnpm-audit",
+      "reason": "braces <=3.0.3 (stack exhaustion on deeply nested glob patterns) has no patched release on npm. It is a transitive build-time dependency of Docusaurus (docs-site/, micromatch via @docusaurus/utils) that only parses the glob patterns of our own docusaurus.config.js; nothing of it ships in the published site and no untrusted input reaches it. Re-evaluate when braces publishes a fix.",
+      "expires": "2027-01-31"
+    }
+  ]
 }

@@ -15,6 +15,7 @@ Eccezioni: `.github/security-exceptions.json`.
 |---|---|---|
 | Dipendenze Go | `govulncheck` | tutti i moduli di `go.work` (da `go list -m`, mai elencati a mano), con analisi di raggiungibilità |
 | Dipendenze web | `pnpm audit` | `web/pnpm-lock.yaml`, anche le dipendenze di sviluppo |
+| Dipendenze del sito di documentazione | `pnpm audit` | `docs-site/pnpm-lock.yaml` (GIT-223), con gate separato «pnpm audit (docs-site)» |
 | Codice Go | `gosec` | tutti i moduli di `go.work` |
 | Codice TypeScript | `eslint-plugin-security` (config `web/eslint.security.config.js`, script `pnpm run lint:security`) | `web/src`, test esclusi |
 | Immagini | `Trivy` (vulnerabilità, `ignore-unfixed`) | gateway, identity, core, git, web, costruite con gli stessi Dockerfile e contesti del job `registry` di `ci.yml`, allo stesso sha (tag `sha-<sha completo>`) |
