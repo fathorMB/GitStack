@@ -241,13 +241,15 @@ jobs:
         run: ./deploy/tests/install-gs.Tests.ps1
 
   # Installazione reale su Ubuntu 22.04 (criterio 2 di GIT-202): lancia
-  # install.sh sul runner ubuntu-22.04, attende che i pod siano Ready e
-  # fa un smoke su https e sul comando gitstack. Il preflight hardware è
-  # già coperto da preflight_test.sh; qui si usa GITSTACK_SKIP_PREFLIGHT=1
-  # per non bloccare il job sui requisiti del runner.
-  # Dipende da registry (immagini) e admin-binary (binario gitstack): senza
-  # questi job le immagini e il binario non esistono ancora. Lo stesso `if`
-  # di registry e admin-binary: gira SOLO su push a main o tag, mai su PR.
+  # install.sh sul runner ubuntu-22.04 con --skip-preflight (il runner ha
+  # ~14 GB liberi, non basta per il preflight hardware) e --image-tag
+  # (il binario gitstack è nei releases del commit). Il preflight hardware
+  # è già coperto da preflight_test.sh. Il job attende il rollout di
+  # deployment e statefulset, poi fa uno smoke su https e sul comando
+  # gitstack. Dipende da registry (immagini) e admin-binary (binario
+  # gitstack): senza questi job le immagini e il binario non esistono
+  # ancora. Lo stesso `if` di registry e admin-binary: gira SOLO su push
+  # a main o tag, mai su PR.
   install-ubuntu-22:
     name: Installazione reale su Ubuntu 22.04 (GIT-202, criterio 2)
     needs: [registry, admin-binary]
@@ -271,14 +273,16 @@ jobs:
         run: sudo ./deploy/install.sh --skip-preflight --image-tag "sha-${GITHUB_SHA}"
 
       # gitstack si installa nel namespace default (GITSTACK_NAMESPACE,
-      # riga 62 di install.sh). Non si aspetta sui pod (un Job Completed
-      # rompe --for=condition=Ready): si aspetta sui deployment e sui
-      # statefulset (Postgres).
-      - name: Attesa deployment e statefulset Ready
+      # riga 62 di install.sh). rollout status lavora su una risorsa alla
+      # volta: si aspetta sul rollout di ogni deployment e statefulset.
+      # deploy/gitstack/templates: 5 deployment (gateway, identity, core,
+      # git, web) e 2 statefulset (postgres, nats), nessuno disattivato.
+      - name: Attesa rollout di deployment e statefulset
         run: |
           set -euo pipefail
-          sudo k3s kubectl -n default wait --for=condition=Available deployment --all --timeout=600s
-          sudo k3s kubectl -n default rollout status statefulset --timeout=600s
+          for r in deployment/gitstack-gateway deployment/gitstack-identity deployment/gitstack-core deployment/gitstack-git deployment/gitstack-web statefulset/gitstack-postgres statefulset/gitstack-nats; do
+            sudo k3s kubectl -n default rollout status "$r" --timeout=300s || { sudo k3s kubectl get pods -A; exit 1; }
+          done
 
       - name: Smoke test HTTPS
         run: |
