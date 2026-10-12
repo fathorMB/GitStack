@@ -14,6 +14,7 @@
 {{- $pgPort = .Values.postgres.external.port | int -}}
 {{- end -}}
 {{- $natsHost := printf "%s-nats" (include "gitstack.fullname" .) -}}
+{{- $pgCA := and (not .Values.postgres.enabled) .Values.postgres.external.caSecret -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -213,17 +214,34 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
-          {{- if .Values.core.attachments.enabled }}
+          {{- if or .Values.core.attachments.enabled $pgCA }}
           volumeMounts:
+            {{- if .Values.core.attachments.enabled }}
             - name: attachments
               mountPath: {{ .Values.core.attachments.mountPath | quote }}
+            {{- end }}
+            {{- if $pgCA }}
+            - name: postgres-ca
+              mountPath: {{ include "gitstack.postgres.caMountPath" . }}
+              readOnly: true
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.core.resources | nindent 12 }}
-      {{- if .Values.core.attachments.enabled }}
+      {{- if or .Values.core.attachments.enabled $pgCA }}
       volumes:
+        {{- if .Values.core.attachments.enabled }}
         - name: attachments
           persistentVolumeClaim:
             claimName: {{ include "gitstack.fullname" . }}-attachments-data
+        {{- end }}
+        {{- if $pgCA }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgCA }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+        {{- end }}
       {{- end }}
 {{- end }}

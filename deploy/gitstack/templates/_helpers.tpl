@@ -89,8 +89,24 @@ password con un segnaposto "$(POSTGRES_PASSWORD)" espanso da Kubernetes
 {{- if .Values.postgres.enabled -}}
 {{- printf "postgres://%s:$(POSTGRES_PASSWORD)@%s-postgres:5432/%s?sslmode=disable" .Values.postgres.auth.username (include "gitstack.fullname" .) .Values.postgres.auth.database -}}
 {{- else -}}
-{{- printf "postgres://%s:$(POSTGRES_PASSWORD)@%s:%d/%s?sslmode=%s" .Values.postgres.external.username .Values.postgres.external.host (.Values.postgres.external.port | int) .Values.postgres.external.database .Values.postgres.external.sslMode -}}
+{{- printf "postgres://%s:$(POSTGRES_PASSWORD)@%s:%d/%s?%s" .Values.postgres.external.username .Values.postgres.external.host (.Values.postgres.external.port | int) .Values.postgres.external.database (include "gitstack.postgres.externalSSLQuery" .) -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Parametri TLS del DSN del Postgres esterno (N8): sslmode e, se c'è un
+Secret con la CA, sslrootcert sul file montato.
+*/}}
+{{- define "gitstack.postgres.externalSSLQuery" -}}
+{{- $q := printf "sslmode=%s" .Values.postgres.external.sslMode -}}
+{{- if .Values.postgres.external.caSecret -}}
+{{- $q = printf "%s&sslrootcert=%s/ca.crt" $q (include "gitstack.postgres.caMountPath" .) -}}
+{{- end -}}
+{{- $q -}}
+{{- end -}}
+
+{{- define "gitstack.postgres.caMountPath" -}}
+/etc/gitstack/postgres-ca
 {{- end -}}
 
 {{/*

@@ -49,6 +49,30 @@ type Config struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Backup descrive dove e per quanto si conservano i backup.
 	Backup Backup `yaml:"backup"`
+	// Postgres descrive il database esterno (N8). Vuoto = Postgres bundle.
+	Postgres Postgres `yaml:"postgres"`
+}
+
+// Postgres è la sezione postgres del file: scritta dall'installer quando si
+// usa --postgres-url. Mai password, mai l'URL completo: solo ciò che serve a
+// capire dove sta il database (la password sta nel Secret del cluster).
+type Postgres struct {
+	// External è vero con un Postgres del cliente (chart postgres.enabled=false).
+	External bool `yaml:"external"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Database string `yaml:"database"`
+	User     string `yaml:"user"`
+	// SSLMode è il sslmode del database (require, verify-full...).
+	SSLMode string `yaml:"ssl_mode"`
+	// Version è la versione del server rilevata dal preflight dell'installer
+	// (es. 16.4); `gitstack status` mostra quella letta ora, se può.
+	Version string `yaml:"version"`
+	// PasswordSecret e CASecret sono i Secret del cluster con la password e
+	// la CA del database (creati dall'installer, mai ripristinati da un
+	// backup: appartengono al Postgres di questa installazione).
+	PasswordSecret string `yaml:"password_secret"`
+	CASecret       string `yaml:"ca_secret"`
 }
 
 // Backup è la sezione backup del file.
@@ -118,6 +142,9 @@ func (c *Config) applyDefaults() {
 	if c.Kubeconfig == "" {
 		c.Kubeconfig = "/etc/rancher/k3s/k3s.yaml"
 	}
+	if c.Postgres.External && c.Postgres.Port == 0 {
+		c.Postgres.Port = 5432
+	}
 	if c.Backup.Destination == "" {
 		c.Backup.Destination = "/var/backups/gitstack"
 	}
@@ -139,6 +166,14 @@ func (c *Config) Validate() error {
 	}
 	if c.SSHPort < 1 || c.SSHPort > 65535 {
 		return fmt.Errorf("ssh_port %d fuori intervallo", c.SSHPort)
+	}
+	if c.Postgres.External {
+		if strings.TrimSpace(c.Postgres.Host) == "" || strings.TrimSpace(c.Postgres.Database) == "" {
+			return errors.New("postgres.external richiede postgres.host e postgres.database")
+		}
+		if c.Postgres.Port < 0 || c.Postgres.Port > 65535 {
+			return fmt.Errorf("postgres.port %d fuori intervallo", c.Postgres.Port)
+		}
 	}
 	if c.Backup.Retention < 1 {
 		return fmt.Errorf("backup.retention %d non valido (almeno 1)", c.Backup.Retention)

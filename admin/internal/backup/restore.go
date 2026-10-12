@@ -24,6 +24,15 @@ const restorePrelude = `DO $$ BEGIN
     CREATE ROLE identity_app NOLOGIN;
   END IF;
 END $$;
+-- Database esterno con un utente non superuser (N8): per togliere e
+-- riassegnare lo schema di identity_app serve esserne membro con SET e
+-- INHERIT (16 e 17) o membro semplice (15). Idempotente: l'installer lo ha
+-- già fatto, qui lo si ripete per un ruolo creato altrove.
+SELECT CASE WHEN current_setting('server_version_num')::int >= 160000
+         THEN format('GRANT identity_app TO %I WITH INHERIT TRUE, SET TRUE', current_user)
+         ELSE format('GRANT identity_app TO %I', current_user) END
+WHERE NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
+\gexec
 DROP SCHEMA IF EXISTS identity CASCADE;
 DROP SCHEMA IF EXISTS core CASCADE;
 `
@@ -296,9 +305,18 @@ func (o *Options) restoreSecrets(ctx context.Context, path string) error {
 	if err := json.Unmarshal(b, &secrets); err != nil {
 		return refused("secrets.json non valido: %v", err)
 	}
-	skip := o.Cfg.Release + "-postgres"
+	skip := map[string]bool{o.Cfg.Release + "-postgres": true}
+	// Con il database esterno, password e CA appartengono al Postgres di
+	// questa installazione (come il Secret del bundle): non si ripristinano.
+	if o.Cfg.Postgres.External {
+		for _, n := range []string{o.Cfg.Postgres.PasswordSecret, o.Cfg.Postgres.CASecret} {
+			if n != "" {
+				skip[n] = true
+			}
+		}
+	}
 	for _, s := range secrets {
-		if s.Name == skip {
+		if skip[s.Name] {
 			continue
 		}
 		if err := o.Cluster.ApplySecret(ctx, s); err != nil {
