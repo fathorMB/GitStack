@@ -73,6 +73,12 @@ NATS_BOX_IMAGE="${NATS_BOX_IMAGE:-natsio/nats-box:0.20.0}"
 KUBECONFIG_PATH="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 export KUBECONFIG="${KUBECONFIG_PATH}"
 
+# GIT-228: il kubeconfig di k3s è 600 root (cluster-admin): i comandi kubectl
+# di questo script, lanciati da un utente non root, passano da sudo.
+k3s_kubectl() {
+  sudo -n env "KUBECONFIG=${KUBECONFIG_PATH}" k3s kubectl "$@"
+}
+
 # Un solo trap EXIT per tutto lo script (un trap dentro una funzione verrebbe
 # sovrascritto o scatterebbe alla fine di una subshell): ripulisce i file
 # temporanei e i pod effimeri registrati negli array.
@@ -84,7 +90,7 @@ cleanup() {
     [ -n "${f}" ] && rm -f "${f}"
   done
   for p in "${CLEANUP_PODS[@]:-}"; do
-    [ -n "${p}" ] && k3s kubectl delete pod "${p#*/}" --namespace "${p%%/*}" --wait=false --ignore-not-found >/dev/null 2>&1
+    [ -n "${p}" ] && k3s_kubectl delete pod "${p#*/}" --namespace "${p%%/*}" --wait=false --ignore-not-found >/dev/null 2>&1
   done
   return 0
 }
@@ -162,7 +168,7 @@ jetstream_count() {
   # stdout e stderr. Il pod gira fino in fondo, si attende la fase finale e
   # il JSON si legge da 'kubectl logs' (solo stdout del container). Il pod
   # viene cancellato dal trap EXIT dello script, anche in caso di errore.
-  if ! k3s kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
+  if ! k3s_kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
       --image="${NATS_BOX_IMAGE}" --command -- \
       nats stream info "${stream}" --server "nats://${nats_addr}" --json \
       >/dev/null 2>"${err_file}"; then
@@ -171,7 +177,7 @@ jetstream_count() {
 
   local phase="" _i
   for _i in $(seq 1 45); do
-    phase="$(k3s kubectl get pod "${pod_name}" --namespace "${ns}" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    phase="$(k3s_kubectl get pod "${pod_name}" --namespace "${ns}" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
     if [ "${phase}" = "Succeeded" ] || [ "${phase}" = "Failed" ]; then
       break
     fi
@@ -179,14 +185,14 @@ jetstream_count() {
   done
   if [ "${phase}" != "Succeeded" ]; then
     local pod_state pod_events pod_logs
-    pod_state="$(k3s kubectl get pod "${pod_name}" --namespace "${ns}" -o wide 2>&1 | tail -n 2 | tr '\n' ' ')"
-    pod_events="$(k3s kubectl get events --namespace "${ns}" --field-selector "involvedObject.name=${pod_name}" -o custom-columns=REASON:.reason,MSG:.message --no-headers 2>&1 | tail -n 5 | tr '\n' ' ')"
-    pod_logs="$(k3s kubectl logs "${pod_name}" --namespace "${ns}" 2>&1 | tail -n 5 | tr '\n' ' ')"
+    pod_state="$(k3s_kubectl get pod "${pod_name}" --namespace "${ns}" -o wide 2>&1 | tail -n 2 | tr '\n' ' ')"
+    pod_events="$(k3s_kubectl get events --namespace "${ns}" --field-selector "involvedObject.name=${pod_name}" -o custom-columns=REASON:.reason,MSG:.message --no-headers 2>&1 | tail -n 5 | tr '\n' ' ')"
+    pod_logs="$(k3s_kubectl logs "${pod_name}" --namespace "${ns}" 2>&1 | tail -n 5 | tr '\n' ' ')"
     fail "il pod ${pod_name} non e' arrivato a Succeeded (fase: '${phase:-sconosciuta}'). Stato: ${pod_state} Eventi: ${pod_events} Log: ${pod_logs}"
   fi
 
   local out
-  if ! out="$(k3s kubectl logs "${pod_name}" --namespace "${ns}" 2>"${err_file}")"; then
+  if ! out="$(k3s_kubectl logs "${pod_name}" --namespace "${ns}" 2>"${err_file}")"; then
     fail "lettura dei log del pod ${pod_name} fallita: $(cat "${err_file}")"
   fi
 
@@ -205,7 +211,7 @@ postgres_secret_hash() {
   local secret="${release}-postgres"
   local pwd_b64
 
-  pwd_b64="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data.password}' 2>&1)" \
+  pwd_b64="$(k3s_kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data.password}' 2>&1)" \
     || fail "impossibile leggere il Secret '${secret}' nel namespace '${ns}': ${pwd_b64}"
   [ -n "${pwd_b64}" ] || fail "il Secret '${secret}' non ha la chiave 'password'."
   printf '%s' "${pwd_b64}" | sha256sum | awk '{print $1}'
@@ -218,7 +224,7 @@ admin_password() {
   local ns="${2:-default}"
   local secret="${release}-identity-admin"
   local pwd_b64
-  pwd_b64="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data.password}' 2>&1)" \
+  pwd_b64="$(k3s_kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data.password}' 2>&1)" \
     || fail "impossibile leggere il Secret '${secret}' nel namespace '${ns}'."
   [ -n "${pwd_b64}" ] || fail "il Secret '${secret}' non ha la chiave 'password'."
   printf '%s' "${pwd_b64}" | base64 -d
@@ -229,9 +235,9 @@ admin_secret_state() {
   local ns="${2:-default}"
   local secret="${release}-identity-admin"
   local rv data
-  rv="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.metadata.resourceVersion}' 2>&1)" \
+  rv="$(k3s_kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.metadata.resourceVersion}' 2>&1)" \
     || fail "impossibile leggere il Secret '${secret}' nel namespace '${ns}'."
-  data="$(k3s kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data}' 2>&1)" \
+  data="$(k3s_kubectl get secret "${secret}" -n "${ns}" -o jsonpath='{.data}' 2>&1)" \
     || fail "impossibile leggere i dati del Secret '${secret}'."
   printf '%s %s\n' "${rv}" "$(printf '%s' "${data}" | sha256sum | awk '{print $1}')"
 }
@@ -252,13 +258,13 @@ collect_diagnostics() {
   { sudo journalctl -u k3s --no-pager -n 5000 || echo "journalctl -u k3s non disponibile"; } \
     >"${dir}/journalctl-k3s.log" 2>&1
 
-  { k3s kubectl get all -A -o wide || echo "kubectl get all -A non disponibile"; } \
+  { k3s_kubectl get all -A -o wide || echo "kubectl get all -A non disponibile"; } \
     >"${dir}/kubectl-get-all.txt" 2>&1
 
-  { k3s kubectl get events -A --sort-by=.lastTimestamp || echo "kubectl get events non disponibile"; } \
+  { k3s_kubectl get events -A --sort-by=.lastTimestamp || echo "kubectl get events non disponibile"; } \
     >"${dir}/kubectl-events.txt" 2>&1
 
-  { k3s kubectl get pods -A -o yaml || echo "kubectl get pods -o yaml non disponibile"; } \
+  { k3s_kubectl get pods -A -o yaml || echo "kubectl get pods -o yaml non disponibile"; } \
     >"${dir}/kubectl-pods.yaml" 2>&1
 
   : >"${dir}/kubectl-describe-pods.txt"
@@ -268,13 +274,13 @@ collect_diagnostics() {
     [ -n "${pod}" ] || continue
     {
       printf '\n===== %s/%s =====\n' "${ns}" "${pod}"
-      k3s kubectl -n "${ns}" describe pod "${pod}" || true
+      k3s_kubectl -n "${ns}" describe pod "${pod}" || true
     } >>"${dir}/kubectl-describe-pods.txt" 2>&1
     {
       printf '\n===== %s/%s =====\n' "${ns}" "${pod}"
-      k3s kubectl -n "${ns}" logs "${pod}" --all-containers --tail=1000 || true
+      k3s_kubectl -n "${ns}" logs "${pod}" --all-containers --tail=1000 || true
     } >>"${dir}/kubectl-logs-pods.txt" 2>&1
-  done < <(k3s kubectl get pods -A --no-headers 2>/dev/null | awk '{print $1, $2}')
+  done < <(k3s_kubectl get pods -A --no-headers 2>/dev/null | awk '{print $1, $2}')
 
   { helm status gitstack -n default || echo "helm status non disponibile"; } \
     >"${dir}/helm-status.txt" 2>&1
@@ -375,15 +381,15 @@ mirror_dest_commit() {
 # della destinazione nell'egress di core. Aspetta i rollout.
 mirror_enable() {
   local release="${1:-gitstack}" ns="${2:-default}" ip="${3:?indirizzo}"
-  k3s kubectl -n "${ns}" create configmap "${MIRROR_CA_MAP}" --from-file=ca.crt="${TLS_DIR}/ca.crt" \
-    --dry-run=client -o yaml | k3s kubectl -n "${ns}" apply -f - || fail "ConfigMap della CA non creato"
-  k3s kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
+  k3s_kubectl -n "${ns}" create configmap "${MIRROR_CA_MAP}" --from-file=ca.crt="${TLS_DIR}/ca.crt" \
+    --dry-run=client -o yaml | k3s_kubectl -n "${ns}" apply -f - || fail "ConfigMap della CA non creato"
+  k3s_kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
     '{"spec":{"template":{"spec":{"volumes":[{"name":"mirror-ca","configMap":{"name":"'"${MIRROR_CA_MAP}"'"}}],"containers":[{"name":"git","env":[{"name":"GITSTACK_GIT_MIRROR_CA_FILE","value":"/etc/gitstack/mirror-ca/ca.crt"}],"volumeMounts":[{"name":"mirror-ca","mountPath":"/etc/gitstack/mirror-ca","readOnly":true}]}]}}}}' \
     || fail "patch del deployment git non riuscito"
-  k3s kubectl -n "${ns}" set env "deployment/${release}-core" "GITSTACK_EGRESS_ALLOW=${ip}/32" \
+  k3s_kubectl -n "${ns}" set env "deployment/${release}-core" "GITSTACK_EGRESS_ALLOW=${ip}/32" \
     || fail "egress.allow di core non impostato"
-  k3s kubectl -n "${ns}" rollout status "deployment/${release}-git" --timeout=240s || fail "rollout di git non riuscito"
-  k3s kubectl -n "${ns}" rollout status "deployment/${release}-core" --timeout=240s || fail "rollout di core non riuscito"
+  k3s_kubectl -n "${ns}" rollout status "deployment/${release}-git" --timeout=240s || fail "rollout di git non riuscito"
+  k3s_kubectl -n "${ns}" rollout status "deployment/${release}-core" --timeout=240s || fail "rollout di core non riuscito"
   echo "OK: git si fida della CA della VM per i mirror, core ammette ${ip}"
 }
 
@@ -392,13 +398,13 @@ mirror_disable() {
   local release="${1:-gitstack}" ns="${2:-default}"
   # $patch è una direttiva del patch strategico, non una variabile.
   # shellcheck disable=SC2016
-  k3s kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
+  k3s_kubectl -n "${ns}" patch deployment "${release}-git" --type=strategic -p \
     '{"spec":{"template":{"spec":{"volumes":[{"name":"mirror-ca","$patch":"delete"}],"containers":[{"name":"git","env":[{"name":"GITSTACK_GIT_MIRROR_CA_FILE","$patch":"delete"}],"volumeMounts":[{"name":"mirror-ca","mountPath":"/etc/gitstack/mirror-ca","$patch":"delete"}]}]}}}}' \
     || true
-  k3s kubectl -n "${ns}" set env "deployment/${release}-core" GITSTACK_EGRESS_ALLOW- || true
-  k3s kubectl -n "${ns}" delete configmap "${MIRROR_CA_MAP}" --ignore-not-found || true
-  k3s kubectl -n "${ns}" rollout status "deployment/${release}-git" --timeout=240s || true
-  k3s kubectl -n "${ns}" rollout status "deployment/${release}-core" --timeout=240s || true
+  k3s_kubectl -n "${ns}" set env "deployment/${release}-core" GITSTACK_EGRESS_ALLOW- || true
+  k3s_kubectl -n "${ns}" delete configmap "${MIRROR_CA_MAP}" --ignore-not-found || true
+  k3s_kubectl -n "${ns}" rollout status "deployment/${release}-git" --timeout=240s || true
+  k3s_kubectl -n "${ns}" rollout status "deployment/${release}-core" --timeout=240s || true
   echo "OK: cablaggio dei mirror rimosso"
 }
 
