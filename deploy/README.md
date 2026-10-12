@@ -140,3 +140,65 @@ Al primo login la password va cambiata: finché non lo fai ogni altra chiamata r
 ### Verifica in CI
 
 `.github/workflows/ci.yml`, job `shellcheck`: `shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh` (e gli altri script di shell del repository), poi `deploy/tests/preflight_test.sh`: prova i profili di N1, il sistema non supportato e la verifica del nome senza root né VM (le letture di CPU, RAM, disco, DNS sono funzioni che il test ridefinisce). Non verifica un'installazione reale (serve un sistema con systemd, non disponibile nei runner container-based): quella si fa sulla VM di `test-vm/` (GIT-12) o su una VM/container Ubuntu 24.04 usa e getta, vedi il riepilogo dell'item GIT-9.
+
+## Windows via WSL2 (W1, W2 — prova/demo)
+
+Script in `deploy/windows/` per installare GitStack su Windows 10/11 tramite WSL2. **Solo per prove, demo e piccoli team**: WSL2 in produzione ha limiti noti di rete (IP dinamico, firewall non esposto, servizi non affidabili) ed è documentato come rischio in D14 [c_cf5bc915298b97db].
+
+### Requisiti
+
+- Windows 10 build 19041 (2004) o superiore per WSL2; build 22621 (Windows 11 22H2) per `-ShareOnNetwork` (rete mirrored)
+- Virtualizzazione attiva nel BIOS/UEFI
+- PowerShell 5.1+ (incluso in Windows) o pwsh
+
+### Uso
+
+```powershell
+# Installazione di prova (solo accesso locale, https://localhost, SSH 2222):
+.\deploy\windows\install-wsl.ps1
+
+# Con rete mirrored (porte 443 e 2222 esposte nel firewall, Windows 11 22H2+):
+.\deploy\windows\install-wsl.ps1 -ShareOnNetwork
+
+# Disinstallazione:
+.\deploy\windows\install-wsl.ps1 -Uninstall
+```
+
+Lo script:
+1. Verifica e abilita WSL2 se necessario;
+2. Installa Ubuntu 24.04 (o 22.04 come fallback);
+3. Abilita systemd in `/etc/wsl.conf` dentro la distro;
+4. Lancia `deploy/install.sh` dentro WSL con `--skip-preflight` (l'hardware di un PC Windows non ha Ubuntu):
+5. Opzionalmente configura `networkingMode=mirrored` con regole firewall per 443/2222;
+6. Registra un'attività di Windows per avviare WSL e GitStack all'accesso utente.
+
+### Prova del board (Windows 11 con WSL2)
+
+I runner CI non hanno WSL2 reale; per la prova vera su un PC Windows 11 22H2+:
+
+```powershell
+# 1. Da terminale PowerShell come amministratore:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd <percorso>\GitStack
+
+# 2. Installazione:
+.\deploy\windows\install-wsl.ps1
+
+# 3. Verifica accesso locale:
+curl.exe -k https://localhost
+# Verifica che k3s sia attivo:
+wsl -d GitStack -u root -- systemctl is-active k3s
+
+# 4. Con rete mirrored (richiede Windows 11 22H2, build ≥ 22621):
+.\deploy\windows\install-wsl.ps1 -ShareOnNetwork
+# Da un altro PC nella stessa rete:
+curl.exe -k https://<IP-del-PC>
+
+# 5. Disinstallazione:
+.\deploy\windows\install-wsl.ps1 -Uninstall
+# Verificare che:
+# - la distro "GitStack" sia stata rimossa (wsl -l -q)
+# - le regole firewall GitStack-WSL-443 e GitStack-WSL-2222 siano rimosse
+# - l'attivita pianificata "GitStack-WSL-Login" sia rimossa
+# - le righe marcate # GitStack siano rimosse da .wslconfig (il file resta)
+```
