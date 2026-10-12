@@ -896,6 +896,73 @@ To resolve it, first decide which side is right, look at the run log to see whic
 
 Then press **Sync now** (or `POST /api/v1/repos/{owner}/{repo}/mirrors/{id}/sync`, which answers `202`). The mirror pushes again and, if nothing else is different, goes back to **In sync**. A mirror stays `diverged` until you do: new pushes to GitStack do not restart it.
 
+## Pull mirror
+
+A **pull mirror** is the opposite of the [push mirror](#mirror): GitStack periodically downloads an external Git repository (for example one on GitHub) and keeps a **read-only** copy of it. Uses: a backup copy of a GitHub repository on your own machine, and the first step of moving a team off GitHub.
+
+What it does, and what it deliberately does not do:
+
+- **Prudent copy.** All branches and all tags are copied. GitStack **never deletes and never overwrites** anything. If the origin rewrites a branch (force-push) or a tag, or deletes a ref, the copy on GitStack keeps the previous version, the ref is marked **diverged** and the repository's admins are notified. All the other refs keep updating.
+- **Code is read-only, issues are normal.** While the mirror is active every push (HTTPS, SSH, `gs`) is rejected with a message that names the origin (`mirror_read_only`). Only the mirror updates refs. The repository shows a **Mirror** label with the origin and the time of the last update. Issues, labels, milestones and comments work as in any repository.
+- **Only Git content.** Issues, pull requests, releases, wikis and labels of the origin are not copied, and neither is Git LFS.
+- **Origins.** Only `https://` addresses, without credentials in the address, checked by the same egress protection as webhooks and push mirrors (loopback, cluster and link-local networks are always blocked; see [Destinations on a private network or with a private CA](#destinations-on-a-private-network-or-with-a-private-ca), which applies to pull mirrors too, including `git.mirror.caConfigMap`). SSH and `git://` origins are not supported.
+- **Same-address guard.** While a pull mirror is active you cannot configure a push mirror to the same address as its origin.
+
+Creating and managing a pull mirror needs the `admin` role on the repository, or being the installation administrator. The token (optional) is stored encrypted and is never shown again, nor written to logs or to the Git command line. Without the secret encryption key (`GITSTACK_WEBHOOK_SECRET_KEY`) the API answers `503 mirror_secrets_unavailable`.
+
+### Recipe: stage 1, a copy of `github.com/<org>/GitStack` on homehub
+
+Goal: homehub holds an up-to-date, read-only copy of the GitHub repository, as a backup and as the code that dogfooding builds on.
+
+1. **Decide the name.** For example `<org>/gitstack` (the owner can be a user or an organization on homehub); visibility **private** unless you want it public. The name must be free: the import creates the repository.
+2. **Credentials.**
+   - If `github.com/<org>/GitStack` is **public**, leave username and token empty: the origin is read anonymously.
+   - If it is **private**, create a **fine-grained personal access token** on GitHub: *Repository access* → **Only select repositories** → that repository; *Repository permissions* → **Contents: Read-only** (GitHub adds *Metadata: Read-only* by itself). Nothing else, and **no write permission**: this mirror never pushes. Note the expiry date; when the token expires the mirror goes to `error` until you replace it.
+3. **Create the mirror.** In the web UI: **New repository → Import from URL**, fill in `https://github.com/<org>/GitStack.git`, choose **Keep in sync** (not *Copy once*), set the interval and, for a private origin, the GitHub user name and the token. The repository appears immediately (empty) and the first copy starts in the background.
+
+   The same through the API (the token is only sent in this request):
+
+   ```bash
+   curl -fsS -X POST "https://homehub.example/api/v1/repos/import" \
+     -H "Authorization: Bearer $GITSTACK_TOKEN" -H "Content-Type: application/json" \
+     -d '{"owner":"<org>","name":"gitstack","visibility":"private",
+          "url":"https://github.com/<org>/GitStack.git","mode":"mirror","intervalSeconds":3600}'
+   # private origin: add  "username":"<github user>","token":"'"$GITHUB_TOKEN"'"
+   ```
+
+   On an **existing, empty** repository use **Settings → Pull mirror → Enable** (mockup P3–P6) or `POST /api/v1/repos/{owner}/{repo}/pull-mirror` with `{"url": …, "username": …, "token": …, "intervalSeconds": …}`.
+4. **Interval.** For a backup copy use **1 hour** (`intervalSeconds: 3600`): it is plenty for a backup and gentle with GitHub. The default is **10 minutes**; the allowed range is 5 minutes to 24 hours. **Sync now** (`POST /api/v1/repos/{owner}/{repo}/pull-mirror/sync`, answers `202`) updates immediately and does not change the interval.
+5. **Check it.** The mirror is healthy when its state is `in_sync` and `lastSyncedAt` is recent (`GET /api/v1/repos/{owner}/{repo}/pull-mirror`; the run log is `GET …/pull-mirror/runs`). Compare the tips:
+
+   ```bash
+   git ls-remote https://github.com/<org>/GitStack.git refs/heads/main
+   git ls-remote https://homehub.example/<org>/gitstack.git refs/heads/main   # same SHA
+   ```
+
+### States
+
+| State | Meaning |
+|---|---|
+| `pending` | Queued: first copy, or next round due. |
+| `syncing` | A fetch is running (one at a time per repository, with a timeout). |
+| `in_sync` | The last update succeeded. Refs listed in `divergedRefs` are kept as they were; the others are up to date. |
+| `error` | The last attempt failed. It retries after 30 s, 2 min, 10 min, 1 h, 3 h, then every 6 h. A destination blocked by the egress policy is **not** retried: fix the policy (or the origin) and press **Sync now**. |
+| `paused` | Updates are stopped by an admin; the repository stays read-only. **Resume** (`POST …/pull-mirror/resume`) brings it back. |
+| `stopped` | Interrupted: the repository is normal and writable, credentials are deleted, the run log and the `diverged` refs are kept. |
+
+The admins are also notified when there has been no successful update for more than 24 hours. The run log keeps the last 50 runs, for 30 days.
+
+### When a ref is `diverged`
+
+It means the origin rewrote or deleted a ref that GitStack already had. Nothing was lost: GitStack still has the old version, shown in **Settings → Pull mirror → Diverged refs** (`divergedRefs` in the API, with `localSha` and `remoteSha`). Decide which side is right. If the origin is right and you want its version, **Stop** the mirror, fix the ref in the now-writable repository, and enable the mirror again later; a mirror never accepts a rewrite on its own.
+
+### Stop, or copy once
+
+- **Stop** (**Settings → Pull mirror → Stop**, `POST …/pull-mirror/stop`): type the repository name to confirm (`{"confirm":"gitstack"}`). The repository becomes a normal one, credentials are deleted. This is how a copy becomes the new home after a migration. It can be enabled again later.
+- **Copy once** (**Import from URL → Copy once**, or `"mode":"once"` in `POST /api/v1/repos/import`) is "create the mirror, sync, stop" in one step: all branches and tags are copied once, then the credentials are deleted and the repository is normal and writable, with no link to the origin. If the copy fails the repository stays with the error visible and you can retry with **Sync now**.
+
+The pull mirror is proved end to end by `deploy/test-vm/e2e.ps1` (step e10) and by the stack test `TestPullMirrorGiroCompleto`.
+
 ---
 
 ## Diagnostics
@@ -987,6 +1054,85 @@ The script `deploy/gitstack/tls/gitstack-tls.sh` (installed as
 
 Both need `sudo` on internal CA because they read/write under
 `/etc/gitstack/`.
+
+### CI tests of install, upgrade and restore (N2, V1)
+
+The workflow `.github/workflows/install.yml` proves on a real runner what
+used to be tried only on the board's VM. It does **not** run on every push
+or pull request (each job installs k3s and every service and takes a long time):
+
+| Trigger | When |
+|---|---|
+| `push` of a `v*` tag | at every release |
+| `schedule` | every night at 02:30 UTC, on `main` |
+| `workflow_dispatch` | by hand, on any branch (inputs `previous_commit` and `k3s_from` are optional) |
+
+It runs two scenarios on `ubuntu-22.04` and `ubuntu-24.04`:
+
+- **fresh**: `install.sh` of the commit under test → `gitstack backup`
+  (encrypted) → more data → `gitstack restore` → the data written after the
+  backup is gone.
+- **upgrade**: `install.sh` of the **previous commit** (latest green CI run on
+  `main`, strict ancestor, with its images and binary published) with a k3s
+  **one patch older** than `deploy/k3s-version` → data → `gitstack upgrade`
+  (preventive backup → k3s patch → GitStack, N10) → k3s checked with
+  `k3s --version`, `kubectl version` and `gitstack status --json`
+  (`k3s_version`) → backup → more data → restore.
+
+Both check health, the admin login with the forced password change, user and
+token creation, repository creation, `git clone` and `git push` over HTTPS.
+The steps are in `deploy/ci/install-e2e.sh` (shellcheck in `ci.yml`).
+
+**Signatures (V5).** `install.sh` and `gitstack upgrade` verify the cosign
+signatures of the binary, the chart and the images, so the run tests that
+verification too. The job `release` decides where the artefacts of the commit
+come from:
+
+| Run | Artefacts | Signatures |
+|---|---|---|
+| `schedule` (main) and `v*` tag | only the signed release `sha-<commit>` and its images, published by `ci.yml` | **verified**. If the `.sigstore.json` bundles are not there yet (on a tag push `ci.yml` and this workflow start together) the job waits for them up to 75 minutes, then fails with an explicit error; it never builds artefacts itself and never passes the exception |
+| `workflow_dispatch` on a commit whose release is already signed | that release | **verified** |
+| `workflow_dispatch` on a branch or an unsigned commit | built by the jobs `images` and `admin-binary` | **not verified: exception N9**, passed explicitly as `--allow-unsigned-mirrors` to `install.sh` and to `gitstack upgrade` (only if the installed `gitstack` of the previous commit knows the flag; an older one verifies nothing), and written in the run summary (`GITHUB_STEP_SUMMARY`) |
+
+In the upgrade scenario the previous commit is installed with its own
+`install.sh` and its own signed artefacts, without the exception; then the
+installed `gitstack` (which already verifies, from GIT-209 on) checks the
+artefacts of the commit under test. The exception is never silent, and never
+on the runs of `main` and of the tags.
+
+The jobs `images` and `admin-binary` therefore run only in the last case: they
+publish the images (`ghcr.io`) and the `gitstack` binary (release
+`sha-<commit>`) with the same tags, because `gitstack upgrade` always downloads
+from GitHub, there is no local source for it. To try a change, push the branch
+and run the workflow by hand on it:
+
+```sh
+gh workflow run install.yml --ref my-branch
+gh run watch
+```
+
+Runners start with about 14 GB free: the installer is called with
+`--skip-preflight` (the hardware profile is covered by
+`deploy/tests/preflight_test.sh`).
+
+#### Pop!_OS 22.04 and 24.04
+
+Not covered in CI: GitHub hosts no Pop!_OS runner, and System76 does not
+publish a cloud image or a container with systemd that stands for the real
+system (to be verified again before deciding). What CI gives instead: Pop!_OS
+22.04 and 24.04 are Ubuntu 22.04 and 24.04 with the System76 packages, so the
+same installer path runs on the same base; the `ID=pop` detection is covered
+by `deploy/tests/preflight_test.sh`. The real run on Pop!_OS stays manual,
+on the test VM (`deploy/test-vm/`). Options, from the cheapest, for the CEO
+to choose:
+
+1. **Keep as is** (declared limit): Ubuntu in CI, Pop!_OS by hand before each
+   release, noted in the release checklist.
+2. **Self-hosted runner** on a Pop!_OS machine of the company (the board's
+   homehub): exact, but a permanent machine and a runner open to the repo.
+3. **KVM VM on the runner** with the Pop!_OS ISO: the installer of the ISO is
+   interactive, so it needs a preseeded image built and kept by us; the most
+   work, and the result is still a copy of the real system.
 
 ---
 

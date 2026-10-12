@@ -55,6 +55,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 		hooks:        o.hooks,
 		mirrors:      o.mirrors,
 		emailEnabled: o.emailEnabled,
+		systemInfo:   o.systemInfo,
 		now:          now,
 	}
 
@@ -94,6 +95,7 @@ type routerOptions struct {
 	hooks        WebhookConfig
 	mirrors      MirrorConfig
 	emailEnabled bool
+	systemInfo   SystemInfoConfig
 }
 
 // WithCreatorGranter imposta il client di identity con cui core assegna il

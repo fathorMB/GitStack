@@ -289,6 +289,7 @@ ul.list{margin:0;padding:0;list-style:none}
 .hljs-type,.hljs-class,.hljs-tag,.hljs-name{color:var(--tk-t)}
 
 /* Admin · Agents (mockup 17) */
+.sys-label{width:140px;flex:none}
 .agents-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start}
 .agents-detail{gap:16px}
 .av-bot{background:var(--agent-soft);color:var(--agent)}

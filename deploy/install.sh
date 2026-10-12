@@ -1438,6 +1438,17 @@ install_admin() {
   log "Installato ${ADMIN_BIN_PATH} da ${ADMIN_SOURCE_DESC}: $("${ADMIN_BIN_PATH}" version 2>/dev/null || echo 'versione non leggibile')."
 }
 
+# Pubblica le informazioni per Admin · System (ConfigMap system-info, letto da
+# core: GIT-213). Best effort: un errore non fa fallire l'installazione.
+publish_system_info() {
+  [ -x "${ADMIN_BIN_PATH}" ] || return 0
+  if "${ADMIN_BIN_PATH}" system-info publish >/dev/null 2>&1; then
+    log "Informazioni per Admin · System pubblicate."
+  else
+    warn "Admin · System non aggiornato: rilancia 'sudo gitstack system-info publish'."
+  fi
+}
+
 # Valore di una chiave del config esistente: di primo livello (section vuota)
 # o dentro la sezione indicata (qui "backup"). Una riesecuzione non cancella
 # così le scelte sul backup.
@@ -2855,6 +2866,7 @@ main() {
   persist_chart "${chart_dir}"
   install_admin
   write_config "${image_tag}"
+  publish_system_info
   enable_backup_timer
 
   print_summary

@@ -62,17 +62,23 @@ type App struct {
 	NewStore func(config.S3) (backup.ObjectStore, error)
 	// Now, se non nil, sovrascrive l'orologio di backup (test).
 	Now func() time.Time
+	// AutoPublish: backup e upgrade aggiornano da soli il ConfigMap system-info
+	// (Admin · System, GIT-213). Attivo in NewApp; i test lo accendono a parte.
+	AutoPublish bool
+	// ApplyManifest, se non nil, sostituisce kubectl apply del ConfigMap (test).
+	ApplyManifest func(ctx context.Context, manifest []byte) error
 }
 
 // NewApp è l'App di produzione.
 func NewApp(version string) *App {
 	return &App{
-		Version: version,
-		Stdout:  os.Stdout,
-		Stderr:  os.Stderr,
-		Getenv:  os.Getenv,
-		Geteuid: os.Geteuid,
-		Runner:  status.ExecRunner{},
+		Version:     version,
+		Stdout:      os.Stdout,
+		Stderr:      os.Stderr,
+		Getenv:      os.Getenv,
+		Geteuid:     os.Geteuid,
+		Runner:      status.ExecRunner{},
+		AutoPublish: true,
 	}
 }
 
@@ -95,6 +101,7 @@ func init() {
 		{name: "upgrade", summary: "aggiorna GitStack con backup preventivo, controllo di salute e rollback automatico", needsRoot: true, run: runUpgrade},
 		{name: "config", summary: "config set host <nome> | config set network | config set backup.s3 …: nome dell'host, rete aziendale (proxy, mirror, CA), copia dei backup su S3", needsRoot: true, run: runConfig},
 		{name: "postgres", summary: "postgres check: preflight del Postgres esterno (versione 15-17, connessione, permessi)", run: runPostgres},
+		{name: "system-info", summary: "system-info publish|show: pubblica (o stampa) le informazioni per Admin · System", needsRoot: true, run: runSystemInfo},
 		{name: "version", summary: "versione del binario", run: runVersion},
 	}
 }

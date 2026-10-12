@@ -241,7 +241,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/network_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/network_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.

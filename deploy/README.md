@@ -5,6 +5,7 @@ Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno d
 - `postgres-prepare.sql` — script per il DBA: database e utente per un Postgres esterno (N8).
 - `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `identity`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` (GIT-36) è nel chart, con ruolo e schema Postgres dedicati e le sue rotte instradate dal gateway; `git` non ha ancora un'immagine: non è nel chart.
 - `install.sh` — Installer v0 (M-01/T-09, questo item): un solo comando installa k3s e GitStack (chart di `gitstack/`) su una macchina Linux pulita. Dettagli sotto.
+- `ci/install-e2e.sh` — passi del workflow `.github/workflows/install.yml` (GIT-203): installazione, backup, aggiornamento con cambio di patch di k3s e ripristino su Ubuntu 22.04 e 24.04, sui tag, ogni notte su main e a mano. Vedi `../docs/operations.md`, «CI tests of install, upgrade and restore».
 - `test-vm/` — script che creano, ripristinano e distruggono la VM Linux locale usata per provare l'installer (M-01/T-12, GIT-12). Vedi `test-vm/README.md`.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).

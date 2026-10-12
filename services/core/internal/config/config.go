@@ -99,6 +99,9 @@ type Config struct {
 	// (GITSTACK_CORE_ATTACHMENTS_DIR, I9). Vuoto: upload e download di allegati
 	// rispondono 503. Il volume è coperto dal backup (D19).
 	AttachmentsDir string
+	// SystemInfoFile è system.json, il ConfigMap system-info montato come
+	// volume (GITSTACK_SYSTEM_INFO_FILE, GIT-213): lo legge GET /admin/system.
+	SystemInfoFile string
 
 	// AttachmentMaxBytes è il limite per allegato (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES,
 	// default 10 MiB).
@@ -145,6 +148,7 @@ const (
 	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
+	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
 	envAttachmentOrphan = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
 
@@ -263,6 +267,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envAttachmentsDir); ok {
 		cfg.AttachmentsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envSystemInfoFile); ok {
+		cfg.SystemInfoFile = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envAttachmentMax); ok && strings.TrimSpace(v) != "" {
 		n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)

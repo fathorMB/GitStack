@@ -43,6 +43,8 @@ type apiServer struct {
 	mirrors MirrorConfig
 	// emailEnabled: installazione con SMTP (preferenze email, C5).
 	emailEnabled bool
+	// systemInfo: file delle informazioni dell host (GIT-213).
+	systemInfo SystemInfoConfig
 	// now è l'orologio: serve alla scadenza dei 7 giorni di un repo eliminato.
 	now func() time.Time
 }
