@@ -192,6 +192,20 @@ func (s *Service) List(ctx context.Context, userID uuid.UUID, page, perPage int)
 	return out, total, rows.Err()
 }
 
+// Get ritorna un token non revocato dell'utente (anche scaduto). Sconosciuto,
+// revocato o di un altro utente: ErrNotFound.
+func (s *Service) Get(ctx context.Context, userID, id uuid.UUID) (Token, error) {
+	t, err := scan(s.pool.QueryRow(ctx, `SELECT `+columns+` FROM identity.api_tokens
+		WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`, id, userID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Token{}, ErrNotFound
+	}
+	if err != nil {
+		return Token{}, fmt.Errorf("lettura del token non riuscita: %w", err)
+	}
+	return t, nil
+}
+
 // Revoke revoca un token dell'utente. Un token già revocato o di un altro
 // utente è ErrNotFound.
 func (s *Service) Revoke(ctx context.Context, userID, id uuid.UUID) error {

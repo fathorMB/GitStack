@@ -3,6 +3,7 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -155,5 +156,91 @@ DROP TABLE identity.gs_marker;`)
 				t.Errorf("dati dopo il secondo restore: %q", got)
 			}
 		})
+	}
+}
+
+// seedExternal prepara come il DBA e l'installer un Postgres esterno non
+// superuser con le migrazioni reali e due tabelle di prova; ritorna la
+// password dell'utente di GitStack.
+func seedExternal(t *testing.T, s *pgtest.Server) string {
+	t.Helper()
+	const gsPw, idPw = "gs-pw-ext", "id-pw-ext"
+	s.SQL(t, "postgres", pgtest.SuperPassword, "postgres", []string{"GITSTACK_DB_PASSWORD=" + gsPw},
+		readRepo(t, "deploy", "postgres-prepare.sql"))
+	s.SQL(t, "gitstack", gsPw, "gitstack", nil,
+		readRepo(t, "deploy", "gitstack", "files", "identity-bootstrap-role.sql"), "identity_password="+idPw)
+	applyMigrations(t, s, "identity_app", idPw, "identity", "services", "identity", "internal", "migrate", "sql")
+	s.SQL(t, "gitstack", gsPw, "gitstack", nil, `CREATE SCHEMA IF NOT EXISTS core;`)
+	applyMigrations(t, s, "gitstack", gsPw, "core", "services", "core", "internal", "migrate", "sql")
+	s.SQL(t, "identity_app", idPw, "gitstack", []string{"PGOPTIONS=-c search_path=identity"},
+		`CREATE TABLE gs_marker(v text); INSERT INTO gs_marker VALUES ('identity-uno');`)
+	s.SQL(t, "gitstack", gsPw, "gitstack", []string{"PGOPTIONS=-c search_path=core"},
+		`CREATE TABLE gs_marker(v text); INSERT INTO gs_marker VALUES ('core-uno');`)
+	return gsPw
+}
+
+// N7 con N8: backup cifrato su MinIO da un Postgres esterno (pod client, non
+// StatefulSet) e `restore --from s3` su un ambiente pulito, sullo stesso
+// database esterno dopo che i dati sono cambiati.
+func TestS3MinIO_BackupERestoreConPostgresEsterno(t *testing.T) {
+	s := pgtest.Start(t, 15)
+	s.WithClient(t, 15)
+	gsPw := seedExternal(t, s)
+	markers := func() string {
+		return s.SQL(t, "gitstack", gsPw, "gitstack", nil, `
+SELECT string_agg(v, ',' ORDER BY v) FROM (SELECT v FROM identity.gs_marker UNION ALL SELECT v FROM core.gs_marker) x`)
+	}
+	before := markers()
+
+	ep := startMinio(t)
+	const bucket = "gitstack-backups-ext"
+	makeBucket(t, ep, bucket)
+	s3c := config.S3{Endpoint: "http://" + ep, Bucket: bucket, Prefix: "ext", AccessKey: minioAccess,
+		SecretKey: minioSecret, KeyFile: "/etc/gitstack/backup.key", Retention: "2"}
+	if err := s3c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	st, err := NewS3Store(s3c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	key := []byte("una-chiave-di-prova-lunga-abbastanza")
+	pg := config.Postgres{External: true, Host: "127.0.0.1", Port: s.Port, Database: "gitstack", User: "gitstack"}
+
+	e := newEnv(t)
+	e.o.Key = key
+	e.o.Cfg.Backup.S3 = &s3c
+	e.o.Cfg.Postgres = pg
+	e.o.Cluster = &pgCluster{fakeCluster: e.f, srv: s, env: pgtest.ClientEnv("gitstack", gsPw, "gitstack")}
+	res, err := Backup(ctx, e.o)
+	if err != nil {
+		t.Fatalf("backup: %v\n%s", err, e.log)
+	}
+	if _, err := Upload(ctx, e.o, st, res.Path); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	raw := rawObject(t, ep, bucket, "ext/"+filepath.Base(res.Path))
+	if !bytes.HasPrefix(raw, encMagic) || bytes.Contains(raw, []byte("identity-uno")) {
+		t.Error("l'archivio su S3 deve essere cifrato, senza dati in chiaro")
+	}
+
+	s.SQL(t, "gitstack", gsPw, "gitstack", nil, `
+DELETE FROM core.gs_marker; INSERT INTO core.gs_marker VALUES ('core-dopo'); DROP TABLE identity.gs_marker;`)
+
+	clean := newEnv(t)
+	clean.o.Key = key
+	clean.o.Cfg.Backup.S3 = &s3c
+	clean.o.Cfg.Postgres = pg
+	clean.o.Cluster = &pgCluster{fakeCluster: clean.f, srv: s, env: pgtest.ClientEnv("gitstack", gsPw, "gitstack")}
+	p, err := FetchFromS3(ctx, clean.o, st, "", clean.dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Restore(ctx, clean.o, p); err != nil {
+		t.Fatalf("restore da S3: %v\n%s", err, clean.log)
+	}
+	if got := markers(); got != before {
+		t.Errorf("dati dopo il restore da S3: %q, attesi %q", got, before)
 	}
 }

@@ -137,18 +137,19 @@ func (f *Factory) defaultHost() (string, error) {
 
 // BaseRepo sceglie owner/repo: --repo, altrimenti il remote origin.
 //
-// Se l'istanza è stata scelta in modo esplicito (--hostname o GS_HOST) e il
-// remote origin punta a un altro host, il remote non vale: errore che nomina i
-// due host, e --repo owner/repo risolve.
+// Se il remote origin punta a un host diverso da quello risolto da Host(), il
+// remote non vale: errore che nomina i due host, e --repo owner/repo risolve.
+// Il confronto usa l'host risolto da Factory.Host(), qualunque sia la sua
+// fonte (esplicito, predefinito o dal remote).
 func (f *Factory) BaseRepo() (owner, repo string, err error) {
 	ctx := context.Background()
 	if strings.TrimSpace(f.RepoFlag) == "" && f.Git != nil {
-		chosen := strings.TrimSpace(f.HostnameFlag)
-		if chosen == "" {
-			chosen = strings.TrimSpace(f.Getenv(EnvHost))
+		host, herr := f.Host()
+		if herr != nil {
+			return "", "", herr
 		}
-		if r, rerr := gsrepo.OriginRemote(ctx, f.Git); chosen != "" && rerr == nil && !sameHostname(r.Host, chosen) {
-			return "", "", UsageErrorf("il remote origin è su %s ma l'istanza scelta è %s: usa --repo owner/repo", r.Host, chosen)
+		if r, rerr := gsrepo.OriginRemote(ctx, f.Git); rerr == nil && !sameHostname(r.Host, host) {
+			return "", "", UsageErrorf("il remote origin è su %s ma l'istanza è %s: usa --repo owner/repo", r.Host, host)
 		}
 	}
 	return ResolveRepo(ctx, f.RepoFlag, f.Git)

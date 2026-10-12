@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test del preflight di deploy/install.sh (N1, N2, N6; GIT-144).
+# Test del preflight di deploy/install.sh (N1, N2, N6; GIT-144, GIT-202).
 # Carica solo le funzioni (GITSTACK_INSTALL_LIB=1) e ridefinisce le letture
 # dell'hardware: nessun root, nessuna VM. Uso: ./deploy/tests/preflight_test.sh
 # Le variabili assegnate qui sono lette dalle funzioni di install.sh (caricate con source).
@@ -135,7 +135,7 @@ check "rotational partizione" test "$(block_rotational sda2)" = "1"
 check "rotational dm su nvme" test "$(block_rotational dm-0)" = "0"
 check "rotational ignoto" test "$(block_rotational nope)" = "?"
 
-# --- Sistema operativo -----------------------------------------------------------
+# --- Sistema operativo (N2: test rilevamento Ubuntu/Pop!_OS) ----------------------
 os_file() { printf 'ID=%s\nVERSION_ID="%s"\n' "$1" "$2" >"${WORK}/os-release"; OS_RELEASE_FILE="${WORK}/os-release"; }
 
 GITSTACK_FORCE=0
@@ -146,23 +146,32 @@ expect_lacks "ubuntu 24.04" "non supportato"
 
 os_file ubuntu 22.04
 run preflight_os
-expect_fail "ubuntu 22.04 senza --force"
-expect_has "ubuntu 22.04" "non supportato"
-expect_has "ubuntu 22.04 suggerisce --force" "--force"
+expect_ok "ubuntu 22.04"
+expect_lacks "ubuntu 22.04" "non supportato"
+
+os_file pop 24.04
+run preflight_os
+expect_ok "pop 24.04"
+expect_lacks "pop 24.04" "non supportato"
+
+os_file pop 22.04
+run preflight_os
+expect_ok "pop 22.04"
+expect_lacks "pop 22.04" "non supportato"
 
 os_file debian 12
 run preflight_os
 expect_fail "debian senza --force"
+expect_has "debian" "non supportato"
 
-os_file pop 24.04
+os_file fedora 40
 run preflight_os
-expect_fail "Pop!_OS senza --force"
+expect_fail "fedora senza --force"
 
 GITSTACK_FORCE=1
-os_file ubuntu 22.04
+os_file debian 12
 run preflight_os
-expect_ok "ubuntu 22.04 con --force"
-expect_has "22.04 con --force: avviso" "non supportato"
+expect_ok "debian con --force"
 GITSTACK_FORCE=0
 
 OS_RELEASE_FILE="${WORK}/manca"

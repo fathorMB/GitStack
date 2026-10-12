@@ -23,7 +23,30 @@ curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/insta
 
 ### Distribuzioni supportate
 
-Solo **Ubuntu Server 24.04 LTS x86_64** (N2 [c_d345922b89557a3f]). Su un altro sistema (anche Ubuntu 22.04 o Pop!_OS, che arrivano con M-08 [c_8458909a21d9035f]) il preflight stampa «non supportato» e si ferma: si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware. Debian, RHEL e WSL2 arrivano con M-08.
+**Ubuntu Server 22.04 e 24.04 LTS**, **Pop!_OS 22.04 e 24.04**, tutti amd64 (N2 [c_d345922b89557a3f]). Su un altro sistema il preflight stampa «non supportato» e si ferma: si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware.
+
+### Differenze fra i sistemi supportati
+
+L'installer installa k3s e i servizi allo stesso modo su tutti e quattro i sistemi. Di seguito le differenze che l'operatore o l'installer devono gestire.
+
+**cgroup v2.** Ubuntu 22.04 usa cgroup v2 di default; Ubuntu 24.04 e Pop!_OS 24.04 lo danno per scontato. Verificare che `/sys/fs/cgroup/cgroup.controllers` esista: è un requisito di k3s, non controllato dall'installer.
+
+**iptables/nftables.** Dal 21.04 Ubuntu usa `iptables-nft` come alternativa di default (iptables-nft è un wrapper verso nftables, non `iptables-legacy`). k3s usa il proprio iptables interno o quello di sistema, e funziona con entrambe le versioni. Nessun intervento dell'installer necessario.
+
+**systemd-resolved.** Su Ubuntu 22.04 e 24.04 il resolver systemd (`systemd-resolved`) gestisce la risoluzione DNS; su Pop!_OS la configurazione è analoga. Se si usa `--host` con un nome DNS, verificare la risoluzione con `resolvectl query <nome>`. I pod di k3s usano il DNS del cluster, non systemd-resolved.
+
+**NetworkManager e firewall su Pop!_OS.** Pop!_OS usa NetworkManager per gestire le interfacce di rete. k3s crea le interfacce `cni0` e `flannel.*` durante l'installazione: per evitare che NetworkManager le gestisca, aggiungere la configurazione `/etc/NetworkManager/conf.d/10-k3s.conf` (o un file in `/etc/NetworkManager/conf.d/` con estensione `.conf`) con:
+
+```ini
+[keyfile]
+unmanaged-devices=interface-name:cni0;interface-name:flannel.*;interface-name:flannel.1
+```
+
+Pop!_OS include anche `ufw` (uncomplicated firewall) disabilitato di default; se attivo, aprire le porte 80, 443, 6443 e la porta SSH di git (default 2222). L'installer non modifica ufw.
+
+**AppArmor.** Le distribuzioni basate su Ubuntu includono AppArmor, di default in modalità complain per i profili di sistema. Non dovrebbe bloccare i servizi k3s, ma su configurazioni harden verificare con `aa-status` che non ci siano profili in enforce che interferiscano.
+
+**Comando `gitstack` e timer di backup.** Entrambi funzionano identicamente su tutti e quattro i sistemi (systemd è presente su tutti). Il comando `gitstack` è installato in `/usr/local/bin/gitstack` (visibile con `sudo gitstack status`). Il timer di backup (`gitstack-backup.timer`) è installato da `install.sh` in `enable_backup_timer`: crea il file unit in `/etc/systemd/system/gitstack-backup.timer` e lancia `systemctl enable --now gitstack-backup.timer`, invocando `/usr/local/bin/gitstack backup` all'orario configurato (default alle 02:00, variabile `GITSTACK_BACKUP_TIMER_HOUR`).
 
 ### Requisiti: due profili (N1)
 
@@ -34,7 +57,7 @@ Lo script li verifica in preflight prima di installare qualunque cosa (N1, confe
 | CPU | 4 vCPU | 8 vCPU |
 | RAM | 8 GB | 16 GB |
 | Disco | filesystem di almeno 60 GB **e** almeno 20 GB liberi, sul filesystem che ospita `/var/lib/rancher` (se non esiste ancora, `/`) | 200 GB su SSD (fino a circa 100 utenti) |
-| Sistema | Ubuntu Server 24.04 LTS, x86_64 | |
+| Sistema | Ubuntu Server 22.04/24.04, Pop!_OS 22.04/24.04, x86_64 | |
 | Accesso | root o sudo | |
 | Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
 | Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |

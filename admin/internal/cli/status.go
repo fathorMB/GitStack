@@ -113,6 +113,9 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	printDatabase(p, r.Database)
 	p("")
 	p("Ultimo backup: %s", r.LastBackup)
+	if r.BackupUpload != "" {
+		p("Backup su S3: %s", r.BackupUpload)
+	}
 	p("")
 	switch {
 	case r.ClusterError != "":

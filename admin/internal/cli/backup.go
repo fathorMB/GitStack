@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -152,6 +153,21 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 			a.errorf("backup: %v", err)
 			return ExitUsage
 		}
+		// L'archivio va su S3 cifrato con questa chiave, ma `restore --from s3`
+		// senza --key-file usa backup.s3.key_file: se differiscono lo si dice.
+		if cfg.Backup.S3 != nil {
+			if cfgKey, kerr := s3Key(cfg); kerr == nil && !bytes.Equal(cfgKey, key) {
+				_, _ = fmt.Fprintf(a.Stderr, "ATTENZIONE: --key-file è diverso da backup.s3.key_file: l'archivio caricato su S3 è cifrato con --key-file, e `gitstack restore --from s3` senza --key-file userà backup.s3.key_file e non lo aprirà. Conserva quella chiave o allinea backup.s3.key_file.\n")
+			}
+		}
+	} else if cfg.Backup.S3 != nil {
+		// Con S3 configurato gli archivi sono sempre cifrati con la chiave
+		// del config: così anche il timer giornaliero (senza argomenti) cifra.
+		var err error
+		if key, err = s3Key(cfg); err != nil {
+			a.errorf("backup: backup.s3.key_file: %v", err)
+			return ExitConfig
+		}
 	}
 	cl, err := a.cluster(cfg)
 	if err != nil {
@@ -178,19 +194,31 @@ func runBackup(ctx context.Context, a *App, args []string) int {
 	if key == nil {
 		_, _ = fmt.Fprintln(a.Stdout, "  Archivio NON cifrato (root-only 0600): contiene le chiavi dell'installazione. Usa --key-file per cifrarlo.")
 	}
-	a.backupStateWrite(path, true, res.Path, nil)
+	up, upErr := a.uploadBackup(ctx, cfg, o, res.Path)
+	a.backupStateWrite(path, true, res.Path, nil, up)
+	if upErr != nil {
+		a.errorf("caricamento su S3 fallito: %v. Il backup locale è valido: %s", upErr, res.Path)
+		a.notifyUploadFailure(ctx, cfg, res.Path, upErr.Error())
+		return ExitUploadFailed
+	}
+	if up != nil {
+		_, _ = fmt.Fprintf(a.Stdout, "  Caricato su S3 (cifrato): bucket %s, %s\n", cfg.Backup.S3.Bucket, up.Name)
+	}
 	return ExitOK
 }
 
 // backupStateWrite scrive il file di stato dell'ultimo backup.
 // Non fallisce se la scrittura non è possibile: il comando comunque
 // segnala l'errore al terminale.
-func (a *App) backupStateWrite(cfgPath string, success bool, path string, err error) {
+func (a *App) backupStateWrite(cfgPath string, success bool, path string, err error, up ...*backupstate.Upload) {
 	s := backupstate.State{
 		Success: success,
 		Path:    path,
 		Error:   "",
 		At:      time.Now().UTC(),
+	}
+	if len(up) > 0 {
+		s.Upload = up[0]
 	}
 	if err != nil {
 		s.Error = err.Error()
@@ -228,6 +256,7 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	cfgPath := fs.String("config", "", configFlagUsage)
 	dest := fs.String("dest", "", "cartella dei backup, dove lavora lo stage (default backup.destination del config)")
 	keyFile := fs.String("key-file", "", "file con la chiave per decifrare l'archivio")
+	from := fs.String("from", "", "origine dell'archivio: s3 scarica da backup.s3 (il più recente, o quello nominato)")
 	// Flag e archivio in qualsiasi ordine: l'archivio è l'unico argomento.
 	var archive string
 	rest := args
@@ -247,8 +276,12 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 		archive = fs.Arg(0)
 		rest = fs.Args()[1:]
 	}
-	if archive == "" {
-		a.errorf("restore: manca l'archivio. Uso: gitstack restore [--dest D] [--key-file F] <archivio>")
+	if *from != "" && *from != "s3" {
+		a.errorf("restore: --from %q non valido (oggi: s3)", *from)
+		return ExitUsage
+	}
+	if archive == "" && *from != "s3" {
+		a.errorf("restore: manca l'archivio. Uso: gitstack restore [--dest D] [--key-file F] <archivio> | gitstack restore --from s3 [nome]")
 		return ExitUsage
 	}
 	path := a.configPath(*cfgPath)
@@ -256,12 +289,22 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	if cfg == nil {
 		return code
 	}
+	if *from == "s3" && cfg.Backup.S3 == nil {
+		a.errorf("restore: backup.s3 non è configurato: su una macchina nuova usa prima gitstack config set backup.s3 --endpoint … --bucket … --key-file <chiave>")
+		return ExitConfig
+	}
 	var key []byte
 	if *keyFile != "" {
 		var err error
 		if key, err = readKey(*keyFile); err != nil {
 			a.errorf("restore: %v", err)
 			return ExitUsage
+		}
+	} else if *from == "s3" {
+		var err error
+		if key, err = s3Key(cfg); err != nil {
+			a.errorf("restore: backup.s3.key_file: %v", err)
+			return ExitConfig
 		}
 	}
 	cl, err := a.cluster(cfg)
@@ -271,6 +314,14 @@ func runRestore(ctx context.Context, a *App, args []string) int {
 	}
 	o := a.options(cfg, path, key)
 	o.Cluster, o.DestDir = cl, *dest
+	if *from == "s3" {
+		local, cleanup, err := a.restoreFromS3(ctx, cfg, o, archive)
+		if err != nil {
+			return a.backupFailure("restore", fmt.Errorf("%s", scrubS3(cfg, err.Error())))
+		}
+		defer cleanup()
+		archive = local
+	}
 	// Con TLS internal o custom la CA e il certificato ripristinati su disco
 	// vanno pubblicati nel cluster; con insecure e letsencrypt niente.
 	if cfg.TLS == "internal" || cfg.TLS == "custom" {
