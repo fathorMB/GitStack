@@ -1,0 +1,18 @@
+# Proxy aziendale di prova (deploy/test-network/run.sh). Nessuna cache: ogni
+# richiesta si vede nel log di accesso. @DENY@ è sostituito da run.sh con le
+# regole dei registry (modo "chiuso": le immagini passano solo dal mirror).
+http_port 3128
+cache deny all
+access_log stdio:/var/log/squid/access.log squid
+
+acl corp src all
+acl SSL_ports port 443
+acl Safe_ports port 80 443
+acl CONNECT method CONNECT
+acl registries dstdomain .ghcr.io pkg-containers.githubusercontent.com .docker.io .docker.com .registry.k8s.io .quay.io .gcr.io .pkg.dev
+
+@DENY@
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow corp
+http_access deny all

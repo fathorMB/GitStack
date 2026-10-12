@@ -49,6 +49,8 @@ type Config struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Backup descrive dove e per quanto si conservano i backup.
 	Backup Backup `yaml:"backup"`
+	// Network è la sezione rete aziendale (N4, N9): proxy, mirror e CA.
+	Network Network `yaml:"network"`
 }
 
 // Backup è la sezione backup del file.
@@ -145,6 +147,9 @@ func (c *Config) Validate() error {
 	}
 	if !strings.HasPrefix(c.Backup.Destination, "/") {
 		return fmt.Errorf("backup.destination %q deve essere un percorso assoluto", c.Backup.Destination)
+	}
+	if err := c.Network.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
