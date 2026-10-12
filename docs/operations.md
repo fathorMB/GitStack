@@ -85,6 +85,7 @@ the admin binary if they differ, without touching k3s or the data.
 | `--namespace NS` | `GITSTACK_NAMESPACE` | `default` | Kubernetes namespace. |
 | `--chart-dir PATH` | `GITSTACK_CHART_DIR` | (detected) | Use a local chart copy instead of downloading from the repository. |
 | `--image-tag TAG` | `GITSTACK_IMAGE_TAG` | (auto-resolved) | Image tag for gateway/identity/core/web. |
+| `--version vX.Y.Z` | `GITSTACK_VERSION` | (none) | Install a released version (also `vX.Y.Z-rc.N`): image tag, chart and `gitstack` binary come from the release of that name, signatures verified (V5). Cannot be combined with a different `--image-tag`. See "Rilascio con versione". |
 | `--image-registry HOST` | `GITSTACK_IMAGE_REGISTRY` | (from chart) | Container registry for GitStack images. Useful for a mirror. |
 | `--admin-binary PATH\|URL` | `GITSTACK_ADMIN_BINARY` | (download from release) | Path or URL of the `gitstack` admin binary; its SHA-256 is verified. |
 | `--admin-sha256 HEX` | `GITSTACK_ADMIN_SHA256` | (from `<binary>.sha256`) | Expected SHA-256 of the admin binary. |
@@ -728,6 +729,7 @@ sudo gitstack upgrade --to v0.2.0 --dest /mnt/backup/gitstack \
 | Flag | Purpose | Default |
 |---|---|---|
 | `--to TAG\|SHA` | Target version: tag or commit SHA | latest on `main` |
+| `--version vX.Y.Z` | Target released version (`vX.Y.Z` or `vX.Y.Z-rc.N` only): same as `--to`, but strict SemVer; excludes `--to` | — |
 | `--dest DIR` | Override backup destination directory | `backup.destination` from config |
 | `--key-file FILE` | Path to AES-256-GCM encryption key | none (unencrypted backup) |
 | `--timeout D` | Max time for service health checks | `10m` |
@@ -1166,6 +1168,7 @@ so it fails as a non-root user with a permission error.
 | `--dest DIR` | `backup`, `restore`, `upgrade` | Override the backup destination directory |
 | `--key-file FILE` | `backup`, `restore`, `upgrade` | Path to the AES-256-GCM encryption key |
 | `--to TAG\|SHA` | `upgrade` | Target version; default is latest on the `main` branch |
+| `--version vX.Y.Z` | `upgrade` | Target released version (SemVer tag only), signed release `vX.Y.Z` |
 | `--timeout D` | `upgrade` | Max time for health checks (default `10m`) |
 | `--set KEY=VAL` | `upgrade` | Helm value override, repeatable |
 | `--values FILE` | `upgrade` | Additional Helm values file, repeatable |
@@ -1351,6 +1354,61 @@ La release `sha-<commit-sha>` contiene:
    nella release GitHub con `gh release upload --clobber`.
 4. Step di verifica interna: `cosign verify` su immagine,
    `cosign verify-blob` su chart e binario, tutti senza `|| true`.
+
+### Rilascio con versione (`vX.Y.Z`, GIT-222)
+
+Oltre alle build `sha-<commit>` di ogni push su `main`, un tag Git `vX.Y.Z` o
+`vX.Y.Z-rc.N` (SemVer con prefisso `v`) produce una **GitHub Release con il nome
+della versione**. Lo fa il job `release` di `ci.yml`, dopo `registry`,
+`admin-binary`, `gs-binaries` e `sign`: le immagini sono quelle di `sha-<commit>`
+(stesso digest, quindi stesse firme), con in più i tag `vX.Y.Z` e `X.Y.Z`.
+
+La release `vX.Y.Z` contiene:
+
+| Tipo | File |
+|---|---|
+| Binari | `gitstack-linux-amd64` e `.sha256`, `gs_<os>_<arch>[.exe]` (6 piattaforme), `gs-skills.zip`: costruiti con la versione `vX.Y.Z` dentro il binario |
+| Chart | `gitstack-X.Y.Z.tgz`: `version` e `appVersion` = `X.Y.Z`, quindi il tag immagine di default è `X.Y.Z` |
+| Firme | `<file>.sigstore.json` per binari, chart e `SHA256SUMS` (cosign keyless, identità `ci.yml@refs/tags/v*`) |
+| SBOM | `gitstack-<servizio>-sbom.spdx.json` (5 immagini), `gitstack-chart-sbom.spdx.json`, `gitstack-binary-sbom.spdx.json`, `gs-binary-sbom.spdx.json` |
+| Checksum | `SHA256SUMS`: tutti i file sopra, firmato |
+| Changelog | `CHANGELOG-vX.Y.Z.md` (la sezione, anche nelle note della release) e `CHANGELOG.md` aggiornato |
+
+Una versione con prerelease (`-rc.N`, `-test.N`) è marcata «pre-release» e non è la
+«latest». Il job rifiuta un tag che non è SemVer.
+
+**Changelog.** `scripts/release-changelog.sh <tag>` elenca i commit fra il tag e il
+precedente (l'ultimo `v*` raggiungibile, senza i tag `v*-test.*` per un rilascio
+vero), raggruppati per tipo di conventional commit. La sezione va nelle note e in
+`CHANGELOG.md`: il job non scrive su `main`, apre una PR `changelog/vX.Y.Z` che il
+board approva. In locale: `scripts/release-changelog.sh v1.0.0 --prepend CHANGELOG.md`.
+
+**Installare una versione.**
+
+```sh
+# Senza checkout (curl | bash): chart, binario e immagini della versione, firme verificate
+curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/vX.Y.Z/deploy/install.sh \
+  | sudo bash -s -- --version vX.Y.Z --host homehub.local
+
+# Aggiornare un'installazione esistente (backup preventivo, verifica, rollback)
+sudo gitstack upgrade --version vX.Y.Z --dry-run
+sudo gitstack upgrade --version vX.Y.Z
+```
+
+`--version` fissa insieme il sorgente (ref), il tag immagine e la release da cui
+si scaricano binario e chart. Vale lo stesso trattamento di `sha-<commit>`: bundle
+obbligatorio, identità del workflow `ci.yml` (da `main` o da un tag `v*`) e issuer
+fissati, cosign pinnato, immagini verificate prima di `helm upgrade`. Il chart
+scaricato deve avere `version` e `appVersion` uguali alla versione richiesta, e
+`--version` non si combina con un `--image-tag` diverso. Un valore che non è
+`vX.Y.Z[-prerelease]` è rifiutato: per un commit si usa `--image-tag sha-<commit>`
+(install) o `--to sha-<commit>` (upgrade). Con `--download-mirror` la release si
+pubblica in `<mirror>/gitstack/vX.Y.Z/` (stessa struttura di `sha-<commit>`), il
+sorgente in `<mirror>/gitstack/source/vX.Y.Z.sha`.
+
+**Provare la pipeline.** Mai su un tag `v1`: si usa un tag di prova
+`v0.0.0-test.N` su un fork o un repository di prova (`git tag v0.0.0-test.1 &&
+git push <fork> v0.0.0-test.1`). Il tag `v1.0.0-rc.1` lo decide il board.
 
 ### Verifica automatica in `install.sh` e `gitstack upgrade` (GIT-209)
 

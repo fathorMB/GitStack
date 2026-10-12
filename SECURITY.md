@@ -2,9 +2,10 @@
 
 ## Supported Versions
 
-We release security patches for the latest minor version and the previous minor
-version for the last 6 months. GitStack does not maintain long-term support
-(LTS) releases.
+We release bug fixes for the latest minor version only. Security patches are
+released for the latest minor version and for the previous minor version for
+6 months after the release of the next minor version. GitStack does not
+maintain long-term support (LTS) releases.
 
 | Version | Supported |
 | --- | --- |
@@ -24,10 +25,7 @@ issue for security problems.
 - Steps to reproduce (PoC code, scripts, or requests if applicable).
 - Your contact information for follow-up questions.
 
-**Secondary channel:** GitHub Private Vulnerability Reporting on the mirror
-repository (`<repo-url>` → *Settings* → *Security* → *Private vulnerability
-reporting*). Activation of this feature requires a board action on the GitHub
-repository settings.
+**Secondary channel:** GitHub Private Vulnerability Reporting: use "Report a vulnerability" in the Security tab of the GitHub mirror.
 
 ## Response Time
 

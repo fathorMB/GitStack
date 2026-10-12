@@ -180,7 +180,7 @@ chart_case() {
   mkdir -p "${CHART_DIR}"
   printf 'apiVersion: v2\nname: gitstack\nversion: 0.1.0\n' >"${CHART_DIR}/Chart.yaml"
   rm -rf "${CHART_DIR}/templates"
-  verify_downloaded_chart abc "${WORK}/w"
+  verify_downloaded_chart sha-abc "${WORK}/w"
   # il chart in uso deve essere quello firmato (ha templates/a.yaml)
   [ -f "${CHART_DIR}/templates/a.yaml" ]
 }
@@ -207,7 +207,7 @@ expect_ok "chart firmato dal workflow"
 GITSTACK_ALLOW_UNSIGNED=1
 UNSIGNED_WARNED=0
 rm -f "${WORK}/rel/sha-abc/gitstack-0.1.0.tgz.sigstore.json"
-run verify_downloaded_chart abc "${WORK}/w"
+run verify_downloaded_chart sha-abc "${WORK}/w"
 expect_ok "N9: chart non firmato accettato"
 expect_has "N9: avviso" "ECCEZIONE N9 ATTIVA"
 GITSTACK_ALLOW_UNSIGNED=0
@@ -328,7 +328,7 @@ mirror_chart_case() {
   mkdir -p "${CHART_DIR}"
   printf 'apiVersion: v2\nname: gitstack\nversion: 0.1.0\n' >"${CHART_DIR}/Chart.yaml"
   rm -rf "${CHART_DIR}/templates"
-  verify_downloaded_chart abc "${WORK}/w"
+  verify_downloaded_chart sha-abc "${WORK}/w"
   [ -f "${CHART_DIR}/templates/a.yaml" ]
 }
 run mirror_chart_case
@@ -380,6 +380,114 @@ expect_has "config: eccezione N9 salvata" "allow_unsigned: true"
 run print_v5_summary
 expect_has "riepilogo: avviso N9" "eccezione N9"
 GITSTACK_ALLOW_UNSIGNED=0
+
+# --- Rilascio con versione (--version vX.Y.Z, GIT-222) ------------------------
+# La release ha il nome del tag: binario, chart gitstack-X.Y.Z.tgz e bundle
+# stanno lì, e le firme si verificano come per sha-<commit>.
+GITSTACK_DOWNLOAD_MIRROR=""
+GITSTACK_REGISTRY_MIRROR=""
+GITSTACK_ALLOW_UNSIGNED=0
+UNSIGNED_WARNED=0
+GITSTACK_IMAGE_TAG=""
+GITSTACK_REF="main"
+
+for good in v1.2.3 v0.0.0-test.1 v1.0.0-rc.1 v10.20.30; do
+  GITSTACK_VERSION="${good}"
+  run apply_version
+  expect_ok "apply_version accetta ${good}"
+done
+for bad_v in 1.2.3 v1 v1.2 v1.2.3+build sha-abc main v01.2.3 'v1.2.3;x'; do
+  GITSTACK_VERSION="${bad_v}"
+  run apply_version
+  expect_fail "apply_version rifiuta ${bad_v}"
+  expect_has "apply_version ${bad_v}: messaggio" "formato non valido"
+done
+
+GITSTACK_VERSION="v1.2.3"
+GITSTACK_IMAGE_TAG=""
+GITSTACK_REF="main"
+apply_version
+if [ "${GITSTACK_IMAGE_TAG}" = "v1.2.3" ] && [ "${GITSTACK_REF}" = "v1.2.3" ]; then ok; else RC=0; OUT="tag=${GITSTACK_IMAGE_TAG} ref=${GITSTACK_REF}"; bad "--version fissa tag immagine e ref"; fi
+
+GITSTACK_IMAGE_TAG="sha-abc"
+run apply_version
+expect_fail "--version con --image-tag diverso"
+expect_has "--version con --image-tag: messaggio" "non coincidono"
+GITSTACK_IMAGE_TAG="v1.2.3"
+run apply_version
+expect_ok "--version con lo stesso --image-tag"
+
+# Senza --version non cambia niente (tag sha, ref di default).
+GITSTACK_VERSION=""
+GITSTACK_IMAGE_TAG=""
+GITSTACK_REF="main"
+apply_version
+if [ -z "${GITSTACK_IMAGE_TAG}" ] && [ "${GITSTACK_REF}" = "main" ]; then ok; else RC=0; OUT="tag=${GITSTACK_IMAGE_TAG}"; bad "senza --version nessun effetto"; fi
+
+# Il parsing dei flag: --version arriva in GITSTACK_VERSION.
+# shellcheck disable=SC2016
+if grep -q -- '--version)' "${HERE}/../install.sh" && grep -q 'GITSTACK_VERSION="\$2"' "${HERE}/../install.sh"; then ok; else RC=0; OUT="manca"; bad "install.sh parsa --version"; fi
+
+GITSTACK_RELEASE_URL="${WORK}/rel"
+GITSTACK_VERSION="v1.2.3"
+GITSTACK_IMAGE_TAG="v1.2.3"
+mkdir -p "${WORK}/rel/v1.2.3" "${WORK}/chartver/gitstack/templates" "${WORK}/w2"
+printf 'apiVersion: v2\nname: gitstack\nversion: 1.2.3\nappVersion: "1.2.3"\n' >"${WORK}/chartver/gitstack/Chart.yaml"
+printf 'x' >"${WORK}/chartver/gitstack/templates/a.yaml"
+tar -czf "${WORK}/rel/v1.2.3/gitstack-1.2.3.tgz" -C "${WORK}/chartver" gitstack
+VBIN="${WORK}/rel/v1.2.3/gitstack-linux-amd64"
+printf 'BINARIO-V1.2.3' >"${VBIN}"
+sha256sum "${VBIN}" | awk '{ print $1 }' >"${VBIN}.sha256"
+rm -f "${VBIN}.sigstore.json"
+
+# Il Chart.yaml del sorgente dice 0.1.0: la release usa gitstack-1.2.3.tgz.
+version_chart_case() {
+  CHART_DIR="${WORK}/src/deploy/gitstack"
+  mkdir -p "${CHART_DIR}"
+  printf 'apiVersion: v2\nname: gitstack\nversion: 0.1.0\n' >"${CHART_DIR}/Chart.yaml"
+  rm -rf "${CHART_DIR}/templates"
+  verify_downloaded_chart "${GITSTACK_VERSION}" "${WORK}/w2"
+  [ -f "${CHART_DIR}/templates/a.yaml" ]
+}
+run version_chart_case
+expect_fail "versione: chart senza bundle"
+expect_has "versione: chart senza bundle, URL della release" "${WORK}/rel/v1.2.3/gitstack-1.2.3.tgz"
+bundle_for "${WORK}/rel/v1.2.3/gitstack-1.2.3.tgz" "${OTHER_ID}"
+run version_chart_case
+expect_fail "versione: chart firmato da un'altra identità"
+expect_has "versione: chart altra identità: messaggio" "verifica della firma cosign fallita"
+bundle_for "${WORK}/rel/v1.2.3/gitstack-1.2.3.tgz" "https://github.com/o/r/.github/workflows/ci.yml@refs/tags/v1.2.3"
+: >"${FAKE_COSIGN_LOG}"
+run version_chart_case
+expect_ok "versione: chart firmato dal workflow su tag"
+expect_has "versione: chart verificato" "Firma cosign verificata: il chart gitstack-1.2.3.tgz"
+if grep -q "certificate-identity-regexp" "${FAKE_COSIGN_LOG}"; then ok; else RC=0; OUT="$(cat "${FAKE_COSIGN_LOG}")"; bad "versione: cosign chiamato con identità"; fi
+
+# Chart firmato ma di un'altra versione (appVersion diversa): rifiutato.
+printf 'apiVersion: v2\nname: gitstack\nversion: 1.2.3\nappVersion: "0.9.0"\n' >"${WORK}/chartver/gitstack/Chart.yaml"
+tar -czf "${WORK}/rel/v1.2.3/gitstack-1.2.3.tgz" -C "${WORK}/chartver" gitstack
+bundle_for "${WORK}/rel/v1.2.3/gitstack-1.2.3.tgz" "${VALID_ID}"
+run version_chart_case
+expect_fail "versione: chart con appVersion diversa"
+expect_has "versione: appVersion diversa: messaggio" "non è il chart di questa versione"
+
+# Binario della release: URL dal nome del tag, firma obbligatoria.
+GITSTACK_ADMIN_BINARY=""
+GITSTACK_ADMIN_SHA256=""
+GITSTACK_ADMIN_REQUIRED=1
+run prepare_admin v1.2.3
+expect_fail "versione: binario senza bundle"
+expect_has "versione: binario senza bundle, messaggio" "non risulta firmato"
+bundle_for "${VBIN}" "${VALID_ID}"
+run prepare_admin v1.2.3
+expect_ok "versione: binario firmato dal workflow"
+expect_has "versione: binario verificato" "Firma cosign verificata: il binario di gitstack"
+bundle_for "${VBIN}" "${OTHER_ID}"
+run prepare_admin v1.2.3
+expect_fail "versione: binario firmato da un'altra identità"
+
+GITSTACK_VERSION=""
+GITSTACK_IMAGE_TAG=""
 
 # --- Niente scorciatoie nello script -------------------------------------------
 if grep -q -- "insecure-ignore-tlog" "${HERE}/../install.sh"; then RC=0; OUT="trovato"; bad "install.sh non deve usare --insecure-ignore-tlog"; else ok; fi
