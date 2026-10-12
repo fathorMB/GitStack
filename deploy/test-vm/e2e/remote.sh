@@ -46,6 +46,10 @@
 #                                             da mirror-dest.py col certificato
 #                                             della VM, in ascolto sulla porta.
 #   mirror-dest-stop | mirror-dest-ref <ref> | mirror-dest-refs
+#   mirror-dest-commit <messaggio>            (GIT-201) Aggiunge un commit a main del
+#                                             repo bare della destinazione (che fa da
+#                                             origine di un mirror in pull) e ne
+#                                             stampa lo sha.
 #   mirror-enable <release> <ns> <ip>         git si fida della CA della VM per i
 #                                             mirror; core ammette <ip> (egress).
 #   mirror-disable <release> <ns>             Toglie il cablaggio.
@@ -347,6 +351,28 @@ mirror_dest_refs() {
   git --git-dir="${MIRROR_DIR}/repos/mirror.git" for-each-ref || true
 }
 
+# Aggiunge un commit a main del repo bare della destinazione, senza working
+# tree (blob, albero e commit con i comandi idraulici), e ne stampa lo sha.
+# Serve al passo e10 (mirror in pull): la destinazione fa da origine.
+mirror_dest_commit() {
+  local msg="${1:?messaggio}" dir="${MIRROR_DIR}/repos/mirror.git"
+  local blob tree parent commit
+  [ -d "${dir}" ] || fail "manca il repo bare della destinazione"
+  blob="$(printf '%s
+' "${msg}" | git --git-dir="${dir}" hash-object -w --stdin)" || fail "hash-object non riuscito"
+  tree="$(printf '100644 blob %s	origine.txt
+' "${blob}" | git --git-dir="${dir}" mktree)" || fail "mktree non riuscito"
+  parent="$(git --git-dir="${dir}" rev-parse --verify -q refs/heads/main || true)"
+  export GIT_AUTHOR_NAME="E2E" GIT_AUTHOR_EMAIL="e2e@example.com" GIT_COMMITTER_NAME="E2E" GIT_COMMITTER_EMAIL="e2e@example.com"
+  if [ -n "${parent}" ]; then
+    commit="$(git --git-dir="${dir}" commit-tree "${tree}" -p "${parent}" -m "${msg}")" || fail "commit-tree non riuscito"
+  else
+    commit="$(git --git-dir="${dir}" commit-tree "${tree}" -m "${msg}")" || fail "commit-tree non riuscito"
+  fi
+  git --git-dir="${dir}" update-ref refs/heads/main "${commit}" || fail "update-ref non riuscito"
+  echo "${commit}"
+}
+
 # Fa fidare il servizio git della CA della VM per i mirror e ammette l'indirizzo
 # della destinazione nell'egress di core. Aspetta i rollout.
 mirror_enable() {
@@ -386,6 +412,7 @@ Uso: remote.sh <sottocomando> [argomenti]
 Sottocomandi: clean-check, jetstream-count, postgres-secret-hash,
 admin-password, admin-secret-state, k3s-active-since, collect-diagnostics,
 mirror-dest-start, mirror-dest-stop, mirror-dest-ref, mirror-dest-refs,
+mirror-dest-commit,
 mirror-enable, mirror-disable. Vedi l'intestazione del file.
 EOF
 }
@@ -407,6 +434,7 @@ main() {
     mirror-dest-stop) mirror_dest_stop "$@" ;;
     mirror-dest-ref) mirror_dest_ref "$@" ;;
     mirror-dest-refs) mirror_dest_refs "$@" ;;
+    mirror-dest-commit) mirror_dest_commit "$@" ;;
     mirror-enable) mirror_enable "$@" ;;
     mirror-disable) mirror_disable "$@" ;;
     -h|--help) usage ;;
