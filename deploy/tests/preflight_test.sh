@@ -139,7 +139,7 @@ check "rotational partizione" test "$(block_rotational sda2)" = "1"
 check "rotational dm su nvme" test "$(block_rotational dm-0)" = "0"
 check "rotational ignoto" test "$(block_rotational nope)" = "?"
 
-# --- Sistema operativo -----------------------------------------------------------
+# --- Sistema operativo (N2: test rilevamento Ubuntu/Pop!_OS) ----------------------
 os_file() { printf 'ID=%s\nVERSION_ID="%s"\n' "$1" "$2" >"${WORK}/os-release"; OS_RELEASE_FILE="${WORK}/os-release"; }
 
 GITSTACK_FORCE=0
