@@ -92,12 +92,39 @@ type Report struct {
 	// è configurato. BackupUploadFailed è vero se l'ultimo è fallito.
 	BackupUpload       string `json:"backup_upload,omitempty"`
 	BackupUploadFailed bool   `json:"backup_upload_failed,omitempty"`
+	// Database dice se Postgres è quello interno o uno esterno (N8) e la
+	// versione del server.
+	Database Database `json:"database"`
+}
+
+// Database descrive il Postgres in uso.
+type Database struct {
+	// Mode è "bundle" (Postgres interno) o "external" (del cliente).
+	Mode    string `json:"mode"`
+	Host    string `json:"host,omitempty"`
+	Port    int    `json:"port,omitempty"`
+	Name    string `json:"name,omitempty"`
+	User    string `json:"user,omitempty"`
+	SSLMode string `json:"ssl_mode,omitempty"`
+	// Version è la versione del server (es. 16.4): letta ora dal cluster, o,
+	// se non si riesce, quella rilevata dall'installer (VersionLive false).
+	Version     string `json:"version,omitempty"`
+	VersionLive bool   `json:"version_live"`
+	// Error: con il database esterno, perché non si è potuto interrogare.
+	Error string `json:"error,omitempty"`
+	// Warning: un'incongruenza che non ferma il servizio (versione del client).
+	Warning string `json:"warning,omitempty"`
 }
 
 // Healthy è vero se il cluster risponde, ogni servizio è pronto e l'API
 // risponde.
 func (r *Report) Healthy() bool {
 	if r.ClusterError != "" || len(r.Services) == 0 || !r.APIHealthy {
+		return false
+	}
+	// Con il database esterno, se dal pod client non si riesce a leggerne la
+	// versione il database non è raggiungibile: il sistema non è sano.
+	if r.Database.Mode == "external" && r.Database.Error != "" {
 		return false
 	}
 	for _, s := range r.Services {
@@ -134,6 +161,8 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.Services = svcs
 	r.ServerVersion = serverVersion(svcs, cfg)
 	r.APIHealthy, r.APIDetail = c.api(ctx, cfg)
+	r.Database = c.database(ctx, cfg, r.ClusterError == "")
+	r.Database.warnClientMismatch(svcs)
 	r.LastBackup = lastBackupState(configDir)
 	if cfg.Backup.S3 != nil {
 		r.BackupUpload, r.BackupUploadFailed = lastUploadState(configDir)
@@ -161,6 +190,73 @@ func (c *Collector) k3sVersion(ctx context.Context) string {
 		return ""
 	}
 	return k3sVersionRe.FindString(string(out))
+}
+
+const versionQuery = `exec psql -tA -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SHOW server_version"`
+
+// warnClientMismatch avvisa se il pod client (pg_dump, psql) ha una versione
+// principale diversa dal server: i dump non si ripristinerebbero.
+func (d *Database) warnClientMismatch(svcs []Service) {
+	if d.Mode != "external" || d.Version == "" || d.Error != "" {
+		return
+	}
+	major := leadingInt(d.Version)
+	for _, s := range svcs {
+		if !strings.HasSuffix(s.Name, "-pgclient") {
+			continue
+		}
+		if cm := leadingInt(imageTag(s.Image)); cm != 0 && major != 0 && cm != major {
+			d.Warning = fmt.Sprintf("il pod client ha PostgreSQL %d ma il server è %d: backup e restore potrebbero fallire. Imposta postgres.external.client.image.tag=%d-alpine (helm upgrade)", cm, major, major)
+		}
+	}
+}
+
+func leadingInt(s string) int {
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			break
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
+}
+
+// database ricava modo e versione di Postgres. La versione si legge dal pod
+// del database (statefulset bundle o pod client del database esterno).
+func (c *Collector) database(ctx context.Context, cfg *config.Config, clusterOK bool) Database {
+	d := Database{Mode: "bundle"}
+	target := "statefulset/" + cfg.Release + "-postgres"
+	if cfg.Postgres.External {
+		d = Database{Mode: "external", Host: cfg.Postgres.Host, Port: cfg.Postgres.Port, Name: cfg.Postgres.Database,
+			User: cfg.Postgres.User, SSLMode: cfg.Postgres.SSLMode, Version: cfg.Postgres.Version}
+		target = "deployment/" + cfg.Release + "-pgclient"
+	}
+	if !clusterOK {
+		return d
+	}
+	bin, pre, err := c.kubectlCommand()
+	if err != nil {
+		return d
+	}
+	args := append(append([]string{}, pre...), "exec", "-n", cfg.Namespace, target, "--", "sh", "-c", versionQuery)
+	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	out, err := c.Runner.Run(cctx, []string{"KUBECONFIG=" + cfg.Kubeconfig}, bin, args...)
+	v := strings.TrimSpace(string(out))
+	if err != nil || v == "" || strings.ContainsAny(v, "\n\r") {
+		if cfg.Postgres.External {
+			msg := "versione non leggibile"
+			if err != nil {
+				msg = err.Error()
+			}
+			d.Error = "database non interrogabile dal pod client: " + msg
+		}
+		return d
+	}
+	d.Version = v
+	d.VersionLive = true
+	return d
 }
 
 // kubectlCommand sceglie `kubectl` se c'è, altrimenti `k3s kubectl` (k3s lo

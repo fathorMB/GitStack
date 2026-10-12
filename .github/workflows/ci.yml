@@ -71,6 +71,16 @@ jobs:
         working-directory: cli
         run: go test -tags=integration -race -count=1 ./internal/cmd/auth/
 
+      # Postgres esterno (N8, GIT-205): preflight (versione 14 rifiutata,
+      # permessi, TLS e CA), backup e restore degli schemi con le migrazioni
+      # reali, contro PostgreSQL 15 e 17 in container (CLI docker). Con
+      # GITSTACK_REQUIRE_DOCKER=1 senza Docker il test fallisce, non salta.
+      - name: go test -tags=integration -race (admin, Postgres 15 e 17 esterni)
+        working-directory: admin
+        env:
+          GITSTACK_REQUIRE_DOCKER: "1"
+        run: go test -tags=integration -race -count=1 -timeout 20m ./internal/pgcheck/ ./internal/backup/
+
       # Backup su S3 (N7, GIT-204) contro un MinIO vero avviato col CLI di
       # Docker (il modulo admin non porta testcontainers): archivio cifrato,
       # conservazione su S3 e restore su un ambiente pulito.
@@ -305,6 +315,21 @@ jobs:
 
       - name: Smoke test gitstack status
         run: sudo gitstack status
+
+  # GIT-211 (W1/W2): verifica statica di install-wsl.ps1 (parser PowerShell,
+  # ASCII puro, struttura). I runner Windows di GitHub non hanno
+  # virtualizzazione annidata per WSL2, quindi non è possibile un test di
+  # installazione reale: il board verifica su un PC Windows 11.
+  pwsh:
+    name: PowerShell — install-wsl.ps1 (W1/W2)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test PowerShell install-wsl.ps1
+        shell: pwsh
+        run: ./deploy/windows/tests/install-wsl.Tests.ps1
 
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
