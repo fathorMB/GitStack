@@ -1984,15 +1984,28 @@ strip_k3s_env_proxy() {
 
 # ConfigMap <release>-corporate-ca (chiave ca.crt) nel namespace della
 # release: lo monta il chart (corporateCA.configMap). Prima di helm.
+# Il file contiene le CA di sistema (dopo apply_ca_trust includono già quella
+# aziendale) più la CA aziendale: per il mirror git il chart SOSTITUISCE le CA
+# di sistema con questo file, e un mirror verso un host pubblico (in NO_PROXY)
+# deve continuare a fidarsi delle CA pubbliche. Stessa logica di
+# `gitstack config set network` (corporateCABundle in confignetwork.go).
+SYSTEM_CA_BUNDLE_FILE="${GITSTACK_SYSTEM_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
 ensure_corporate_ca_configmap() {
   [ -n "${GITSTACK_CA_BUNDLE}" ] || return 0
-  local name="${GITSTACK_RELEASE_NAME}-corporate-ca"
+  local name="${GITSTACK_RELEASE_NAME}-corporate-ca" dir combined
+  dir="$(mktemp -d)"
+  TMP_DIRS+=("${dir}")
+  combined="${dir}/${CORPORATE_CA_FILE_NAME}"
+  {
+    if [ -f "${SYSTEM_CA_BUNDLE_FILE}" ]; then cat "${SYSTEM_CA_BUNDLE_FILE}"; printf '\n'; fi
+    cat "$(net_ca_copy_path)"
+  } >"${combined}"
   KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl create namespace "${GITSTACK_NAMESPACE}" >/dev/null 2>&1 || true
   KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl -n "${GITSTACK_NAMESPACE}" create configmap "${name}" \
-    --from-file="${CORPORATE_CA_FILE_NAME}=$(net_ca_copy_path)" --dry-run=client -o yaml \
+    --from-file="${CORPORATE_CA_FILE_NAME}=${combined}" --dry-run=client -o yaml \
     | KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl apply -f - >/dev/null \
     || fail "impossibile creare il ConfigMap ${name} con la CA aziendale."
-  log "ConfigMap ${name} aggiornato (CA aziendale per i pod)."
+  log "ConfigMap ${name} aggiornato (CA di sistema e aziendale per i pod)."
 }
 
 # --- Preflight di rete ----------------------------------------------------------

@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/netip"
 	"net/url"
 	"sort"
@@ -130,6 +131,11 @@ type Service struct {
 	CheckIP func(netip.Addr) error
 	// ExtraEnv: GIT_SSL_CAINFO per le CA private; nei test, la CA del server.
 	ExtraEnv []string
+	// Proxy sceglie il proxy aziendale per l'origine (N9; in produzione
+	// http.ProxyFromEnvironment). nil = mai un proxy. Con un proxy git risolve
+	// tramite il proxy e l'IP fissato non vale: core ha già giudicato ogni
+	// indirizzo dell'origine.
+	Proxy func(*http.Request) (*url.URL, error)
 
 	mu   sync.Mutex
 	busy map[string]bool
@@ -201,7 +207,12 @@ func validate(in Input) (*url.URL, netip.Addr, error) {
 // niente --force, niente --prune, niente `+`: i refspec scrivono solo nello
 // spazio temporaneo, che è vuoto.
 func fetchArgs(u *url.URL, ip netip.Addr, rawURL string) []string {
-	args := mirrorpush.TransportArgs(u, ip)
+	return fetchArgsProxy(u, ip, rawURL, false)
+}
+
+// fetchArgsProxy è fetchArgs, con o senza proxy (vedi TransportArgsProxy).
+func fetchArgsProxy(u *url.URL, ip netip.Addr, rawURL string, proxied bool) []string {
+	args := mirrorpush.TransportArgsProxy(u, ip, proxied)
 	args = append(args,
 		"-c", "gc.auto=0",
 		"-c", "maintenance.auto=false",
@@ -214,8 +225,8 @@ func fetchArgs(u *url.URL, ip netip.Addr, rawURL string) []string {
 }
 
 // lsRemoteHeadArgs legge a quale branch punta HEAD dell'origine.
-func lsRemoteHeadArgs(u *url.URL, ip netip.Addr, rawURL string) []string {
-	return append(mirrorpush.TransportArgs(u, ip), "ls-remote", "--symref", rawURL, "HEAD")
+func lsRemoteHeadArgs(u *url.URL, ip netip.Addr, rawURL string, proxied bool) []string {
+	return append(mirrorpush.TransportArgsProxy(u, ip, proxied), "ls-remote", "--symref", rawURL, "HEAD")
 }
 
 // Pull aggiorna il repo dall'origine.
@@ -235,7 +246,8 @@ func (s *Service) Pull(ctx context.Context, repoID string, in Input) (Result, er
 	if err != nil {
 		return Result{}, err
 	}
-	env, err := mirrorpush.NetEnv(in.Username, in.Token, s.ExtraEnv)
+	proxy := mirrorpush.ProxyFor(s.Proxy, u)
+	env, err := mirrorpush.NetEnvProxy(in.Username, in.Token, s.ExtraEnv, proxy)
 	if err != nil {
 		return Result{}, err
 	}
@@ -246,6 +258,12 @@ func (s *Service) Pull(ctx context.Context, repoID string, in Input) (Result, er
 
 	start := time.Now()
 	redact := mirrorpush.Redactor(in.Username, in.Token)
+	if proxy != nil {
+		if pw, ok := proxy.User.Password(); ok && pw != "" {
+			inner := redact
+			redact = func(s string) string { return inner(strings.ReplaceAll(s, pw, "***")) }
+		}
+	}
 	res := Result{Refs: []RefResult{}}
 
 	local, err := pushevent.Take(ctx, s.Run, dir)
@@ -268,7 +286,7 @@ func (s *Service) Pull(ctx context.Context, repoID string, in Input) (Result, er
 	}()
 
 	deadline := time.Now().Add(s.timeout())
-	out, runErr := s.Run.RunEnv(ctx, dir, s.timeout(), env, fetchArgs(u, ip, in.URL)...)
+	out, runErr := s.Run.RunEnv(ctx, dir, s.timeout(), env, fetchArgsProxy(u, ip, in.URL, proxy != nil)...)
 	if runErr != nil {
 		res.Error = redact(runErr.Error())
 		if errors.Is(runErr, context.DeadlineExceeded) {
@@ -296,7 +314,7 @@ func (s *Service) Pull(ctx context.Context, repoID string, in Input) (Result, er
 		if remaining < 10*time.Second {
 			remaining = 10 * time.Second
 		}
-		if head := s.originHead(ctx, dir, remaining, env, u, ip, in.URL, res.Refs); head != "" {
+		if head := s.originHead(ctx, dir, remaining, env, u, ip, in.URL, proxy != nil, res.Refs); head != "" {
 			if _, err := s.Run.Output(ctx, dir, nil, "symbolic-ref", "HEAD", "refs/heads/"+head); err == nil {
 				res.HeadBranch = head
 				defaultBranch = head
@@ -419,8 +437,8 @@ func (s *Service) clearIncoming(ctx context.Context, dir string) error {
 
 // originHead legge il branch di HEAD dell'origine; vuoto se non lo sa dire o
 // se non è uno dei branch appena creati.
-func (s *Service) originHead(ctx context.Context, dir string, timeout time.Duration, env []string, u *url.URL, ip netip.Addr, rawURL string, refs []RefResult) string {
-	out, err := s.Run.RunEnv(ctx, dir, timeout, env, lsRemoteHeadArgs(u, ip, rawURL)...)
+func (s *Service) originHead(ctx context.Context, dir string, timeout time.Duration, env []string, u *url.URL, ip netip.Addr, rawURL string, proxied bool, refs []RefResult) string {
+	out, err := s.Run.RunEnv(ctx, dir, timeout, env, lsRemoteHeadArgs(u, ip, rawURL, proxied)...)
 	if err != nil || out.ExitCode != 0 {
 		return ""
 	}

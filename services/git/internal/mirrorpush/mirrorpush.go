@@ -16,8 +16,14 @@
 //   - Il DNS è fissato: core risolve l'host, controlla l'IP con pkg/egress e
 //     passa l'IP scelto; git lo usa con http.curloptResolve, quindi un
 //     cambio di risposta DNS fra controllo e push non sposta la connessione.
-//     I redirect non si seguono (http.followRedirects=false) e nessun proxy
-//     dell'ambiente è usato.
+//     I redirect non si seguono (http.followRedirects=false).
+//   - Proxy aziendale (N9): senza Service.Proxy nessun proxy dell'ambiente è
+//     usato. Con un proxy valido per la destinazione (HTTPS_PROXY/NO_PROXY, in
+//     produzione http.ProxyFromEnvironment) git esce dal proxy via
+//     http.proxy passato da ambiente (GIT_CONFIG_*), mai in riga di comando:
+//     l'indirizzo fissato non vale più (il proxy risolve), ma core ha già
+//     risolto e giudicato OGNI indirizzo della destinazione prima di chiamare
+//     questo servizio, e una destinazione vietata non arriva qui.
 //   - Un solo push alla volta per (repo, destinazione): un secondo si rifiuta
 //     con ErrBusy.
 package mirrorpush
@@ -29,6 +35,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/netip"
 	"net/url"
 	"strings"
@@ -101,6 +108,10 @@ type Service struct {
 	// ExtraEnv si aggiunge all'ambiente di git: nei test, GIT_SSL_CAINFO per
 	// fidarsi della CA del server di prova. In produzione è vuoto.
 	ExtraEnv []string
+	// Proxy sceglie il proxy per l'URL di destinazione (nil = mai un proxy).
+	// In produzione è http.ProxyFromEnvironment: HTTPS_PROXY e NO_PROXY dal
+	// chart.
+	Proxy func(*http.Request) (*url.URL, error)
 
 	mu   sync.Mutex
 	busy map[string]bool
@@ -152,10 +163,17 @@ func (s *Service) Push(ctx context.Context, repoID string, in Input) (Result, er
 		return res, nil
 	}
 
-	args := buildArgs(u, ip, in.URL, local.specs)
-	out, runErr := s.Run.RunEnv(ctx, dir, s.timeout(), s.env(in), args...)
+	proxy := s.proxyFor(u)
+	args := buildArgs(u, ip, in.URL, local.specs, proxy != nil)
+	out, runErr := s.Run.RunEnv(ctx, dir, s.timeout(), s.envWithProxy(in, proxy), args...)
 	res.DurationMs = time.Since(start).Milliseconds()
 	redact := redactor(in)
+	if proxy != nil {
+		if pw, ok := proxy.User.Password(); ok && pw != "" {
+			inner := redact
+			redact = func(s string) string { return inner(strings.ReplaceAll(s, pw, "***")) }
+		}
+	}
 	if runErr != nil {
 		res.Error = redact(runErr.Error())
 		if errors.Is(runErr, context.DeadlineExceeded) {
@@ -194,8 +212,25 @@ func (s *Service) timeout() time.Duration {
 	return DefaultTimeout
 }
 
+// proxyFor è il proxy da usare per u, o nil.
+func (s *Service) proxyFor(u *url.URL) *url.URL {
+	if s.Proxy == nil {
+		return nil
+	}
+	p, err := s.Proxy(&http.Request{Method: http.MethodPost, URL: u})
+	if err != nil || p == nil || p.Hostname() == "" {
+		return nil
+	}
+	return p
+}
+
 // env: la credenziale e le impostazioni di rete passano solo di qui.
-func (s *Service) env(in Input) []string {
+func (s *Service) env(in Input) []string { return s.envWithProxy(in, nil) }
+
+// envWithProxy è env con il proxy scelto per la destinazione: http.proxy passa
+// come GIT_CONFIG_*, quindi le eventuali credenziali del proxy restano fuori
+// dall'argv.
+func (s *Service) envWithProxy(in Input, proxy *url.URL) []string {
 	cred := base64.StdEncoding.EncodeToString([]byte(in.Username + ":" + in.Token))
 	env := []string{
 		"GIT_CONFIG_COUNT=1",
@@ -204,23 +239,40 @@ func (s *Service) env(in Input) []string {
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_ASKPASS=",
 		"SSH_ASKPASS=",
-		// Nessun proxy dell'ambiente: bypasserebbe l'IP fissato.
-		"NO_PROXY=*", "no_proxy=*",
-		"HTTP_PROXY=", "http_proxy=", "HTTPS_PROXY=", "https_proxy=", "ALL_PROXY=", "all_proxy=",
+	}
+	if proxy != nil {
+		env[0] = "GIT_CONFIG_COUNT=2"
+		env = append(env,
+			"GIT_CONFIG_KEY_1=http.proxy",
+			"GIT_CONFIG_VALUE_1="+proxy.String(),
+			// La scelta (NO_PROXY compreso) l'ha già fatta Service.Proxy.
+			"NO_PROXY=", "no_proxy=",
+			"HTTP_PROXY=", "http_proxy=", "HTTPS_PROXY=", "https_proxy=", "ALL_PROXY=", "all_proxy=",
+		)
+	} else {
+		env = append(env,
+			// Nessun proxy dell'ambiente: bypasserebbe l'IP fissato.
+			"NO_PROXY=*", "no_proxy=*",
+			"HTTP_PROXY=", "http_proxy=", "HTTPS_PROXY=", "https_proxy=", "ALL_PROXY=", "all_proxy=",
+		)
 	}
 	return append(env, s.ExtraEnv...)
 }
 
 // buildArgs è l'argv completo (dopo --git-dir) del push: opzioni -c, comando e
 // refspec. Niente credenziali, niente --force, nessun `+`.
-func buildArgs(u *url.URL, ip netip.Addr, rawURL string, specs []string) []string {
-	args := pushArgs(u, ip)
+func buildArgs(u *url.URL, ip netip.Addr, rawURL string, specs []string, proxied bool) []string {
+	args := pushArgs(u, ip, proxied)
 	args = append(args, "push", "--porcelain", rawURL)
 	return append(args, specs...)
 }
 
 // pushArgs sono le opzioni -c: tutto ciò che irrigidisce il trasporto.
-func pushArgs(u *url.URL, ip netip.Addr) []string {
+//
+// Con un proxy (proxied) non c'è `-c http.proxy=` (annullerebbe quello
+// dell'ambiente: -c vince su GIT_CONFIG_*) né l'IP fissato (lo risolve il
+// proxy).
+func pushArgs(u *url.URL, ip netip.Addr, proxied bool) []string {
 	host := u.Hostname()
 	port := u.Port()
 	if port == "" {
@@ -230,14 +282,16 @@ func pushArgs(u *url.URL, ip netip.Addr) []string {
 	if ip.Is6() {
 		addr = "[" + addr + "]"
 	}
-	return []string{
+	args := []string{
 		"-c", "protocol.allow=never",
 		"-c", "protocol.https.allow=always",
 		"-c", "http.followRedirects=false",
-		"-c", "http.proxy=",
 		"-c", "credential.helper=",
-		"-c", "http.curloptResolve=" + host + ":" + port + ":" + addr,
 	}
+	if proxied {
+		return args
+	}
+	return append(args, "-c", "http.proxy=", "-c", "http.curloptResolve="+host+":"+port+":"+addr)
 }
 
 func validate(in Input) (*url.URL, netip.Addr, error) {

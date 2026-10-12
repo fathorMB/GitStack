@@ -17,11 +17,20 @@ import (
 const MaxRedirects = 3
 
 func NewEgress(allow, deny, clusterCIDRs []string) (Doer, URLChecker, error) {
+	return NewEgressWithProxy(allow, deny, clusterCIDRs, nil)
+}
+
+// NewEgressWithProxy è NewEgress con il proxy aziendale (N9, HTTP_PROXY/
+// HTTPS_PROXY/NO_PROXY): le consegne escono dal proxy, ma la destinazione
+// vera si giudica prima (risoluzione, liste, loopback/cluster/link-local) e
+// una destinazione vietata non contatta il proxy. proxy nil = connessione
+// diretta.
+func NewEgressWithProxy(allow, deny, clusterCIDRs []string, proxy *egress.ProxyConfig) (Doer, URLChecker, error) {
 	policy, err := egress.NewPolicy(egress.Config{Allow: allow, Deny: deny, ClusterCIDRs: clusterCIDRs})
 	if err != nil {
 		return nil, nil, fmt.Errorf("webhooks: policy di uscita non valida: %w", err)
 	}
-	return egress.NewClient(policy, egress.Options{Timeout: RequestTimeout, MaxRedirects: MaxRedirects}), CheckURL(policy), nil
+	return egress.NewClient(policy, egress.Options{Timeout: RequestTimeout, MaxRedirects: MaxRedirects, Proxy: proxy}), CheckURL(policy), nil
 }
 
 // URLChecker valida l'indirizzo di un webhook alla creazione.

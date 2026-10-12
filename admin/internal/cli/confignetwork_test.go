@@ -26,6 +26,7 @@ type netRunner struct {
 	mu      sync.Mutex
 	calls   []call
 	helmErr error
+	cmData  string // contenuto del file passato a `create configmap`
 }
 
 func (r *netRunner) Run(_ context.Context, env []string, name string, args ...string) ([]byte, error) {
@@ -37,7 +38,13 @@ func (r *netRunner) Run(_ context.Context, env []string, name string, args ...st
 		return nil, r.helmErr
 	case name == "k3s" && len(args) > 1 && args[1] == "get":
 		return []byte("node1   Ready   control-plane   1d   v1.36.4\n"), nil
-	case name == "k3s" && len(args) > 1 && args[1] == "create":
+	case name == "k3s" && strings.Contains(strings.Join(args, " "), " create configmap "):
+		for _, a := range args {
+			if p, ok := strings.CutPrefix(a, "--from-file=ca.crt="); ok {
+				b, _ := os.ReadFile(p)
+				r.cmData = string(b)
+			}
+		}
 		return []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n"), nil
 	}
 	return nil, nil
@@ -82,6 +89,7 @@ type netFixture struct {
 	cfg, dir string
 	paths    networkPaths
 	app      *App
+	sysCA    string
 	run      *netRunner
 	out, err *strings.Builder
 }
@@ -94,6 +102,10 @@ func newNetFixture(t *testing.T) *netFixture {
 	f.paths = networkPaths{
 		NetworkDir: filepath.Join(dir, "net"), K3sDir: filepath.Join(dir, "k3s"),
 		SystemdDir: filepath.Join(dir, "systemd"), SystemCADir: filepath.Join(dir, "cacerts"),
+	}
+	f.sysCA = filepath.Join(dir, "system-ca.crt")
+	if err := os.WriteFile(f.sysCA, []byte("# SISTEMA-FINTA\n-----BEGIN CERTIFICATE-----\nQQ==\n-----END CERTIFICATE-----\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	f.app, f.out, f.err = hostApp(&recRunner{}, tlsDir)
 	f.app.Runner = f.run
@@ -109,6 +121,8 @@ func newNetFixture(t *testing.T) *netFixture {
 			return f.paths.SystemdDir
 		case "GITSTACK_CA_CERTS_DIR":
 			return f.paths.SystemCADir
+		case "GITSTACK_SYSTEM_CA_BUNDLE":
+			return f.sysCA
 		}
 		return ""
 	}
@@ -238,6 +252,11 @@ func TestConfigSetNetworkApplica(t *testing.T) {
 			t.Errorf("%q fuori ordine in %v", o, names)
 		}
 		last = i
+	}
+	// Il ConfigMap dei pod ha le CA di sistema e quella aziendale (il mirror git
+	// del chart sostituisce le CA di sistema con questo file).
+	if !strings.Contains(f.run.cmData, "SISTEMA-FINTA") || strings.Count(f.run.cmData, "BEGIN CERTIFICATE") < 2 {
+		t.Errorf("il bundle del ConfigMap non ha CA di sistema e aziendale:\n%s", f.run.cmData)
 	}
 	helm := f.run.calls[idx("helm")]
 	hj := strings.Join(helm.args, " ")

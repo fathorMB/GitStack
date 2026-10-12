@@ -607,14 +607,17 @@ jobs:
         id: images
         run: |
           set -euo pipefail
+          # I riferimenti Docker vogliono il nome in minuscolo (come docker/metadata-action)
+          owner="${REPO_OWNER,,}"
           for svc in gateway identity git core web; do
-            img="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/gitstack-${svc}:sha-${{ github.sha }}"
-            if docker manifest inspect "${img}" >/dev/null 2>&1; then
+            img="${{ env.REGISTRY }}/${owner}/gitstack-${svc}:sha-${{ github.sha }}"
+            if inspect_err=$(docker manifest inspect "${img}" 2>&1 >/dev/null); then
               echo "${svc}=${img}" >> "$GITHUB_OUTPUT"
               echo "IMAGE_${svc}=${img}" >> "$GITHUB_ENV"
               echo "OK: immagine trovata ${svc}"
             else
               echo "ERRORE: immagine ${svc} non trovata su ghcr.io: ${img}" >&2
+              echo "docker manifest inspect: ${inspect_err}" >&2
               exit 1
             fi
           done

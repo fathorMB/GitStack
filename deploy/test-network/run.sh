@@ -143,8 +143,16 @@ start_registry() {
   return 1
 }
 
+# CA aziendale finta (autofirmata) per --ca-bundle.
+make_test_ca() {
+  printf '[req]\ndistinguished_name=dn\nprompt=no\n[dn]\nCN=GitStack Test Corporate CA\n' >"${STATE}/ca.cnf"
+  openssl req -x509 -newkey rsa:2048 -nodes -keyout "${STATE}/corp-ca.key" -out "${STATE}/corp-ca.pem" \
+    -days 2 -config "$(winpath "${STATE}/ca.cnf")" >/dev/null 2>&1
+}
+
 build_admin() {
   mkdir -p "${STATE}"
+  make_test_ca
   (cd "${ROOT}/admin" && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "$(winpath "${STATE}/gitstack")" ./cmd/gitstack)
   sha256sum "${STATE}/gitstack" | awk '{print $1}' >"${STATE}/gitstack.sha256"
 }
@@ -172,6 +180,8 @@ prepare_vm() {
   # binario gitstack costruito da questo ramo.
   tar -C "${ROOT}" -cf - deploy | vm_ssh "sudo -n rm -rf /opt/gitstack && sudo -n mkdir -p /opt/gitstack && sudo -n tar -C /opt/gitstack -xf -"
   vm_ssh "cat | sudo -n tee /opt/gitstack/gitstack >/dev/null && sudo -n chmod 0755 /opt/gitstack/gitstack" <"${STATE}/gitstack"
+  # CA aziendale di prova (solo per provare la catena: il mirror è http).
+  vm_ssh "cat | sudo -n tee /opt/gitstack/corp-ca.pem >/dev/null" <"${STATE}/corp-ca.pem"
   close_egress
 }
 
@@ -186,6 +196,7 @@ prepare() {
   need curl
   need go
   need ssh
+  need openssl
   need powershell.exe
   mkdir -p "${STATE}"
   docker pull "${SQUID_IMAGE}" >/dev/null
@@ -279,7 +290,7 @@ cmd_verify() {
   local log_from
   log_from="$(docker exec "${SQUID}" wc -l /var/log/squid/access.log | awk '{print $1}')"
   : >"${STATE}/install.log"
-  run_install --http-proxy "${proxy}" --no-proxy "${HOST_IP}" --registry-mirror "${mirror}" 2>&1 | tee "${STATE}/install.log" | tail -30 || true
+  run_install --http-proxy "${proxy}" --no-proxy "${HOST_IP}" --registry-mirror "${mirror}" --ca-bundle /opt/gitstack/corp-ca.pem 2>&1 | tee "${STATE}/install.log" | tail -30 || true
   if grep -q "GitStack installato" "${STATE}/install.log"; then
     ok "install.sh completato"
   else
@@ -314,12 +325,24 @@ cmd_verify() {
   grep -q '"\*"' "${STATE}/registries.yaml" && ok "registries.yaml con endpoint \"*\"" || ko "registries.yaml senza endpoint \"*\""
   vm 'cat /etc/systemd/system/k3s.service.d/10-gitstack-network.conf' | grep -q "HTTP_PROXY=${proxy}" \
     && ok "drop-in di proxy per k3s" || ko "drop-in di proxy mancante"
-  if grep -q '^proxy:' "${ROOT}/deploy/gitstack/values.yaml"; then
-    vm 'KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get deploy gitstack-core -o jsonpath="{.spec.template.spec.containers[0].env}"' \
-      | grep -q "${proxy}" && ok "i pod di core hanno HTTP_PROXY" || ko "core senza HTTP_PROXY"
-  else
-    log "Il chart di questo ramo non ha i valori proxy.* (GIT-207, N9b): HTTP_PROXY nei pod non verificato"
-  fi
+  # Chart di GIT-207 (N9b): core, git e identity ricevono il proxy dai values
+  # e montano la CA aziendale (ConfigMap <release>-corporate-ca).
+  local w wl
+  for w in core git identity; do
+    wl="$(vm "KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get deploy,sts -o name | grep -E -- '-${w}\$' | head -n1")"
+    if [ -z "${wl}" ]; then ko "pod ${w}: workload non trovato"; continue; fi
+    vm "KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get ${wl} -o json" >"${STATE}/workload-${w}.json"
+    if grep -q "\"HTTP_PROXY\"" "${STATE}/workload-${w}.json" && grep -q "\"HTTPS_PROXY\"" "${STATE}/workload-${w}.json" \
+      && grep -q "${proxy}" "${STATE}/workload-${w}.json"; then
+      ok "${w}: HTTP_PROXY e HTTPS_PROXY dai values (${proxy})"
+    else
+      ko "${w}: HTTP_PROXY/HTTPS_PROXY mancanti"
+    fi
+    if grep -q "corporate-ca" "${STATE}/workload-${w}.json"; then ok "${w}: CA aziendale montata"; else ko "${w}: CA aziendale non montata"; fi
+  done
+  local cmsize
+  cmsize="$(vm "KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get cm gitstack-corporate-ca -o jsonpath='{.data.ca\\.crt}' | wc -c" | tr -d '[:space:]')"
+  if [ "${cmsize:-0}" -gt 50000 ]; then ok "ConfigMap della CA con CA di sistema e aziendale (${cmsize} byte)"; else ko "ConfigMap della CA troppo piccolo (${cmsize} byte): mancano le CA di sistema"; fi
 
   log "5. gitstack config set network dopo l'installazione"
   vm "gitstack config set network --no-proxy ${HOST_IP},extra.corp.test" 2>&1 | tee "${STATE}/config-set.log" | tail -15 || true

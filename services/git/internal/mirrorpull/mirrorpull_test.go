@@ -678,3 +678,47 @@ func TestPull_OrigineVuota(t *testing.T) {
 		t.Fatalf("origine vuota: %+v", res)
 	}
 }
+
+// N9: con un proxy aziendale il fetch non ha `-c http.proxy=` né l'IP fissato,
+// e il proxy (con le sue credenziali) passa solo dall'ambiente.
+func TestPull_ProxyAziendaleSoloDaAmbiente(t *testing.T) {
+	in := Input{URL: "https://github.com/o/r.git", Username: "u", Token: "tok", IP: "140.82.112.3",
+		DefaultBranch: "main", Owner: "o", Name: "r", PusherID: pusherID, PusherUsername: "mirror"}
+	u, ip, err := validate(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy, _ := url.Parse("http://pu:ppw@proxy.corp:3128")
+	svcProxy := func(*http.Request) (*url.URL, error) { return proxy, nil }
+	p := mirrorpush.ProxyFor(svcProxy, u)
+	if p == nil {
+		t.Fatal("ProxyFor: nil")
+	}
+	args := strings.Join(fetchArgsProxy(u, ip, in.URL, true), " ")
+	for _, bad := range []string{"ppw", "proxy.corp", "http.proxy=", "curloptResolve"} {
+		if strings.Contains(args, bad) {
+			t.Errorf("argv contiene %q: %s", bad, args)
+		}
+	}
+	for _, a := range [][]string{fetchArgsProxy(u, ip, in.URL, true), lsRemoteHeadArgs(u, ip, in.URL, true)} {
+		if strings.Contains(strings.Join(a, " "), "ppw") {
+			t.Errorf("credenziale del proxy in argv: %v", a)
+		}
+	}
+	for _, creds := range [][2]string{{"u", "tok"}, {"", ""}} {
+		env, err := mirrorpush.NetEnvProxy(creds[0], creds[1], nil, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(strings.Join(env, "\n"), "http.proxy\nGIT_CONFIG_VALUE_") && !strings.Contains(strings.Join(env, "\n"), "GIT_CONFIG_VALUE_1=http://pu:ppw@proxy.corp:3128") && !strings.Contains(strings.Join(env, "\n"), "GIT_CONFIG_VALUE_0=http://pu:ppw@proxy.corp:3128") {
+			t.Errorf("l'ambiente non porta http.proxy: %v", env)
+		}
+	}
+	// NO_PROXY: nessun proxy e argv come prima.
+	if mirrorpush.ProxyFor(func(*http.Request) (*url.URL, error) { return nil, nil }, u) != nil {
+		t.Fatal("atteso nessun proxy")
+	}
+	if a := strings.Join(fetchArgs(u, ip, in.URL), " "); !strings.Contains(a, "curloptResolve") || !strings.Contains(a, "http.proxy=") {
+		t.Errorf("senza proxy: %s", a)
+	}
+}

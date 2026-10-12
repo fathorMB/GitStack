@@ -589,8 +589,14 @@ func runConfigSetNetwork(ctx context.Context, a *App, args []string) int {
 	if n.CABundle != "" {
 		cmName = cfg.Release + "-corporate-ca"
 		_, _ = fmt.Fprintf(a.Stdout, "==> ConfigMap %s con la CA aziendale\n", cmName)
+		bundle, err := a.corporateCABundle(caPEM, paths)
+		if err != nil {
+			a.errorf("config set network: %v", err)
+			return ExitUnexpected
+		}
+		defer func() { _ = os.Remove(bundle) }()
 		yml, err := a.Runner.Run(ctx, env, "k3s", "kubectl", "-n", cfg.Namespace, "create", "configmap", cmName,
-			"--from-file=ca.crt="+n.CABundle, "--dry-run=client", "-o", "yaml")
+			"--from-file=ca.crt="+bundle, "--dry-run=client", "-o", "yaml")
 		if err != nil {
 			a.errorf("config set network: kubectl create configmap: %v\n%s", err, strings.TrimSpace(string(yml)))
 			return ExitCluster
@@ -633,6 +639,39 @@ func runConfigSetNetwork(ctx context.Context, a *App, args []string) int {
 	_, _ = fmt.Fprintf(a.Stdout, "Rete aziendale aggiornata (config: %s).\n", path)
 	a.printNetworkSummary(n)
 	return ExitOK
+}
+
+// corporateCABundle scrive il file che va nel ConfigMap dei pod: CA di sistema
+// più CA aziendale. Per il mirror git il chart sostituisce le CA di sistema con
+// questo file (corporateCA.configMap): senza quelle pubbliche un mirror verso un
+// host raggiunto direttamente (NO_PROXY) non si fiderebbe più. Stessa logica di
+// ensure_corporate_ca_configmap in deploy/install.sh. Restituisce il percorso
+// del file temporaneo, da rimuovere.
+func (a *App) corporateCABundle(corporate []byte, paths networkPaths) (string, error) {
+	sys := a.Getenv("GITSTACK_SYSTEM_CA_BUNDLE")
+	if sys == "" {
+		sys = "/etc/ssl/certs/ca-certificates.crt"
+	}
+	var buf bytes.Buffer
+	if b, err := os.ReadFile(sys); err == nil {
+		buf.Write(b)
+		buf.WriteByte('\n')
+	}
+	buf.Write(corporate)
+	dir := paths.NetworkDir
+	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+		dir = ""
+	}
+	f, err := os.CreateTemp(dir, ".ca-bundle.*.crt")
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.Write(buf.Bytes()); err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), f.Close()
 }
 
 // helmEscape protegge le virgole di un valore per --set.

@@ -197,7 +197,7 @@ sudo ./deploy/install.sh \
 | `--http-proxy`, `--https-proxy`, `--no-proxy` | The installer's own downloads (curl, the k3s script, Helm); **k3s and containerd** (systemd drop-in `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf`); the **GitStack pods** (chart values `proxy.http`, `proxy.https`, `proxy.noProxy`: webhooks, mirrors, OIDC, SMTP). `NO_PROXY` for k3s always includes `localhost`, `10.42.0.0/16`, `10.43.0.0/16`, `.svc`, `.cluster.local` and the machine's own IPv4 addresses (the API server reaches the kubelet on `<node IP>:10250`; if the address changes, run `gitstack config set network --no-proxy ...` again to refresh it). Without `--https-proxy` the HTTP proxy is used for `https://` too. |
 | `--registry-mirror` | `/etc/rancher/k3s/registries.yaml` (mode `0600`) with a `"*"` mirror: every image is requested from the mirror first, including k3s system images (pause, coredns, traefik...). The mirror must serve images under their original name without the registry host (`ghcr.io/fathormb/gitstack-core` is `fathormb/gitstack-core`), as a pull-through cache or a registry you filled yourself. With `--ca-bundle` and an `https://` mirror, `registries.yaml` also trusts the CA. |
 | `--download-mirror` | See the layout below. |
-| `--ca-bundle` | Copied to `/etc/gitstack/network/ca.crt`; added to the system trust store (`update-ca-certificates`); referenced by `registries.yaml`; ConfigMap `<release>-corporate-ca` (key `ca.crt`) mounted in the pods (chart value `corporateCA.configMap`). |
+| `--ca-bundle` | Copied to `/etc/gitstack/network/ca.crt`; added to the system trust store (`update-ca-certificates`); referenced by `registries.yaml`; ConfigMap `<release>-corporate-ca` (key `ca.crt`) mounted in core, git and identity (chart value `corporateCA.configMap`). The ConfigMap holds the system CAs **plus** the corporate CA: for git mirrors the chart *replaces* the system CAs with this file, so a mirror to a public host reached directly (in `--no-proxy`) keeps trusting the public CAs. The Go services trust it in addition to their own CAs. After a system CA update, re-run `install.sh` or `gitstack config set network --ca-bundle FILE` to refresh the ConfigMap. |
 
 **Download mirror layout** (paths under the URL you give):
 
@@ -903,7 +903,7 @@ brew install anchore/syft/syft
 
 ```sh
 # Immagine: ghcr.io/<owner>/gitstack-gateway:sha-<commit-sha>
-IMG="ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>"
+IMG="ghcr.io/fathormb/gitstack-gateway:sha-<commit-sha>"
 
 # Verifica la firma keyless: identity (URL del workflow) + issuer OIDC.
 cosign verify \
@@ -985,7 +985,7 @@ cosign verify-attestation \
   --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   --type spdxjson \
-  ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>
+  ghcr.io/fathormb/gitstack-gateway:sha-<commit-sha>
 ```
 
 Per i tag, usare `--certificate-identity-regexp` con:

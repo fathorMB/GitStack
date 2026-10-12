@@ -69,6 +69,10 @@ type Service struct {
 	// HTTPClient è usato per discovery, JWKS e token endpoint. Nil: client
 	// con timeout di 15 secondi.
 	HTTPClient *http.Client
+	// Proxy sceglie il proxy aziendale per le chiamate al provider (N9).
+	// Nil: http.ProxyFromEnvironment, cioè HTTPS_PROXY/HTTP_PROXY/NO_PROXY
+	// del chart. Vale solo per il client di default (HTTPClient nil).
+	Proxy func(*http.Request) (*url.URL, error)
 
 	bySlug map[string]Provider
 
@@ -153,7 +157,13 @@ func (s *Service) httpClient() *http.Client {
 	if s.HTTPClient != nil {
 		return s.HTTPClient
 	}
-	return &http.Client{Timeout: maxDiscoveryTime}
+	proxy := s.Proxy
+	if proxy == nil {
+		proxy = http.ProxyFromEnvironment
+	}
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.Proxy = proxy
+	return &http.Client{Timeout: maxDiscoveryTime, Transport: tr}
 }
 
 func (s *Service) withClient(ctx context.Context) context.Context {
