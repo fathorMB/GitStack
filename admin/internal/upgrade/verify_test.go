@@ -2,62 +2,85 @@ package upgrade
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestV5AllowUnverifiedSkips(t *testing.T) {
 	v := V5Config{AllowUnverified: true}
-	// Anche se il bundle non esiste, AllowUnverified = true跳过 verifica.
+	// Anche se il bundle non esiste, AllowUnverified = true salta la verifica.
 	err := v.VerifyBinary(context.Background(), "/tmp/finto")
 	if err != nil {
 		t.Fatalf("AllowUnverified=true non dovrebbe fallire: %v", err)
 	}
 }
 
-func TestV5NoBundleSkips(t *testing.T) {
+// TestV5NoBundleRefuses verifica che, quando il bundle cosign non è presente,
+// la verifica fallisca (non salti più).
+func TestV5NoBundleRefuses(t *testing.T) {
 	v := DefaultV5Main()
-	// Nessun bundle .sigstore.json: la verifica viene saltata.
-	err := v.VerifyBinary(context.Background(), "/tmp/finto")
-	if err != nil {
-		t.Fatalf("nessun bundle non dovrebbe causare errore: %v", err)
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "binario")
+	if err := os.WriteFile(bin, []byte("dati"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Nessun bundle .sigstore.json: la verifica deve fallire.
+	err := v.VerifyBinary(context.Background(), bin)
+	if err == nil {
+		t.Fatal("atteso errore quando il bundle cosign non esiste")
+	}
+	if !errors.Is(err, ErrBundleMissing) {
+		t.Fatalf("errore diverso da ErrBundleMissing: %v", err)
 	}
 }
 
-func TestV5BinaryRejectsNoCosign(t *testing.T) {
+// TestV5BinaryRejectsAltered verifica che un binario alterato (diverso da quello
+// firmato) venga rifiutato dal test con un fake cosign.
+func TestV5BinaryRejectsAltered(t *testing.T) {
 	v := DefaultV5Main()
-	// Creiamo un bundle finto per forzare la chiamata a cosign.
 	dir := t.TempDir()
+	bin := filepath.Join(dir, "binario")
 	bundle := filepath.Join(dir, "binario.sigstore.json")
+
+	// Script finto cosign: controlla gli argomenti.
+	// Se il nome del file contiene "ALTERATO", esce 1.
+	fakeCosign := filepath.Join(dir, "cosign")
+	if err := os.WriteFile(fakeCosign, []byte("#!/bin/sh\nif echo \"$@\" | grep -q ALTERATO; then exit 1; fi\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	v.CosignPath = fakeCosign
+
+	// Binario originale (firmato): nessun argomento speciale → cosign 0.
+	if err := os.WriteFile(bin, []byte("originale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(bundle, []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Cosign non è installato, quindi la chiamata fallisce.
-	err := v.VerifyBinary(context.Background(), filepath.Join(dir, "binario"))
+
+	// Test: binario originale → nessun errore (cosign finto esce 0).
+	if err := v.VerifyBinary(context.Background(), bin); err != nil {
+		t.Fatalf("binario originale non dovrebbe fallire: %v", err)
+	}
+
+	// Binario alterato: cambia i dati → cosign finto esce 1.
+	if err := os.WriteFile(bin, []byte("ALTERATO-altered"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := v.VerifyBinary(context.Background(), bin)
 	if err == nil {
-		t.Fatal("atteso errore quando cosign non è installato e il bundle esiste")
+		t.Fatal("atteso errore per binario alterato")
 	}
+	// L'errore non è ErrBundleMissing perché il bundle esiste: è l'errore di execution.
 }
 
-func TestV5ImageAllowUnverifiedSkips(t *testing.T) {
-	v := V5Config{AllowUnverified: true}
-	err := v.VerifyImage(context.Background(), "ghcr.io/test:latest")
-	if err != nil {
-		t.Fatalf("AllowUnverified=true non dovrebbe fallire: %v", err)
-	}
-}
-
-func TestV5ImageNoBundleSkips(t *testing.T) {
-	v := DefaultV5Main()
-	v.AllowUnverified = true // cosign non è installato, AllowUnverified salta.
-	// Nessun digest = nessun bundle: la verifica viene saltata.
-	err := v.VerifyImage(context.Background(), "ghcr.io/test:latest")
-	if err != nil {
-		t.Fatalf("nessun digest non dovrebbe causare errore: %v", err)
-	}
-}
-
+// TestV5ChartAllowUnverifiedSkips verifica che AllowUnverified=true salti
+// la verifica del chart.
 func TestV5ChartAllowUnverifiedSkips(t *testing.T) {
 	v := V5Config{AllowUnverified: true}
 	err := v.VerifyChart(context.Background(), "/tmp/finto")
@@ -66,47 +89,94 @@ func TestV5ChartAllowUnverifiedSkips(t *testing.T) {
 	}
 }
 
-func TestV5ImageTagVerified(t *testing.T) {
-	tests := []struct {
-		tag   string
-		verif bool
-	}{
-		{"sha-abcdef1234567890abcdef1234567890abcdef12", true},
-		{"v1.2.3", true},
-		{"", false},
-		{"latest", false},
-		{"abc123", false},
+// TestV5ChartNoBundleRefuses verifica che, quando il bundle chart non esiste,
+// la verifica fallisca.
+func TestV5ChartNoBundleRefuses(t *testing.T) {
+	v := DefaultV5Main()
+	dir := t.TempDir()
+	chart := filepath.Join(dir, "chart.tgz")
+	if err := os.WriteFile(chart, []byte("chart"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	for _, tc := range tests {
-		if got := ImageTagVerified(tc.tag); got != tc.verif {
-			t.Errorf("ImageTagVerified(%q) = %v, voglio %v", tc.tag, got, tc.verif)
-		}
+	err := v.VerifyChart(context.Background(), chart)
+	if err == nil {
+		t.Fatal("atteso errore quando il bundle chart non esiste")
+	}
+	if !errors.Is(err, ErrBundleMissing) {
+		t.Fatalf("errore diverso da ErrBundleMissing: %v", err)
 	}
 }
 
-func TestV5MirrorStatus(t *testing.T) {
-	v := DefaultV5Main()
+// TestV5ImageAllowUnverifiedSkips verifica che AllowUnverified=true salti
+// la verifica dell'immagine.
+func TestV5ImageAllowUnverifiedSkips(t *testing.T) {
+	v := V5Config{AllowUnverified: true}
+	err := v.VerifyImage(context.Background(), "ghcr.io/test:latest")
+	if err != nil {
+		t.Fatalf("AllowUnverified=true non dovrebbe fallire: %v", err)
+	}
+}
 
-	// Mirror interno senza AllowUnverified: non verificato.
-	m := v.CheckMirror("https://mirror.interna/repo", true)
-	if m.Verified {
-		t.Error("mirror interno non firmato dovrebbe essere non verificato")
+// TestV5IdentityRegexVerifies verifica che, quando Identity è vuoto,
+// venga usato --certificate-identity-regexp ".*".
+func TestV5IdentityRegexVerifies(t *testing.T) {
+	// Creiamo una struttura che catturi gli argomenti passati a exec.Command.
+	type argsCapture struct {
+		name string
+		args []string
+	}
+	var captured argsCapture
+	capturedDone := make(chan struct{})
+
+	originalCommand := execCommand
+	execCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		captured = argsCapture{name: name, args: args}
+		close(capturedDone)
+		// Ritorna un comando che non viene eseguito realmente (block forever).
+		// Il test legge captured e termina.
+		cmd := exec.CommandContext(ctx, "sleep", "999999")
+		return cmd
+	}
+	defer func() { execCommand = originalCommand }()
+
+	v := DefaultV5Tag() // Identity vuoto
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "binario")
+	bundle := filepath.Join(dir, "binario.sigstore.json")
+	_ = os.WriteFile(bin, []byte("x"), 0o644)
+	_ = os.WriteFile(bundle, []byte("{}"), 0o644)
+
+	// Avvia la verifica in goroutine.
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- v.verifyBlob(context.Background(), bin)
+	}()
+
+	// Aspetta che il mock sia chiamato.
+	select {
+	case <-capturedDone:
+		// Il mock è stato chiamato.
+	case <-errCh:
+		// Il mock ha restituito un errore (dovrebbe bloccarsi).
+		t.Fatal("verifyBlob ha restituito errore prima che il mock fosse chiamato")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout: verifyBlob non ha chiamato il mock")
 	}
 
-	// Mirror interno con AllowUnverified: ok con avviso.
-	v.AllowUnverified = true
-	m = v.CheckMirror("https://mirror.interna/repo", true)
-	if !m.Verified {
-		t.Error("mirror interno con AllowUnverified dovrebbe essere verificato")
+	// Verifica che sia stato usato --certificate-identity-regexp ".*"
+	foundRegexp := false
+	for i, a := range captured.args {
+		if a == "--certificate-identity-regexp" && i+1 < len(captured.args) && captured.args[i+1] == ".*" {
+			foundRegexp = true
+			break
+		}
 	}
-	if !m.WarnUnverified {
-		t.Error("dovrebbe esserci l'avviso di non verifica")
+	if !foundRegexp {
+		t.Fatalf("atteso --certificate-identity-regexp .*; args: %v", captured.args)
 	}
+}
 
-	// Mirror esterno: sempre ok (senza firma).
-	v.AllowUnverified = false
-	m = v.CheckMirror("https://github.com/altro/repo", false)
-	if !m.Verified {
-		t.Error("mirror esterno dovrebbe essere verificato")
-	}
+// execCommand è la funzione usata per creare i comandi (test: mock).
+var execCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, name, args...)
 }

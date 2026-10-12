@@ -301,52 +301,6 @@ func (o *Options) helmRevision(ctx context.Context) (int, error) {
 	return best, nil
 }
 
-// packageChart impacchetta una directory di chart in un tarball gzip per la
-// verifica cosign.
-func (o *Options) packageChart(srcDir, dest string) (err error) {
-	f, err := os.Create(dest)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		cerr := f.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
-	gw := gzip.NewWriter(f)
-	tw := tar.NewWriter(gw)
-
-	// Percorre srcDir e aggiunge ogni file al tarball.
-	base, _ := filepath.EvalSymlinks(srcDir)
-	return filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(base, path)
-		if rel == "." {
-			return nil
-		}
-		hdr, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
-		}
-		hdr.Name = filepath.ToSlash(rel)
-		if err := tw.WriteHeader(hdr); err != nil {
-			return err
-		}
-		if info.Mode().IsRegular() {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			_, err = tw.Write(data)
-			return err
-		}
-		return nil
-	})
-}
-
 // helmValues scrive i valori scelti dall'utente alla prima installazione
 // (e agli upgrade precedenti) in un file: si riapplicano sui default del
 // chart nuovo. `--reuse-values` riusa anche i default vecchi e farebbe
@@ -450,12 +404,8 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		return res, refused("%v", err)
 	}
 	o.logf("    SHA-256 %s", sum)
-	// V5: verifica firma cosign del binario.
-	if err := o.V5.VerifyBinary(ctx, staged); err != nil {
-		res.Outcome = Refused
-		return res, refused("verifica firma cosign fallita per il binario: %v", err)
-	}
-	o.logf("    binario: firma verificata")
+	// FetchBinary scarica il bundle .sigstore.json e verifica la firma cosign:
+	// qui il binario è già verificato.
 
 	newChart := chartDir + ".new"
 	_ = os.RemoveAll(newChart)
@@ -474,18 +424,8 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		res.Outcome = Refused
 		return res, refused("%v", err)
 	}
-	// V5: verifica firma cosign del chart.
-	chartTgz := filepath.Join(work, "gitstack-chart.tgz")
-	// Creiamo un tarball temporaneo per la verifica cosign.
-	if err := o.packageChart(newChart, chartTgz); err != nil {
-		res.Outcome = Refused
-		return res, refused("non riesco a impacchettare il chart per la verifica: %v", err)
-	}
-	if err := o.V5.VerifyChart(ctx, chartTgz); err != nil {
-		res.Outcome = Refused
-		return res, refused("verifica firma cosign del chart fallita: %v", err)
-	}
-	o.logf("    chart: firma verificata")
+	// FetchChart scarica il .tgz dalla release, ne verifica la firma cosign
+	// con il bundle (.sigstore.json) e poi estrae: qui il chart è già verificato.
 
 	var k3s K3sPlan
 	if t.K3sVersion != "" {

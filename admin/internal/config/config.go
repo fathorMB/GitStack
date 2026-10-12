@@ -51,6 +51,19 @@ type Config struct {
 	Backup Backup `yaml:"backup"`
 	// Postgres descrive il database esterno (N8). Vuoto = Postgres bundle.
 	Postgres Postgres `yaml:"postgres"`
+	// V5 descrive la configurazione della catena di fornitura (firme cosign).
+	// Scritto dall'installer, letto da `gitstack upgrade` e `gitstack status`.
+	V5 V5Config `yaml:"v5,omitempty"`
+}
+
+// V5Config è la sezione v5 del file di config.
+type V5Config struct {
+	// AllowUnsigned: se true, la verifica cosign è saltata con avviso (N9).
+	AllowUnsigned bool `yaml:"allow_unsigned,omitempty"`
+	// AllowUnsignedReason: motivo dell'eccezione N9 (documentato per audit).
+	AllowUnsignedReason string `yaml:"allow_unsigned_reason,omitempty"`
+	// CosignPath: percorso del binario cosign installato dall'installer.
+	CosignPath string `yaml:"cosign_path,omitempty"`
 }
 
 // Postgres è la sezione postgres del file: scritta dall'installer quando si

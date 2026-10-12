@@ -153,7 +153,7 @@ func chartTarball(t *testing.T, sha string, k3sFile ...string) []byte {
 			add("GitStack-"+sha+"/deploy/k3s-version", v+"\n")
 		}
 	}
-	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\n")
+	add("GitStack-"+sha+"/deploy/gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n")
 	add("GitStack-"+sha+"/deploy/gitstack/values.yaml", "NUOVO: 1\n")
 	add("GitStack-"+sha+"/deploy/gitstack/templates/a.yaml", "x")
 	_ = tw.Close()
@@ -199,6 +199,13 @@ func newWorld(t *testing.T) *world {
 	mustWriteMode(t, w.cfgFile, 0o600, "version: 1\nhost: h\nchart_dir: "+filepath.ToSlash(w.chart)+"\nimage_tag: sha-"+oldSHA+"\n")
 
 	sum := sha256.Sum256([]byte(newBin))
+	// Chart tarball per il codeload (sorgente del commit).
+	chartTB := chartTarball(t, newSHA, w.k3sFile)
+	// Chart .tgz firmato dalla release (versione 0.1.0, byte diversi dal codeload).
+	chartRelease := []byte("CHART-FIRMATO-0.1.0")
+	// Bundle finto per la verifica.
+	chartBundle := []byte(`{"fake":"bundle"}`)
+
 	w.srv = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
 		switch {
@@ -220,8 +227,14 @@ func newWorld(t *testing.T) *world {
 				return
 			}
 			_, _ = io.WriteString(rw, newBin)
+		case strings.HasSuffix(p, "/gitstack-linux-amd64.sigstore.json"):
+			_, _ = rw.Write([]byte(`{"fake":"bundle"}`))
 		case strings.HasSuffix(p, "/tar.gz/"+newSHA):
-			_, _ = rw.Write(chartTarball(t, newSHA, w.k3sFile))
+			_, _ = rw.Write(chartTB)
+		case strings.HasSuffix(p, "/gitstack-0.1.0.tgz"):
+			_, _ = rw.Write(chartRelease)
+		case strings.HasSuffix(p, "/gitstack-0.1.0.tgz.sigstore.json"):
+			_, _ = rw.Write(chartBundle)
 		default:
 			http.NotFound(rw, r)
 		}
@@ -653,4 +666,117 @@ func TestCARecoversUpgradeSucceeds(t *testing.T) {
 	if n < 3 {
 		t.Errorf("CheckCA chiamato %d volte", n)
 	}
+}
+
+// --- Test V5: rifiuto firme con fake cosign --------------------------------
+
+// TestV5RejectsNoBundle verifica che FetchBinary/rifiuti quando il bundle
+// cosign non è disponibile.
+func TestV5RejectsNoBundle(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasSuffix(p, "/commits/"+newSHA):
+			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
+		case strings.HasSuffix(p, "/compare/"):
+			_, _ = io.WriteString(rw, `{"status":"ahead"}`)
+		case strings.HasSuffix(p, "/gitstack-linux-amd64.sha256"):
+			sum := sha256.Sum256([]byte(newBin))
+			_, _ = io.WriteString(rw, hex.EncodeToString(sum[:])+"  gitstack-linux-amd64\n")
+		case strings.HasSuffix(p, "/gitstack-linux-amd64"):
+			_, _ = io.WriteString(rw, newBin)
+		case strings.HasSuffix(p, "/gitstack-linux-amd64.sigstore.json"):
+			http.NotFound(rw, r)
+		case strings.HasSuffix(p, "/tar.gz/"+newSHA):
+			// codeload chart
+		default:
+			http.NotFound(rw, r)
+		}
+	}))
+	defer srv.Close()
+
+	o := &Options{
+		Cfg: &config.Config{ImageTag: "sha-" + newSHA, Host: "h", Release: "gs", Namespace: "default"},
+		Repo:        "o/r",
+		APIBase:     srv.URL + "/repos-api",
+		CodeloadURL: srv.URL + "/codeload",
+		ReleaseURL:  srv.URL,
+		V5:          DefaultV5Main(),
+		HTTP:        srv.Client(),
+		ExePath:     "/dev/null",
+		Timeout:     time.Second,
+	}
+	_, err := o.FetchBinary(context.Background(), &Target{SHA: newSHA, Tag: "sha-" + newSHA}, t.TempDir()+"/bin")
+	if err == nil {
+		t.Fatal("atteso errore quando il bundle manca")
+	}
+	if !errors.Is(err, ErrBundleMissing) {
+		t.Fatalf("errore diverso da ErrBundleMissing: %v", err)
+	}
+}
+
+// TestV5RejectsAlteredArtifact verifica che un artefatto alterato venga
+// rifiutato dal fake cosign.
+func TestV5RejectsAlteredArtifact(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasSuffix(p, "/commits/"+newSHA):
+			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
+		case strings.HasSuffix(p, "/compare/"):
+			_, _ = io.WriteString(rw, `{"status":"ahead"}`)
+		case strings.HasSuffix(p, "/gitstack-linux-amd64.sha256"):
+			sum := sha256.Sum256([]byte(newBin))
+			_, _ = io.WriteString(rw, hex.EncodeToString(sum[:])+"  gitstack-linux-amd64\n")
+		case strings.HasSuffix(p, "/gitstack-linux-amd64"):
+			_, _ = io.WriteString(rw, newBin)
+		case strings.HasSuffix(p, "/gitstack-linux-amd64.sigstore.json"):
+			_, _ = rw.Write([]byte(`{"fake":"bundle"}`))
+		default:
+			http.NotFound(rw, r)
+		}
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "gitstack")
+	// Script fake cosign: fallisce solo se il file contiene "ALTERATO".
+	fakeCosign := filepath.Join(dir, "cosign")
+	if err := os.WriteFile(fakeCosign, []byte("#!/bin/sh\nif grep -q ALTERATO \"$2\"; then exit 1; fi\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	v := V5Config{CosignPath: fakeCosign}
+	// Download del binario.
+	if err := downloadBinary(srv.URL+"/gh/o/r/releases/download/sha-"+newSHA+"/gitstack-linux-amd64", bin); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin+".sigstore.json", []byte(`{"fake":"bundle"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := v.VerifyBinary(context.Background(), bin); err != nil {
+		t.Fatalf("binario originale dovrebbe passare: %v", err)
+	}
+
+	// Altero il binario.
+	if err := os.WriteFile(bin, []byte("ALTERATO-altered"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := v.VerifyBinary(context.Background(), bin); err == nil {
+		t.Fatal("atteso errore per binario alterato")
+	}
+}
+
+func downloadBinary(url, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	return os.WriteFile(dest, io.ReadAll(resp.Body), 0o755)
 }

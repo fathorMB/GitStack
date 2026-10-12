@@ -114,6 +114,8 @@ type Database struct {
 	Error string `json:"error,omitempty"`
 	// Warning: un'incongruenza che non ferma il servizio (versione del client).
 	Warning string `json:"warning,omitempty"`
+	// V5Warning: avviso sulla catena di fornitura (es. N9 eccezione).
+	V5Warning string `json:"v5_warning,omitempty"`
 }
 
 // Healthy è vero se il cluster risponde, ogni servizio è pronto e l'API
@@ -166,6 +168,14 @@ func (c *Collector) Collect(ctx context.Context, cfg *config.Config, configDir s
 	r.LastBackup = lastBackupState(configDir)
 	if cfg.Backup.S3 != nil {
 		r.BackupUpload, r.BackupUploadFailed = lastUploadState(configDir)
+	}
+	// V5: avviso eccezione N9 (mirror non firmati).
+	if cfg.V5.AllowUnsigned {
+		reason := cfg.V5.AllowUnsignedReason
+		if reason == "" {
+			reason = "eccezione N9: verifica firme cosign disattivata (--allow-unsigned-mirrors)"
+		}
+		r.V5Warning = "catena di fornitura: " + reason
 	}
 	return r
 }

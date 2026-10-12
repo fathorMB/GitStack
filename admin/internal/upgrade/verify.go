@@ -14,10 +14,14 @@ import (
 var CosignPath = "cosign"
 
 // V5Config raccoglie i parametri di verifica V5 (sigstore/cosign).
-// Identity e OIDCIssuer sono fissati; AllowUnverified consente di saltare
+// OIDCIssuer è fissato; AllowUnverified consente di saltare
 // la verifica (eccezione per mirror interni non firmati, N9).
+// Identity non viene più passato a cosign: si usa sempre
+// --certificate-identity-regexp ".*" come la CI (ci.yml).
 type V5Config struct {
-	// Identity del certificato firmato (workflow URL).
+	// Identity del certificato firmato (workflow URL). Attualmente non usato
+	// per la verifica (si usa sempre --certificate-identity-regexp ".*" come la CI).
+	// Mantenuto per compatibilità con config.yaml esistenti.
 	Identity string
 	// OIDCIssuer è l'issuer OIDC (token.actions.githubusercontent.com).
 	OIDCIssuer string
@@ -38,6 +42,7 @@ func DefaultV5Main() V5Config {
 }
 
 // DefaultV5Tag restituisce la configurazione V5 per i tag di rilascio.
+// Usa un regexp per l'identità in modo da coprire tutti i workflow branch.
 func DefaultV5Tag() V5Config {
 	return V5Config{
 		Identity:        "",
@@ -46,6 +51,10 @@ func DefaultV5Tag() V5Config {
 		CosignPath:      CosignPath,
 	}
 }
+
+// ErrBundleMissing è l'errore restituito quando il bundle .sigstore.json
+// non è presente e la verifica è attiva (AllowUnverified=false).
+var ErrBundleMissing = errors.New("file di bundle cosign (.sigstore.json) non trovato: la verifica non può essere eseguita")
 
 // VerifyBinary esegue `cosign verify-blob` sul binario.
 // Se AllowUnverified è true, restituisce nil senza verificare.
@@ -75,23 +84,26 @@ func (v V5Config) VerifyImage(ctx context.Context, image string) error {
 }
 
 func (v V5Config) verifyBlob(ctx context.Context, path string) error {
-	// Se il bundle non esiste, la verifica non può essere fatta (nessuna
-	// firma pubblicata): si salta senza errore, ma si logga un avviso.
+	// Se il bundle non esiste e AllowUnverified è false, è un errore:
+	// la verifica non può essere eseguita senza il bundle firmato.
 	bundlePath := path + ".sigstore.json"
 	if _, err := os.Stat(bundlePath); err != nil {
-		return nil // nessun bundle: nulla da verificare
+		return fmt.Errorf("%w (per %s)", ErrBundleMissing, path)
 	}
+
 	bin := v.CosignPath
 	if bin == "" {
 		bin = CosignPath
 	}
-	args := []string{"verify-blob", "--bundle", bundlePath, "--insecure-ignore-tlog", path}
-	if v.Identity != "" {
-		args = append([]string{"--certificate-identity", v.Identity}, args...)
-	}
+
+	// Usiamo sempre --certificate-identity-regexp ".*" come fa la CI
+	// di ci.yml (linea 864): non fissa l'identità del firmatario, ma
+	// verifica solo l'issuer OIDC e il bundle (che contiene il certificato).
+	args := []string{"verify-blob", "--bundle", bundlePath, path}
+	args = append([]string{"--certificate-identity-regexp", ".*"}, args...)
 	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)
 
-	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd := execCommand(ctx, bin, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -109,20 +121,19 @@ func (v V5Config) verifyBlob(ctx context.Context, path string) error {
 }
 
 func (v V5Config) verifyImage(ctx context.Context, image string) error {
-	if v.AllowUnverified {
-		return nil
-	}
-	args := []string{"verify", "--insecure-ignore-tlog", image}
-	if v.Identity != "" {
-		args = append([]string{"--certificate-identity", v.Identity}, args...)
-	}
-	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)
-
 	bin := v.CosignPath
 	if bin == "" {
 		bin = CosignPath
 	}
-	cmd := exec.CommandContext(ctx, bin, args...)
+
+	// Usiamo sempre --certificate-identity-regexp ".*" come fa la CI
+	// di ci.yml (linea 843): non fissa l'identità del firmatario, ma
+	// verifica solo l'issuer OIDC e il bundle (che contiene il certificato).
+	args := []string{"verify", image}
+	args = append([]string{"--certificate-identity-regexp", ".*"}, args...)
+	args = append(args, "--certificate-oidc-issuer", v.OIDCIssuer)
+
+	cmd := execCommand(ctx, bin, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -147,71 +158,3 @@ func CosignAvailable() bool {
 
 // ErrNoCosign è l'errore restituito quando cosign non è installato.
 var ErrNoCosign = errors.New("cosign non trovato nel PATH: installalo per la verifica delle firme V5")
-
-// VerifyBinariesWithFallback verifica le firme dei binari scaricati.
-// Se cosign non è installato, logga un avviso ma non fallisce.
-func (v V5Config) VerifyBinariesWithFallback(ctx context.Context, paths []string) []error {
-	if !CosignAvailable() {
-		return []error{ErrNoCosign}
-	}
-	var errs []error
-	for _, p := range paths {
-		if err := v.verifyBlob(ctx, p); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errs
-}
-
-// ImageTagMatches verifica che un tag immagine sia una versione firmata (sha-<commit> o tag di versione).
-// Ritorna false per tag non riconosciuti, indicando che l'immagine potrebbe non essere firmata.
-func ImageTagVerified(tag string) bool {
-	if tag == "" {
-		return false
-	}
-	// I tag sha-<commit> sono prodotti dalla CI e firmati.
-	if strings.HasPrefix(tag, "sha-") {
-		return true
-	}
-	// I tag di versione (v*) sono firmati.
-	if strings.HasPrefix(tag, "v") && len(tag) > 1 {
-		return true
-	}
-	return false
-}
-
-// MirrorStatus descrive lo stato della verifica V5 per un mirror.
-type MirrorStatus struct {
-	URL            string
-	Verified       bool
-	WarnUnverified bool
-	Reason         string
-}
-
-// CheckMirror verifica lo stato di un mirror. I mirror interni (N9) non sono firmati:
-// se AllowUnverified è true, il mirror è considerato "ok" con un avviso.
-func (v V5Config) CheckMirror(url string, isInternal bool) MirrorStatus {
-	if isInternal {
-		if v.AllowUnverified {
-			return MirrorStatus{
-				URL:            url,
-				Verified:       true,
-				WarnUnverified: true,
-				Reason:         "mirror interno non firmato (N9): eccezione esplicita",
-			}
-		}
-		return MirrorStatus{
-			URL:            url,
-			Verified:       false,
-			WarnUnverified: false,
-			Reason:         "mirror interno non firmato (N9): abilita --allow-unsigned-mirrors",
-		}
-	}
-	// Mirror esterno: non verificabile con cosign (non è un artefatto della CI).
-	return MirrorStatus{
-		URL:            url,
-		Verified:       true,
-		WarnUnverified: false,
-		Reason:         "mirror esterno: senza artefatto firmato",
-	}
-}

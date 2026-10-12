@@ -101,7 +101,15 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		Repo:          a.Getenv("GITSTACK_REPO"),
 		Ref:           a.Getenv("GITSTACK_REF"),
 		Log:           a.Stdout,
-		V5:            upgrade.DefaultV5Main(),
+	}
+	// V5: configurazione dalla CI (identità e issuer) con override
+	// dal config (cosign_path, allow_unsigned).
+	o.V5 = upgrade.DefaultV5Main()
+	if cfg.V5.CosignPath != "" {
+		o.V5.CosignPath = cfg.V5.CosignPath
+	}
+	if cfg.V5.AllowUnsigned {
+		o.V5.AllowUnverified = true
 	}
 	if *allowUnsigned {
 		o.V5.AllowUnverified = true
