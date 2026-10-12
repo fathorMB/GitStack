@@ -1201,7 +1201,7 @@ func TestM06E2E(t *testing.T) {
 	})
 
 	// --- UI: pagine 05 e 21 sullo stack vero, con le notifiche di alice ---------
-	t.Run("ui_smoke",func(t *testing.T) { e.uiSmoke(t) })
+	t.Run("ui_smoke", func(t *testing.T) { e.uiSmoke(t) })
 
 	// --- C9: conservazione -------------------------------------------------------
 	t.Run("conservazione_e_perdita_di_accesso", func(t *testing.T) {
