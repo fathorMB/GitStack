@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CloseIssueData, CloseIssueErrors, CloseIssueResponses, CreateIssueCommentData, CreateIssueCommentErrors, CreateIssueCommentResponses, CreateIssueData, CreateIssueErrors, CreateIssueResponses, CreateLabelData, CreateLabelErrors, CreateLabelResponses, CreateMilestoneData, CreateMilestoneErrors, CreateMilestoneResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateOrgWebhookData, CreateOrgWebhookErrors, CreateOrgWebhookResponses, CreateRepoMirrorData, CreateRepoMirrorErrors, CreateRepoMirrorResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateRepoWebhookData, CreateRepoWebhookErrors, CreateRepoWebhookResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteIssueCommentData, DeleteIssueCommentErrors, DeleteIssueCommentResponses, DeleteLabelData, DeleteLabelErrors, DeleteLabelResponses, DeleteMilestoneData, DeleteMilestoneErrors, DeleteMilestoneResponses, DeleteNotificationData, DeleteNotificationErrors, DeleteNotificationResponses, DeleteNotificationsData, DeleteNotificationsErrors, DeleteNotificationsResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteOrgWebhookData, DeleteOrgWebhookErrors, DeleteOrgWebhookResponses, DeleteRepoMirrorData, DeleteRepoMirrorErrors, DeleteRepoMirrorResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteRepoWebhookData, DeleteRepoWebhookErrors, DeleteRepoWebhookResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetIssueAttachmentData, GetIssueAttachmentErrors, GetIssueAttachmentResponses, GetIssueData, GetIssueErrors, GetIssueResponses, GetIssueSubscriptionData, GetIssueSubscriptionErrors, GetIssueSubscriptionResponses, GetLabelData, GetLabelErrors, GetLabelResponses, GetMetaData, GetMetaResponses, GetMilestoneData, GetMilestoneErrors, GetMilestoneResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetNotificationData, GetNotificationErrors, GetNotificationPreferencesData, GetNotificationPreferencesErrors, GetNotificationPreferencesResponses, GetNotificationResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetOrgWebhookData, GetOrgWebhookDeliveryData, GetOrgWebhookDeliveryErrors, GetOrgWebhookDeliveryResponses, GetOrgWebhookErrors, GetOrgWebhookResponses, GetRepoMirrorData, GetRepoMirrorErrors, GetRepoMirrorResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetRepoWatchData, GetRepoWatchErrors, GetRepoWatchResponses, GetRepoWebhookData, GetRepoWebhookDeliveryData, GetRepoWebhookDeliveryErrors, GetRepoWebhookDeliveryResponses, GetRepoWebhookErrors, GetRepoWebhookResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserAccessData, GetUserAccessErrors, GetUserAccessResponses, GetUserAccessSourcesData, GetUserAccessSourcesErrors, GetUserAccessSourcesResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListIssueCommentsData, ListIssueCommentsErrors, ListIssueCommentsResponses, ListIssueCommentVersionsData, ListIssueCommentVersionsErrors, ListIssueCommentVersionsResponses, ListIssueEventsData, ListIssueEventsErrors, ListIssueEventsResponses, ListIssuesData, ListIssuesErrors, ListIssuesResponses, ListIssueTemplatesData, ListIssueTemplatesErrors, ListIssueTemplatesResponses, ListIssueVersionsData, ListIssueVersionsErrors, ListIssueVersionsResponses, ListLabelsData, ListLabelsErrors, ListLabelsResponses, ListMilestonesData, ListMilestonesErrors, ListMilestonesResponses, ListNotificationsData, ListNotificationsErrors, ListNotificationsResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListOrgOwnersData, ListOrgOwnersErrors, ListOrgOwnersResponses, ListOrgWebhookDeliveriesData, ListOrgWebhookDeliveriesErrors, ListOrgWebhookDeliveriesResponses, ListOrgWebhooksData, ListOrgWebhooksErrors, ListOrgWebhooksResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepoMirrorRunsData, ListRepoMirrorRunsErrors, ListRepoMirrorRunsResponses, ListRepoMirrorsData, ListRepoMirrorsErrors, ListRepoMirrorsResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListRepoWebhookDeliveriesData, ListRepoWebhookDeliveriesErrors, ListRepoWebhookDeliveriesResponses, ListRepoWebhooksData, ListRepoWebhooksErrors, ListRepoWebhooksResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LockIssueData, LockIssueErrors, LockIssueResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, LookupUsersByIdsData, LookupUsersByIdsErrors, LookupUsersByIdsResponses, MarkAllNotificationsReadData, MarkAllNotificationsReadErrors, MarkAllNotificationsReadResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, ReactivateOrgWebhookData, ReactivateOrgWebhookErrors, ReactivateOrgWebhookResponses, ReactivateRepoWebhookData, ReactivateRepoWebhookErrors, ReactivateRepoWebhookResponses, RedeliverOrgWebhookDeliveryData, RedeliverOrgWebhookDeliveryErrors, RedeliverOrgWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryData, RedeliverRepoWebhookDeliveryErrors, RedeliverRepoWebhookDeliveryResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ReopenIssueData, ReopenIssueErrors, ReopenIssueResponses, ResetRepoWatchData, ResetRepoWatchErrors, ResetRepoWatchResponses, ResolveMentionsData, ResolveMentionsErrors, ResolveMentionsResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchIssuesData, SearchIssuesErrors, SearchIssuesResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetIssueAssigneesData, SetIssueAssigneesErrors, SetIssueAssigneesResponses, SetIssueHiddenData, SetIssueHiddenErrors, SetIssueHiddenResponses, SetIssueLabelsData, SetIssueLabelsErrors, SetIssueLabelsResponses, SetIssueMilestoneData, SetIssueMilestoneErrors, SetIssueMilestoneResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetRepoWatchData, SetRepoWatchErrors, SetRepoWatchResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, SubscribeIssueData, SubscribeIssueErrors, SubscribeIssueResponses, SyncRepoMirrorData, SyncRepoMirrorErrors, SyncRepoMirrorResponses, UnlockIssueData, UnlockIssueErrors, UnlockIssueResponses, UnsubscribeIssueData, UnsubscribeIssueErrors, UnsubscribeIssueResponses, UpdateIssueCommentData, UpdateIssueCommentErrors, UpdateIssueCommentResponses, UpdateIssueData, UpdateIssueErrors, UpdateIssueResponses, UpdateLabelData, UpdateLabelErrors, UpdateLabelResponses, UpdateMilestoneData, UpdateMilestoneErrors, UpdateMilestoneResponses, UpdateNotificationData, UpdateNotificationErrors, UpdateNotificationPreferencesData, UpdateNotificationPreferencesErrors, UpdateNotificationPreferencesResponses, UpdateNotificationResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateOrgWebhookData, UpdateOrgWebhookErrors, UpdateOrgWebhookResponses, UpdateRepoMirrorData, UpdateRepoMirrorErrors, UpdateRepoMirrorResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateRepoWebhookData, UpdateRepoWebhookErrors, UpdateRepoWebhookResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, UploadIssueAttachmentData, UploadIssueAttachmentErrors, UploadIssueAttachmentResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
+import type { AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CloseIssueData, CloseIssueErrors, CloseIssueResponses, CreateIssueCommentData, CreateIssueCommentErrors, CreateIssueCommentResponses, CreateIssueData, CreateIssueErrors, CreateIssueResponses, CreateLabelData, CreateLabelErrors, CreateLabelResponses, CreateMilestoneData, CreateMilestoneErrors, CreateMilestoneResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateOrgWebhookData, CreateOrgWebhookErrors, CreateOrgWebhookResponses, CreateRepoMirrorData, CreateRepoMirrorErrors, CreateRepoMirrorResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateRepoWebhookData, CreateRepoWebhookErrors, CreateRepoWebhookResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteIssueCommentData, DeleteIssueCommentErrors, DeleteIssueCommentResponses, DeleteLabelData, DeleteLabelErrors, DeleteLabelResponses, DeleteMilestoneData, DeleteMilestoneErrors, DeleteMilestoneResponses, DeleteNotificationData, DeleteNotificationErrors, DeleteNotificationResponses, DeleteNotificationsData, DeleteNotificationsErrors, DeleteNotificationsResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteOrgWebhookData, DeleteOrgWebhookErrors, DeleteOrgWebhookResponses, DeleteRepoMirrorData, DeleteRepoMirrorErrors, DeleteRepoMirrorResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteRepoWebhookData, DeleteRepoWebhookErrors, DeleteRepoWebhookResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, EnableRepoPullMirrorData, EnableRepoPullMirrorErrors, EnableRepoPullMirrorResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetIssueAttachmentData, GetIssueAttachmentErrors, GetIssueAttachmentResponses, GetIssueData, GetIssueErrors, GetIssueResponses, GetIssueSubscriptionData, GetIssueSubscriptionErrors, GetIssueSubscriptionResponses, GetLabelData, GetLabelErrors, GetLabelResponses, GetMetaData, GetMetaResponses, GetMilestoneData, GetMilestoneErrors, GetMilestoneResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetNotificationData, GetNotificationErrors, GetNotificationPreferencesData, GetNotificationPreferencesErrors, GetNotificationPreferencesResponses, GetNotificationResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetOrgWebhookData, GetOrgWebhookDeliveryData, GetOrgWebhookDeliveryErrors, GetOrgWebhookDeliveryResponses, GetOrgWebhookErrors, GetOrgWebhookResponses, GetRepoMirrorData, GetRepoMirrorErrors, GetRepoMirrorResponses, GetRepoPullMirrorData, GetRepoPullMirrorErrors, GetRepoPullMirrorResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetRepoWatchData, GetRepoWatchErrors, GetRepoWatchResponses, GetRepoWebhookData, GetRepoWebhookDeliveryData, GetRepoWebhookDeliveryErrors, GetRepoWebhookDeliveryResponses, GetRepoWebhookErrors, GetRepoWebhookResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetUserAccessData, GetUserAccessErrors, GetUserAccessResponses, GetUserAccessSourcesData, GetUserAccessSourcesErrors, GetUserAccessSourcesResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ImportRepositoryData, ImportRepositoryErrors, ImportRepositoryResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListIssueCommentsData, ListIssueCommentsErrors, ListIssueCommentsResponses, ListIssueCommentVersionsData, ListIssueCommentVersionsErrors, ListIssueCommentVersionsResponses, ListIssueEventsData, ListIssueEventsErrors, ListIssueEventsResponses, ListIssuesData, ListIssuesErrors, ListIssuesResponses, ListIssueTemplatesData, ListIssueTemplatesErrors, ListIssueTemplatesResponses, ListIssueVersionsData, ListIssueVersionsErrors, ListIssueVersionsResponses, ListLabelsData, ListLabelsErrors, ListLabelsResponses, ListMilestonesData, ListMilestonesErrors, ListMilestonesResponses, ListNotificationsData, ListNotificationsErrors, ListNotificationsResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListOrgOwnersData, ListOrgOwnersErrors, ListOrgOwnersResponses, ListOrgWebhookDeliveriesData, ListOrgWebhookDeliveriesErrors, ListOrgWebhookDeliveriesResponses, ListOrgWebhooksData, ListOrgWebhooksErrors, ListOrgWebhooksResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepoMirrorRunsData, ListRepoMirrorRunsErrors, ListRepoMirrorRunsResponses, ListRepoMirrorsData, ListRepoMirrorsErrors, ListRepoMirrorsResponses, ListRepoPullMirrorRunsData, ListRepoPullMirrorRunsErrors, ListRepoPullMirrorRunsResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListRepoWebhookDeliveriesData, ListRepoWebhookDeliveriesErrors, ListRepoWebhookDeliveriesResponses, ListRepoWebhooksData, ListRepoWebhooksErrors, ListRepoWebhooksResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LockIssueData, LockIssueErrors, LockIssueResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, LookupUsersByIdsData, LookupUsersByIdsErrors, LookupUsersByIdsResponses, MarkAllNotificationsReadData, MarkAllNotificationsReadErrors, MarkAllNotificationsReadResponses, PauseRepoPullMirrorData, PauseRepoPullMirrorErrors, PauseRepoPullMirrorResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, ReactivateOrgWebhookData, ReactivateOrgWebhookErrors, ReactivateOrgWebhookResponses, ReactivateRepoWebhookData, ReactivateRepoWebhookErrors, ReactivateRepoWebhookResponses, RedeliverOrgWebhookDeliveryData, RedeliverOrgWebhookDeliveryErrors, RedeliverOrgWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryData, RedeliverRepoWebhookDeliveryErrors, RedeliverRepoWebhookDeliveryResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ReopenIssueData, ReopenIssueErrors, ReopenIssueResponses, ResetRepoWatchData, ResetRepoWatchErrors, ResetRepoWatchResponses, ResolveMentionsData, ResolveMentionsErrors, ResolveMentionsResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, ResumeRepoPullMirrorData, ResumeRepoPullMirrorErrors, ResumeRepoPullMirrorResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchIssuesData, SearchIssuesErrors, SearchIssuesResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetIssueAssigneesData, SetIssueAssigneesErrors, SetIssueAssigneesResponses, SetIssueHiddenData, SetIssueHiddenErrors, SetIssueHiddenResponses, SetIssueLabelsData, SetIssueLabelsErrors, SetIssueLabelsResponses, SetIssueMilestoneData, SetIssueMilestoneErrors, SetIssueMilestoneResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetRepoWatchData, SetRepoWatchErrors, SetRepoWatchResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, StopRepoPullMirrorData, StopRepoPullMirrorErrors, StopRepoPullMirrorResponses, SubscribeIssueData, SubscribeIssueErrors, SubscribeIssueResponses, SyncRepoMirrorData, SyncRepoMirrorErrors, SyncRepoMirrorResponses, SyncRepoPullMirrorData, SyncRepoPullMirrorErrors, SyncRepoPullMirrorResponses, UnlockIssueData, UnlockIssueErrors, UnlockIssueResponses, UnsubscribeIssueData, UnsubscribeIssueErrors, UnsubscribeIssueResponses, UpdateIssueCommentData, UpdateIssueCommentErrors, UpdateIssueCommentResponses, UpdateIssueData, UpdateIssueErrors, UpdateIssueResponses, UpdateLabelData, UpdateLabelErrors, UpdateLabelResponses, UpdateMilestoneData, UpdateMilestoneErrors, UpdateMilestoneResponses, UpdateNotificationData, UpdateNotificationErrors, UpdateNotificationPreferencesData, UpdateNotificationPreferencesErrors, UpdateNotificationPreferencesResponses, UpdateNotificationResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateOrgWebhookData, UpdateOrgWebhookErrors, UpdateOrgWebhookResponses, UpdateRepoMirrorData, UpdateRepoMirrorErrors, UpdateRepoMirrorResponses, UpdateRepoPullMirrorData, UpdateRepoPullMirrorErrors, UpdateRepoPullMirrorResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateRepoWebhookData, UpdateRepoWebhookErrors, UpdateRepoWebhookResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, UploadIssueAttachmentData, UploadIssueAttachmentErrors, UploadIssueAttachmentResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -991,6 +991,30 @@ export const createRepository = <ThrowOnError extends boolean = false>(options: 
             type: 'apiKey'
         }],
     url: '/repos',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Crea un repo importandolo da un URL
+ *
+ * «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+ *
+ */
+export const importRepository = <ThrowOnError extends boolean = false>(options: Options<ImportRepositoryData, ThrowOnError>): RequestResult<ImportRepositoryResponses, ImportRepositoryErrors, ThrowOnError> => (options.client ?? client).post<ImportRepositoryResponses, ImportRepositoryErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/import',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -2577,6 +2601,178 @@ export const listRepoMirrorRuns = <ThrowOnError extends boolean = false>(options
             type: 'apiKey'
         }],
     url: '/repos/{owner}/{repo}/mirrors/{mirrorId}/runs',
+    ...options
+});
+
+/**
+ * Legge il mirror in pull di un repo (con il suo stato)
+ *
+ * Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde 404, uno senza `admin` 403. Un repo ha al massimo un mirror in pull. E' l'operazione di stato (MP2, MP4, MP7): origine, intervallo, `lastSyncedAt` (ultimo aggiornamento riuscito), `lastError`, `state` e l'elenco dei ref `diverged` (MP1). Il token non torna mai: `hasToken` dice solo che c'e'. Un repo che non ha mai avuto un mirror in pull risponde 404 `not_found`; un mirror interrotto (MP6) risponde con `state: stopped`.
+ *
+ */
+export const getRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<GetRepoPullMirrorData, ThrowOnError>): RequestResult<GetRepoPullMirrorResponses, GetRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).get<GetRepoPullMirrorResponses, GetRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror',
+    ...options
+});
+
+/**
+ * Modifica intervallo e credenziali del mirror in pull
+ *
+ * Serve `admin` sul repo o l'amministratore dell'installazione. Cambia solo i campi indicati: `intervalSeconds` (da 300 a 86400, MP4), `username` e `token` (il token si sostituisce; stringa vuota toglie la credenziale: l'origine e' poi letta senza). L'origine non si cambia: si interrompe e si riattiva. Su un mirror interrotto: 409 `mirror_stopped`. Un repo archiviato rifiuta con 409 `archived`.
+ *
+ */
+export const updateRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<UpdateRepoPullMirrorData, ThrowOnError>): RequestResult<UpdateRepoPullMirrorResponses, UpdateRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).patch<UpdateRepoPullMirrorResponses, UpdateRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Attiva il mirror in pull su un repo esistente
+ *
+ * «Attiva mirror in pull» (MP3). Serve `admin` sul repo o l'amministratore dell'installazione. Da quel momento il codice del repo e' in sola lettura (MP2: ogni push e' rifiutato con un messaggio che indica l'origine) e solo il mirror aggiorna i ref; su un repo con contenuti vale la copia prudente (MP1: niente cancellazioni ne' sovrascritture, i ref che divergono sono segnati `diverged`). `url` e' `https://` senza credenziali nell'indirizzo (MP5), controllata con la policy di uscita (C8): 422 `url_not_allowed` (`details.fields.url`). `username` e `token` sono facoltativi; il token e' cifrato come quello dei mirror in push e non torna mai. Parte subito con un primo aggiornamento. Un repo che ha gia' un mirror in pull attivo (anche in pausa): 409 `conflict`; uno interrotto si riattiva con questa stessa operazione. Un repo archiviato rifiuta con 409 `archived` (R10). Un indirizzo uguale a quello di un mirror in push del repo: 409 `conflict` (MP6). Senza chiave dei segreti: 503 `mirror_secrets_unavailable`.
+ *
+ */
+export const enableRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<EnableRepoPullMirrorData, ThrowOnError>): RequestResult<EnableRepoPullMirrorResponses, EnableRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).post<EnableRepoPullMirrorResponses, EnableRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Sincronizza ora il mirror in pull
+ *
+ * «Sincronizza ora» (MP4). Serve `admin` sul repo o l'amministratore dell'installazione. Mette l'aggiornamento in coda subito e azzera i tentativi in corso: risponde 202 e lo esegue il worker; si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. Un aggiornamento alla volta: se ce n'e' uno in corso la richiesta e' idempotente. Un mirror in pausa risponde 409 `mirror_paused` (prima si riprende), uno interrotto 409 `mirror_stopped`.
+ *
+ */
+export const syncRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<SyncRepoPullMirrorData, ThrowOnError>): RequestResult<SyncRepoPullMirrorResponses, SyncRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).post<SyncRepoPullMirrorResponses, SyncRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror/sync',
+    ...options
+});
+
+/**
+ * Mette in pausa il mirror in pull
+ *
+ * Pausa (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Ferma gli aggiornamenti (anche «Sincronizza ora») lasciando il repo in sola lettura: `state: paused`. Idempotente. Su un mirror interrotto: 409 `mirror_stopped`.
+ *
+ */
+export const pauseRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<PauseRepoPullMirrorData, ThrowOnError>): RequestResult<PauseRepoPullMirrorResponses, PauseRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).post<PauseRepoPullMirrorResponses, PauseRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror/pause',
+    ...options
+});
+
+/**
+ * Riprende il mirror in pull
+ *
+ * Riprendi (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Il mirror torna `pending` e si aggiorna subito. Idempotente su un mirror non in pausa. Su un mirror interrotto: 409 `mirror_stopped`.
+ *
+ */
+export const resumeRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<ResumeRepoPullMirrorData, ThrowOnError>): RequestResult<ResumeRepoPullMirrorResponses, ResumeRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).post<ResumeRepoPullMirrorResponses, ResumeRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror/resume',
+    ...options
+});
+
+/**
+ * Interrompe il mirror in pull
+ *
+ * Interrompi (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Il corpo porta il nome del repo riscritto come conferma (`confirm`, come G8): diverso da `name`, 422 `confirmation_mismatch`. Il repo diventa normale e scrivibile, le credenziali sono cancellate, il registro e i ref `diverged` si conservano; il mirror resta leggibile con `state: stopped` e si puo' riattivare con `enableRepoPullMirror`. Idempotente su un mirror gia' interrotto.
+ *
+ */
+export const stopRepoPullMirror = <ThrowOnError extends boolean = false>(options: Options<StopRepoPullMirrorData, ThrowOnError>): RequestResult<StopRepoPullMirrorResponses, StopRepoPullMirrorErrors, ThrowOnError> => (options.client ?? client).post<StopRepoPullMirrorResponses, StopRepoPullMirrorErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror/stop',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Registro delle ultime esecuzioni del mirror in pull
+ *
+ * Serve `admin` sul repo o l'amministratore dell'installazione. Le ultime esecuzioni (al massimo 50, 30 giorni, MP4), dalla piu' recente: esito, errore ripulito da credenziali e, per ogni ref, cosa e' successo. Il registro resta dopo l'interruzione (MP6). Paginazione come `GET /repos`.
+ *
+ */
+export const listRepoPullMirrorRuns = <ThrowOnError extends boolean = false>(options: Options<ListRepoPullMirrorRunsData, ThrowOnError>): RequestResult<ListRepoPullMirrorRunsResponses, ListRepoPullMirrorRunsErrors, ThrowOnError> => (options.client ?? client).get<ListRepoPullMirrorRunsResponses, ListRepoPullMirrorRunsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pull-mirror/runs',
     ...options
 });
 

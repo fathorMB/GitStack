@@ -99,6 +99,9 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p("  %-28s %s (%s)", "api (gateway /healthz)", api, r.APIDetail)
 	p("")
 	p("Ultimo backup: %s", r.LastBackup)
+	if r.BackupUpload != "" {
+		p("Backup su S3: %s", r.BackupUpload)
+	}
 	p("")
 	switch {
 	case r.ClusterError != "":

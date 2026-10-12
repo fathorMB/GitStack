@@ -4,13 +4,21 @@
 > mirrors, and diagnostics of a GitStack instance deployed on a single Linux host with k3s.
 > It is written for operators who manage the machine directly (for example the
 > `homehub` appliance described in M-08 [c_8458909a21d9035f]).
+>
+> **Supported systems:** Ubuntu Server 22.04 and 24.04 LTS, Pop!_OS 22.04 and 24.04 (all amd64). Other systems require `--force`.
 
 ## Installation
 
 ### Prerequisites
 
-GitStack runs on a clean Ubuntu Server 24.04 LTS x86_64 machine.
-Other distributions and WSL2 arrive with M-08.
+GitStack runs on a clean machine with one of the following supported systems (all amd64):
+
+- Ubuntu Server 22.04 LTS
+- Ubuntu Server 24.04 LTS
+- Pop!_OS 22.04
+- Pop!_OS 24.04
+
+Other distributions and WSL2 are not yet supported.
 
 | Profile | CPU | RAM | Disk |
 |---|---|---|---|
@@ -279,6 +287,99 @@ rsync -avz gitstack@homehub:/var/backups/gitstack/gitstack-backup-* \
 > **Keep the encryption key separate from the archive.** Store the key on a
 > different disk or off-site; never put it in the backup destination folder.
 > An encrypted archive without the key is unrecoverable.
+
+### Backup to S3 (N7)
+
+In addition to the local copy, every backup can be uploaded to any
+S3-compatible storage (AWS S3, MinIO, Backblaze B2, Wasabi, a NAS with an S3
+API). The daily backup first creates the archive locally and then uploads it.
+
+**Archives uploaded to S3 are always encrypted** with the same key as
+`--key-file`: a configuration without a key file is refused (by
+`gitstack config set backup.s3` and by `install.sh`), and
+`gitstack backup` never uploads an unencrypted archive. With S3
+configured, the local archive is encrypted too, with the key from
+`backup.s3.key_file`, so the timer needs no arguments.
+
+**Configure it after installation:**
+
+```sh
+export GITSTACK_S3_ACCESS_KEY=... GITSTACK_S3_SECRET_KEY=...
+openssl rand -base64 32 | sudo tee /etc/gitstack/backup.key >/dev/null
+sudo chmod 0600 /etc/gitstack/backup.key
+sudo -E gitstack config set backup.s3 \
+  --endpoint s3.eu-central-003.backblazeb2.com --bucket gitstack-backups \
+  --prefix prod --region eu-central-003 --key-file /etc/gitstack/backup.key
+```
+
+**Or at install time** (the access keys only from the environment, never as
+arguments, so they do not show up in `ps`):
+
+```sh
+sudo GITSTACK_S3_ACCESS_KEY=... GITSTACK_S3_SECRET_KEY=... ./deploy/install.sh \
+  --s3-endpoint s3.example.com --s3-bucket gitstack-backups \
+  --s3-key-file /etc/gitstack/backup.key
+```
+
+The settings live in the `backup.s3` section of
+`/etc/gitstack/config.yaml` (owner root, mode `0600`, the file is
+refused otherwise): `endpoint` (host[:port], or a URL with `http://` for a
+MinIO without TLS), `bucket`, `prefix`, `region` (default `us-east-1`),
+`access_key`, `secret_key`, `key_file`, `retention` and `notify_command`.
+`gitstack config set backup.s3` checks the bucket before writing
+(`--no-check` skips it) and `--remove` drops the section. The access keys
+are never printed or logged: errors from the S3 client are scrubbed before they
+reach the terminal, `gitstack status`, the state file or a notification.
+The archive contains a copy of `/etc/gitstack/`, which holds the keys:
+that is one more reason the archive is always encrypted.
+
+**Retention on S3** is separate from the local one:
+
+| `backup.s3.retention` | Effect |
+|---|---|
+| (not set) | keep the newest **30** archives on S3 |
+| a number `N` | keep the newest N archives (and remove the older ones with their `.sha256`) |
+| `bucket` | never delete anything: leave it to the bucket's lifecycle rules |
+
+Only objects named `gitstack-backup-*.tar.gz[.enc]` under the prefix are
+considered. The local retention (`backup.retention`, default 7) is unchanged.
+
+**If the upload fails** the local backup is still valid and kept. The command
+exits with code `10` (so `systemctl status gitstack-backup.service` shows the
+failure), `gitstack status` prints `Backup su S3: ULTIMO CARICAMENTO FALLITO`
+with the cause (JSON: `backup_upload_failed`), and, if set,
+`backup.s3.notify_command` is run with `sh -c` and these variables:
+`GITSTACK_BACKUP_EVENT=s3-upload-failed`, `GITSTACK_BACKUP_ARCHIVE`,
+`GITSTACK_BACKUP_ERROR`, `GITSTACK_HOST`. Example, with mail:
+
+```yaml
+backup:
+  s3:
+    notify_command: 'echo "$GITSTACK_BACKUP_ERROR" | mail -s "GitStack: backup S3 fallito" admin@example.com'
+```
+
+(The administrators' notification does not go through the core internal API:
+the admin tool runs on the host, outside the cluster, and has no credential
+for it; `notify_command` reaches whatever channel the administrators already
+use.)
+
+**Restore on a new machine (N3):** install the same GitStack version with
+`install.sh`, giving the same `--s3-*` options and the key file, then:
+
+```sh
+sudo gitstack restore --from s3            # the newest archive on S3
+sudo gitstack restore --from s3 gitstack-backup-20261006T143000Z-sha-f4f3a2b.tar.gz.enc
+```
+
+If you ran `gitstack backup --key-file X` with a key different from
+`backup.s3.key_file`, the uploaded archive is encrypted with X (a warning is
+printed at upload time): `restore --from s3` then needs `--key-file X`, because
+without it the key from `backup.s3.key_file` is used and fails.
+
+The archive is downloaded into a temporary folder inside the backup
+destination (mode `0700`), verified against its `.sha256`, restored and
+removed.
+
 ---
 
 ## Restore
@@ -344,7 +445,7 @@ services.
 | `3` | Configuration file missing or unreadable |
 | `4` | Cannot reach the Kubernetes cluster |
 | `5` | Requires root (re-run with `sudo`) |
-| `6` | Restore refused — version mismatch, corrupted archive, or encrypted archive without `--key-file` |
+| `6` | Restore refused — version mismatch, corrupted archive, wrong checksum, or encrypted archive without `--key-file` |
 | `70` | Unexpected error |
 
 ---
@@ -625,6 +726,11 @@ Ultimo backup: ultimo successo: 2026-10-06 15:46:27 (/var/backups/gitstack/gitst
 Stato: sano
 ```
 
+With S3 backup configured, a line `Backup su S3: ...` shows the result of the
+last upload (`ultimo successo` or `ULTIMO CARICAMENTO FALLITO` with the cause).
+The overall health line does not depend on it: a failed upload is shown, and
+the backup service exits with code `10`.
+
 **JSON mode** (`--json`): produces structured output for scripting:
 
 ```sh
@@ -677,6 +783,8 @@ Both need `sudo` on internal CA because they read/write under
 | `gitstack backup --key-file KEYFILE` | yes | Same, encrypted with AES-256-GCM |
 | `gitstack restore ARCHIVE` | yes | Restore an archive (same version only) |
 | `gitstack restore --key-file KEYFILE ARCHIVE` | yes | Restore an encrypted archive |
+| `gitstack restore --from s3 [NAME]` | yes | Download from S3 (newest, or NAME) and restore |
+| `gitstack config set backup.s3 --endpoint E --bucket B --key-file F` | yes | Configure the encrypted S3 copy of backups |
 | `gitstack upgrade` | yes | Upgrade with preventive backup and automatic rollback |
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
@@ -711,6 +819,8 @@ so it fails as a non-root user with a permission error.
 | `6` | Refused: incompatible version, corrupted archive, or missing key |
 | `7` | Upgrade rolled back automatically |
 | `8` | Upgrade failed and rollback also failed — manual intervention needed |
+| `9` | Data restored but the instance does not answer through the Ingress |
+| `10` | Local backup done, upload to S3 failed (the local archive is valid) |
 | `70` | Unexpected error (backup failure, network, unrecoverable) |
 
 ### Configuration files
@@ -720,6 +830,158 @@ so it fails as a non-root user with a permission error.
 | `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
 | `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
+
+---
+
+## V5 — Catena di fornitura: firme e SBOM
+
+GitStack firma le immagini container, il chart Helm e i binari della CLI `gs`
+con Sigstore/cosign (firma keyless tramite OIDC di GitHub Actions). Gli SBOM
+sono generati con syft (formato SPDX).
+
+### Come verificare una firma
+
+#### Prerequisiti
+
+```sh
+# Installa cosign (Sigstore) e syft (anchore)
+# macOS (Homebrew):
+brew install sigstore/cosign/cosign
+brew install anchore/syft/syft
+# Linux: scarica dal sito ufficiale di Sigstore e anchore.
+```
+
+#### Identità e issuer attesi
+
+| Parametro | Valore |
+|---|---|
+| Identity del certificato (main) | `https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main` |
+| Identity del certificato (tag v*) | `^https://github.com/fathorMB/GitStack/\.github/workflows/ci\.yml@refs/tags/v.*$` |
+| OIDC Issuer | `https://token.actions.githubusercontent.com` |
+
+> **Nota:** l'identity è l'URL del workflow GitHub Actions (`github.com/<owner>/<repo>/.github/workflows/ci.yml@refs/heads/main`), **non** l'issuer. L'issuer è `https://token.actions.githubusercontent.com`.
+
+#### Verifica di un'immagine container
+
+```sh
+# Immagine: ghcr.io/<owner>/gitstack-gateway:sha-<commit-sha>
+IMG="ghcr.io/fathormb/gitstack-gateway:sha-<commit-sha>"
+
+# Verifica la firma keyless: identity (URL del workflow) + issuer OIDC.
+cosign verify \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "${IMG}"
+```
+
+Per i tag, usare `--certificate-identity-regexp` con:
+`^https://github.com/fathorMB/GitStack/\.github/workflows/ci\.yml@refs/tags/v.*$`
+
+#### Verifica di un binario
+
+```sh
+# Scarica il binario e il suo bundle dalla release GitHub.
+# La release si chiama "sha-<commit-sha>" e contiene i file con estensione .sigstore.json.
+
+curl -fsSL -o gitstack-linux-amd64 \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64"
+curl -fsSL -o gitstack-linux-amd64.sigstore.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64.sigstore.json"
+
+# Verifica la firma del blob: usa --bundle con il file .sigstore.json.
+cosign verify-blob \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --bundle gitstack-linux-amd64.sigstore.json \
+  gitstack-linux-amd64
+```
+
+#### Verifica del chart Helm
+
+```sh
+# Scarica il chart firmato dalla release.
+curl -fsSL -o gitstack-0.1.0.tgz \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz"
+curl -fsSL -o gitstack-0.1.0.tgz.sigstore.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz.sigstore.json"
+
+# Verifica la firma del blob chart: usa --bundle con il file .sigstore.json.
+cosign verify-blob \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --bundle gitstack-0.1.0.tgz.sigstore.json \
+  gitstack-0.1.0.tgz
+```
+
+### Verifica degli SBOM
+
+Gli SBOM (Software Bill of Materials) in formato SPDX sono caricati nella release
+GitHub e disponibili come artifact del workflow di firma.
+
+```sh
+# SBOM di un'immagine: scarica dalla release o dall'artifact del workflow.
+curl -fsSL -o gitstack-gateway-sbom.spdx.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-gateway-sbom.spdx.json"
+
+# Controlla il contenuto: elencare i pacchetti rilevati.
+syft gitstack-gateway-sbom.spdx.json --quiet -o table
+
+# SBOM degli altri componenti (tutti nella release):
+# - gitstack-identity-sbom.spdx.json
+# - gitstack-git-sbom.spdx.json
+# - gitstack-core-sbom.spdx.json
+# - gitstack-web-sbom.spdx.json
+# - gitstack-chart-sbom.spdx.json
+# - gitstack-binary-sbom.spdx.json
+# - gs-binary-sbom.spdx.json
+```
+
+### Attestazioni delle immagini
+
+Ogni immagine ha un'attestazione che collega l'SBOM all'immagine stessa
+(standard Sigstore in-toto). Si verifica con `cosign verify-attestation`:
+
+```sh
+# Verifica l'attestazione di un'immagine.
+cosign verify-attestation \
+  --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --type spdxjson \
+  ghcr.io/fathormb/gitstack-gateway:sha-<commit-sha>
+```
+
+Per i tag, usare `--certificate-identity-regexp` con:
+`^https://github.com/fathorMB/GitStack/\.github/workflows/ci\.yml@refs/tags/v.*$`
+
+### File nella release GitHub
+
+La release `sha-<commit-sha>` contiene:
+
+| Tipo | File |
+|---|---|
+| Binari | `gitstack-linux-amd64`, `gitstack-linux-amd64.sha256`, `gs_linux_amd64`, … |
+| Firme blob | `*.sigstore.json` (uno per binario/chart/checksum) |
+| SBOM immagini | `gitstack-gateway-sbom.spdx.json`, `gitstack-identity-sbom.spdx.json`, `gitstack-git-sbom.spdx.json`, `gitstack-core-sbom.spdx.json`, `gitstack-web-sbom.spdx.json` |
+| SBOM chart | `gitstack-chart-sbom.spdx.json` |
+| SBOM binario | `gitstack-binary-sbom.spdx.json`, `gs-binary-sbom.spdx.json` |
+| Chart | `gitstack-<versione>.tgz`, `gitstack-<versione>.tgz.sigstore.json` |
+
+### Flusso di firma
+
+1. I job `registry`, `admin-binary` e `gs-binaries` pubblicano immagini, chart e
+   binari nella release GitHub (`sha-<commit-sha>`).
+2. Il job `sign` (dipende da tutti e tre) scarica gli asset, genera gli SBOM
+   con syft e firma con cosign:
+   - Immagini: `cosign attest --type spdxjson` (SBOM come attestazione in-toto)
+     + `cosign sign` (firma keyless OIDC).
+   - Chart: `cosign sign-blob --bundle` (firma del file .tgz, output `.sigstore.json`).
+   - Binari: `cosign sign-blob --bundle` (firma di ogni binary/checksum).
+3. Firme (.sigstore.json), SBOM (.spdx.json) e file originali vengono caricati
+   nella release GitHub con `gh release upload --clobber`.
+4. Step di verifica interna: `cosign verify` su immagine,
+   `cosign verify-blob` su chart e binario, tutti senza `|| true`.
+
+*V5 — Catena di fornitura (GIT-208)*
 
 ---
 

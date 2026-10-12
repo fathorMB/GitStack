@@ -98,7 +98,12 @@ ok "admin ($ME)"
 # --- 1. utente agente ---------------------------------------------------------
 AGENT_ID="$(ok_only "$GS" api "/users/$AGENT" --jq .id)"
 if [ -z "$AGENT_ID" ]; then
-  out="$("$GS" api -X POST /users -f "username=$AGENT" -f kind=agent -f "displayName=Agente di prova"     -f "email=$AGENT_EMAIL" --jq .id 2>&1)" || fail agente "creazione di $AGENT: $out"
+  out="$("$GS" api -X POST /users \
+    -f "username=$AGENT" \
+    -f kind=agent \
+    -f "displayName=Agente di prova" \
+    -f "email=$AGENT_EMAIL" \
+    --jq .id 2>&1)" || fail agente "creazione di $AGENT: $out"
   AGENT_ID="$out"
 else
   kind="$(ok_only "$GS" api "/users/$AGENT" --jq .kind)"
@@ -107,7 +112,9 @@ else
   # commit risultano di nessuno (o della persona, se usa l'identita' globale).
   have_email="$(ok_only "$GS" api "/users/$AGENT" --jq '.email // ""')"
   if [ -z "$have_email" ]; then
-    out="$("$GS" api -X PATCH "/users/$AGENT" -f "email=$AGENT_EMAIL" --jq .id 2>&1)"       || fail agente "email di $AGENT: $out"
+    out="$("$GS" api -X PATCH "/users/$AGENT" \
+      -f "email=$AGENT_EMAIL" \
+      --jq .id 2>&1)" || fail agente "email di $AGENT: $out"
   fi
 fi
 EMAIL_NOW="$(ok_only "$GS" api "/users/$AGENT" --jq '.email // ""')"

@@ -132,6 +132,10 @@ type Current struct {
 	Session sessions.Session
 	// MustChange: la password dell'utente va cambiata prima di altre operazioni.
 	MustChange bool
+	// Scopes e TokenID: solo per le richieste con token personale (identità
+	// firmata dal gateway); vuoti per le sessioni.
+	Scopes  []string
+	TokenID string
 }
 
 // Session risolve il valore del cookie nella sessione e nell'utente
