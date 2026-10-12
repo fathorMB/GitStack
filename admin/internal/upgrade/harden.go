@@ -165,24 +165,28 @@ func (o *Options) hardenK3s(ctx context.Context, p *hardenPlan, res *Result) err
 			return fail("dopo il riavvio di k3s", err, nil)
 		}
 		if p.encEnable {
-			out, err := o.Runner.Run(ctx, nil, "k3s", "secrets-encrypt", "status")
-			if err != nil || !strings.Contains(string(out), "Encryption Status: Enabled") {
-				if err == nil {
-					err = errors.New("«k3s secrets-encrypt status» non dichiara la cifratura attiva")
-				}
+			if out, err := o.verifyEncryption(ctx); err != nil {
 				return fail("verifica della cifratura", err, out)
 			}
-			// Da qui la cifratura è attiva: non si torna indietro togliendo il
-			// flag (i Secret nuovi sarebbero illeggibili). Una rotazione non
-			// riuscita si segnala, non si annulla.
-			o.logf("==> Ricifro i Secret già presenti (k3s secrets-encrypt rotate-keys)")
-			if out, err := o.Runner.Run(ctx, nil, "k3s", "secrets-encrypt", "rotate-keys"); err != nil {
-				res.add("ATTENZIONE: la cifratura dei Secret è attiva, ma la ricifratura di quelli esistenti non è riuscita (%v: %s). Rilancia «sudo k3s secrets-encrypt rotate-keys» e controlla con «sudo k3s secrets-encrypt status».", err, tail(string(out)))
-			} else if err := o.waitHealthy(ctx, o.timeout()); err != nil {
-				return fmt.Errorf("dopo la rotazione delle chiavi: %w", err)
+			if err := o.rotateSecrets(ctx, res); err != nil {
+				return err
 			}
 		}
 		res.add("k3s: kubeconfig a 600 e cifratura dei Secret attiva (unità %s aggiornata; copia precedente in %s.pre-hardening).", p.unitPath, p.unitPath)
+	} else if p.encEnable {
+		// L'unità è già a posto: l'ha riscritta lo script di k3s durante
+		// questo stesso upgrade (K3sInstallExec) e k3s è già ripartito con la
+		// cifratura. Restano la verifica e la ricifratura dei Secret che erano
+		// in chiaro. Senza rollback automatico: k3s è già alla versione nuova.
+		o.logf("==> Cifratura dei Secret: verifica e ricifratura dopo l'aggiornamento di k3s")
+		if out, err := o.verifyEncryption(ctx); err != nil {
+			o.logf("!! verifica della cifratura: %v: %s", err, tail(string(out)))
+			return fmt.Errorf("verifica della cifratura dopo l'aggiornamento di k3s: %w (nessun rollback automatico dell'unità: k3s è già alla versione nuova, vedi «Hardening di k3s» in docs/operations.md)", err)
+		}
+		if err := o.rotateSecrets(ctx, res); err != nil {
+			return err
+		}
+		res.add("k3s: cifratura dei Secret attiva (abilitata dall'aggiornamento di k3s; Secret esistenti ricifrati).")
 	}
 	// k3s riscrive il kubeconfig al riavvio col modo dell'unità; se non si è
 	// riavviato (o il file è stato allargato dopo) lo si porta a 600 qui.
@@ -193,6 +197,33 @@ func (o *Options) hardenK3s(ctx context.Context, p *hardenPlan, res *Result) err
 			}
 			res.add("k3s: %s portato a 600.", p.kubeconfig)
 		}
+	}
+	return nil
+}
+
+// verifyEncryption chiede a k3s se la cifratura dei Secret è attiva.
+func (o *Options) verifyEncryption(ctx context.Context) ([]byte, error) {
+	out, err := o.Runner.Run(ctx, nil, "k3s", "secrets-encrypt", "status")
+	if err != nil {
+		return out, err
+	}
+	if !strings.Contains(string(out), "Encryption Status: Enabled") {
+		return out, errors.New("«k3s secrets-encrypt status» non dichiara la cifratura attiva")
+	}
+	return out, nil
+}
+
+// rotateSecrets ricifra i Secret già presenti. Da qui la cifratura è attiva:
+// non si torna indietro togliendo il flag (i Secret nuovi sarebbero
+// illeggibili). Una rotazione non riuscita si segnala, non si annulla.
+func (o *Options) rotateSecrets(ctx context.Context, res *Result) error {
+	o.logf("==> Ricifro i Secret già presenti (k3s secrets-encrypt rotate-keys)")
+	if out, err := o.Runner.Run(ctx, nil, "k3s", "secrets-encrypt", "rotate-keys"); err != nil {
+		res.add("ATTENZIONE: la cifratura dei Secret è attiva, ma la ricifratura di quelli esistenti non è riuscita (%v: %s). Rilancia «sudo k3s secrets-encrypt rotate-keys» e controlla con «sudo k3s secrets-encrypt status».", err, tail(string(out)))
+		return nil
+	}
+	if err := o.waitHealthy(ctx, o.timeout()); err != nil {
+		return fmt.Errorf("dopo la rotazione delle chiavi: %w", err)
 	}
 	return nil
 }

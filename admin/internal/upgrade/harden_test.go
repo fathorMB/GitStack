@@ -80,6 +80,13 @@ type hardenRunner struct {
 	failState  string // sottocomando systemctl che fallisce ("restart")
 	notEnabled bool   // `status` non dichiara la cifratura attiva
 	restarts   int
+
+	// Aggiornamento di k3s: lo script di installazione riscrive l'unità col
+	// nuovo K3sInstallExec e k3s riparte (come fa lo script vero).
+	installed  string // versione di k3s in esecuzione
+	unitPath   string
+	kubeconfig string
+	k3sUpdated bool
 }
 
 func (r *hardenRunner) Run(ctx context.Context, env []string, name string, args ...string) ([]byte, error) {
@@ -100,11 +107,36 @@ func (r *hardenRunner) Run(ctx context.Context, env []string, name string, args 
 			}
 		}
 		return nil, nil
+	case "sh":
+		r.events = append(r.events, "k3s-install")
+		if !slices.Contains(r.w.cl.calls, "pg_dump") {
+			r.events = append(r.events, "ERRORE: k3s prima del backup")
+		}
+		b, err := os.ReadFile(r.unitPath)
+		if err != nil {
+			return nil, err
+		}
+		out, _, _, err := HardenedUnit(string(b))
+		if err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(r.unitPath, []byte(out), 0o644); err != nil { //nolint:gosec // unità di prova
+			return nil, err
+		}
+		if err := os.Chmod(r.kubeconfig, 0o600); err != nil {
+			return nil, err
+		}
+		r.installed = r.w.k3sFile
+		r.k3sUpdated = true
+		return nil, nil
 	case "k3s":
+		if args[0] == "--version" {
+			return []byte("k3s version " + r.installed + " (deadbeef)"+string(rune(10))), nil
+		}
 		if args[0] == "secrets-encrypt" {
 			r.events = append(r.events, "k3s "+strings.Join(args, " "))
 			if args[1] == "status" {
-				if r.notEnabled {
+				if r.notEnabled || !r.k3sUpdated && r.installed != "" {
 					return []byte("Encryption Status: Disabled\n"), nil
 				}
 				return []byte("Encryption Status: Enabled\nCurrent Rotation Stage: start\n"), nil
@@ -288,4 +320,68 @@ func TestUpgrade_UnitaNonRiconosciuta_Rifiutata(t *testing.T) {
 		t.Error("modifiche su un'unità non riconosciuta")
 	}
 	w.assertUntouched()
+}
+
+// newHardenK3sWorld: k3s da aggiornare (patch) e unità vecchia 644 senza cifratura.
+func newHardenK3sWorld(t *testing.T) (*world, *hardenRunner, string, string) {
+	t.Helper()
+	w, r, unitPath, kc := newHardenWorld(t, oldUnit, 0o644)
+	w.k3sFile = "v1.36.5+k3s1"
+	r.installed = "v1.36.4+k3s1"
+	r.unitPath, r.kubeconfig = unitPath, kc
+	return w, r, unitPath, kc
+}
+
+// Caso più comune: lo stesso upgrade aggiorna k3s. Lo script di k3s riscrive
+// l'unità con --secrets-encryption e 600, ma i Secret già presenti restano in
+// chiaro finché non si verifica e si ricifra: l'hardening non può saltarlo.
+func TestUpgrade_HardeningConAggiornamentoK3s(t *testing.T) {
+	w, r, unitPath, kc := newHardenK3sWorld(t)
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	want := []string{"k3s-install", "k3s secrets-encrypt status", "k3s secrets-encrypt rotate-keys"}
+	if !slices.Equal(r.events, want) {
+		t.Errorf("eventi: %v, attesi %v", r.events, want)
+	}
+	if slices.Contains(r.events, "systemctl restart k3s") {
+		t.Error("restart in più: k3s è già ripartito con lo script")
+	}
+	if u := readFile(t, unitPath); strings.Contains(u, "644") || !strings.Contains(u, "--secrets-encryption") {
+		t.Errorf("unità:\n%s", u)
+	}
+	assertKubeconfig600(t, kc)
+	if !w.helm.upgraded {
+		t.Error("il chart non è stato aggiornato")
+	}
+	if res.K3sFrom != "v1.36.4+k3s1" || res.K3sTo != "v1.36.5+k3s1" {
+		t.Errorf("k3s: %q → %q", res.K3sFrom, res.K3sTo)
+	}
+	if !strings.Contains(strings.Join(res.Summary, "\n"), "cifratura dei Secret attiva") {
+		t.Errorf("riepilogo: %v", res.Summary)
+	}
+}
+
+// Dopo l'aggiornamento di k3s lo status non dice Enabled: l'upgrade si ferma
+// prima del chart, senza rollback automatico dell'unità.
+func TestUpgrade_HardeningConAggiornamentoK3s_CifraturaNonAttiva(t *testing.T) {
+	w, r, unitPath, _ := newHardenK3sWorld(t)
+	r.notEnabled = true
+	res, err := Run(context.Background(), w.o)
+	if err == nil || res.Outcome != Failed {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if w.helm.upgraded {
+		t.Error("helm upgrade dopo una cifratura non attiva")
+	}
+	if slices.Contains(r.events, "k3s secrets-encrypt rotate-keys") {
+		t.Error("rotate-keys senza cifratura attiva")
+	}
+	if u := readFile(t, unitPath); !strings.Contains(u, "--secrets-encryption") {
+		t.Error("l'unità non va rimessa com'era dopo l'aggiornamento di k3s")
+	}
+	if res.BackupPath == "" || !strings.Contains(strings.Join(res.Summary, "\n"), "docs/operations.md") {
+		t.Errorf("riepilogo: %v", res.Summary)
+	}
 }

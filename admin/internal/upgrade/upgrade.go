@@ -537,12 +537,22 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	// k3s (l'installer riscrive l'unità) e prima di GitStack.
 	if hp.needed() {
 		if k3s.Needed() {
-			// L'unità è stata riscritta dallo script di k3s: si ripianifica.
-			if hp, err = o.planHarden(); err != nil {
+			// L'unità è stata riscritta dallo script di k3s (K3sInstallExec):
+			// si ripianifica sul file com'è ora, ma l'esigenza di cifratura è
+			// quella del piano iniziale. Se la cifratura mancava prima, va
+			// comunque verificata e i Secret in chiaro ricifrati.
+			needEnc := hp.encEnable
+			re, perr := o.planHarden()
+			if perr != nil {
 				res.Outcome = Failed
-				res.Reason = err.Error()
-				return res, err
+				res.Reason = perr.Error()
+				return res, perr
 			}
+			if re == nil {
+				re = &hardenPlan{unitPath: hp.unitPath, kubeconfig: hp.kubeconfig}
+			}
+			re.encEnable = re.encEnable || needEnc
+			hp = re
 		}
 		if hp.needed() {
 			if err := o.hardenK3s(ctx, hp, res); err != nil {

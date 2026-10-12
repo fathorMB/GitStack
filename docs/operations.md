@@ -817,6 +817,17 @@ the requested version (`--dry-run` shows the plan: "Hardening di k3s"):
    Once the encryption is active the flag is **not** removed automatically:
    Secrets written after that would become unreadable.
 
+**When the same upgrade also updates k3s** (the usual case): the k3s installer
+script rewrites `k3s.service` itself with the new arguments (mode `600`,
+`--secrets-encryption`) and restarts k3s. `gitstack upgrade` then does only the
+encryption phase: `k3s secrets-encrypt status` must say `Enabled`, then
+`rotate-keys` re-encrypts the Secrets that were in plain text, before GitStack
+itself is updated. If `status` does not say `Enabled`, the upgrade stops before
+the chart (exit code `70`, the preventive backup is printed). There is **no
+automatic rollback of the unit** in this case, because k3s is already at the new
+version (see "Rolling back k3s"): fix the cause with `journalctl -u k3s`, check
+`sudo k3s secrets-encrypt status`, then run `sudo gitstack upgrade` again.
+
 If `rotate-keys` fails, encryption is active for new writes but the old Secrets are
 still plain: run `sudo k3s secrets-encrypt rotate-keys` again and check
 `k3s secrets-encrypt status` (`Current Rotation Stage: reencrypt_finished`).
