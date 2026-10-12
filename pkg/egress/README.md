@@ -9,6 +9,7 @@ policy, err := egress.NewPolicy(egress.Config{
     Allow:        cfg.Allow,        // egress.allow del chart
     Deny:         cfg.Deny,         // egress.deny
     ClusterCIDRs: cfg.ClusterCIDRs, // egress.clusterCIDRs (default k3s)
+    NodeAddresses: cfg.NodeAddresses, // indirizzi del nodo (status.hostIP)
 })
 client := egress.NewClient(policy, egress.Options{})
 resp, err := client.Post(url, "application/json", body)
@@ -80,6 +81,15 @@ Sempre, senza che nessuna lista dell'amministratore possa sbloccarle:
 - i CIDR del cluster (`clusterCIDRs`; default k3s: pod `10.42.0.0/16`,
   servizi `10.43.0.0/16`). Un elenco vuoto torna ai default.
 
+- gli indirizzi del nodo (`NodeAddresses`: `status.hostIP` del pod, `egress.nodeAddresses`,
+  gli IPv4 del nodo scritti da `install.sh`): kubelet, l'API di k3s e ogni
+  servizio in ascolto sull'host restano irraggiungibili, anche se una rete di
+  `allow` li contiene (F7);
+- le porte di Kubernetes `6443` (API), `10250` e `10255` (kubelet),
+  `2379-2380` (etcd) su qualunque IP privato (RFC 1918, ULA, CGNAT), a ogni
+  connessione e a ogni redirect: `Policy.CheckAddrPort` le giudica, `CheckIP`
+  non conosce la porta. Webhook e mirror usano la stessa policy.
+
 Per default, ma sbloccabili con una voce IP/CIDR in `allow` (reti speciali,
 usate p.es. da Tailscale o da laboratori):
 
@@ -89,18 +99,22 @@ usate p.es. da Tailscale o da laboratori):
 - `2001::/32` (Teredo), `2002::/16` (6to4), `2001:db8::/32`, `100::/64`.
 
 Ammessi: indirizzi pubblici e la rete aziendale (RFC 1918 `10/8`,
-`172.16/12`, `192.168/16`, ULA `fc00::/7`) fuori dal cluster.
+`172.16/12`, `192.168/16`, ULA `fc00::/7`) fuori dal cluster, dal nodo e
+dalle porte di Kubernetes. Una LAN con servizi sensibili si chiude elencando le
+reti ammesse in `allow` (`install.sh --egress-allow 192.168.1.0/24,...`): da
+quel momento passa solo ciò che l'elenco copre.
 
 ## Liste dell'amministratore
 
 Impostate nei values del chart (`egress.allow`, `egress.deny`,
-`egress.clusterCIDRs`). Voci: IP, CIDR, nome host (`hooks.example.com`) o
+`egress.clusterCIDRs`, `egress.nodeAddresses`). Voci: IP, CIDR, nome host (`hooks.example.com`) o
 suffisso (`*.example.com`, non coincide col dominio nudo). Il collegamento
 alle variabili d'ambiente del servizio è di M-06/G.
 
 Ordine di valutazione, sull'IP effettivo (e sul nome se la voce è un nome):
 
-1. blocchi permanenti e `clusterCIDRs`: rifiutano sempre;
+1. blocchi permanenti, `clusterCIDRs`, indirizzi del nodo e porte di
+   Kubernetes su IP privati: rifiutano sempre;
 2. `deny`: rifiuta (vince su `allow`);
 3. reti speciali: rifiutano, salvo una voce IP/CIDR in `allow` che le copre;
 4. se `allow` non è vuota (**restringe**): passa solo ciò che una sua voce

@@ -269,7 +269,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if !keys.Enabled() {
 		logger.Warn("GITSTACK_WEBHOOK_SECRET_KEY non impostata: i webhook con segreto rispondono 503")
 	}
-	hookHTTP, hookCheck, err := webhooks.NewEgressWithProxy(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, proxy)
+	hookHTTP, hookCheck, err := webhooks.NewEgressForNode(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses, proxy)
 	if err != nil {
 		logger.Error("configurazione non valida", "err", err)
 		return 1
@@ -287,7 +287,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// Mirror in push (V8, GIT-179): il push lo esegue il servizio git, core ha
 	// modello, coda, tentativi e la policy di uscita (C8). La credenziale usa lo
 	// stesso portachiavi dei segreti dei webhook.
-	mirrorEgress, err := mirrors.NewEgress(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs)
+	mirrorEgress, err := mirrors.NewEgressWithNode(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses)
 	if err != nil {
 		logger.Error("configurazione non valida", "err", err)
 		return 1

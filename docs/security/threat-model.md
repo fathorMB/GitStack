@@ -87,7 +87,7 @@ Attackers considered: an anonymous network client; an authenticated user with no
 | Reading internal answers through the log | Answer clipped to 4 KB | `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_RispostaTroncataA4KB` | The excerpt is visible to the repository admin |
 | Webhook for a repo the user cannot administer | Role check | `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_Permessi` | None known |
 
-**Residual risk.** F7: RFC 1918 and the node's own LAN address are allowed by default (`pkg/egress/egress_test.go#TestCheckIPCategories` lists them as allowed on purpose, because CI servers live on the LAN). A repository admin can therefore reach kubelet, the k3s API port and LAN web consoles and read 4 KB of the answer. The administrator can restrict with `egress.allow`.
+**Residual risk.** F7 (resolved, GIT-233): the node's own addresses and the Kubernetes ports (6443, 10250, 10255, 2379-2380) on private addresses are always blocked (`pkg/egress/egress_test.go#TestNodeAddressesAreBlockedByDefault`). Other RFC 1918 hosts remain reachable by default, because CI servers live on the LAN; the administrator closes the list with `egress.allow` (`install.sh --egress-allow`).
 
 ## 4. Mirror in push (V8-mirror, GIT-179)
 

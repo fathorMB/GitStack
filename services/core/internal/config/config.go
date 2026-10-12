@@ -72,6 +72,9 @@ type Config struct {
 	EgressAllow        []string
 	EgressDeny         []string
 	EgressClusterCIDRs []string
+	// EgressNodeAddresses: indirizzi del nodo, sempre bloccati (F7,
+	// GITSTACK_EGRESS_NODE_ADDRESSES + GITSTACK_NODE_IP da status.hostIP).
+	EgressNodeAddresses []string
 
 	// GitURL è la base URL interna del servizio git (GITSTACK_GIT_URL):
 	// core la chiama per creare i repo su disco (API interna firmata).
@@ -145,6 +148,8 @@ const (
 	envEgressAllow          = "GITSTACK_EGRESS_ALLOW"
 	envEgressDeny           = "GITSTACK_EGRESS_DENY"
 	envEgressClusterCIDRs   = "GITSTACK_EGRESS_CLUSTER_CIDRS"
+	envEgressNodeAddresses  = "GITSTACK_EGRESS_NODE_ADDRESSES"
+	envNodeIP               = "GITSTACK_NODE_IP"
 	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
@@ -251,6 +256,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	cfg.EgressAllow = splitList(lookup, envEgressAllow)
 	cfg.EgressDeny = splitList(lookup, envEgressDeny)
 	cfg.EgressClusterCIDRs = splitList(lookup, envEgressClusterCIDRs)
+	cfg.EgressNodeAddresses = append(splitList(lookup, envEgressNodeAddresses), splitList(lookup, envNodeIP)...)
 	if v, ok := lookup(envSSHHost); ok {
 		cfg.SSHHost = strings.TrimSpace(v)
 	}

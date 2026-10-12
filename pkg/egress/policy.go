@@ -28,6 +28,12 @@ type Config struct {
 	// empty non-nil slice is treated like nil (the cluster is never exposed
 	// by omission).
 	ClusterCIDRs []string
+	// NodeAddresses are the addresses of the node(s) running the cluster
+	// (status.hostIP, install.sh). They are always blocked, like ClusterCIDRs,
+	// and no Allow entry can unlock them: kubelet, the k3s API and any host
+	// service listening on the LAN address stay unreachable (ASVS V12.6.1).
+	// IPs and CIDRs only.
+	NodeAddresses []string
 }
 
 type entries struct {
@@ -110,7 +116,7 @@ func normPrefix(p netip.Prefix) netip.Prefix {
 
 // Policy decides whether an address may be dialed. It is immutable.
 type Policy struct {
-	allow, deny, cluster entries
+	allow, deny, cluster, node entries
 }
 
 // NewPolicy validates cfg and builds a Policy.
@@ -133,7 +139,33 @@ func NewPolicy(cfg Config) (*Policy, error) {
 	if len(p.cluster.hosts)+len(p.cluster.suffixes) > 0 {
 		return nil, errors.New("clusterCIDRs: only IPs and CIDRs are allowed")
 	}
+	if p.node, err = parseEntries(cfg.NodeAddresses); err != nil {
+		return nil, fmt.Errorf("nodeAddresses: %w", err)
+	}
+	if len(p.node.hosts)+len(p.node.suffixes) > 0 {
+		return nil, errors.New("nodeAddresses: only IPs and CIDRs are allowed")
+	}
 	return p, nil
+}
+
+// isKubernetesPort: the the control-plane and datastore ports of Kubernetes/k3s
+// (API 6443, kubelet 10250 and 10255, etcd 2379-2380). They are blocked on
+// every private address, whatever the allow list says.
+func isKubernetesPort(port uint16) bool {
+	switch {
+	case port == 6443, port == 10250, port == 10255:
+		return true
+	case port >= 2379 && port <= 2380:
+		return true
+	}
+	return false
+}
+
+var cgnat = pfx("100.64.0.0/10")
+
+// isPrivate: RFC 1918, ULA (fc00::/7) and, being internal too, CGNAT.
+func isPrivate(ip netip.Addr) bool {
+	return ip.IsPrivate() || cgnat.Contains(ip)
 }
 
 func pfx(s string) netip.Prefix { return netip.MustParsePrefix(s) }
@@ -190,6 +222,33 @@ func (p *Policy) CheckIP(ip netip.Addr) error {
 }
 
 func (p *Policy) check(host string, ip netip.Addr) error {
+	return p.checkPort(host, ip, 0)
+}
+
+// CheckAddrPort is CheckIP for a destination whose port is known: Kubernetes
+// ports on private addresses are refused too. Port 0 means unknown.
+func (p *Policy) CheckAddrPort(ip netip.Addr, port uint16) error {
+	return p.checkPort("", ip, port)
+}
+
+// CheckReserved applies only the unconditional node rules: the node's own
+// addresses and the Kubernetes ports on private addresses. Callers that do
+// their own name handling (mirrors) use it next to CheckIP.
+func (p *Policy) CheckReserved(ip netip.Addr, port uint16) error {
+	return p.reserved(canonical(ip), port)
+}
+
+func (p *Policy) reserved(ip netip.Addr, port uint16) error {
+	if p.node.matchIP(ip) {
+		return fmt.Errorf("%w: %s is an address of the node", ErrBlocked, ip)
+	}
+	if isKubernetesPort(port) && isPrivate(ip) {
+		return fmt.Errorf("%w: %s port %d is a Kubernetes port", ErrBlocked, ip, port)
+	}
+	return nil
+}
+
+func (p *Policy) checkPort(host string, ip netip.Addr, port uint16) error {
 	ip = canonical(ip)
 	if !ip.IsValid() {
 		return fmt.Errorf("%w: invalid address", ErrBlocked)
@@ -204,6 +263,9 @@ func (p *Policy) check(host string, ip netip.Addr) error {
 	}
 	if p.cluster.matchIP(ip) {
 		return fmt.Errorf("%w: %s is inside the cluster network", ErrBlocked, ip)
+	}
+	if err := p.reserved(ip, port); err != nil {
+		return err
 	}
 	if p.deny.matchIP(ip) || (host != "" && p.deny.matchHost(host)) {
 		return fmt.Errorf("%w: %s is denied by the administrator", ErrBlocked, ip)

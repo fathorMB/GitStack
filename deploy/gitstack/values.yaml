@@ -375,9 +375,10 @@ corporateCA:
 # (webhook, pkg/egress): core le legge da GITSTACK_EGRESS_ALLOW, _DENY e
 # _CLUSTER_CIDRS (elenchi separati da virgole). Voci: IP, CIDR, nomi host
 # ("hooks.example.com") o suffissi ("*.example.com").
-# Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster e le reti
-# speciali sono bloccati sempre: allow non sblocca mai loopback, link-local
-# e cluster (vedi pkg/egress/README.md).
+# Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster, gli indirizzi
+# del nodo e le reti speciali sono bloccati sempre: allow non sblocca mai
+# loopback, link-local, cluster e nodo (vedi pkg/egress/README.md).
+# Le reti LAN ammesse si elencano in allow (install.sh --egress-allow).
 egress:
   # Se non vuota, sono ammesse solo queste destinazioni (restringe); le voci
   # IP/CIDR sbloccano anche reti speciali come 100.64.0.0/10 (CGNAT).
@@ -389,6 +390,13 @@ egress:
   clusterCIDRs:
     - 10.42.0.0/16
     - 10.43.0.0/16
+  # Indirizzi del nodo, SEMPRE bloccati (F7, ASVS V12.6.1): nessuna voce di
+  # allow li sblocca, così un webhook non raggiunge kubelet, l'API di k3s o i
+  # servizi in ascolto sull'host. Il chart aggiunge da solo status.hostIP
+  # (GITSTACK_NODE_IP); install.sh qui scrive tutti gli IPv4 del nodo.
+  nodeAddresses: []
+  # Le porte di Kubernetes (6443, 10250, 10255, 2379-2380) sono bloccate su
+  # qualunque IP privato, sempre. Non è una voce di configurazione.
 
 # --- postgres -----------------------------------------------------------
 # PostgreSQL incluso di default (D6 [c_4df04d65b3ac4910]). Per un Postgres
