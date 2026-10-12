@@ -247,6 +247,65 @@ jobs:
         shell: pwsh
         run: ./deploy/tests/install-gs.Tests.ps1
 
+  # Installazione reale su Ubuntu 22.04 (criterio 2 di GIT-202): lancia
+  # install.sh sul runner ubuntu-22.04 con --skip-preflight (il runner ha
+  # ~14 GB liberi, non basta per il preflight hardware) e --image-tag
+  # (il binario gitstack è nei releases del commit). Il preflight hardware
+  # è già coperto da preflight_test.sh. Il job attende il rollout di
+  # deployment e statefulset, poi fa uno smoke su https e sul comando
+  # gitstack. Dipende da registry (immagini) e admin-binary (binario
+  # gitstack): senza questi job le immagini e il binario non esistono
+  # ancora. Lo stesso `if` di registry e admin-binary: gira SOLO su push
+  # a main o tag, mai su PR.
+  install-ubuntu-22:
+    name: Installazione reale su Ubuntu 22.04 (GIT-202, criterio 2)
+    needs: [registry, admin-binary]
+    if: >-
+      !cancelled() && needs.registry.result == 'success' && needs.admin-binary.result == 'success'
+      && github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # sudo azzera l'ambiente (env_reset): le opzioni vanno passate per linea
+      # di comando, non via variabili d'ambiente. --skip-preflight perché il
+      # runner ha ~14 GB liberi (il preflight si ferma), e --image-tag perché
+      # install.sh scarica il binario gitstack dai releases del commit (riga 913
+      # di install.sh). Il preflight hardware è già coperto da preflight_test.sh.
+      - name: Installazione GitStack
+        run: sudo ./deploy/install.sh --skip-preflight --image-tag "sha-${GITHUB_SHA}"
+
+      # gitstack si installa nel namespace default (GITSTACK_NAMESPACE,
+      # riga 62 di install.sh). rollout status lavora su una risorsa alla
+      # volta: si aspetta sul rollout di ogni deployment e statefulset.
+      # deploy/gitstack/templates: 5 deployment (gateway, identity, core,
+      # git, web) e 2 statefulset (postgres, nats), nessuno disattivato.
+      - name: Attesa rollout di deployment e statefulset
+        run: |
+          set -euo pipefail
+          for r in deployment/gitstack-gateway deployment/gitstack-identity deployment/gitstack-core deployment/gitstack-git deployment/gitstack-web statefulset/gitstack-postgres statefulset/gitstack-nats; do
+            sudo k3s kubectl -n default rollout status "$r" --timeout=300s || { sudo k3s kubectl get pods -A; exit 1; }
+          done
+
+      - name: Smoke test HTTPS
+        run: |
+          set -euo pipefail
+          ok=""
+          for _ in $(seq 1 30); do
+            code=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/api/healthz || true)
+            if [ "$code" = "200" ]; then ok=1; break; fi
+            sleep 2
+          done
+          if [ -z "$ok" ]; then echo "FALLITO: https://localhost/api/healthz non ha risposto 200" >&2; exit 1; fi
+          echo "OK: GET https://localhost/api/healthz -> 200"
+
+      - name: Smoke test gitstack status
+        run: sudo gitstack status
+
   # Scansioni di sicurezza bloccanti (GIT-114, V2): solo sui tag di release
   # (v*, comprese le -rc.N), richiamando security.yml in modalità release.
   # Sulle pull request e ogni notte su main (schedule) security.yml parte da

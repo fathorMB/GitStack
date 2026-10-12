@@ -4,13 +4,21 @@
 > mirrors, and diagnostics of a GitStack instance deployed on a single Linux host with k3s.
 > It is written for operators who manage the machine directly (for example the
 > `homehub` appliance described in M-08 [c_8458909a21d9035f]).
+>
+> **Supported systems:** Ubuntu Server 22.04 and 24.04 LTS, Pop!_OS 22.04 and 24.04 (all amd64). Other systems require `--force`.
 
 ## Installation
 
 ### Prerequisites
 
-GitStack runs on a clean Ubuntu Server 24.04 LTS x86_64 machine.
-Other distributions and WSL2 arrive with M-08.
+GitStack runs on a clean machine with one of the following supported systems (all amd64):
+
+- Ubuntu Server 22.04 LTS
+- Ubuntu Server 24.04 LTS
+- Pop!_OS 22.04
+- Pop!_OS 24.04
+
+Other distributions and WSL2 are not yet supported.
 
 | Profile | CPU | RAM | Disk |
 |---|---|---|---|
