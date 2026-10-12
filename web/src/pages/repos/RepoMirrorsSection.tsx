@@ -345,7 +345,7 @@ function MirrorForm(props: {
     }
   }
 
-  const valid = url.trim() !== '' && username.trim() !== '' && (mirror !== null || token !== '');
+  const valid = url.trim() !== '' && username.trim() !== '';
   const conflict = mirror === null && pullOrigin !== null && url.trim() === pullOrigin;
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>

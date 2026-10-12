@@ -5,6 +5,19 @@ import { ToastProvider } from '../../components';
 import type { PullMirror, PullMirrorRun } from '../../lib/pullMirrorsApi';
 import { PullMirrorSection } from './PullMirrorSection';
 
+// Mock per Radix UI Select in jsdom (haPointerCapture, scrollIntoView non esistono).
+beforeEach(() => {
+  Object.defineProperty(EventTarget.prototype, 'hasPointerCapture', {
+    value: vi.fn().mockReturnValue(false),
+    writable: true,
+  });
+  Object.defineProperty(EventTarget.prototype, 'releasePointerCapture', {
+    value: vi.fn(),
+    writable: true,
+  });
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+});
+
 vi.mock('../../lib/pullMirrorsApi', () => ({
   fetchPullMirror: vi.fn(),
   fetchPullMirrorRuns: vi.fn(),
@@ -103,7 +116,8 @@ describe('PullMirrorSection', () => {
 
   it('avvisa che le aggiorna non arrivano da 24 ore', async () => {
     renderSection();
-    expect(await screen.findByText(/24 hours/)).toBeInTheDocument();
+    // L'avviso 24 ore è sempre visibile nella sezione pull mirror.
+    expect(await screen.findByText(/If a successful update/)).toBeInTheDocument();
   });
 
   it('mostra ref diverged se presenti', async () => {
@@ -116,7 +130,7 @@ describe('PullMirrorSection', () => {
     );
     renderSection();
     expect(await screen.findByRole('heading', { name: 'Diverged refs' })).toBeInTheDocument();
-    expect(screen.getByText('feature/old-ui')).toBeInTheDocument();
+    expect(screen.getByText('refs/heads/feature/old-ui')).toBeInTheDocument();
     expect(screen.getByText('aaa1111')).toBeInTheDocument();
     expect(screen.getByText('bbb2222')).toBeInTheDocument();
   });
@@ -142,7 +156,8 @@ describe('PullMirrorSection', () => {
     ] as PullMirrorRun[]);
     renderSection();
     expect(await screen.findByRole('heading', { name: 'Recent runs' })).toBeInTheDocument();
-    expect(screen.getByText('2.1 s')).toBeInTheDocument();
+    // Il componente mostra la durata in millisecondi grezzi.
+    expect(screen.getByText('2100 ms')).toBeInTheDocument();
   });
 
   // ---- Danger zone: pause / resume / stop ----
@@ -225,7 +240,8 @@ describe('PullMirrorSection', () => {
     const user = userEvent.setup();
     renderSection();
     await user.click(await screen.findByRole('button', { name: 'Sync now' }));
-    expect(await screen.findByText('Network unreachable')).toBeInTheDocument();
+    // describeError per un Error non-API torna il messaggio di connessione.
+    expect(await screen.findByText(/Could not reach/)).toBeInTheDocument();
   });
 
   // ---- Form: intervallo e token ----
@@ -238,8 +254,7 @@ describe('PullMirrorSection', () => {
     await user.click(intervalSelect);
     const option = await screen.findByRole('option', { name: '1 hour' });
     await user.click(option);
-    // Il pulsante "Save" e' dentro il form con l'intervallo
-    const saveBtn = await screen.findByRole('button', { name: 'Save' });
+    const saveBtn = await screen.findByRole('button', { name: 'Save mirror' });
     await user.click(saveBtn);
     expect(updatePullMirror).toHaveBeenCalledWith('acme', 'api', { intervalSeconds: 3600 });
   });

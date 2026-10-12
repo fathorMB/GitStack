@@ -260,6 +260,9 @@ describe('RepoMirrorsSection', () => {
     // Il pulsante e' spento perche' l'URL e' vuoto
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
     await user.type(urlInput, 'https://github.com/acme/origin.git');
+    // Inserisci username per abilitare il pulsante (valid: url + username richiesti).
+    const usernameInput = within(form).getByLabelText('Username');
+    await user.type(usernameInput, 'bot');
     // URL diverso dal pull origin: il pulsante si abilita e non c'e' avviso.
     await waitFor(() => expect(within(form).getByRole('button', { name: 'Add mirror' })).not.toBeDisabled(), { timeout: 3000 });
     expect(within(form).queryByText(/This is the source of the pull mirror/)).not.toBeInTheDocument();

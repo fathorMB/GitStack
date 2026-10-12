@@ -150,7 +150,8 @@ describe('EnablePullMirrorSection', () => {
     const urlInput = screen.getByLabelText('Source URL');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
     await user.click(screen.getByRole('button', { name: 'Enable mirror' }));
-    expect(await screen.findByText('Server error')).toBeInTheDocument();
+    // describeError per un Error non-API torna il messaggio di connessione.
+    expect(await screen.findByText(/Could not reach/)).toBeInTheDocument();
   });
 
   it('chiama onSuccess al successo e mostra toast', async () => {

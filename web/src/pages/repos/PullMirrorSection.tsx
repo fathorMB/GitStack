@@ -294,6 +294,12 @@ function PullMirrorForm({
           <span className="subtle">No updates yet</span>
         )}
       </dd>
+
+      <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+        <Button type="submit" variant="default" size="sm" disabled={busy}>
+          Save mirror
+        </Button>
+      </div>
     </form>
   );
 }
