@@ -1,6 +1,7 @@
 import { CircleDot, FileCode, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { PullMirrorBadge } from '../../components';
 import { countIssues } from '../../lib/issuesApi';
 import type { Repository } from '../../lib/reposApi';
 import { RepoWatchSelect } from './RepoWatchSelect';
@@ -61,6 +62,7 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
           {owner} / {name}
         </h1>
         <VisibilityBadge visibility={repo.visibility} />
+        {repo.mirror ? <PullMirrorBadge mirror={repo.mirror} /> : null}
         {repo.archived ? <span className="badge badge-archived">Archived</span> : null}
         <span className="sp" />
         <RepoWatchSelect owner={owner} repo={name} />
