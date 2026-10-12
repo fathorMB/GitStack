@@ -99,7 +99,7 @@ describe('PullMirrorInfoBanner', () => {
         mirror={pullMirror({
           state: 'stopped',
           lastError: 'authentication failed (401)',
-          lastSyncedAt: '2026-10-12T08:00:00Z',
+          lastSyncedAt: '2026-10-11T08:00:00Z',
         })}
       />
     );
