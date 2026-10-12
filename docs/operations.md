@@ -242,10 +242,25 @@ An option given with an empty value removes that setting. `gitstack upgrade`
 keeps the network values (they are Helm values) and uses the configured proxy
 for its own downloads.
 
-**Test.** `deploy/test-network/run.sh all` installs GitStack on an Ubuntu node
-in a Docker network with no route out, through a Squid proxy and a local
-registry (the proxy denies the image registries, so images can only come from
-the mirror). Unit tests: `deploy/tests/network_test.sh` (installer) and
+**Test.** `deploy/test-network/run.sh all` (`seed`, then `verify`) installs
+GitStack on the Hyper-V test VM of `deploy/test-vm` (Ubuntu Server 24.04),
+restored to its `clean` checkpoint before every run. The VM has no direct way
+out: iptables rules in `OUTPUT` let through only the proxy and the mirror on the
+host. On the host, Docker runs a Squid proxy (which in `verify` denies the image
+registries, so images can only come from the mirror) and a `registry:2` mirror;
+`seed` fills the mirror with the images k3s really pulled. `verify` checks the
+closed network, the preflight failure, the installation through proxy and mirror,
+what the proxy and the registry logged, and `gitstack config set network`.
+
+Requirements: Hyper-V with the test VM created by `deploy/test-vm/new-vm.ps1`,
+PowerShell as administrator (the script restores the checkpoint with
+`reset-vm.ps1`), Docker (Linux engine), `ssh`, `curl` and `go`. Variables:
+`GITSTACK_TEST_VM_NAME` (default `gitstack-test-vm`), `GITSTACK_TEST_VM_KEY`
+(SSH private key, default `~/.ssh/gitstack_vm`), `GITSTACK_TEST_HOST_IP` (the
+host address as seen by the VM; default: the host address on the Default
+Switch). A container as the node was discarded: on Docker Desktop/WSL2 the
+kernel uses cgroup v1 and the k3s kubelet does not start there. The test does
+not run in CI. Unit tests: `deploy/tests/network_test.sh` (installer) and
 `admin/internal/cli/confignetwork_test.go` (`config set network`).
 
 ---

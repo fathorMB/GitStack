@@ -1885,7 +1885,7 @@ net_probe_url() {
   cacert="${NET_PROBE_CACERT}"
   [ -z "${cacert}" ] || args+=(--cacert "${cacert}")
   if [ -n "${user}" ]; then
-    code="$(printf 'user = "%s:%s"\n' "${user}" "${pass}" | curl "${args[@]}" -K - "${url}" 2>/dev/null)" || code="000"
+    code="$(printf 'user = %s\n' "$(net_quote "${user}:${pass}")" | curl "${args[@]}" -K - "${url}" 2>/dev/null)" || code="000"
   else
     code="$(curl "${args[@]}" "${url}" 2>/dev/null)" || code="000"
   fi

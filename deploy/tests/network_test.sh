@@ -209,6 +209,10 @@ rm -f "${WORK}/config.yaml"
 OUT="$(in_install -- 'render_config_network')"
 expect_eq "config senza rete: sezione assente" "${OUT}" ""
 
+# --- Credenziali passate a curl -K: virgolette e backslash protetti -----------
+OUT="$(in_install -- 'curl() { cat; }; net_probe_url http://r:5000/v2/ "u\"x" "p\\w\"d"')"
+expect_eq "net_probe_url: credenziali protette per curl -K" "${OUT}" 'user = "u\"x:p\\w\"d"'
+
 # --- Preflight di rete ----------------------------------------------------------------------------------------------------
 STUBS='
 k3s_already_installed() { return 1; }
