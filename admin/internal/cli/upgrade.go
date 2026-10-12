@@ -98,8 +98,12 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		HelmBin:       a.helmBin(),
 		ExePath:       a.exePath(),
 		Repo:          a.Getenv("GITSTACK_REPO"),
-		Ref:           a.Getenv("GITSTACK_REF"),
-		Log:           a.Stdout,
+		// N9a: k3s si aggiorna dal mirror dei download, se configurato, e il
+		// proxy arriva dall'ambiente (exportProxyEnv in loadConfig).
+		K3sDownloadMirror: cfg.Network.DownloadMirror,
+		SystemdDir:        a.networkPaths().SystemdDir,
+		Ref:               a.Getenv("GITSTACK_REF"),
+		Log:               a.Stdout,
 	}
 	if status.ServesCA(cfg) {
 		o.CheckCA = func(ctx context.Context) error { return status.CheckCA(ctx, cfg, nil) }

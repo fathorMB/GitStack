@@ -49,6 +49,8 @@ type Config struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Backup descrive dove e per quanto si conservano i backup.
 	Backup Backup `yaml:"backup"`
+	// Network è la sezione rete aziendale (N4, N9): proxy, mirror e CA.
+	Network Network `yaml:"network"`
 	// Postgres descrive il database esterno (N8). Vuoto = Postgres bundle.
 	Postgres Postgres `yaml:"postgres"`
 }
@@ -187,6 +189,9 @@ func (c *Config) Validate() error {
 		if err := c.Backup.S3.Validate(); err != nil {
 			return fmt.Errorf("backup.s3: %w", err)
 		}
+	}
+	if err := c.Network.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

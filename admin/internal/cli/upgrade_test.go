@@ -116,3 +116,34 @@ func TestUpgradeMissingAssetsRefused(t *testing.T) {
 		t.Errorf("binario non pubblicato: exit %d", code)
 	}
 }
+
+// N9a: network.download_mirror di config.yaml arriva alle opzioni
+// dell'aggiornamento (k3s dal mirror) e la cartella systemd è quella
+// configurabile.
+func TestUpgradePassaIlMirrorDeiDownload(t *testing.T) {
+	a, cfg, _ := upgradeApp(t, "ahead")
+	body := "version: 1\nhost: h\nimage_tag: sha-" + cliOld + "\nnetwork:\n  download_mirror: \"http://dl.corp:8080\"\n"
+	if err := os.WriteFile(cfg, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var got *upgrade.Options
+	prev := a.TuneUpgrade
+	a.TuneUpgrade = func(o *upgrade.Options) {
+		prev(o)
+		got = o
+	}
+	sysd := t.TempDir()
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_SYSTEMD_DIR" {
+			return sysd
+		}
+		return ""
+	}
+	_ = a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--dry-run"})
+	if got == nil {
+		t.Fatal("TuneUpgrade non chiamato")
+	}
+	if got.K3sDownloadMirror != "http://dl.corp:8080" || got.SystemdDir != sysd {
+		t.Errorf("mirror=%q systemd=%q", got.K3sDownloadMirror, got.SystemdDir)
+	}
+}
