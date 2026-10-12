@@ -60,6 +60,28 @@ func runStatus(ctx context.Context, a *App, args []string) int {
 	return ExitOK
 }
 
+func printDatabase(p func(string, ...any), d status.Database) {
+	ver := d.Version
+	switch {
+	case ver == "":
+		ver = "sconosciuta"
+	case !d.VersionLive:
+		ver += " (rilevata all'installazione)"
+	}
+	if d.Mode != "external" {
+		p("  Postgres interno (bundle)    versione %s", ver)
+		return
+	}
+	p("  Postgres ESTERNO             %s:%d/%s (utente %s, sslmode %s)", d.Host, d.Port, d.Name, d.User, d.SSLMode)
+	p("  Versione PostgreSQL          %s", ver)
+	if d.Error != "" {
+		p("  ATTENZIONE: %s", d.Error)
+	}
+	if d.Warning != "" {
+		p("  AVVISO: %s", d.Warning)
+	}
+}
+
 func printReport(w io.Writer, binVersion string, r *status.Report) {
 	p := func(format string, args ...any) { _, _ = fmt.Fprintf(w, format+"\n", args...) }
 	p("GitStack")
@@ -86,6 +108,9 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 		api = "NON RAGGIUNGIBILE"
 	}
 	p("  %-28s %s (%s)", "api (gateway /healthz)", api, r.APIDetail)
+	p("")
+	p("Database")
+	printDatabase(p, r.Database)
 	p("")
 	p("Ultimo backup: %s", r.LastBackup)
 	if r.BackupUpload != "" {

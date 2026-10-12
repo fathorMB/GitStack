@@ -109,6 +109,23 @@ tool gira sull'host fuori dal cluster e non ha credenziali per essa.
 `gitstack restore --from s3 [nome]` scarica (il più recente, o il nome dato) e
 ripristina, anche su una macchina nuova dopo `install.sh --s3-*`.
 
+Con un Postgres esterno (N8) l'installer aggiunge la sezione:
+
+```yaml
+postgres:
+  external: true
+  host: db.example.com
+  port: 5432
+  database: gitstack
+  user: gitstack
+  ssl_mode: verify-full
+  version: "16.4"                          # rilevata dal preflight dell'installer
+  password_secret: gitstack-postgres-external
+  ca_secret: gitstack-postgres-ca          # facoltativo
+```
+
+Mai password o URL completo: la password sta nel Secret del cluster. Con `external: true` backup, restore, upgrade e status eseguono i comandi di database nel pod `<release>-pgclient` e non nello StatefulSet del bundle; `gitstack postgres check` è il preflight (exit 11 se il database non è idoneo).
+
 Campi sconosciuti o valori non validi sono un errore (exit 3). L'installer
 mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 `GITSTACK_BACKUP_DIR` e `GITSTACK_BACKUP_RETENTION`.
@@ -124,6 +141,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack restore --from s3 [nome] [--dest D] [--key-file F] [--config F]` | scarica da `backup.s3` l'archivio più recente (o `nome`) e lo ripristina; la chiave è quella di `backup.s3.key_file` se manca `--key-file` | sì |
 | `gitstack config set backup.s3 --endpoint E --bucket B --key-file F [--prefix P] [--region R] [--retention N|bucket] [--notify-command C] [--no-check] [--remove]` | configura la copia cifrata su S3 (chiavi da `GITSTACK_S3_ACCESS_KEY`/`GITSTACK_S3_SECRET_KEY`); verifica il bucket prima di scrivere | sì |
 | `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
+| `gitstack postgres check --url U [--password-file F] [--ca-file F] [--json]` | preflight del Postgres esterno: versione 15–17, connessione, permessi per creare schemi e ruoli (exit 11 se non idoneo) | no |
 | `gitstack version` | versione del binario | no |
 
 I comandi che cambiano lo stato dell'host (dai prossimi item) rifiutano di
@@ -156,6 +174,8 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
 | 8 | upgrade fallito e rollback NON riuscito: serve un intervento (il messaggio dice come) |
 | 9 | restore completato nei dati ma l'istanza non risponde attraverso l'Ingress entro il timeout (120 s): il messaggio dice quale URL ha fallito e con quale stato; verifica con `gitstack status` |
 | 10 | backup locale riuscito ma caricamento su S3 fallito (l'archivio locale è valido; causa in `gitstack status`) |
+
+| 11 | `gitstack postgres check`: il Postgres esterno non è idoneo (versione, connessione o permessi): il messaggio dice cosa fare |
 | 70 | errore inatteso |
 
 Errori su stderr con prefisso `ERRORE:`, come `install.sh`.

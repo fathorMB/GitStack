@@ -35,6 +35,17 @@ SELECT format('ALTER ROLE identity_app WITH LOGIN PASSWORD %L', :'identity_passw
 WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'identity_app')
 \gexec
 
+-- Postgres esterno (N8): chi esegue lo script può non essere superuser ma solo
+-- CREATEROLE. Per assegnare lo schema a identity_app deve poter fare SET
+-- ROLE su di lui: PostgreSQL 15 lo chiede come membership semplice, 16 e 17
+-- come membership con le opzioni SET e INHERIT (il creatore non le riceve
+-- di default). Un superuser non ne ha bisogno.
+SELECT CASE WHEN current_setting('server_version_num')::int >= 160000
+         THEN format('GRANT identity_app TO %I WITH INHERIT TRUE, SET TRUE', current_user)
+         ELSE format('GRANT identity_app TO %I', current_user) END
+WHERE NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
+\gexec
+
 SELECT 'CREATE SCHEMA identity AUTHORIZATION identity_app'
 WHERE NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'identity')
 \gexec

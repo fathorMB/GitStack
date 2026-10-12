@@ -97,6 +97,17 @@ helm install gitstack deploy/gitstack \
 
 Il chart valida questi campi a `helm template`/`helm install` e si ferma con un errore chiaro se mancano.
 
+Con il database esterno (N8, GIT-205) valgono anche:
+
+| Valore | Significato |
+|---|---|
+| `postgres.external.port` | Porta (default 5432). |
+| `postgres.external.sslMode` | `require` (default), `verify-ca`, `verify-full`, `disable`... |
+| `postgres.external.caSecret` | Secret con la CA del database (chiave `ca.crt`): montato su core, identity e sul pod client, `sslrootcert` nel DSN. |
+| `postgres.external.client.image.tag` | Versione del pod `<release>-pgclient` (`psql`, `pg_dump`): la versione principale deve essere quella del server (es. `15-alpine`); la imposta `install.sh`. |
+
+Il Deployment `<release>-pgclient` (`templates/postgres/client-deployment.yaml`) esiste solo con `postgres.enabled=false`: resta acceso con `PG*` già configurati e la password dal Secret, e `gitstack backup/restore/upgrade/status` vi eseguono i comandi di database. Per preparare il database `deploy/postgres-prepare.sql`; per installare `install.sh --postgres-url` (vedi [`../README.md`](../README.md)).
+
 ## Git via HTTPS: IngressRoute diretta al servizio git (GIT-70)
 
 Le richieste smart HTTP (`/<owner>/<repo>.git/info/refs`, `/git-upload-pack`, `/git-receive-pack`) non passano dal gateway: un `IngressRoute` Traefik (`templates/ingress-git.yaml`, `PathRegexp`, priorità alta) le manda direttamente al Service `<release>-git`, che autentica da sé (Basic auth, password = token personale, verificato da identity) e controlla i permessi. Motivo: il gateway risponde con sessioni/Bearer e errori JSON, non con `401 WWW-Authenticate: Basic` che git richiede, e un push non deve attraversare il suo proxy. `git.enabled=false` o `ingress.enabled=false` tolgono la rotta; dietro lo stesso host/TLS dell'Ingress. Il pod git riceve `GITSTACK_IDENTITY_URL` e `GITSTACK_CORE_URL`.
