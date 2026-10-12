@@ -327,7 +327,13 @@ sudo gitstack config set network --clear              # remove everything
 
 An option given with an empty value removes that setting. `gitstack upgrade`
 keeps the network values (they are Helm values) and uses the configured proxy
-for its own downloads.
+for its own downloads. This includes the k3s update step (N10): with a
+`--download-mirror` configured, `gitstack upgrade` fetches the k3s install script
+and binary from `<mirror>/k3s/install.sh` and `<mirror>/k3s/releases` (the same
+layout as the installer), not from `get.k3s.io`; afterwards it removes the
+`*_PROXY` lines that the k3s script copies into `k3s.service.env`, so the systemd
+drop-in stays the only source. The mirror must therefore also hold the k3s
+version declared in `deploy/k3s-version` of the version you upgrade to.
 
 **External PostgreSQL (N8) on a corporate network.** The database speaks the
 PostgreSQL protocol over plain TCP, not HTTP: the proxy settings do not apply to
