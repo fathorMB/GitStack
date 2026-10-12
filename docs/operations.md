@@ -711,11 +711,11 @@ curl -fsSL -o gitstack-linux-amd64 \
 curl -fsSL -o gitstack-linux-amd64.sigstore.json \
   "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64.sigstore.json"
 
-# Verifica la firma del blob: usa --signature con il bundle .sigstore.json.
+# Verifica la firma del blob: usa --bundle con il file .sigstore.json.
 cosign verify-blob \
   --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  --signature gitstack-linux-amd64.sigstore.json \
+  --bundle gitstack-linux-amd64.sigstore.json \
   gitstack-linux-amd64
 ```
 
@@ -728,11 +728,11 @@ curl -fsSL -o gitstack-0.1.0.tgz \
 curl -fsSL -o gitstack-0.1.0.tgz.sigstore.json \
   "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz.sigstore.json"
 
-# Verifica la firma del blob chart.
+# Verifica la firma del blob chart: usa --bundle con il file .sigstore.json.
 cosign verify-blob \
   --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  --signature gitstack-0.1.0.tgz.sigstore.json \
+  --bundle gitstack-0.1.0.tgz.sigstore.json \
   gitstack-0.1.0.tgz
 ```
 
@@ -756,6 +756,7 @@ syft gitstack-gateway-sbom.spdx.json --quiet -o table
 # - gitstack-web-sbom.spdx.json
 # - gitstack-chart-sbom.spdx.json
 # - gitstack-binary-sbom.spdx.json
+# - gs-binary-sbom.spdx.json
 ```
 
 ### Attestazioni delle immagini
@@ -785,7 +786,8 @@ La release `sha-<commit-sha>` contiene:
 | Firme blob | `*.sigstore.json` (uno per binario/chart/checksum) |
 | SBOM immagini | `gitstack-gateway-sbom.spdx.json`, `gitstack-identity-sbom.spdx.json`, `gitstack-git-sbom.spdx.json`, `gitstack-core-sbom.spdx.json`, `gitstack-web-sbom.spdx.json` |
 | SBOM chart | `gitstack-chart-sbom.spdx.json` |
-| SBOM binario | `gitstack-binary-sbom.spdx.json` |
+| SBOM binario | `gitstack-binary-sbom.spdx.json`, `gs-binary-sbom.spdx.json` |
+| Chart | `gitstack-<versione>.tgz`, `gitstack-<versione>.tgz.sigstore.json` |
 
 ### Flusso di firma
 
@@ -793,7 +795,7 @@ La release `sha-<commit-sha>` contiene:
    binari nella release GitHub (`sha-<commit-sha>`).
 2. Il job `sign` (dipende da tutti e tre) scarica gli asset, genera gli SBOM
    con syft e firma con cosign:
-   - Immagini: `cosign attest --type spdx-json` (SBOM come attestazione in-toto)
+   - Immagini: `cosign attest --type spdxjson` (SBOM come attestazione in-toto)
      + `cosign sign` (firma keyless OIDC).
    - Chart: `cosign sign-blob --bundle` (firma del file .tgz, output `.sigstore.json`).
    - Binari: `cosign sign-blob --bundle` (firma di ogni binary/checksum).

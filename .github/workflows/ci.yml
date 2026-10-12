@@ -503,7 +503,7 @@ jobs:
           cosign-release: v2.4.0
 
       - name: Installa syft
-        uses: anchore/sbom-action/download-syft@v0.17.11
+        uses: anchore/sbom-action/download-syft@v0.24.3
 
       - name: Installa Helm
         uses: azure/setup-helm@v5
@@ -563,7 +563,7 @@ jobs:
 
             # 1. Attestazione SBOM (sigstore in-toto)
             cosign attest --yes \
-              --type spdx-json \
+              --type spdxjson \
               --predicate <(syft "${img}" --quiet -o spdx-json --scope full-sbom) \
               "${img}"
 
@@ -623,6 +623,10 @@ jobs:
           cosign sign-blob --yes --bundle "${chart_file}.sigstore.json" \
             "${chart_file}"
 
+          # Copia il chart e il suo bundle nella cartella di upload (sign/)
+          cp "${chart_file}" "sign/${chart_name}-${chart_version}.tgz"
+          cp "${chart_file}.sigstore.json" "sign/${chart_name}-${chart_version}.tgz.sigstore.json"
+
           echo "OK: chart Helm firmato ${chart_file}"
 
       # --- Firma dei binari ---
@@ -668,6 +672,9 @@ jobs:
             fi
           done
 
+          # SBOM del binario gs_linux_amd64 (rappresentativo)
+          syft file:sign/gs_linux_amd64 --quiet -o spdx-json > sbom/gs-binary-sbom.spdx.json
+
           # Firma del file SHA256SUMS
           if [ -f sign/SHA256SUMS ]; then
             echo "Firma SHA256SUMS..."
@@ -675,10 +682,10 @@ jobs:
               sign/SHA256SUMS
           fi
 
-          # Upload firme e SBOM alla release
-          echo "Upload firme e SBOM alla release..."
+          # Upload firme, SBOM e chart alla release
+          echo "Upload firme, SBOM e chart alla release..."
           upload_files=()
-          for f in sign/*.sigstore.json sbom/*.spdx.json; do
+          for f in sign/*.sigstore.json sign/*.tgz sbom/*.spdx.json; do
             if [ -f "${f}" ]; then
               upload_files+=("${f}")
             fi
@@ -727,13 +734,13 @@ jobs:
             cosign verify-blob \
               --certificate-identity "${identity}" \
               --certificate-oidc-issuer "${issuer}" \
-              --signature "${chart_file}.sigstore.json" \
+              --bundle "${chart_file}.sigstore.json" \
               "${chart_file}"
           else
             cosign verify-blob \
               --certificate-identity-regexp "${identity_regexp}" \
               --certificate-oidc-issuer "${issuer}" \
-              --signature "${chart_file}.sigstore.json" \
+              --bundle "${chart_file}.sigstore.json" \
               "${chart_file}"
           fi
           echo "OK: firma chart verificata"
@@ -750,16 +757,39 @@ jobs:
             cosign verify-blob \
               --certificate-identity "${identity}" \
               --certificate-oidc-issuer "${issuer}" \
-              --signature sign/gitstack-linux-amd64.sigstore.json \
+              --bundle sign/gitstack-linux-amd64.sigstore.json \
               sign/gitstack-linux-amd64
           else
             cosign verify-blob \
               --certificate-identity-regexp "${identity_regexp}" \
               --certificate-oidc-issuer "${issuer}" \
-              --signature sign/gitstack-linux-amd64.sigstore.json \
+              --bundle sign/gitstack-linux-amd64.sigstore.json \
               sign/gitstack-linux-amd64
           fi
           echo "OK: firma binario verificata"
+
+      - name: Verifica checksum firmato (SHA256SUMS)
+        run: |
+          set -euo pipefail
+          issuer="https://token.actions.githubusercontent.com"
+          identity="${{ steps.wf-id.outputs.identity }}"
+          identity_regexp="${{ steps.wf-id.outputs.regexp }}"
+
+          echo "Verifica checksum SHA256SUMS..."
+          if [ -n "${identity}" ]; then
+            cosign verify-blob \
+              --certificate-identity "${identity}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle sign/SHA256SUMS.sigstore.json \
+              sign/SHA256SUMS
+          else
+            cosign verify-blob \
+              --certificate-identity-regexp "${identity_regexp}" \
+              --certificate-oidc-issuer "${issuer}" \
+              --bundle sign/SHA256SUMS.sigstore.json \
+              sign/SHA256SUMS
+          fi
+          echo "OK: checksum verificato"
 
       # --- Upload artifact del workflow ---
       - name: Upload SBOM e certificati come artifact del workflow
@@ -770,6 +800,7 @@ jobs:
           path: |
             sbom/
             sign/*.sigstore.json
+            sign/*.tgz
           if-no-files-found: ignore
           retention-days: 30
 
