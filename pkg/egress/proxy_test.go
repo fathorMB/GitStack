@@ -305,6 +305,15 @@ func TestProxyConfig_DialContextRifiutoEDiretto(t *testing.T) {
 		if err != nil {
 			return
 		}
+		// Si legge la richiesta prima di rispondere: chiudere con dati non letti
+		// manda un RST che il client può vedere al posto della risposta.
+		br := bufio.NewReader(c)
+		for {
+			l, err := br.ReadString('\n')
+			if err != nil || strings.TrimSpace(l) == "" {
+				break
+			}
+		}
 		_, _ = io.WriteString(c, "HTTP/1.1 403 Forbidden\r\n\r\n")
 		_ = c.Close()
 	}()

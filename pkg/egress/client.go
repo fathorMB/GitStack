@@ -101,7 +101,7 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 	tr := &http.Transport{
 		// Mai ProxyFromEnvironment: il proxy è solo quello di Options.Proxy, e la
 		// destinazione si giudica prima (checkedTransport).
-		Proxy: func(req *http.Request) (*url.URL, error) { return opts.Proxy.For(req.URL), nil },
+		Proxy:                 func(req *http.Request) (*url.URL, error) { return opts.Proxy.For(req.URL), nil },
 		DialContext:           dialContext,
 		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: opts.Timeout,
