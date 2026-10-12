@@ -183,7 +183,7 @@ func mirrorService(runner *gitrun.Runner, store *repostore.Store, cfg config.Con
 // pullService costruisce l'esecutore dei mirror in pull (GIT-196): stessa CA
 // privata del push (GITSTACK_GIT_MIRROR_CA_FILE) e stesso Notifier dei push.
 func pullService(runner *gitrun.Runner, store *repostore.Store, cfg config.Config, events *pushevent.Notifier) *mirrorpull.Service {
-	svc := &mirrorpull.Service{Run: runner, Dir: store.Dir, Events: events}
+	svc := &mirrorpull.Service{Run: runner, Dir: store.Dir, Events: events, Proxy: http.ProxyFromEnvironment}
 	if cfg.MirrorCAFile != "" {
 		svc.ExtraEnv = []string{"GIT_SSL_CAINFO=" + cfg.MirrorCAFile}
 	}
