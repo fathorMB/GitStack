@@ -8,7 +8,9 @@ require github.com/oapi-codegen/runtime v1.7.0
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/go-openapi/jsonpointer v1.0.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect

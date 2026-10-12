@@ -59,6 +59,8 @@ type Backup struct {
 	Destination string `yaml:"destination"`
 	// Retention è il numero di backup conservati.
 	Retention int `yaml:"retention"`
+	// S3 è la copia su storage compatibile S3 (N7); nil = solo locale.
+	S3 *S3 `yaml:"s3,omitempty"`
 }
 
 // ErrNotFound indica che il file non esiste (GitStack non installato o
@@ -147,6 +149,11 @@ func (c *Config) Validate() error {
 	}
 	if !strings.HasPrefix(c.Backup.Destination, "/") {
 		return fmt.Errorf("backup.destination %q deve essere un percorso assoluto", c.Backup.Destination)
+	}
+	if c.Backup.S3 != nil {
+		if err := c.Backup.S3.Validate(); err != nil {
+			return fmt.Errorf("backup.s3: %w", err)
+		}
 	}
 	if err := c.Network.Validate(); err != nil {
 		return err

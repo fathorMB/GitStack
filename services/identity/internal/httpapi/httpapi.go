@@ -270,7 +270,8 @@ func (s *server) currentSigned(w http.ResponseWriter, r *http.Request) (auth.Cur
 		s.internal(w, r, err)
 		return auth.Current{}, false
 	}
-	return auth.Current{User: u, Session: sessions.Session{UserID: u.ID, AuthMethod: "token"}, MustChange: must}, true
+	return auth.Current{User: u, Session: sessions.Session{UserID: u.ID, AuthMethod: "token"}, MustChange: must,
+		Scopes: id.Scopes, TokenID: id.TokenID}, true
 }
 
 // ---- conversioni ----
@@ -370,6 +371,20 @@ func (s *server) GetCurrentSession(w http.ResponseWriter, r *http.Request) {
 	if !cur.Session.ExpiresAt.IsZero() {
 		exp := cur.Session.ExpiresAt
 		out.ExpiresAt = &exp
+	}
+	if cur.Session.AuthMethod == "token" {
+		sc := toScopes(cur.Scopes)
+		out.Scopes = &sc
+		if tid, err := uuid.Parse(cur.TokenID); err == nil && s.tokens != nil {
+			t, err := s.tokens.Get(r.Context(), cur.User.ID, tid)
+			if err != nil && !errors.Is(err, apitokens.ErrNotFound) {
+				s.internal(w, r, err)
+				return
+			}
+			if err == nil {
+				out.ExpiresAt = t.ExpiresAt
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -63,6 +63,14 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 			a.errorf("upgrade: %v", err)
 			return ExitUsage
 		}
+	} else if cfg.Backup.S3 != nil {
+		// Con S3 configurato ogni archivio è cifrato, anche il backup
+		// preventivo (che resta locale: non lo carico su S3).
+		var err error
+		if key, err = s3Key(cfg); err != nil {
+			a.errorf("upgrade: backup.s3.key_file: %v", err)
+			return ExitConfig
+		}
 	}
 	cl, err := a.cluster(cfg)
 	if err != nil {

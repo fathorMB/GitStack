@@ -495,6 +495,19 @@ func TestAuth_IdentitaFirmataVersoIServiziAValle(t *testing.T) {
 			t.Errorf("identity deve ricevere il cookie di sessione: %v", err)
 		}
 	})
+	t.Run("token verso identity su /auth/session: scope e id del token firmati", func(t *testing.T) {
+		e := newEnv(t, v)
+		req := forge(bearerReq("GET", "/v1/auth/session", "gst_tok"))
+		if rec := e.do(req); rec.Code != 204 {
+			t.Fatal(rec.Code)
+		}
+		got := e.identity.last()
+		expect(t, got, trust.Identity{UserID: "22222222-2222-2222-2222-222222222222", Username: "bot", Scopes: []string{"write:user", "read:org", "read:resource"},
+			TokenID: "44444444-4444-4444-4444-444444444444", TokenName: "ci-runner"})
+		if got.URL.Path != "/auth/session" {
+			t.Errorf("percorso a identity = %s", got.URL.Path)
+		}
+	})
 	t.Run("rotta pubblica: nessun header d'identità, quelli del client eliminati", func(t *testing.T) {
 		e := newEnv(t, v)
 		if rec := e.do(forge(httptest.NewRequest("GET", "/v1/health", nil))); rec.Code != 204 {

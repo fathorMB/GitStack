@@ -83,6 +83,16 @@ kubeconfig: /etc/rancher/k3s/k3s.yaml
 backup:
   destination: /var/backups/gitstack   # cartella dei backup (percorso assoluto)
   retention: 7                         # quanti backup conservare (>= 1)
+  # s3:                                # facoltativo (N7): copia cifrata su S3
+  #   endpoint: s3.example.com         # host[:porta], o URL con schema
+  #   bucket: gitstack-backups
+  #   prefix: prod
+  #   region: eu-central-1             # default us-east-1
+  #   access_key: ...                  # solo root: il file è 0600
+  #   secret_key: ...
+  #   key_file: /etc/gitstack/backup.key   # obbligatoria: archivi sempre cifrati
+  #   retention: 30                    # archivi su S3 (default 30) oppure "bucket"
+  #   notify_command: 'mail ...'       # eseguito con sh -c se il caricamento fallisce
 network:                         # facoltativa: rete aziendale (N9), scritta da install.sh
   http_proxy: "http://proxy.corp:3128"
   https_proxy: ""                # vuoto = quello HTTP
@@ -93,6 +103,20 @@ network:                         # facoltativa: rete aziendale (N9), scritta da 
   download_mirror: "https://files.corp/gitstack"
   ca_bundle: /etc/gitstack/network/ca.crt         # copia gestita della CA aziendale
 ```
+
+**Backup su S3 (N7).** Con `backup.s3` il backup giornaliero crea l'archivio in
+locale e poi lo carica sul bucket (AWS, MinIO, B2, Wasabi: client minio-go).
+Gli archivi sono sempre cifrati con la chiave di `key_file` (la stessa di
+`--key-file`): una sezione senza `key_file` è rifiutata dal caricamento del
+config, da `gitstack config set backup.s3` e da `install.sh`. Le chiavi S3 non
+compaiono mai in log, stato o notifiche. Conservazione su S3 separata da quella
+locale; `retention: bucket` non cancella niente. Se il caricamento fallisce il
+backup locale resta valido, il comando esce con 10, `gitstack status` mostra
+`Backup su S3: ULTIMO CARICAMENTO FALLITO` e gira `notify_command` (variabili
+`GITSTACK_BACKUP_EVENT/ARCHIVE/ERROR`). Scelta: niente API interna di core, il
+tool gira sull'host fuori dal cluster e non ha credenziali per essa.
+`gitstack restore --from s3 [nome]` scarica (il più recente, o il nome dato) e
+ripristina, anche su una macchina nuova dopo `install.sh --s3-*`.
 
 Campi sconosciuti o valori non validi sono un errore (exit 3). L'installer
 mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
@@ -106,6 +130,8 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack backup [--dest D] [--key-file F] [--config F]` | archivio coerente di database, repo, allegati, Secret e configurazione | sì |
 | `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
 | `gitstack upgrade [--to V] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
+| `gitstack restore --from s3 [nome] [--dest D] [--key-file F] [--config F]` | scarica da `backup.s3` l'archivio più recente (o `nome`) e lo ripristina; la chiave è quella di `backup.s3.key_file` se manca `--key-file` | sì |
+| `gitstack config set backup.s3 --endpoint E --bucket B --key-file F [--prefix P] [--region R] [--retention N|bucket] [--notify-command C] [--no-check] [--remove]` | configura la copia cifrata su S3 (chiavi da `GITSTACK_S3_ACCESS_KEY`/`GITSTACK_S3_SECRET_KEY`); verifica il bucket prima di scrivere | sì |
 | `gitstack config set network [--http-proxy U] [--https-proxy U] [--no-proxy L] [--registry-mirror U] [--registry-username U] [--registry-password-file F] [--download-mirror U] [--ca-bundle F] [--clear] [--force] [--config F]` | cambia proxy, mirror e CA aziendale (N9): prova a raggiungere proxy e mirror (e non cambia niente se non rispondono, salvo `--force`), rigenera `registries.yaml` e il drop-in di proxy di k3s e la CA di sistema, riavvia k3s solo se questi file cambiano e attende il nodo `Ready`, crea il ConfigMap `<release>-corporate-ca` e aggiorna il chart (`proxy.*`, `corporateCA.configMap`, `--reuse-values`), poi `network:` del config. Un valore vuoto toglie l'impostazione. Dettagli: `docs/operations.md`, «Corporate network» | sì |
 | `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
 | `gitstack version` | versione del binario | no |
@@ -139,6 +165,7 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
 | 7 | upgrade fallito e tornato com'era (rollback riuscito) |
 | 8 | upgrade fallito e rollback NON riuscito: serve un intervento (il messaggio dice come) |
 | 9 | restore completato nei dati ma l'istanza non risponde attraverso l'Ingress entro il timeout (120 s): il messaggio dice quale URL ha fallito e con quale stato; verifica con `gitstack status` |
+| 10 | backup locale riuscito ma caricamento su S3 fallito (l'archivio locale è valido; causa in `gitstack status`) |
 | 70 | errore inatteso |
 
 Errori su stderr con prefisso `ERRORE:`, come `install.sh`.

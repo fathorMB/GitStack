@@ -403,3 +403,27 @@ func TestNoProxyMatches(t *testing.T) {
 		}
 	}
 }
+
+// exportProxyEnv porta il proxy configurato nell'ambiente del processo: i
+// download di `gitstack upgrade` (net/http) e il client S3 (minio-go, che usa
+// http.ProxyFromEnvironment) lo rispettano senza altro codice. Un valore già
+// nell'ambiente vince.
+func TestExportProxyEnv(t *testing.T) {
+	for _, k := range []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"} {
+		t.Setenv(k, "")
+		if err := os.Unsetenv(k); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("HTTPS_PROXY", "http://gia-impostato:1")
+	exportProxyEnv(&config.Config{Network: config.Network{HTTPProxy: "http://p.corp:3128", NoProxy: "a.corp"}})
+	if got := os.Getenv("HTTP_PROXY"); got != "http://p.corp:3128" {
+		t.Errorf("HTTP_PROXY = %q", got)
+	}
+	if got := os.Getenv("HTTPS_PROXY"); got != "http://gia-impostato:1" {
+		t.Errorf("HTTPS_PROXY sovrascritto: %q", got)
+	}
+	if got := os.Getenv("NO_PROXY"); !strings.HasSuffix(got, ",a.corp") || !strings.Contains(got, "10.42.0.0/16") {
+		t.Errorf("NO_PROXY = %q", got)
+	}
+}
