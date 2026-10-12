@@ -22,6 +22,18 @@ type State struct {
 	Error string `json:"error,omitempty"`
 	// At è l'orario UTC del backup.
 	At time.Time `json:"at"`
+	// Upload è l'esito dell'ultimo caricamento su S3 (N7); nil se S3 non è
+	// configurato o l'ultimo backup non è arrivato al caricamento.
+	Upload *Upload `json:"upload,omitempty"`
+}
+
+// Upload è l'esito del caricamento su S3 dell'ultimo backup. Il backup
+// locale resta valido anche se Success è falso.
+type Upload struct {
+	Success bool      `json:"success"`
+	Name    string    `json:"name,omitempty"`
+	Error   string    `json:"error,omitempty"`
+	At      time.Time `json:"at"`
 }
 
 // Filename è il nome del file di stato, rispetto a ConfigDir.

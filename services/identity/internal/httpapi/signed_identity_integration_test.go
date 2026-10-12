@@ -57,6 +57,49 @@ func TestSignedIdentityAcceptedWithoutCookie(t *testing.T) {
 	errCode(t, e.do("POST", "/auth/logout", nil, nil, signedHdr(secret, id, now)...), 401, "unauthenticated")
 }
 
+// GET /auth/session con token personale: authMethod token, scopes e
+// scadenza del token. Con la sessione (password) scopes è assente.
+func TestCurrentSessionTokenScopes(t *testing.T) {
+	var logs bytes.Buffer
+	e := newFullEnv(t, &logs, secret)
+	e.mk("alice", false)
+	ck := e.mustLogin("alice")
+	exp := e.clock.now().Add(48 * time.Hour).Truncate(time.Second)
+	r := e.do("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"write:resource", "read:org"}, "expiresAt": exp.Format(time.RFC3339)}, ck)
+	status(t, r, 201)
+	tokenID, _ := r.json()["id"].(string)
+	if tokenID == "" {
+		t.Fatalf("creazione token: %s", r.body)
+	}
+	// Gli scope firmati dal gateway sono quelli del token; identity li
+	// restituisce nello stesso ordine.
+	id := trust.Identity{UserID: e.userID("alice"), Username: "alice", Scopes: []string{"read:org", "write:resource"}, TokenID: tokenID, TokenName: "ci"}
+	s := e.do("GET", "/auth/session", nil, nil, signedHdr(secret, id, time.Now())...)
+	status(t, s, 200)
+	m := s.json()
+	if m["authMethod"] != "token" {
+		t.Fatalf("authMethod = %v: %s", m["authMethod"], s.body)
+	}
+	sc, _ := m["scopes"].([]any)
+	if len(sc) != 2 || sc[0] != "read:org" || sc[1] != "write:resource" {
+		t.Errorf("scopes = %v, voluti [read:org write:resource]", m["scopes"])
+	}
+	got, err := time.Parse(time.RFC3339, m["expiresAt"].(string))
+	if err != nil || !got.Equal(exp) {
+		t.Errorf("expiresAt = %v (%v), voluto %v", m["expiresAt"], err, exp)
+	}
+	if m["user"].(map[string]any)["username"] != "alice" {
+		t.Errorf("user: %s", s.body)
+	}
+
+	// Sessione password: nessun campo scopes.
+	p := e.do("GET", "/auth/session", nil, ck)
+	status(t, p, 200)
+	if _, has := p.json()["scopes"]; has || p.json()["authMethod"] != "password" {
+		t.Errorf("sessione password: %s", p.body)
+	}
+}
+
 func TestSignedIdentityRejected(t *testing.T) {
 	var logs bytes.Buffer
 	e := newFullEnv(t, &logs, secret)

@@ -58,6 +58,8 @@ type App struct {
 	ServingPoll    time.Duration
 	// CheckServing, se non nil, sostituisce la verifica HTTP di un tentativo (test).
 	CheckServing func(context.Context, *config.Config) error
+	// NewStore, se non nil, sostituisce il client S3 (test).
+	NewStore func(config.S3) (backup.ObjectStore, error)
 	// Now, se non nil, sovrascrive l'orologio di backup (test).
 	Now func() time.Time
 }
@@ -91,7 +93,7 @@ func init() {
 		{name: "backup", summary: "archivio coerente di database, repo, allegati e configurazione", needsRoot: true, run: runBackup},
 		{name: "restore", summary: "ripristina un archivio su un'installazione pulita della stessa versione", needsRoot: true, run: runRestore},
 		{name: "upgrade", summary: "aggiorna GitStack con backup preventivo, controllo di salute e rollback automatico", needsRoot: true, run: runUpgrade},
-		{name: "config", summary: "config set host <nome>: cambia il nome dell'host (certificato, servizi, configurazione)", needsRoot: true, run: runConfig},
+		{name: "config", summary: "config set host <nome> | config set backup.s3 …: nome dell'host; copia dei backup su S3", needsRoot: true, run: runConfig},
 		{name: "version", summary: "versione del binario", run: runVersion},
 	}
 }
@@ -135,7 +137,7 @@ func (a *App) usage(w io.Writer) {
 		_, _ = fmt.Fprintf(w, "  %-8s %s\n", c.name, c.summary)
 	}
 	_, _ = fmt.Fprintln(w, "\nOpzioni comuni: --config PERCORSO (o $"+envConfigPath+"), -h/--help.")
-	_, _ = fmt.Fprintln(w, "Codici di uscita: 0 ok, 1 non sano, 2 uso, 3 configurazione, 4 cluster, 5 serve root, 6 rifiutato, 7 aggiornamento annullato (rollback fatto), 8 rollback fallito.")
+	_, _ = fmt.Fprintln(w, "Codici di uscita: 0 ok, 1 non sano, 2 uso, 3 configurazione, 4 cluster, 5 serve root, 6 rifiutato, 7 aggiornamento annullato (rollback fatto), 8 rollback fallito, 9 istanza non risponde, 10 backup locale riuscito ma caricamento su S3 fallito.")
 }
 
 func (a *App) errorf(format string, args ...any) {

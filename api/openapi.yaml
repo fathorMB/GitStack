@@ -91,7 +91,9 @@ tags:
   - name: mirrors
     description: >
       Mirror in push di un repo verso un altro server Git in HTTPS (V8, GIT-179): branch principale e tag,
-      mai push forzato. Serviti da core, eseguiti dal servizio git.
+      mai push forzato. Mirror in pull (MP1-MP8, GIT-195): un repo esterno copiato in un repo di GitStack,
+      in sola lettura, con ref `diverged` al posto di cancellazioni e sovrascritture (`/pull-mirror`;
+      import da URL con `POST /repos/import`). Serviti da core, eseguiti dal servizio git.
   - name: git-internal
     description: >
       Interfaccia interna del servizio git verso core (creazione su disco,
@@ -1599,6 +1601,57 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/import:
+    post:
+      operationId: importRepository
+      tags: [repos]
+      x-required-scopes: ["write:resource"]
+      summary: Crea un repo importandolo da un URL
+      description: >
+        «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git
+        raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita
+        C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il
+        repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta
+        sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami
+        con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce
+        `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e
+        `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e'
+        `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna
+        mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRepositoryInput"
+      responses:
+        "201":
+          description: Repo creato; la copia e' in corso.
+          headers:
+            Location:
+              description: URL del repo creato.
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -4117,6 +4170,290 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RepoMirrorRunList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pull-mirror:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: getRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["read:resource"]
+      summary: Legge il mirror in pull di un repo (con il suo stato)
+      description: >
+        Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde
+        404, uno senza `admin` 403. Un repo ha al massimo un mirror in pull. E' l'operazione di stato (MP2, MP4,
+        MP7): origine, intervallo, `lastSyncedAt` (ultimo aggiornamento riuscito), `lastError`, `state` e
+        l'elenco dei ref `diverged` (MP1). Il token non torna mai: `hasToken` dice solo che c'e'. Un repo che non
+        ha mai avuto un mirror in pull risponde 404 `not_found`; un mirror interrotto (MP6) risponde con
+        `state: stopped`.
+      responses:
+        "200":
+          description: Il mirror in pull.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    post:
+      operationId: enableRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Attiva il mirror in pull su un repo esistente
+      description: >
+        «Attiva mirror in pull» (MP3). Serve `admin` sul repo o l'amministratore dell'installazione. Da quel
+        momento il codice del repo e' in sola lettura (MP2: ogni push e' rifiutato con un messaggio che indica
+        l'origine) e solo il mirror aggiorna i ref; su un repo con contenuti vale la copia prudente (MP1: niente
+        cancellazioni ne' sovrascritture, i ref che divergono sono segnati `diverged`). `url` e' `https://`
+        senza credenziali nell'indirizzo (MP5), controllata con la policy di uscita (C8): 422 `url_not_allowed`
+        (`details.fields.url`). `username` e `token` sono facoltativi; il token e' cifrato come quello dei mirror
+        in push e non torna mai. Parte subito con un primo aggiornamento. Un repo che ha gia' un mirror in pull
+        attivo (anche in pausa): 409 `conflict`; uno interrotto si riattiva con questa stessa operazione. Un
+        repo archiviato rifiuta con 409 `archived` (R10). Un indirizzo uguale a quello di un mirror in push del
+        repo: 409 `conflict` (MP6). Senza chiave dei segreti: 503 `mirror_secrets_unavailable`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnablePullMirrorInput"
+      responses:
+        "201":
+          description: Mirror in pull attivato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+    patch:
+      operationId: updateRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Modifica intervallo e credenziali del mirror in pull
+      description: >
+        Serve `admin` sul repo o l'amministratore dell'installazione. Cambia solo i campi indicati:
+        `intervalSeconds` (da 300 a 86400, MP4), `username` e `token` (il token si sostituisce; stringa vuota
+        toglie la credenziale: l'origine e' poi letta senza). L'origine non si cambia: si interrompe e si
+        riattiva. Su un mirror interrotto: 409 `mirror_stopped`. Un repo archiviato rifiuta con 409 `archived`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePullMirrorInput"
+      responses:
+        "200":
+          description: Mirror in pull aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pull-mirror/sync:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    post:
+      operationId: syncRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Sincronizza ora il mirror in pull
+      description: >
+        «Sincronizza ora» (MP4). Serve `admin` sul repo o l'amministratore dell'installazione. Mette
+        l'aggiornamento in coda subito e azzera i tentativi in corso: risponde 202 e lo esegue il worker; si
+        segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. Un aggiornamento alla volta: se ce n'e' uno in
+        corso la richiesta e' idempotente. Un mirror in pausa risponde 409 `mirror_paused` (prima si riprende),
+        uno interrotto 409 `mirror_stopped`.
+      responses:
+        "202":
+          description: Aggiornamento in coda; lo stato aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pull-mirror/pause:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    post:
+      operationId: pauseRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Mette in pausa il mirror in pull
+      description: >
+        Pausa (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Ferma gli aggiornamenti
+        (anche «Sincronizza ora») lasciando il repo in sola lettura: `state: paused`. Idempotente. Su un mirror
+        interrotto: 409 `mirror_stopped`.
+      responses:
+        "200":
+          description: Mirror in pausa.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pull-mirror/resume:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    post:
+      operationId: resumeRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Riprende il mirror in pull
+      description: >
+        Riprendi (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Il mirror torna `pending`
+        e si aggiorna subito. Idempotente su un mirror non in pausa. Su un mirror interrotto: 409
+        `mirror_stopped`.
+      responses:
+        "200":
+          description: Mirror ripreso.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pull-mirror/stop:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    post:
+      operationId: stopRepoPullMirror
+      tags: [mirrors]
+      x-required-scopes: ["write:resource"]
+      summary: Interrompe il mirror in pull
+      description: >
+        Interrompi (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Il corpo porta il nome
+        del repo riscritto come conferma (`confirm`, come G8): diverso da `name`, 422 `confirmation_mismatch`.
+        Il repo diventa normale e scrivibile, le credenziali sono cancellate, il registro e i ref `diverged` si
+        conservano; il mirror resta leggibile con `state: stopped` e si puo' riattivare con
+        `enableRepoPullMirror`. Idempotente su un mirror gia' interrotto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopPullMirrorInput"
+      responses:
+        "200":
+          description: Mirror interrotto.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirror"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pull-mirror/runs:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+    get:
+      operationId: listRepoPullMirrorRuns
+      tags: [mirrors]
+      x-required-scopes: ["read:resource"]
+      summary: Registro delle ultime esecuzioni del mirror in pull
+      description: >
+        Serve `admin` sul repo o l'amministratore dell'installazione. Le ultime esecuzioni (al massimo 50, 30
+        giorni, MP4), dalla piu' recente: esito, errore ripulito da credenziali e, per ogni ref, cosa e'
+        successo. Il registro resta dopo l'interruzione (MP6). Paginazione come `GET /repos`.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di esecuzioni.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullMirrorRunList"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -7373,6 +7710,14 @@ components:
           description: Il repo non ha ancora nessun commit.
         cloneUrls:
           $ref: "#/components/schemas/RepoCloneUrls"
+        mirror:
+          allOf:
+            - $ref: "#/components/schemas/RepositoryMirror"
+          nullable: true
+          type: object
+          description: >
+            Presente solo se il repo e' un mirror in pull attivo (anche in pausa, MP2, MP7): il codice e' in
+            sola lettura. `null` o assente in un repo normale. Il dettaglio e' in `getRepoPullMirror`.
         createdAt:
           type: string
           format: date-time
@@ -7381,6 +7726,24 @@ components:
           type: string
           format: date-time
           readOnly: true
+
+    RepositoryMirror:
+      type: object
+      additionalProperties: false
+      required: [origin]
+      properties:
+        origin:
+          type: string
+          format: uri
+          description: Origine del mirror in pull, `https://` senza credenziali.
+        lastSyncedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Ultimo aggiornamento riuscito; `null` finche' la prima copia non e' finita.
+      example:
+        origin: https://github.com/example/gitstack.git
+        lastSyncedAt: "2026-10-12T09:40:00Z"
 
     CreateRepositoryInput:
       type: object
@@ -9362,6 +9725,304 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RepoMirrorRun"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    PullMirrorMode:
+      type: string
+      description: >
+        `mirror`: «mantieni sincronizzato», il repo resta in sola lettura e si aggiorna a intervalli (MP1-MP4);
+        `once`: «copia una volta sola» (MP8), dopo la prima copia il mirror e' interrotto e il repo e' normale.
+      enum: [mirror, once]
+    PullMirrorState:
+      type: string
+      description: >
+        Stato di un mirror in pull, con gli stessi nomi del mirror in push. `pending`: in coda (primo
+        aggiornamento o prossimo giro); `syncing`: un worker lo sta aggiornando; `in_sync`: l'ultimo
+        aggiornamento e' riuscito (anche con ref `diverged`: gli altri ref si aggiornano); `error`: l'ultimo
+        tentativo e' fallito, si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora, 3 ore, poi ogni 6
+        ore, tranne un blocco della policy di uscita (C8) che non si ritenta; `paused`: fermato da un admin,
+        repo in sola lettura; `stopped`: interrotto (MP6), il repo e' normale, restano registro e ref
+        `diverged`.
+      enum: [pending, syncing, in_sync, error, paused, stopped]
+    PullMirrorDivergedRef:
+      type: object
+      additionalProperties: false
+      required: [ref, kind, localSha, detectedAt]
+      properties:
+        ref:
+          type: string
+          example: refs/heads/main
+        kind:
+          type: string
+          description: >
+            `rewritten`: l'origine ha riscritto il ref (force-push, non fast-forward, tag spostato);
+            `deleted`: l'origine l'ha cancellato. In entrambi i casi su GitStack resta la versione precedente.
+          enum: [rewritten, deleted]
+        localSha:
+          type: string
+          description: SHA su GitStack (la versione conservata).
+        remoteSha:
+          type: string
+          nullable: true
+          description: SHA nell'origine; `null` se il ref e' stato cancellato.
+        detectedAt:
+          type: string
+          format: date-time
+    PullMirror:
+      type: object
+      additionalProperties: false
+      required: [id, origin, mode, intervalSeconds, state, hasToken, attempts, divergedRefs, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        origin:
+          type: string
+          format: uri
+          description: Origine, `https://` senza credenziali (MP5).
+        mode:
+          $ref: "#/components/schemas/PullMirrorMode"
+        intervalSeconds:
+          type: integer
+          minimum: 300
+          maximum: 86400
+          description: Ogni quanto si aggiorna (default 600, da 5 minuti a 24 ore, MP4).
+        state:
+          $ref: "#/components/schemas/PullMirrorState"
+        username:
+          type: string
+          nullable: true
+          description: Utente per l'origine; `null` senza credenziali.
+        hasToken:
+          type: boolean
+          description: "`true` se c'e' un token per l'origine. Il token non torna mai nelle risposte."
+        attempts:
+          type: integer
+          description: Tentativi falliti consecutivi dall'ultimo successo.
+        nextSyncAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Prossimo aggiornamento previsto; `null` in pausa, interrotto o in corso.
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSyncedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Ultimo aggiornamento riuscito.
+        lastError:
+          type: string
+          nullable: true
+          description: Motivo dell'ultimo errore, senza credenziali; `null` dopo un successo.
+        divergedRefs:
+          type: array
+          description: Ref segnati `diverged` (MP1), vuoto se non ce ne sono.
+          items:
+            $ref: "#/components/schemas/PullMirrorDivergedRef"
+        stoppedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdBy:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5c1f0a3e-2b7d-4e68-9a41-0d8f6b2c7e19
+        origin: https://github.com/example/gitstack.git
+        mode: mirror
+        intervalSeconds: 600
+        state: in_sync
+        username: gitstack-backup
+        hasToken: true
+        attempts: 0
+        nextSyncAt: "2026-10-12T09:50:00Z"
+        lastAttemptAt: "2026-10-12T09:40:00Z"
+        lastSyncedAt: "2026-10-12T09:40:00Z"
+        lastError: null
+        divergedRefs:
+          - ref: refs/heads/old-feature
+            kind: rewritten
+            localSha: 4f1c2a9e0b7d3c5a6e8f1b2c3d4e5f60718293a4
+            remoteSha: 9a8b7c6d5e4f30211203f4e5d6c7b8a998877665
+            detectedAt: "2026-10-11T22:10:00Z"
+        createdAt: "2026-10-10T08:00:00Z"
+        updatedAt: "2026-10-12T09:40:00Z"
+    EnablePullMirrorInput:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: "`https://` senza credenziali, al massimo 2048 caratteri."
+        username:
+          type: string
+          description: Facoltativo, da 1 a 256 caratteri.
+        token:
+          type: string
+          writeOnly: true
+          description: Facoltativo, da 1 a 512 caratteri; cifrato, non torna mai.
+        intervalSeconds:
+          type: integer
+          minimum: 300
+          maximum: 86400
+          description: Default 600.
+      example:
+        url: https://github.com/example/gitstack.git
+        username: gitstack-backup
+        token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        intervalSeconds: 600
+    ImportRepositoryInput:
+      type: object
+      additionalProperties: false
+      required: [owner, name, url, mode]
+      properties:
+        owner:
+          $ref: "#/components/schemas/Name"
+        name:
+          $ref: "#/components/schemas/RepoName"
+        description:
+          type: string
+          maxLength: 1024
+        visibility:
+          $ref: "#/components/schemas/RepoVisibility"
+        url:
+          type: string
+          format: uri
+          description: Origine, `https://` senza credenziali, al massimo 2048 caratteri (MP5).
+        mode:
+          $ref: "#/components/schemas/PullMirrorMode"
+        username:
+          type: string
+          description: Facoltativo, da 1 a 256 caratteri.
+        token:
+          type: string
+          writeOnly: true
+          description: Facoltativo, da 1 a 512 caratteri; cifrato, non torna mai e con `once` e' cancellato a copia finita.
+        intervalSeconds:
+          type: integer
+          minimum: 300
+          maximum: 86400
+          description: "Solo con `mode: mirror`; default 600."
+      example:
+        owner: alice
+        name: gitstack-backup
+        visibility: private
+        url: https://github.com/example/gitstack.git
+        mode: mirror
+        intervalSeconds: 600
+    UpdatePullMirrorInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        intervalSeconds:
+          type: integer
+          minimum: 300
+          maximum: 86400
+        username:
+          type: string
+          description: Stringa vuota toglie l'utente.
+        token:
+          type: string
+          writeOnly: true
+          description: Sostituisce il token; stringa vuota lo toglie.
+    StopPullMirrorInput:
+      type: object
+      additionalProperties: false
+      required: [confirm]
+      properties:
+        confirm:
+          type: string
+          description: Il nome del repo (`name`), riscritto come conferma (MP6, G8).
+      example:
+        confirm: gitstack-backup
+    PullMirrorRunOutcome:
+      type: string
+      description: >
+        `success`: aggiornamento riuscito (anche se tutto era gia' allineato); `diverged`: riuscito ma almeno
+        un ref e' divergente (conservato, gli altri si sono aggiornati); `error`: fallito, si ritenta;
+        `blocked`: origine non ammessa dalla policy di uscita (C8), non si ritenta.
+      enum: [success, diverged, error, blocked]
+    PullMirrorRunRef:
+      type: object
+      additionalProperties: false
+      required: [ref, status]
+      properties:
+        ref:
+          type: string
+          example: refs/heads/main
+        status:
+          type: string
+          enum: [created, updated, up-to-date, diverged, error]
+        oldSha:
+          type: string
+          nullable: true
+        newSha:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          description: Motivo per `diverged` ed `error`, es. `non-fast-forward`, `deleted`.
+    PullMirrorRun:
+      type: object
+      additionalProperties: false
+      required: [id, trigger, startedAt, finishedAt, durationMs, outcome, attempt, refs]
+      properties:
+        id:
+          type: string
+          format: uuid
+        trigger:
+          type: string
+          description: "`initial`: prima copia; `schedule`: a intervallo; `manual`: «Sincronizza ora»/Riprendi."
+          enum: [initial, schedule, manual]
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+        outcome:
+          $ref: "#/components/schemas/PullMirrorRunOutcome"
+        attempt:
+          type: integer
+          description: Numero del tentativo (1 = il primo dopo un successo o una richiesta).
+        error:
+          type: string
+          nullable: true
+          description: Senza credenziali.
+        refs:
+          type: array
+          description: Cosa e' successo a ogni ref che e' cambiato o e' divergente (i ref invariati si omettono).
+          items:
+            $ref: "#/components/schemas/PullMirrorRunRef"
+    PullMirrorRunList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PullMirrorRun"
         page:
           type: integer
         perPage:
