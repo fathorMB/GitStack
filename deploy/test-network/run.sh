@@ -185,10 +185,14 @@ prepare_vm() {
   close_egress
 }
 
+# --allow-unsigned-mirrors (V5, GIT-209): il binario è costruito da questo ramo e il
+# registry:2 di prova è riempito senza firme, cioè un mirror non firmato: è il
+# caso dell'eccezione esplicita. La verifica dei mirror firmati è in
+# deploy/tests/v5_verify_test.sh.
 run_install() {
   vm "bash /opt/gitstack/deploy/install.sh \
     --chart-dir /opt/gitstack/deploy/gitstack --image-tag ${IMAGE_TAG} --host ${VM_IP} \
-    --admin-binary /opt/gitstack/gitstack --admin-sha256 $(cat "${STATE}/gitstack.sha256") $*"
+    --admin-binary /opt/gitstack/gitstack --admin-sha256 $(cat "${STATE}/gitstack.sha256") --allow-unsigned-mirrors $*"
 }
 
 prepare() {

@@ -152,6 +152,24 @@ Dettagli operativi: [`../docs/operations.md`](../docs/operations.md#external-pos
 
 `install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
 
+### Firme (V5, GIT-209)
+
+Oltre allo SHA-256, `install.sh` verifica le firme cosign di **binario `gitstack`**
+(bundle `<sorgente>.sigstore.json` accanto al binario), **chart** (il `.tgz` della
+release `sha-<commit>` col suo bundle, verificato prima di estrarlo) e **immagini**
+`gitstack-*` (prima di `helm upgrade --install`), con l'identità del workflow `ci.yml` del
+repository e l'issuer OIDC di GitHub Actions fissati. Usa un cosign `v2.4.0` pinnato
+(SHA-256 verificato come per Helm), installato in `/usr/local/bin/gitstack-cosign` e
+ritrovato da `gitstack upgrade` tramite `v5.cosign_path` nel config. Una firma mancante,
+non valida o di un'altra identità ferma l'installazione senza toccare il sistema.
+
+Per un mirror interno che non ha le firme: `--allow-unsigned-mirrors` (o
+`GITSTACK_ALLOW_UNSIGNED=1`), eccezione esplicita e mai il default: salta le verifiche
+cosign con un avviso, si salva in `v5.allow_unsigned` e `gitstack status` la segnala.
+Rilanciare l'installer senza il flag la toglie. Con `--chart-dir` o un checkout locale il
+chart non è un artefatto firmato e non si verifica (avviso); le immagini sì. Dettagli in
+[../docs/operations.md](../docs/operations.md), sezione V5.
+
 ### Verifica in CI
 
 `.github/workflows/ci.yml`, job `shellcheck`: `shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh` (e gli altri script di shell del repository), poi `deploy/tests/preflight_test.sh`: prova i profili di N1, il sistema non supportato e la verifica del nome senza root né VM (le letture di CPU, RAM, disco, DNS sono funzioni che il test ridefinisce). Non verifica un'installazione reale (serve un sistema con systemd, non disponibile nei runner container-based): quella si fa sulla VM di `test-vm/` (GIT-12) o su una VM/container Ubuntu 24.04 usa e getta, vedi il riepilogo dell'item GIT-9.

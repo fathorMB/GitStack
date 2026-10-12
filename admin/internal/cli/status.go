@@ -127,6 +127,10 @@ func printReport(w io.Writer, binVersion string, r *status.Report) {
 	if r.BackupUpload != "" {
 		p("Backup su S3: %s", r.BackupUpload)
 	}
+	if r.SupplyChainWarning != "" {
+		p("")
+		p("AVVISO catena di fornitura: %s", r.SupplyChainWarning)
+	}
 	p("")
 	switch {
 	case r.ClusterError != "":
