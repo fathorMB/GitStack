@@ -615,7 +615,7 @@ jobs:
           fi
 
           # SBOM del chart (template e metadati)
-          mkdir -p sbom
+          mkdir -p sign sbom
           syft dir:"${chart_dir}" --quiet -o spdx-json > "sbom/gitstack-chart-sbom.spdx.json"
 
           # Firma del file chart come blob (bundle sigstore)
@@ -640,7 +640,7 @@ jobs:
 
           # Scarica la release (asset già pubblicati da admin-binary e gs-binaries)
           echo "Scaricamento asset della release..."
-          gh release download "${IMAGE_TAG}" --dir sign
+          gh release download "${IMAGE_TAG}" --dir sign --clobber
 
           # Verifica che gli asset esistano
           if [ ! -f sign/gitstack-linux-amd64 ]; then
