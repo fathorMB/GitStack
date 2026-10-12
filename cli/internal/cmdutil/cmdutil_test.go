@@ -212,7 +212,7 @@ func TestBaseRepo(t *testing.T) {
 		cfg := makeConfig("homehub")
 		f := &Factory{
 			IO:         io,
-			Getenv:     os.Getenv,
+			Getenv:     func(string) string { return "" },
 			Config:     func() (*config.Config, error) { return cfg, nil },
 			Git:        fakeGit{url: "https://github.com/fathorMB/GitStack.git"},
 			Tokens:     func() (config.TokenSource, error) { return nil, nil },
@@ -254,7 +254,7 @@ func TestBaseRepo(t *testing.T) {
 		cfg := makeConfig("homehub")
 		f := &Factory{
 			IO:         io,
-			Getenv:     os.Getenv,
+			Getenv:     func(string) string { return "" },
 			Config:     func() (*config.Config, error) { return cfg, nil },
 			Git:        fakeGit{url: "ssh://git@homehub:2222/acme/api.git"},
 			Tokens:     func() (config.TokenSource, error) { return nil, nil },
@@ -275,7 +275,7 @@ func TestBaseRepo(t *testing.T) {
 		cfg := makeConfig("homehub")
 		f := &Factory{
 			IO:         io,
-			Getenv:     os.Getenv,
+			Getenv:     func(string) string { return "" },
 			Config:     func() (*config.Config, error) { return cfg, nil },
 			RepoFlag:   "acme/api",
 			Git:        fakeGit{url: "https://github.com/fathorMB/GitStack.git"},

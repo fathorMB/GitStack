@@ -137,7 +137,7 @@ func (f *Factory) defaultHost() (string, error) {
 
 // BaseRepo sceglie owner/repo: --repo, altrimenti il remote origin.
 //
-// Se il remote origin punta a un host diverso da quello resolved da Host(), il
+// Se il remote origin punta a un host diverso da quello risolto da Host(), il
 // remote non vale: errore che nomina i due host, e --repo owner/repo risolve.
 // Il confronto usa l'host risolto da Factory.Host(), qualunque sia la sua
 // fonte (esplicito, predefinito o dal remote).
