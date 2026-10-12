@@ -249,6 +249,7 @@ func newWorld(t *testing.T) *world {
 		CodeloadURL: w.srv.URL + "/codeload",
 		ReleaseURL:  w.srv.URL + "/gh",
 		ImageCheck:  func(context.Context, string) error { return nil },
+		V5:          V5Config{AllowUnverified: true},
 	}
 	// l'API è montata sotto /repos-api: il server risponde per suffisso, ma
 	// il percorso reale è <base>/repos/<repo>/...

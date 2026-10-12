@@ -17,6 +17,8 @@
 package upgrade
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -97,7 +99,12 @@ type Options struct {
 	ImageCheck func(ctx context.Context, image string) error
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
 	Poll time.Duration
-	Log  io.Writer
+	// Log è il writer per i log di upgrade (test).
+	Log io.Writer
+	// V5 è la configurazione di verifica V5 (sigstore/cosign).
+	// Zero = nessuna verifica (per compatibilità con installazioni
+	// precedenti o per disabilitare in test).
+	V5 V5Config
 }
 
 func (o *Options) client() *http.Client {
@@ -284,6 +291,47 @@ func (o *Options) helmRevision(ctx context.Context) (int, error) {
 	return best, nil
 }
 
+// packageChart impacchetta una directory di chart in un tarball gzip per la
+// verifica cosign.
+func (o *Options) packageChart(srcDir, dest string) error {
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	gw := gzip.NewWriter(f)
+	tw := tar.NewWriter(gw)
+
+	// Percorre srcDir e aggiunge ogni file al tarball.
+	base, _ := filepath.EvalSymlinks(srcDir)
+	return filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(base, path)
+		if rel == "." {
+			return nil
+		}
+		hdr, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		hdr.Name = filepath.ToSlash(rel)
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+		if info.Mode().IsRegular() {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			_, err = tw.Write(data)
+			return err
+		}
+		return nil
+	})
+}
+
 // helmValues scrive i valori scelti dall'utente alla prima installazione
 // (e agli upgrade precedenti) in un file: si riapplicano sui default del
 // chart nuovo. `--reuse-values` riusa anche i default vecchi e farebbe
@@ -405,6 +453,18 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 		res.Outcome = Refused
 		return res, refused("%v", err)
 	}
+	// V5: verifica firma cosign del chart.
+	chartTgz := filepath.Join(work, "gitstack-chart.tgz")
+	// Creiamo un tarball temporaneo per la verifica cosign.
+	if err := o.packageChart(newChart, chartTgz); err != nil {
+		res.Outcome = Refused
+		return res, refused("non riesco a impacchettare il chart per la verifica: %v", err)
+	}
+	if err := o.V5.VerifyChart(ctx, chartTgz); err != nil {
+		res.Outcome = Refused
+		return res, refused("verifica firma cosign del chart fallita: %v", err)
+	}
+	o.logf("    chart: firma verificata")
 
 	valuesFile := filepath.Join(work, "values.json")
 	if err := o.helmValues(ctx, valuesFile); err != nil {
@@ -434,7 +494,12 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 			res.Outcome = Refused
 			return res, refused("%v", err)
 		}
-		o.logf("    ok %s", img)
+		// V5: verifica firma cosign dell'immagine.
+		if err := o.V5.VerifyImage(ctx, img); err != nil {
+			res.Outcome = Refused
+			return res, refused("verifica firma cosign fallita per %s: %v", img, err)
+		}
+		o.logf("    ok %s (firmata)", img)
 	}
 
 	if o.DryRun {

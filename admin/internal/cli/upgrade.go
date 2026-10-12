@@ -39,6 +39,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	var sets, values multiFlag
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
+	allowUnsigned := fs.Bool("allow-unsigned-mirrors", false, "consenti mirror interni non firmati (N9)")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
 		if err == nil {
 			err = fmt.Errorf("argomento inatteso: %s", fs.Arg(0))
@@ -98,6 +99,10 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		Repo:       a.Getenv("GITSTACK_REPO"),
 		Ref:        a.Getenv("GITSTACK_REF"),
 		Log:        a.Stdout,
+		V5:         upgrade.DefaultV5Main(),
+	}
+	if *allowUnsigned {
+		o.V5.AllowUnverified = true
 	}
 	if status.ServesCA(cfg) {
 		o.CheckCA = func(ctx context.Context) error { return status.CheckCA(ctx, cfg, nil) }

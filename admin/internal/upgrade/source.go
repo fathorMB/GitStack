@@ -171,8 +171,8 @@ func (o *Options) Compare(ctx context.Context, t *Target) (Direction, error) {
 	return Diverged, fmt.Errorf("stato del confronto inatteso: %q", r.Status)
 }
 
-// FetchBinary scarica il binario della release e ne verifica lo SHA-256
-// (V5) prima di scriverlo in dest.
+// FetchBinary scarica il binario della release, ne verifica lo SHA-256 e la
+// firma cosign (V5) prima di scriverlo in dest.
 func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (string, error) {
 	base := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-linux-amd64", o.releaseBase(), o.repo(), url.PathEscape(t.Tag))
 	sum, err := o.get(ctx, base+".sha256", 4096, "")
@@ -200,6 +200,11 @@ func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (stri
 	}
 	if err := os.WriteFile(dest, bin, 0o755); err != nil { //nolint:gosec // eseguibile
 		return "", err
+	}
+
+	// Verifica firma cosign V5.
+	if err := o.V5.VerifyBinary(ctx, dest); err != nil {
+		return "", fmt.Errorf("verifica firma cosign fallita: %w", err)
 	}
 	return want, nil
 }

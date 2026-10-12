@@ -76,6 +76,13 @@ GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 GITSTACK_ADMIN_BINARY="${GITSTACK_ADMIN_BINARY:-}"
 GITSTACK_ADMIN_SHA256="${GITSTACK_ADMIN_SHA256:-}"
 GITSTACK_ADMIN_REQUIRED="${GITSTACK_ADMIN_REQUIRED:-0}"
+# V5 catena di fornitura (sigstore/cosign): identità del workflow e issuer OIDC
+# usati per verificare la firma degli artefatti (immagine, chart, binario).
+# Default: valori del workflow di main di GitHub Actions.
+GITSTACK_V5_IDENTITY="${GITSTACK_V5_IDENTITY:-https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main}"
+GITSTACK_V5_OIDC_ISSUER="${GITSTACK_V5_OIDC_ISSUER:-https://token.actions.githubusercontent.com}"
+# Consenti mirror interni non firmati (N9): la verifica è saltata, si avvisa.
+GITSTACK_ALLOW_UNSIGNED="${GITSTACK_ALLOW_UNSIGNED:-0}"
 ADMIN_BIN_PATH="/usr/local/bin/gitstack"
 # File di configurazione dell'installazione, root-only: lo scrive questo
 # script, lo leggono i comandi di `gitstack` (formato: admin/README.md).
@@ -249,6 +256,9 @@ Opzioni:
                              per lasciar fare al bucket.
   --values FILE             File di valori Helm aggiuntivo (-f), ripetibile.
   --set CHIAVE=VALORE       Valore Helm aggiuntivo (--set), ripetibile.
+  --allow-unsigned-mirrors  Consenti mirror interni non firmati (N9): la
+                             verifica V5 è saltata e si emette un avviso
+                             invece di un errore.
   -h, --help                Stampa questo aiuto ed esce.
 
 Variabili d'ambiente equivalenti (i flag ripetibili --values/--set non ne
@@ -264,7 +274,8 @@ GITSTACK_POSTGRES_URL, GITSTACK_POSTGRES_PASSWORD_FILE, GITSTACK_POSTGRES_PASSWO
 GITSTACK_POSTGRES_CA_FILE,
 GITSTACK_S3_ENDPOINT, GITSTACK_S3_BUCKET, GITSTACK_S3_PREFIX,
 GITSTACK_S3_REGION, GITSTACK_S3_KEY_FILE, GITSTACK_S3_RETENTION,
-GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY.
+GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY,
+GITSTACK_V5_IDENTITY, GITSTACK_V5_OIDC_ISSUER, GITSTACK_ALLOW_UNSIGNED=1.
 EOF
 }
 
@@ -373,6 +384,10 @@ while [ "$#" -gt 0 ]; do
     --set)
       extra_helm_set+=("$2")
       shift 2
+      ;;
+    --allow-unsigned-mirrors)
+      GITSTACK_ALLOW_UNSIGNED=1
+      shift
       ;;
     -h|--help)
       usage
@@ -991,9 +1006,57 @@ fetch_resource() {
   esac
 }
 
+# --- Verifica firma V5 (cosign) -----------------------------------------
+
+# Verifica la firma cosign di un file binario (V5 catena di fornitura).
+# Se GITSTACK_ALLOW_UNSIGNED=1 o cosign non è installato, avvisa e non fallisce.
+# Se il bundle .sigstore.json non esiste, la verifica è saltata senza errore
+# (nessuna firma pubblicata).
+verify_file_cosign() {
+  local file="$1"
+  local bundle="${file}.sigstore.json"
+
+  # Per mirror interni non firmati (N9): eccezione esplicita, avviso solo.
+  if [ "${GITSTACK_ALLOW_UNSIGNED}" = "1" ]; then
+    log "verifica V5 saltata (--allow-unsigned-mirrors): ${file}"
+    return 0
+  fi
+
+  # Se il bundle non esiste, la verifica è saltata (nessuna firma pubblicata):
+  # si avvisa, ma non si fallisce.
+  if [ ! -f "${bundle}" ]; then
+    log "nessun bundle cosign trovato per ${file}: verifica V5 saltata."
+    return 0
+  fi
+
+  # Cosign deve essere nel PATH.
+  command -v cosign >/dev/null 2>&1 || fail "cosign non trovato nel PATH: installalo per la verifica V5 del binario, o usa --allow-unsigned-mirrors (N9)."
+
+  log "Verifica firma cosign di ${file}..."
+  if ! cosign verify-blob \
+      --certificate-identity "${GITSTACK_V5_IDENTITY}" \
+      --certificate-oidc-issuer "${GITSTACK_V5_OIDC_ISSUER}" \
+      --bundle "${bundle}" \
+      --insecure-ignore-tlog \
+      "${file}" >/dev/null 2>&1; then
+    local stderr_out
+    stderr_out="$(cosign verify-blob \
+        --certificate-identity "${GITSTACK_V5_IDENTITY}" \
+        --certificate-oidc-issuer "${GITSTACK_V5_OIDC_ISSUER}" \
+        --bundle "${bundle}" \
+        --insecure-ignore-tlog \
+        "${file}" 2>&1 >/dev/null)" || true
+    fail "verifica firma cosign fallita per ${file}: ${stderr_out}
+Controlla che l'artefatto sia stato firmato dal workflow GitHub Actions
+(https://github.com/${GITSTACK_REPO}/actions/workflows/ci.yml) e che
+l'identità '${GITSTACK_V5_IDENTITY}' corrisponda."
+  fi
+  log "Firma cosign di ${file} verificata."
+}
+
 # Scarica (o copia) il binario di `gitstack` e ne verifica lo SHA-256 prima
 # di toccare il sistema: se il checksum non torna, esce con errore e non
-# installa niente.
+# installa niente. Dopo SHA-256 si verifica anche la firma cosign (V5).
 prepare_admin() {
   local image_tag="$1"
   local src="${GITSTACK_ADMIN_BINARY}" explicit=0
@@ -1037,6 +1100,10 @@ prepare_admin() {
     fail "il binario di gitstack (${src}) non corrisponde al checksum SHA-256: atteso ${expected}, trovato ${actual}. Non installato."
   fi
   chmod 0755 "${workdir}/gitstack"
+
+  # V5: verifica firma cosign.
+  verify_file_cosign "${workdir}/gitstack"
+
   ADMIN_STAGED="${workdir}/gitstack"
   ADMIN_SOURCE_DESC="${src}"
   log "Binario di gitstack verificato (SHA-256 ${actual})."
