@@ -95,6 +95,9 @@ type Options struct {
 	// di k3s e il binario vengono da <mirror>/k3s/install.sh e
 	// GITHUB_URL=<mirror>/k3s/releases, come in deploy/install.sh.
 	K3sDownloadMirror string
+	// DownloadMirror è network.download_mirror: binario, chart, bundle e
+	// sorgente si scaricano da <mirror>/gitstack/... e si verificano uguale.
+	DownloadMirror string
 	// SystemdDir è la cartella delle unità systemd (default /etc/systemd/system):
 	// serve a togliere le variabili *_PROXY che lo script di k3s ricopia in
 	// k3s.service.env, perché il drop-in resti l'unica fonte.
@@ -114,6 +117,9 @@ type Options struct {
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
 	Poll time.Duration
 	Log  io.Writer
+	// V5 è la verifica delle firme cosign (binario, chart, immagini). Il
+	// valore zero verifica: si salta solo con V5.AllowUnsigned (N9).
+	V5 V5Config
 }
 
 func (o *Options) client() *http.Client {
@@ -121,6 +127,16 @@ func (o *Options) client() *http.Client {
 		return o.HTTP
 	}
 	return &http.Client{Timeout: 5 * time.Minute}
+}
+
+// v5 è la configurazione di verifica con il repository di default: l'identità
+// accettata è sempre quella del repository da cui si scarica.
+func (o *Options) v5() V5Config {
+	v := o.V5
+	if v.Repo == "" {
+		v.Repo = o.repo()
+	}
+	return v
 }
 
 func (o *Options) repo() string {
@@ -468,7 +484,18 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 			res.Outcome = Refused
 			return res, refused("%v", err)
 		}
-		o.logf("    ok %s", img)
+		switch {
+		case o.v5().AllowUnsigned:
+			o.logf("    ok %s (firma NON verificata: eccezione N9)", img)
+		case !IsGitstackImage(img):
+			o.logf("    ok %s (immagine di terzi: non firmata da GitStack)", img)
+		default:
+			if err := o.v5().VerifyImage(ctx, img); err != nil {
+				res.Outcome = Refused
+				return res, refused("immagine %s: %v. Per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", img, err)
+			}
+			o.logf("    ok %s (firma cosign verificata)", img)
+		}
 	}
 
 	if o.DryRun {

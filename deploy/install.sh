@@ -79,6 +79,30 @@ GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 GITSTACK_ADMIN_BINARY="${GITSTACK_ADMIN_BINARY:-}"
 GITSTACK_ADMIN_SHA256="${GITSTACK_ADMIN_SHA256:-}"
 GITSTACK_ADMIN_REQUIRED="${GITSTACK_ADMIN_REQUIRED:-0}"
+
+# Catena di fornitura (V5, GIT-209): binario, chart e immagini sono firmati
+# dalla CI con Sigstore/cosign (firma keyless del workflow ci.yml). Qui si
+# verificano con un cosign pinnato (stessa versione della CI, SHA-256
+# controllato come per Helm), l'identità del workflow del repository
+# GITSTACK_REPO e l'issuer OIDC di GitHub Actions. Se una firma manca o non
+# torna, l'installazione si ferma senza toccare il sistema.
+# Eccezione N9 (mirror interni non firmati): --allow-unsigned-mirrors, mai il
+# default; salta ogni verifica con un avviso e finisce in config.yaml
+# (v5.allow_unsigned), da dove la mostra `gitstack status`.
+GITSTACK_ALLOW_UNSIGNED="${GITSTACK_ALLOW_UNSIGNED:-0}"
+COSIGN_VERSION="v2.4.0"
+# Vuoto = GitHub, o con --download-mirror <mirror>/cosign/<versione>/cosign-linux-amd64
+# (vedi cosign_url): in ogni caso lo SHA-256 pinnato resta verificato.
+GITSTACK_COSIGN_URL="${GITSTACK_COSIGN_URL:-}"
+# SHA-256 di cosign-linux-amd64 v2.4.0 (cosign_checksums.txt della release).
+GITSTACK_COSIGN_SHA256="${GITSTACK_COSIGN_SHA256:-cd7636b3586a3bdac2d9c8f3b421ed119edcb20499107887fd929211110e8418}"
+# Dove si installa il cosign pinnato: lo stesso binario lo usa `gitstack
+# upgrade` (v5.cosign_path nel config). Non si usa un cosign del PATH.
+COSIGN_PATH="${GITSTACK_COSIGN_PATH:-/usr/local/bin/gitstack-cosign}"
+COSIGN_READY=0
+V5_OIDC_ISSUER="https://token.actions.githubusercontent.com"
+# Base degli asset delle release GitHub (chart e binario: <base>/<tag>/<file>).
+GITSTACK_RELEASE_URL="${GITSTACK_RELEASE_URL:-https://github.com/${GITSTACK_REPO}/releases/download}"
 ADMIN_BIN_PATH="/usr/local/bin/gitstack"
 # File di configurazione dell'installazione, root-only: lo scrive questo
 # script, lo leggono i comandi di `gitstack` (formato: admin/README.md).
@@ -295,6 +319,12 @@ Opzioni:
                              containerd e dai pod. Con le opzioni di rete il
                              preflight prova a raggiungere ogni destinazione e
                              ferma l'installazione se una non risponde.
+  --allow-unsigned-mirrors  Eccezione N9 per mirror interni non firmati: salta
+                             la verifica delle firme cosign di binario, chart
+                             e immagini (V5), anche se vengono da un mirror, e
+                             lo segnala in 'gitstack status'. Non è mai il
+                             default: senza, una firma mancante o non valida
+                             ferma l'installazione.
   -h, --help                Stampa questo aiuto ed esce.
 
 Variabili d'ambiente equivalenti (i flag ripetibili --values/--set non ne
@@ -313,7 +343,9 @@ GITSTACK_POSTGRES_URL, GITSTACK_POSTGRES_PASSWORD_FILE, GITSTACK_POSTGRES_PASSWO
 GITSTACK_POSTGRES_CA_FILE,
 GITSTACK_S3_ENDPOINT, GITSTACK_S3_BUCKET, GITSTACK_S3_PREFIX,
 GITSTACK_S3_REGION, GITSTACK_S3_KEY_FILE, GITSTACK_S3_RETENTION,
-GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY.
+GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY, GITSTACK_ALLOW_UNSIGNED=1,
+GITSTACK_COSIGN_URL, GITSTACK_COSIGN_SHA256, GITSTACK_COSIGN_PATH,
+GITSTACK_RELEASE_URL.
 EOF
 }
 
@@ -454,6 +486,10 @@ while [ "$#" -gt 0 ]; do
     --set)
       extra_helm_set+=("$2")
       shift 2
+      ;;
+    --allow-unsigned-mirrors)
+      GITSTACK_ALLOW_UNSIGNED=1
+      shift
       ;;
     -h|--help)
       usage
@@ -805,6 +841,7 @@ resolve_chart_dir() {
   if [ -n "${GITSTACK_CHART_DIR}" ]; then
     [ -f "${GITSTACK_CHART_DIR}/Chart.yaml" ] || fail "--chart-dir/${GITSTACK_CHART_DIR} non contiene Chart.yaml."
     CHART_DIR="${GITSTACK_CHART_DIR}"
+    warn_local_chart
     return 0
   fi
 
@@ -814,6 +851,7 @@ resolve_chart_dir() {
   fi
   if [ -n "${script_dir}" ] && [ -f "${script_dir}/gitstack/Chart.yaml" ]; then
     CHART_DIR="${script_dir}/gitstack"
+    warn_local_chart
     return 0
   fi
 
@@ -843,6 +881,11 @@ resolve_chart_dir() {
   else
     fail "il sorgente scaricato non contiene deploy/gitstack/Chart.yaml."
   fi
+
+  # V5: il chart si usa solo se è quello firmato dalla CI (il .tgz della
+  # release sha-<commit>, non il sorgente di codeload: i byte firmati sono
+  # quelli del pacchetto).
+  verify_downloaded_chart "${sha}" "${workdir}"
 }
 
 # Sha del commit di GITSTACK_REPO al ref dato, via l'API di GitHub (nessuna
@@ -1010,6 +1053,196 @@ wait_for_traefik_crd() {
   log "CRD middlewares.traefik.io Established."
 }
 
+# --- Verifica delle firme (V5, cosign) --------------------------------------
+
+# Vero se la verifica è attiva (cioè l'eccezione N9 NON è stata chiesta).
+v5_enabled() {
+  [ "${GITSTACK_ALLOW_UNSIGNED}" != "1" ]
+}
+
+# Identità accettata per i certificati di firma: il workflow ci.yml del
+# repository GITSTACK_REPO, da main o da un tag di versione (v*). È quella che
+# verifica anche la CI (--certificate-identity-regexp per i tag).
+v5_identity_regexp() {
+  local repo_re
+  repo_re="$(printf '%s' "${GITSTACK_REPO}" | sed -e 's/[][\.*^$+?(){}|]/\\&/g')"
+  printf '^https://github\\.com/%s/\\.github/workflows/ci\\.yml@refs/(heads/main|tags/v.+)$' "${repo_re}"
+}
+
+# Installa il cosign pinnato in COSIGN_PATH, verificandone lo SHA-256 (come
+# Helm). Un cosign già presente a quel percorso si riusa solo se il checksum
+# torna. Non si usa mai un cosign trovato nel PATH.
+ensure_cosign() {
+  [ "${COSIGN_READY}" = "1" ] && return 0
+  command -v sha256sum >/dev/null 2>&1 || fail "serve 'sha256sum' per verificare cosign."
+  local expected actual
+  expected="$(printf '%s' "${GITSTACK_COSIGN_SHA256}" | tr 'A-F' 'a-f')"
+  if [ -f "${COSIGN_PATH}" ] && [ -x "${COSIGN_PATH}" ]; then
+    actual="$(sha256sum "${COSIGN_PATH}" | awk '{ print $1 }')"
+    if [ "${actual}" = "${expected}" ]; then
+      COSIGN_READY=1
+      return 0
+    fi
+  fi
+  log "Installo cosign ${COSIGN_VERSION} (pinnato) in ${COSIGN_PATH} ..."
+  local workdir
+  workdir="$(mktemp -d)"
+  TMP_DIRS+=("${workdir}")
+  local url
+  url="$(cosign_url)"
+  fetch_resource "${url}" "${workdir}/cosign" \
+    || fail "download di cosign fallito (${url}): senza cosign le firme non si verificano. In una rete chiusa pubblica cosign sul mirror dei download (<mirror>/cosign/${COSIGN_VERSION}/cosign-linux-amd64) o passa GITSTACK_COSIGN_URL; per un mirror non firmato, --allow-unsigned-mirrors."
+  actual="$(sha256sum "${workdir}/cosign" | awk '{ print $1 }')"
+  if [ "${actual}" != "${expected}" ]; then
+    fail "cosign scaricato (${url}) non corrisponde al checksum SHA-256 pinnato: atteso ${expected}, trovato ${actual}. Non installato."
+  fi
+  mkdir -p "$(dirname "${COSIGN_PATH}")"
+  install -m 0755 "${workdir}/cosign" "${COSIGN_PATH}"
+  COSIGN_READY=1
+}
+
+# verify_blob_cosign FILE BUNDLE DESCRIZIONE: cosign verify-blob con identità
+# e issuer fissati. Il bundle deve esistere; qualunque esito diverso da «firma
+# valida» ferma l'installazione.
+verify_blob_cosign() {
+  local file="$1" bundle="$2" what="$3" out
+  ensure_cosign
+  [ -f "${bundle}" ] || fail "bundle cosign mancante per ${what} (${bundle}): l'artefatto non risulta firmato. Non installato."
+  if ! out="$("${COSIGN_PATH}" verify-blob \
+      --certificate-identity-regexp "$(v5_identity_regexp)" \
+      --certificate-oidc-issuer "${V5_OIDC_ISSUER}" \
+      --bundle "${bundle}" "${file}" 2>&1)"; then
+    fail "verifica della firma cosign fallita per ${what}: ${out}
+L'artefatto non è firmato dal workflow ci.yml di ${GITSTACK_REPO} (issuer ${V5_OIDC_ISSUER}) o è stato alterato. Non installato.
+Per un mirror interno non firmato: --allow-unsigned-mirrors (eccezione N9)."
+  fi
+  log "Firma cosign verificata: ${what}."
+}
+
+# verify_image_cosign IMMAGINE: cosign verify con la stessa identità.
+verify_image_cosign() {
+  local image="$1" out ref="$1"
+  ensure_cosign
+  # Con --registry-mirror le immagini (e le loro firme) stanno sul mirror,
+  # col nome originale senza host (docs/operations.md): si verifica lì.
+  local extra=() dockercfg=""
+  if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    ref="$(net_authority "${GITSTACK_REGISTRY_MIRROR}")/${image#*/}"
+    case "${GITSTACK_REGISTRY_MIRROR}" in http://*) extra+=(--allow-insecure-registry) ;; esac
+    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
+      dockercfg="$(mktemp -d)"
+      TMP_DIRS+=("${dockercfg}")
+      printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$(net_authority "${GITSTACK_REGISTRY_MIRROR}")" \
+        "$(printf '%s:%s' "${GITSTACK_REGISTRY_USERNAME}" "${GITSTACK_REGISTRY_PASSWORD}" | base64 | tr -d '\n')" \
+        >"${dockercfg}/config.json"
+      chmod 0600 "${dockercfg}/config.json"
+    fi
+  fi
+  if ! out="$(DOCKER_CONFIG="${dockercfg:-${DOCKER_CONFIG:-${HOME:-/root}/.docker}}" "${COSIGN_PATH}" verify \
+      --certificate-identity-regexp "$(v5_identity_regexp)" \
+      --certificate-oidc-issuer "${V5_OIDC_ISSUER}" \
+      ${extra[@]+"${extra[@]}"} "${ref}" 2>&1)"; then
+    fail "verifica della firma cosign fallita per l'immagine ${ref}: ${out}
+L'immagine non è firmata dal workflow ci.yml di ${GITSTACK_REPO} (issuer ${V5_OIDC_ISSUER}), o il mirror non ne ha la firma. Non installata.
+Per un mirror interno non firmato: --allow-unsigned-mirrors (eccezione N9)."
+  fi
+  log "Firma cosign verificata: ${image}."
+}
+
+# Avviso visibile dell'eccezione N9, ripetuto nel riepilogo.
+UNSIGNED_WARNED=0
+warn_unsigned_exception() {
+  [ "${UNSIGNED_WARNED}" = "1" ] && return 0
+  UNSIGNED_WARNED=1
+  warn "ECCEZIONE N9 ATTIVA (--allow-unsigned-mirrors): le firme cosign di binario, chart e immagini NON vengono verificate. Usala solo per un mirror interno non firmato."
+}
+
+# Un chart da cartella locale (--chart-dir o checkout) non ha un artefatto
+# firmato da confrontare: lo dice, le immagini si verificano comunque.
+warn_local_chart() {
+  if v5_enabled; then
+    warn "chart da cartella locale (${CHART_DIR}): non è un artefatto firmato e non si verifica; le immagini sì. Per verificare anche il chart usa l'installazione dalla release (senza --chart-dir)."
+  fi
+}
+
+# verify_downloaded_chart SHA WORKDIR: scarica il chart .tgz pubblicato dalla
+# CI nella release sha-<commit> con il suo bundle, ne verifica la firma e lo
+# usa al posto del chart ricavato dal sorgente (CHART_DIR).
+verify_downloaded_chart() {
+  local sha="$1" workdir="$2"
+  if ! v5_enabled; then
+    warn_unsigned_exception
+    return 0
+  fi
+  local version
+  version="$(awk '/^version:/ { print $2; exit }' "${CHART_DIR}/Chart.yaml" | tr -d '"\r')"
+  [ -n "${version}" ] || fail "versione del chart non trovata in ${CHART_DIR}/Chart.yaml."
+  local url
+  url="$(release_base "sha-${sha}")/gitstack-${version}.tgz"
+  local tgz="${workdir}/gitstack-chart.tgz"
+  log "Scarico il chart firmato ${url} ..."
+  fetch_resource "${url}" "${tgz}" \
+    || fail "chart firmato non trovato: ${url}. La release sha-${sha} deve contenere gitstack-${version}.tgz e il suo .sigstore.json (li pubblica il job di firma della CI su main)."
+  fetch_resource "${url}.sigstore.json" "${tgz}.sigstore.json" \
+    || fail "bundle cosign del chart non trovato: ${url}.sigstore.json. Il chart non risulta firmato. Non installato."
+  verify_blob_cosign "${tgz}" "${tgz}.sigstore.json" "il chart gitstack-${version}.tgz"
+  local ex="${workdir}/chart-firmato"
+  mkdir -p "${ex}"
+  tar -xzf "${tgz}" -C "${ex}" || fail "il chart firmato non si estrae."
+  [ -f "${ex}/gitstack/Chart.yaml" ] || fail "il chart firmato non contiene gitstack/Chart.yaml."
+  # Sul posto: deploy/k3s-version resta accanto (resolve_k3s_version).
+  rm -rf "${CHART_DIR}"
+  mv "${ex}/gitstack" "${CHART_DIR}"
+}
+
+# Immagini di GitStack (quelle firmate dalla CI) fra quelle che il chart
+# distribuirebbe con i valori scelti: si verificano PRIMA di installare.
+# Postgres e NATS sono immagini di terzi e non si verificano qui.
+verify_deployed_images() {
+  local chart_dir="$1" image_tag="$2"
+  if ! v5_enabled; then
+    warn_unsigned_exception
+    return 0
+  fi
+  ensure_cosign
+  helm_value_args "${image_tag}"
+  local rendered images img n=0
+  rendered="$(helm template "${GITSTACK_RELEASE_NAME}" "${chart_dir}" \
+    --namespace "${GITSTACK_NAMESPACE}" "${HELM_VALUE_ARGS[@]}")" \
+    || fail "'helm template' fallito: non posso elencare le immagini da verificare."
+  images="$(printf '%s\n' "${rendered}" | tr -d "\"'" \
+    | sed -n -E 's/^[[:space:]]*-?[[:space:]]*image:[[:space:]]*([^[:space:]]+)[[:space:]]*$/\1/p' \
+    | sort -u | grep -E '(^|/)gitstack-(gateway|identity|git|core|web)([:@]|$)' || true)"
+  [ -n "${images}" ] || fail "il chart non distribuisce nessuna immagine gitstack-*: chart inatteso, niente da verificare."
+  while IFS= read -r img; do
+    [ -n "${img}" ] || continue
+    verify_image_cosign "${img}"
+    n=$((n + 1))
+  done <<<"${images}"
+  log "Immagini verificate: ${n}."
+}
+
+# Sezione v5 di config.yaml: l'eccezione N9 (da mostrare in `gitstack status`)
+# e il cosign pinnato che usa `gitstack upgrade`.
+v5_config_section() {
+  printf 'v5:\n'
+  if v5_enabled; then
+    printf '  allow_unsigned: false\n'
+    printf '  cosign_path: %s\n' "${COSIGN_PATH}"
+  else
+    printf '  allow_unsigned: true\n'
+  fi
+}
+
+# Riepilogo: l'eccezione N9 resta in vista a fine installazione.
+print_v5_summary() {
+  if v5_enabled; then
+    printf 'Firme (V5): binario, chart e immagini verificati con cosign %s.' "${COSIGN_VERSION}"
+  else
+    printf 'ATTENZIONE - eccezione N9: le firme di binario, chart e immagini NON sono state verificate (--allow-unsigned-mirrors).\nSi vede in: sudo gitstack status. Per ripristinare la verifica rilancia questo script senza il flag.'
+  fi
+}
+
 # --- Helm ------------------------------------------------------------------
 
 # Tarball ufficiale pinnato alla versione esatta più il suo checksum
@@ -1045,16 +1278,12 @@ install_helm() {
   install -m 0755 "${workdir}/linux-amd64/helm" /usr/local/bin/helm
 }
 
-install_gitstack() {
-  local chart_dir="$1"
-  local image_tag="$2"
-
-  local helm_args=(
-    upgrade --install "${GITSTACK_RELEASE_NAME}" "${chart_dir}"
-    --namespace "${GITSTACK_NAMESPACE}" --create-namespace
-    --set "global.image.tag=${image_tag}"
-    --wait --timeout 5m
-  )
+# Valori del chart (--set / -f) in HELM_VALUE_ARGS: gli stessi per l'elenco
+# delle immagini da verificare (helm template) e per l'installazione.
+HELM_VALUE_ARGS=()
+helm_value_args() {
+  local image_tag="$1"
+  local helm_args=(--set "global.image.tag=${image_tag}")
   if [ -n "${GITSTACK_IMAGE_REGISTRY}" ]; then
     helm_args+=(--set "global.image.registry=${GITSTACK_IMAGE_REGISTRY}")
   fi
@@ -1082,6 +1311,20 @@ install_gitstack() {
   for kv in "${extra_helm_set[@]:-}"; do
     [ -n "${kv}" ] && helm_args+=(--set "${kv}")
   done
+  HELM_VALUE_ARGS=("${helm_args[@]}")
+}
+
+install_gitstack() {
+  local chart_dir="$1"
+  local image_tag="$2"
+
+  helm_value_args "${image_tag}"
+  local helm_args=(
+    upgrade --install "${GITSTACK_RELEASE_NAME}" "${chart_dir}"
+    --namespace "${GITSTACK_NAMESPACE}" --create-namespace
+    --wait --timeout 5m
+    "${HELM_VALUE_ARGS[@]}"
+  )
 
   log "Installo/aggiorno GitStack (release '${GITSTACK_RELEASE_NAME}', namespace '${GITSTACK_NAMESPACE}', tag immagine '${image_tag}') ..."
   KUBECONFIG="${GITSTACK_KUBECONFIG}" helm "${helm_args[@]}" \
@@ -1167,6 +1410,16 @@ prepare_admin() {
     fail "il binario di gitstack (${src}) non corrisponde al checksum SHA-256: atteso ${expected}, trovato ${actual}. Non installato."
   fi
   chmod 0755 "${workdir}/gitstack"
+
+  # V5: oltre al checksum, la firma cosign del binario (bundle accanto
+  # all'artefatto: <sorgente>.sigstore.json). Senza bundle non si installa.
+  if v5_enabled; then
+    fetch_resource "${src}.sigstore.json" "${workdir}/gitstack.sigstore.json" \
+      || fail "bundle cosign del binario di gitstack non trovato (${src}.sigstore.json): il binario non risulta firmato. Non installato. Pubblica il bundle accanto al binario, oppure per un mirror interno non firmato usa --allow-unsigned-mirrors (eccezione N9)."
+    verify_blob_cosign "${workdir}/gitstack" "${workdir}/gitstack.sigstore.json" "il binario di gitstack"
+  else
+    warn_unsigned_exception
+  fi
   ADMIN_STAGED="${workdir}/gitstack"
   ADMIN_SOURCE_DESC="${src}"
   log "Binario di gitstack verificato (SHA-256 ${actual})."
@@ -1350,8 +1603,13 @@ EOF
   # backup.s3 sta dentro backup: va subito dopo; le sezioni di primo livello
   # (postgres) dopo, altrimenti s3 finirebbe dentro postgres.
   [ -z "${s3_block}" ] || printf '%s\n' "${s3_block}" >>"${tmp}"
-  postgres_config_section >>"${tmp}"
-  render_config_network >>"${tmp}"
+  # Ultima sezione: la catena di fornitura (V5), cioè l'eccezione N9, se c'è,
+  # e il cosign pinnato.
+  {
+    postgres_config_section
+    render_config_network
+    v5_config_section
+  } >>"${tmp}"
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${GITSTACK_CONFIG_FILE}"
   log "Configurazione scritta in ${GITSTACK_CONFIG_FILE} (0600)."
@@ -1906,12 +2164,31 @@ helm_base_url() {
   fi
 }
 
-admin_default_url() {
+# Cartella degli asset di una release (binario, chart, bundle .sigstore.json):
+# la release GitHub, o <mirror>/gitstack/<tag>. Ciò che arriva dal mirror si
+# verifica con cosign come ciò che arriva da GitHub (V5).
+release_base() {
   local tag="$1"
   if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
-    printf '%s/gitstack/%s/gitstack-linux-amd64' "${GITSTACK_DOWNLOAD_MIRROR}" "${tag}"
+    printf '%s/gitstack/%s' "${GITSTACK_DOWNLOAD_MIRROR}" "${tag}"
   else
-    printf 'https://github.com/%s/releases/download/%s/gitstack-linux-amd64' "${GITSTACK_REPO}" "${tag}"
+    printf '%s/%s' "${GITSTACK_RELEASE_URL}" "${tag}"
+  fi
+}
+
+admin_default_url() {
+  printf '%s/gitstack-linux-amd64' "$(release_base "$1")"
+}
+
+# cosign pinnato: GITSTACK_COSIGN_URL, altrimenti il mirror dei download
+# (<mirror>/cosign/<versione>/cosign-linux-amd64), altrimenti GitHub.
+cosign_url() {
+  if [ -n "${GITSTACK_COSIGN_URL}" ]; then
+    printf '%s' "${GITSTACK_COSIGN_URL}"
+  elif [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    printf '%s/cosign/%s/cosign-linux-amd64' "${GITSTACK_DOWNLOAD_MIRROR}" "${COSIGN_VERSION}"
+  else
+    printf 'https://github.com/sigstore/cosign/releases/download/%s/cosign-linux-amd64' "${COSIGN_VERSION}"
   fi
 }
 
@@ -2303,6 +2580,8 @@ Al primo login la password va cambiata prima di qualunque altra operazione.
 
 $(print_tls_summary)
 
+$(print_v5_summary)
+
 Rieseguire questo script in qualsiasi momento è sicuro: non reinstalla k3s
 se è già presente e usa 'helm upgrade --install', che non rompe
 un'installazione esistente (la password di Postgres e quella
@@ -2545,6 +2824,9 @@ EOF
 
 main() {
   check_root "$@"
+  if ! v5_enabled; then
+    warn_unsigned_exception
+  fi
   validate_s3_options
   resolve_tls
   resolve_network
@@ -2578,6 +2860,8 @@ main() {
   create_postgres_secrets
   ensure_corporate_ca_configmap
   setup_tls "${chart_dir}"
+  # V5: le immagini si verificano prima di distribuirle.
+  verify_deployed_images "${chart_dir}" "${image_tag}"
   install_gitstack "${chart_dir}" "${image_tag}"
   persist_chart "${chart_dir}"
   install_admin

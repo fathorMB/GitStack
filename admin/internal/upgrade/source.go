@@ -2,6 +2,7 @@ package upgrade
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -177,7 +178,7 @@ func (o *Options) Compare(ctx context.Context, t *Target) (Direction, error) {
 // FetchBinary scarica il binario della release e ne verifica lo SHA-256
 // (V5) prima di scriverlo in dest.
 func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (string, error) {
-	base := fmt.Sprintf("%s/%s/releases/download/%s/gitstack-linux-amd64", o.releaseBase(), o.repo(), url.PathEscape(t.Tag))
+	base := o.assetBase(t.Tag) + "/gitstack-linux-amd64"
 	sum, err := o.get(ctx, base+".sha256", 4096, "")
 	if err != nil {
 		return "", fmt.Errorf("checksum del binario non disponibile: %w", err)
@@ -204,13 +205,58 @@ func (o *Options) FetchBinary(ctx context.Context, t *Target, dest string) (stri
 	if err := os.WriteFile(dest, bin, 0o755); err != nil { //nolint:gosec // eseguibile
 		return "", err
 	}
+	// V5: firma cosign del binario, col bundle pubblicato accanto (stessa
+	// release). Senza bundle o con una firma che non torna, niente si installa.
+	if o.v5().AllowUnsigned {
+		o.logf("    AVVISO: firma del binario NON verificata (eccezione N9 attiva)")
+		return want, nil
+	}
+	bundle := dest + ".sigstore.json"
+	if err := o.fetchBundle(ctx, base+".sigstore.json", bundle); err != nil {
+		_ = os.Remove(dest)
+		return "", err
+	}
+	defer func() { _ = os.Remove(bundle) }()
+	if err := o.v5().VerifyBlob(ctx, dest, bundle); err != nil {
+		_ = os.Remove(dest)
+		return "", fmt.Errorf("binario di gitstack: %w. Non installato. Per un mirror interno non firmato serve l'eccezione esplicita --allow-unsigned-mirrors (N9)", err)
+	}
+	o.logf("    firma cosign del binario verificata")
 	return want, nil
+}
+
+// assetBase è la cartella degli asset di una release (binario, chart, bundle):
+// la release GitHub, o con network.download_mirror <mirror>/gitstack/<tag>
+// (stessa struttura di deploy/install.sh). Cosa arriva da lì si verifica come
+// ciò che arriva da GitHub: stesso bundle, stessa identità.
+func (o *Options) assetBase(tag string) string {
+	if m := strings.TrimRight(o.DownloadMirror, "/"); m != "" {
+		return m + "/gitstack/" + url.PathEscape(tag)
+	}
+	return fmt.Sprintf("%s/%s/releases/download/%s", o.releaseBase(), o.repo(), url.PathEscape(tag))
+}
+
+// sourceURL è il tarball del sorgente del commit (GitHub o mirror).
+func (o *Options) sourceURL(sha string) string {
+	if m := strings.TrimRight(o.DownloadMirror, "/"); m != "" {
+		return m + "/gitstack/source/" + sha + ".tar.gz"
+	}
+	return fmt.Sprintf("%s/%s/tar.gz/%s", o.codeloadBase(), o.repo(), sha)
+}
+
+// fetchBundle scarica il bundle cosign in dest. Se non c'è è ErrBundleMissing.
+func (o *Options) fetchBundle(ctx context.Context, rawURL, dest string) error {
+	b, err := o.get(ctx, rawURL, 1<<20, "")
+	if err != nil {
+		return fmt.Errorf("%w (%v). La release deve contenere il bundle accanto all'artefatto: la CI lo pubblica nel job di firma; per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", ErrBundleMissing, err)
+	}
+	return os.WriteFile(dest, b, 0o600)
 }
 
 // FetchChart scarica il sorgente del commit ed estrae deploy/gitstack in
 // dest (cartella nuova).
 func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error {
-	b, err := o.get(ctx, fmt.Sprintf("%s/%s/tar.gz/%s", o.codeloadBase(), o.repo(), t.SHA), maxTarball, "")
+	b, err := o.get(ctx, o.sourceURL(t.SHA), maxTarball, "")
 	if err != nil {
 		return fmt.Errorf("chart non disponibile: %w", err)
 	}
@@ -283,7 +329,142 @@ func (o *Options) FetchChart(ctx context.Context, t *Target, dest string) error 
 	if _, err := os.Stat(filepath.Join(dest, "Chart.yaml")); err != nil || n == 0 {
 		return fmt.Errorf("il commit %s non contiene deploy/gitstack/Chart.yaml", t.SHA)
 	}
-	return nil
+	if o.v5().AllowUnsigned {
+		o.logf("    AVVISO: firma del chart NON verificata (eccezione N9 attiva)")
+		return nil
+	}
+	return o.useSignedChart(ctx, t, dest)
+}
+
+// useSignedChart scarica il chart .tgz pubblicato dalla CI nella release (gli
+// stessi byte firmati), ne verifica il bundle e solo dopo lo estrae al posto
+// del chart ricavato dal sorgente.
+func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) error {
+	b, err := os.ReadFile(filepath.Join(dest, "Chart.yaml"))
+	if err != nil {
+		return err
+	}
+	version := ""
+	for _, l := range strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n") {
+		if v, ok := strings.CutPrefix(l, "version:"); ok {
+			version = strings.Trim(strings.TrimSpace(v), "\"'")
+			break
+		}
+	}
+	if version == "" || !refRe.MatchString(version) {
+		return fmt.Errorf("il Chart.yaml del commit %s non ha una versione valida", t.SHA)
+	}
+	tmp, err := os.MkdirTemp("", "gitstack-chart-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	tgz := filepath.Join(tmp, "gitstack-"+version+".tgz")
+	u := fmt.Sprintf("%s/gitstack-%s.tgz", o.assetBase(t.Tag), version)
+	chart, err := o.get(ctx, u, maxTarball, "")
+	if err != nil {
+		return fmt.Errorf("chart firmato non disponibile nella release %s: %w", t.Tag, err)
+	}
+	if err := os.WriteFile(tgz, chart, 0o600); err != nil {
+		return err
+	}
+	if err := o.fetchBundle(ctx, u+".sigstore.json", tgz+".sigstore.json"); err != nil {
+		return fmt.Errorf("chart %s: %w", u, err)
+	}
+	if err := o.v5().VerifyBlob(ctx, tgz, tgz+".sigstore.json"); err != nil {
+		return fmt.Errorf("chart di %s: %w. Per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", t.Tag, err)
+	}
+	o.logf("    firma cosign del chart verificata")
+	// Il tgz di helm package ha la radice gitstack/: si estrae in tmp e si
+	// sostituisce dest con quella cartella.
+	ex := filepath.Join(tmp, "x")
+	if err := os.MkdirAll(ex, 0o700); err != nil {
+		return err
+	}
+	if err := extractTGZ(bytes.NewReader(chart), ex); err != nil {
+		return fmt.Errorf("chart firmato non valido: %w", err)
+	}
+	root := filepath.Join(ex, "gitstack")
+	if _, err := os.Stat(filepath.Join(root, "Chart.yaml")); err != nil {
+		return fmt.Errorf("il chart firmato non contiene gitstack/Chart.yaml")
+	}
+	if err := os.RemoveAll(dest); err != nil {
+		return err
+	}
+	return copyTree(root, dest)
+}
+
+// copyTree copia una cartella (solo file regolari e cartelle).
+func copyTree(src, dst string) error {
+	return filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, p)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755) //nolint:gosec // come il chart installato
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		b, err := os.ReadFile(p) //nolint:gosec // percorso nostro
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, b, 0o644) //nolint:gosec // come il chart installato
+	})
+}
+
+// extractTGZ estrae un tarball gzip in una cartella (solo file e cartelle,
+// con percorsi relativi e senza uscire da dest).
+func extractTGZ(r io.Reader, dest string) error {
+	zr, err := gzip.NewReader(r)
+	if err != nil {
+		return err
+	}
+	tr := tar.NewReader(zr)
+	for {
+		h, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		clean := path.Clean(h.Name)
+		if clean == "." {
+			continue
+		}
+		if clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+			return fmt.Errorf("percorso sospetto nel chart: %q", h.Name)
+		}
+		target := filepath.Join(dest, filepath.FromSlash(clean))
+		switch h.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0o755); err != nil { //nolint:gosec // come il chart installato
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { //nolint:gosec // come il chart installato
+				return err
+			}
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644) //nolint:gosec // percorso verificato sopra
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(f, io.LimitReader(tr, 64<<20)); err != nil { //nolint:gosec // limitato
+				_ = f.Close()
+				return err
+			}
+			if err := f.Close(); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 var imageLineRe = regexp.MustCompile(`(?m)^\s*-?\s*image:\s*["']?([^"'\s]+)["']?\s*$`)
