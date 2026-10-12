@@ -76,7 +76,10 @@ export function PullMirrorSection({
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState('');
 
-  const m = data!;
+  if (loading && data === null) return <p className="muted">Loading pull mirror settings…</p>;
+  if (error || !data) return <ErrorAlert message={error ?? 'Pull mirror not found.'} />;
+
+  const m = data;
 
   // Stato corrente del mirror per decidere cosa mostrare.
   const isStopped = m.state === 'stopped';
@@ -100,9 +103,6 @@ export function PullMirrorSection({
       setBusy('');
     }
   }
-
-  if (loading && data === null) return <p className="muted">Loading pull mirror settings…</p>;
-  if (error || !data) return <ErrorAlert message={error ?? 'Pull mirror not found.'} />;
 
   return (
     <section aria-label="Pull mirror">
