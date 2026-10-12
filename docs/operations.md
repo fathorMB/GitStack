@@ -656,5 +656,140 @@ so it fails as a non-root user with a permission error.
 
 ---
 
+## V5 — Catena di fornitura: firme e SBOM
+
+GitStack firma le immagini container, il chart Helm e i binari della CLI `gs`
+con Sigstore/cosign (firma keyless tramite OIDC di GitHub Actions). Gli SBOM
+sono generati con syft (formato SPDX).
+
+### Come verificare una firma
+
+#### Prerequisiti
+
+```sh
+# Installa cosign (Sigstore) e syft (anchore)
+# macOS (Homebrew):
+brew install sigstore/cosign/cosign
+brew install anchore/syft/syft
+# Linux: scarica dal sito ufficiale di Sigstore e anchore.
+```
+
+#### Verifica di un'immagine container
+
+```sh
+# Immagine: ghcr.io/<owner>/gitstack-gateway:sha-<commit-sha>
+IMG="ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>"
+
+# Verifica la firma: l'identity e l'issuer devono corrispondere al workflow CI.
+cosign verify \
+  --certificate-identity "https://token.actions.githubusercontent.com" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate-regex 'repo:fathorMB/GitStack:' \
+  --output-certificate verified.pem \
+  "${IMG}"
+```
+
+Output atteso: nessun errore (la firma è valida). Il certificato viene scritto
+in `verified.pem`.
+
+#### Verifica di un binario
+
+```sh
+# Scarica il binario e la sua firma dalla release GitHub.
+# La release si chiama "sha-<commit-sha>" e contiene i file firmati con estensione .sig.
+
+curl -fsSL -o gitstack-linux-amd64 \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64"
+curl -fsSL -o gitstack-linux-amd64.sig \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-linux-amd64.sig"
+
+# Verifica la firma del blob.
+cosign verify-blob \
+  --certificate-identity "https://token.actions.githubusercontent.com" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --signature gitstack-linux-amd64.sig \
+  gitstack-linux-amd64
+```
+
+#### Verifica del chart Helm
+
+```sh
+# Scarica il chart firmato dalla release.
+curl -fsSL -o gitstack-0.1.0.tgz \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz"
+curl -fsSL -o gitstack-0.1.0.tgz.sig \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-0.1.0.tgz.sig"
+
+# Verifica la firma del blob chart.
+cosign verify-blob \
+  --certificate-identity "https://token.actions.githubusercontent.com" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --signature gitstack-0.1.0.tgz.sig \
+  gitstack-0.1.0.tgz
+```
+
+### Verifica degli SBOM
+
+Gli SBOM (Software Bill of Materials) in formato SPDX sono allegati alle release
+GitHub e disponibili come artifact del workflow di firma.
+
+```sh
+# SBOM di un'immagine: scarica dalla release o dall'artifact del workflow.
+curl -fsSL -o gitstack-gateway-sbom.spdx.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-gateway-sbom.spdx.json"
+
+# Controlla il contenuto: elencare i pacchetti rilevati.
+syft gitstack-gateway-sbom.spdx.json --quiet -o table
+
+# SBOM di un binario.
+curl -fsSL -o gitstack-binary-sbom.spdx.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-binary-sbom.spdx.json"
+
+# SBOM del chart (metadati YAML e template).
+curl -fsSL -o gitstack-chart-sbom.spdx.json \
+  "https://github.com/fathorMB/GitStack/releases/download/sha-<commit-sha>/gitstack-chart-sbom.spdx.json"
+```
+
+### Attestazioni delle immagini
+
+Oltre alla firma, ogni immagine ha un'attestazione che collega l'SBOM all'immagine
+stessa (standard Sigstore in-toto).
+
+```sh
+# Elenca le attestazioni di un'immagine.
+cosign attestations verify \
+  --certificate-identity "https://token.actions.githubusercontent.com" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --type spdx-json \
+  --certificate-regex 'repo:fathorMB/GitStack:' \
+  ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>
+```
+
+### Identità e issuer attesi
+
+| Parametro | Valore |
+|---|---|
+| Identity del certificato | `https://token.actions.githubusercontent.com` |
+| OIDC Issuer | `https://token.actions.githubusercontent.com` |
+| Regex del subject | `repo:fathorMB/GitStack:` (main) / `repo:fathorMB/GitStack:ref:refs/tags/v.*` (tag) |
+
+Il workflow CI (`ci.yml`, job `sign`) richiede `permissions: id-token: write`
+per l'OIDC keyless e `packages: write` per le attestazioni delle immagini.
+
+### Flusso di firma
+
+1. I job `registry`, `admin-binary` e `gs-binaries` pubblicano immagini, chart e
+   binari.
+2. Il job `sign` (dipende da tutti e tre) scarica gli asset, genera gli SBOM
+   con syft e firma con cosign:
+   - Immagini: `cosign attest` (SBOM + attestazione) + `cosign sign` (firma).
+   - Chart: `cosign sign-blob` (firma del file .tgz).
+   - Binari: `cosign sign-blob` (firma di ogni binario) + SBOM con syft.
+3. Firme e SBOM vengono caricati nella release GitHub (`sha-<commit-sha>`).
+
+*V5 — Catena di fornitura (GIT-208)*
+
+---
+
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
 decisioni D17–D19 [c_1d1d61aca3dea601]*
