@@ -149,6 +149,8 @@ Dettagli operativi: [`../docs/operations.md`](../docs/operations.md#external-pos
 
 ### Opzioni principali
 
+**Rete aziendale (N4, N9a, GIT-206).** `--http-proxy`, `--https-proxy`, `--no-proxy` (download di k3s e Helm, containerd di k3s e pod di GitStack), `--registry-mirror` con `--registry-username`/`--registry-password-file` (tutte le immagini, di sistema di k3s comprese, via `registries.yaml`), `--download-mirror` (binari di k3s, Helm e gitstack) e `--ca-bundle` (CA aziendale: sistema, containerd, pod). Il preflight prova a raggiungere proxy e mirror e dice cosa non risponde; dopo l'installazione si cambia con `gitstack config set network`. Struttura del mirror, esempi e prova senza uscita diretta (`test-network/run.sh`): [`../docs/operations.md`](../docs/operations.md), sezione «Corporate network». I valori Helm sono `proxy.*` e `corporateCA.configMap` (GIT-207).
+
 `install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
 
 ### Verifica in CI
