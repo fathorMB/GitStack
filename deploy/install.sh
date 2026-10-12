@@ -1552,13 +1552,26 @@ net_https_proxy() {
   printf '%s' "${GITSTACK_HTTPS_PROXY:-${GITSTACK_HTTP_PROXY}}"
 }
 
-# NO_PROXY di k3s (e dell'installer): reti del cluster più quanto indicato.
+# Indirizzi IPv4 della macchina (senza loopback), ordinati, separati da
+# virgole: l'API server parla al kubelet su <IP del nodo>:10250, che non deve
+# passare dal proxy. Stesso elenco e stesso ordine di `gitstack config set
+# network` (nodeAddrs in admin/internal/cli/confignetwork.go).
+net_node_addrs() {
+  local_addrs | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | grep -v '^127\.' | LC_ALL=C sort -u | paste -sd, -
+}
+
+# NO_PROXY di k3s (e dell'installer): reti del cluster, indirizzi del nodo e
+# quanto indicato.
 net_k3s_no_proxy() {
-  if [ -n "${GITSTACK_NO_PROXY}" ]; then
-    printf '%s,%s' "${K3S_BUILTIN_NO_PROXY}" "${GITSTACK_NO_PROXY}"
-  else
-    printf '%s' "${K3S_BUILTIN_NO_PROXY}"
+  local out="${K3S_BUILTIN_NO_PROXY}" addrs
+  addrs="$(net_node_addrs)"
+  if [ -n "${addrs}" ]; then
+    out="${out},${addrs}"
   fi
+  if [ -n "${GITSTACK_NO_PROXY}" ]; then
+    out="${out},${GITSTACK_NO_PROXY}"
+  fi
+  printf '%s' "${out}"
 }
 
 net_ca_copy_path() {

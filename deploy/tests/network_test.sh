@@ -79,8 +79,11 @@ expect_eq "senza opzioni: rete non configurata" "${OUT}" "0"
 
 # --- Variabili d'ambiente per curl, k3s e Helm dell'installer ------------------------
 OUT="$(in_install --http-proxy http://p:3128 --https-proxy http://sp:3129 --no-proxy a.corp \
-  -- 'resolve_network; printf "%s|%s|%s" "${HTTP_PROXY}" "${HTTPS_PROXY}" "${NO_PROXY}"')"
-expect_eq "proxy esportato (NO_PROXY come il drop-in)" "${OUT}" "http://p:3128|http://sp:3129|localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,a.corp"
+  -- 'local_addrs() { printf "127.0.0.1
+10.1.0.9
+10.1.0.4
+"; }; resolve_network; printf "%s|%s|%s" "${HTTP_PROXY}" "${HTTPS_PROXY}" "${NO_PROXY}"')"
+expect_eq "proxy esportato (NO_PROXY come il drop-in, con gli indirizzi del nodo)" "${OUT}" "http://p:3128|http://sp:3129|localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,10.1.0.4,10.1.0.9,a.corp"
 
 # --- Valori Helm: contratto di N9b ------------------------------------------------------
 OUT="$(in_install --http-proxy http://p:3128 --no-proxy 'a.corp,b.corp' --ca-bundle "${CA}" --release-name gs \
@@ -117,11 +120,14 @@ OUT="$(in_install -- 'resolve_network; render_registries_yaml')"
 expect_eq "registries.yaml senza mirror: vuoto" "${OUT}" ""
 
 # --- drop-in di proxy per k3s ----------------------------------------------------------------
-OUT="$(in_install --http-proxy 'http://u:p%40ss@proxy.corp:3128' --no-proxy git.corp -- 'resolve_network; render_k3s_dropin')"
+OUT="$(in_install --http-proxy 'http://u:p%40ss@proxy.corp:3128' --no-proxy git.corp -- 'local_addrs() { printf "10.1.0.9
+10.1.0.4
+127.0.0.1
+"; }; resolve_network; render_k3s_dropin')"
 expect_has "drop-in: sezione" "${OUT}" "[Service]"
 expect_has "drop-in: HTTP_PROXY con % raddoppiato" "${OUT}" 'Environment="HTTP_PROXY=http://u:p%%40ss@proxy.corp:3128"'
 expect_has "drop-in: HTTPS_PROXY eredita HTTP" "${OUT}" 'Environment="HTTPS_PROXY=http://u:p%%40ss@proxy.corp:3128"'
-expect_has "drop-in: NO_PROXY con le reti del cluster" "${OUT}" 'Environment="NO_PROXY=localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,git.corp"'
+expect_has "drop-in: NO_PROXY con reti del cluster, IP del nodo e quanto indicato" "${OUT}" 'Environment="NO_PROXY=localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,10.1.0.4,10.1.0.9,git.corp"'
 expect_has "drop-in: minuscole" "${OUT}" 'Environment="no_proxy='
 
 # --- File scritti: modo, idempotenza, rimozione ---------------------------------------------------

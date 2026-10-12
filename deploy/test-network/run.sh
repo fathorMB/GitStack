@@ -261,7 +261,7 @@ cmd_verify() {
   log "2. Il preflight dice cosa non risponde (mirror sbagliato: nessuna modifica)"
   local out rc=0
   out="$(run_install --http-proxy "${proxy}" --registry-mirror "http://${HOST_IP}:5999" 2>&1)" || rc=$?
-  if [ "${rc}" -ne 0 ] && printf '%s' "${out}" | grep -q "mirror delle immagini" && printf '%s' "${out}" | grep -q "non risponde"; then
+  if [ "${rc}" -ne 0 ] && printf '%s' "${out}" | grep -q "mirror delle immagini" && printf '%s' "${out}" | grep -qE "non risponde|risponde HTTP"; then
     ok "preflight: mirror irraggiungibile indicato, installazione ferma (rc=${rc})"
   else
     ko "preflight non ha fermato un mirror irraggiungibile (rc=${rc}): ${out}"
@@ -273,6 +273,10 @@ cmd_verify() {
   fi
 
   log "3. Installazione: proxy e mirror, nessuna uscita diretta"
+  # Le richieste di prima (le mie prove 1 e 2) non contano: si legge il log del
+  # proxy solo da qui in poi.
+  local log_from
+  log_from="$(docker exec "${SQUID}" wc -l /var/log/squid/access.log | awk '{print $1}')"
   : >"${STATE}/install.log"
   run_install --http-proxy "${proxy}" --no-proxy "${HOST_IP}" --registry-mirror "${mirror}" 2>&1 | tee "${STATE}/install.log" | tail -30 || true
   if grep -q "GitStack installato" "${STATE}/install.log"; then
@@ -286,7 +290,13 @@ cmd_verify() {
   [ "${code}" = "200" ] && ok "https://${VM_IP}/api/healthz: 200" || ko "healthz: HTTP ${code}"
 
   log "4. Da dove è arrivato ogni byte"
-  docker exec "${SQUID}" cat /var/log/squid/access.log >"${STATE}/squid-access.log" 2>/dev/null || true
+  docker exec "${SQUID}" tail -n "+$((log_from + 1))" /var/log/squid/access.log >"${STATE}/squid-access.log" 2>/dev/null || true
+  # Nessuna richiesta del kubelet (porta 10250 dell'IP del nodo) al proxy.
+  if grep -q "CONNECT ${VM_IP}:10250" "${STATE}/squid-access.log"; then
+    ko "il traffico verso il kubelet passa dal proxy: l'IP del nodo manca in NO_PROXY"
+  else
+    ok "nessun traffico interno del nodo passa dal proxy"
+  fi
   local host
   for host in get.k3s.io github.com get.helm.sh; do
     if grep -q "${host}" "${STATE}/squid-access.log"; then ok "scaricato attraverso il proxy: ${host}"; else ko "nessuna richiesta a ${host} nel log del proxy"; fi
@@ -303,8 +313,12 @@ cmd_verify() {
   grep -q '"\*"' "${STATE}/registries.yaml" && ok "registries.yaml con endpoint \"*\"" || ko "registries.yaml senza endpoint \"*\""
   vm 'cat /etc/systemd/system/k3s.service.d/10-gitstack-network.conf' | grep -q "HTTP_PROXY=${proxy}" \
     && ok "drop-in di proxy per k3s" || ko "drop-in di proxy mancante"
-  vm 'KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get deploy gitstack-core -o jsonpath="{.spec.template.spec.containers[0].env}"' \
-    | grep -q "${proxy}" && ok "i pod di core hanno HTTP_PROXY" || ko "core senza HTTP_PROXY (chart senza proxy.*? vedi GIT-207)"
+  if grep -q '^proxy:' "${ROOT}/deploy/gitstack/values.yaml"; then
+    vm 'KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get deploy gitstack-core -o jsonpath="{.spec.template.spec.containers[0].env}"' \
+      | grep -q "${proxy}" && ok "i pod di core hanno HTTP_PROXY" || ko "core senza HTTP_PROXY"
+  else
+    log "Il chart di questo ramo non ha i valori proxy.* (GIT-207, N9b): HTTP_PROXY nei pod non verificato"
+  fi
 
   log "5. gitstack config set network dopo l'installazione"
   vm "gitstack config set network --no-proxy ${HOST_IP},extra.corp.test" 2>&1 | tee "${STATE}/config-set.log" | tail -15 || true

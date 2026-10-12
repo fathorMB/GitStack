@@ -207,7 +207,7 @@ func TestConfigSetNetworkApplica(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"[Service]", `Environment="HTTP_PROXY=` + proxy.URL + `"`,
-		`Environment="HTTPS_PROXY=` + proxy.URL + `"`, `10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,git.corp.test"`} {
+		`Environment="HTTPS_PROXY=` + proxy.URL + `"`, `10.43.0.0/16,.svc,.cluster.local,192.168.1.20,git.corp.test"`} {
 		if !strings.Contains(string(drop), want) {
 			t.Errorf("drop-in senza %q:\n%s", want, drop)
 		}
@@ -372,11 +372,15 @@ func TestRenderRegistriesConCA(t *testing.T) {
 }
 
 func TestRenderDropInSoloHTTPEPercento(t *testing.T) {
-	got := renderDropIn(config.Network{HTTPProxy: "http://u:p%40ss@proxy.corp:3128"})
+	got := renderDropIn(config.Network{HTTPProxy: "http://u:p%40ss@proxy.corp:3128"}, []string{"127.0.0.1", "10.1.0.9", "::1", "10.1.0.4"})
 	if !strings.Contains(got, `Environment="HTTPS_PROXY=http://u:p%%40ss@proxy.corp:3128"`) {
 		t.Errorf("HTTPS non eredita HTTP o il percento non è raddoppiato:\n%s", got)
 	}
-	if renderDropIn(config.Network{}) != "" {
+	// Gli indirizzi del nodo (kubelet su :10250) restano fuori dal proxy.
+	if !strings.Contains(got, `NO_PROXY=localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,10.1.0.4,10.1.0.9"`) {
+		t.Errorf("NO_PROXY senza gli indirizzi del nodo:\n%s", got)
+	}
+	if renderDropIn(config.Network{}, nil) != "" {
 		t.Error("senza proxy niente drop-in")
 	}
 }

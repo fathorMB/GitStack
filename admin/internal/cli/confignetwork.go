@@ -72,13 +72,36 @@ func effectiveHTTPS(n config.Network) string {
 	return n.HTTPProxy
 }
 
-// k3sNoProxy è il NO_PROXY di k3s: reti del cluster e suffissi interni più
-// quanto indicato dall'utente.
-func k3sNoProxy(n config.Network) string {
-	if n.NoProxy == "" {
-		return k3sBuiltinNoProxy
+// nodeAddrs sono gli indirizzi IPv4 della macchina (senza loopback), ordinati
+// e separati da virgole: l'API server parla al kubelet su <IP del nodo>:10250
+// e non deve passare dal proxy. Stesso elenco e ordine di net_node_addrs in
+// deploy/install.sh.
+func nodeAddrs(addrs []string) string {
+	seen := map[string]bool{}
+	var out []string
+	for _, a := range addrs {
+		ip := net.ParseIP(a)
+		if ip == nil || ip.To4() == nil || ip.IsLoopback() || seen[a] {
+			continue
+		}
+		seen[a] = true
+		out = append(out, a)
 	}
-	return k3sBuiltinNoProxy + "," + n.NoProxy
+	sort.Strings(out)
+	return strings.Join(out, ",")
+}
+
+// k3sNoProxy è il NO_PROXY di k3s: reti del cluster e suffissi interni,
+// indirizzi del nodo e quanto indicato dall'utente.
+func k3sNoProxy(n config.Network, addrs []string) string {
+	out := k3sBuiltinNoProxy
+	if a := nodeAddrs(addrs); a != "" {
+		out += "," + a
+	}
+	if n.NoProxy != "" {
+		out += "," + n.NoProxy
+	}
+	return out
 }
 
 // mirrorAuthority è host[:porta] del mirror (la chiave di configs in registries.yaml).
@@ -126,14 +149,14 @@ func systemdEnv(k, v string) string {
 
 // renderDropIn produce il drop-in systemd di k3s con le variabili di proxy
 // (containerd e kubelet le ereditano). Vuoto = nessun proxy.
-func renderDropIn(n config.Network) string {
+func renderDropIn(n config.Network, addrs []string) string {
 	https := effectiveHTTPS(n)
 	if n.HTTPProxy == "" && https == "" {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString("# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.\n[Service]\n")
-	np := k3sNoProxy(n)
+	np := k3sNoProxy(n, addrs)
 	for _, k := range []string{"HTTP_PROXY", "http_proxy"} {
 		if n.HTTPProxy != "" {
 			b.WriteString(systemdEnv(k, n.HTTPProxy))
@@ -527,7 +550,7 @@ func runConfigSetNetwork(ctx context.Context, a *App, args []string) int {
 		a.errorf("config set network: registries.yaml: %v", err)
 		return ExitUnexpected
 	}
-	dropCh, err := writeIfChanged(paths.dropIn(), renderDropIn(n), 0o644)
+	dropCh, err := writeIfChanged(paths.dropIn(), renderDropIn(n, a.localAddrs()), 0o644)
 	if err != nil {
 		a.errorf("config set network: drop-in di k3s: %v", err)
 		return ExitUnexpected
