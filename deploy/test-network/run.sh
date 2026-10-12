@@ -146,8 +146,8 @@ start_registry() {
 # CA aziendale finta (autofirmata) per --ca-bundle.
 make_test_ca() {
   printf '[req]\ndistinguished_name=dn\nprompt=no\n[dn]\nCN=GitStack Test Corporate CA\n' >"${STATE}/ca.cnf"
-  openssl req -x509 -newkey rsa:2048 -nodes -keyout "${STATE}/corp-ca.key" -out "${STATE}/corp-ca.pem" \
-    -days 2 -config "$(winpath "${STATE}/ca.cnf")" >/dev/null 2>&1
+  openssl req -x509 -newkey rsa:2048 -nodes -keyout "$(winpath "${STATE}/corp-ca.key")" -out "$(winpath "${STATE}/corp-ca.pem")" \
+    -days 2 -config "$(winpath "${STATE}/ca.cnf")" >/dev/null 2>&1 || { echo "openssl: CA di prova non creata" >&2; return 1; }
 }
 
 build_admin() {
