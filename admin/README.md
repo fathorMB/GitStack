@@ -158,7 +158,7 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack status [--json] [--config F]` | versione, host, salute, ultimo backup | serve per leggere il config (0600) |
 | `gitstack backup [--dest D] [--key-file F] [--config F]` | archivio coerente di database, repo, allegati, Secret e configurazione | sì |
 | `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
-| `gitstack upgrade [--to V] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--allow-unsigned-mirrors] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
+| `gitstack upgrade [--to V | --version vX.Y.Z] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--allow-unsigned-mirrors] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
 | `gitstack restore --from s3 [nome] [--dest D] [--key-file F] [--config F]` | scarica da `backup.s3` l'archivio più recente (o `nome`) e lo ripristina; la chiave è quella di `backup.s3.key_file` se manca `--key-file` | sì |
 | `gitstack config set backup.s3 --endpoint E --bucket B --key-file F [--prefix P] [--region R] [--retention N|bucket] [--notify-command C] [--no-check] [--remove]` | configura la copia cifrata su S3 (chiavi da `GITSTACK_S3_ACCESS_KEY`/`GITSTACK_S3_SECRET_KEY`); verifica il bucket prima di scrivere | sì |
 | `gitstack config set network [--http-proxy U] [--https-proxy U] [--no-proxy L] [--registry-mirror U] [--registry-username U] [--registry-password-file F] [--download-mirror U] [--ca-bundle F] [--clear] [--force] [--config F]` | cambia proxy, mirror e CA aziendale (N9): prova a raggiungere proxy e mirror (e non cambia niente se non rispondono, salvo `--force`), rigenera `registries.yaml` e il drop-in di proxy di k3s e la CA di sistema, riavvia k3s solo se questi file cambiano e attende il nodo `Ready`, crea il ConfigMap `<release>-corporate-ca` e aggiorna il chart (`proxy.*`, `corporateCA.configMap`, `--reuse-values`), poi `network:` del config. Un valore vuoto toglie l'impostazione. Dettagli: `docs/operations.md`, «Corporate network» | sì |
@@ -358,6 +358,9 @@ né root.
 
 `sudo gitstack upgrade [--to <versione|sha>]` porta l'installazione alla destinazione
 (default: ultimo commit di `main` di `$GITSTACK_REPO`, default `fathorMB/GitStack`).
+`--version vX.Y.Z` (anche `vX.Y.Z-rc.N`) è la forma stretta per un rilascio: accetta solo
+tag SemVer, esclude `--to`, e scarica binario e chart `gitstack-X.Y.Z.tgz` dalla release
+con quel nome (GIT-222), con la verifica delle firme (V5) attiva come per `sha-<commit>`.
 L'aggiornamento di k3s è un altro compito (M-08).
 
 1. **Controlli** (niente cambia se uno fallisce, exit 6): la destinazione esiste

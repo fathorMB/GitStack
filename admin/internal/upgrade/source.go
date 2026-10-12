@@ -32,7 +32,14 @@ var (
 	hexRe = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 	// refRe ammette nomi di tag e di ramo semplici: finiscono in un URL.
 	refRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,100}$`)
+	// versionTagRe è un tag di rilascio SemVer (GIT-222): vX.Y.Z, con
+	// prerelease (-rc.1, -test.2) e senza build metadata. Gli stessi tag che
+	// fanno partire il job `release` della CI.
+	versionTagRe = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
 )
+
+// IsVersionTag dice se s è un tag di rilascio vX.Y.Z(-prerelease).
+func IsVersionTag(s string) bool { return versionTagRe.MatchString(s) }
 
 // Target è la destinazione risolta.
 type Target struct {
@@ -43,6 +50,10 @@ type Target struct {
 	// Tag è il tag immagine e il nome della release GitHub: sha-<commit> o
 	// il nome del tag di versione.
 	Tag string
+	// Version è la versione del chart e dell'appVersion pubblicati con il
+	// rilascio (il tag senza "v"); "" per una build sha-<commit>, che usa la
+	// versione scritta in Chart.yaml del commit.
+	Version string
 	// K3sVersion è la versione di k3s dichiarata dal commit in
 	// K3sVersionFile ("" se non la dichiara): la compila FetchChart.
 	K3sVersion string
@@ -118,6 +129,9 @@ func (o *Options) ResolveTarget(ctx context.Context, to string) (*Target, error)
 		t.Tag = "sha-" + sha
 	} else {
 		t.Tag = ref
+	}
+	if IsVersionTag(ref) {
+		t.Version = strings.TrimPrefix(ref, "v")
 	}
 	return t, nil
 }
@@ -351,6 +365,11 @@ func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) er
 			break
 		}
 	}
+	if t.Version != "" {
+		// Rilascio vX.Y.Z: la CI pubblica gitstack-X.Y.Z.tgz con version e
+		// appVersion = X.Y.Z, a prescindere dal Chart.yaml del sorgente.
+		version = t.Version
+	}
 	if version == "" || !refRe.MatchString(version) {
 		return fmt.Errorf("il Chart.yaml del commit %s non ha una versione valida", t.SHA)
 	}
@@ -385,13 +404,32 @@ func (o *Options) useSignedChart(ctx context.Context, t *Target, dest string) er
 		return fmt.Errorf("chart firmato non valido: %w", err)
 	}
 	root := filepath.Join(ex, "gitstack")
-	if _, err := os.Stat(filepath.Join(root, "Chart.yaml")); err != nil {
+	signedMeta, err := os.ReadFile(filepath.Join(root, "Chart.yaml")) //nolint:gosec // percorso nostro
+	if err != nil {
 		return fmt.Errorf("il chart firmato non contiene gitstack/Chart.yaml")
+	}
+	if t.Version != "" && !chartHasVersion(string(signedMeta), t.Version) {
+		return fmt.Errorf("il chart firmato della release %s non ha version e appVersion %s: non è il chart di questa versione", t.Tag, t.Version)
 	}
 	if err := os.RemoveAll(dest); err != nil {
 		return err
 	}
 	return copyTree(root, dest)
+}
+
+// chartHasVersion è vero se il Chart.yaml dichiara version e appVersion
+// uguali a v (con o senza apici).
+func chartHasVersion(chartYAML, v string) bool {
+	var ver, app string
+	for _, l := range strings.Split(strings.ReplaceAll(chartYAML, "\r\n", "\n"), "\n") {
+		if x, ok := strings.CutPrefix(l, "version:"); ok {
+			ver = strings.Trim(strings.TrimSpace(x), "\"'")
+		}
+		if x, ok := strings.CutPrefix(l, "appVersion:"); ok {
+			app = strings.Trim(strings.TrimSpace(x), "\"'")
+		}
+	}
+	return ver == v && app == v
 }
 
 // copyTree copia una cartella (solo file regolari e cartelle).

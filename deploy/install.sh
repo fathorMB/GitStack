@@ -65,6 +65,10 @@ GITSTACK_RELEASE_NAME="${GITSTACK_RELEASE_NAME:-gitstack}"
 GITSTACK_NAMESPACE="${GITSTACK_NAMESPACE:-default}"
 GITSTACK_CHART_DIR="${GITSTACK_CHART_DIR:-}"
 GITSTACK_IMAGE_TAG="${GITSTACK_IMAGE_TAG:-}"
+# Versione di rilascio (GIT-222): vX.Y.Z o vX.Y.Z-rc.N. Fissa ref del sorgente,
+# tag immagine e release da cui si scaricano binario e chart firmati (stesso
+# nome del tag Git); vedi apply_version.
+GITSTACK_VERSION="${GITSTACK_VERSION:-}"
 GITSTACK_IMAGE_REGISTRY="${GITSTACK_IMAGE_REGISTRY:-}"
 GITSTACK_SKIP_PREFLIGHT="${GITSTACK_SKIP_PREFLIGHT:-0}"
 GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
@@ -246,6 +250,11 @@ Opzioni:
                              questo script o scaricato dal repository.
   --image-tag TAG           Tag immagine per gateway/identity/core/web (default:
                              risolto automaticamente dal commit corrente).
+  --version vX.Y.Z          Installa una versione di rilascio (anche vX.Y.Z-rc.N):
+                             immagini, binario e chart firmati si prendono
+                             dalla release con quel nome, con la verifica
+                             delle firme (V5) attiva. In alternativa al tag
+                             sha-<commit> di --image-tag.
   --image-registry HOST     Registry delle immagini GitStack (default: dal
                              chart, ghcr.io). Utile per un mirror (M-08).
   --admin-binary PERCORSO|URL
@@ -330,7 +339,7 @@ Opzioni:
 Variabili d'ambiente equivalenti (i flag ripetibili --values/--set non ne
 hanno una, solo da riga di comando): INSTALL_K3S_VERSION,
 GITSTACK_HELM_VERSION, GITSTACK_REPO, GITSTACK_REF, GITSTACK_RELEASE_NAME,
-GITSTACK_NAMESPACE, GITSTACK_CHART_DIR, GITSTACK_IMAGE_TAG,
+GITSTACK_NAMESPACE, GITSTACK_CHART_DIR, GITSTACK_IMAGE_TAG, GITSTACK_VERSION,
 GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1, GITSTACK_FORCE=1, GITSTACK_TLS_MODE
 (internal|letsencrypt|insecure), GITSTACK_TLS_CERT, GITSTACK_TLS_KEY,
 GITSTACK_TLS_EMAIL, GITSTACK_ADMIN_BINARY,
@@ -373,6 +382,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --image-tag)
       GITSTACK_IMAGE_TAG="$2"
+      shift 2
+      ;;
+    --version)
+      GITSTACK_VERSION="$2"
       shift 2
       ;;
     --image-registry)
@@ -885,7 +898,28 @@ resolve_chart_dir() {
   # V5: il chart si usa solo se è quello firmato dalla CI (il .tgz della
   # release sha-<commit>, non il sorgente di codeload: i byte firmati sono
   # quelli del pacchetto).
-  verify_downloaded_chart "${sha}" "${workdir}"
+  local release_tag="sha-${sha}"
+  [ -z "${GITSTACK_VERSION}" ] || release_tag="${GITSTACK_VERSION}"
+  verify_downloaded_chart "${release_tag}" "${workdir}"
+}
+
+# Versione di rilascio (GIT-222). Un tag vX.Y.Z(-rc.N) è SemVer con prefisso
+# "v": è il nome della release GitHub, il ref del sorgente e il tag immagine
+# (la CI lo pubblica accanto a sha-<commit>, stesso digest, quindi stesse
+# firme). Non si combina con un --image-tag diverso.
+is_version_tag() {
+  printf '%s' "$1" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+}
+
+apply_version() {
+  [ -n "${GITSTACK_VERSION}" ] || return 0
+  is_version_tag "${GITSTACK_VERSION}" \
+    || fail "--version ${GITSTACK_VERSION}: formato non valido (atteso vX.Y.Z o vX.Y.Z-rc.N). Per un commit usa --image-tag sha-<commit>."
+  if [ -n "${GITSTACK_IMAGE_TAG}" ] && [ "${GITSTACK_IMAGE_TAG}" != "${GITSTACK_VERSION}" ]; then
+    fail "--version ${GITSTACK_VERSION} e --image-tag ${GITSTACK_IMAGE_TAG} non coincidono: usane uno solo."
+  fi
+  GITSTACK_IMAGE_TAG="${GITSTACK_VERSION}"
+  GITSTACK_REF="${GITSTACK_VERSION}"
 }
 
 # Sha del commit di GITSTACK_REPO al ref dato, via l'API di GitHub (nessuna
@@ -1165,11 +1199,12 @@ warn_local_chart() {
   fi
 }
 
-# verify_downloaded_chart SHA WORKDIR: scarica il chart .tgz pubblicato dalla
-# CI nella release sha-<commit> con il suo bundle, ne verifica la firma e lo
-# usa al posto del chart ricavato dal sorgente (CHART_DIR).
+# verify_downloaded_chart RELEASE_TAG WORKDIR: scarica il chart .tgz
+# pubblicato dalla CI nella release (sha-<commit>, o vX.Y.Z con
+# --version) con il suo bundle, ne verifica la firma e lo usa al posto del
+# chart ricavato dal sorgente (CHART_DIR).
 verify_downloaded_chart() {
-  local sha="$1" workdir="$2"
+  local release_tag="$1" workdir="$2"
   if ! v5_enabled; then
     warn_unsigned_exception
     return 0
@@ -1177,12 +1212,17 @@ verify_downloaded_chart() {
   local version
   version="$(awk '/^version:/ { print $2; exit }' "${CHART_DIR}/Chart.yaml" | tr -d '"\r')"
   [ -n "${version}" ] || fail "versione del chart non trovata in ${CHART_DIR}/Chart.yaml."
+  # Rilascio vX.Y.Z: la CI pubblica gitstack-X.Y.Z.tgz con version e
+  # appVersion = X.Y.Z, qualunque cosa dica il Chart.yaml del sorgente.
+  if [ -n "${GITSTACK_VERSION}" ]; then
+    version="${GITSTACK_VERSION#v}"
+  fi
   local url
-  url="$(release_base "sha-${sha}")/gitstack-${version}.tgz"
+  url="$(release_base "${release_tag}")/gitstack-${version}.tgz"
   local tgz="${workdir}/gitstack-chart.tgz"
   log "Scarico il chart firmato ${url} ..."
   fetch_resource "${url}" "${tgz}" \
-    || fail "chart firmato non trovato: ${url}. La release sha-${sha} deve contenere gitstack-${version}.tgz e il suo .sigstore.json (li pubblica il job di firma della CI su main)."
+    || fail "chart firmato non trovato: ${url}. La release ${release_tag} deve contenere gitstack-${version}.tgz e il suo .sigstore.json (li pubblica la CI: il job di firma su main, il job release sui tag)."
   fetch_resource "${url}.sigstore.json" "${tgz}.sigstore.json" \
     || fail "bundle cosign del chart non trovato: ${url}.sigstore.json. Il chart non risulta firmato. Non installato."
   verify_blob_cosign "${tgz}" "${tgz}.sigstore.json" "il chart gitstack-${version}.tgz"
@@ -1190,6 +1230,14 @@ verify_downloaded_chart() {
   mkdir -p "${ex}"
   tar -xzf "${tgz}" -C "${ex}" || fail "il chart firmato non si estrae."
   [ -f "${ex}/gitstack/Chart.yaml" ] || fail "il chart firmato non contiene gitstack/Chart.yaml."
+  if [ -n "${GITSTACK_VERSION}" ]; then
+    local signed_ver signed_app
+    signed_ver="$(awk '/^version:/ { print $2; exit }' "${ex}/gitstack/Chart.yaml" | tr -d '"\r')"
+    signed_app="$(awk '/^appVersion:/ { print $2; exit }' "${ex}/gitstack/Chart.yaml" | tr -d '"\r')"
+    if [ "${signed_ver}" != "${version}" ] || [ "${signed_app}" != "${version}" ]; then
+      fail "il chart firmato della release ${release_tag} ha version=${signed_ver} e appVersion=${signed_app} (attesi ${version}): non è il chart di questa versione. Non installato."
+    fi
+  fi
   # Sul posto: deploy/k3s-version resta accanto (resolve_k3s_version).
   rm -rf "${CHART_DIR}"
   mv "${ex}/gitstack" "${CHART_DIR}"
@@ -2824,6 +2872,7 @@ EOF
 
 main() {
   check_root "$@"
+  apply_version
   if ! v5_enabled; then
     warn_unsigned_exception
   fi
