@@ -98,17 +98,17 @@ type Options struct {
 	// SystemdDir è la cartella delle unità systemd (default /etc/systemd/system):
 	// serve a togliere le variabili *_PROXY che lo script di k3s ricopia in
 	// k3s.service.env, perché il drop-in resti l'unica fonte.
-	SystemdDir string
-	Timeout       time.Duration
-	Sets          []string // --set di helm
-	ValueFiles    []string // -f di helm
-	HelmBin       string
-	ExePath       string // binario gitstack da sostituire
-	Repo          string
-	Ref           string
-	APIBase       string
-	CodeloadURL   string
-	ReleaseURL    string
+	SystemdDir  string
+	Timeout     time.Duration
+	Sets        []string // --set di helm
+	ValueFiles  []string // -f di helm
+	HelmBin     string
+	ExePath     string // binario gitstack da sostituire
+	Repo        string
+	Ref         string
+	APIBase     string
+	CodeloadURL string
+	ReleaseURL  string
 	// ImageCheck sostituisce la verifica sul registry (test).
 	ImageCheck func(ctx context.Context, image string) error
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
