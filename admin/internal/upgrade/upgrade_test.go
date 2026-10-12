@@ -182,6 +182,7 @@ type world struct {
 	signer     string // identità del certificato (vuoto: quella valida)
 	binSigned  string // contenuto realmente firmato per il binario (vuoto: newBin)
 	chartTgz   []byte // chart firmato pubblicato nella release
+	chartVer   string // versione del chart nella release (default 0.1.0)
 	chartSign  []byte // contenuto firmato per il chart (nil: chartTgz)
 	imgSigners string // file delle immagini firmate (per il cosign finto)
 
@@ -191,7 +192,7 @@ type world struct {
 
 func newWorld(t *testing.T) *world {
 	t.Helper()
-	w := &world{t: t, compare: "ahead"}
+	w := &world{t: t, compare: "ahead", chartVer: "0.1.0"}
 	root := t.TempDir()
 	w.exe = filepath.Join(root, "bin", "gitstack")
 	w.chart = filepath.Join(root, "share", "chart")
@@ -217,6 +218,8 @@ func newWorld(t *testing.T) *world {
 		w.hitMu.Unlock()
 		switch {
 		case strings.HasSuffix(p, "/commits/"+newSHA), strings.HasSuffix(p, "/commits/main"), strings.HasSuffix(p, "/commits/2222222"):
+			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
+		case strings.HasSuffix(p, "/commits/v0.2.0"):
 			_, _ = io.WriteString(rw, `{"sha":"`+newSHA+`"}`)
 		case strings.HasSuffix(p, "/commits/v9.9.9"):
 			http.NotFound(rw, r)
@@ -244,9 +247,9 @@ func newWorld(t *testing.T) *world {
 				signed = []byte(w.binSigned)
 			}
 			_, _ = rw.Write(fakeBundle(signed, w.identity()))
-		case strings.HasSuffix(p, "/gitstack-0.1.0.tgz"):
+		case strings.HasSuffix(p, "/gitstack-"+w.chartVer+".tgz"):
 			_, _ = rw.Write(w.chartTgz)
-		case strings.HasSuffix(p, "/gitstack-0.1.0.tgz.sigstore.json"):
+		case strings.HasSuffix(p, "/gitstack-"+w.chartVer+".tgz.sigstore.json"):
 			if w.noBundle {
 				http.NotFound(rw, r)
 				return
@@ -689,5 +692,113 @@ func TestCARecoversUpgradeSucceeds(t *testing.T) {
 	}
 	if n < 3 {
 		t.Errorf("CheckCA chiamato %d volte", n)
+	}
+}
+
+// --- GIT-222: rilascio con versione (--version vX.Y.Z) -----------------------
+
+func TestIsVersionTag(t *testing.T) {
+	for in, want := range map[string]bool{
+		"v1.0.0": true, "v0.0.0-test.1": true, "v1.2.3-rc.1": true, "v10.20.30": true,
+		"1.0.0": false, "v1": false, "v1.0": false, "v01.0.0": false, "v1.0.0+build": false,
+		"v1.0.0-": false, "sha-abc": false, "main": false, "v1.0.0/../x": false,
+	} {
+		if got := IsVersionTag(in); got != want {
+			t.Errorf("IsVersionTag(%q)=%v, atteso %v", in, got, want)
+		}
+	}
+}
+
+func TestResolveTargetVersionTag(t *testing.T) {
+	w := newWorld(t)
+	got, err := w.o.ResolveTarget(context.Background(), "v0.2.0")
+	if err != nil || got.Tag != "v0.2.0" || got.Version != "0.2.0" || got.SHA != newSHA {
+		t.Fatalf("%+v %v", got, err)
+	}
+	got, err = w.o.ResolveTarget(context.Background(), "sha-"+newSHA)
+	if err != nil || got.Version != "" {
+		t.Errorf("una build sha-<commit> non ha versione: %+v %v", got, err)
+	}
+}
+
+// versionWorld prepara una release vX.Y.Z: chart gitstack-0.2.0.tgz con
+// version e appVersion 0.2.0, firmato dalla CI su un tag (identità @refs/tags).
+func versionWorld(t *testing.T) *world {
+	t.Helper()
+	w := newWorld(t)
+	w.chartVer = "0.2.0"
+	w.chartTgz = signedChartTgzVersion(t, "name: gitstack\nversion: 0.2.0\nappVersion: \"0.2.0\"\n")
+	w.signer = "https://github.com/o/r/.github/workflows/ci.yml@refs/tags/v0.2.0"
+	w.o.To = "v0.2.0"
+	return w
+}
+
+func TestRunVersionTagVerificaFirmeEInstalla(t *testing.T) {
+	w := versionWorld(t)
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	// Gli asset arrivano dalla release v0.2.0, non da sha-<commit>.
+	for _, p := range []string{
+		"/gh/o/r/releases/download/v0.2.0/gitstack-linux-amd64",
+		"/gh/o/r/releases/download/v0.2.0/gitstack-linux-amd64.sigstore.json",
+		"/gh/o/r/releases/download/v0.2.0/gitstack-0.2.0.tgz",
+		"/gh/o/r/releases/download/v0.2.0/gitstack-0.2.0.tgz.sigstore.json",
+	} {
+		if w.hitsWith(p) == 0 {
+			t.Errorf("non richiesto: %s (richieste: %v)", p, w.hits)
+		}
+	}
+	var blob int
+	for _, c := range cosignCalls(t) {
+		if strings.HasPrefix(c, "verify-blob ") {
+			blob++
+		}
+	}
+	if blob != 2 {
+		t.Errorf("verify-blob=%d, attesi 2 (binario e chart): la verifica V5 deve restare attiva", blob)
+	}
+	if !w.helm.has("global.image.tag=v0.2.0") {
+		t.Errorf("tag immagine v0.2.0 non passato a helm: %v", w.helm.calls)
+	}
+	if got := readFile(t, w.cfgFile); !strings.Contains(got, "image_tag: v0.2.0") {
+		t.Errorf("config: %q", got)
+	}
+}
+
+func TestRunVersionTagSenzaBundleRifiutato(t *testing.T) {
+	w := versionWorld(t)
+	w.noBundle = true
+	runRefused(t, w, "bundle")
+}
+
+func TestRunVersionTagBinarioAlteratoRifiutato(t *testing.T) {
+	w := versionWorld(t)
+	w.binSigned = "altro contenuto"
+	runRefused(t, w)
+}
+
+func TestRunVersionTagFirmatoDaAltraIdentitaRifiutato(t *testing.T) {
+	w := versionWorld(t)
+	w.signer = "https://github.com/altro/repo/.github/workflows/ci.yml@refs/tags/v0.2.0"
+	runRefused(t, w)
+}
+
+func TestRunVersionTagChartDiUnaltraVersioneRifiutato(t *testing.T) {
+	w := versionWorld(t)
+	// Firmato, ma con version/appVersion diverse dalla release richiesta.
+	w.chartTgz = signedChartTgzVersion(t, "name: gitstack\nversion: 0.1.0\nappVersion: \"0.1.0\"\n")
+	runRefused(t, w, "non è il chart di questa versione")
+}
+
+func TestChartHasVersion(t *testing.T) {
+	if !chartHasVersion("version: 1.0.0\r\nappVersion: \"1.0.0\"\r\n", "1.0.0") {
+		t.Error("atteso vero")
+	}
+	for _, y := range []string{"version: 1.0.0\n", "version: 1.0.0\nappVersion: 0.9.0\n", "appVersion: 1.0.0\n"} {
+		if chartHasVersion(y, "1.0.0") {
+			t.Errorf("accettato %q", y)
+		}
 	}
 }

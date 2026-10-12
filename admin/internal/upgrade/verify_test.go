@@ -151,11 +151,17 @@ func (w *world) identity() string {
 // gitstack/): byte diversi da quelli del sorgente, ed è l'unico che si firma.
 func signedChartTgz(t *testing.T) []byte {
 	t.Helper()
+	return signedChartTgzVersion(t, "name: gitstack\nversion: 0.1.0\n")
+}
+
+// signedChartTgzVersion è signedChartTgz con il Chart.yaml dato.
+func signedChartTgzVersion(t *testing.T, chartYAML string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
 	for _, f := range [][2]string{
-		{"gitstack/Chart.yaml", "name: gitstack\nversion: 0.1.0\n"},
+		{"gitstack/Chart.yaml", chartYAML},
 		{"gitstack/values.yaml", "NUOVO: 1\n"},
 		{"gitstack/templates/a.yaml", "x"},
 	} {

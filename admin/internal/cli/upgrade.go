@@ -32,6 +32,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	fs.SetOutput(io.Discard)
 	cfgPath := fs.String("config", "", configFlagUsage)
 	to := fs.String("to", "", "versione di destinazione: tag di versione, sha del commit o sha-<commit> (default: ultimo commit di "+upgrade.DefaultRef+")")
+	version := fs.String("version", "", "versione di rilascio vX.Y.Z (anche -rc.N): equivale a --to, ma accetta solo tag SemVer")
 	dest := fs.String("dest", "", "cartella del backup preventivo (default backup.destination del config)")
 	keyFile := fs.String("key-file", "", "file con la chiave per cifrare il backup preventivo (AES-256-GCM)")
 	timeout := fs.Duration("timeout", upgrade.DefaultTimeout, "tempo massimo per l'aggiornamento dei servizi e per la loro salute")
@@ -48,6 +49,17 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		a.errorf("upgrade: %v", err)
 		a.usage(a.Stderr)
 		return ExitUsage
+	}
+	if *version != "" {
+		if *to != "" {
+			a.errorf("upgrade: --version e --to si escludono a vicenda")
+			return ExitUsage
+		}
+		if !upgrade.IsVersionTag(*version) {
+			a.errorf("upgrade: --version %q non valida: serve vX.Y.Z (o vX.Y.Z-rc.N); per uno sha usa --to", *version)
+			return ExitUsage
+		}
+		*to = *version
 	}
 	if *timeout < time.Minute {
 		a.errorf("upgrade: --timeout troppo breve (almeno 1m)")
