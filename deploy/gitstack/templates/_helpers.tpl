@@ -168,3 +168,71 @@ password, from): generato dal chart o dato con smtp.existingSecret.
 {{- define "gitstack.smtp.secretName" -}}
 {{- .Values.smtp.existingSecret | default (printf "%s-smtp" (include "gitstack.fullname" .)) -}}
 {{- end -}}
+
+{{/*
+Proxy aziendale e CA aziendale (N9). NO_PROXY: i valori dell'amministratore
+più ciò che deve restare diretto dentro il cluster (nomi dei Service, domini
+del cluster, CIDR di pod e servizi).
+*/}}
+{{- define "gitstack.proxy.noProxy" -}}
+{{- $fn := include "gitstack.fullname" . -}}
+{{- $items := list "localhost" "127.0.0.1" "::1" ".svc" ".cluster.local" -}}
+{{- range $c := list "gateway" "core" "identity" "git" "web" "nats" "postgres" -}}
+{{- $items = append $items (printf "%s-%s" $fn $c) -}}
+{{- end -}}
+{{- range $cidr := .Values.egress.clusterCIDRs -}}
+{{- $items = append $items $cidr -}}
+{{- end -}}
+{{- with .Values.proxy.noProxy -}}
+{{- $items = concat (list .) $items -}}
+{{- end -}}
+{{- join "," $items -}}
+{{- end -}}
+
+{{/*
+Variabili d'ambiente del proxy e della CA aziendale per i servizi che escono
+dal cluster (core: webhook, SMTP; git: mirror; identity: OIDC). Vuoto senza
+proxy né CA. Uso: {{- include "gitstack.proxy.env" . | nindent 12 }}
+*/}}
+{{- define "gitstack.proxy.env" -}}
+{{- if or .Values.proxy.http .Values.proxy.https }}
+{{- $no := include "gitstack.proxy.noProxy" . }}
+{{- with .Values.proxy.http }}
+- name: HTTP_PROXY
+  value: {{ . | quote }}
+- name: http_proxy
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.proxy.https }}
+- name: HTTPS_PROXY
+  value: {{ . | quote }}
+- name: https_proxy
+  value: {{ . | quote }}
+{{- end }}
+- name: NO_PROXY
+  value: {{ $no | quote }}
+- name: no_proxy
+  value: {{ $no | quote }}
+{{- end }}
+{{- if .Values.corporateCA.configMap }}
+- name: SSL_CERT_DIR
+  value: /etc/gitstack/corporate-ca
+{{- end }}
+{{- end -}}
+
+{{/* Mount e volume della CA aziendale (ConfigMap con la chiave ca.crt). */}}
+{{- define "gitstack.corporateCA.volumeMount" -}}
+- name: corporate-ca
+  mountPath: /etc/gitstack/corporate-ca/ca.crt
+  subPath: ca.crt
+  readOnly: true
+{{- end -}}
+
+{{- define "gitstack.corporateCA.volume" -}}
+- name: corporate-ca
+  configMap:
+    name: {{ .Values.corporateCA.configMap | quote }}
+    items:
+      - key: ca.crt
+        path: ca.crt
+{{- end -}}

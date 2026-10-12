@@ -35,13 +35,38 @@ ascolto su localhost del nodo.
 | Nome che risolve in un IP vietato | si controlla l'IP risolto, mai il nome |
 | DNS rebinding (risposta valida al controllo, vietata alla connessione) | il controllo è anche nel `Control` del `net.Dialer`, eseguito sull'indirizzo effettivo subito prima di `connect(2)`: non c'è TOCTOU |
 | Redirect verso un indirizzo vietato | ogni hop apre una nuova connessione, quindi passa dal dialer; `CheckRedirect` limita a 5 hop e ammette solo `http`/`https` |
-| Proxy da variabile d'ambiente | `Transport.Proxy` è nil: la destinazione dialata sarebbe il proxy, non l'URL |
+| Proxy da variabile d'ambiente | `Transport.Proxy` non è mai `ProxyFromEnvironment`: il proxy è solo quello esplicito di `Options.Proxy` (N9, sotto) |
 | Risposta enorme nel log | `ReadBody` legge al massimo 4 KB (`MaxLoggedBody`) e segnala il troncamento |
 | Richiesta lenta | timeout totale di 10 s (configurabile in `Options`) |
 
 **Fuori ambito**: il contenuto del body e degli header inviati (è
 responsabilità del chiamante), la validazione del certificato TLS (resta
 quella standard di Go), i servizi esposti su indirizzi pubblici ammessi.
+
+## Proxy aziendale (N9)
+
+Con `Options.Proxy` (da `egress.ProxyFromEnv()`: `HTTP_PROXY`, `HTTPS_PROXY`,
+`NO_PROXY`) le richieste escono dal proxy, ma la policy resta applicata alla
+destinazione VERA, prima di contattare il proxy e a ogni hop di redirect:
+
+1. un nome in `deny` è rifiutato senza risolverlo;
+2. il nome si risolve e OGNI indirizzo passa dalla policy (loopback,
+   link-local, cluster, reti speciali, `deny`, `allow`): un indirizzo vietato
+   rifiuta tutta la richiesta, e il proxy non viene contattato;
+3. solo allora si apre la connessione al proxy (richiesta assoluta per
+   `http://`, `CONNECT` per `https://`).
+
+La connessione al proxy è l'unica non giudicata dalla policy: l'indirizzo del
+proxy lo sceglie l'amministratore, e può stare nella rete aziendale o nel
+cluster. Le destinazioni in `NO_PROXY` vanno dirette e le giudica il dialer
+come senza proxy.
+
+Limite: il proxy risolve il nome per conto suo, quindi fra controllo e
+connessione una risposta DNS diversa non è visibile (il TOCTOU chiuso dal
+`Control` del dialer non esiste con un proxy: ci si affida al proxy
+aziendale). `ProxyConfig.DialContext` apre un tunnel `CONNECT` per i
+protocolli non HTTP (SMTP di core), senza policy: l'host SMTP lo configura
+l'amministratore.
 
 ## Reti bloccate
 
