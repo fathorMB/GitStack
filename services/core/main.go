@@ -207,6 +207,9 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
+	if cfg.SystemInfoFile != "" {
+		routerOpts = append(routerOpts, httpserver.WithSystemInfo(httpserver.SystemInfoConfig{File: cfg.SystemInfoFile}))
+	}
 	var disk *attachments.Disk
 	if cfg.AttachmentsDir != "" {
 		disk = &attachments.Disk{Dir: cfg.AttachmentsDir}

@@ -42,6 +42,69 @@ func (e AccessSourceKind) Valid() bool {
 	}
 }
 
+// Defines values for AdminSystemBackupRunState.
+const (
+	AdminSystemBackupRunStateFailed  AdminSystemBackupRunState = "failed"
+	AdminSystemBackupRunStateNone    AdminSystemBackupRunState = "none"
+	AdminSystemBackupRunStateSuccess AdminSystemBackupRunState = "success"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemBackupRunState enum.
+func (e AdminSystemBackupRunState) Valid() bool {
+	switch e {
+	case AdminSystemBackupRunStateFailed:
+		return true
+	case AdminSystemBackupRunStateNone:
+		return true
+	case AdminSystemBackupRunStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemDatabaseMode.
+const (
+	AdminSystemDatabaseModeExternal AdminSystemDatabaseMode = "external"
+	AdminSystemDatabaseModeInternal AdminSystemDatabaseMode = "internal"
+	AdminSystemDatabaseModeUnknown  AdminSystemDatabaseMode = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemDatabaseMode enum.
+func (e AdminSystemDatabaseMode) Valid() bool {
+	switch e {
+	case AdminSystemDatabaseModeExternal:
+		return true
+	case AdminSystemDatabaseModeInternal:
+		return true
+	case AdminSystemDatabaseModeUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemVersionsK3sUpdate.
+const (
+	AdminSystemVersionsK3sUpdateMinor AdminSystemVersionsK3sUpdate = "minor"
+	AdminSystemVersionsK3sUpdateNone  AdminSystemVersionsK3sUpdate = "none"
+	AdminSystemVersionsK3sUpdatePatch AdminSystemVersionsK3sUpdate = "patch"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemVersionsK3sUpdate enum.
+func (e AdminSystemVersionsK3sUpdate) Valid() bool {
+	switch e {
+	case AdminSystemVersionsK3sUpdateMinor:
+		return true
+	case AdminSystemVersionsK3sUpdateNone:
+		return true
+	case AdminSystemVersionsK3sUpdatePatch:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CodeUserKind.
 const (
 	CodeUserKindAgent CodeUserKind = "agent"
@@ -1243,6 +1306,126 @@ type AccessSource struct {
 
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
+
+// AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
+type AdminSystem struct {
+	Backup   AdminSystemBackup   `json:"backup"`
+	Database AdminSystemDatabase `json:"database"`
+
+	// Network Rete aziendale (N9). Mai credenziali del proxy.
+	Network AdminSystemNetwork `json:"network"`
+
+	// Published Vero se il ConfigMap `system-info` è presente. Falso: solo la versione del server Postgres (viva) è nota.
+	Published bool `json:"published"`
+
+	// UpdatedAt Ultima pubblicazione da parte di `gitstack`.
+	UpdatedAt *time.Time          `json:"updatedAt,omitempty"`
+	Versions  AdminSystemVersions `json:"versions"`
+}
+
+// AdminSystemBackup defines model for AdminSystemBackup.
+type AdminSystemBackup struct {
+	// Destination Cartella dei backup locali sull'host.
+	Destination *string `json:"destination,omitempty"`
+
+	// Last Esito di un backup o di un caricamento.
+	Last AdminSystemBackupRun `json:"last"`
+
+	// Retention Numero di backup locali conservati.
+	Retention *int                `json:"retention,omitempty"`
+	S3        AdminSystemBackupS3 `json:"s3"`
+}
+
+// AdminSystemBackupRun Esito di un backup o di un caricamento.
+type AdminSystemBackupRun struct {
+	At *time.Time `json:"at,omitempty"`
+
+	// Error Causa, se `state` è `failed`.
+	Error *string `json:"error,omitempty"`
+
+	// Name Percorso dell'archivio locale o nome dell'oggetto su S3.
+	Name  *string                   `json:"name,omitempty"`
+	State AdminSystemBackupRunState `json:"state"`
+}
+
+// AdminSystemBackupRunState defines model for AdminSystemBackupRun.State.
+type AdminSystemBackupRunState string
+
+// AdminSystemBackupS3 defines model for AdminSystemBackupS3.
+type AdminSystemBackupS3 struct {
+	Bucket     *string `json:"bucket,omitempty"`
+	Configured bool    `json:"configured"`
+	Endpoint   *string `json:"endpoint,omitempty"`
+	Prefix     *string `json:"prefix,omitempty"`
+
+	// Retention Numero di archivi o `bucket` (lo decide il bucket).
+	Retention *string `json:"retention,omitempty"`
+
+	// Upload Esito di un backup o di un caricamento.
+	Upload AdminSystemBackupRun `json:"upload"`
+}
+
+// AdminSystemDatabase defines model for AdminSystemDatabase.
+type AdminSystemDatabase struct {
+	Host *string `json:"host,omitempty"`
+
+	// Mode Postgres interno (bundle), esterno (N8) o non pubblicato.
+	Mode AdminSystemDatabaseMode `json:"mode"`
+
+	// Name Nome del database.
+	Name *string `json:"name,omitempty"`
+	Port *int    `json:"port,omitempty"`
+
+	// ServerVersion Versione del server (`SHOW server_version`).
+	ServerVersion *string `json:"serverVersion,omitempty"`
+
+	// Sslmode Per esempio `require` o `verify-full`.
+	Sslmode *string `json:"sslmode,omitempty"`
+
+	// VersionLive Vero se `serverVersion` è stata letta ora da core sulla sua connessione; falso se è quella rilevata dall'installer.
+	VersionLive *bool `json:"versionLive,omitempty"`
+}
+
+// AdminSystemDatabaseMode Postgres interno (bundle), esterno (N8) o non pubblicato.
+type AdminSystemDatabaseMode string
+
+// AdminSystemNetwork Rete aziendale (N9). Mai credenziali del proxy.
+type AdminSystemNetwork struct {
+	// Configured Falso: nessun proxy né CA aziendale («non configurato»).
+	Configured bool `json:"configured"`
+
+	// CorporateCA Una CA aziendale è installata nei servizi.
+	CorporateCA bool `json:"corporateCA"`
+
+	// HttpProxy URL del proxy senza credenziali.
+	HttpProxy  *string `json:"httpProxy,omitempty"`
+	HttpsProxy *string `json:"httpsProxy,omitempty"`
+
+	// MirrorCA Una CA privata è usata per i mirror in push.
+	MirrorCA bool    `json:"mirrorCA"`
+	NoProxy  *string `json:"noProxy,omitempty"`
+
+	// ProxyHasCredentials Il proxy richiede credenziali (non mostrate).
+	ProxyHasCredentials bool `json:"proxyHasCredentials"`
+}
+
+// AdminSystemVersions defines model for AdminSystemVersions.
+type AdminSystemVersions struct {
+	// Gitstack Versione di GitStack installata (tag delle immagini).
+	Gitstack string `json:"gitstack"`
+
+	// K3s Versione di k3s in esecuzione; vuota se non letta.
+	K3s *string `json:"k3s,omitempty"`
+
+	// K3sDeclared Versione di k3s dichiarata (`deploy/k3s-version`).
+	K3sDeclared *string `json:"k3sDeclared,omitempty"`
+
+	// K3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
+	K3sUpdate AdminSystemVersionsK3sUpdate `json:"k3sUpdate"`
+}
+
+// AdminSystemVersionsK3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
+type AdminSystemVersionsK3sUpdate string
 
 // Blame defines model for Blame.
 type Blame struct {
@@ -3371,6 +3554,9 @@ type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreference
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GetAdminSystem Stato dell'installazione (Admin · System)
+	// (GET /admin/system)
+	GetAdminSystem(w http.ResponseWriter, r *http.Request)
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -3714,6 +3900,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetAdminSystem operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminSystem(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminSystem(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
@@ -8975,6 +9175,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/meta", wrapper.GetMeta)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/system", wrapper.GetAdminSystem)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources", wrapper.ListResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources", wrapper.CreateResource)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/resources/{resourceId}", wrapper.DeleteResource)

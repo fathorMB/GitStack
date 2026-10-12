@@ -122,6 +122,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		}
 		return ExitUnexpected
 	}
+	a.autoPublish(ctx, cfg, path)
 	w := a.Stdout
 	if res.Outcome == upgrade.RolledBack || res.Outcome == upgrade.Broken {
 		w = a.Stderr
