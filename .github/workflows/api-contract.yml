@@ -55,9 +55,13 @@ jobs:
     name: Workspace Go sincronizzato
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      # Stesse versioni di check-generated (GIT-242): checkout@v5 e
+      # setup-go@v6 (Node 24). Prima il job usava v4/v5 e il run su ae4e78d
+      # e' risultato rosso senza che i go.mod fossero cambiati; lo script ora
+      # stampa diff e `go env` se il drift si ripresenta.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26.2"
 

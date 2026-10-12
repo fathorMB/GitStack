@@ -24,13 +24,22 @@ cd "$root_dir"
 
 go work sync
 
-status="$(git status --porcelain -- ':(glob)**/go.mod' ':(glob)**/go.sum' go.work go.work.sum)"
+pathspec=(':(glob)**/go.mod' ':(glob)**/go.sum' go.work go.work.sum)
+status="$(git status --porcelain -- "${pathspec[@]}")"
 if [ -n "$status" ]; then
   echo
   echo "Il workspace Go non è sincronizzato con go.work." >&2
   echo "Lancia 'go work sync' dalla radice e committa i go.mod/go.sum elencati sotto." >&2
   echo
   echo "$status"
+  # Diagnostica (GIT-242): un drift visto solo in CI non si spiega coi nomi
+  # dei file. Stampa cosa è cambiato e con quale toolchain.
+  echo
+  echo "--- go env (toolchain e proxy del job) ---"
+  go env GOVERSION GOTOOLCHAIN GOFLAGS GOPROXY || true
+  echo
+  echo "--- git diff dei file sporchi ---"
+  git --no-pager diff --ignore-cr-at-eol -- "${pathspec[@]}" || true
   exit 1
 fi
 
