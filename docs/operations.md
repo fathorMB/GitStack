@@ -798,7 +798,7 @@ brew install anchore/syft/syft
 
 ```sh
 # Immagine: ghcr.io/<owner>/gitstack-gateway:sha-<commit-sha>
-IMG="ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>"
+IMG="ghcr.io/fathormb/gitstack-gateway:sha-<commit-sha>"
 
 # Verifica la firma keyless: identity (URL del workflow) + issuer OIDC.
 cosign verify \
@@ -880,7 +880,7 @@ cosign verify-attestation \
   --certificate-identity "https://github.com/fathorMB/GitStack/.github/workflows/ci.yml@refs/heads/main" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   --type spdxjson \
-  ghcr.io/fathorMB/gitstack-gateway:sha-<commit-sha>
+  ghcr.io/fathormb/gitstack-gateway:sha-<commit-sha>
 ```
 
 Per i tag, usare `--certificate-identity-regexp` con:
