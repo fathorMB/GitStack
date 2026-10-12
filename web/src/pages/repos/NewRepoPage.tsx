@@ -13,7 +13,7 @@ import {
   useToast,
 } from '../../components';
 import { fetchSession } from '../../lib/authApi';
-import { describeError, fieldErrors } from '../../lib/http';
+import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { fetchOrganizations } from '../../lib/orgsApi';
 import {
   GITIGNORE_TEMPLATES,
@@ -84,13 +84,14 @@ export function NewRepoPage() {
   const [intervalSeconds, setIntervalSeconds] = useState(600);
   const [formError, setFormError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [serverErrorCode, setServerErrorCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const ownerList = owners.data ?? [];
   const owner = ownerChoice ?? ownerList[0] ?? '';
   const nameError = touched || name !== '' ? validateRepoName(name) : '';
   const urlError = validateSourceUrl(sourceUrl);
-  const mirrorValid = mirrorMode === 'once' || (sourceUrl.trim() !== '' && urlError === '');
+  const mirrorValid = sourceUrl.trim() !== '' && urlError === '';
   const importReady = mirrorValid && name !== '' && owner !== '';
   const intervalLabel = useMemo(() => {
     if (mirrorMode === 'once') return null;
@@ -103,6 +104,7 @@ export function NewRepoPage() {
     setTouched(true);
     setFormError(null);
     setFields({});
+    setServerErrorCode(null);
 
     if (mode === 'empty') {
       if (validateRepoName(name) !== '' || owner === '') return;
@@ -143,6 +145,9 @@ export function NewRepoPage() {
     } catch (err) {
       const perField = fieldErrors(err);
       setFields(perField);
+      if (err instanceof ApiError) {
+        setServerErrorCode(err.code);
+      }
       setFormError(Object.keys(perField).length > 0 ? null : describeError(err));
     } finally {
       setSubmitting(false);
@@ -176,7 +181,7 @@ export function NewRepoPage() {
               </FormField>
               <span className="repo-slash" aria-hidden="true">/</span>
               <div className="grow">
-                <FormField label="Repository name" error={fields.name || nameError}>
+                <FormField label="Repository name" hint="Lowercase letters, digits, – — up to 100 characters." error={fields.name || nameError}>
                   <TextInput value={name} onChange={(e) => setName(e.target.value)} onBlur={() => setTouched(true)} placeholder="billing-service" autoComplete="off" />
                 </FormField>
               </div>
@@ -241,17 +246,27 @@ export function NewRepoPage() {
                 <TextInput id="source-url" className="input" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://github.com/owner/repo.git" autoComplete="off" />
               </div>
               <span className="hint">HTTPS only. Don&rsquo;t put credentials in the URL: use the token field below.</span>
-              {urlError && <span className="error" role="alert">{urlError}</span>}
+              {(urlError || fields.url) && (
+                <span className="error" role="alert">{urlError || fields.url}</span>
+              )}
+              {serverErrorCode === 'url_not_allowed' && (
+                <div className="alert alert-danger" role="alert" style={{ marginTop: 8 }}>
+                  <Info size={16} aria-hidden="true" />
+                  <div><b>This address is blocked by the outbound policy.</b> Private and internal addresses can only be used if an administrator allows them in <b>System · Outbound connections</b>.</div>
+                </div>
+              )}
             </div>
 
             <div className="row" style={{ gap: 10, flexWrap: 'nowrap' }}>
               <div className="field" style={{ flex: 1 }}>
                 <label>Username <span className="subtle" style={{ fontWeight: 400 }}>(optional)</span></label>
                 <TextInput value={sourceUsername} onChange={(e) => setSourceUsername(e.target.value)} placeholder="x-access-token" autoComplete="username" />
+                {fields.username && <span className="error" role="alert" style={{ display: 'block' }}>{fields.username}</span>}
               </div>
               <div className="field" style={{ flex: 1 }}>
                 <label>Access token <span className="subtle" style={{ fontWeight: 400 }}>(optional)</span></label>
                 <PasswordInput value={sourceToken} onChange={(e) => setSourceToken(e.target.value)} placeholder="ghp_xxxxxxxxxxxxxxxx" autoComplete="token" />
+                {fields.token && <span className="error" role="alert" style={{ display: 'block' }}>{fields.token}</span>}
               </div>
             </div>
             <p className="hint" style={{ marginTop: -10 }}>

@@ -79,13 +79,22 @@ export function PullMirrorInfoBanner({ mirror }: { mirror: PullMirror | null }) 
   }
 
   // Stale: nessun aggiornamento riuscito da oltre 24h o fermo.
+  let staleTitle = 'No successful update for 26 hours.';
+  if (mirror.lastSyncedAt) {
+    const hours = Math.round((Date.now() - new Date(mirror.lastSyncedAt).getTime()) / (1000 * 60 * 60));
+    staleTitle = `No successful update for ${hours} hour${hours !== 1 ? 's' : ''}.`;
+  } else if (mirror.state === 'stopped') {
+    staleTitle = 'The mirror has been stopped by an administrator.';
+  } else {
+    staleTitle = 'The mirror has never synced.';
+  }
   const sinceLast = mirror.lastSyncedAt ? `Last success ${timeAgo(mirror.lastSyncedAt)}.` : 'The mirror has never synced.';
   const errorMsg = mirror.lastError ? ` Last error: ${mirror.lastError}.` : '';
   return (
     <div className="alert alert-danger" role="alert">
       <ShieldAlert size={16} aria-hidden="true" />
       <div>
-        <b>No successful update for 26 hours.</b> {sinceLast}{errorMsg} The token may have expired. Repo admins were notified.
+        <b>{staleTitle}</b> {sinceLast}{errorMsg} The token may have expired. Repo admins were notified.
       </div>
     </div>
   );

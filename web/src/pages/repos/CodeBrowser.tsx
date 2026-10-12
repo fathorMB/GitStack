@@ -48,7 +48,9 @@ export function CodeBrowser({ repo, splat }: { repo: Repository; splat: string }
     return { branches, tags };
   });
   // Mirror in pull: dettagli completi (null se non e' un mirror).
-  const { data: pullMirror } = useLoad(() => fetchPullMirror(owner, name));
+  const { data: pullMirror } = useLoad<PullMirror | null>(
+    repo.mirror ? () => fetchPullMirror(owner, name) : () => Promise.resolve(null),
+  );
 
   if (error) return <ErrorAlert message={error} />;
   if (!refs) return <p className="muted">Loading code…</p>;
@@ -130,7 +132,7 @@ function TreeView({ repo, refs, refName, path, defaultRef, mirror }: { repo: Rep
               <div className="row">
                 <Clock size={16} aria-hidden="true" />
                 {mirrorVariant(mirror) === 'active' ? (
-                  <>Last update {timeAgo(mirror.lastSyncedAt ?? new Date().toISOString())}</>
+                  <>Last update {mirror.lastSyncedAt ? timeAgo(mirror.lastSyncedAt) : 'never'}</>
                 ) : mirrorVariant(mirror) === 'paused' ? (
                   <>Paused</>
                 ) : (

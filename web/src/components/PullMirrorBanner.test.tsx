@@ -103,7 +103,7 @@ describe('PullMirrorInfoBanner', () => {
     );
     const alert = screen.getByRole('alert');
     expect(alert).toHaveClass('alert-danger');
-    expect(alert).toHaveTextContent('No successful update for 26 hours');
+    expect(alert).toHaveTextContent(/No successful update for \d+ hour/);
     expect(alert).toHaveTextContent('authentication failed (401)');
   });
 
