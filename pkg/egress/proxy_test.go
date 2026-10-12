@@ -40,7 +40,7 @@ type proxyRecorder struct {
 func newProxyRecorder(t *testing.T) *proxyRecorder {
 	t.Helper()
 	p := &proxyRecorder{}
-	p.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	p.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p.mu.Lock()
 		p.seen = append(p.seen, r.Method+" "+r.URL.String())
 		p.auth = append(p.auth, r.Header.Get("Proxy-Authorization"))
@@ -52,6 +52,7 @@ func newProxyRecorder(t *testing.T) *proxyRecorder {
 			p.conns.Add(1)
 		}
 	}
+	p.srv.Start()
 	t.Cleanup(p.srv.Close)
 	return p
 }
