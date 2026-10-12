@@ -303,6 +303,21 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	} else {
 		logger.Warn("git non configurato: i mirror in push non partono")
 	}
+	// Mirror in pull (M-09/A3, GIT-197): stesso portachiavi e stessa policy di
+	// uscita; l'aggiornamento prudente lo esegue il servizio git.
+	pullEng := &mirrors.PullEngine{Pool: pool, Keys: keys, Egress: mirrorEgress, Log: logger}
+	if mgr, ok := repoLookup.(webhooks.Managers); ok {
+		pullEng.Managers = mgr
+	}
+	if look, ok := repoLookup.(webhooks.Users); ok {
+		pullEng.Users = look
+	}
+	if puller, ok := gitAPI.(gitclient.MirrorPuller); ok {
+		pullEng.Git = puller
+		go pullEng.Run(ctx)
+	} else {
+		logger.Warn("git non configurato: i mirror in pull non partono")
+	}
 	if js, err := jetstream.New(nc); err != nil {
 		logger.Error("apertura di JetStream per i webhook push non riuscita: i push non generano webhook", "err", err)
 	} else {

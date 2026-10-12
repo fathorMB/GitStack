@@ -99,7 +99,7 @@ func init() {
 		{name: "backup", summary: "archivio coerente di database, repo, allegati e configurazione", needsRoot: true, run: runBackup},
 		{name: "restore", summary: "ripristina un archivio su un'installazione pulita della stessa versione", needsRoot: true, run: runRestore},
 		{name: "upgrade", summary: "aggiorna GitStack con backup preventivo, controllo di salute e rollback automatico", needsRoot: true, run: runUpgrade},
-		{name: "config", summary: "config set host <nome> | config set backup.s3 …: nome dell'host; copia dei backup su S3", needsRoot: true, run: runConfig},
+		{name: "config", summary: "config set host <nome> | config set network | config set backup.s3 …: nome dell'host, rete aziendale (proxy, mirror, CA), copia dei backup su S3", needsRoot: true, run: runConfig},
 		{name: "postgres", summary: "postgres check: preflight del Postgres esterno (versione 15-17, connessione, permessi)", run: runPostgres},
 		{name: "system-info", summary: "system-info publish|show: pubblica (o stampa) le informazioni per Admin · System", needsRoot: true, run: runSystemInfo},
 		{name: "version", summary: "versione del binario", run: runVersion},
@@ -179,6 +179,7 @@ func (a *App) configDir(path string) string {
 func (a *App) loadConfig(path string) (*config.Config, int) {
 	cfg, err := config.Load(path)
 	if err == nil {
+		exportProxyEnv(cfg)
 		return cfg, ExitOK
 	}
 	switch {
@@ -191,4 +192,24 @@ func (a *App) loadConfig(path string) (*config.Config, int) {
 		a.errorf("%v", err)
 	}
 	return nil, ExitConfig
+}
+
+// exportProxyEnv porta il proxy configurato (N9) nell'ambiente del processo,
+// se non c'è già: i download di `gitstack upgrade` (net/http) lo rispettano.
+func exportProxyEnv(cfg *config.Config) {
+	n := cfg.Network
+	set := func(k, v string) {
+		if v != "" && os.Getenv(k) == "" {
+			_ = os.Setenv(k, v)
+		}
+	}
+	https := n.HTTPSProxy
+	if https == "" {
+		https = n.HTTPProxy
+	}
+	set("HTTP_PROXY", n.HTTPProxy)
+	set("HTTPS_PROXY", https)
+	if n.HTTPProxy != "" || https != "" {
+		set("NO_PROXY", "localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local"+map[bool]string{true: ",", false: ""}[n.NoProxy != ""]+n.NoProxy)
+	}
 }
