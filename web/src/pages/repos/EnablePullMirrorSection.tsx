@@ -46,10 +46,11 @@ export function EnablePullMirrorSection({
     setErrors({});
     setGeneral('');
     try {
-      const input: { url: string; username?: string; intervalSeconds?: number } = {
+      const input: { url: string; username?: string; token?: string; intervalSeconds?: number } = {
         url: url.trim(),
       };
       if (username.trim() !== '') input.username = username.trim();
+      if (token !== '') input.token = token;
       input.intervalSeconds = Number(interval);
       const m = await enablePullMirror(owner, repo, input);
       toast(`Pull mirror enabled for ${repo}.`, 'success');

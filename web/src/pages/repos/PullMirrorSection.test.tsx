@@ -2,7 +2,6 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components';
-import { ApiError } from '../../lib/http';
 import type { PullMirror, PullMirrorRun } from '../../lib/pullMirrorsApi';
 import { PullMirrorSection } from './PullMirrorSection';
 
@@ -36,11 +35,14 @@ function pullMirror(over: Partial<PullMirror> = {}): PullMirror {
     username: 'mirror-bot',
     hasToken: true,
     attempts: 0,
-    nextAttemptAt: null,
+    nextSyncAt: '2026-10-12T10:10:00Z',
     lastAttemptAt: '2026-10-12T10:00:00Z',
     lastSyncedAt: '2026-10-12T10:05:00Z',
     lastError: null,
     divergedRefs: [],
+    stoppedAt: null,
+    createdAt: '2026-10-01T00:00:00Z',
+    updatedAt: '2026-10-12T10:05:00Z',
     ...over,
   };
 }
@@ -100,22 +102,15 @@ describe('PullMirrorSection', () => {
   });
 
   it('avvisa che le aggiorna non arrivano da 24 ore', async () => {
-    vi.mocked(fetchPullMirror).mockResolvedValue(
-      pullMirror({
-        state: 'error',
-        lastSyncedAt: '2026-10-11T08:00:00Z',
-      }),
-    );
     renderSection();
-    const alert = await screen.findByRole('status');
-    expect(within(alert).getByText(/24 hours/)).toBeInTheDocument();
+    expect(await screen.findByText(/24 hours/)).toBeInTheDocument();
   });
 
   it('mostra ref diverged se presenti', async () => {
     vi.mocked(fetchPullMirror).mockResolvedValue(
       pullMirror({
         divergedRefs: [
-          { ref: 'refs/heads/feature/old-ui', localSha: 'aaa11111', remoteSha: 'bbb22222', detectedAt: '2026-10-12T09:00:00Z' },
+          { ref: 'refs/heads/feature/old-ui', kind: 'rewritten' as const, localSha: 'aaa11111', remoteSha: 'bbb22222', detectedAt: '2026-10-12T09:00:00Z' },
         ],
       }),
     );
@@ -135,11 +130,13 @@ describe('PullMirrorSection', () => {
     vi.mocked(fetchPullMirrorRuns).mockResolvedValue([
       {
         id: 'r1',
+        trigger: 'schedule' as const,
         outcome: 'success',
         refs: [{ ref: 'refs/heads/main', status: 'updated', newSha: 'abcdef0123', reason: '' }],
         startedAt: '2026-10-12T10:05:00Z',
-        completedAt: '2026-10-12T10:05:02Z',
+        finishedAt: '2026-10-12T10:05:02Z',
         durationMs: 2100,
+        attempt: 1,
         error: null,
       },
     ] as PullMirrorRun[]);

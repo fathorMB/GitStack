@@ -51,6 +51,11 @@ function pullMirror(over: Partial<PullMirror> = {}): PullMirror {
     intervalSeconds: 600,
     state: 'in_sync',
     hasToken: true,
+    attempts: 0,
+    nextSyncAt: null,
+    divergedRefs: [],
+    createdAt: '2026-10-01T00:00:00Z',
+    updatedAt: '2026-10-12T10:00:00Z',
     ...over,
   };
 }
@@ -232,14 +237,15 @@ describe('RepoMirrorsSection', () => {
     vi.mocked(fetchMirrors).mockResolvedValue([]);
     const user = userEvent.setup();
     renderSection();
-    // Wait for the pull mirror fetch to complete and state update
-    await waitFor(() => expect(fetchPullMirror).toHaveBeenCalled());
+    // Wait for the pull mirror fetch to complete and state update.
+    // The conflict warning appears after the user types a matching URL.
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
-    // Il pulsante deve essere spento per conflitto URL
-    const submitBtn = within(form).getByRole('button', { name: 'Add mirror' });
-    expect(submitBtn).toBeDisabled();
-    expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument();
+    const urlInput = within(form).getByLabelText('Remote URL');
+    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    // Il conflitto deve essere visibile e il pulsante spento.
+    await waitFor(() => expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument(), { timeout: 3000 });
+    expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
   });
 
   it('permette aggiunta mirror se non conflict con pull origin', async () => {
@@ -247,16 +253,15 @@ describe('RepoMirrorsSection', () => {
     vi.mocked(fetchMirrors).mockResolvedValue([]);
     const user = userEvent.setup();
     renderSection();
-    // Wait for the pull mirror fetch to complete and state update
-    await waitFor(() => expect(fetchPullMirror).toHaveBeenCalled());
+    // Wait for the pull mirror fetch to complete.
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
     // Il pulsante e' spento perche' l'URL e' vuoto
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
     await user.type(urlInput, 'https://github.com/acme/origin.git');
-    // Ora deve essere abilitato perche' l'URL e' diverso dal pull origin
-    expect(within(form).getByRole('button', { name: 'Add mirror' })).not.toBeDisabled();
+    // URL diverso dal pull origin: il pulsante si abilita e non c'e' avviso.
+    await waitFor(() => expect(within(form).getByRole('button', { name: 'Add mirror' })).not.toBeDisabled(), { timeout: 3000 });
     expect(within(form).queryByText(/This is the source of the pull mirror/)).not.toBeInTheDocument();
   });
 

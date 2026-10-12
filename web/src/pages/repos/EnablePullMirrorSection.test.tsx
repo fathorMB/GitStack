@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components';
@@ -22,11 +22,14 @@ function pullMirror(over: Partial<PullMirror> = {}): PullMirror {
     username: 'mirror-bot',
     hasToken: true,
     attempts: 0,
-    nextAttemptAt: null,
+    nextSyncAt: '2026-10-12T10:10:00Z',
     lastAttemptAt: '2026-10-12T10:00:00Z',
     lastSyncedAt: '2026-10-12T10:05:00Z',
     lastError: null,
     divergedRefs: [],
+    stoppedAt: null,
+    createdAt: '2026-10-01T00:00:00Z',
+    updatedAt: '2026-10-12T10:05:00Z',
     ...over,
   };
 }

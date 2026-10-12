@@ -115,6 +115,7 @@ export function PullMirrorSection({
           </span>
         ) : null}
         {isPaused ? <span className="badge badge-paused">Paused</span> : null}
+        {isStopped ? <span className="badge">Stopped</span> : null}
         <span className="sp" />
         {isActive ? (
           <Button
