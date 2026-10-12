@@ -2,6 +2,14 @@
 
 GitStack è un "mini GitHub" open source da installare on-prem con poca configurazione: repository Git remoti e Issues, gestibili da web UI, CLI o agenti. A lungo termine cresce fino a un piccolo cloud privato ("un piccolo Azure") dove si fanno build, deploy e hosting di applicazioni in container. Visione completa, architettura e decisioni in `.lmbrain-lite/knowledge/` (`vision.md`, `architecture.md`, `decisions.md`).
 
+## GitHub mirror
+
+GitHub is a **read-only mirror** of the main GitStack repository. Code is
+pushed from GitStack to GitHub on every push to the main branch and to tags.
+Public reports (bug reports, feature requests, and issues) should be filed on
+GitHub; for security vulnerabilities, see [`SECURITY.md`](SECURITY.md) for
+private reporting channels.
+
 ## Stack
 
 - **Backend**: Go, pochi servizi "grossi" con confini netti — `gateway` (ingresso API), `identity` (utenti, token, OIDC), `git` (push/pull, hook), `core` (repo, issues) — dietro Traefik su k3s.
