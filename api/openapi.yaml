@@ -141,6 +141,37 @@ paths:
                 api_version: "0.1.0"
 
 
+  /admin/system:
+    get:
+      operationId: getAdminSystem
+      tags: [system]
+      x-required-scopes: ["read:resource"]
+      summary: Stato dell'installazione (Admin · System)
+      description: >
+        Database (interno o esterno, N8), backup locale e S3 con l'esito
+        dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di
+        GitStack e k3s con l'aggiornamento disponibile (N10). Solo
+        l'amministratore dell'installazione. Le informazioni dell'host le
+        pubblica `gitstack` in un ConfigMap che core legge da un file montato:
+        niente accesso all'host dai servizi. La versione del server Postgres è
+        quella letta ora da core sulla sua connessione. Mai segreti: né
+        password, né chiavi S3, né credenziali del proxy.
+      responses:
+        "200":
+          description: Stato del sistema.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSystem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UnexpectedError"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /resources:
     get:
       operationId: listResources
@@ -6549,6 +6580,173 @@ components:
         api_version:
           type: string
           description: Versione del contratto API (`info.version`).
+
+    AdminSystem:
+      type: object
+      description: >
+        Stato dell'installazione per Admin · System (mockup 16). Nessun segreto.
+        `published` dice se l'host ha pubblicato le sue informazioni: se no,
+        le sezioni dell'host hanno `configured: false` o stati `none`.
+      additionalProperties: false
+      required: [published, database, backup, versions, network]
+      properties:
+        published:
+          type: boolean
+          description: >
+            Vero se il ConfigMap `system-info` è presente. Falso: solo la
+            versione del server Postgres (viva) è nota.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Ultima pubblicazione da parte di `gitstack`.
+        database:
+          $ref: "#/components/schemas/AdminSystemDatabase"
+        backup:
+          $ref: "#/components/schemas/AdminSystemBackup"
+        versions:
+          $ref: "#/components/schemas/AdminSystemVersions"
+        network:
+          $ref: "#/components/schemas/AdminSystemNetwork"
+
+    AdminSystemDatabase:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [internal, external, unknown]
+          description: Postgres interno (bundle), esterno (N8) o non pubblicato.
+        host:
+          type: string
+        port:
+          type: integer
+        name:
+          type: string
+          description: Nome del database.
+        sslmode:
+          type: string
+          description: Per esempio `require` o `verify-full`.
+        serverVersion:
+          type: string
+          description: Versione del server (`SHOW server_version`).
+        versionLive:
+          type: boolean
+          description: >
+            Vero se `serverVersion` è stata letta ora da core sulla sua
+            connessione; falso se è quella rilevata dall'installer.
+
+    AdminSystemBackup:
+      type: object
+      additionalProperties: false
+      required: [last, s3]
+      properties:
+        destination:
+          type: string
+          description: Cartella dei backup locali sull'host.
+        retention:
+          type: integer
+          description: Numero di backup locali conservati.
+        last:
+          $ref: "#/components/schemas/AdminSystemBackupRun"
+        s3:
+          $ref: "#/components/schemas/AdminSystemBackupS3"
+
+    AdminSystemBackupRun:
+      type: object
+      description: Esito di un backup o di un caricamento.
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [none, success, failed]
+        at:
+          type: string
+          format: date-time
+          nullable: true
+        name:
+          type: string
+          description: Percorso dell'archivio locale o nome dell'oggetto su S3.
+        error:
+          type: string
+          description: Causa, se `state` è `failed`.
+
+    AdminSystemBackupS3:
+      type: object
+      additionalProperties: false
+      required: [configured, upload]
+      properties:
+        configured:
+          type: boolean
+        endpoint:
+          type: string
+        bucket:
+          type: string
+        prefix:
+          type: string
+        retention:
+          type: string
+          description: Numero di archivi o `bucket` (lo decide il bucket).
+        upload:
+          $ref: "#/components/schemas/AdminSystemBackupRun"
+
+    AdminSystemVersions:
+      type: object
+      additionalProperties: false
+      required: [gitstack, k3sUpdate]
+      properties:
+        gitstack:
+          type: string
+          description: Versione di GitStack installata (tag delle immagini).
+        k3s:
+          type: string
+          description: Versione di k3s in esecuzione; vuota se non letta.
+        k3sDeclared:
+          type: string
+          description: Versione di k3s dichiarata (`deploy/k3s-version`).
+        k3sUpdate:
+          type: string
+          enum: [none, patch, minor]
+          description: >
+            `patch`: applicata da `gitstack upgrade`; `minor`: serve
+            `gitstack upgrade --k3s`.
+
+    AdminSystemNetwork:
+      type: object
+      description: Rete aziendale (N9). Mai credenziali del proxy.
+      additionalProperties: false
+      required: [configured, corporateCA, mirrorCA, proxyHasCredentials, registryHasCredentials]
+      properties:
+        configured:
+          type: boolean
+          description: "Falso: nessun proxy né CA aziendale («non configurato»)."
+        httpProxy:
+          type: string
+          description: URL del proxy senza credenziali.
+        httpsProxy:
+          type: string
+        noProxy:
+          type: string
+        proxyHasCredentials:
+          type: boolean
+          description: Il proxy richiede credenziali (non mostrate).
+        corporateCA:
+          type: boolean
+          description: Una CA aziendale è installata nei servizi.
+        mirrorCA:
+          type: boolean
+          description: Una CA privata è usata per i mirror in push.
+        registryMirror:
+          type: string
+          description: Mirror delle immagini (N9a), senza credenziali.
+        registryHasCredentials:
+          type: boolean
+          description: Il mirror delle immagini richiede credenziali (non mostrate).
+        downloadMirror:
+          type: string
+          description: Mirror dei download di k3s, Helm e binari (N9a), senza credenziali.
 
     Resource:
       type: object

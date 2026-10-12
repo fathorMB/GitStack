@@ -5,6 +5,7 @@ package security
 // Routes è la dichiarazione di sicurezza di ogni operazione pubblica del
 // contratto, con il percorso senza prefisso di versione.
 var Routes = []Route{
+	{Method: "GET", Path: "/admin/system", OperationID: "getAdminSystem", Service: ServiceCore, Public: false, Credentials: []CredentialKind{CredentialSession, CredentialToken}, Scopes: []string{"read:resource"}, Permission: PermissionNone, PasswordChangeExempt: ExemptNever},
 	{Method: "POST", Path: "/auth/login", OperationID: "login", Service: ServiceIdentity, Public: true, Credentials: nil, Scopes: nil, Permission: PermissionNone, PasswordChangeExempt: ExemptNever},
 	{Method: "POST", Path: "/auth/logout", OperationID: "logout", Service: ServiceIdentity, Public: false, Credentials: []CredentialKind{CredentialSession}, Scopes: nil, Permission: PermissionNone, PasswordChangeExempt: ExemptAlways},
 	{Method: "GET", Path: "/auth/oidc/providers", OperationID: "listOidcProviders", Service: ServiceIdentity, Public: true, Credentials: nil, Scopes: nil, Permission: PermissionNone, PasswordChangeExempt: ExemptNever},
