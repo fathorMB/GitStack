@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/insta
 
 ### Distribuzioni supportate
 
-Solo **Ubuntu Server 24.04 LTS x86_64** (N2 [c_d345922b89557a3f]). Su un altro sistema (anche Ubuntu 22.04 o Pop!_OS, che arrivano con M-08 [c_8458909a21d9035f]) il preflight stampa «non supportato» e si ferma: si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware. Debian, RHEL e WSL2 arrivano con M-08.
+**Ubuntu Server 22.04 e 24.04 LTS**, **Pop!_OS 22.04 e 24.04**, tutti amd64 (N2 [c_d345922b89557a3f]). Su un altro sistema il preflight stampa «non supportato» e si ferma: si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware.
 
 ### Requisiti: due profili (N1)
 
@@ -33,7 +33,7 @@ Lo script li verifica in preflight prima di installare qualunque cosa (N1, confe
 | CPU | 4 vCPU | 8 vCPU |
 | RAM | 8 GB | 16 GB |
 | Disco | filesystem di almeno 60 GB **e** almeno 20 GB liberi, sul filesystem che ospita `/var/lib/rancher` (se non esiste ancora, `/`) | 200 GB su SSD (fino a circa 100 utenti) |
-| Sistema | Ubuntu Server 24.04 LTS, x86_64 | |
+| Sistema | Ubuntu Server 22.04/24.04, Pop!_OS 22.04/24.04, x86_64 | |
 | Accesso | root o sudo | |
 | Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
 | Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |

@@ -10,9 +10,9 @@
 #   sudo ./deploy/install.sh
 #   curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/install.sh | sudo bash
 #
-# Distribuzioni supportate in M-01: solo Ubuntu Server 24.04 LTS x86_64
-# (vedi README.md di questa cartella, sezione "Requisiti minimi").
-# Debian/RHEL e WSL2 arrivano con M-08 [c_8458909a21d9035f].
+# Distribuzioni supportate (N2): Ubuntu Server 22.04 e 24.04 LTS,
+# Pop!_OS 22.04 e 24.04, solo x86_64; altri sistemi con --force.
+# (vedi README.md di questa cartella, sezione "Distribuzioni supportate").
 #
 # HTTPS (N5, GIT-143): di default l'installer crea una CA interna (chiave solo
 # sull'host, root-only) e un certificato per il nome dell'host e il suo IP;
@@ -104,15 +104,20 @@ MIN_DISK_FREE_GB=20
 REC_CPU=8
 REC_RAM_GB=16
 REC_DISK_GB=200
-# Sistema supportato (N2): per ora solo Ubuntu Server 24.04. 22.04 e Pop!_OS
-# arrivano con M-08. Un altro sistema si installa solo con --force.
+# Sistemi supportati (N2): ubuntu 22.04, ubuntu 24.04, pop 22.04, pop 24.04,
+# solo x86_64. Un altro sistema si installa solo con --force.
 GITSTACK_FORCE="${GITSTACK_FORCE:-0}"
 # Percorsi letti dal preflight, sostituibili nei test (deploy/tests/preflight_test.sh).
 OS_RELEASE_FILE="${OS_RELEASE_FILE:-/etc/os-release}"
 MEMINFO_FILE="${MEMINFO_FILE:-/proc/meminfo}"
 SYS_CLASS_BLOCK="${SYS_CLASS_BLOCK:-/sys/class/block}"
-REQUIRED_OS_ID="ubuntu"
-REQUIRED_OS_VERSION="24.04"
+# Elenco dei sistemi supportati: coppie "ID VERSIONE" separate da spazio.
+REQUIRED_OS=(
+  "ubuntu 22.04"
+  "ubuntu 24.04"
+  "pop 22.04"
+  "pop 24.04"
+)
 REQUIRED_ARCH="x86_64"
 REQUIRED_PORTS="80 443 6443"
 # Porta SSH di git (git.ssh.port del chart, default 2222). Mai la 22: l'installer
@@ -333,22 +338,29 @@ preflight_os() {
   found_id="$(. "${OS_RELEASE_FILE}" >/dev/null 2>&1; printf '%s' "${ID:-sconosciuto}")"
   # shellcheck disable=SC1090,SC1091
   found_version="$(. "${OS_RELEASE_FILE}" >/dev/null 2>&1; printf '%s' "${VERSION_ID:-sconosciuta}")"
-  if [ "${found_id}" != "${REQUIRED_OS_ID}" ] || [ "${found_version}" != "${REQUIRED_OS_VERSION}" ]; then
+  local supported=0
+  for entry in "${REQUIRED_OS[@]}"; do
+    if [ "${found_id}" = "${entry%% *}" ] && [ "${found_version}" = "${entry#* }" ]; then
+      supported=1
+      break
+    fi
+  done
+  if [ "${supported}" -ne 1 ]; then
     unsupported_os "sistema non supportato: ${found_id} ${found_version}"
     return 0
   fi
-  log "OS: ${found_id} ${found_version} (supportato: ${REQUIRED_OS_ID} ${REQUIRED_OS_VERSION}) OK"
+  log "OS: ${found_id} ${found_version} (supportato: ${REQUIRED_OS[*]}) OK"
 }
 
-# Sistema diverso da Ubuntu Server 24.04: avviso "non supportato" e si
-# prosegue solo con --force (22.04 e Pop!_OS arrivano con M-08).
+# Sistema non nell'elenco supportato: avviso "non supportato" e si
+# prosegue solo con --force.
 unsupported_os() {
   local why="$1"
   if [ "${GITSTACK_FORCE}" = "1" ]; then
-    warn "${why}. Supportato: ${REQUIRED_OS_ID} ${REQUIRED_OS_VERSION} (22.04 e Pop!_OS arrivano con M-08 [c_8458909a21d9035f]). Procedo perché c'è --force: nessuna garanzia."
+    warn "${why}. Supportato: ${REQUIRED_OS[*]}. Procedo perché c'è --force: nessuna garanzia."
     return 0
   fi
-  fail "${why}. Supportato: Ubuntu Server ${REQUIRED_OS_VERSION} (22.04 e Pop!_OS arrivano con M-08 [c_8458909a21d9035f]). Per provare lo stesso, a tuo rischio, rilancia con --force."
+  fail "${why}. Supportato: ${REQUIRED_OS[*]}. Per provare lo stesso, a tuo rischio, rilancia con --force."
 }
 
 preflight_arch() {
