@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fathorMB/GitStack/pkg/scopes"
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
+	"github.com/fathorMB/GitStack/services/identity/internal/tokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -149,6 +151,9 @@ func (s *server) CreateToken(w http.ResponseWriter, r *http.Request) {
 	scopes := make([]string, 0, len(in.Scopes))
 	for _, sc := range in.Scopes {
 		scopes = append(scopes, string(sc))
+	}
+	if !scopesWithinCaller(w, cur, scopes) {
+		return
 	}
 	plain, t, err := s.tokens.Create(r.Context(), apitokens.CreateInput{
 		UserID: cur.User.ID, Name: in.Name, Scopes: scopes, ExpiresAt: in.ExpiresAt,
@@ -395,4 +400,33 @@ func (s *server) LookupSshKey(w http.ResponseWriter, r *http.Request, fingerprin
 		return
 	}
 	writeJSON(w, http.StatusOK, openapi.SshKeyLookup{Key: toSSHKey(k), User: toUser(u, true)})
+}
+
+// scopesWithinCaller applica la regola «un token non ha scope che il suo
+// creatore non ha» (ASVS V4.1.3, F1): se la richiesta arriva con un token
+// personale, ogni scope richiesto deve essere concesso dagli scope di quel
+// token (pkg/scopes.Grants). Le sessioni del browser non hanno scope e
+// valgono i permessi dell'utente. Gli scope fuori catalogo non si toccano
+// qui: li rifiuta la validazione (422). Se ritorna false ha già risposto 403.
+func scopesWithinCaller(w http.ResponseWriter, cur auth.Current, requested []string) bool {
+	if cur.Session.AuthMethod != "token" {
+		return true
+	}
+	known := make(map[string]bool, len(tokens.KnownScopes))
+	for _, k := range tokens.KnownScopes {
+		known[k] = true
+	}
+	var miss []string
+	for _, sc := range requested {
+		if known[sc] && !scopes.Grants(cur.Scopes, sc) {
+			miss = append(miss, sc)
+		}
+	}
+	if len(miss) == 0 {
+		return true
+	}
+	writeErrorDetails(w, http.StatusForbidden, "insufficient_scope",
+		"Un token non può avere scope che il suo creatore non ha.",
+		map[string]any{"scopes": miss})
+	return false
 }
