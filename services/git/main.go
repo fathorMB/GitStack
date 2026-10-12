@@ -165,9 +165,13 @@ func run(out io.Writer) int {
 
 // mirrorService costruisce l'esecutore dei mirror in push. Con
 // GITSTACK_GIT_MIRROR_CA_FILE git si fida delle CA di quel file per i push dei
-// mirror (GIT_SSL_CAINFO; il resto dell'ambiente di git non cambia).
+// mirror (GIT_SSL_CAINFO; il resto dell'ambiente di git non cambia). Con
+// HTTPS_PROXY nell'ambiente del servizio i push escono dal proxy.
 func mirrorService(runner *gitrun.Runner, store *repostore.Store, cfg config.Config) *mirrorpush.Service {
-	svc := &mirrorpush.Service{Run: runner, Dir: store.Dir}
+	// Proxy aziendale (N9): HTTPS_PROXY e NO_PROXY del chart, letti dal
+	// processo (gitrun toglie solo GIT_* dai figli). A git arriva come
+	// http.proxy in GIT_CONFIG_*, mai in riga di comando.
+	svc := &mirrorpush.Service{Run: runner, Dir: store.Dir, Proxy: http.ProxyFromEnvironment}
 	if cfg.MirrorCAFile != "" {
 		svc.ExtraEnv = []string{"GIT_SSL_CAINFO=" + cfg.MirrorCAFile}
 	}
