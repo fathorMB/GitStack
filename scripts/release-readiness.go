@@ -12,7 +12,12 @@
 //   - uscita 0: lo script ha girato (default, anche con criteri aperti);
 //   - uscita 1: con --strict, almeno un criterio automatico non è soddisfatto
 //     (è la modalità «script verde» da lanciare prima di tagliare la rc);
-//   - uscita 2: errore dello script (file della tabella illeggibile, ecc.).
+//   - uscita 2: errore dello script (file della tabella illeggibile, ecc.),
+//     preceduta su stderr dalla riga «release-readiness: errore dello script:».
+//
+// Attenzione: `go run` riduce ogni uscita non zero a 1 (stampa «exit status 2»).
+// I codici 0/1/2 arrivano a chi chiama solo dal binario compilato: `make
+// release-readiness` lo costruisce in una cartella temporanea e lo lancia.
 //
 // --ci aggiunge l'esito dell'ultimo giro su main dei workflow smoke e install
 // tramite la CLI `gh`; senza `gh` o senza rete quei criteri restano manuali.

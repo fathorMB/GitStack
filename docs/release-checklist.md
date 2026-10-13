@@ -7,11 +7,17 @@ Regola V1 di `.prisma/knowledge/topics/rilascio-v1.md` (M-09/B, GIT-226): i crit
 Dalla radice del repo:
 
 ```sh
-go run scripts/release-readiness.go            # stampa automatici e manuali, uscita 0
-go run scripts/release-readiness.go --strict   # uscita 1 se un criterio automatico è aperto
-go run scripts/release-readiness.go --ci       # aggiunge l'ultimo giro di smoke e install su main (serve gh)
-make release-readiness                         # equivale al primo
+make release-readiness                         # stampa automatici e manuali, uscita 0
+make release-readiness STRICT=1                # uscita 1 se un criterio automatico è aperto
+
+# senza make: va costruito il binario, perché `go run` riduce ogni uscita non zero a 1
+go build -o /tmp/rr scripts/release-readiness.go
+/tmp/rr                                        # come make release-readiness
+/tmp/rr --strict                               # come STRICT=1
+/tmp/rr --ci                                   # aggiunge l'ultimo giro di smoke e install su main (serve gh)
 ```
+
+`go run scripts/release-readiness.go` va bene per leggere il report, ma non per i codici di uscita: con `go run` sia un criterio aperto in `--strict` sia un errore dello script danno 1. In quel caso l'errore dello script si riconosce dalla riga `release-readiness: errore dello script:` su stderr.
 
 - Un criterio automatico può essere **soddisfatto**, **non ancora soddisfatto** (con l'elenco di cosa manca) o **non verificabile qui** (strumento assente: passa ai manuali). Un criterio aperto non è un errore dello script: l'uscita è 0, salvo `--strict` (1). L'uscita 2 è un errore vero dello script (file della tabella illeggibile o registro non trovato).
 - «Script verde» vuol dire `--strict` con uscita 0 sull'ultimo commit di main, più i passi manuali qui sotto spuntati dal board.

@@ -107,10 +107,16 @@ dev-status:
 	@echo
 	@kubectl get ingress
 
-# Criteri di uscita V1 (docs/release-checklist.md). Non crea tag; con
-# STRICT=1 esce con 1 se un criterio automatico è aperto.
+# Criteri di uscita V1 (docs/release-checklist.md). Non crea tag. Costruisce
+# il binario in una cartella temporanea e lo lancia: `go run` ridurrebbe ogni
+# uscita non zero a 1, mentre qui arrivano 0 (ha girato), 1 (solo con
+# STRICT=1: un criterio automatico è aperto) e 2 (errore dello script).
 release-readiness:
-	@go run scripts/release-readiness.go $(if $(STRICT),--strict,)
+	@d="$$(mktemp -d)"; \
+	trap 'rm -rf "$$d"' EXIT; \
+	go build -o "$$d/release-readiness.exe" scripts/release-readiness.go || exit 2; \
+	rc=0; "$$d/release-readiness.exe" $(if $(STRICT),--strict,) || rc=$$?; \
+	exit $$rc
 
 # --- passi interni, riusati da dev-up e dev-redeploy -----------------------
 
