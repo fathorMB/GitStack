@@ -236,16 +236,16 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 // personali, chiavi SSH e /internal/* (protetto dal segreto di servizio). Il
 // segreto non viene mai loggato: si segnala solo se manca.
 func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcSvc *oidc.Service, logger *slog.Logger) http.Handler {
-	if cfg.ServiceSecret == "" {
-		logger.Warn("segreto di servizio non configurato: /internal/* risponde sempre 401",
-			"env", config.EnvServiceSecret)
+	if cfg.GatewaySecret == "" && cfg.CoreSecret == "" && cfg.GitSecret == "" {
+		logger.Warn("segreti di servizio non configurati: /internal/* risponde sempre 401",
+			"env", []string{config.EnvSecretGateway, config.EnvSecretCore, config.EnvSecretGit})
 	}
 	api := httpapi.New(svc, logger,
 		httpapi.WithTrustedProxies(cfg.TrustedProxies),
 		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
 		httpapi.WithSSHKeys(userkeys.New(pool, time.Now)),
 		httpapi.WithPermissions(permissions.New(pool, time.Now)),
-		httpapi.WithServiceSecret(cfg.ServiceSecret),
+		httpapi.WithServiceSecrets(cfg.GatewaySecret, cfg.CoreSecret, cfg.GitSecret),
 		httpapi.WithOIDC(oidcSvc),
 		httpapi.WithOrgs(orgs.New(pool, time.Now)),
 	)

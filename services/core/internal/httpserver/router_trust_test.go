@@ -69,3 +69,44 @@ func TestRouter_IdentitaSoloDalGateway(t *testing.T) {
 		t.Errorf("/healthz = %d, voluto 200", rec.Code)
 	}
 }
+
+// F9: il servizio git ha una chiave sua e con quella può solo risolvere
+// owner/repo. Ogni altra operazione firmata da git riceve 403, anche con
+// un'identità «admin» e una firma valida (il pool è nil: la richiesta non
+// deve arrivare ai handler).
+func TestRouter_GitPuoSoloRisolvereOwnerERepo(t *testing.T) {
+	now := time.Unix(1700000000, 0)
+	const gitSecret = "chiave-del-servizio-git"
+	router := httpserver.NewRouter(nil, events.NoopPublisher{}, trustSecret,
+		httpserver.WithClock(func() time.Time { return now }), httpserver.WithGitSecret(gitSecret))
+
+	forbidden := []struct{ method, path string }{
+		{"GET", "/resources"},
+		{"POST", "/resources"},
+		{"DELETE", "/resources/00000000-0000-0000-0000-000000000000"},
+		{"POST", "/repos/alice/demo"},
+		{"DELETE", "/repos/alice/demo"},
+		{"GET", "/repos/alice/demo/issues"},
+		{"GET", "/repos"},
+		{"GET", "/qualunque-altra-rotta"},
+	}
+	for _, r := range forbidden {
+		req := httptest.NewRequest(r.method, r.path, nil)
+		trust.Sign(req.Header, gitSecret, trust.Identity{UserID: "11111111-1111-1111-1111-111111111111", Username: "admin"}, now)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), `"forbidden"`) {
+			t.Errorf("git %s %s = %d %s, voluto 403 forbidden", r.method, r.path, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Con la chiave del gateway le stesse rotte non sono 403 (qui il
+	// segreto di git non ha alcun valore come chiave del gateway).
+	req := httptest.NewRequest("GET", "/resources", nil)
+	trust.Sign(req.Header, "chiave-del-servizio-git-sbagliata", trust.Identity{UserID: "u", Username: "alice"}, now)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("chiave sconosciuta = %d, voluto 401", rec.Code)
+	}
+}

@@ -167,7 +167,7 @@ func TestMirrorGiroCompleto(t *testing.T) {
 	e := newGitEnv(t, httpserver.WithMirrors(httpserver.MirrorConfig{Keys: keys, Egress: eg}))
 	eng := &mirrors.Engine{
 		Pool: e.pool, Keys: keys, Egress: eg,
-		Git: gitclient.New(mustURL(t, e.gitHTTP), serviceSecret, 30*time.Second),
+		Git: gitclient.New(mustURL(t, e.gitHTTP), coreSecret, 30*time.Second),
 	}
 	ctx := context.Background()
 

@@ -25,7 +25,6 @@
 {{- if not .Values.postgres.enabled -}}
 {{- $pgClientImage = include "gitstack.image" (dict "root" $ "component" .Values.postgres.external.client) -}}
 {{- end -}}
-{{- $svcSecret := include "gitstack.serviceSecret.name" . -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
 {{- $adminSecret := .Values.identity.admin.existingSecret | default (printf "%s-identity-admin" (include "gitstack.fullname" .)) -}}
 {{- $oidc := and .Values.identity.oidc.enabled -}}
@@ -146,12 +145,11 @@ spec:
               value: {{ .Values.identity.env.logLevel | quote }}
             - name: GITSTACK_IDENTITY_SESSION_TTL
               value: {{ .Values.identity.env.sessionTTL | quote }}
-            # Segreto di servizio per /internal/*: solo da Secret, mai in chiaro.
-            - name: GITSTACK_IDENTITY_SERVICE_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $svcSecret }}
-                  key: secret
+            # Segreti di servizio per /internal/* (F9): uno per chiamante, solo
+            # da Secret, mai in chiaro. Identity li verifica, non firma.
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "gateway") | nindent 12 }}
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "core") | nindent 12 }}
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "git") | nindent 12 }}
             # Admin del primo avvio: la password iniziale arriva solo dal Secret
             # (mai da values, mai nei log). identity crea l'admin solo se il
             # database non ne ha nessuno.

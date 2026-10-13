@@ -256,3 +256,18 @@ func TestLoad_RateLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_SegretoDelGateway(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envCoreURL:               "http://core:8080",
+		envIdentityURL:           "http://identity:8080",
+		envServiceSecretGateway:  " kg1,kg0 ",
+		envIdentityServiceSecret: "storico",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.IdentityServiceSecret != "kg1,kg0" {
+		t.Errorf("IdentityServiceSecret = %q", cfg.IdentityServiceSecret)
+	}
+}

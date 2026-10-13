@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	"crypto/sha256"
-	"crypto/subtle"
 	"errors"
 	"net"
 	"net/http"
@@ -13,6 +11,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/tokens"
+	"github.com/fathorMB/GitStack/services/identity/internal/trust"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -37,10 +36,50 @@ func WithTrustedProxies(nets []*net.IPNet) Option {
 	return func(s *server) { s.trustedProxies = nets }
 }
 
-// WithServiceSecret imposta il segreto condiviso di servizio (schema
-// serviceAuth) che protegge /internal/*. Vuoto = ogni chiamata interna è
-// rifiutata con 401. La lettura dell'ambiente è di chi monta il server.
-func WithServiceSecret(secret string) Option { return func(s *server) { s.serviceSecret = secret } }
+// callerShared è il «chiamante» del segreto condiviso storico: nessuna
+// restrizione per operazione (comportamento precedente a F9).
+const callerShared = "shared"
+
+// WithServiceSecret imposta un segreto condiviso di servizio (schema
+// serviceAuth) che protegge /internal/*, senza distinguere i chiamanti: per i
+// test e per le installazioni non gestite dal chart. Vuoto = ogni chiamata
+// interna è rifiutata con 401. La lettura dell'ambiente è di chi monta il
+// server. Un elenco "nuova,vecchia" accetta entrambe le chiavi.
+func WithServiceSecret(secret string) Option {
+	return func(s *server) {
+		s.keys2 = trust.NewKeyring(map[string]string{callerShared: secret})
+	}
+}
+
+// WithServiceSecrets imposta un segreto per chiamante (F9, ASVS V2.10.1):
+// /internal/* accetta il Bearer di ciascuno e l'identità firmata inoltrata
+// dal gateway vale solo con la chiave del gateway. Ogni valore può essere un
+// elenco "nuova,vecchia" (rotazione con doppia chiave). I chiamanti senza
+// chiave sono rifiutati; gateway e git possono usare solo le operazioni che
+// il loro codice chiama (internalAllowed).
+func WithServiceSecrets(gateway, core, git string) Option {
+	return func(s *server) {
+		s.keys2 = trust.NewKeyring(map[string]string{
+			trust.CallerGateway: gateway,
+			trust.CallerCore:    core,
+			trust.CallerGit:     git,
+		})
+	}
+}
+
+// internalAllowed dice se il chiamante può usare quell'operazione interna.
+// Il gateway usa solo la verifica delle credenziali e il controllo dei
+// permessi; git anche la ricerca di una chiave SSH. Core usa il resto.
+func internalAllowed(caller, path string) bool {
+	switch caller {
+	case trust.CallerGateway:
+		return path == "/internal/verify" || path == "/internal/permissions/check"
+	case trust.CallerGit:
+		return path == "/internal/verify" || path == "/internal/permissions/check" ||
+			strings.HasPrefix(path, "/internal/ssh-keys/")
+	}
+	return true
+}
 
 // Durata della cache che il gateway può tenere: esito positivo 30 s, negativo
 // 5 s (README del servizio).
@@ -59,13 +98,17 @@ func (s *server) serviceAuth(next http.Handler) http.Handler {
 			return
 		}
 		got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if s.serviceSecret == "" || !ok || got == "" {
+		if !ok || got == "" {
 			unauthenticated(w)
 			return
 		}
-		a, b := sha256.Sum256([]byte(got)), sha256.Sum256([]byte(s.serviceSecret))
-		if subtle.ConstantTimeCompare(a[:], b[:]) != 1 {
+		caller, ok := s.keys2.MatchBearer(got)
+		if !ok {
 			unauthenticated(w)
+			return
+		}
+		if !internalAllowed(caller, r.URL.Path) {
+			writeError(w, http.StatusForbidden, "forbidden", "Il servizio chiamante non può fare questa operazione.")
 			return
 		}
 		next.ServeHTTP(w, r)

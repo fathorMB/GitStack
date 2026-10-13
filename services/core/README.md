@@ -41,7 +41,10 @@ All'avvio del server (non per `core migrate up|down`, che non tocca NATS), `main
 | `GITSTACK_CORE_DB_MAX_CONNS` | no | `10` | Numero massimo di connessioni nel pool |
 | `GITSTACK_CORE_MIGRATIONS_TIMEOUT` | no | `30s` | Timeout per l'applicazione delle migrazioni (formato `time.Duration` di Go) |
 | `GITSTACK_CORE_NATS_URL` | sì, per `serve` | — | Indirizzo del bus NATS JetStream (es. `nats://nats:4222`); non serve a `migrate up\|down` |
-| `GITSTACK_IDENTITY_SERVICE_SECRET` | sì, per `serve` | — | Segreto di servizio (Secret `<release>-identity-service`, chiave `secret`): con questo core verifica la firma dell'identità inoltrata dal gateway; non serve a `migrate up\|down`. Mai nei log |
+| `GITSTACK_SERVICE_SECRET_CORE` | sì, per `serve` | — | Segreto di servizio di core (Secret `<release>-service-secrets`, chiave `core`, F9): Bearer verso identity e firma delle chiamate al servizio git. Può essere un elenco `nuova,vecchia` (rotazione, `docs/operations.md`): la prima firma, tutte verificano. Non serve a `migrate up\|down`. Mai nei log |
+| `GITSTACK_SERVICE_SECRET_GATEWAY` | sì, per `serve` | — | Segreto del gateway (chiave `gateway`): con questo core verifica la firma dell'identità inoltrata dal gateway. Può essere un elenco `nuova,vecchia`. Mai nei log |
+| `GITSTACK_SERVICE_SECRET_GIT` | no | — | Segreto del servizio git (chiave `git`): un'identità firmata con questa chiave è accettata solo per `GET /repos/{owner}/{repo}` (risoluzione di owner/repo), ogni altra rotta risponde 403. Vuoto: nessuna chiamata da git. Mai nei log |
+| `GITSTACK_IDENTITY_SERVICE_SECRET` | no | — | Segreto condiviso storico: vale solo per i tre segreti sopra che mancano (installazioni fuori dal chart). Il chart non lo imposta |
 | `GITSTACK_CORE_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
 | `GITSTACK_GIT_URL`, `GITSTACK_CORE_PUBLIC_URL`, `GITSTACK_CORE_SSH_HOST`, `GITSTACK_CORE_SSH_PORT` | vedi sotto | — | Repo (M-03/E): servizio git, base HTTPS, host e porta SSH; vedi "Variabili d'ambiente dei repo" |
 
@@ -138,7 +141,7 @@ Operazioni del tag `repos`: `POST /repos`, `GET /repos`, `GET|PATCH /repos/{owne
 | `GITSTACK_CORE_SSH_HOST` | no | host di `PUBLIC_URL` (o della richiesta) | Host dell'indirizzo SSH |
 | `GITSTACK_CORE_SSH_PORT` | no | `2222` | Porta SSH dell'installazione (R7); `off` = SSH spento: `cloneUrls` senza `ssh` né `sshShort` |
 
-Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).
+Il segreto di servizio è `GITSTACK_SERVICE_SECRET_CORE` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).
 
 ### Test
 

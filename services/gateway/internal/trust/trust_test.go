@@ -87,3 +87,19 @@ func TestContext(t *testing.T) {
 		t.Errorf("FromContext = %v %v", got, ok)
 	}
 }
+
+// F9: con un elenco «nuova,vecchia» il gateway firma con la prima chiave.
+func TestSign_ElencoDiChiaviFirmaConLaPrima(t *testing.T) {
+	a, b := http.Header{}, http.Header{}
+	id := Identity{UserID: "u1", Username: "alice"}
+	now := time.Unix(1700000000, 0)
+	Sign(a, "nuova,vecchia", id, now)
+	Sign(b, "nuova", id, now)
+	if a.Get(HeaderSignature) != b.Get(HeaderSignature) {
+		t.Fatal("la firma con «nuova,vecchia» deve coincidere con quella con «nuova»")
+	}
+	Sign(b, "vecchia", id, now)
+	if a.Get(HeaderSignature) == b.Get(HeaderSignature) {
+		t.Fatal("la firma con la vecchia non deve coincidere con quella con la nuova")
+	}
+}

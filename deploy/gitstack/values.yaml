@@ -186,6 +186,21 @@ smtp:
   from: ""
   existingSecret: ""
 
+# --- segreti di servizio ----------------------------------------------------
+# Un segreto per chiamante (F9, ASVS V1.6.1 e V2.10.1): gateway, core e git
+# hanno ciascuno il proprio, usato come Bearer verso /internal/* di identity e
+# come chiave HMAC dell'identità firmata. Chi riceve verifica la chiave del
+# chiamante: git, che analizza repository non fidati, non può firmare
+# l'identità di un utente verso identity e verso core può solo risolvere
+# owner/repo. Il chart genera una sola volta il Secret
+# <release>-service-secrets (chiavi `gateway`, `core`, `git`,
+# helm.sh/resource-policy: keep); non si scrivono nei values. Ogni valore può
+# essere un elenco «nuova,vecchia»: la procedura di rotazione con doppia chiave
+# è in docs/operations.md («Ciclo di vita delle chiavi»).
+serviceSecrets:
+  # Alternativa: nome di un Secret esistente con le chiavi gateway, core, git.
+  existingSecret: ""
+
 # --- identity ---------------------------------------------------------------
 # Utenti, sessioni, token e chiavi SSH (M-02). Usa lo schema dedicato
 # "identity" (D6) dello stesso database di core, con un ruolo Postgres
@@ -221,13 +236,6 @@ identity:
     username: admin
     # Alternativa: nome di un Secret esistente con le chiavi `username` e
     # `password`.
-    existingSecret: ""
-  serviceSecret:
-    # Segreto condiviso con il gateway per /internal/*
-    # (GITSTACK_IDENTITY_SERVICE_SECRET). Il chart lo genera una sola volta in
-    # un Secret <release>-identity-service (chiave `secret`,
-    # helm.sh/resource-policy: keep); non si scrive nei values.
-    # Alternativa: nome di un Secret esistente con la chiave `secret`.
     existingSecret: ""
   # GITSTACK_IDENTITY_DB_URL e calcolato dal Service di postgres (o da
   # postgres.external): non serve qui.
