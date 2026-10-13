@@ -28,12 +28,16 @@ vi.mock('../../lib/mirrorsApi', () => ({
   removeMirror: vi.fn(),
   syncMirror: vi.fn(),
 }));
+vi.mock('../../lib/pullMirrorsApi', () => ({
+  fetchPullMirror: vi.fn(),
+}));
 vi.mock('../../lib/orgsApi', () => ({ fetchOrgMembers: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
 
 import { fetchSession } from '../../lib/authApi';
 import { fetchOrgMembers } from '../../lib/orgsApi';
 import { deleteRepo, fetchDeletedRepos, fetchRepo, restoreRepo, updateRepo } from '../../lib/reposApi';
+import { fetchPullMirror } from '../../lib/pullMirrorsApi';
 
 function repo(over: Partial<Repository> = {}): Repository {
   return {
@@ -86,6 +90,7 @@ describe('RepoSettingsPage', () => {
     vi.mocked(updateRepo).mockReset().mockImplementation(async (_o, _r, input) => repo(input));
     vi.mocked(deleteRepo).mockReset().mockResolvedValue(undefined);
     vi.mocked(fetchOrgMembers).mockReset();
+    vi.mocked(fetchPullMirror).mockReset().mockResolvedValue(null);
     session('alice');
     members(['alice', 'owner']);
   });
@@ -224,6 +229,33 @@ describe('RepoSettingsPage', () => {
       await waitFor(() => expect(screen.getByLabelText('Description')).toBeEnabled());
       expect(screen.queryByText('Archived', { selector: '.badge' })).not.toBeInTheDocument();
     });
+  });
+
+  // Punto 1 del rework: la sezione Pull mirror compare quando il repo ce l'ha già.
+  it('mostra la regione "Pull mirror" se il repo ha un mirror attivo (P1)', async () => {
+    vi.mocked(fetchRepo).mockReset().mockResolvedValue(repo({
+      mirror: { origin: 'https://github.com/example/origin.git' },
+    }));
+    vi.mocked(fetchPullMirror).mockResolvedValue({
+      id: 'pm1',
+      origin: 'https://github.com/example/origin.git',
+      mode: 'mirror',
+      intervalSeconds: 600,
+      state: 'in_sync',
+      hasToken: true,
+      attempts: 0,
+      nextSyncAt: null,
+      divergedRefs: [],
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-12T10:05:00Z',
+    });
+    renderSettings();
+    // La regione Pull mirror con Sync now deve comparire senza need di enable.
+    expect(await screen.findByRole('region', { name: 'Pull mirror' })).toBeInTheDocument();
+    // Il pulsante "Sync now" deve essere presente.
+    expect(await screen.findByRole('button', { name: 'Sync now' })).toBeInTheDocument();
+    // Il pulsante "Enable pull mirror" non deve esserci.
+    expect(screen.queryByRole('button', { name: 'Enable pull mirror' })).not.toBeInTheDocument();
   });
 });
 

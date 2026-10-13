@@ -5,7 +5,7 @@ import { describeError } from './http';
 // Se initial è fornito, lo usa come dato iniziale e salta il fetch.
 export function useLoad<T>(fn: () => Promise<T>, initial?: T | null) {
   const [data, setData] = useState<T | null>(initial ?? null);
-  const [loading, setLoading] = useState(initial !== undefined);
+  const [loading, setLoading] = useState(initial === undefined);
   const [error, setError] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

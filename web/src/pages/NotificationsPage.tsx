@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Bell, Bot, Check, CircleCheck, CircleDot, Settings, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Bell, Bot, Check, CircleCheck, CircleDot, GitFork, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, EmptyState, ErrorAlert } from '../components';
@@ -62,7 +62,7 @@ function NotificationRow({
       {isMirror ? (
         <span className="avatar av-sys" aria-hidden="true">
           <svg className="icon">
-            {n.event === 'mirror.ref_diverged' ? <use href="#i-mirror" /> : <use href="#i-alert" />}
+            {n.event === 'pull_mirror.diverged' ? <GitFork size={16} /> : <CircleDot size={16} style={{ margin: 4 }} />}
           </svg>
         </span>
       ) : actor ? (
@@ -77,7 +77,7 @@ function NotificationRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div>
           {isMirror ? (
-            <Link to="/settings/pull-mirror" style={{ fontWeight: 600, color: 'var(--text)' }}>
+            <Link to={`/${repo}/settings`} style={{ fontWeight: 600, color: 'var(--text)' }}>
               {n.summary}
             </Link>
           ) : (
@@ -104,14 +104,7 @@ function NotificationRow({
         </div>
         <div className="small muted">
           {isMirror ? (
-            <>
-              {repo ? <span className="mono">{repo}</span> : null}
-              {n.reason === 'mirror' && n.event === 'mirror.24h_no_update' ? (
-                <> · last error: {n.lastError ?? 'unknown'}. Check the token in Settings · Pull mirror.</>
-              ) : n.reason === 'mirror' && n.event === 'mirror.ref_diverged' ? (
-                <> · rewritten at the source. GitStack kept its version <span className="mono">{n.remoteSha ?? '—'}</span>.</>
-              ) : null}
-            </>
+            <>{repo ? <span className="mono">{repo}</span> : null}</>
           ) : (
             <>
               {repo ? <span className="mono">{repo}</span> : null}

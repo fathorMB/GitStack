@@ -16,11 +16,8 @@ import {
 import type { IssueSubscription, Notification as ApiNotification, NotificationList as ApiNotificationList, NotificationPreferences, NotificationReason, RepoWatch, RepoWatchMode } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-// Estende la Notification generata con i campi specifici delle notifiche mirror.
-export type Notification = ApiNotification & {
-  lastError?: string | null;
-  remoteSha?: string | null;
-};
+// Alias del tipo generato, più leggibile.
+export type Notification = ApiNotification;
 
 export type NotificationList = ApiNotificationList;
 

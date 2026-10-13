@@ -353,9 +353,9 @@ function MirrorForm(props: {
 
   // P5: confronto URL con l'origine del pull mirror.
   // isConflict = URL coincide con l'origine del pull mirror.
-  // isActivePull = pull mirror in stato paused/in_sync → blocca il form.
+  // Blocked = pull mirror attivo (qualunque stato tranne stopped).
   // stopped → tappa 2: mostra messaggio informativo, non blocca.
-  const isActivePull = pullMirrorState === 'paused' || pullMirrorState === 'in_sync';
+  const isActivePull = pullMirrorState !== 'stopped';
   const isConflict = mirror === null && pullOrigin !== null && normalizeUrl(url) === normalizeUrl(pullOrigin);
   const isBlocked = isConflict && isActivePull;
   const isStopped = isConflict && pullMirrorState === 'stopped';

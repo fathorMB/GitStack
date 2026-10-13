@@ -288,32 +288,33 @@ function PullMirrorOrEnable({
   hasMirror: boolean;
   readOnly: boolean;
 }) {
-  const [stopped, setStopped] = useState(false);
-
-  const { data: mirror, loading, setData } = useLoad(() => fetchPullMirror(owner, repo));
+  const { data: mirror, setData, reload } = useLoad(() => fetchPullMirror(owner, repo));
 
   function handleSuccess(m: PullMirror) {
     setData(m);
-    setStopped(false);
   }
 
   function handleStopped() {
     setData(null);
-    setStopped(true);
   }
 
   if (readOnly) return null;
 
-  if (hasMirror && loading) return <p className="muted">Loading pull mirror…</p>;
-  if (!mirror) return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
+  // Se il repo ha già un mirror, lo mostra (con initialData per usare subito i dati).
+  // Dopo uno stop (mirror === null) passa al form di Enable.
+  if (hasMirror && mirror) {
+    return (
+      <PullMirrorSection
+        key={`pm-${mirror.id}-${mirror.state}`}
+        owner={owner}
+        repo={repo}
+        initialData={mirror}
+        onStopped={handleStopped}
+      />
+    );
+  }
 
-  return (
-    <PullMirrorSection
-      key={`pm-${mirror.id}-${mirror.state}`}
-      owner={owner}
-      repo={repo}
-      initialData={mirror}
-      onStopped={handleStopped}
-    />
-  );
+  // Se il mirror e' stato fermato, mostra Enable. Se e' ancora in caricamento, mostra loading.
+  if (hasMirror && !mirror) return <p className="muted">Loading pull mirror…</p>;
+  return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
 }

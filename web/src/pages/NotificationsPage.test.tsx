@@ -198,14 +198,14 @@ describe('NotificationsPage', () => {
     expect(screen.getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/settings/notifications');
   });
 
-  // Punto 1 del rework: notifiche mirror in NotificationsPage
-  it('renderizza una notifica mirror "24 hours" con avatar di sistema', async () => {
-    const mirror24h: Notification = {
+  // Punto 3 del rework: notifiche mirror con nomi eventi corretti e link al repo.
+  it('renderizza una notifica mirror "pull_mirror.stale" con avatar di sistema', async () => {
+    const mirrorStale: Notification = {
       id: 'n-m1',
       reason: 'mirror',
       read: false,
       archived: false,
-      event: 'mirror.24h_no_update',
+      event: 'pull_mirror.stale',
       summary: 'Pull mirror hasn\'t updated for 24 hours',
       createdAt: NOW,
       repository: { id: 'r-m', fullName: 'acme/GitStack' },
@@ -214,24 +214,22 @@ describe('NotificationsPage', () => {
       webhook: null,
       commentId: null,
       readAt: null,
-      lastError: 'authentication failed (401)',
-      remoteSha: null,
     };
-    mockedList.mockResolvedValue(page([mirror24h]));
+    mockedList.mockResolvedValue(page([mirrorStale]));
     renderPage();
-    // La notifica mirror usa il link a /settings/pull-mirror.
+    // La notifica mirror usa il link a /acme/GitStack/settings.
     const link = await screen.findByRole('link', { name: 'Pull mirror hasn\'t updated for 24 hours' });
-    expect(link).toHaveAttribute('href', '/settings/pull-mirror');
+    expect(link).toHaveAttribute('href', '/acme/GitStack/settings');
     expect(screen.getByText('acme/GitStack')).toBeInTheDocument();
   });
 
-  it('renderizza una notifica mirror "ref diverged" con avatar di sistema e dettaglio', async () => {
+  it('renderizza una notifica mirror "pull_mirror.diverged" con icona e repo', async () => {
     const mirrorDiv: Notification = {
       id: 'n-m2',
       reason: 'mirror',
       read: false,
       archived: false,
-      event: 'mirror.ref_diverged',
+      event: 'pull_mirror.diverged',
       summary: 'Ref diverged: feature/old-ui',
       createdAt: NOW,
       repository: { id: 'r-m', fullName: 'acme/GitStack' },
@@ -240,13 +238,11 @@ describe('NotificationsPage', () => {
       webhook: null,
       commentId: null,
       readAt: null,
-      lastError: null,
-      remoteSha: '4be01d7',
     };
     mockedList.mockResolvedValue(page([mirrorDiv]));
     renderPage();
-    expect(await screen.findByRole('link', { name: 'Ref diverged: feature/old-ui' })).toHaveAttribute('href', '/settings/pull-mirror');
-    expect(screen.getByText(/GitStack kept its version/)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Ref diverged: feature/old-ui' })).toHaveAttribute('href', '/acme/GitStack/settings');
+    expect(screen.getByText('acme/GitStack')).toBeInTheDocument();
   });
 
   it('per le notifiche mirror non mostra il badge del motivo', async () => {
@@ -255,7 +251,7 @@ describe('NotificationsPage', () => {
       reason: 'mirror',
       read: false,
       archived: false,
-      event: 'mirror.ref_diverged',
+      event: 'pull_mirror.diverged',
       summary: 'Ref diverged: feature/old-ui',
       createdAt: NOW,
       repository: { id: 'r-m', fullName: 'acme/GitStack' },
@@ -264,8 +260,6 @@ describe('NotificationsPage', () => {
       webhook: null,
       commentId: null,
       readAt: null,
-      lastError: null,
-      remoteSha: '4be01d7',
     };
     mockedList.mockResolvedValue(page([mirrorN, mention]));
     renderPage();
@@ -276,6 +270,6 @@ describe('NotificationsPage', () => {
     const rows = screen.getAllByTestId('notification');
     expect(rows).toHaveLength(2);
     // La prima riga (mirror) ha il link.
-    expect(rows[0].querySelector('[href="/settings/pull-mirror"]')).toBeInTheDocument();
+    expect(rows[0].querySelector('[href="/acme/GitStack/settings"]')).toBeInTheDocument();
   });
 });

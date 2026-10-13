@@ -21,6 +21,9 @@ vi.mock('../../lib/mirrorsApi', () => ({
   removeMirror: vi.fn(),
   syncMirror: vi.fn(),
 }));
+vi.mock('../../lib/pullMirrorsApi', () => ({
+  fetchPullMirror: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('../../lib/webhooksApi', async (orig) => ({
   ...(await orig<typeof import('../../lib/webhooksApi')>()),
   fetchRepoWebhooks: vi.fn().mockResolvedValue({ items: [], page: 1, perPage: 50, total: 0 }),
@@ -36,6 +39,7 @@ vi.mock('./RepoWatchSelect', () => ({ RepoWatchSelect: () => <span>watch</span> 
 import { fetchSession } from '../../lib/authApi';
 import { fetchOrgMembers } from '../../lib/orgsApi';
 import { fetchRepo } from '../../lib/reposApi';
+import { fetchPullMirror } from '../../lib/pullMirrorsApi';
 
 function repo(): Repository {
   return {
@@ -67,6 +71,7 @@ function tab(name: string) {
 
 beforeEach(() => {
   vi.mocked(fetchRepo).mockReset().mockResolvedValue(repo());
+  vi.mocked(fetchPullMirror).mockReset().mockResolvedValue(null);
 });
 
 describe('RepoHeader: schede', () => {
