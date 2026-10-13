@@ -13,10 +13,15 @@ import {
   updateNotification,
   updateNotificationPreferences,
 } from '@gitstack/api-client';
-import type { IssueSubscription, Notification, NotificationList, NotificationPreferences, NotificationReason, RepoWatch, RepoWatchMode } from '@gitstack/api-client';
+import type { IssueSubscription, Notification as ApiNotification, NotificationList as ApiNotificationList, NotificationPreferences, NotificationReason, RepoWatch, RepoWatchMode } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { IssueSubscription, Notification, NotificationList, NotificationPreferences, NotificationReason, RepoWatch, RepoWatchMode };
+// Alias del tipo generato, più leggibile.
+export type Notification = ApiNotification;
+
+export type NotificationList = ApiNotificationList;
+
+export type { IssueSubscription, NotificationPreferences, NotificationReason, RepoWatch, RepoWatchMode };
 
 /** Filtro per motivo del mockup 05: i motivi API che ognuno raggruppa. */
 export type ReasonFilter = 'all' | 'mentioned' | 'assigned' | 'participating' | 'webhook';

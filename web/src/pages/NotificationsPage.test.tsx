@@ -197,4 +197,79 @@ describe('NotificationsPage', () => {
     await screen.findAllByTestId('notification');
     expect(screen.getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/settings/notifications');
   });
+
+  // Punto 3 del rework: notifiche mirror con nomi eventi corretti e link al repo.
+  it('renderizza una notifica mirror "pull_mirror.stale" con avatar di sistema', async () => {
+    const mirrorStale: Notification = {
+      id: 'n-m1',
+      reason: 'mirror',
+      read: false,
+      archived: false,
+      event: 'pull_mirror.stale',
+      summary: 'Pull mirror hasn\'t updated for 24 hours',
+      createdAt: NOW,
+      repository: { id: 'r-m', fullName: 'acme/GitStack' },
+      actor: null,
+      issue: null,
+      webhook: null,
+      commentId: null,
+      readAt: null,
+    };
+    mockedList.mockResolvedValue(page([mirrorStale]));
+    renderPage();
+    // La notifica mirror usa il link a /acme/GitStack/settings.
+    const link = await screen.findByRole('link', { name: 'Pull mirror hasn\'t updated for 24 hours' });
+    expect(link).toHaveAttribute('href', '/acme/GitStack/settings');
+    expect(screen.getByText('acme/GitStack')).toBeInTheDocument();
+  });
+
+  it('renderizza una notifica mirror "pull_mirror.diverged" con icona e repo', async () => {
+    const mirrorDiv: Notification = {
+      id: 'n-m2',
+      reason: 'mirror',
+      read: false,
+      archived: false,
+      event: 'pull_mirror.diverged',
+      summary: 'Ref diverged: feature/old-ui',
+      createdAt: NOW,
+      repository: { id: 'r-m', fullName: 'acme/GitStack' },
+      actor: null,
+      issue: null,
+      webhook: null,
+      commentId: null,
+      readAt: null,
+    };
+    mockedList.mockResolvedValue(page([mirrorDiv]));
+    renderPage();
+    expect(await screen.findByRole('link', { name: 'Ref diverged: feature/old-ui' })).toHaveAttribute('href', '/acme/GitStack/settings');
+    expect(screen.getByText('acme/GitStack')).toBeInTheDocument();
+  });
+
+  it('per le notifiche mirror non mostra il badge del motivo', async () => {
+    const mirrorN: Notification = {
+      id: 'n-m3',
+      reason: 'mirror',
+      read: false,
+      archived: false,
+      event: 'pull_mirror.diverged',
+      summary: 'Ref diverged: feature/old-ui',
+      createdAt: NOW,
+      repository: { id: 'r-m', fullName: 'acme/GitStack' },
+      actor: null,
+      issue: null,
+      webhook: null,
+      commentId: null,
+      readAt: null,
+    };
+    mockedList.mockResolvedValue(page([mirrorN, mention]));
+    renderPage();
+    await screen.findAllByTestId('notification');
+    // La notifica mention mostra il badge "Mention".
+    expect(screen.getByText('Mention')).toBeInTheDocument();
+    // La notifica mirror ha il summary come link e nessun badge "Mirror".
+    const rows = screen.getAllByTestId('notification');
+    expect(rows).toHaveLength(2);
+    // La prima riga (mirror) ha il link.
+    expect(rows[0].querySelector('[href="/acme/GitStack/settings"]')).toBeInTheDocument();
+  });
 });
