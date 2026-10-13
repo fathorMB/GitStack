@@ -50,6 +50,14 @@ spec:
               value: {{ .Values.gateway.env.authCacheTTL | quote }}
             - name: GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL
               value: {{ .Values.gateway.env.authCacheNegativeTTL | quote }}
+            - name: GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_RPS
+              value: {{ .Values.gateway.env.rateLimit.credentialRps | quote }}
+            - name: GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_BURST
+              value: {{ .Values.gateway.env.rateLimit.credentialBurst | quote }}
+            - name: GITSTACK_GATEWAY_RATE_LIMIT_IP_RPS
+              value: {{ .Values.gateway.env.rateLimit.ipRps | quote }}
+            - name: GITSTACK_GATEWAY_RATE_LIMIT_IP_BURST
+              value: {{ .Values.gateway.env.rateLimit.ipBurst | quote }}
             - name: GITSTACK_CORE_TIMEOUT
               value: {{ .Values.gateway.env.coreTimeout | quote }}
             {{- if .Values.gateway.env.trustedProxies }}

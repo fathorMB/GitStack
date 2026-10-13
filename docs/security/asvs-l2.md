@@ -15,12 +15,12 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 149 |
+| ok | 151 |
 | n/a | 52 |
-| problem | 58 |
+| problem | 56 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227 and F7 (medium) by GIT-233.
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F7 (medium) by GIT-233 and F6 (medium) by GIT-232.
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
@@ -31,10 +31,10 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
 | V6 Stored Cryptography | 8 | 2 | 3 |
 | V7 Error Handling and Logging | 6 | 0 | 6 |
-| V8 Data Protection | 10 | 3 | 2 |
+| V8 Data Protection | 11 | 3 | 1 |
 | V9 Communication | 2 | 1 | 4 |
 | V10 Malicious Code | 3 | 2 | 0 |
-| V11 Business Logic | 4 | 1 | 3 |
+| V11 Business Logic | 5 | 1 | 2 |
 | V12 Files and Resources | 10 | 1 | 4 |
 | V13 API and Web Service | 6 | 4 | 3 |
 | V14 Configuration | 11 | 3 | 9 |
@@ -254,7 +254,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V8.1.1 | No sensitive data cached by server components | ok | The gateway cache holds only the credential decision for 30 s (`services/gateway/internal/identityclient/cache.go`, `services/gateway/internal/identityclient/cache_test.go#TestCache_NegativoCinqueSecondi`); no response caching. |
 | V8.1.2 | Temporary copies purged | ok | Upload temp files are renamed or removed (`services/core/internal/attachments/attachments_test.go#TestDisk_SaveLimiteERimozione`), expired sessions are deleted (`services/identity/internal/sessions/sessions.go#DeleteExpired`), delivery logs expire after 30 days (`services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_LogConservatoTrentaGiorni`). |
 | V8.1.3 | Few request parameters | ok | No hidden fields; the only state is the cookie or the bearer token. |
-| V8.1.4 | Abnormal request volumes detected | **problem** | No per-IP or per-user counters outside the login limiter and no alerting. [F6] |
+| V8.1.4 | Abnormal request volumes detected | **ok** | The gateway counts and logs rejected requests per credential and per IP (`rate limit exceeded`, obfuscated key) so an alert can be set (`services/gateway/internal/middleware/ratelimit.go`, `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP`). Git endpoints served outside the gateway keep the residual limit in `docs/operations.md`. |
 | V8.2.1 | Anti-caching headers | **ok** | Gateway middleware adds `Cache-Control: no-store` on authenticated responses; raw/archive set it too: `services/gateway/internal/middleware/headers.go`, `services/git/internal/httpserver/code.go`, `services/core/internal/httpserver/repos_code.go`. |
 | V8.2.2 | No sensitive data in browser storage | ok | Only the theme is kept in `localStorage` (`web/src/pages/ComponentsPage.tsx`). |
 | V8.2.3 | Data cleared at session end | ok | Logout navigates to the login route and unmounts page state; nothing is persisted (`web/src/pages/ChangePasswordPage.tsx#handleLogout`). |
@@ -296,11 +296,11 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V11.1.1 | Sequential business flows | ok | Password-change-first enforcement (`services/identity/internal/httpapi/mustchange_integration_test.go#TestMustChangePasswordEnforcement`), OIDC state (`services/identity/internal/oidc/service_test.go#TestFinish_StateChecks`). |
 | V11.1.2 | Human-time flows | n/a | There is no business flow that depends on human timing. |
 | V11.1.3 | Per-action limits | ok | Push file limit R6 (`services/git/internal/smarthttp/receive_test.go#TestPushFileOltreLaSogliaRifiutato`), upload size (`services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadRifiuti`), assignees (`services/core/internal/httpserver/issues_assignees_integration_test.go#TestAssignees_LimiteEPermessiI6`), search results (`services/git/internal/gitread/search_test.go#TestSearchCode_LimitReached`). |
-| V11.1.4 | Anti-automation for excessive calls | **problem** | `RateLimit` in the gateway is a no-op (`services/gateway/internal/middleware/noop.go`) and most JSON bodies have no size ceiling. [F6] [F5] |
+| V11.1.4 | Anti-automation for excessive calls | **problem** | The gateway now limits calls per credential and per client IP with 429 and `Retry-After` (resolved F6, GIT-232: `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP`), but most JSON bodies still have no size ceiling. [F5] |
 | V11.1.5 | Limits from threat analysis | ok | Webhook, mirror and push limits derive from rules C7, MP4, R6 and are tested: `services/core/internal/httpserver/mirrors_integration_test.go#TestMirrors_UnSoloPushPerMirror`. |
 | V11.1.6 | TOCTOU and races | ok | Egress decision at dial time (`pkg/egress/egress_test.go#TestControlBlocksAtConnect`), pinned IP for mirrors (`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_DestinazioniVietateSenzaConnessione`), single push per mirror (`services/core/internal/httpserver/mirrors_integration_test.go#TestMirrors_UnSoloPushPerMirror`). |
 | V11.1.7 | Monitoring of unusual business events | **problem** | No audit trail or anomaly detection. [F10] |
-| V11.1.8 | Configurable alerting | **problem** | No alerting on automated attacks. [F6] |
+| V11.1.8 | Configurable alerting | **ok** | Thresholds are configurable in the chart (`gateway.env.rateLimit.*`) and rejections are logged with a stable message and counted (`services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP`); alerting itself is done on that log line, see `docs/operations.md`. |
 
 ## V12 Files and Resources
 
@@ -379,7 +379,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F3 | medium | Web tier security headers and TLS options (V9.1.2, V9.1.3, V14.1.3, V14.3.3, V14.4.3, V14.4.4, V14.4.5, V14.4.6, V14.4.7) | `web/deploy/nginx.conf.template`<br>`deploy/gitstack/templates/ingress.yaml`<br>`web/src/lib/nginxConf.test.ts` | `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version` *(new)*<br>`deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum` *(new)* |
 | F4 | **ok** | Cache and content-type headers on API responses (V8.2.1, V14.4.2) | `services/gateway/internal/httpserver/router.go`<br>`services/core/internal/httpserver/repos_code.go`<br>`services/git/internal/httpserver/code.go`<br>`services/gateway/internal/middleware/headers.go` | `services/gateway/internal/middleware/headers_test.go#TestAPIResponses_NoStoreNosniff` |
 | F5 | medium | No request body size limit (V11.1.4) | `services/gateway/internal/proxy/proxy.go`<br>`services/core/internal/httpserver/resources.go`<br>`services/core/internal/httpserver/repos.go`<br>`services/git/internal/smarthttp/smarthttp.go` | `services/gateway/internal/httpserver/body_limit_test.go#TestBodyTooLarge_413` *(new)*<br>`services/git/internal/smarthttp/smarthttp_test.go#TestGzipBodyIsBounded` *(new)* |
-| F6 | medium | Rate limiting and abuse detection (V8.1.4, V11.1.4, V11.1.8) | `services/gateway/internal/middleware/noop.go`<br>`services/gateway/internal/httpserver/router.go` | `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP` *(new)* |
+| F6 | medium | **Resolved (GIT-232).** Rate limiting and abuse detection (V8.1.4, V11.1.4, V11.1.8) | `services/gateway/internal/middleware/ratelimit.go`<br>`services/gateway/internal/httpserver/router.go`<br>`deploy/gitstack/values.yaml` | `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP` |
 | F7 | medium | **Resolved (GIT-233).** SSRF policy allowed the LAN and the node (V12.6.1) | `pkg/egress/policy.go`<br>`pkg/egress/README.md`<br>`services/core/internal/webhooks/egress.go`<br>`services/core/internal/webhooks/engine.go` | `pkg/egress/egress_test.go#TestNodeAddressesAreBlockedByDefault`<br>`services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/webhook_to_node_address_blocked` |
 | F8 | medium | Cluster isolation and in-cluster transport (V1.2.2, V1.9.1, V1.9.2, V1.14.1, V1.14.5, V9.2.1, V9.2.2) | `deploy/gitstack/templates/nats/statefulset.yaml`<br>`deploy/gitstack/templates/_helpers.tpl`<br>`deploy/gitstack/templates/gateway/deployment.yaml`<br>`deploy/gitstack/templates/core/deployment.yaml` | `deploy/tests/chart_hardening_test.sh#NetworkPolicy and securityContext are rendered` *(new)*<br>`deploy/tests/chart_hardening_test.sh#NATS requires credentials` *(new)* |
 | F9 | medium | One static service secret for four services (V1.6.1, V2.10.1) | `deploy/gitstack/templates/identity/service-secret.yaml`<br>`services/gateway/internal/trust/trust.go`<br>`services/identity/internal/httpapi/tokens_keys.go` | `services/core/internal/trust/trust_test.go#TestVerify_SegretoDiUnAltroServizioRifiutato` *(new)* |
@@ -409,7 +409,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **F5 (medium) No request body size limit.** Only issue bodies, attachments and a few identity and git handlers wrap the body in `http.MaxBytesReader`; the other core handlers (`resources.go`, `repos.go` and, through the generated wrappers, webhooks, labels, mirrors) decode an unbounded body into memory, and the gateway forwards bodies without any ceiling. The smart-HTTP handler also decompresses a gzip request body without a ceiling before it reaches `git`. A single authenticated client can exhaust memory. Fix: a global limit in the gateway and in core, with larger explicit limits where needed.
 
-**F6 (medium) Rate limiting and abuse detection.** `middleware.RateLimit` is a no-op placeholder. Only login and password change are throttled, in memory per process. Nothing limits API calls per user, token or IP, nothing counts abnormal volumes or alerts, and the Git endpoints are served by the git service outside the gateway. Token guessing is not realistic (256 bits) but data scraping and denial of service are open. Fix: a real limiter per credential and per IP, with a counter that can be alerted on.
+**F6 (medium, resolved by GIT-232) Rate limiting and abuse detection.** `middleware.RateLimit` is a no-op placeholder. Only login and password change are throttled, in memory per process. Nothing limits API calls per user, token or IP, nothing counts abnormal volumes or alerts, and the Git endpoints are served by the git service outside the gateway. Token guessing is not realistic (256 bits) but data scraping and denial of service are open. Fix: a real limiter per credential and per IP, with a counter that can be alerted on.
+
+**Resolution (GIT-232).** `middleware.RateLimiter` (`services/gateway/internal/middleware/ratelimit.go`) is an in-memory token bucket per credential (token or session, keyed by SHA-256) and per client IP (`X-Forwarded-For` only from `gateway.env.trustedProxies`), thresholds in `gateway.env.rateLimit.*`; over the limit it answers 429 `rate_limited` with `Retry-After`, counts the rejection and logs `rate limit exceeded` with the obfuscated key. The limit is per gateway replica and does not cover the Git endpoints served outside the gateway (documented in `docs/operations.md`). Test: `ratelimit_test.go#TestRateLimit_PerTokenAndPerIP`.
 
 **F7 (medium) SSRF policy allows the LAN and the node.** Loopback, link-local (metadata), cluster CIDRs and special ranges are always blocked, but RFC 1918 and the node's own LAN address are allowed unless the admin sets `egress.allow`/`egress.deny` (`TestCheckIPCategories` lists `10.0.0.1`, `172.16.5.5`, `192.168.1.10` as allowed on purpose, for CI servers on the LAN). A repository admin can therefore make core call kubelet (10250), the k3s API (6443), the router or any HTTP service on the LAN, over `http://`, and read up to 4 KB of the answer in the delivery log (`TestWebhooks_RispostaTroncataA4KB`). Mirror URLs are https only but the same range is reachable. Fix, a product decision: always block the node's own addresses and the Kubernetes API ports, and make the default allow list explicit during install (ask for the LAN ranges webhooks may reach).
 
