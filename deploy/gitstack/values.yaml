@@ -245,6 +245,9 @@ identity:
     migrationsTimeout: 30s
     # Durata assoluta della sessione web (GITSTACK_IDENTITY_SESSION_TTL).
     sessionTTL: 168h
+    # Inattivita' massima della sessione web (GITSTACK_IDENTITY_SESSION_IDLE_TIMEOUT,
+    # F12). "0" la disattiva.
+    sessionIdleTimeout: 24h
     # Durata massima dei token personali (GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME,
     # es. 8760h). Vuoto = variabile non impostata, vale il default di identity.
     tokenMaxLifetime: ""

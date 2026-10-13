@@ -3294,6 +3294,9 @@ type ResourceIdParam = openapi_types.UUID
 // ResourceTypeFilter defines model for ResourceTypeFilter.
 type ResourceTypeFilter = string
 
+// SessionIdParam defines model for SessionIdParam.
+type SessionIdParam = openapi_types.UUID
+
 // SshKeyIdParam defines model for SshKeyIdParam.
 type SshKeyIdParam = openapi_types.UUID
 

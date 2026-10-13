@@ -1155,6 +1155,24 @@ func (e ResourceRole) Valid() bool {
 	}
 }
 
+// Defines values for SessionAuthMethod.
+const (
+	SessionAuthMethodOidc     SessionAuthMethod = "oidc"
+	SessionAuthMethodPassword SessionAuthMethod = "password"
+)
+
+// Valid indicates whether the value is a known member of the SessionAuthMethod enum.
+func (e SessionAuthMethod) Valid() bool {
+	switch e {
+	case SessionAuthMethodOidc:
+		return true
+	case SessionAuthMethodPassword:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TeamRole.
 const (
 	TeamRoleMaintainer TeamRole = "maintainer"
@@ -3540,6 +3558,28 @@ type ResourceList struct {
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
+// Session Sessione web attiva, senza il valore del cookie.
+type Session struct {
+	AuthMethod SessionAuthMethod `json:"authMethod"`
+	CreatedAt  time.Time         `json:"createdAt"`
+
+	// Current Vero per la sessione con cui e' fatta la richiesta.
+	Current    bool               `json:"current"`
+	ExpiresAt  time.Time          `json:"expiresAt"`
+	Id         openapi_types.UUID `json:"id"`
+	IpAddress  *string            `json:"ipAddress,omitempty"`
+	LastSeenAt time.Time          `json:"lastSeenAt"`
+	UserAgent  *string            `json:"userAgent,omitempty"`
+}
+
+// SessionAuthMethod defines model for Session.AuthMethod.
+type SessionAuthMethod string
+
+// SessionList defines model for SessionList.
+type SessionList struct {
+	Items []Session `json:"items"`
+}
+
 // SetIssueAssigneesInput defines model for SetIssueAssigneesInput.
 type SetIssueAssigneesInput struct {
 	Assignees []Name `json:"assignees"`
@@ -4311,6 +4351,9 @@ type ResourceIdParam = openapi_types.UUID
 
 // ResourceTypeFilter defines model for ResourceTypeFilter.
 type ResourceTypeFilter = string
+
+// SessionIdParam defines model for SessionIdParam.
+type SessionIdParam = openapi_types.UUID
 
 // SshKeyIdParam defines model for SshKeyIdParam.
 type SshKeyIdParam = openapi_types.UUID
@@ -6854,6 +6897,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
 	UpdateNotificationPreferences(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOwnSessions Elenca le sessioni web attive dell'utente corrente
+	//
+	// Scope `read:user`. Le sessioni non scadute, non revocate e non inattive (vedi l'idle timeout di identity). `current` e' vero per la sessione del cookie della richiesta.
+	//
+	// Corresponds with GET /user/sessions (the `ListOwnSessions` operationId).
+	ListOwnSessions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevokeOwnSession Termina una sessione web dell'utente corrente
+	//
+	// Scope `write:user`. Revoca la sessione indicata (anche quella corrente). Una sessione di un altro utente risponde 404.
+	//
+	// Corresponds with DELETE /user/sessions/{sessionId} (the `RevokeOwnSession` operationId).
+	RevokeOwnSession(ctx context.Context, sessionId SessionIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
 	//
@@ -11067,6 +11124,40 @@ func (c *Client) UpdateNotificationPreferencesWithBody(ctx context.Context, cont
 // Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
 func (c *Client) UpdateNotificationPreferences(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateNotificationPreferencesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOwnSessions Elenca le sessioni web attive dell'utente corrente
+//
+// Scope `read:user`. Le sessioni non scadute, non revocate e non inattive (vedi l'idle timeout di identity). `current` e' vero per la sessione del cookie della richiesta.
+//
+// Corresponds with GET /user/sessions (the `ListOwnSessions` operationId).
+func (c *Client) ListOwnSessions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOwnSessionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevokeOwnSession Termina una sessione web dell'utente corrente
+//
+// Scope `write:user`. Revoca la sessione indicata (anche quella corrente). Una sessione di un altro utente risponde 404.
+//
+// Corresponds with DELETE /user/sessions/{sessionId} (the `RevokeOwnSession` operationId).
+func (c *Client) RevokeOwnSession(ctx context.Context, sessionId SessionIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeOwnSessionRequest(c.Server, sessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -21062,6 +21153,67 @@ func NewUpdateNotificationPreferencesRequestWithBody(server string, contentType 
 	return req, nil
 }
 
+// NewListOwnSessionsRequest constructs an http.Request for the ListOwnSessions method
+func NewListOwnSessionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/sessions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRevokeOwnSessionRequest constructs an http.Request for the RevokeOwnSession method
+func NewRevokeOwnSessionRequest(server string, sessionId SessionIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/sessions/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListSshKeysRequest constructs an http.Request for the ListSshKeys method
 func NewListSshKeysRequest(server string, params *ListSshKeysParams) (*http.Request, error) {
 	var err error
@@ -23976,6 +24128,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /user/notification-preferences (the `UpdateNotificationPreferences` operationId).
 	UpdateNotificationPreferencesWithResponse(ctx context.Context, body UpdateNotificationPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNotificationPreferencesResponse, error)
+
+	// ListOwnSessionsWithResponse Elenca le sessioni web attive dell'utente corrente
+	//
+	// Scope `read:user`. Le sessioni non scadute, non revocate e non inattive (vedi l'idle timeout di identity). `current` e' vero per la sessione del cookie della richiesta.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user/sessions (the `ListOwnSessions` operationId).
+	ListOwnSessionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListOwnSessionsResponse, error)
+
+	// RevokeOwnSessionWithResponse Termina una sessione web dell'utente corrente
+	//
+	// Scope `write:user`. Revoca la sessione indicata (anche quella corrente). Una sessione di un altro utente risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /user/sessions/{sessionId} (the `RevokeOwnSession` operationId).
+	RevokeOwnSessionWithResponse(ctx context.Context, sessionId SessionIdParam, reqEditors ...RequestEditorFn) (*RevokeOwnSessionResponse, error)
 
 	// ListSshKeysWithResponse Elenca le chiavi SSH dell'utente corrente
 	//
@@ -37223,6 +37393,130 @@ func (r UpdateNotificationPreferencesResponse) ContentType() string {
 	return ""
 }
 
+type ListOwnSessionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SessionList
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOwnSessionsResponse) GetJSON200() *SessionList {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOwnSessionsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOwnSessionsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListOwnSessionsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOwnSessionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOwnSessionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOwnSessionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOwnSessionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevokeOwnSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RevokeOwnSessionResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RevokeOwnSessionResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RevokeOwnSessionResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RevokeOwnSessionResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RevokeOwnSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevokeOwnSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevokeOwnSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevokeOwnSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListSshKeysResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41939,6 +42233,36 @@ func (c *ClientWithResponses) UpdateNotificationPreferencesWithResponse(ctx cont
 		return nil, err
 	}
 	return ParseUpdateNotificationPreferencesResponse(rsp)
+}
+
+// ListOwnSessionsWithResponse Elenca le sessioni web attive dell'utente corrente
+//
+// Scope `read:user`. Le sessioni non scadute, non revocate e non inattive (vedi l'idle timeout di identity). `current` e' vero per la sessione del cookie della richiesta.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user/sessions (the `ListOwnSessions` operationId).
+func (c *ClientWithResponses) ListOwnSessionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListOwnSessionsResponse, error) {
+	rsp, err := c.ListOwnSessions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOwnSessionsResponse(rsp)
+}
+
+// RevokeOwnSessionWithResponse Termina una sessione web dell'utente corrente
+//
+// Scope `write:user`. Revoca la sessione indicata (anche quella corrente). Una sessione di un altro utente risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /user/sessions/{sessionId} (the `RevokeOwnSession` operationId).
+func (c *ClientWithResponses) RevokeOwnSessionWithResponse(ctx context.Context, sessionId SessionIdParam, reqEditors ...RequestEditorFn) (*RevokeOwnSessionResponse, error) {
+	rsp, err := c.RevokeOwnSession(ctx, sessionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeOwnSessionResponse(rsp)
 }
 
 // ListSshKeysWithResponse Elenca le chiavi SSH dell'utente corrente
@@ -52989,6 +53313,103 @@ func ParseUpdateNotificationPreferencesResponse(rsp *http.Response) (*UpdateNoti
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOwnSessionsResponse parses an HTTP response from a ListOwnSessionsWithResponse call
+func ParseListOwnSessionsResponse(rsp *http.Response) (*ListOwnSessionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOwnSessionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SessionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevokeOwnSessionResponse parses an HTTP response from a RevokeOwnSessionWithResponse call
+func ParseRevokeOwnSessionResponse(rsp *http.Response) (*RevokeOwnSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevokeOwnSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

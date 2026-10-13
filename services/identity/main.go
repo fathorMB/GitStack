@@ -189,9 +189,11 @@ func bootstrapAdmin(ctx context.Context, cfg config.Config, svc adminBootstrappe
 func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg loginlimit.Config, logger *slog.Logger) int {
 	// Assembla il servizio di autenticazione composto da users, sessions
 	// e loginlimit; httpapi.New lo monta su un handler http.Handler.
+	sessionStore := sessions.New(pool, time.Now, cfg.SessionTTL)
+	sessionStore.SetIdleTimeout(cfg.SessionIdleTimeout)
 	svc := &auth.Service{
 		Users:    users.New(pool, time.Now),
-		Sessions: sessions.New(pool, time.Now, cfg.SessionTTL),
+		Sessions: sessionStore,
 		Limiter:  loginlimit.New(lcfg, time.Now),
 	}
 	// Secondo fattore TOTP (F11): sempre montato, così un utente che lo ha già

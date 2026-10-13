@@ -146,6 +146,8 @@ spec:
               value: {{ .Values.identity.env.logLevel | quote }}
             - name: GITSTACK_IDENTITY_SESSION_TTL
               value: {{ .Values.identity.env.sessionTTL | quote }}
+            - name: GITSTACK_IDENTITY_SESSION_IDLE_TIMEOUT
+              value: {{ .Values.identity.env.sessionIdleTimeout | quote }}
             # Segreti di servizio per /internal/* (F9): uno per chiamante, solo
             # da Secret, mai in chiaro. Identity li verifica, non firma.
             {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "gateway") | nindent 12 }}

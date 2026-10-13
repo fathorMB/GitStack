@@ -670,3 +670,39 @@ func TestSecondFactor_RequiredForAdmins(t *testing.T) {
 	}
 	_ = user
 }
+
+// F12 (V3.3.2): oltre alla scadenza assoluta c'è un idle timeout su
+// last_seen_at; ogni uso valido lo fa ripartire.
+func TestSessionIdleTimeout(t *testing.T) {
+	e := newEnv(t, cfgDefault)
+	e.sess = sessions.New(e.pool, e.clock.Now, 24*time.Hour)
+	e.sess.SetIdleTimeout(30 * time.Minute)
+	e.auth.Sessions = e.sess
+	e.mkUser(t, "alice", false)
+	ctx := context.Background()
+
+	res, err := e.login("alice", pw, "10.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Usata a intervalli sotto l'idle timeout: resta valida oltre i 30 minuti totali.
+	for i := 0; i < 4; i++ {
+		e.clock.advance(20 * time.Minute)
+		if _, err := e.auth.Session(ctx, res.SessionValue); err != nil {
+			t.Fatalf("sessione attiva scaduta al giro %d: %v", i, err)
+		}
+	}
+	// Ferma più dell'idle timeout (ma sotto il TTL assoluto): non vale più.
+	e.clock.advance(31 * time.Minute)
+	if _, err := e.auth.Session(ctx, res.SessionValue); !errors.Is(err, auth.ErrUnauthenticated) {
+		t.Fatalf("sessione inattiva ancora valida: %v", err)
+	}
+
+	// Senza idle timeout (0) vale solo il TTL assoluto.
+	e.sess.SetIdleTimeout(0)
+	res2, _ := e.login("alice", pw, "10.0.0.1")
+	e.clock.advance(5 * time.Hour)
+	if _, err := e.auth.Session(ctx, res2.SessionValue); err != nil {
+		t.Fatalf("con idle timeout disattivo la sessione deve valere: %v", err)
+	}
+}

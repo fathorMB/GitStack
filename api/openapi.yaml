@@ -1041,6 +1041,53 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /user/sessions:
+    get:
+      operationId: listOwnSessions
+      tags: [auth]
+      summary: Elenca le sessioni web attive dell'utente corrente
+      description: >
+        Scope `read:user`. Le sessioni non scadute, non revocate e non
+        inattive (vedi l'idle timeout di identity). `current` e' vero per la
+        sessione del cookie della richiesta.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Sessioni attive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionIdParam"
+    delete:
+      operationId: revokeOwnSession
+      tags: [auth]
+      summary: Termina una sessione web dell'utente corrente
+      description: >
+        Scope `write:user`. Revoca la sessione indicata (anche quella
+        corrente). Una sessione di un altro utente risponde 404.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Sessione terminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /user/ssh-keys:
     get:
       operationId: listSshKeys
@@ -6386,6 +6433,13 @@ components:
       schema:
         type: string
         format: uuid
+    SessionIdParam:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     SshKeyIdParam:
       name: keyId
       in: path
@@ -7483,6 +7537,45 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    Session:
+      type: object
+      description: Sessione web attiva, senza il valore del cookie.
+      additionalProperties: false
+      required: [id, authMethod, createdAt, lastSeenAt, expiresAt, current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        authMethod:
+          type: string
+          enum: [password, oidc]
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: Vero per la sessione con cui e' fatta la richiesta.
+
+    SessionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
 
     OidcProvider:
       type: object

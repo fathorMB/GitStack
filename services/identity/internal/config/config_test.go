@@ -299,3 +299,22 @@ func TestLoad_TOTP(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_SessionIdleTimeout(t *testing.T) {
+	base := "postgres://identity:secret@localhost:5432/gitstack"
+	cfg, err := load(lookupFrom(map[string]string{EnvDatabaseURL: base}))
+	if err != nil || cfg.SessionIdleTimeout != defaultSessionIdleTimeout {
+		t.Fatalf("default inatteso: %v %v", cfg.SessionIdleTimeout, err)
+	}
+	cfg, err = load(lookupFrom(map[string]string{EnvDatabaseURL: base, EnvSessionIdleTimeout: "30m"}))
+	if err != nil || cfg.SessionIdleTimeout != 30*time.Minute {
+		t.Fatalf("30m: %v %v", cfg.SessionIdleTimeout, err)
+	}
+	cfg, err = load(lookupFrom(map[string]string{EnvDatabaseURL: base, EnvSessionIdleTimeout: "0"}))
+	if err != nil || cfg.SessionIdleTimeout != 0 {
+		t.Fatalf("0 deve disattivarlo: %v %v", cfg.SessionIdleTimeout, err)
+	}
+	if _, err := load(lookupFrom(map[string]string{EnvDatabaseURL: base, EnvSessionIdleTimeout: "-5m"})); err == nil {
+		t.Error("attendevo un errore per un valore negativo")
+	}
+}

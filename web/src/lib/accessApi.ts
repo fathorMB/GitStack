@@ -1,9 +1,26 @@
 // Token personali e chiavi SSH via client generato (client di default).
-import { addSshKey, createToken, deleteSshKey, listSshKeys, listTokens, revokeToken } from '@gitstack/api-client';
-import type { AddSshKeyInput, CreatedToken, CreateTokenInput, SshKey, Token, TokenScope } from '@gitstack/api-client';
+import {
+  addSshKey,
+  createToken,
+  deleteSshKey,
+  listOwnSessions,
+  listSshKeys,
+  listTokens,
+  revokeOwnSession,
+  revokeToken,
+} from '@gitstack/api-client';
+import type {
+  AddSshKeyInput,
+  CreatedToken,
+  CreateTokenInput,
+  Session,
+  SshKey,
+  Token,
+  TokenScope,
+} from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { CreatedToken, SshKey, Token, TokenScope };
+export type { CreatedToken, Session, SshKey, Token, TokenScope };
 
 // Catalogo scope del contratto (schema TokenScope): non allargare senza il CTO.
 export const TOKEN_SCOPES: { value: TokenScope; description: string }[] = [
@@ -26,6 +43,15 @@ export async function createPersonalToken(input: CreateTokenInput): Promise<Crea
 
 export async function revokePersonalToken(tokenId: string): Promise<void> {
   unwrapEmpty(await revokeToken({ baseUrl: API_BASE_URL, path: { tokenId } }));
+}
+
+// Sessioni web attive dell'utente (F12).
+export async function fetchSessions(): Promise<Session[]> {
+  return unwrap(await listOwnSessions({ baseUrl: API_BASE_URL })).items;
+}
+
+export async function endSession(sessionId: string): Promise<void> {
+  unwrapEmpty(await revokeOwnSession({ baseUrl: API_BASE_URL, path: { sessionId } }));
 }
 
 export async function fetchSshKeys(): Promise<SshKey[]> {

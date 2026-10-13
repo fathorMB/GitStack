@@ -620,3 +620,58 @@ func TestAuthEventsAreLogged(t *testing.T) {
 		t.Logf("log:\n%s", out)
 	}
 }
+
+// F12 (V3.3.4): l'utente elenca le sue sessioni e ne termina una singola.
+func TestListAndRevokeOwnSessions(t *testing.T) {
+	e := newEnv(t, cfg)
+	e.mk("alice", false)
+	e.mk("bob", false)
+	errCode(t, e.do("GET", "/user/sessions", nil, nil), 401, "unauthenticated")
+
+	first := e.mustLogin("alice")
+	second := e.mustLogin("alice")
+	bob := e.mustLogin("bob")
+
+	r := e.do("GET", "/user/sessions", nil, first, "User-Agent", "test-agent")
+	status(t, r, 200)
+	items, _ := r.json()["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("sessioni di alice: %s", r.body)
+	}
+	var other string
+	currents := 0
+	for _, it := range items {
+		m := it.(map[string]any)
+		if m["authMethod"] != "password" || m["expiresAt"] == nil || m["lastSeenAt"] == nil {
+			t.Fatalf("sessione incompleta: %v", m)
+		}
+		if _, leak := m["tokenHash"]; leak {
+			t.Fatalf("hash esposto: %v", m)
+		}
+		if m["current"] == true {
+			currents++
+		} else {
+			other = m["id"].(string)
+		}
+	}
+	if currents != 1 || other == "" {
+		t.Fatalf("una sola sessione corrente attesa: %s", r.body)
+	}
+
+	// La sessione di bob non si vede e non si revoca (404, come inesistente).
+	rb := e.do("GET", "/user/sessions", nil, bob)
+	bobItems, _ := rb.json()["items"].([]any)
+	bobID := bobItems[0].(map[string]any)["id"].(string)
+	errCode(t, e.do("DELETE", "/user/sessions/"+bobID, nil, first), 404, "not_found")
+	status(t, e.do("GET", "/auth/session", nil, bob), 200)
+
+	// Revoca di un'altra sessione propria: la corrente resta valida.
+	status(t, e.do("DELETE", "/user/sessions/"+other, nil, first), 204)
+	errCode(t, e.do("GET", "/auth/session", nil, second), 401, "unauthenticated")
+	status(t, e.do("GET", "/auth/session", nil, first), 200)
+	errCode(t, e.do("DELETE", "/user/sessions/"+other, nil, first), 404, "not_found")
+	r = e.do("GET", "/user/sessions", nil, first)
+	if items, _ := r.json()["items"].([]any); len(items) != 1 {
+		t.Fatalf("dopo la revoca: %s", r.body)
+	}
+}
