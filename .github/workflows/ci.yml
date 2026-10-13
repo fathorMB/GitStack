@@ -455,7 +455,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/gitstack-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/${{ vars.IMAGE_NAMESPACE || github.repository_owner }}/gitstack-${{ matrix.service }}
           tags: |
             type=sha,format=long
             type=ref,event=tag
@@ -603,7 +603,7 @@ jobs:
       contents: write   # Caricare firme e SBOM nella release
     env:
       REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
-      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_OWNER: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
       IMAGE_TAG: sha-${{ github.sha }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -981,7 +981,7 @@ jobs:
       pull-requests: write  # PR che aggiunge il changelog a CHANGELOG.md
     env:
       REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
-      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_OWNER: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
       VERSION: ${{ github.ref_name }}
       SHA_TAG: sha-${{ github.sha }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
