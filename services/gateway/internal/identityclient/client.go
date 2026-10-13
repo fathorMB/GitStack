@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/fathorMB/GitStack/services/gateway/internal/trust"
 )
 
 // Kind è il tipo di credenziale, se il gateway lo sa dal modo in cui è
@@ -74,7 +76,7 @@ func NewClient(base *url.URL, secret string, timeout time.Duration) *Client {
 	return &Client{
 		endpoint:            strings.TrimRight(base.String(), "/") + "/internal/verify",
 		permissionsEndpoint: strings.TrimRight(base.String(), "/") + "/internal/permissions/check",
-		secret:              secret,
+		secret:              trust.SigningKey(secret),
 		http:                &http.Client{Timeout: timeout},
 	}
 }

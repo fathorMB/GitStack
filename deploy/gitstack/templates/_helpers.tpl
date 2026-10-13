@@ -117,12 +117,24 @@ URL NATS usato da core (GITSTACK_CORE_NATS_URL).
 {{- end -}}
 
 {{/*
-Nome del Secret con il segreto di servizio (chiave `secret`): condiviso da
-gateway, identity e core. Generato dal chart (service-secret.yaml) o dato con
-identity.serviceSecret.existingSecret.
+Nome del Secret con i segreti di servizio (F9): una chiave per chiamante
+(`gateway`, `core`, `git`). Generato dal chart (service-secrets.yaml) o dato con
+serviceSecrets.existingSecret.
 */}}
 {{- define "gitstack.serviceSecret.name" -}}
-{{- .Values.identity.serviceSecret.existingSecret | default (printf "%s-identity-service" (include "gitstack.fullname" .)) -}}
+{{- .Values.serviceSecrets.existingSecret | default (printf "%s-service-secrets" (include "gitstack.fullname" .)) -}}
+{{- end -}}
+
+{{/*
+Variabile GITSTACK_SERVICE_SECRET_<CHIAMANTE> dal Secret dei segreti di
+servizio. Argomenti: dict "root" . "caller" "gateway|core|git".
+*/}}
+{{- define "gitstack.serviceSecret.env" -}}
+- name: GITSTACK_SERVICE_SECRET_{{ upper .caller }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "gitstack.serviceSecret.name" .root }}
+      key: {{ .caller }}
 {{- end -}}
 
 {{/*

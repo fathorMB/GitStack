@@ -143,6 +143,61 @@ expect_eq "nessun Secret generato con existingSecret" "$(doc Secret gitstack-nat
 expect_has "client con il Secret dato" "$(doc Deployment gitstack-core)" "name: mio-nats"
 expect_has "server con il Secret dato" "$(doc StatefulSet gitstack-nats)" "name: mio-nats"
 
+# ---------------------------------------------------------------------------
+echo "== One service secret per caller (F9)"
+OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
+
+d="$(doc Secret gitstack-service-secrets)"
+if [ -n "${d}" ]; then ok; else bad "Secret gitstack-service-secrets non renderizzato"; fi
+expect_has "service secrets keep" "${d}" "helm.sh/resource-policy: keep"
+for k in gateway core git; do
+  v="$(printf '%s\n' "${d}" | sed -n "s/^  ${k}: \"\(.*\)\"\$/\1/p")"
+  if [ "${#v}" -ge 32 ]; then ok; else bad "segreto ${k} generato troppo corto (${#v})"; fi
+done
+# Il Secret condiviso storico non esiste più.
+expect_eq "nessun Secret identity-service" "$(doc Secret gitstack-identity-service)" ""
+expect_lacks "nessuna variabile condivisa storica" "${OUT}" "GITSTACK_IDENTITY_SERVICE_SECRET"
+
+# Ogni servizio riceve solo le chiavi che gli servono: git non conosce quella
+# del gateway (con cui si firma l'identità di un utente).
+chk() {
+  # chk SERVIZIO DEPLOYMENT CHIAVE yes|no
+  if printf '%s\n' "$2" | grep -q "name: GITSTACK_SERVICE_SECRET_$3\$"; then
+    if [ "$4" = yes ]; then ok; else bad "$1: $3 non doveva esserci"; fi
+  else
+    if [ "$4" = yes ]; then bad "$1: manca $3"; else ok; fi
+  fi
+}
+for c in gateway core git identity; do
+  d="$(doc Deployment "gitstack-${c}")"
+  case "${c}" in
+    gateway)  g=yes; o=no;  t=no ;;
+    core)     g=yes; o=yes; t=yes ;;
+    git)      g=no;  o=yes; t=yes ;;
+    identity) g=yes; o=yes; t=yes ;;
+  esac
+  chk "${c}" "${d}" GATEWAY "${g}"
+  chk "${c}" "${d}" CORE "${o}"
+  chk "${c}" "${d}" GIT "${t}"
+done
+# gateway: solo la propria chiave (non conosce quelle di core e git)
+d="$(doc Deployment gitstack-gateway)"
+expect_has "gateway: chiave gateway dal Secret" "${d}" "name: gitstack-service-secrets"
+
+# Il vecchio valore identity.serviceSecret.existingSecret (chart precedente a
+# F9) non è più letto: nessun Deployment lo usa e NOTES.txt lo segnala. Il
+# chart non si ferma, così un `gitstack upgrade` precedente a F9 funziona.
+OUT="$(render --set identity.serviceSecret.existingSecret=vecchio)" || bad "il vecchio valore ferma helm template"
+expect_lacks "il Secret vecchio non è usato" "${OUT}" "name: vecchio"
+expect_has "Secret per chiamante generato lo stesso" "$(doc Secret gitstack-service-secrets)" "core: "
+
+# Secret esistente: il chart non ne genera uno e i servizi usano quello.
+OUT="$(render --set serviceSecrets.existingSecret=miei-segreti)"
+expect_eq "nessun Secret generato con existingSecret" "$(doc Secret gitstack-service-secrets)" ""
+for c in gateway core git identity; do
+  expect_has "${c}: Secret dato" "$(doc Deployment "gitstack-${c}")" "name: miei-segreti"
+done
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -95,20 +97,57 @@ type fakeHelm struct {
 	cluster  *fakeCluster
 	newSchem string // schema dopo le migrazioni del chart nuovo
 	images   string
+
+	// F9: valori della release (helm get values), contenuto del file dei
+	// valori al momento di helm upgrade, e stato dei Secret di servizio.
+	values        string
+	upgradeValues string
+	newSecret     bool // <release>-service-secrets esiste dopo l'upgrade
+	legacyDeleted bool
+	deleteErr     error
 }
 
-func (h *fakeHelm) Run(_ context.Context, _ []string, _ string, args ...string) ([]byte, error) {
+func (h *fakeHelm) Run(_ context.Context, _ []string, name string, args ...string) ([]byte, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if name == "k3s" && len(args) > 0 && args[0] == "kubectl" {
+		h.calls = append(h.calls, "kubectl "+strings.Join(args[1:], " "))
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "get secret gitstack-service-secrets"):
+			if h.upgraded && h.newSecret {
+				return []byte("secret/gitstack-service-secrets\n"), nil
+			}
+			return []byte("Error from server (NotFound)"), errors.New("exit 1")
+		case strings.Contains(joined, "delete secret gitstack-identity-service"):
+			if h.deleteErr != nil {
+				return []byte("forbidden"), h.deleteErr
+			}
+			h.legacyDeleted = true
+			return []byte("secret \"gitstack-identity-service\" deleted\n"), nil
+		}
+		return nil, errors.New("kubectl inatteso: " + joined)
+	}
 	h.calls = append(h.calls, strings.Join(args, " "))
 	switch args[0] {
 	case "history":
 		return []byte(`[{"revision":3,"status":"superseded"},{"revision":4,"status":"deployed"}]`), nil
 	case "get":
+		if h.values != "" {
+			return []byte(h.values), nil
+		}
 		return []byte(`{"global":{"image":{"registry":"mirror.example"}}}`), nil
 	case "template":
 		return []byte(h.images), nil
 	case "upgrade":
+		for i, a := range args {
+			if a == "-f" && i+1 < len(args) {
+				if b, err := os.ReadFile(args[i+1]); err == nil {
+					h.upgradeValues = string(b)
+				}
+				break
+			}
+		}
 		h.upgraded = true
 		if h.newSchem != "" {
 			h.cluster.schema = h.newSchem
@@ -800,5 +839,99 @@ func TestChartHasVersion(t *testing.T) {
 		if chartHasVersion(y, "1.0.0") {
 			t.Errorf("accettato %q", y)
 		}
+	}
+}
+
+// F9 (GIT-235): l'upgrade toglie dai valori identity.serviceSecret, che il
+// chart nuovo non legge più, e a servizi sani cancella il Secret condiviso.
+func TestUpgrade_MigraISegretiDiServizio(t *testing.T) {
+	w := newWorld(t)
+	w.helm.values = `{"global":{"image":{"registry":"mirror.example"}},"identity":{"serviceSecret":{"existingSecret":"mio-segreto"},"admin":{"existingSecret":"mio-admin"}}}`
+	w.helm.newSecret = true
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if strings.Contains(w.helm.upgradeValues, "serviceSecret") || strings.Contains(w.helm.upgradeValues, "mio-segreto") {
+		t.Errorf("helm upgrade con identity.serviceSecret: %s", w.helm.upgradeValues)
+	}
+	if !strings.Contains(w.helm.upgradeValues, "mio-admin") {
+		t.Errorf("gli altri valori di identity vanno tenuti: %s", w.helm.upgradeValues)
+	}
+	if !w.helm.legacyDeleted {
+		t.Errorf("Secret condiviso non cancellato: %v", w.helm.calls)
+	}
+	if !strings.Contains(strings.Join(res.Summary, "\n"), "Secret condiviso gitstack-identity-service") {
+		t.Errorf("manca la riga nel resoconto: %v", res.Summary)
+	}
+}
+
+// Il Secret condiviso si cancella solo dopo che il Secret per chiamante
+// esiste, e solo a upgrade riuscito.
+func TestUpgrade_SecretCondivisoNonCancellatoSenzaQuelloNuovo(t *testing.T) {
+	w := newWorld(t)
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if w.helm.legacyDeleted {
+		t.Error("Secret condiviso cancellato senza il Secret nuovo")
+	}
+
+	w = newWorld(t)
+	w.helm.newSecret = true
+	w.helm.onUp = func() error { return errors.New("exit 1") }
+	res, _ = Run(context.Background(), w.o)
+	if res.Outcome == Upgraded {
+		t.Fatal("upgrade riuscito, doveva fallire")
+	}
+	if w.helm.legacyDeleted {
+		t.Error("Secret condiviso cancellato da un upgrade fallito")
+	}
+}
+
+func TestUpgrade_CancellazioneDelSecretNonFatale(t *testing.T) {
+	w := newWorld(t)
+	w.helm.newSecret = true
+	w.helm.deleteErr = errors.New("exit 1")
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if !strings.Contains(strings.Join(res.Summary, "\n"), "delete secret gitstack-identity-service") {
+		t.Errorf("manca l'istruzione manuale: %v", res.Summary)
+	}
+}
+
+func TestDropLegacyServiceSecretValues(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want, existing string
+		changed                  bool
+	}{
+		{"niente", `{"a":1}`, `{"a":1}`, "", false},
+		{"identity senza serviceSecret", `{"identity":{"admin":{}}}`, `{"identity":{"admin":{}}}`, "", false},
+		{"solo serviceSecret", `{"identity":{"serviceSecret":{"existingSecret":"x"}}}`, `{}`, "x", true},
+		{"con altri valori", `{"identity":{"serviceSecret":{"existingSecret":"x"},"enabled":true},"b":2}`, `{"b":2,"identity":{"enabled":true}}`, "x", true},
+		{"serviceSecret vuoto", `{"identity":{"serviceSecret":{"existingSecret":""}}}`, `{}`, "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, existing, changed, err := dropLegacyServiceSecretValues([]byte(tc.in))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if changed != tc.changed || existing != tc.existing {
+				t.Fatalf("changed=%v existing=%q", changed, existing)
+			}
+			var a, b map[string]any
+			if err := json.Unmarshal(out, &a); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(tc.want), &b); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(a, b) {
+				t.Errorf("out = %s, voluto %s", out, tc.want)
+			}
+		})
 	}
 }

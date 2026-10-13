@@ -43,13 +43,9 @@ spec:
             - name: GITSTACK_IDENTITY_TIMEOUT
               value: {{ .Values.gateway.env.identityTimeout | quote }}
             {{- end }}
-            # Segreto di servizio: Bearer verso /internal/verify di identity e
-            # firma dell'identità inoltrata a core. Solo da Secret.
-            - name: GITSTACK_IDENTITY_SERVICE_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "gitstack.serviceSecret.name" . }}
-                  key: secret
+            # Segreto di servizio del gateway (F9): Bearer verso /internal/verify
+            # di identity e firma dell'identità inoltrata a core. Solo da Secret.
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "gateway") | nindent 12 }}
             - name: GITSTACK_GATEWAY_AUTH_CACHE_TTL
               value: {{ .Values.gateway.env.authCacheTTL | quote }}
             - name: GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL

@@ -471,6 +471,82 @@ With vector the equivalent is a `kubernetes_logs` source, a `remap` that does `.
 
 There is no separate audit table: the log stream is the audit trail, so keep it for as long as your policy requires. Timestamps are UTC, RFC 3339.
 
+### Key lifecycle and rotation (F9, GIT-235)
+
+GitStack has four long-lived keys. This section says who owns each one, where it lives, how it is rotated and what a rotation costs. All of them are Kubernetes Secrets with `helm.sh/resource-policy: keep`: `helm upgrade` and `helm uninstall` never regenerate them, and a backup (`gitstack backup`) contains them (`secrets.json`).
+
+| Key | Secret and key | Held by | Used for | Rotation |
+|---|---|---|---|---|
+| Service secret of the gateway | `<release>-service-secrets`, `gateway` | gateway; verified by identity and core | Bearer to identity `/internal/*`; HMAC of the user identity forwarded to core | three phases below, no downtime |
+| Service secret of core | `<release>-service-secrets`, `core` | core; verified by identity and git | Bearer to identity `/internal/*`; HMAC of the identity core sends to git | three phases below, no downtime |
+| Service secret of git | `<release>-service-secrets`, `git` | git; verified by identity and core | Bearer to identity (`/internal/verify`, `permissions/check`, `ssh-keys`); HMAC of the identity git sends to core | three phases below, no downtime |
+| OIDC key | `<release>-identity-oidc-key`, `key` (+ `identity.oidc.encKey.keyId`) | identity | AES-256-GCM of the OIDC client secrets in the database and of the login state cookie | new key and new `keyId`, one restart of identity |
+| Webhook keyring | `<release>-core-webhook-key`, `key` and `oldKeys` (+ `core.webhookSecret.keyId`) | core | AES-256-GCM of webhook and mirror secrets | new key, new `keyId`, old key in `oldKeys`, one restart of core |
+
+Owner of all of them is the installation administrator (the operator who runs `gitstack`). Rotate a key when someone who could read the Secret leaves, when a pod or a backup may have leaked it, and at least once a year. After a suspected compromise of a single service, rotate that service's key first (see "Emergency").
+
+#### Service secrets: one per caller
+
+Gateway, core and git each have their own secret and the receiving service checks which one signed the request (`services/core/internal/trust/trust_test.go#TestVerify_SegretoDiUnAltroServizioRifiutato`):
+
+- **identity** knows the three keys and uses them as Bearer on `/internal/*`. The gateway may call only `/internal/verify` and `/internal/permissions/check`; git also `/internal/ssh-keys/{fingerprint}`; core the rest. Anything else answers `403 forbidden` (`services/identity/router_test.go#TestBuildRouter_SegretiPerChiamante`). The identity header (`X-Gitstack-*`) is accepted from the gateway key only.
+- **core** accepts the identity signed with the gateway key for every route, and the one signed with the git key only for `GET /repos/{owner}/{repo}`, which is what git needs to resolve `owner/repo` of a user it has already authenticated; every other call signed by git answers `403 forbidden` (`services/core/internal/httpserver/router_trust_test.go#TestRouter_GitPuoSoloRisolvereOwnerERepo`). Git, which parses untrusted repositories, cannot mint an identity for identity or for the rest of core.
+- **git** knows its own key and the core key (to verify `/internal/*`); it never receives the gateway key.
+
+Each Deployment receives only the variables it needs: `GITSTACK_SERVICE_SECRET_GATEWAY`, `GITSTACK_SERVICE_SECRET_CORE`, `GITSTACK_SERVICE_SECRET_GIT` (chart test `deploy/tests/chart_hardening_test.sh`, section "One service secret per caller"). The variable may hold a list `new,old`: the first key signs, every key verifies. That is the double key valid during a rotation (`services/core/internal/trust/trust_test.go#TestRotazione_DoppiaChiaveNellaFinestra`). A single key is the normal state.
+
+The old shared variable `GITSTACK_IDENTITY_SERVICE_SECRET` is still read by the services as a fallback for a caller that has no key of its own (installations that do not use the chart); the chart never sets it. Do not use it in production: it brings back the shared secret.
+
+#### Rotating a service secret (no downtime)
+
+A rotation needs three phases because pods restart one at a time: a signer that already uses the new key must be verified by receivers that already know it. `$R` is the release name (default `gitstack`) and `$NS` its namespace.
+
+```bash
+R=gitstack; NS=default
+K="sudo env KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n $NS"
+KEY=git                                   # gateway | core | git
+OLD=$($K get secret $R-service-secrets -o jsonpath="{.data.$KEY}" | base64 -d)
+NEW=$(openssl rand -hex 20)               # 40 characters
+
+set_key() { $K patch secret $R-service-secrets --type merge -p '{"stringData":{"'"$KEY"'":"'"$1"'"}}'; }
+roll() {
+  for d in identity core git gateway; do $K rollout restart deployment/$R-$d; done
+  for d in identity core git gateway; do $K rollout status deployment/$R-$d --timeout=300s; done
+}
+
+set_key "$OLD,$NEW"; roll    # 1. every service accepts both; the signer still signs with the old one
+set_key "$NEW,$OLD"; roll    # 2. the signer signs with the new one; both still accepted
+set_key "$NEW";      roll    # 3. only the new key: the old one stops working
+```
+
+Notes:
+
+- The pods read the Secret at start, so every phase needs the restart. `helm upgrade` never reverts a value you set: the chart reads the current Secret with `lookup`.
+- Between phases wait for `rollout status`; phase 2 and phase 3 may follow immediately after the previous finishes. Do not skip phase 1, or a pod that signs with the new key is rejected by a receiver that still runs with the old one.
+- Check after every phase with `sudo gitstack status` and a `git ls-remote` of a repository; a `401` or `403` in the logs of identity or core during a phase means a receiver does not know the key yet.
+- With `serviceSecrets.existingSecret` the Secret is yours: use its name in place of `$R-service-secrets`; it must have the three keys `gateway`, `core`, `git`.
+- Rotate the three keys one after the other, not at the same time.
+
+**Emergency (key of one service leaked).** Replace that key at once in a single step (`set_key "$NEW"; roll`) accepting a short window of `401` while the pods restart: there is no point in keeping the old key valid. The other two keys stay as they are: a key never signs for another caller.
+
+#### Upgrade from a version before F9
+
+`sudo gitstack upgrade` migrates an installation that still has the shared Secret `<release>-identity-service`:
+
+1. it removes `identity.serviceSecret` from the values of the release (the new chart ignores `identity.serviceSecret.existingSecret`; use `serviceSecrets.existingSecret` with the keys `gateway`, `core`, `git` for your own Secret);
+2. `helm upgrade` creates `<release>-service-secrets` with three random keys and restarts every service with its own key; for the duration of the rolling update requests between old and new pods can answer `401`, which is why the upgrade waits for all services to be healthy;
+3. when everything is healthy it deletes the shared Secret `<release>-identity-service` and says so in the summary. If the deletion is refused it prints the `kubectl delete secret` command to run by hand. The same cleanup runs when `gitstack upgrade` finds GitStack already at the requested version, so a second run is enough after an upgrade done by an older binary.
+
+A rollback (`helm rollback`) puts the previous chart back, which generates a new shared Secret by itself; nothing to do by hand. Proof in the tests: `admin/internal/upgrade/upgrade_test.go#TestUpgrade_MigraISegretiDiServizio`, `#TestUpgrade_SecretCondivisoNonCancellatoSenzaQuelloNuovo`, `#TestUpgrade_CancellazioneDelSecretNonFatale`.
+
+#### OIDC key
+
+The key encrypts the client secrets saved in `identity.oidc_providers` and the state cookie of a login in progress. Identity writes the providers of its configuration again at every start, so a rotation is: new key in `<release>-identity-oidc-key` (`key`, 32 bytes in base64: `openssl rand -base64 32`), a different `identity.oidc.encKey.keyId` in the values (e.g. `k2`), `helm upgrade`. At the restart identity re-encrypts every client secret with the new key. Logins in progress at that moment fail once. The old key is not kept: a provider whose row still has the old `keyId` answers an error until identity has restarted with the new pair. Keep a backup of the Secret before changing it.
+
+#### Webhook keyring
+
+Core encrypts webhook and mirror secrets with the primary key and decrypts each row with the key named by its `secret_key_id`, so old rows stay readable after a rotation. Rotation: put the current key in `oldKeys` as `<keyId>:<key>` (comma separated for more than one), put a new 32-byte key (`openssl rand -hex 32`) in `key`, set a new `core.webhookSecret.keyId`, `helm upgrade`. New and edited secrets use the new key; old rows are decrypted with the entry of `oldKeys` (`services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`). Do not remove an old key from `oldKeys` while rows still use it: the secret would be unreadable and the webhook has to be configured again. A lost key has the same effect.
+
 ## Backup
 
 GitStack provides a coherent backup command that takes a short read-only

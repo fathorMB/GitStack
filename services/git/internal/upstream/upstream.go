@@ -35,7 +35,7 @@ func New(identityURL, coreURL, secret string, timeout time.Duration) *Client {
 	return &Client{
 		identity: strings.TrimRight(identityURL, "/"),
 		core:     strings.TrimRight(coreURL, "/"),
-		secret:   secret,
+		secret:   trust.SigningKey(secret),
 		http:     &http.Client{Timeout: timeout},
 		now:      time.Now,
 	}

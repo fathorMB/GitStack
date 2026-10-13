@@ -72,7 +72,8 @@ type server struct {
 	keys          *userkeys.Service
 	oidc          *oidc.Service
 	permissions   *permissions.Service
-	serviceSecret string
+	// keys2 sono le chiavi di servizio accettate, per chiamante (F9).
+	keys2 trust.Keyring
 	orgs          *orgs.Service
 
 	trustedProxies []*net.IPNet
@@ -246,7 +247,9 @@ func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Cu
 // firma non valida o scaduta, utente inesistente o disattivato: 401. Il
 // Current restituito non ha sessione (Session.ID è uuid.Nil).
 func (s *server) currentSigned(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
-	id, ok := trust.Verify(r.Header, s.serviceSecret, time.Now())
+	// Solo il gateway inoltra l'identità dei client: la firma di core o di
+	// git non vale per autenticare una richiesta pubblica (F9).
+	id, _, ok := trust.VerifyRing(r.Header, s.keys2.Only(trust.CallerGateway, callerShared), time.Now())
 	if !ok {
 		unauthenticated(w)
 		return auth.Current{}, false

@@ -130,8 +130,8 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
-	if cfg.ServiceSecret == "" {
-		logger.Error("configurazione non valida", "err", "GITSTACK_IDENTITY_SERVICE_SECRET è obbligatoria per avviare il server (non per 'migrate up|down'): senza, core non può verificare l'identità inoltrata dal gateway")
+	if cfg.ServiceSecret == "" || cfg.GatewaySecret == "" {
+		logger.Error("configurazione non valida", "err", "GITSTACK_SERVICE_SECRET_CORE e GITSTACK_SERVICE_SECRET_GATEWAY sono obbligatorie per avviare il server (non per 'migrate up|down'): senza, core non può verificare l'identità inoltrata dal gateway")
 		return 1
 	}
 
@@ -339,7 +339,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		}
 	}
 
-	router := httpserver.NewRouter(pool, publisher, cfg.ServiceSecret, routerOpts...)
+	router := httpserver.NewRouter(pool, publisher, cfg.GatewaySecret, append(routerOpts, httpserver.WithGitSecret(cfg.GitSecret))...)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

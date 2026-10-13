@@ -18,8 +18,15 @@ const (
 	EnvDataDir = "GITSTACK_GIT_DATA_DIR"
 	// EnvLogLevel: debug|info|warn|error (default info).
 	EnvLogLevel = "GITSTACK_GIT_LOG_LEVEL"
-	// EnvServiceSecret: segreto di servizio, lo stesso di core e identity.
+	// EnvServiceSecret: segreto condiviso storico (F9), vale solo per i
+	// segreti per chiamante che mancano.
 	EnvServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	// EnvSecretGit: segreto di servizio del servizio git (chiave `git`),
+	// con cui firma verso identity (Bearer) e core (identità).
+	EnvSecretGit = "GITSTACK_SERVICE_SECRET_GIT"
+	// EnvSecretCore: segreto di servizio di core, con cui verifica le
+	// chiamate a /internal/*.
+	EnvSecretCore = "GITSTACK_SERVICE_SECRET_CORE"
 	// EnvSSHAddr: indirizzo del server SSH integrato (default ":2222", R7);
 	// "off" lo disattiva. Mai la 22: l'installer non tocca l'SSH dell'host.
 	EnvSSHAddr = "GITSTACK_GIT_SSH_ADDR"
@@ -57,9 +64,13 @@ type Config struct {
 	Addr     string
 	DataDir  string
 	LogLevel string
-	// ServiceSecret firma gli header d'identità; vuoto = ogni chiamata
-	// interna è rifiutata con 401. Non va mai nei log né negli errori.
+	// ServiceSecret è il segreto proprio del servizio git: firma le
+	// chiamate verso identity e core. Non va mai nei log né negli errori.
+	// Un elenco "nuova,vecchia" è accettato (rotazione): firma con la prima.
 	ServiceSecret string
+	// CoreSecret è il segreto di core: verifica le chiamate a /internal/*;
+	// vuoto = ogni chiamata interna è rifiutata con 401.
+	CoreSecret string
 	// SSHAddr è l'indirizzo di ascolto SSH; vuoto = SSH disattivato. Il server
 	// SSH parte solo se ci sono anche IdentityURL, CoreURL e ServiceSecret.
 	SSHAddr string
@@ -107,9 +118,18 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 	// Il valore del segreto non entra mai in un messaggio d'errore.
+	legacy := ""
 	if v, ok := lookup(EnvServiceSecret); ok {
-		cfg.ServiceSecret = strings.TrimSpace(v)
+		legacy = strings.TrimSpace(v)
 	}
+	pick := func(env string) string {
+		if v, ok := lookup(env); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+		return legacy
+	}
+	cfg.ServiceSecret = pick(EnvSecretGit)
+	cfg.CoreSecret = pick(EnvSecretCore)
 
 	if v, ok := lookup(EnvSSHAddr); ok && strings.TrimSpace(v) != "" {
 		v = strings.TrimSpace(v)

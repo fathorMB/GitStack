@@ -223,3 +223,22 @@ func TestLoad_AdminBootstrap(t *testing.T) {
 		t.Fatalf("valori: %+v %v", cfg, err)
 	}
 }
+
+func TestLoad_SegretiPerChiamante(t *testing.T) {
+	env := map[string]string{
+		EnvDatabaseURL:   "postgres://u:p@h/db",
+		EnvSecretGateway: "kg1,kg0",
+		EnvSecretCore:    "kc",
+		EnvSecretGit:     "kgit",
+	}
+	get := func(k string) (string, bool) { v, ok := env[k]; return v, ok }
+	cfg, err := load(get)
+	if err != nil || cfg.GatewaySecret != "kg1,kg0" || cfg.CoreSecret != "kc" || cfg.GitSecret != "kgit" {
+		t.Fatalf("err=%v cfg=%+v", err, cfg)
+	}
+	env = map[string]string{EnvDatabaseURL: "postgres://u:p@h/db", EnvServiceSecret: "storico", EnvSecretGit: "kgit"}
+	cfg, err = load(get)
+	if err != nil || cfg.GatewaySecret != "storico" || cfg.CoreSecret != "storico" || cfg.GitSecret != "kgit" {
+		t.Fatalf("fallback: err=%v cfg=%+v", err, cfg)
+	}
+}

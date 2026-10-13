@@ -322,10 +322,15 @@ func (o *Options) helmRevision(ctx context.Context) (int, error) {
 // (e agli upgrade precedenti) in un file: si riapplicano sui default del
 // chart nuovo. `--reuse-values` riusa anche i default vecchi e farebbe
 // mancare le chiavi aggiunte dal chart nuovo.
-func (o *Options) helmValues(ctx context.Context, dest string) error {
+//
+// Toglie identity.serviceSecret (F9, GIT-235): il chart nuovo genera un segreto
+// per chiamante e rifiuta il vecchio valore. userSecret è il Secret che
+// l'utente aveva dato con identity.serviceSecret.existingSecret (vuoto se non
+// c'era): non viene cancellato.
+func (o *Options) helmValues(ctx context.Context, dest string) (userSecret string, err error) {
 	out, err := o.helmRun(ctx, "get", "values", o.Cfg.Release, "-n", o.Cfg.Namespace, "-o", "json")
 	if err != nil {
-		return fmt.Errorf("helm get values: %w", err)
+		return "", fmt.Errorf("helm get values: %w", err)
 	}
 	s := bytes.TrimSpace(out)
 	if len(s) == 0 || string(s) == "null" {
@@ -333,9 +338,17 @@ func (o *Options) helmValues(ctx context.Context, dest string) error {
 	}
 	var probe map[string]any
 	if err := json.Unmarshal(s, &probe); err != nil {
-		return fmt.Errorf("valori della release non leggibili: %w", err)
+		return "", fmt.Errorf("valori della release non leggibili: %w", err)
 	}
-	return os.WriteFile(dest, s, 0o600)
+	cleaned, existing, changed, err := dropLegacyServiceSecretValues(s)
+	if err != nil {
+		return "", fmt.Errorf("valori della release non leggibili: %w", err)
+	}
+	if changed {
+		o.logf("==> Segreti di servizio (F9): tolgo %s dai valori, il chart genera un segreto per chiamante", legacyServiceSecretValue)
+		s = cleaned
+	}
+	return existing, os.WriteFile(dest, s, 0o600)
 }
 
 func (o *Options) valueArgs(valuesFile string, tag string) []string {
@@ -455,7 +468,8 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 
 	valuesFile := filepath.Join(work, "values.json")
-	if err := o.helmValues(ctx, valuesFile); err != nil {
+	userServiceSecret, err := o.helmValues(ctx, valuesFile)
+	if err != nil {
 		res.Outcome = Refused
 		return res, refused("%v", err)
 	}
@@ -581,6 +595,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 	res.Outcome = Upgraded
 	res.add("Aggiornato da %s a %s: tutti i servizi sono sani.", o.Cfg.ImageTag, t.Tag)
+	o.removeLegacyServiceSecret(ctx, res, userServiceSecret)
 	res.add("Backup preventivo conservato: %s", br.Path)
 	return res, nil
 }
@@ -619,6 +634,11 @@ func (o *Options) hardenOnly(ctx context.Context, res *Result, tag string) (*Res
 	}
 	if !hp.needed() {
 		res.add("GitStack è già alla versione %s: niente da fare.", tag)
+		// Una prima installazione di F9 fatta da un binario precedente non
+		// ha cancellato il Secret condiviso: lo si toglie ora (idempotente).
+		if !o.DryRun {
+			o.removeLegacyServiceSecret(ctx, res, "")
+		}
 		return res, nil
 	}
 	res.add("GitStack è già alla versione %s, ma k3s va messo in sicurezza (GIT-228): %s.", tag, hp.describe())

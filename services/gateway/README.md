@@ -41,7 +41,8 @@ Il progetto è in `services/identity/README.md` ("Come il gateway verifica sessi
 | `GITSTACK_CORE_TIMEOUT` | no | `5s` | Timeout per le richieste instradate verso `core` (formato `time.Duration` di Go) |
 | `GITSTACK_IDENTITY_URL` | no | — | Base URL di `identity` (es. `http://identity:8080`); il chart Helm (GIT-36) la imposta. Senza, le rotte di identity non sono montate (404) e ogni rotta autenticata risponde 503 (nessuna verifica possibile, mai fail open) |
 | `GITSTACK_IDENTITY_TIMEOUT` | no | `5s` | Timeout per le richieste instradate verso `identity` |
-| `GITSTACK_IDENTITY_SERVICE_SECRET` | sì, se c'è `GITSTACK_IDENTITY_URL` | — | Segreto di servizio (Secret `<release>-identity-service`, chiave `secret`): Bearer verso `/internal/verify` e chiave della firma dell'identità inoltrata a core. Mai nei log; il chart lo monta con `secretKeyRef` |
+| `GITSTACK_SERVICE_SECRET_GATEWAY` | sì, se c'è `GITSTACK_IDENTITY_URL` | — | Segreto di servizio del gateway (Secret `<release>-service-secrets`, chiave `gateway`, F9): Bearer verso `/internal/verify` e chiave della firma dell'identità inoltrata a core. Può essere un elenco `nuova,vecchia` (rotazione, `docs/operations.md`): la prima firma, tutte verificano. Mai nei log; il chart lo monta con `secretKeyRef` |
+| `GITSTACK_IDENTITY_SERVICE_SECRET` | no | — | Segreto condiviso storico: vale solo se manca `GITSTACK_SERVICE_SECRET_GATEWAY` (installazioni fuori dal chart). Il chart non lo imposta |
 | `GITSTACK_GATEWAY_AUTH_CACHE_TTL` | no | `30s` | Durata in cache degli esiti positivi di verifica (mai oltre `expiresAt`) |
 | `GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL` | no | `5s` | Durata in cache degli esiti negativi |
 | `GITSTACK_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |

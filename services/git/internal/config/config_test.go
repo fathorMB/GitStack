@@ -71,3 +71,20 @@ func TestLoad_SSH(t *testing.T) {
 		t.Fatalf("off: %+v, %v", cfg, err)
 	}
 }
+
+func TestLoad_SegretiPerChiamante(t *testing.T) {
+	cfg, err := load(env(map[string]string{EnvDataDir: "/data", EnvSecretGit: "kgit", EnvSecretCore: "kc1,kc0", EnvServiceSecret: "storico"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ServiceSecret != "kgit" || cfg.CoreSecret != "kc1,kc0" {
+		t.Fatalf("segreti = %q %q", cfg.ServiceSecret, cfg.CoreSecret)
+	}
+	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvSecretGit: "kgit"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ServiceSecret != "kgit" || cfg.CoreSecret != "" {
+		t.Fatalf("senza segreto di core: %q %q", cfg.ServiceSecret, cfg.CoreSecret)
+	}
+}

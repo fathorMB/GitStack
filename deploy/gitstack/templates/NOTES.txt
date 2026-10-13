@@ -8,6 +8,14 @@ Componenti attivi:
   - postgres: {{ if .Values.postgres.enabled }}bundle{{ else }}esterno (D6){{ end }}
   - nats:     {{ .Values.nats.enabled }}
 
+{{- if (.Values.identity.serviceSecret | default dict).existingSecret }}
+
+ATTENZIONE: identity.serviceSecret.existingSecret non è più letto (F9). Ogni
+servizio ha un segreto suo nel Secret {{ include "gitstack.serviceSecret.name" . }}
+(chiavi gateway, core, git). Togli il valore o dai serviceSecrets.existingSecret
+con le tre chiavi; vedi docs/operations.md, «Ciclo di vita delle chiavi».
+{{- end }}
+
 {{- if .Values.ingress.enabled }}
 
 Ingress Traefik:

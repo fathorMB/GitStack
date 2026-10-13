@@ -116,7 +116,7 @@ func run(out io.Writer) int {
 			Mirror:  mirrorService(runner, store, cfg),
 			Pull:    pullService(runner, store, cfg, events),
 			Content: newContent(),
-			Secret:  cfg.ServiceSecret,
+			Secret:  cfg.CoreSecret,
 			Logger:  logger,
 			Git:     gitHandler,
 		}),

@@ -38,11 +38,13 @@ type Config struct {
 	// IdentityTimeout è il timeout per le richieste instradate verso identity.
 	IdentityTimeout time.Duration
 
-	// IdentityServiceSecret è il segreto di servizio (Secret
-	// `<release>-identity-service`, chiave `secret`): il gateway lo usa come
-	// Bearer verso /internal/verify di identity e per firmare l'identità
-	// inoltrata a core (package trust). Obbligatorio se IdentityURL è
-	// impostata; mai loggato.
+	// IdentityServiceSecret è il segreto di servizio del gateway
+	// (GITSTACK_SERVICE_SECRET_GATEWAY, Secret `<release>-service-secrets`,
+	// chiave `gateway`; in sua assenza il segreto condiviso storico): il
+	// gateway lo usa come Bearer verso /internal/verify di identity e per
+	// firmare l'identità inoltrata a core (package trust). Può essere un
+	// elenco "nuova,vecchia" (rotazione): firma con la prima. Obbligatorio se
+	// IdentityURL è impostata; mai loggato.
 	IdentityServiceSecret string
 
 	// AuthCacheTTL è per quanto tempo si tiene in cache un esito positivo di
@@ -105,7 +107,12 @@ const (
 	envIdentityURL     = "GITSTACK_IDENTITY_URL"
 	envIdentityTimeout = "GITSTACK_IDENTITY_TIMEOUT"
 
+	// envIdentityServiceSecret è il segreto condiviso storico (F9): vale solo
+	// se manca il segreto del gateway.
 	envIdentityServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	// envServiceSecretGateway è il segreto di servizio del gateway (F9): lo
+	// conoscono solo il gateway e chi lo verifica (identity, core).
+	envServiceSecretGateway = "GITSTACK_SERVICE_SECRET_GATEWAY"
 	envAuthCacheTTL          = "GITSTACK_GATEWAY_AUTH_CACHE_TTL"
 	envAuthCacheNegativeTTL  = "GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL"
 
@@ -280,8 +287,11 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(envIdentityServiceSecret); ok {
 		cfg.IdentityServiceSecret = strings.TrimSpace(v)
 	}
+	if v, ok := lookup(envServiceSecretGateway); ok && strings.TrimSpace(v) != "" {
+		cfg.IdentityServiceSecret = strings.TrimSpace(v)
+	}
 	if cfg.IdentityURL != nil && cfg.IdentityServiceSecret == "" {
-		errs = append(errs, fmt.Sprintf("%s è obbligatoria quando %s è impostata (segreto di servizio verso identity e verso core)", envIdentityServiceSecret, envIdentityURL))
+		errs = append(errs, fmt.Sprintf("%s è obbligatoria quando %s è impostata (segreto di servizio verso identity e verso core)", envServiceSecretGateway, envIdentityURL))
 	}
 
 	for _, d := range []struct {

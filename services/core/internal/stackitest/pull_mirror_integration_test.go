@@ -50,7 +50,7 @@ func TestPullMirrorGiroCompleto(t *testing.T) {
 	e := newGitEnv(t, httpserver.WithMirrors(httpserver.MirrorConfig{Keys: keys, Egress: eg}))
 	eng := &mirrors.PullEngine{
 		Pool: e.pool, Keys: keys, Egress: eg,
-		Git: gitclient.New(mustURL(t, e.gitHTTP), serviceSecret, 60*time.Second),
+		Git: gitclient.New(mustURL(t, e.gitHTTP), coreSecret, 60*time.Second),
 	}
 	ctx := context.Background()
 	process := func(wantRuns int) {

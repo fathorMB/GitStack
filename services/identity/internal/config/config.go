@@ -45,10 +45,17 @@ type Config struct {
 	// l'IP del client è sempre r.RemoteAddr.
 	TrustedProxies []*net.IPNet
 
-	// ServiceSecret è il segreto condiviso con il gateway che protegge
-	// /internal/*. Vuoto (default): ogni chiamata interna è rifiutata con
-	// 401. Non va mai scritto nei log né negli errori.
+	// ServiceSecret è il segreto condiviso storico (installazioni non gestite
+	// dal chart). Non va mai scritto nei log né negli errori.
 	ServiceSecret string
+
+	// GatewaySecret, CoreSecret e GitSecret proteggono /internal/*: ogni
+	// chiamante ha il suo. Tutti vuoti (default): ogni chiamata interna è
+	// rifiutata con 401. GatewaySecret verifica anche l'identità firmata
+	// inoltrata dal gateway per i token personali.
+	GatewaySecret string
+	CoreSecret    string
+	GitSecret     string
 
 	// TokenMaxLifetime è la durata massima concessa ai token personali.
 	// Zero (default): vale apitokens.DefaultMaxLifetime.
@@ -104,9 +111,17 @@ const (
 	// (es. "10.42.0.0/16"). Default vuoto.
 	EnvTrustedProxies = "GITSTACK_IDENTITY_TRUSTED_PROXIES"
 
-	// EnvServiceSecret: segreto di servizio per /internal/* (default vuoto:
-	// chiamate interne rifiutate).
+	// EnvServiceSecret: segreto condiviso storico (F9): vale solo per i
+	// segreti per chiamante che mancano (default vuoto: chiamate interne
+	// rifiutate).
 	EnvServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	// EnvSecretGateway, EnvSecretCore, EnvSecretGit: i segreti di servizio
+	// dei tre chiamanti (Secret `<release>-service-secrets`, chiavi
+	// `gateway`, `core`, `git`). Ognuno può essere un elenco "nuova,vecchia"
+	// durante una rotazione: tutte le chiavi sono accettate.
+	EnvSecretGateway = "GITSTACK_SERVICE_SECRET_GATEWAY"
+	EnvSecretCore    = "GITSTACK_SERVICE_SECRET_CORE"
+	EnvSecretGit     = "GITSTACK_SERVICE_SECRET_GIT"
 
 	// EnvTokenMaxLifetime: durata massima dei token personali (default:
 	// quella di apitokens.DefaultMaxLifetime).
@@ -188,6 +203,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(EnvServiceSecret); ok {
 		cfg.ServiceSecret = strings.TrimSpace(v)
 	}
+	pick := func(env string) string {
+		if v, ok := lookup(env); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+		return cfg.ServiceSecret
+	}
+	cfg.GatewaySecret = pick(EnvSecretGateway)
+	cfg.CoreSecret = pick(EnvSecretCore)
+	cfg.GitSecret = pick(EnvSecretGit)
 
 	if v, ok := lookup(EnvTrustedProxies); ok && strings.TrimSpace(v) != "" {
 		for _, part := range strings.Split(v, ",") {
