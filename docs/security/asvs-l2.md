@@ -1,3 +1,7 @@
+| V2.4.5 | Additional KDF iteration with a secret salt | n/a | Excluded on purpose (GIT-238, F14): no pepper is applied. The pepper would have to live in the same Secret store the identity pod already reads, next to the database credentials, so an attacker able to read the hash table through the service is likely able to read it too; it adds a key to rotate (rotating it invalidates every hash unless each one carries a key id and is rehashed at login), a new way to lock everyone out, and nothing else. Hashes are salted argon2id (V2.4.1 to V2.4.4), the length and common-password rules above bound offline guessing, and the second factor (F11) covers the rest. Revisit if the hash table starts to be stored apart from the service secrets. |
+| V2.1.8 | Password strength meter | **ok** | `PasswordStrengthMeter` under the new-password field of `web/src/pages/ChangePasswordPage.tsx`: `web/src/lib/passwordStrength.test.ts`, `web/src/components/PasswordStrengthMeter.test.tsx`, `web/src/pages/ChangePasswordPage.test.tsx`. [resolved F14 GIT-238] |
+| V2.1.7 | Breached password check | **ok** | A list of common passwords is embedded in the binary (`services/identity/internal/password/common_passwords.txt`, no outbound call) and checked at user creation, bootstrap and password change, ignoring case and a trailing run of digits or symbols; a single repeated block is also refused: `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected`. It is a local filter, not a full breach corpus. [resolved F14 GIT-238] |
+| V2.1.2 | Passwords of 64+ accepted, over 128 denied | **ok** | New passwords are 12 to 128 characters (`MaxLength` in `services/identity/internal/password/password.go`, `maxLength: 128` in the contract): `services/identity/internal/password/password_test.go#TestValidatePolicy_Max128`. Login and the current password still accept up to 1024 so that an older, longer password can sign in and be replaced. [resolved F14 GIT-238] |
 # OWASP ASVS 4.0.3 level 2 checklist (internal review)
 
 Release rule V2 (M-09, GIT-219). Internal security review, no external penetration test.
@@ -15,17 +19,17 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 164 |
-| n/a | 43 |
-| problem | 52 |
+| ok | 167 |
+| n/a | 44 |
+| problem | 48 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237 and F12 (low) by GIT-238.
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low) and F14 (low) by GIT-238
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
 | V1 Architecture, Design and Threat Modeling | 28 | 0 | 10 |
-| V2 Authentication | 29 | 15 | 9 |
+| V2 Authentication | 32 | 16 | 5 |
 | V3 Session Management | 16 | 1 | 1 |
 | V4 Access Control | 7 | 1 | 1 |
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
@@ -387,7 +391,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F11 | medium | **Resolved (GIT-237).** No multi-factor authentication (V2.3.2, V4.3.1) | `services/identity/internal/auth/auth.go`<br>`services/identity/internal/secondfactor/secondfactor.go`<br>`services/identity/internal/totp/totp.go`<br>`services/identity/internal/migrate/sql/0004_totp.up.sql`<br>`services/identity/internal/httpapi/totp.go`<br>`services/gateway/internal/middleware/auth.go`<br>`api/openapi.yaml`<br>`web/src/pages/settings/SecurityPage.tsx` | `services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`<br>`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRequiredForAdminsOverHTTP`<br>`services/gateway/internal/httpserver/auth_test.go#TestAuth_TotpDaAttivare`<br>`web/src/pages/settings/SecurityPage.test.tsx#attiva il TOTP` |
 | F12 | low | **Resolved (GIT-238).** Session lifetime and management (V3.3.2, V3.3.4) | `services/identity/internal/sessions/sessions.go`<br>`api/openapi.yaml` | `services/identity/internal/auth/auth_integration_test.go#TestSessionIdleTimeout` *(new)*<br>`services/identity/internal/httpapi/httpapi_integration_test.go#TestListAndRevokeOwnSessions` *(new)* |
 | F13 | low | No notification on credential changes (V2.2.3, V2.3.3, V2.5.5, V2.8.5) | `services/identity/internal/users/users.go`<br>`services/core/internal/mailer/mailer.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user` *(new)* |
-| F14 | low | Password policy gaps (V2.1.2, V2.1.7, V2.1.8, V2.4.5) | `services/identity/internal/password/password.go`<br>`api/openapi.yaml`<br>`web/src/pages/ChangePasswordPage.tsx` | `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected` *(new)*<br>`services/identity/internal/password/password_test.go#TestValidatePolicy_Max128` *(new)* |
+| F14 | low | **Resolved (GIT-238).** Password policy gaps (V2.1.2, V2.1.7, V2.1.8, V2.4.5) | `services/identity/internal/password/password.go`<br>`api/openapi.yaml`<br>`web/src/pages/ChangePasswordPage.tsx` | `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected` *(new)*<br>`services/identity/internal/password/password_test.go#TestValidatePolicy_Max128` *(new)* |
 | F15 | low | Content-Type not enforced on JSON bodies (V13.1.5, V13.2.5) | `services/core/internal/httpserver/resources.go`<br>`services/identity/internal/httpapi/httpapi.go`<br>`services/gateway/internal/httpserver/router.go` | `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415` *(new)* |
 | F16 | low | CSRF relies on SameSite=Lax only (V3.4.4, V4.2.2, V13.2.3) | `services/identity/internal/auth/auth.go`<br>`services/gateway/internal/middleware/auth.go` | `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin` *(new)* |
 | F17 | low | Attachments: quota and malware scanning (V12.1.3, V12.4.2) | `services/core/internal/httpserver/attachments.go`<br>`services/core/internal/attachments/attachments.go` | `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_QuotaPerRepo` *(new)* |
@@ -437,7 +441,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **F13 (low) No notification on credential changes.** Password changes, admin password resets, new personal tokens, new SSH keys and token expiry produce no email or in-app notification, so a compromise goes unnoticed. Fix: a notification event for each, plus an expiry warning for tokens (also V2.3.3).
 
-**F14 (low) Password policy gaps.** No breached or common password list is checked (V2.1.7), the web UI has no strength meter (V2.1.8), the maximum length is 1024 instead of 128 (V2.1.2) and no pepper is applied (V2.4.5). Hashing is argon2id and the minimum is 12, so exposure is limited. Fix: embed a list of common passwords, a meter in the UI and align the length limit.
+**F14 (low, resolved by GIT-238) Password policy gaps.** No breached or common password list is checked (V2.1.7), the web UI has no strength meter (V2.1.8), the maximum length is 1024 instead of 128 (V2.1.2) and no pepper is applied (V2.4.5). Hashing is argon2id and the minimum is 12, so exposure is limited. Fix: embed a list of common passwords, a meter in the UI and align the length limit.
+
+**Resolution (GIT-238).** New passwords are 12 to 128 characters (login and the current password keep 1024 so existing longer passwords still work); an embedded list of common passwords and repeated blocks is refused with 422; `ChangePasswordPage` shows a strength meter written by hand (no dependency). The pepper (V2.4.5) was evaluated and excluded: see the V2.4.5 row for the reason.
 
 **F15 (low) Content-Type not enforced on JSON bodies.** Handlers decode the body as JSON whatever the `Content-Type`, so a `text/plain` form post is parsed. SameSite=Lax prevents the cross-site use today, but the check is a cheap second layer. Fix: reject non-JSON on routes with a JSON body with 415.
 

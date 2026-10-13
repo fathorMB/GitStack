@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button, ErrorAlert, FormField, Logo, PasswordInput } from '../components';
+import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
 import { changeOwnPassword, fetchSession, signOut } from '../lib/authApi';
 import { describeError, fieldErrors } from '../lib/http';
 import { useAuth } from '../routes/auth';
@@ -110,9 +111,10 @@ export function ChangePasswordPage() {
                 autoFocus
               />
             </FormField>
-            <FormField label="New password" hint="At least 12 characters." error={fields.newPassword}>
+            <FormField label="New password" hint="12 to 128 characters. A long passphrase works best." error={fields.newPassword}>
               <PasswordInput value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" />
             </FormField>
+            <PasswordStrengthMeter password={next} />
             <FormField label="Confirm new password" error={fields.confirm}>
               <PasswordInput
                 value={confirm}

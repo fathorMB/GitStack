@@ -466,6 +466,10 @@ export type UserList = {
 
 export type ChangePasswordInput = {
     currentPassword?: string;
+    /**
+     * Da 12 a 128 caratteri e non presente nell'elenco di password comuni incorporato (422 `newPassword`). La password attuale e il login accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga puo' ancora entrare e sostituirla.
+     *
+     */
     newPassword: string;
 };
 
@@ -2408,7 +2412,8 @@ export type CreateUserInputWritable = {
     email?: string;
     displayName?: string;
     /**
-     * Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     * Da 12 a 128 caratteri e non presente nell'elenco di password comuni (422 `password`). Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     *
      */
     password?: string;
     isAdmin?: boolean;

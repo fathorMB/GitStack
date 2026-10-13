@@ -437,7 +437,9 @@ type AddSshKeyInput struct {
 // ChangePasswordInput defines model for ChangePasswordInput.
 type ChangePasswordInput struct {
 	CurrentPassword *string `json:"currentPassword,omitempty"`
-	NewPassword     *string `json:"newPassword,omitempty"`
+
+	// NewPassword Da 12 a 128 caratteri e non presente nell'elenco di password comuni incorporato (422 `newPassword`). La password attuale e il login accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga puo' ancora entrare e sostituirla.
+	NewPassword *string `json:"newPassword,omitempty"`
 }
 
 // CheckPermissionInput defines model for CheckPermissionInput.
@@ -504,7 +506,7 @@ type CreateUserInput struct {
 	IsAdmin     *bool                `json:"isAdmin,omitempty"`
 	Kind        *CreateUserInputKind `json:"kind,omitempty"`
 
-	// Password Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+	// Password Da 12 a 128 caratteri e non presente nell'elenco di password comuni (422 `password`). Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
 	Password *string `json:"password,omitempty"`
 
 	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.

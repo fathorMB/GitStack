@@ -7432,10 +7432,13 @@ components:
         password:
           type: string
           minLength: 12
-          maxLength: 1024
+          maxLength: 128
           format: password
           writeOnly: true
-          description: Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+          description: >
+            Da 12 a 128 caratteri e non presente nell'elenco di password comuni
+            (422 `password`). Assente per gli agenti (accedono solo con token)
+            e per chi entra solo via OIDC.
         isAdmin:
           type: boolean
           default: false
@@ -7497,9 +7500,14 @@ components:
         newPassword:
           type: string
           minLength: 12
-          maxLength: 1024
+          maxLength: 128
           format: password
           writeOnly: true
+          description: >
+            Da 12 a 128 caratteri e non presente nell'elenco di password comuni
+            incorporato (422 `newPassword`). La password attuale e il login
+            accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga
+            puo' ancora entrare e sostituirla.
 
     CurrentSession:
       type: object
