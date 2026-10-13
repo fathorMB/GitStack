@@ -1,3 +1,5 @@
+| V13.2.5 | Explicit Content-Type check | **ok** | Same control as V13.1.5: the media type is parsed (`mime.ParseMediaType`), parameters such as `charset` are accepted, a request without a body is not affected, and multipart upload routes are not JSON routes. `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415`. [resolved F15 GIT-238] |
+| V13.1.5 | Unexpected content types rejected | **ok** | The gateway answers 415 `unsupported_media_type` on every route whose request body is declared only as `application/json` when a body arrives with another `Content-Type` (`JSONBody` in the generated `security.Routes`, checked in `middleware.Auth`): `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415`. Core and identity are reachable only through the gateway, so the check is not repeated in each handler. [resolved F15 GIT-238] |
 | V2.4.5 | Additional KDF iteration with a secret salt | n/a | Excluded on purpose (GIT-238, F14): no pepper is applied. The pepper would have to live in the same Secret store the identity pod already reads, next to the database credentials, so an attacker able to read the hash table through the service is likely able to read it too; it adds a key to rotate (rotating it invalidates every hash unless each one carries a key id and is rehashed at login), a new way to lock everyone out, and nothing else. Hashes are salted argon2id (V2.4.1 to V2.4.4), the length and common-password rules above bound offline guessing, and the second factor (F11) covers the rest. Revisit if the hash table starts to be stored apart from the service secrets. |
 | V2.1.8 | Password strength meter | **ok** | `PasswordStrengthMeter` under the new-password field of `web/src/pages/ChangePasswordPage.tsx`: `web/src/lib/passwordStrength.test.ts`, `web/src/components/PasswordStrengthMeter.test.tsx`, `web/src/pages/ChangePasswordPage.test.tsx`. [resolved F14 GIT-238] |
 | V2.1.7 | Breached password check | **ok** | A list of common passwords is embedded in the binary (`services/identity/internal/password/common_passwords.txt`, no outbound call) and checked at user creation, bootstrap and password change, ignoring case and a trailing run of digits or symbols; a single repeated block is also refused: `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected`. It is a local filter, not a full breach corpus. [resolved F14 GIT-238] |
@@ -19,12 +21,12 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 167 |
+| ok | 169 |
 | n/a | 44 |
-| problem | 48 |
+| problem | 46 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low) and F14 (low) by GIT-238
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low) and F15 (low) by GIT-238
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
@@ -40,7 +42,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V10 Malicious Code | 3 | 2 | 0 |
 | V11 Business Logic | 6 | 1 | 1 |
 | V12 Files and Resources | 10 | 1 | 4 |
-| V13 API and Web Service | 6 | 4 | 3 |
+| V13 API and Web Service | 8 | 4 | 1 |
 | V14 Configuration | 11 | 3 | 9 |
 
 ## V1 Architecture, Design and Threat Modeling
@@ -392,7 +394,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F12 | low | **Resolved (GIT-238).** Session lifetime and management (V3.3.2, V3.3.4) | `services/identity/internal/sessions/sessions.go`<br>`api/openapi.yaml` | `services/identity/internal/auth/auth_integration_test.go#TestSessionIdleTimeout` *(new)*<br>`services/identity/internal/httpapi/httpapi_integration_test.go#TestListAndRevokeOwnSessions` *(new)* |
 | F13 | low | No notification on credential changes (V2.2.3, V2.3.3, V2.5.5, V2.8.5) | `services/identity/internal/users/users.go`<br>`services/core/internal/mailer/mailer.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user` *(new)* |
 | F14 | low | **Resolved (GIT-238).** Password policy gaps (V2.1.2, V2.1.7, V2.1.8, V2.4.5) | `services/identity/internal/password/password.go`<br>`api/openapi.yaml`<br>`web/src/pages/ChangePasswordPage.tsx` | `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected` *(new)*<br>`services/identity/internal/password/password_test.go#TestValidatePolicy_Max128` *(new)* |
-| F15 | low | Content-Type not enforced on JSON bodies (V13.1.5, V13.2.5) | `services/core/internal/httpserver/resources.go`<br>`services/identity/internal/httpapi/httpapi.go`<br>`services/gateway/internal/httpserver/router.go` | `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415` *(new)* |
+| F15 | low | **Resolved (GIT-238).** Content-Type not enforced on JSON bodies (V13.1.5, V13.2.5) | `services/gateway/internal/middleware/auth.go`<br>`services/gateway/internal/security/gen/main.go`<br>`services/gateway/internal/security/security.go` | `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415` *(new)* |
 | F16 | low | CSRF relies on SameSite=Lax only (V3.4.4, V4.2.2, V13.2.3) | `services/identity/internal/auth/auth.go`<br>`services/gateway/internal/middleware/auth.go` | `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin` *(new)* |
 | F17 | low | Attachments: quota and malware scanning (V12.1.3, V12.4.2) | `services/core/internal/httpserver/attachments.go`<br>`services/core/internal/attachments/attachments.go` | `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_QuotaPerRepo` *(new)* |
 | F18 | low | Git ingest limits and object checks (V12.1.1) | `services/git/internal/receiverules/receiverules.go`<br>`services/git/internal/mirrorpull/mirrorpull.go`<br>`services/git/internal/smarthttp/smarthttp.go` | `services/git/internal/smarthttp/receive_test.go#TestPushFsckRejectsMalformedObjects` *(new)*<br>`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_SizeCap` *(new)* |
@@ -445,7 +447,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **Resolution (GIT-238).** New passwords are 12 to 128 characters (login and the current password keep 1024 so existing longer passwords still work); an embedded list of common passwords and repeated blocks is refused with 422; `ChangePasswordPage` shows a strength meter written by hand (no dependency). The pepper (V2.4.5) was evaluated and excluded: see the V2.4.5 row for the reason.
 
-**F15 (low) Content-Type not enforced on JSON bodies.** Handlers decode the body as JSON whatever the `Content-Type`, so a `text/plain` form post is parsed. SameSite=Lax prevents the cross-site use today, but the check is a cheap second layer. Fix: reject non-JSON on routes with a JSON body with 415.
+**F15 (low, resolved by GIT-238) Content-Type not enforced on JSON bodies.** Handlers decode the body as JSON whatever the `Content-Type`, so a `text/plain` form post is parsed. SameSite=Lax prevents the cross-site use today, but the check is a cheap second layer. Fix: reject non-JSON on routes with a JSON body with 415.
+
+**Resolution (GIT-238).** The route generator marks every operation whose body is declared only as `application/json` (`JSONBody`); `middleware.Auth` answers 415 `unsupported_media_type` for a request with a body and another media type, before authentication (nothing about the account is revealed). The check is only at the gateway, the single public entry: core and identity are not reachable from outside (NetworkPolicies, F8) and have many decode sites.
 
 **F16 (low) CSRF relies on SameSite=Lax only.** Cookie-authenticated state-changing requests are protected by `SameSite=Lax` only: there is no `Origin` or `Sec-Fetch-Site` check and the cookie has no `__Host-` prefix. Lax does not cover same-site subdomains or old browsers. Fix: reject cookie-authenticated unsafe methods whose `Origin` or `Sec-Fetch-Site` is foreign; rename the cookie with the prefix when served over HTTPS.
 

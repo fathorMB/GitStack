@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"mime"
 	"context"
 	"encoding/json"
 	"errors"
@@ -77,6 +78,12 @@ func Auth(cfg AuthConfig) Middleware {
 				return
 			}
 			route := m.Route
+			if route.JSONBody && !jsonContentType(r) {
+				setLogReason(r.Context(), "unsupported_media_type")
+				writeAuthError(w, http.StatusUnsupportedMediaType, "unsupported_media_type",
+					"Il corpo della richiesta deve essere application/json.", nil)
+				return
+			}
 			if route.Public {
 				next.ServeHTTP(w, r)
 				return
@@ -178,6 +185,18 @@ func Auth(cfg AuthConfig) Middleware {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// jsonContentType dice se una richiesta può proseguire su una rotta con corpo
+// JSON: senza corpo sempre sì; con un corpo il Content-Type deve essere
+// application/json (con o senza parametri come charset). Difesa in
+// profondità (F15): un form text/plain cross-site non arriva agli handler.
+func jsonContentType(r *http.Request) bool {
+	if r.ContentLength == 0 {
+		return true
+	}
+	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && mt == "application/json"
 }
 
 // headerSafe toglie i caratteri di controllo (un a capo in un header non
