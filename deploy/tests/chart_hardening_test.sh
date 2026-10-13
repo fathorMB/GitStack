@@ -103,7 +103,10 @@ echo "== NATS requires credentials"
 OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
 
 d="$(doc StatefulSet gitstack-nats)"
+# $(NATS_USER) e $(NATS_PASSWORD) sono letterali: sintassi Kubernetes del manifest, non shell.
+# shellcheck disable=SC2016
 expect_has "nats --user" "${d}" '--user=$(NATS_USER)'
+# shellcheck disable=SC2016
 expect_has "nats --pass" "${d}" '--pass=$(NATS_PASSWORD)'
 expect_has "nats env dal Secret" "${d}" "name: gitstack-nats-auth"
 
@@ -120,6 +123,8 @@ for c in core git; do
   d="$(doc Deployment "gitstack-${c}")"
   expect_has "${c}: NATS_USER" "${d}" "name: NATS_USER"
   expect_has "${c}: NATS_PASSWORD" "${d}" "name: NATS_PASSWORD"
+  # $(NATS_USER) e $(NATS_PASSWORD) sono letterali: sintassi Kubernetes del manifest, non shell.
+  # shellcheck disable=SC2016
   expect_has "${c}: URL con utente e password" "${d}" 'nats://$(NATS_USER):$(NATS_PASSWORD)@gitstack-nats:4222'
 done
 # Le variabili vanno dichiarate prima di essere espanse da $(VAR).
