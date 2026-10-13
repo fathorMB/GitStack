@@ -1571,14 +1571,16 @@ Actions e permessi di scrittura al `GITHUB_TOKEN`; i push li fa il board):
 |---|---|---|
 | `v0.0.0-test.1` | 2026-10-13 | Run [38400176636](https://github.com/fathorMB/gitstack-release-test/actions/runs/38400176636): il job `security` (bloccante sui tag) è rosso, quindi `registry`, `gs-binaries`, `admin-binary`, `sign` e `release` sono *skipped*. Il blocco è corretto: erano i finding già elencati in `docs/security-scans.md` (Go 1.26.2, pgx 5.7.6, immagine nginx 1.27, vitest 3 con tinypool, regex e gosec da motivare). Nessun difetto nella logica del job `release`, che però **non è stato ancora eseguito**. |
 | `v0.0.0-test.2` | 2026-10-13 | Run [38419075310](https://github.com/fathorMB/gitstack-release-test/actions/runs/38419075310): tutti i gate di `security` verdi (govulncheck, Trivy x5, pnpm audit, eslint, gosec), poi `registry` rosso con `denied: permission_denied: write_package`. Causa: le immagini vanno in `ghcr.io/<owner>/gitstack-<servizio>` e un repo di prova dello **stesso owner** (`fathorMB`) punta ai package veri di GitStack, che il `GITHUB_TOKEN` di un altro repo non può scrivere (ed è giusto così: la prova non deve toccarli). Correzione: variabile di repository `IMAGE_NAMESPACE` (vedi sotto). |
-| `v0.0.0-test.3` | da fare | Con `IMAGE_NAMESPACE=release-test` sul repo di prova. |
+| `v0.0.0-test.3` | 2026-10-13 | Run [38423177002](https://github.com/fathorMB/gitstack-release-test/actions/runs/38423177002): `security` verde, ma `registry` rosso con `permission_denied: The requested installation does not exist`: la variabile `IMAGE_NAMESPACE=release-test` **sostituiva** l'owner (immagine `ghcr.io/release-test/gitstack-core`, un owner inesistente). In più `admin-binary` rosso con `ReleaseAsset.name already exists`: il push di `main` e quello del tag sullo stesso commit avviano due run che creano e caricano nella stessa release `sha-<commit>` in parallelo. Correzioni: `IMAGE_NAMESPACE` si imposta al percorso completo (`fathormb/release-test`), e i job `registry`, `admin-binary`, `gs-binaries` e `sign` hanno un gruppo `concurrency` per commit (si mettono in fila, senza cancellare). |
+| `v0.0.0-test.4` | da fare | |
 
 **Repo di prova dello stesso owner.** Le immagini si chiamano
 `<registry>/<owner>/gitstack-<servizio>`: su `fathorMB/gitstack-release-test`
 coinciderebbero con i package veri. Sul repo di prova si imposta la variabile di
-repository `IMAGE_NAMESPACE` (per esempio `release-test`): i job `registry`,
+repository `IMAGE_NAMESPACE`, il **percorso completo** al posto di `<owner>` (per
+esempio `fathormb/release-test`, minuscolo): i job `registry`,
 `sign` e `release` usano `${{ vars.IMAGE_NAMESPACE || github.repository_owner }}`
-e le immagini finiscono in `ghcr.io/<owner>/release-test/gitstack-<servizio>`,
+e le immagini finiscono in `ghcr.io/fathormb/release-test/gitstack-<servizio>`,
 cancellabili senza toccare i package di produzione. Sul repo vero la variabile
 non esiste e non cambia nulla. Il job `install` (`sha-<commit>`) non la usa e
 sul repo di prova non è significativo.
