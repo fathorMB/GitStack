@@ -345,15 +345,11 @@ function MirrorForm(props: {
 
   // Validità del form: URL e username obbligatori per nuovo e modificato.
   // Il token è richiesto solo per un nuovo push mirror (GIT-180).
-  function normalizeUrl(u: string): string {
-    return u.trim().toLowerCase().replace(/\/$/, '').replace(/\.git$/, '');
-  }
 
-  // P5: confronto URL con l'origine del pull mirror.
-  // isBlocked = URL coincide + pull mirror attivo (non stopped).
+  // P5: bloccato = esiste un mirror in pull con stato diverso da stopped.
   // stopped → tappa 2: mostra messaggio informativo, non blocca.
-  const isBlocked = mirror === null && pullOrigin !== null && pullMirrorState !== 'stopped' && normalizeUrl(url) === normalizeUrl(pullOrigin);
-  const isStopped = mirror === null && pullOrigin !== null && pullMirrorState === 'stopped' && normalizeUrl(url) === normalizeUrl(pullOrigin);
+  const isBlocked = pullOrigin !== null && pullMirrorState !== 'stopped';
+  const isStopped = pullOrigin !== null && pullMirrorState === 'stopped';
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
       <div className="card-h">{mirror ? 'Edit mirror' : 'Add mirror'}</div>

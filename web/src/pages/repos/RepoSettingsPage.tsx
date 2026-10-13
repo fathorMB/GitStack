@@ -6,14 +6,12 @@ import { Button, Checkbox, ConfirmDialog, ErrorAlert, FormField, TextInput, useT
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
-import { useLoad } from '../../lib/useLoad';
 import { RepoMirrorsSection } from './RepoMirrorsSection';
 import { PullMirrorSection } from './PullMirrorSection';
 import { EnablePullMirrorSection } from './EnablePullMirrorSection';
 import { RepoHeader } from './RepoHeader';
 import { isRepoAdmin, loadMe } from './repoAdmin';
-import { fetchPullMirror } from '../../lib/pullMirrorsApi';
-import type { PullMirror } from '../../lib/pullMirrorsApi';
+import { useLoad } from '../../lib/useLoad';
 
 // Impostazioni del repo, sezione General (mockup 18): solo per chi ha admin.
 // Su un repo archiviato (R10) tutto e' in sola lettura tranne «Unarchive».
@@ -56,6 +54,8 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
   const { toast } = useToast();
   const navigate = useNavigate();
   const readOnly = repo.archived;
+
+  // (onChange gestisce l'aggiornamento di repo.mirror via PullMirrorOrEnable)
   const [description, setDescription] = useState(repo.description);
   const [visibility, setVisibility] = useState<RepoVisibility>(repo.visibility);
   const [branch, setBranch] = useState(repo.defaultBranch);
@@ -202,9 +202,11 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
 
       <PullMirrorOrEnable
         owner={repo.owner.name}
-        repo={repo.name}
+        repoName={repo.name}
+        repo={repo}
         hasMirror={!!repo.mirror}
         readOnly={readOnly}
+        onChange={onChange}
       />
 
       <section aria-label="Danger zone">
@@ -274,46 +276,41 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
 }
 
 /**
- * Mostra il PullMirrorSection se il mirror è attivo/in pausa,
- * o EnablePullMirrorSection se il mirror è spento.
+ * Mostra il PullMirrorSection se il repo ha già un pull mirror (hasMirror),
+ * o EnablePullMirrorSection se non ce'è ancora.
+ * PullMirrorSection gestisce il proprio fetch e il proprio stato.
  */
 function PullMirrorOrEnable({
   owner,
+  repoName,
   repo,
   hasMirror,
   readOnly,
+  onChange,
 }: {
   owner: string;
-  repo: string;
+  repoName: string;
+  repo: Repository;
   hasMirror: boolean;
   readOnly: boolean;
+  onChange?: (r: Repository) => void;
 }) {
-  const { data: mirror, setData } = useLoad(() => fetchPullMirror(owner, repo));
-
-  function handleSuccess(m: PullMirror) {
-    setData(m);
-  }
-
-  function handleStopped() {
-    setData(null);
-  }
-
   if (readOnly) return null;
 
-  // Se il repo ha già un mirror, lo mostra. Con initialData passato (undefined quando
-  // mirror è null) PullMirrorSection gestisce il proprio fetch. initialData con un
-  // oggetto PullMirror evita il fetch se il mirror è stato appena attivato in questa pagina.
   if (hasMirror) {
     return (
       <PullMirrorSection
-        key={`pm-${mirror?.id ?? 'init'}`}
+        key={`${owner}/${repoName}`}
         owner={owner}
-        repo={repo}
-        initialData={mirror ?? undefined}
-        onStopped={handleStopped}
+        repo={repoName}
+        onStopped={() => {
+          onChange?.({ ...repo, mirror: null });
+        }}
       />
     );
   }
 
-  return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
+  return <EnablePullMirrorSection owner={owner} repo={repoName} onSuccess={() => {
+    onChange?.({ ...repo, mirror: { origin: '' } });
+  }} />;
 }

@@ -22,7 +22,20 @@ vi.mock('../../lib/mirrorsApi', () => ({
   syncMirror: vi.fn(),
 }));
 vi.mock('../../lib/pullMirrorsApi', () => ({
-  fetchPullMirror: vi.fn().mockResolvedValue(null),
+  fetchPullMirror: vi.fn().mockResolvedValue({
+    id: 'pm1',
+    origin: 'https://github.com/acme/external.git',
+    state: 'in_sync',
+    intervalSeconds: 3600,
+    lastSyncedAt: new Date().toISOString(),
+    nextSyncAt: null,
+    pausedAt: null,
+    stoppedAt: null,
+    stopped: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    divergedRefs: [],
+  }),
 }));
 vi.mock('../../lib/webhooksApi', async (orig) => ({
   ...(await orig<typeof import('../../lib/webhooksApi')>()),

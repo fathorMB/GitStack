@@ -62,7 +62,7 @@ function NotificationRow({
       {isMirror ? (
         <span className="avatar av-sys" aria-hidden="true">
           <svg className="icon">
-            {n.event === 'pull_mirror.diverged' ? <GitFork size={16} /> : <CircleDot size={16} style={{ margin: 4 }} />}
+            {n.event === 'pull_mirror.diverged' || n.event === 'pull_mirror.stale' ? <GitFork size={16} /> : <CircleDot size={16} style={{ margin: 4 }} />}
           </svg>
         </span>
       ) : actor ? (
@@ -77,9 +77,13 @@ function NotificationRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div>
           {isMirror ? (
-            <Link to={`/${repo}/settings`} style={{ fontWeight: 600, color: 'var(--text)' }}>
-              {n.summary}
-            </Link>
+            repo ? (
+              <Link to={`/${repo}/settings`} style={{ fontWeight: 600, color: 'var(--text)' }}>
+                {n.summary}
+              </Link>
+            ) : (
+              <span style={{ fontWeight: 600, color: 'var(--text)' }}>{n.summary}</span>
+            )
           ) : (
             <>
               {actor ? (

@@ -18,9 +18,9 @@ describe('useLoad', () => {
   it('loading false al mount con initial (dati già pronti)', async () => {
     const fn = vi.fn();
     const { result } = renderHook(() => useLoad(fn, 'initial'));
+    // Con initial, loading è false e non fa il fetch.
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBe('initial');
-    // La funzione non viene richiamata.
     expect(fn).not.toHaveBeenCalled();
   });
 });
