@@ -264,10 +264,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 func parsePositiveInt32(v string) (int32, error) {
 	var n int64
 	_, err := fmt.Sscanf(strings.TrimSpace(v), "%d", &n)
-	if err != nil || n <= 0 {
+	if err != nil || n <= 0 || n > 1<<31-1 {
 		return 0, fmt.Errorf("valore non valido: %q", v)
 	}
-	return int32(n), nil
+	return int32(n), nil //nolint:gosec // G115: n e' limitato a MaxInt32 sopra
 }
 
 // loadOIDC legge le variabili del login OIDC. Con il file di configurazione

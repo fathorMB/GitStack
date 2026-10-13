@@ -1,6 +1,6 @@
 module github.com/fathorMB/GitStack/services/gateway
 
-go 1.26.2
+go 1.26.9
 
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 

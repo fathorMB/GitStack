@@ -1564,6 +1564,20 @@ sorgente in `<mirror>/gitstack/source/vX.Y.Z.sha`.
 `v0.0.0-test.N` su un fork o un repository di prova (`git tag v0.0.0-test.1 &&
 git push <fork> v0.0.0-test.1`). Il tag `v1.0.0-rc.1` lo decide il board.
 
+**Prove fatte** (repo di prova `fathorMB/gitstack-release-test`, pubblico, con
+Actions e permessi di scrittura al `GITHUB_TOKEN`; i push li fa il board):
+
+| Tag | Data | Esito |
+|---|---|---|
+| `v0.0.0-test.1` | 2026-10-13 | Run [38400176636](https://github.com/fathorMB/gitstack-release-test/actions/runs/38400176636): il job `security` (bloccante sui tag) è rosso, quindi `registry`, `gs-binaries`, `admin-binary`, `sign` e `release` sono *skipped*. Il blocco è corretto: erano i finding già elencati in `docs/security-scans.md` (Go 1.26.2, pgx 5.7.6, immagine nginx 1.27, vitest 3 con tinypool, regex e gosec da motivare). Nessun difetto nella logica del job `release`, che però **non è stato ancora eseguito**. |
+| `v0.0.0-test.2` | da fare | Dopo la correzione dei finding (Go 1.26.9, pgx 5.9.2, nginx-unprivileged 1.30, vitest 4.1.11, eccezioni motivate in `.github/security-exceptions.json`). |
+
+**Prima di ogni prova**: il tag parte da un commit che ha il gate di sicurezza
+verde (`workflow_dispatch` di `security.yml` con `release: true` sul repo di
+prova), altrimenti il run si ferma ai gate e non arriva a `release`. Un
+`main` fermo a un commit vecchio non basta: i database di govulncheck, Trivy e
+pnpm audit cambiano ogni giorno.
+
 ### Verifica automatica in `install.sh` e `gitstack upgrade` (GIT-209)
 
 Binario, chart e immagini si verificano da soli, a ogni installazione e a ogni

@@ -58,7 +58,7 @@ RUN bash scripts/build-gs-dist.sh /out "${VERSION}"
 # (nginxinc/nginx-unprivileged: utente "nginx", porta >1024, nessuna
 # directory che richieda root in scrittura): stesso principio dei binari
 # distroless "nonroot" di gateway e core, adattato a un server statico.
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.30-alpine
 
 COPY web/deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/web/dist /usr/share/nginx/html

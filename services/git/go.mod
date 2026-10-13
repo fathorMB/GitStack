@@ -1,6 +1,6 @@
 module github.com/fathorMB/GitStack/services/git
 
-go 1.26.2
+go 1.26.9
 
 require golang.org/x/crypto v0.57.0
 

@@ -1,6 +1,6 @@
 module github.com/fathorMB/GitStack/cli
 
-go 1.26.2
+go 1.26.9
 
 require (
 	github.com/fathorMB/GitStack/client/go v0.0.0-20261006192302-f307180f2163
