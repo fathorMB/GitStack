@@ -347,7 +347,7 @@ jobs:
         run: |
           set -euo pipefail
           ./deploy/ci/install-e2e.sh verify-k3s "${K3S_FROM}"
-          sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.server_version == $v'
+          sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.report.server_version == $v'
 
       - name: Dati di prova (login admin, utente, token, repo, push, issue)
         run: ./deploy/ci/install-e2e.sh seed
@@ -396,7 +396,7 @@ jobs:
           set -euo pipefail
           ./deploy/ci/install-e2e.sh wait-healthy 600
           ./deploy/ci/install-e2e.sh verify-k3s "${K3S_TO}"
-          sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.server_version == $v and .api_healthy == true'
+          sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.report.server_version == $v and .report.api_healthy == true'
           ./deploy/ci/install-e2e.sh verify-seed --push
 
       - name: gitstack backup (cifrato)
@@ -425,7 +425,7 @@ jobs:
         run: |
           set -euo pipefail
           ./deploy/ci/install-e2e.sh verify-seed --push
-          sudo gitstack status --json | jq -e '.api_healthy == true'
+          sudo gitstack status --json | jq -e '.report.api_healthy == true'
 
       - name: Diagnostica
         if: failure()

@@ -12,7 +12,8 @@
 #                              deploy/k3s-version (aggiornamento di k3s, N10).
 #   older-k3s                  Una patch di k3s precedente a quella dichiarata
 #                              in deploy/k3s-version (esiste su GitHub).
-#   wait-healthy [secondi]     Attende https://$E2E_HOST/api/healthz = ok.
+#   wait-healthy [secondi]     Attende https://$E2E_HOST/api/healthz = ok, il rollout di
+#                              tutti i Deployment/StatefulSet e /downloads/ca.crt = 200.
 #   seed                       Admin (cambio password obbligatorio), utente,
 #                              token, repo con un commit spinto via HTTPS e
 #                              una issue. Stato in $E2E_STATE_DIR.
@@ -117,11 +118,31 @@ wait_healthy() {
     body="$(curl -sk -m 10 "$(base_url)/api/healthz" || true)"
     if printf '%s' "${body}" | grep -q '"status" *: *"ok"'; then
       log "healthz ok"
+      break
+    fi
+    sleep 5
+  done
+  printf '%s' "${body}" | grep -q '"status" *: *"ok"' || fail "/api/healthz non ok dopo ${timeout}s"
+  # Dopo un restore o un upgrade i pod (web in particolare) si riavviano: il
+  # gateway può essere sano mentre /downloads/ca.crt dà 502.
+  local remaining kind res
+  for kind in deployment statefulset; do
+    remaining=$((deadline - SECONDS))
+    [ "${remaining}" -ge 10 ] || remaining=10
+    # Nessuna risorsa: rollout status senza nomi non fallisce con -l.
+    "${KUBECTL[@]}" -n default rollout status "${kind}" -l app.kubernetes.io/instance --timeout="${remaining}s"       || fail "rollout dei ${kind} non finito entro ${timeout}s"
+  done
+  local code=""
+  while [ "${SECONDS}" -lt "${deadline}" ]; do
+    code="$(curl -sk -m 10 -o /dev/null -w '%{http_code}' "$(base_url)/downloads/ca.crt" || true)"
+    if [ "${code}" = "200" ]; then
+      log "rollout completo e /downloads/ca.crt 200"
       return 0
     fi
     sleep 5
   done
-  fail "/api/healthz non ok dopo ${timeout}s"
+  res="${code:-nessuna risposta}"
+  fail "/downloads/ca.crt: HTTP ${res} dopo ${timeout}s"
 }
 
 fetch_ca() {
@@ -304,7 +325,7 @@ verify_k3s() {
   got="$("${KUBECTL[@]}" version -o json | jq -r .serverVersion.gitVersion)"
   [ "${got}" = "${want}" ] || fail "kubectl version (server): ${got}, atteso ${want}"
   status="$(sudo gitstack status --json)"
-  got="$(printf '%s' "${status}" | jq -r .k3s_version)"
+  got="$(printf '%s' "${status}" | jq -r .report.k3s_version)"
   [ "${got}" = "${want}" ] || fail "gitstack status --json k3s_version: ${got}, atteso ${want}"
   log "k3s ${want}: kubectl version e gitstack status --json concordano"
 }
