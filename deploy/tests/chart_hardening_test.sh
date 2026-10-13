@@ -76,6 +76,15 @@ for c in gateway core identity git web; do
   expect_has "${c}: runAsNonRoot" "${d}" "runAsNonRoot: true"
 done
 
+# I pod di prova che si fingono core (CI k3d, e2e) devono ricevere anche
+# allow-dns, che seleziona per part-of: senza quella label il DNS è chiuso.
+REPO="$(cd "${HERE}/../.." && pwd)"
+for f in .github/workflows/ci.yml deploy/test-vm/e2e/remote.sh; do
+  probe_labels="$(grep -h 'app.kubernetes.io/name=core,' "${REPO}/${f}" | tr -d '')"
+  expect_has "${f}: label di prova con part-of" "${probe_labels}" "app.kubernetes.io/part-of=gitstack"
+done
+expect_has "allow-dns seleziona per part-of" "$(doc NetworkPolicy gitstack-allow-dns)" "app.kubernetes.io/part-of: gitstack"
+
 # Spenta, il chart non crea policy.
 OUT="$(render --set networkPolicy.enabled=false)"
 expect_eq "networkPolicy.enabled=false" "$(count '^kind: NetworkPolicy$')" "0"

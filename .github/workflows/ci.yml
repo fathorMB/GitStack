@@ -1427,7 +1427,7 @@ jobs:
           }
           probe np-any-nats "app=np-probe" sh -c 'nc -z -w3 gitstack-nats 4222'
           probe np-any-pg "app=np-probe" sh -c 'nc -z -w3 gitstack-postgres 5432'
-          probe np-core-nats "app.kubernetes.io/name=core,app.kubernetes.io/instance=gitstack" \
+          probe np-core-nats "app.kubernetes.io/name=core,app.kubernetes.io/instance=gitstack,app.kubernetes.io/part-of=gitstack" \
             sh -c 'sleep 1 | nc -w3 gitstack-nats 4222; true'
           fail=0
           for n in np-any-nats np-any-pg; do

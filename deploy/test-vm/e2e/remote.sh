@@ -177,7 +177,7 @@ jetstream_count() {
   # il JSON si legge da 'kubectl logs' (solo stdout del container). Il pod
   # viene cancellato dal trap EXIT dello script, anche in caso di errore.
   if ! k3s_kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
-      --labels="app.kubernetes.io/name=core,app.kubernetes.io/instance=${release}" \
+      --labels="app.kubernetes.io/name=core,app.kubernetes.io/instance=${release},app.kubernetes.io/part-of=gitstack" \
       --image="${NATS_BOX_IMAGE}" --command -- \
       nats stream info "${stream}" --server "nats://${nats_user}:${nats_pass}@${nats_addr}" --json \
       >/dev/null 2>"${err_file}"; then

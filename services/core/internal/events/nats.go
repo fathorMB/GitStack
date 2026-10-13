@@ -3,6 +3,8 @@ package events
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 
 	pkgevents "github.com/fathorMB/GitStack/pkg/events"
 	"github.com/fathorMB/GitStack/pkg/events/testevent"
@@ -10,6 +12,29 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )
+
+// redactURL toglie utente e password da un URL NATS prima di metterlo in un
+// errore o in un log (ASVS V7.1.1): le credenziali stanno nell'URL.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "<URL NATS non valido>"
+	}
+	u.User = nil
+	return u.String()
+}
+
+// redactErr è il testo di err senza le credenziali dell'URL raw: nats.go (e
+// url.Parse) possono ripetere l'URL intero nel messaggio.
+func redactErr(raw string, err error) string {
+	msg := err.Error()
+	if u, perr := url.Parse(raw); perr == nil && u.User != nil {
+		if pw, ok := u.User.Password(); ok && pw != "" {
+			msg = strings.ReplaceAll(msg, pw, "***")
+		}
+	}
+	return strings.ReplaceAll(msg, raw, redactURL(raw))
+}
 
 // NATSPublisher adatta pkg/events.Publisher (libreria condivisa di GIT-6)
 // all'interfaccia Publisher usata da core: publish con conferma sincrona di
@@ -36,7 +61,7 @@ func NewNATSPublisher(ctx context.Context, url string) (*NATSPublisher, *nats.Co
 	// non deve spegnere per sempre la pubblicazione (l'outbox ritenta).
 	nc, err := nats.Connect(url, nats.MaxReconnects(-1))
 	if err != nil {
-		return nil, nil, fmt.Errorf("connessione a NATS %q non riuscita: %w", url, err)
+		return nil, nil, fmt.Errorf("connessione a NATS %q non riuscita: %s", redactURL(url), redactErr(url, err))
 	}
 
 	js, err := jetstream.New(nc)
