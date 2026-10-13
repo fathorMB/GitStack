@@ -132,3 +132,15 @@ segreti dei webhook (`m06Leak`).
 `deploy/test-vm/e2e.ps1` ha il passo e5: utente di prova con token e chiave SSH, repo creato via API, push e clone
 via HTTPS (ingress) e via SSH sulla porta 2222 della VM, pull incrociato e clone anonimo negato. Vedi
 `deploy/test-vm/README.md`.
+
+## Fumo di carico V3 (`smoke_load_integration_test.go`, `TestCaricoFumo`, GIT-220)
+
+Cinque persone (HTTPS e SSH alternati) e tre agenti `gs` (HTTPS) lavorano insieme
+sullo stesso repo per `GITSTACK_SMOKE_DURATION` (senza, il test è saltato): clone,
+push sul ramo proprio e su `main` (pull --rebase e ripetizione sul non-fast-forward),
+fetch, API, issue e commenti. Due proxy contatori (gateway e servizio git) contano le
+risposte 5xx. Esito: zero 5xx, zero errori, nessun push perso (ogni sha riuscito è
+su `main`, commit = seed + push), nessuna corsa sui ref (ramo di ogni lavoratore
+allo sha dell'ultimo push, `git fsck`, numeri di issue unici e totali coerenti).
+Le latenze sono solo nel log. Comando locale e job di CI: `docs/operations.md`,
+`.github/workflows/smoke.yml`.
