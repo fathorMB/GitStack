@@ -1,7 +1,18 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PullMirrorBadge, PullMirrorInfoBanner } from './PullMirrorBanner';
 import type { PullMirror } from '@gitstack/api-client';
+
+// Orologio finto per tutto il file: le fixture hanno date fisse e il banner
+// confronta lastSyncedAt con Date.now() (soglia 24h).
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-12T14:00:00Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function pullMirror(over: Partial<PullMirror> = {}): PullMirror {
   return {
@@ -92,8 +103,6 @@ describe('PullMirrorInfoBanner', () => {
   });
 
   it('danger banner for stopped mirror', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime('2026-10-12T14:00:00Z');
     render(
       <PullMirrorInfoBanner
         mirror={pullMirror({
@@ -107,7 +116,6 @@ describe('PullMirrorInfoBanner', () => {
     expect(alert).toHaveClass('alert-danger');
     expect(alert).toHaveTextContent('No successful update for 30 hours.');
     expect(alert).toHaveTextContent('authentication failed (401)');
-    vi.useRealTimers();
   });
 
   it('danger banner without lastSyncedAt', () => {
