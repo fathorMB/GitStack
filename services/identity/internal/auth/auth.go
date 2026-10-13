@@ -30,8 +30,25 @@ import (
 	"github.com/google/uuid"
 )
 
-// CookieName è il nome del cookie di sessione.
+// CookieName è il nome storico del cookie di sessione (servizio in HTTP).
 const CookieName = "gst_session"
+
+// HostCookieName è il nome con prefisso __Host- usato quando la richiesta è
+// HTTPS (F16, V3.4.4): il browser lo accetta solo Secure, Path=/ e senza
+// Domain, quindi un sottodominio non può impostarlo.
+const HostCookieName = "__Host-gst_session"
+
+// SessionValue legge il valore del cookie di sessione: prima quello con
+// prefisso __Host-, poi il nome storico (le sessioni aperte prima del cambio
+// restano valide).
+func SessionValue(r *http.Request) (string, bool) {
+	for _, name := range []string{HostCookieName, CookieName} {
+		if c, err := r.Cookie(name); err == nil && c.Value != "" {
+			return c.Value, true
+		}
+	}
+	return "", false
+}
 
 // ErrInvalidCredentials è l'unica risposta a ogni tipo di credenziale
 // sbagliata (401 invalid_credentials).
@@ -236,10 +253,14 @@ func (s *Service) Session(ctx context.Context, sessionValue string) (Current, er
 // SessionCookie costruisce il cookie di sessione: HttpOnly, SameSite=Lax,
 // Path=/, con scadenza uguale a quella della sessione. Secure solo se la
 // richiesta originale è HTTPS (secure): su HTTP il browser scarterebbe il
-// cookie e il login non funzionerebbe.
+// cookie e il login non funzionerebbe. Con secure il nome è HostCookieName.
 func SessionCookie(value string, expires time.Time, secure bool) *http.Cookie {
+	name := CookieName
+	if secure {
+		name = HostCookieName
+	}
 	return &http.Cookie{
-		Name:     CookieName,
+		Name:     name,
 		Value:    value,
 		Path:     "/",
 		Expires:  expires.UTC(),
@@ -249,10 +270,38 @@ func SessionCookie(value string, expires time.Time, secure bool) *http.Cookie {
 	}
 }
 
+// SessionCookies sono i cookie da impostare dopo un login: quello di sessione e,
+// in HTTPS, la cancellazione del cookie storico senza prefisso, così il browser
+// non tiene due sessioni.
+func SessionCookies(value string, expires time.Time, secure bool) []*http.Cookie {
+	cs := []*http.Cookie{SessionCookie(value, expires, secure)}
+	if secure {
+		cs = append(cs, clearNamed(CookieName, secure))
+	}
+	return cs
+}
+
+// ClearCookies sono i cookie che cancellano la sessione (logout): in HTTPS
+// entrambi i nomi, perché una sessione aperta prima del cambio ha il nome
+// storico.
+func ClearCookies(secure bool) []*http.Cookie {
+	if secure {
+		return []*http.Cookie{clearNamed(HostCookieName, true), clearNamed(CookieName, true)}
+	}
+	return []*http.Cookie{clearNamed(CookieName, false)}
+}
+
 // ClearCookie costruisce il cookie che cancella quello di sessione (logout).
 func ClearCookie(secure bool) *http.Cookie {
+	if secure {
+		return clearNamed(HostCookieName, true)
+	}
+	return clearNamed(CookieName, false)
+}
+
+func clearNamed(name string, secure bool) *http.Cookie {
 	return &http.Cookie{
-		Name:     CookieName,
+		Name:     name,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,

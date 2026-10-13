@@ -21,19 +21,19 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 169 |
+| ok | 172 |
 | n/a | 44 |
-| problem | 46 |
+| problem | 43 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low) and F15 (low) by GIT-238
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low), F15 (low) and F16 (low) by GIT-238
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
 | V1 Architecture, Design and Threat Modeling | 28 | 0 | 10 |
 | V2 Authentication | 32 | 16 | 5 |
-| V3 Session Management | 16 | 1 | 1 |
-| V4 Access Control | 7 | 1 | 1 |
+| V3 Session Management | 17 | 1 | 0 |
+| V4 Access Control | 8 | 1 | 0 |
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
 | V6 Stored Cryptography | 8 | 2 | 3 |
 | V7 Error Handling and Logging | 6 | 0 | 6 |
@@ -42,7 +42,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V10 Malicious Code | 3 | 2 | 0 |
 | V11 Business Logic | 6 | 1 | 1 |
 | V12 Files and Resources | 10 | 1 | 4 |
-| V13 API and Web Service | 8 | 4 | 1 |
+| V13 API and Web Service | 9 | 4 | 0 |
 | V14 Configuration | 11 | 3 | 9 |
 
 ## V1 Architecture, Design and Threat Modeling
@@ -162,7 +162,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V3.4.1 | Secure attribute | ok | Set whenever the request is HTTPS through a trusted proxy: `services/identity/internal/httpapi/httpapi_integration_test.go#TestCookieSecureDaProxyFidato`. |
 | V3.4.2 | HttpOnly attribute | ok | `services/identity/internal/auth/auth.go#SessionCookie`. |
 | V3.4.3 | SameSite attribute | ok | `SameSite=Lax` in `services/identity/internal/auth/auth.go#SessionCookie`. |
-| V3.4.4 | __Host- cookie prefix | **problem** | The cookie is named `gst_session` without the prefix. [F16] |
+| V3.4.4 | __Host- cookie prefix | **ok** | Served over HTTPS (directly or through a trusted proxy) the session cookie is `__Host-gst_session`: Secure, `Path=/`, no `Domain`; the unprefixed cookie is cleared at login and logout, and sessions opened with the old name stay valid (gateway and identity read both): `services/identity/internal/httpapi/httpapi_integration_test.go#TestCookieSecureDaProxyFidato`, `services/gateway/internal/middleware/csrf_test.go#TestSessionCookieBothNames`. Over plain HTTP (CI e2e, local development) the browser would drop a `Secure` cookie, so the name stays `gst_session`. [resolved F16 GIT-238]
 | V3.4.5 | Cookie path | ok | `Path=/` is the narrowest path since GitStack owns the whole host. |
 | V3.5.1 | Revoke OAuth tokens of linked apps | n/a | GitStack is only an OIDC client and exposes no OAuth provider or third-party app grants. |
 | V3.5.2 | Session tokens rather than static API secrets | ok | The web uses session cookies; personal tokens exist for Git and CLI only, with mandatory expiry, scopes and revocation (`services/identity/internal/apitokens/apitokens_integration_test.go#TestRevokeAndList`). |
@@ -178,7 +178,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V4.1.3 | Least privilege | ok | A personal token cannot create tokens (own or an agent's) with scopes it does not grant: 403 `insufficient_scope`, checked with `pkg/scopes.Grants`; browser sessions keep full scopes (resolved F1, GIT-227): `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateToken_ScopesNotBeyondCaller`, `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateAgentToken_ScopesNotBeyondCaller`. |
 | V4.1.5 | Access control fails securely | ok | `services/gateway/internal/httpserver/auth_test.go#TestAuth_IdentityGiuNonAprePerErrore`, `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_SenzaCheckerEPermessoRichiesto503`. |
 | V4.2.1 | IDOR | ok | Denied and non-existent resources look the same: `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_NegatoUgualeSeLaRisorsaNonEsiste`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/risorsa_di_altra_organizzazione`, `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_IssueNascosta`. |
-| V4.2.2 | Anti-CSRF mechanism | **problem** | Cookie-authenticated API relies only on SameSite=Lax: no Origin or Fetch-Metadata check, no token. [F16] |
+| V4.2.2 | Anti-CSRF mechanism | **ok** | The gateway answers 403 `cross_site_request` to a non-safe method authenticated by the session cookie whose `Sec-Fetch-Site` is not `same-origin`/`none` or whose `Origin` is not the request host: `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin`. Requests without browser headers (CLI, curl) and Bearer-token calls are not affected. SameSite=Lax stays as the first layer. [resolved F16 GIT-238]
 | V4.3.1 | Multi-factor for administrative interfaces | **ok** | `GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS=true` makes TOTP mandatory for administrators: until enrolled every call answers 403 `totp_enrollment_required` (`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRequiredForAdminsOverHTTP`, `services/gateway/internal/httpserver/auth_test.go#TestAuth_TotpDaAttivare`). [resolved F11 GIT-237] |
 | V4.3.2 | No directory browsing | ok | nginx has no autoindex and only serves the built SPA and explicit downloads (`web/src/lib/nginxConf.test.ts#sta prima del fallback SPA`). |
 | V4.3.3 | Step-up or segregation of duties | n/a | No high-value transactional functions; destructive operations ask to retype the name (G8). |
@@ -338,7 +338,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V13.1.5 | Unexpected content types rejected | **problem** | JSON bodies are decoded without checking `Content-Type`; no 415 in core, identity or gateway. [F15] |
 | V13.2.1 | HTTP methods match the action | ok | Only contract operations are routed: `services/gateway/internal/httpserver/auth_test.go#TestAuth_TabellaDiRotte`. |
 | V13.2.2 | Schema validation before accepting input | ok | Typed decode, unknown fields rejected, per-field validation: `services/identity/internal/apitokens/apitokens_integration_test.go#TestCreateValidation`, `services/core/internal/httpserver/issues_integration_test.go#TestIssues_CreazioneRegoleI3EValidazione`. |
-| V13.2.3 | CSRF protection for cookie-authenticated REST | **problem** | See V4.2.2. [F16] |
+| V13.2.3 | CSRF protection for cookie-authenticated REST | **ok** | See V4.2.2, plus the 415 on non-JSON bodies (V13.1.5) that stops a `text/plain` form post. `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin`. [resolved F16 GIT-238]
 | V13.2.5 | Explicit Content-Type check | **problem** | Same gap as V13.1.5. [F15] |
 | V13.2.6 | Headers and payload trustworthy | ok | Identity headers are HMAC-signed with a timestamp and client copies are stripped: `services/gateway/internal/trust/trust_test.go#TestStripClientHeaders`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/header_identita_falsificati`. |
 | V13.3.1 | SOAP/XML schema validation | n/a | No SOAP or XML service. |
@@ -395,7 +395,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F13 | low | No notification on credential changes (V2.2.3, V2.3.3, V2.5.5, V2.8.5) | `services/identity/internal/users/users.go`<br>`services/core/internal/mailer/mailer.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user` *(new)* |
 | F14 | low | **Resolved (GIT-238).** Password policy gaps (V2.1.2, V2.1.7, V2.1.8, V2.4.5) | `services/identity/internal/password/password.go`<br>`api/openapi.yaml`<br>`web/src/pages/ChangePasswordPage.tsx` | `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected` *(new)*<br>`services/identity/internal/password/password_test.go#TestValidatePolicy_Max128` *(new)* |
 | F15 | low | **Resolved (GIT-238).** Content-Type not enforced on JSON bodies (V13.1.5, V13.2.5) | `services/gateway/internal/middleware/auth.go`<br>`services/gateway/internal/security/gen/main.go`<br>`services/gateway/internal/security/security.go` | `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415` *(new)* |
-| F16 | low | CSRF relies on SameSite=Lax only (V3.4.4, V4.2.2, V13.2.3) | `services/identity/internal/auth/auth.go`<br>`services/gateway/internal/middleware/auth.go` | `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin` *(new)* |
+| F16 | low | **Resolved (GIT-238).** CSRF relies on SameSite=Lax only (V3.4.4, V4.2.2, V13.2.3) | `services/gateway/internal/middleware/csrf.go`<br>`services/gateway/internal/middleware/auth.go`<br>`services/identity/internal/auth/auth.go`<br>`services/identity/internal/httpapi/httpapi.go` | `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin` |
 | F17 | low | Attachments: quota and malware scanning (V12.1.3, V12.4.2) | `services/core/internal/httpserver/attachments.go`<br>`services/core/internal/attachments/attachments.go` | `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_QuotaPerRepo` *(new)* |
 | F18 | low | Git ingest limits and object checks (V12.1.1) | `services/git/internal/receiverules/receiverules.go`<br>`services/git/internal/mirrorpull/mirrorpull.go`<br>`services/git/internal/smarthttp/smarthttp.go` | `services/git/internal/smarthttp/receive_test.go#TestPushFsckRejectsMalformedObjects` *(new)*<br>`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_SizeCap` *(new)* |
 | F19 | low | Process and release hygiene (V1.1.2, V14.2.2) | `.github/workflows/ci.yml`<br>`.github/workflows/security.yml`<br>`web/src/App.tsx`<br>`deploy/install.sh` | `scripts/check-actions-pinned.mjs#every uses: is pinned to a commit` *(new)*<br>`web/src/App.test.tsx#_components is not routed in production` *(new)* |
@@ -451,7 +451,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **Resolution (GIT-238).** The route generator marks every operation whose body is declared only as `application/json` (`JSONBody`); `middleware.Auth` answers 415 `unsupported_media_type` for a request with a body and another media type, before authentication (nothing about the account is revealed). The check is only at the gateway, the single public entry: core and identity are not reachable from outside (NetworkPolicies, F8) and have many decode sites.
 
-**F16 (low) CSRF relies on SameSite=Lax only.** Cookie-authenticated state-changing requests are protected by `SameSite=Lax` only: there is no `Origin` or `Sec-Fetch-Site` check and the cookie has no `__Host-` prefix. Lax does not cover same-site subdomains or old browsers. Fix: reject cookie-authenticated unsafe methods whose `Origin` or `Sec-Fetch-Site` is foreign; rename the cookie with the prefix when served over HTTPS.
+**F16 (low, resolved by GIT-238) CSRF relies on SameSite=Lax only.** Cookie-authenticated state-changing requests are protected by `SameSite=Lax` only: there is no `Origin` or `Sec-Fetch-Site` check and the cookie has no `__Host-` prefix. Lax does not cover same-site subdomains or old browsers. Fix: reject cookie-authenticated unsafe methods whose `Origin` or `Sec-Fetch-Site` is foreign; rename the cookie with the prefix when served over HTTPS.
+
+**Resolution (GIT-238).** `middleware.Auth` rejects (403 `cross_site_request`) an unsafe method authenticated by the session cookie when `Sec-Fetch-Site` is `same-site` or `cross-site`, or when `Origin` is `null` or a different host from `Host`/`X-Forwarded-Host` (the chart's nginx passes `$host` without the port, so a request Host without port is compared by name only). Requests with neither header and Bearer-token requests are untouched. Identity names the cookie `__Host-gst_session` when the request is HTTPS and keeps reading `gst_session`, so existing sessions and the HTTP e2e keep working; `web/vite.config.ts` no longer rewrites `Host` in the dev proxy.
 
 **F17 (low) Attachments: quota and malware scanning.** Each upload is limited to 10 MiB, but there is no count or total quota per user or repository and no antivirus hook; unlinked uploads are only purged after the orphan TTL. Fix: per-repo and per-user quota; document the antivirus decision (accept or hook).
 

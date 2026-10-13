@@ -16,8 +16,13 @@ import (
 	"github.com/fathorMB/GitStack/services/gateway/internal/trust"
 )
 
-// SessionCookie è il nome del cookie di sessione web.
+// SessionCookie è il nome storico del cookie di sessione web (HTTP).
 const SessionCookie = "gst_session"
+
+// HostSessionCookie è il nome con prefisso __Host- che identity usa quando
+// serve in HTTPS (F16, V3.4.4); le sessioni aperte con il nome storico restano
+// valide, quindi il gateway legge entrambi.
+const HostSessionCookie = "__Host-gst_session"
 
 // tokenPrefix è il prefisso dei token personali.
 const tokenPrefix = "gst_"
@@ -100,6 +105,12 @@ func Auth(cfg AuthConfig) Middleware {
 			if cred == "" || !route.Accepts(securityKind(kind)) {
 				setLogReason(r.Context(), reasonMissingCredential(cred))
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Autenticazione richiesta.", nil)
+				return
+			}
+			if kind == identityclient.KindSession && crossSiteUnsafe(r) {
+				setLogReason(r.Context(), "cross_site_request")
+				writeAuthError(w, http.StatusForbidden, "cross_site_request",
+					"Richiesta rifiutata: origine diversa da quella di GitStack.", nil)
 				return
 			}
 			if cfg.Verifier == nil {
@@ -261,8 +272,10 @@ func credentialFrom(r *http.Request) (string, identityclient.Kind) {
 		// Un header Authorization che non è un token gst_ non è una
 		// credenziale per il gateway: si guarda il cookie.
 	}
-	if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
-		return c.Value, identityclient.KindSession
+	for _, name := range []string{HostSessionCookie, SessionCookie} {
+		if c, err := r.Cookie(name); err == nil && c.Value != "" {
+			return c.Value, identityclient.KindSession
+		}
 	}
 	return "", ""
 }

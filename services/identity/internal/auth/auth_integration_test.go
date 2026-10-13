@@ -117,10 +117,10 @@ func TestLoginLogoutSession(t *testing.T) {
 
 	// Cookie: HttpOnly, SameSite=Lax, Path=/; Secure solo se richiesto (HTTPS).
 	ck := auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, true)
-	if !ck.HttpOnly || !ck.Secure || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Name != "gst_session" {
+	if !ck.HttpOnly || !ck.Secure || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Name != "__Host-gst_session" {
 		t.Fatalf("attributi cookie errati: %+v", ck)
 	}
-	if plain := auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, false); plain.Secure || !plain.HttpOnly {
+	if plain := auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, false); plain.Secure || !plain.HttpOnly || plain.Name != "gst_session" {
 		t.Fatalf("su HTTP il cookie non deve essere Secure: %+v", plain)
 	}
 

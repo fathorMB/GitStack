@@ -5144,7 +5144,7 @@ type ClientInterface interface {
 
 	// LoginWithBody Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes any type of body and a specified content type.
@@ -5154,7 +5154,7 @@ type ClientInterface interface {
 
 	// Login Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes a body of the `application/json` content type.
@@ -7120,7 +7120,7 @@ func (c *Client) GetAdminSystem(ctx context.Context, reqEditors ...RequestEditor
 
 // LoginWithBody Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 // Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes any type of body and a specified content type.
@@ -7140,7 +7140,7 @@ func (c *Client) LoginWithBody(ctx context.Context, contentType string, body io.
 
 // Login Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 // Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes a body of the `application/json` content type.
@@ -22133,7 +22133,7 @@ type ClientWithResponsesInterface interface {
 
 	// LoginWithBodyWithResponse Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -22143,7 +22143,7 @@ type ClientWithResponsesInterface interface {
 
 	// LoginWithResponse Accede con username e password
 	//
-	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -38883,7 +38883,7 @@ func (c *ClientWithResponses) GetAdminSystemWithResponse(ctx context.Context, re
 
 // LoginWithBodyWithResponse Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 // Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -38899,7 +38899,7 @@ func (c *ClientWithResponses) LoginWithBodyWithResponse(ctx context.Context, con
 
 // LoginWithResponse Accede con username e password
 //
-// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
 // Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).

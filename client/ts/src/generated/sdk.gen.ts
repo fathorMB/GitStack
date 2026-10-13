@@ -155,7 +155,7 @@ export const updateResource = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Accede con username e password
  *
- * Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+ * Crea una sessione. La risposta imposta il cookie `gst_session` (con prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
  * Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
  *
  */

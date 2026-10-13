@@ -315,8 +315,10 @@ paths:
       tags: [auth]
       summary: Accede con username e password
       description: >
-        Crea una sessione. La risposta imposta il cookie `gst_session`
-        (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le
+        Crea una sessione. La risposta imposta il cookie `gst_session` (con
+        prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in
+        HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure,
+        SameSite=Lax); il valore non e' nel corpo. Le
         credenziali sbagliate e l'utente disattivato rispondono entrambi 401
         con `invalid_credentials`, senza distinguere i casi. Dopo troppi
         tentativi falliti (per utente o per indirizzo IP) risponde 429
@@ -6335,7 +6337,12 @@ components:
       name: gst_session
       description: >
         Sessione web creata da `POST /auth/login` o dal login OIDC. Valore
-        opaco; identity ne conserva solo l'hash.
+        opaco; identity ne conserva solo l'hash. In HTTPS il cookie si chiama
+        `__Host-gst_session` (V3.4.4); il nome senza prefisso resta valido per
+        le sessioni gia' aperte e su HTTP. Una richiesta con metodo non sicuro
+        autenticata dal cookie e con `Origin` o `Sec-Fetch-Site` estranei
+        risponde 403 `cross_site_request` (V4.2.2); con un token Bearer
+        non si applica.
     serviceAuth:
       type: http
       scheme: bearer

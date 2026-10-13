@@ -521,7 +521,8 @@ func TestCookieSecureDaProxyFidato(t *testing.T) {
 	if _, err := us.Create(context.Background(), users.CreateInput{Username: "alice", Email: "alice@example.com", DisplayName: "alice", Password: pw}); err != nil {
 		t.Fatal(err)
 	}
-	login := func(remote, proto string) *http.Cookie {
+	// login ritorna i cookie impostati dalla risposta, per nome.
+	login := func(remote, proto string) map[string]*http.Cookie {
 		req := httptest.NewRequest("POST", "/auth/login", strings.NewReader(`{"username":"alice","password":"`+pw+`"}`))
 		req.RemoteAddr = remote
 		if proto != "" {
@@ -529,22 +530,57 @@ func TestCookieSecureDaProxyFidato(t *testing.T) {
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
+		out := map[string]*http.Cookie{}
 		for _, ck := range rec.Result().Cookies() {
-			if ck.Name == "gst_session" {
-				return ck
-			}
+			out[ck.Name] = ck
 		}
-		t.Fatalf("nessun cookie: %d %s", rec.Code, rec.Body.String())
-		return nil
+		if len(out) == 0 {
+			t.Fatalf("nessun cookie: %d %s", rec.Code, rec.Body.String())
+		}
+		return out
 	}
-	if ck := login("192.0.2.10:1", "https"); !ck.Secure || !ck.HttpOnly || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" {
-		t.Errorf("proxy fidato con https: atteso Secure: %+v", ck)
+
+	// HTTPS (F16, V3.4.4): cookie con prefisso __Host- (Secure, Path=/, senza
+	// Domain) e cancellazione di quello storico.
+	cks := login("192.0.2.10:1", "https")
+	ck := cks["__Host-gst_session"]
+	if ck == nil || !ck.Secure || !ck.HttpOnly || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Domain != "" || ck.Value == "" {
+		t.Fatalf("proxy fidato con https: atteso __Host- Secure: %+v", cks)
 	}
-	if ck := login("192.0.2.10:1", "http"); ck.Secure {
-		t.Errorf("proxy fidato con http: Secure inatteso: %+v", ck)
+	if old := cks["gst_session"]; old == nil || old.MaxAge >= 0 || old.Value != "" {
+		t.Errorf("il cookie storico va cancellato in HTTPS: %+v", old)
 	}
-	if ck := login("198.51.100.5:1", "https"); ck.Secure {
-		t.Errorf("peer non fidato con https: Secure inatteso: %+v", ck)
+	// Il cookie col prefisso apre la sessione...
+	e := &env{t: t, h: h, clock: c, users: us}
+	if r := e.do("GET", "/auth/session", nil, ck); r.StatusCode != 200 {
+		t.Fatalf("sessione col cookie __Host-: %d %s", r.StatusCode, r.body)
+	}
+	// ...e una sessione aperta col nome storico (prima del cambio) resta valida.
+	plain := login("192.0.2.10:1", "http")["gst_session"]
+	if plain == nil || plain.Secure {
+		t.Fatalf("proxy fidato con http: atteso gst_session non Secure: %+v", plain)
+	}
+	if r := e.do("GET", "/auth/session", nil, plain); r.StatusCode != 200 {
+		t.Fatalf("sessione col cookie storico: %d %s", r.StatusCode, r.body)
+	}
+	// Il logout in HTTPS cancella entrambi i nomi.
+	req := httptest.NewRequest("POST", "/auth/logout", nil)
+	req.RemoteAddr = "192.0.2.10:1"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.AddCookie(ck)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	cleared := map[string]bool{}
+	for _, c := range rec.Result().Cookies() {
+		if c.MaxAge < 0 {
+			cleared[c.Name] = true
+		}
+	}
+	if rec.Code != 204 || !cleared["__Host-gst_session"] || !cleared["gst_session"] {
+		t.Errorf("logout HTTPS: status %d, cookie cancellati %v", rec.Code, cleared)
+	}
+	if peer := login("198.51.100.5:1", "https"); peer["gst_session"] == nil || peer["gst_session"].Secure || peer["__Host-gst_session"] != nil {
+		t.Errorf("peer non fidato con https: nessun Secure/__Host-: %+v", peer)
 	}
 }
 
