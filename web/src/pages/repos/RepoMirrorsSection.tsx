@@ -44,6 +44,14 @@ function formError(err: unknown, field: string): string {
   return describeError(err);
 }
 
+// Normalizza un URL HTTPS: host minuscolo, senza «.git», con «/» finale.
+function normalizeUrl(u: string): string {
+  let s = u.trim().toLowerCase();
+  if (s.endsWith('.git')) s = s.slice(0, -4);
+  if (!s.endsWith('/')) s = s + '/';
+  return s;
+}
+
 // Sezione Mirror delle impostazioni del repo (V8, GIT-180): stile della pagina
 // Webhooks (mockup 11). Montata solo per chi ha admin.
 export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; repo: string; readOnly: boolean }) {
@@ -308,6 +316,7 @@ function MirrorForm(props: {
   onSaved: (m: RepoMirror, created: boolean) => void;
 }) {
   const { owner, repo, mirror, pullOrigin, pullMirrorState } = props;
+  const sameOrigin = mirror === null && pullOrigin !== null && pullMirrorState !== 'stopped' && normalizeUrl(url) === normalizeUrl(pullOrigin);
   const [url, setUrl] = useState(mirror?.url ?? '');
   const [username, setUsername] = useState(mirror?.username ?? '');
   const [token, setToken] = useState('');
@@ -346,10 +355,10 @@ function MirrorForm(props: {
   // Validità del form: URL e username obbligatori per nuovo e modificato.
   // Il token è richiesto solo per un nuovo push mirror (GIT-180).
 
-  // P5: bloccato = esiste un mirror in pull con stato diverso da stopped.
-  // stopped → tappa 2: mostra messaggio informativo, non blocca.
-  const isBlocked = pullOrigin !== null && pullMirrorState !== 'stopped';
-  const isStopped = pullOrigin !== null && pullMirrorState === 'stopped';
+  // P5: bloccato = nuovo mirror verso la stessa origine di un pull mirror attivo.
+  // sameOrigin: url inserito corrisponde all'origine del pull mirror.
+  const isBlocked = sameOrigin;
+  const isStopped = sameOrigin && pullMirrorState === 'stopped';
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
       <div className="card-h">{mirror ? 'Edit mirror' : 'Add mirror'}</div>

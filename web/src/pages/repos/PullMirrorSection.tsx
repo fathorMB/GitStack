@@ -1,6 +1,7 @@
 import { AlertCircle, Check, CheckCircle, Clock, GitBranch, Key, Loader2, StopCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { Button, ConfirmDialog, ErrorAlert, FormField, PasswordInput, Select, useToast } from '../../components';
 import { timeAgo } from '../../lib/format';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
@@ -524,7 +525,7 @@ function DangerZone({
               </svg>
               <div>
                 Moving your work to GitStack? After stopping, add a{' '}
-                <a href={`/settings/repos/${owner}/${repo}/push-mirrors`}>push mirror</a>{' '}
+                <Link to={`/${owner}/${repo}/settings`}>push mirror</Link>{' '}
                 to {mirror.origin} so it keeps receiving the default branch and tags.
               </div>
             </div>

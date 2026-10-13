@@ -310,7 +310,7 @@ function PullMirrorOrEnable({
     );
   }
 
-  return <EnablePullMirrorSection owner={owner} repo={repoName} onSuccess={() => {
-    onChange?.({ ...repo, mirror: { origin: '' } });
+  return <EnablePullMirrorSection owner={owner} repo={repoName} onSuccess={(m) => {
+    onChange?.({ ...repo, mirror: { origin: m.origin } });
   }} />;
 }
