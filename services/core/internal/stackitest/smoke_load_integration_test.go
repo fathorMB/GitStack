@@ -61,7 +61,7 @@ type smokeStats struct {
 	errs     []string
 	conflict int
 	fiveXX   []string
-	limited  []string // risposte 429 (rate limit) ricevute dai lavoratori
+	limited  []string          // risposte 429 (rate limit) ricevute dai lavoratori
 	gaveUp   int               // giri in cui le ripetizioni sono finite senza push: il commit resta locale e parte col giro dopo
 	pushed   []string          // sha spinti con successo sul ramo condiviso
 	ownTip   map[string]string // worker -> sha dell'ultimo push sul suo ramo
