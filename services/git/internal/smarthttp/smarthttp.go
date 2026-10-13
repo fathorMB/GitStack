@@ -10,7 +10,6 @@
 package smarthttp
 
 import (
-	"compress/gzip"
 	"context"
 	"errors"
 	"io"
@@ -55,6 +54,10 @@ type Handler struct {
 	Logger *slog.Logger
 	// Realm è il realm del Basic auth (default "GitStack").
 	Realm string
+	// GzipFloor e GzipRatio sono il tetto alla decompressione di un corpo
+	// gzip (0 = DefaultGzipFloor / DefaultGzipRatio): byte decompressi al
+	// massimo floor + ratio * byte compressi ricevuti.
+	GzipFloor, GzipRatio int64
 }
 
 // ServeHTTP implementa http.Handler.
@@ -154,8 +157,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body io.Reader = r.Body
+	exceeded := false
 	if strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
-		zr, err := gzip.NewReader(r.Body)
+		zr, err := NewBoundedGzip(r.Body, h.GzipFloor, h.GzipRatio, func() {
+			exceeded = true
+			h.logger().Warn("corpo gzip oltre il limite di decompressione: richiesta interrotta", "path", r.URL.Path)
+		})
 		if err != nil {
 			textErr(w, http.StatusBadRequest, "Corpo gzip non valido.")
 			return
@@ -169,7 +176,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if write {
 		push = h.Events.Begin(r.Context(), pushevent.TargetOf(dir, owner, name, ref), p)
 	}
-	if h.run(w, r, sub, dir, ref, body, false) {
+	okRun := h.run(w, r, sub, dir, ref, body, false)
+	if exceeded {
+		// Il resto del corpo compresso si scarta (con un tetto) prima di
+		// restituire la connessione al server.
+		_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, 8<<20))
+	}
+	if okRun {
 		push.Done()
 	}
 }

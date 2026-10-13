@@ -67,7 +67,7 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	mux.HandleFunc("GET /repos/{owner}/{repo}/raw/{refAndPath...}", func(w http.ResponseWriter, r *http.Request) {
 		server.GetRepositoryRawByPath(w, r, r.PathValue("owner"), r.PathValue("repo"), r.PathValue("refAndPath"))
 	})
-	return trust.Require(serviceSecret, publicPath, o.now)(mux)
+	return trust.Require(serviceSecret, publicPath, o.now)(limitBody(mux))
 }
 
 // publicPath sono le rotte raggiungibili senza identità: probe k8s e
