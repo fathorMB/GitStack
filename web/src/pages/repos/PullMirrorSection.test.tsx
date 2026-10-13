@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../components';
 import type { PullMirror, PullMirrorRun } from '../../lib/pullMirrorsApi';
 import { PullMirrorSection } from './PullMirrorSection';
@@ -62,9 +63,11 @@ function pullMirror(over: Partial<PullMirror> = {}): PullMirror {
 
 function renderSection() {
   return render(
-    <ToastProvider>
-      <PullMirrorSection owner="acme" repo="api" />
-    </ToastProvider>,
+    <MemoryRouter>
+      <ToastProvider>
+        <PullMirrorSection owner="acme" repo="api" />
+      </ToastProvider>
+    </MemoryRouter>,
   );
 }
 
