@@ -58,6 +58,7 @@ type smokeStats struct {
 	errs     []string
 	conflict int
 	fiveXX   []string
+	gaveUp   int               // giri in cui le ripetizioni sono finite senza push: il commit resta locale e parte col giro dopo
 	pushed   []string          // sha spinti con successo sul ramo condiviso
 	ownTip   map[string]string // worker -> sha dell'ultimo push sul suo ramo
 	issues   []int             // numeri delle issue create
@@ -221,12 +222,15 @@ func TestCaricoFumo(t *testing.T) {
 	for _, e := range errs {
 		t.Errorf("errore: %s", e)
 	}
-	for _, f := range st.fiveXX {
+	st.mu.Lock()
+	fiveXX := append([]string(nil), st.fiveXX...)
+	st.mu.Unlock()
+	for _, f := range fiveXX {
 		if f != "" {
 			t.Errorf("risposta 5xx: %s", f)
 		}
 	}
-	if n := len(st.fiveXX); n > 0 {
+	if n := len(fiveXX); n > 0 {
 		t.Errorf("%d risposte 5xx", n)
 	}
 
@@ -292,8 +296,8 @@ func TestCaricoFumo(t *testing.T) {
 	sort.Strings(ops)
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "\n=== V3 fumo: %d persone + %d agenti per %s ===\n", smokeUsers, smokeAgents, total)
-	fmt.Fprintf(&sb, "push riusciti su main: %d (rifiuti non-ff ritentati: %d), issue: %d, 5xx: %d, errori: %d\n",
-		len(st.pushed), st.conflict, len(st.issues), len(st.fiveXX), len(errs))
+	fmt.Fprintf(&sb, "commit entrati su main: %d (rifiuti non-ff ritentati: %d; rinunce, giri senza push col commit portato al giro dopo: %d), issue: %d, 5xx: %d, errori: %d\n",
+		len(st.pushed), st.conflict, st.gaveUp, len(st.issues), len(fiveXX), len(errs))
 	fmt.Fprintf(&sb, "%-18s %6s %10s %10s %10s\n", "operazione", "n", "p50", "p95", "max")
 	for _, op := range ops {
 		d := append([]time.Duration(nil), st.lat[op]...)
@@ -367,9 +371,17 @@ func smokeRun(g *gsEnv, st *smokeStats, w *smokeWorker, deadline time.Time, http
 			return
 		}
 		pushed := false
+		var batch []string // commit locali che entrano con il push (anche quelli di giri senza push)
 		for try := 0; try < 20 && !pushed; try++ {
 			if !timed("pull-rebase-"+proto, func() error { _, err := git(w.clone, "pull", "-q", "--rebase", "origin", "main"); return err }) {
 				break
+			}
+			batch = batch[:0]
+			if lst, err := git(w.clone, "rev-list", "origin/main..HEAD"); err != nil {
+				st.fail(w.name, "rev-list", err)
+				break
+			} else {
+				batch = append(batch, strings.Fields(lst)...)
 			}
 			start := time.Now()
 			out, err := g.git(w.clone, w.key, "push", "-q", "origin", "HEAD:refs/heads/main")
@@ -388,6 +400,9 @@ func smokeRun(g *gsEnv, st *smokeStats, w *smokeWorker, deadline time.Time, http
 			break
 		}
 		if !pushed {
+			st.mu.Lock()
+			st.gaveUp++
+			st.mu.Unlock()
 			continue
 		}
 		sha, err := git(w.clone, "rev-parse", "HEAD")
@@ -397,7 +412,7 @@ func smokeRun(g *gsEnv, st *smokeStats, w *smokeWorker, deadline time.Time, http
 		}
 		sha = strings.TrimSpace(sha)
 		st.mu.Lock()
-		st.pushed = append(st.pushed, sha)
+		st.pushed = append(st.pushed, batch...)
 		st.mu.Unlock()
 		if timed("push-ramo-"+proto, func() error {
 			_, err := git(w.clone, "push", "-q", "origin", "HEAD:refs/heads/w/"+w.name)
