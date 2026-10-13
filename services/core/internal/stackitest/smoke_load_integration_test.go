@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -32,7 +33,9 @@ import (
 // commento di issue.
 //
 // Non ci sono obiettivi numerici: l'esito è
-//   - zero risposte 5xx (gateway e servizio git, osservate da proxy contatori),
+//   - zero risposte 5xx e zero 429 (gateway e servizio git, osservate da proxy
+//     contatori: lo stack usa i limiti di default del gateway, che il carico
+//     reale non deve far scattare),
 //   - nessun errore delle operazioni (a parte il non-fast-forward atteso),
 //   - nessun push perso: ogni commit spinto con successo è nel ramo condiviso
 //     e il numero di commit del ramo è esattamente seed + push riusciti,
@@ -58,6 +61,7 @@ type smokeStats struct {
 	errs     []string
 	conflict int
 	fiveXX   []string
+	limited  []string          // risposte 429 (rate limit) ricevute dai lavoratori
 	gaveUp   int               // giri in cui le ripetizioni sono finite senza push: il commit resta locale e parte col giro dopo
 	pushed   []string          // sha spinti con successo sul ramo condiviso
 	ownTip   map[string]string // worker -> sha dell'ultimo push sul suo ramo
@@ -83,7 +87,7 @@ func (s *smokeStats) fail(worker, op string, err error) {
 	s.mu.Unlock()
 }
 
-// countingProxy inoltra a target contando le risposte 5xx; con v1 mappa
+// countingProxy inoltra a target contando le risposte 5xx e 429; con v1 mappa
 // /api/v1 su /v1 come fa il web.
 func countingProxy(t *testing.T, st *smokeStats, target string, v1 bool) *httptest.Server {
 	t.Helper()
@@ -108,6 +112,15 @@ func countingProxy(t *testing.T, st *smokeStats, target string, v1 bool) *httpte
 				st.fiveXX = append(st.fiveXX, fmt.Sprintf("%s %s -> %d", resp.Request.Method, resp.Request.URL.Path, resp.StatusCode))
 			} else {
 				st.fiveXX = append(st.fiveXX, "")
+			}
+			st.mu.Unlock()
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			st.mu.Lock()
+			if len(st.limited) < 50 {
+				st.limited = append(st.limited, fmt.Sprintf("%s %s -> 429", resp.Request.Method, resp.Request.URL.Path))
+			} else {
+				st.limited = append(st.limited, "")
 			}
 			st.mu.Unlock()
 		}
@@ -233,6 +246,17 @@ func TestCaricoFumo(t *testing.T) {
 	if n := len(fiveXX); n > 0 {
 		t.Errorf("%d risposte 5xx", n)
 	}
+	st.mu.Lock()
+	limited := append([]string(nil), st.limited...)
+	st.mu.Unlock()
+	for _, f := range limited {
+		if f != "" {
+			t.Errorf("rate limit durante il carico: %s", f)
+		}
+	}
+	if n := len(limited); n > 0 {
+		t.Errorf("%d risposte 429 (rate limit) ai lavoratori: i limiti di default del gateway non devono scattare con il carico del fumo", n)
+	}
 
 	ver := g.clone(httpsURL("alice", g.tokens["alice"]), "")
 	out := g.mustGit(ver, "", "rev-list", "origin/main")
@@ -275,13 +299,13 @@ func TestCaricoFumo(t *testing.T) {
 		}
 		seen[n] = true
 	}
-	list := g.gw("GET", "/repos/alice/"+smokeRepo+"/issues", nil, g.bearer("alice"), nil)
+	list := g.gwPolite(t, "GET", "/repos/alice/"+smokeRepo+"/issues", g.bearer("alice"))
 	want(t, list, 200, "")
 	if tot, ok := list.json()["total"].(float64); ok && int(tot) != len(st.issues) {
 		t.Errorf("issue sul server: %d, create %d", int(tot), len(st.issues))
 	}
 	for n, c := range st.comments {
-		r := g.gw("GET", fmt.Sprintf("/repos/alice/%s/issues/%d/comments", smokeRepo, n), nil, g.bearer("alice"), nil)
+		r := g.gwPolite(t, "GET", fmt.Sprintf("/repos/alice/%s/issues/%d/comments", smokeRepo, n), g.bearer("alice"))
 		want(t, r, 200, "")
 		if tot, ok := r.json()["total"].(float64); ok && int(tot) != c {
 			t.Errorf("commenti della issue #%d: %d, scritti %d", n, int(tot), c)
@@ -296,8 +320,8 @@ func TestCaricoFumo(t *testing.T) {
 	sort.Strings(ops)
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "\n=== V3 fumo: %d persone + %d agenti per %s ===\n", smokeUsers, smokeAgents, total)
-	fmt.Fprintf(&sb, "commit entrati su main: %d (rifiuti non-ff ritentati: %d; rinunce, giri senza push col commit portato al giro dopo: %d), issue: %d, 5xx: %d, errori: %d\n",
-		len(st.pushed), st.conflict, st.gaveUp, len(st.issues), len(fiveXX), len(errs))
+	fmt.Fprintf(&sb, "commit entrati su main: %d (rifiuti non-ff ritentati: %d; rinunce, giri senza push col commit portato al giro dopo: %d), issue: %d, 5xx: %d, 429: %d, errori: %d\n",
+		len(st.pushed), st.conflict, st.gaveUp, len(st.issues), len(fiveXX), len(limited), len(errs))
 	fmt.Fprintf(&sb, "%-18s %6s %10s %10s %10s\n", "operazione", "n", "p50", "p95", "max")
 	for _, op := range ops {
 		d := append([]time.Duration(nil), st.lat[op]...)
@@ -308,6 +332,36 @@ func TestCaricoFumo(t *testing.T) {
 	}
 	sb.WriteString("(latenze solo informative: nessun obiettivo numerico, regola V3)\n")
 	t.Log(sb.String())
+}
+
+const (
+	politeMaxTries = 30
+	politeMaxWait  = 90 * time.Second // tetto di attesa totale per una lettura
+)
+
+// gwPolite è una lettura da client educato: su 429 aspetta Retry-After (in
+// secondi, 1 se assente o illeggibile) e riprova, con un tetto di tentativi e
+// di tempo. Serve alle letture di verifica dopo il carico, fatte in sequenza
+// con un solo token a centinaia di richieste al secondo: il gateway ha i
+// limiti di default (per credenziale 20 rps, burst 200) e il fumo non li
+// alza. Qualunque altra risposta, o l'esaurirsi del tetto, torna al chiamante.
+func (g *gsEnv) gwPolite(t *testing.T, method, path string, hdr map[string]string) reply {
+	t.Helper()
+	start := time.Now()
+	for try := 1; ; try++ {
+		r := g.gw(method, path, nil, hdr, nil)
+		if r.status != http.StatusTooManyRequests || try >= politeMaxTries {
+			return r
+		}
+		wait := time.Second
+		if n, err := strconv.Atoi(strings.TrimSpace(r.retryAfter)); err == nil && n > 0 {
+			wait = time.Duration(n) * time.Second
+		}
+		if time.Since(start)+wait > politeMaxWait {
+			return r
+		}
+		time.Sleep(wait)
+	}
 }
 
 // smokeRun è il ciclo di un lavoratore: nessuna chiamata a t.Fatal, gli

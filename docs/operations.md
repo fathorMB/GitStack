@@ -1258,12 +1258,22 @@ time for a configurable time: clone, push to their own branch and to `main`
 (HTTPS and SSH for people, HTTPS for agents), fetch, API reads, issue creation
 and comments.
 
-It passes when there are **zero 5xx responses**, no operation fails, **no push
+It passes when there are **zero 5xx responses and zero 429s**, no operation fails, **no push
 is lost** (every successful push is on `main`, and `main` has exactly the seed
 plus those commits), and there is **no race on refs** (each worker branch sits
 at the sha of its last push, `git fsck` is clean, issue numbers are unique and
 the totals match). A latency summary (n, p50, p95, max per operation) is printed
 in the log; it is informational only and has no target.
+
+The smoke stack runs the gateway with its **default rate limits**
+(per credential 20 requests/s with a burst of 200, per IP as shipped); the test
+does not set any `GITSTACK_GATEWAY_RATE_LIMIT_*` variable, so it also proves
+that the real load of the eight workers is not rejected. A `429` received by a
+worker during the load phase is counted in the summary (`429: N`) and fails
+the test, like a 5xx. The verification reads after the load (one token, hundreds
+of requests per second in sequence) behave like a polite client instead: on
+`429` they wait for `Retry-After` and retry, up to 30 attempts and 90
+seconds per read, and only then fail.
 
 **The capacity figures for N1 (hardware profiles) are indicative, not
 measured.** This test does not establish how many users a machine supports.
