@@ -2,12 +2,35 @@
 const sidebars = {
   docs: [
     'intro',
-    {type: 'category', label: 'User', link: {type: 'doc', id: 'user/index'}, items: ['user/getting-started']},
+    {type: 'category', label: 'User', link: {type: 'doc', id: 'user/index'}, items: [
+        'user/getting-started',
+        'user/repositories',
+        'user/mirrors',
+        'user/issues',
+        'user/pull-requests',
+        'user/tokens-and-ssh',
+        'user/webhooks',
+        'user/gs-and-agents',
+      ],
+    },
     {
       type: 'category',
       label: 'Admin',
       link: {type: 'doc', id: 'admin/index'},
-      items: ['admin/operations', 'admin/versioning', 'admin/security-policy'],
+      items: [
+        'admin/requirements',
+        'admin/install',
+        'admin/https-and-ca',
+        'admin/external-postgres',
+        'admin/corporate-network',
+        'admin/backup-restore',
+        'admin/upgrade',
+        'admin/verify-signatures',
+        'admin/system',
+        'admin/operations',
+        'admin/versioning',
+        'admin/security-policy',
+      ],
     },
     'api/index',
     {
