@@ -25,6 +25,10 @@ Other distributions and WSL2 are not yet supported.
 | **Minimum** (blocking) | 4 vCPU | 8 GB | 60 GB (≥ 20 GB free on the filesystem that holds `/var/lib/rancher`) |
 | **Recommended** (advisory) | 8 vCPU | 16 GB | 200 GB SSD (≈ 100 users) |
 
+The sizing figures above (and the "≈ 100 users" of the recommended profile) are
+**indicative, not measured**: no capacity benchmark backs them. The only load
+test is a smoke test, see [Load smoke test (V3)](#load-smoke-test-v3).
+
 All values use decimal GB (1 GB = 10^9 bytes). The installer checks both the
 total filesystem size and the free space separately; free space drops after
 k3s and its images are pulled, so the preflight runs on every re-execution too.
@@ -1222,6 +1226,40 @@ to choose:
    work, and the result is still a copy of the real system.
 
 ---
+
+### Load smoke test (V3)
+
+Rule V3 asks for a smoke test, not a benchmark. `TestCaricoFumo`
+(`services/core/internal/stackitest/smoke_load_integration_test.go`) starts the
+full test stack (gateway, identity and git service as real binaries, core
+in-process, Postgres) and runs five people and three `gs` agents at the same
+time for a configurable time: clone, push to their own branch and to `main`
+(HTTPS and SSH for people, HTTPS for agents), fetch, API reads, issue creation
+and comments.
+
+It passes when there are **zero 5xx responses**, no operation fails, **no push
+is lost** (every successful push is on `main`, and `main` has exactly the seed
+plus those commits), and there is **no race on refs** (each worker branch sits
+at the sha of its last push, `git fsck` is clean, issue numbers are unique and
+the totals match). A latency summary (n, p50, p95, max per operation) is printed
+in the log; it is informational only and has no target.
+
+**The capacity figures for N1 (hardware profiles) are indicative, not
+measured.** This test does not establish how many users a machine supports.
+
+Run it locally (needs Docker, `git`, `ssh` and `ssh-keygen`; on Windows set
+`DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine` and
+`TESTCONTAINERS_RYUK_DISABLED=true`):
+
+```bash
+cd services/core
+GITSTACK_SMOKE_DURATION=30s go test -tags=integration -run TestCaricoFumo -v -count=1 ./internal/stackitest/
+```
+
+Without `GITSTACK_SMOKE_DURATION` the test is skipped, so the `go` job of
+`ci.yml` does not run it. In CI it is the separate workflow
+`.github/workflows/smoke.yml`: on every push to `main`, every night
+(04:11 UTC) and on demand, with `-race` and a default of 3 minutes.
 
 ## Quick reference
 
