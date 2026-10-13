@@ -66,7 +66,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	// dell'identità firmata.
 	signing := proxy.WithServiceSecret(cfg.IdentityServiceSecret)
 	toCore := proxy.ToCore(cfg.CoreURL, cfg.CoreTimeout, logger,
-		proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithDropCredentials(), proxy.WithClock(o.now))
+		proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithDropCredentials(), proxy.WithClock(o.now),
+		proxy.WithBodyLimits(cfg.MaxBodyBytes, cfg.MaxAttachmentBytes))
 	server := &apiServer{proxy: toCore, version: cfg.Version}
 
 	// Middlewares è applicato per ogni operazione generata, dal primo
@@ -92,7 +93,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	}
 
 	if cfg.IdentityURL != nil {
-		mountIdentity(mux, proxy.ToIdentity(cfg.IdentityURL, cfg.IdentityTimeout, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithClock(o.now)), apiMiddlewares)
+		mountIdentity(mux, proxy.ToIdentity(cfg.IdentityURL, cfg.IdentityTimeout, logger, proxy.WithTrustedProxies(cfg.TrustedProxies), signing, proxy.WithClock(o.now),
+			proxy.WithBodyLimits(cfg.MaxBodyBytes, cfg.MaxAttachmentBytes)), apiMiddlewares)
 	}
 
 	// x-path-tail: il raw per indirizzo ha il ref (con `/`) e il percorso su più

@@ -67,6 +67,15 @@ type Config struct {
 	// nessun proxy fidato, l'IP del client è quello della connessione.
 	TrustedProxies []*net.IPNet
 
+	// MaxBodyBytes è il tetto al corpo delle richieste (GITSTACK_GATEWAY_MAX_BODY_BYTES,
+	// 0 = default del proxy, 1 MiB): oltre, 413 body_too_large.
+	MaxBodyBytes int64
+
+	// MaxAttachmentBytes è il tetto al file di un upload di allegato
+	// (GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES, 0 = 10 MiB): deve essere almeno
+	// quello di core (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES).
+	MaxAttachmentBytes int64
+
 	// RateLimit sono le soglie del limitatore token-bucket (F6): richieste al
 	// secondo e burst per credenziale e per IP client. Rate 0 = disattivato.
 	RateLimit RateLimitConfig
@@ -89,6 +98,9 @@ const (
 
 	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
 	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
+
+	envMaxBody       = "GITSTACK_GATEWAY_MAX_BODY_BYTES"
+	envMaxAttachment = "GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES"
 
 	envIdentityURL     = "GITSTACK_IDENTITY_URL"
 	envIdentityTimeout = "GITSTACK_IDENTITY_TIMEOUT"
@@ -227,6 +239,23 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 				continue
 			}
 			cfg.TrustedProxies = append(cfg.TrustedProxies, n)
+		}
+	}
+
+	for _, b := range []struct {
+		env string
+		dst *int64
+	}{
+		{envMaxBody, &cfg.MaxBodyBytes},
+		{envMaxAttachment, &cfg.MaxAttachmentBytes},
+	} {
+		if v, ok := lookup(b.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+			if err != nil || n <= 0 {
+				errs = append(errs, fmt.Sprintf("%s non è un numero di byte valido: %q", b.env, v))
+			} else {
+				*b.dst = n
+			}
 		}
 	}
 

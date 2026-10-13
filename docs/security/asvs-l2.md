@@ -15,12 +15,12 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 151 |
+| ok | 152 |
 | n/a | 52 |
-| problem | 56 |
+| problem | 55 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F7 (medium) by GIT-233 and F6 (medium) by GIT-232.
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232 and F7 (medium) by GIT-233.
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
@@ -34,7 +34,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V8 Data Protection | 11 | 3 | 1 |
 | V9 Communication | 2 | 1 | 4 |
 | V10 Malicious Code | 3 | 2 | 0 |
-| V11 Business Logic | 5 | 1 | 2 |
+| V11 Business Logic | 6 | 1 | 1 |
 | V12 Files and Resources | 10 | 1 | 4 |
 | V13 API and Web Service | 6 | 4 | 3 |
 | V14 Configuration | 11 | 3 | 9 |
@@ -296,7 +296,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V11.1.1 | Sequential business flows | ok | Password-change-first enforcement (`services/identity/internal/httpapi/mustchange_integration_test.go#TestMustChangePasswordEnforcement`), OIDC state (`services/identity/internal/oidc/service_test.go#TestFinish_StateChecks`). |
 | V11.1.2 | Human-time flows | n/a | There is no business flow that depends on human timing. |
 | V11.1.3 | Per-action limits | ok | Push file limit R6 (`services/git/internal/smarthttp/receive_test.go#TestPushFileOltreLaSogliaRifiutato`), upload size (`services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadRifiuti`), assignees (`services/core/internal/httpserver/issues_assignees_integration_test.go#TestAssignees_LimiteEPermessiI6`), search results (`services/git/internal/gitread/search_test.go#TestSearchCode_LimitReached`). |
-| V11.1.4 | Anti-automation for excessive calls | **problem** | The gateway now limits calls per credential and per client IP with 429 and `Retry-After` (resolved F6, GIT-232: `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP`), but most JSON bodies still have no size ceiling. [F5] |
+| V11.1.4 | Anti-automation for excessive calls | **ok** | The gateway limits calls per credential and per client IP with 429 and `Retry-After` (`services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP`) and caps request bodies (`services/gateway/internal/httpserver/body_limit_test.go#TestBodyTooLarge_413`). [resolved F6 GIT-232, F5 GIT-231] |
 | V11.1.5 | Limits from threat analysis | ok | Webhook, mirror and push limits derive from rules C7, MP4, R6 and are tested: `services/core/internal/httpserver/mirrors_integration_test.go#TestMirrors_UnSoloPushPerMirror`. |
 | V11.1.6 | TOCTOU and races | ok | Egress decision at dial time (`pkg/egress/egress_test.go#TestControlBlocksAtConnect`), pinned IP for mirrors (`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_DestinazioniVietateSenzaConnessione`), single push per mirror (`services/core/internal/httpserver/mirrors_integration_test.go#TestMirrors_UnSoloPushPerMirror`). |
 | V11.1.7 | Monitoring of unusual business events | **problem** | No audit trail or anomaly detection. [F10] |
@@ -378,7 +378,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F2 | high | **Resolved (GIT-228).** Host and cluster secrets exposure (V1.6.2, V6.4.1, V6.4.2, V7.3.3) | `deploy/install.sh`<br>`admin/internal/upgrade/harden.go`<br>`admin/internal/upgrade/k3s.go` | `deploy/tests/preflight_test.sh#k3s kubeconfig is not world-readable`<br>`deploy/tests/preflight_test.sh#k3s: cifratura attiva dopo l'installazione`<br>`admin/internal/upgrade/harden_test.go#TestUpgrade_HardeningInstallazioneEsistente` |
 | F3 | medium | Web tier security headers and TLS options (V9.1.2, V9.1.3, V14.1.3, V14.3.3, V14.4.3, V14.4.4, V14.4.5, V14.4.6, V14.4.7) | `web/deploy/nginx.conf.template`<br>`deploy/gitstack/templates/ingress.yaml`<br>`web/src/lib/nginxConf.test.ts` | `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version` *(new)*<br>`deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum` *(new)* |
 | F4 | **ok** | Cache and content-type headers on API responses (V8.2.1, V14.4.2) | `services/gateway/internal/httpserver/router.go`<br>`services/core/internal/httpserver/repos_code.go`<br>`services/git/internal/httpserver/code.go`<br>`services/gateway/internal/middleware/headers.go` | `services/gateway/internal/middleware/headers_test.go#TestAPIResponses_NoStoreNosniff` |
-| F5 | medium | No request body size limit (V11.1.4) | `services/gateway/internal/proxy/proxy.go`<br>`services/core/internal/httpserver/resources.go`<br>`services/core/internal/httpserver/repos.go`<br>`services/git/internal/smarthttp/smarthttp.go` | `services/gateway/internal/httpserver/body_limit_test.go#TestBodyTooLarge_413` *(new)*<br>`services/git/internal/smarthttp/smarthttp_test.go#TestGzipBodyIsBounded` *(new)* |
+| F5 | medium | **Resolved (GIT-231).** No request body size limit (V11.1.4) | `services/gateway/internal/proxy/proxy.go`<br>`services/core/internal/httpserver/resources.go`<br>`services/core/internal/httpserver/repos.go`<br>`services/core/internal/httpserver/bodylimit.go`<br>`services/git/internal/smarthttp/smarthttp.go`<br>`services/git/internal/smarthttp/gzipbound.go` | `services/gateway/internal/httpserver/body_limit_test.go#TestBodyTooLarge_413`<br>`services/core/internal/httpserver/bodylimit_test.go#TestLimitBody`<br>`services/git/internal/smarthttp/smarthttp_test.go#TestGzipBodyIsBounded` |
 | F6 | medium | **Resolved (GIT-232).** Rate limiting and abuse detection (V8.1.4, V11.1.4, V11.1.8) | `services/gateway/internal/middleware/ratelimit.go`<br>`services/gateway/internal/httpserver/router.go`<br>`deploy/gitstack/values.yaml` | `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP` |
 | F7 | medium | **Resolved (GIT-233).** SSRF policy allowed the LAN and the node (V12.6.1) | `pkg/egress/policy.go`<br>`pkg/egress/README.md`<br>`services/core/internal/webhooks/egress.go`<br>`services/core/internal/webhooks/engine.go` | `pkg/egress/egress_test.go#TestNodeAddressesAreBlockedByDefault`<br>`services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/webhook_to_node_address_blocked` |
 | F8 | medium | Cluster isolation and in-cluster transport (V1.2.2, V1.9.1, V1.9.2, V1.14.1, V1.14.5, V9.2.1, V9.2.2) | `deploy/gitstack/templates/nats/statefulset.yaml`<br>`deploy/gitstack/templates/_helpers.tpl`<br>`deploy/gitstack/templates/gateway/deployment.yaml`<br>`deploy/gitstack/templates/core/deployment.yaml` | `deploy/tests/chart_hardening_test.sh#NetworkPolicy and securityContext are rendered` *(new)*<br>`deploy/tests/chart_hardening_test.sh#NATS requires credentials` *(new)* |
@@ -408,6 +408,8 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 **F4 (medium) Cache and content-type headers on API responses.** JSON responses of core (issues, repositories, webhooks, notifications) and raw/archive responses carry no `Cache-Control`; only attachments (`private, no-store`) and identity responses do. Private data can stay in a browser or workstation cache after logout. API responses also lack `X-Content-Type-Options: nosniff`. Fix: a gateway middleware that adds `Cache-Control: no-store` and `nosniff` to every authenticated response.
 
 **F5 (medium) No request body size limit.** Only issue bodies, attachments and a few identity and git handlers wrap the body in `http.MaxBytesReader`; the other core handlers (`resources.go`, `repos.go` and, through the generated wrappers, webhooks, labels, mirrors) decode an unbounded body into memory, and the gateway forwards bodies without any ceiling. The smart-HTTP handler also decompresses a gzip request body without a ceiling before it reaches `git`. A single authenticated client can exhaust memory. Fix: a global limit in the gateway and in core, with larger explicit limits where needed.
+
+**Resolution (GIT-231).** The gateway caps every proxied request body at 1 MiB (`GITSTACK_GATEWAY_MAX_BODY_BYTES`) and an issue-attachment upload at 10 MiB plus the multipart overhead (`GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES`, to keep at least equal to core's `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`); beyond the cap: 413 `body_too_large` with the contract error, before core is reached. Core applies the same 1 MiB cap to every request before the handlers (`limitBody`), attachments excluded (they keep their own cap). The smart-HTTP handler does not cap the pack of a push, but bounds gzip decompression to 32 MiB plus 100 times the compressed bytes actually received (`NewBoundedGzip`); a gzip bomb is interrupted and logged.
 
 **F6 (medium, resolved by GIT-232) Rate limiting and abuse detection.** `middleware.RateLimit` is a no-op placeholder. Only login and password change are throttled, in memory per process. Nothing limits API calls per user, token or IP, nothing counts abnormal volumes or alerts, and the Git endpoints are served by the git service outside the gateway. Token guessing is not realistic (256 bits) but data scraping and denial of service are open. Fix: a real limiter per credential and per IP, with a counter that can be alerted on.
 

@@ -179,7 +179,7 @@ Core tiene i file degli allegati su un PVC dedicato `<release>-attachments-data`
 |---|---|---|
 | `core.attachments.enabled` | `true` | PVC, montaggio, `Recreate` e variabili d'ambiente degli allegati. |
 | `core.attachments.mountPath` | `/var/lib/gitstack/attachments` | `GITSTACK_CORE_ATTACHMENTS_DIR`. |
-| `core.attachments.maxBytes` | `10485760` | Limite per file (10 MiB), `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`: oltre, 413 `attachment_too_large`. |
+| `core.attachments.maxBytes` | `10485760` | Limite per file (10 MiB), `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`: oltre, 413 `attachment_too_large`. Lo stesso valore è passato al gateway (`GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES`), che lo applica al corpo dell'upload più 64 KiB di overhead multipart. |
 | `core.attachments.orphanTtl` | `24h` | Un allegato mai collegato a una issue o a un commento si elimina dopo questo tempo (`GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL`). |
 | `core.attachments.persistence.size`, `.storageClassName`, `.accessMode` | `5Gi`, vuoto, `ReadWriteOnce` | Il PVC. |
 | `core.webhookSecret.keyId` | `k1` | Id della chiave con cui core cifra i segreti dei webhook (`GITSTACK_WEBHOOK_SECRET_KEY_ID`); la chiave sta nel Secret `<release>-core-webhook-key` (chiave `key`, generata una volta, `helm.sh/resource-policy: keep`). Per ruotarla: nuova `key` e nuovo `keyId`, la vecchia in `oldKeys` (`k1:<chiave>`). |
@@ -187,6 +187,8 @@ Core tiene i file degli allegati su un PVC dedicato `<release>-attachments-data`
 | `egress.allow`, `egress.deny`, `egress.clusterCIDRs` | vuoti, `10.42.0.0/16` e `10.43.0.0/16` | Protezione SSRF delle consegne dei webhook (C8, `pkg/egress`): diventano `GITSTACK_EGRESS_ALLOW`, `_DENY` e `_CLUSTER_CIDRS` di core. |
 | `proxy.http`, `proxy.https`, `proxy.noProxy` | vuoti | Proxy aziendale (N9): diventano `HTTP_PROXY`, `HTTPS_PROXY` e `NO_PROXY` di core (webhook, SMTP), git (mirror) e identity (OIDC). `NO_PROXY` include sempre localhost, i Service di GitStack, `.svc`, `.cluster.local` e `egress.clusterCIDRs`. La policy `egress.*` resta applicata alla destinazione vera, prima del proxy. Li imposta `install.sh` da `--http-proxy`, `--https-proxy` e `--no-proxy` (N9a). |
 | `corporateCA.configMap` | vuoto | ConfigMap con la chiave `ca.crt` (CA aziendale, `--ca-bundle`): montata in core, git e identity (`/etc/gitstack/corporate-ca/ca.crt`) e aggiunta alle CA di sistema dei servizi Go con `SSL_CERT_DIR`. Per git (mirror) è `GITSTACK_GIT_MIRROR_CA_FILE` e sostituisce le CA di sistema, salvo `git.mirror.caConfigMap`. |
+
+Il gateway taglia ogni altro corpo di richiesta a 1 MiB (`GITSTACK_GATEWAY_MAX_BODY_BYTES`, non esposto nei values; core applica lo stesso tetto): oltre, 413 `body_too_large`. Il tetto degli allegati segue `core.attachments.maxBytes`, quindi alzarlo non richiede altro lato gateway.
 
 Il gateway applica `gateway.env.coreTimeout` (default `30s`, prima `5s`) all'intera richiesta verso core, upload compreso: 10 MB in 30 secondi richiedono circa 3 Mbit/s. Se alzi `core.attachments.maxBytes` alza anche il timeout, e `client_max_body_size`-simili di un proxy davanti a Traefik, se ce n'è uno.
 
