@@ -363,6 +363,9 @@ describe('RepoMirrorsSection', () => {
     // Il pulsante Add mirror apre il form.
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
+    // Scriviamo l'URL dell'origine del pull mirror.
+    const urlInput = within(form).getByLabelText('Remote URL');
+    await user.type(urlInput, 'https://github.com/acme/origin');
     // Il submit resta disabilitato per il blocco pull mirror.
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
     // Avviso presente.

@@ -316,8 +316,9 @@ function MirrorForm(props: {
   onSaved: (m: RepoMirror, created: boolean) => void;
 }) {
   const { owner, repo, mirror, pullOrigin, pullMirrorState } = props;
-  const sameOrigin = mirror === null && pullOrigin !== null && pullMirrorState !== 'stopped' && normalizeUrl(url) === normalizeUrl(pullOrigin);
   const [url, setUrl] = useState(mirror?.url ?? '');
+  // sameOrigin: stiamo aggiungendo un nuovo mirror verso l'origine del pull mirror.
+  const sameOrigin = mirror === null && pullOrigin !== null && normalizeUrl(url) === normalizeUrl(pullOrigin);
   const [username, setUsername] = useState(mirror?.username ?? '');
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -357,7 +358,7 @@ function MirrorForm(props: {
 
   // P5: bloccato = nuovo mirror verso la stessa origine di un pull mirror attivo.
   // sameOrigin: url inserito corrisponde all'origine del pull mirror.
-  const isBlocked = sameOrigin;
+  const isBlocked = sameOrigin && pullMirrorState !== 'stopped';
   const isStopped = sameOrigin && pullMirrorState === 'stopped';
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
