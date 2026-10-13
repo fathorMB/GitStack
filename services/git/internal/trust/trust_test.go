@@ -169,6 +169,7 @@ func TestRequire(t *testing.T) {
 		t.Errorf("/health: %d", rec.Code)
 	}
 }
+
 // F9: ogni chiamante ha il suo segreto. Un'identità firmata con la chiave di
 // un altro servizio (o con una chiave sconosciuta) non vale.
 func TestVerify_SegretoDiUnAltroServizioRifiutato(t *testing.T) {

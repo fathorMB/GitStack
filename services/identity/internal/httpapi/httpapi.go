@@ -65,16 +65,15 @@ func New(a *auth.Service, logger *slog.Logger, opts ...Option) http.Handler {
 }
 
 type server struct {
-	auth          *auth.Service
-	users         *users.Service
-	log           *slog.Logger
-	tokens        *apitokens.Service
-	keys          *userkeys.Service
-	oidc          *oidc.Service
-	permissions   *permissions.Service
-	// keys2 sono le chiavi di servizio accettate, per chiamante (F9).
-	keys2 trust.Keyring
-	orgs          *orgs.Service
+	auth        *auth.Service
+	users       *users.Service
+	log         *slog.Logger
+	tokens      *apitokens.Service
+	keys        *userkeys.Service
+	oidc        *oidc.Service
+	permissions *permissions.Service
+	keys2       trust.Keyring // chiavi di servizio accettate, per chiamante (F9)
+	orgs        *orgs.Service
 
 	trustedProxies []*net.IPNet
 }

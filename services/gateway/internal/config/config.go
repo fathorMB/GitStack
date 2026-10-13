@@ -113,8 +113,8 @@ const (
 	// envServiceSecretGateway è il segreto di servizio del gateway (F9): lo
 	// conoscono solo il gateway e chi lo verifica (identity, core).
 	envServiceSecretGateway = "GITSTACK_SERVICE_SECRET_GATEWAY"
-	envAuthCacheTTL          = "GITSTACK_GATEWAY_AUTH_CACHE_TTL"
-	envAuthCacheNegativeTTL  = "GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL"
+	envAuthCacheTTL         = "GITSTACK_GATEWAY_AUTH_CACHE_TTL"
+	envAuthCacheNegativeTTL = "GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL"
 
 	// Rate limiting (F6): richieste/secondo e burst. Default prudenti: una SPA
 	// che apre una pagina fa decine di chiamate in burst, e più utenti possono
