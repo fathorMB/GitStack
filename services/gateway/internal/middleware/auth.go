@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"mime"
 	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"mime"
 	"net/http"
 	"regexp"
 	"strings"
