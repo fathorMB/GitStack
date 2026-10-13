@@ -1596,6 +1596,8 @@ Sulla VM, dal checkout del repo alla stessa versione di homehub (o con il binari
 
 ```sh
 sudo ./deploy/install.sh --image-tag <VERSIONE> --host <ip-vm>
+# se homehub gira una release (vX.Y.Z o vX.Y.Z-rc.N) invece di una build sha-…:
+# sudo ./deploy/install.sh --version <vX.Y.Z> --host <ip-vm>
 gitstack version
 sudo gitstack status; echo "exit=$?"
 ```
