@@ -587,7 +587,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	ip := s.clientIP(r)
 	if !ci.Admin {
 		if ok, retry := s.auth.Limiter.Check(username, ip); !ok {
-				s.secWarn(r, "security.password.change_rate_limited", &cur, "target", username)
+			s.secWarn(r, "security.password.change_rate_limited", &cur, "target", username)
 			s.tooMany(w, retry)
 			return
 		}
