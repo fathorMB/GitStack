@@ -302,6 +302,7 @@ jobs:
     if: >-
       !cancelled() && needs.registry.result == 'success' && needs.admin-binary.result == 'success'
       && needs.sign.result == 'success'
+      && vars.IMAGE_NAMESPACE == ''
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-22.04
@@ -479,8 +480,41 @@ jobs:
       # cima a questo file); per un push su main (nessun tag) non produce
       # nulla, come gli altri tag basati su "ref"/"semver".
 
-      - name: Build & push
+      # Lo stesso commit può arrivare da due run (push su main e push del
+      # tag): se sha-<commit> esiste già non si ricostruisce, perché una
+      # seconda build ha un digest diverso (label con l'ora) e il tag di
+      # versione non punterebbe più all'immagine firmata (GIT-247, v0.0.0-test.4).
+      # Si aggiungono solo i tag mancanti sullo stesso digest.
+      - name: Immagine già pubblicata per questo commit
         if: steps.dockerfile.outputs.exists == 'true'
+        id: existing
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          SHA_TAG: sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          sha_ref=""
+          while IFS= read -r t; do
+            case "${t}" in *":${SHA_TAG}") sha_ref="${t}" ;; esac
+          done <<< "${TAGS}"
+          if [ -n "${sha_ref}" ] && docker buildx imagetools inspect "${sha_ref}" >/dev/null 2>&1; then
+            args=()
+            while IFS= read -r t; do
+              if [ -n "${t}" ] && [ "${t}" != "${sha_ref}" ]; then
+                args+=(-t "${t}")
+              fi
+            done <<< "${TAGS}"
+            if [ "${#args[@]}" -gt 0 ]; then
+              docker buildx imagetools create "${args[@]}" "${sha_ref}"
+            fi
+            echo "reuse=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${sha_ref} esiste già: nessuna nuova build, tag aggiunti sullo stesso digest."
+          else
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & push
+        if: steps.dockerfile.outputs.exists == 'true' && steps.existing.outputs.reuse != 'true'
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
