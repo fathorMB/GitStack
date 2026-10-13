@@ -171,6 +171,7 @@ func (s *server) CreateToken(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.token.created", &cur, "created_token_id", t.ID.String(), "token_name", in.Name, "scopes", scopes)
 	base := toToken(t)
 	w.Header().Set("Location", "/v1/user/tokens/"+t.ID.String())
 	writeJSON(w, http.StatusCreated, openapi.CreatedToken{
@@ -198,6 +199,7 @@ func (s *server) RevokeToken(w http.ResponseWriter, r *http.Request, tokenId ope
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.token.revoked", &cur, "revoked_token_id", tokenId.String())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -267,6 +269,7 @@ func (s *server) AddSshKey(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.ssh_key.added", &cur, "key_id", k.ID.String(), "fingerprint", k.Fingerprint)
 	w.Header().Set("Location", "/v1/user/ssh-keys/"+k.ID.String())
 	writeJSON(w, http.StatusCreated, toSSHKey(k))
 }
@@ -310,6 +313,7 @@ func (s *server) DeleteSshKey(w http.ResponseWriter, r *http.Request, keyId open
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.ssh_key.deleted", &cur, "key_id", keyId.String())
 	w.WriteHeader(http.StatusNoContent)
 }
 

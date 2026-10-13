@@ -103,6 +103,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 				ip = remoteHost(r)
 			}
 			if ok, wait := rl.ip.allow(ip); !ok {
+				setLogReason(r.Context(), "rate_limited")
 				reject(w, wait)
 				return
 			}
@@ -110,6 +111,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		if rl.cred != nil {
 			if cred, _ := credentialFrom(r); cred != "" {
 				if ok, wait := rl.cred.allow(cred); !ok {
+					setLogReason(r.Context(), "rate_limited")
 					reject(w, wait)
 					return
 				}

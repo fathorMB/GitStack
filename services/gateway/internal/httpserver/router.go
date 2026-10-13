@@ -54,7 +54,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 
 	mux := http.NewServeMux()
 
-	base := middleware.Chain(middleware.RequestID, middleware.Logging(logger))
+	base := middleware.Chain(middleware.RequestID, middleware.Logging(logger, middleware.WithClientIP(func(r *http.Request) string { return proxy.ClientIP(r, cfg.TrustedProxies) })), middleware.Recover(logger))
 
 	mux.Handle("GET /healthz", base(http.HandlerFunc(healthz)))
 

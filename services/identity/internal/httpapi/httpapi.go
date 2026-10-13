@@ -323,9 +323,11 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 	var rl *auth.RateLimitedError
 	switch {
 	case errors.As(err, &rl):
+		s.secWarn(r, "security.login.rate_limited", nil, "username", in.Username)
 		s.tooMany(w, rl.RetryAfter)
 		return
 	case errors.Is(err, auth.ErrInvalidCredentials):
+		s.secWarn(r, "security.login.failure", nil, "username", in.Username, "reason", "invalid_credentials")
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "Credenziali non valide.")
 		return
 	case err != nil:
@@ -333,6 +335,7 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
+	s.secInfo(r, "security.login.success", &auth.Current{User: res.User, Session: res.Session}, "method", "password", "session_id", res.Session.ID.String())
 	exp := res.Session.ExpiresAt
 	writeJSON(w, http.StatusOK, openapi.CurrentSession{
 		User: toUser(res.User, true), AuthMethod: openapi.CurrentSessionAuthMethod("password"), ExpiresAt: &exp,
@@ -346,6 +349,7 @@ func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
 		unauthenticated(w)
 		return
 	}
+	prev, prevErr := s.auth.Session(r.Context(), c.Value)
 	err = s.auth.Logout(r.Context(), c.Value)
 	if errors.Is(err, auth.ErrUnauthenticated) {
 		unauthenticated(w)
@@ -354,6 +358,9 @@ func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.internal(w, r, err)
 		return
+	}
+	if prevErr == nil {
+		s.secInfo(r, "security.logout", &prev, "session_id", prev.Session.ID.String())
 	}
 	http.SetCookie(w, auth.ClearCookie(s.isSecure(r)))
 	w.WriteHeader(http.StatusNoContent)
@@ -459,6 +466,7 @@ func (s *server) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if !s.userError(w, r, err) {
 		return
 	}
+	s.secInfo(r, "security.user.created", &cur, "target_id", u.ID.String(), "target", u.Username, "target_admin", u.IsAdmin)
 	w.Header().Set("Location", "/v1/users/"+u.Username)
 	writeJSON(w, http.StatusCreated, toUser(u, true))
 }
@@ -513,6 +521,16 @@ func (s *server) UpdateUser(w http.ResponseWriter, r *http.Request, username ope
 	if !s.userError(w, r, err) {
 		return
 	}
+	if in.IsActive != nil {
+		ev := "security.user.activated"
+		if !*in.IsActive {
+			ev = "security.user.deactivated"
+		}
+		s.secInfo(r, ev, &cur, "target_id", u.ID.String(), "target", u.Username)
+	}
+	if in.IsAdmin != nil {
+		s.secInfo(r, "security.user.admin_changed", &cur, "target_id", u.ID.String(), "target", u.Username, "is_admin", *in.IsAdmin)
+	}
 	writeJSON(w, http.StatusOK, toUser(u, true))
 }
 
@@ -528,6 +546,7 @@ func (s *server) DeleteUser(w http.ResponseWriter, r *http.Request, username ope
 	if !s.userError(w, r, s.users.Delete(r.Context(), username)) {
 		return
 	}
+	s.secInfo(r, "security.user.deleted", &cur, "target", username)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -568,6 +587,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	ip := s.clientIP(r)
 	if !ci.Admin {
 		if ok, retry := s.auth.Limiter.Check(username, ip); !ok {
+				s.secWarn(r, "security.password.change_rate_limited", &cur, "target", username)
 			s.tooMany(w, retry)
 			return
 		}
@@ -579,6 +599,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	err := s.users.ChangePassword(r.Context(), ci)
 	if errors.Is(err, users.ErrInvalidCredentials) {
 		// 403 e non 401: il chiamante è già autenticato (decisione del CTO).
+		s.secWarn(r, "security.password.change_failed", &cur, "target", username, "reason", "wrong_current_password")
 		s.auth.Limiter.Fail(username, ip)
 		writeError(w, http.StatusForbidden, "forbidden", "Password attuale errata.")
 		return
@@ -589,6 +610,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	if !ci.Admin {
 		s.auth.Limiter.Success(username)
 	}
+	s.secInfo(r, "security.password.changed", &cur, "target", username)
 	w.WriteHeader(http.StatusNoContent)
 }
 

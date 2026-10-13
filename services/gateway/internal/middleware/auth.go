@@ -72,6 +72,7 @@ func Auth(cfg AuthConfig) Middleware {
 			if !ok {
 				cfg.logger().Warn("rotta senza dichiarazione di sicurezza",
 					"request_id", RequestIDFromContext(r.Context()), "method", r.Method, "path", r.URL.Path)
+				setLogReason(r.Context(), "not_found")
 				writeAuthError(w, http.StatusNotFound, "not_found", "Risorsa non trovata.", nil)
 				return
 			}
@@ -85,14 +86,17 @@ func Auth(cfg AuthConfig) Middleware {
 			if len(cred) > maxCredentialLen {
 				// identity risponderebbe 400 e il client lo tradurrebbe in 503:
 				// una credenziale troppo lunga è solo non valida.
+				setLogReason(r.Context(), "credential_too_long")
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Credenziale non valida o scaduta.", nil)
 				return
 			}
 			if cred == "" || !route.Accepts(securityKind(kind)) {
+				setLogReason(r.Context(), reasonMissingCredential(cred))
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Autenticazione richiesta.", nil)
 				return
 			}
 			if cfg.Verifier == nil {
+				setLogReason(r.Context(), "identity_unavailable")
 				writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non è configurato.", nil)
 				return
 			}
@@ -100,14 +104,21 @@ func Auth(cfg AuthConfig) Middleware {
 			if err != nil {
 				cfg.logger().Error("verifica della credenziale non riuscita",
 					"request_id", RequestIDFromContext(r.Context()), "err", unavailableReason(err))
+				setLogReason(r.Context(), "identity_unavailable")
 				writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non ha risposto.", nil)
 				return
 			}
 			if !res.Active {
+				setLogReason(r.Context(), "credential_inactive")
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Credenziale non valida o scaduta.", nil)
 				return
 			}
 			p := res.Principal
+			tokenID := ""
+			if p.IsToken {
+				tokenID = p.CredentialID
+			}
+			setLogActor(r.Context(), p.UserID, p.Username, tokenID)
 
 			// Il logout revoca la sessione: la voce in cache non deve restare valida
 			// fino al TTL, neanche se identity risponde 204.
@@ -119,6 +130,7 @@ func Auth(cfg AuthConfig) Middleware {
 				exempt := route.PasswordChangeExempt == security.ExemptAlways ||
 					(route.PasswordChangeExempt == security.ExemptSelf && m.Params["username"] == p.Username)
 				if !exempt {
+					setLogReason(r.Context(), "password_change_required")
 					writeAuthError(w, http.StatusForbidden, "password_change_required", "La password iniziale va cambiata prima di continuare.", nil)
 					return
 				}
@@ -131,6 +143,7 @@ func Auth(cfg AuthConfig) Middleware {
 
 			if p.IsToken {
 				if missing := security.Missing(p.Scopes, route.Scopes); len(missing) > 0 {
+					setLogReason(r.Context(), "insufficient_scope")
 					writeAuthError(w, http.StatusForbidden, "insufficient_scope", "Il token non ha gli scope richiesti.",
 						map[string]any{"required": route.Scopes})
 					return
@@ -186,10 +199,12 @@ func (c AuthConfig) checkPermission(w http.ResponseWriter, r *http.Request, user
 	if err != nil {
 		c.logger().Error("verifica del permesso non riuscita",
 			"request_id", RequestIDFromContext(r.Context()), "err", unavailableReason(err))
+		setLogReason(r.Context(), "identity_unavailable")
 		writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non ha risposto.", nil)
 		return false
 	}
 	if !allowed {
+		setLogReason(r.Context(), "permission_denied")
 		writeAuthError(w, http.StatusForbidden, "forbidden", "Permesso negato.", nil)
 		return false
 	}
@@ -228,6 +243,15 @@ func securityKind(k identityclient.Kind) security.CredentialKind {
 		return security.CredentialToken
 	}
 	return security.CredentialSession
+}
+
+// reasonMissingCredential distingue nel log «nessuna credenziale» da «tipo
+// di credenziale non ammesso dalla rotta».
+func reasonMissingCredential(cred string) string {
+	if cred == "" {
+		return "missing_credential"
+	}
+	return "credential_kind_not_allowed"
 }
 
 func unavailableReason(err error) string {
