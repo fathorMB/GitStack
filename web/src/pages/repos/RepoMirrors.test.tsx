@@ -333,7 +333,7 @@ describe('RepoMirrorsSection', () => {
     await waitFor(() => expect(within(form).getByRole('button', { name: 'Add mirror' })).not.toBeDisabled(), { timeout: 3000 });
   });
 
-  it('normalize URL: host minuscolo, "/" finale e ".git" rimossi → blocco paused', async () => {
+  it('con pull mirror in paused il pulsante submit è spento anche con token pieno', async () => {
     vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git', state: 'paused' }));
     vi.mocked(fetchMirrors).mockResolvedValue([]);
     const user = userEvent.setup();
@@ -341,29 +341,102 @@ describe('RepoMirrorsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
     const form = screen.getByRole('form', { name: 'Add mirror' });
     const urlInput = within(form).getByLabelText('Remote URL');
-    // URL che normalizza a https://github.com/acme/origin → conflict con pull origin.
     await user.type(urlInput, 'https://github.com/acme/origin.git');
     await user.type(within(form).getByLabelText('Username'), 'bot');
-    // Token richiesto per nuovo mirror → pulsante spento.
-    expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
-    // Inserisci token: il pulsante resta spento per il blocco MP6 (paused è attivo).
     const tokenInput = within(form).getByLabelText('Token');
-    await user.type(tokenInput, 't');
+    await user.type(tokenInput, 's3cret');
+    // Il pulsante submit resta spento per il blocco pull mirror (paused ≠ stopped).
     expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
     // Avviso di blocco presente.
     expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument();
   });
 
-  // Punto 5d: il pulsante "Add mirror" non è disabilitato se un push mirror esistente coincide.
-  it('non disabilita "Add mirror" se un push mirror esistente coincide con pull origin (punto 5d)', async () => {
-    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git' }));
+  // Punto 5: con pull mirror attivo (in_sync) il pulsante Add mirror apre il form
+  // ma il submit resta disabilitato e c'è l'avviso.
+  it('con pull mirror attivo il submit del form è disabilitato anche se esiste un push mirror', async () => {
+    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git', state: 'in_sync' }));
     vi.mocked(fetchMirrors).mockResolvedValue([
       mirror({ id: 'm1', url: 'https://github.com/acme/origin.git', username: 'bot', hasToken: true, state: 'in_sync' }),
     ]);
+    const user = userEvent.setup();
     renderSection();
-    const addBtn = await screen.findByRole('button', { name: 'Add mirror' });
-    // Il pulsante non è più disabilitato per push mirror esistenti che coincidono.
-    expect(addBtn).not.toBeDisabled();
+    // Il pulsante Add mirror apre il form.
+    await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
+    const form = screen.getByRole('form', { name: 'Add mirror' });
+    // Il submit resta disabilitato per il blocco pull mirror.
+    expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
+    // Avviso presente.
+    expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument();
+  });
+
+  // Punto 5: con pull mirror stopped (tappa 2) il submit è abilitato e c'è il messaggio informativo.
+  it('con pull mirror stopped il submit del form è abilitato (tappa 2)', async () => {
+    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git', state: 'stopped' }));
+    vi.mocked(fetchMirrors).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
+    const form = screen.getByRole('form', { name: 'Add mirror' });
+    const urlInput = within(form).getByLabelText('Remote URL');
+    await user.type(urlInput, 'https://github.com/acme/dest.git');
+    await user.type(within(form).getByLabelText('Username'), 'bot');
+    const tokenInput = within(form).getByLabelText('Token');
+    await user.type(tokenInput, 's3cret');
+    // Il pulsante submit è abilitato (stopped → tappa 2).
+    expect(within(form).getByRole('button', { name: 'Add mirror' })).not.toBeDisabled();
+    // Messaggio informativo tappa 2 presente.
+    expect(within(form).getByText(/the home of the code/)).toBeInTheDocument();
+    // Nessun avviso di blocco.
+    expect(within(form).queryByText(/This is the source of the pull mirror/)).not.toBeInTheDocument();
+  });
+
+  // Punto 4: con pull mirror in pending/syncing/error il pulsante è spento.
+  it('con pull mirror in pending il pulsante Add mirror del form è spento', async () => {
+    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git', state: 'pending' }));
+    vi.mocked(fetchMirrors).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
+    const form = screen.getByRole('form', { name: 'Add mirror' });
+    const urlInput = within(form).getByLabelText('Remote URL');
+    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.type(within(form).getByLabelText('Username'), 'bot');
+    const tokenInput = within(form).getByLabelText('Token');
+    await user.type(tokenInput, 's3cret');
+    expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
+    expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument();
+  });
+
+  it('con pull mirror in syncing il pulsante Add mirror del form è spento', async () => {
+    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git', state: 'syncing' }));
+    vi.mocked(fetchMirrors).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
+    const form = screen.getByRole('form', { name: 'Add mirror' });
+    const urlInput = within(form).getByLabelText('Remote URL');
+    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.type(within(form).getByLabelText('Username'), 'bot');
+    const tokenInput = within(form).getByLabelText('Token');
+    await user.type(tokenInput, 's3cret');
+    expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
+    expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument();
+  });
+
+  it('con pull mirror in error il pulsante Add mirror del form è spento', async () => {
+    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ origin: 'https://github.com/acme/origin.git', state: 'error' }));
+    vi.mocked(fetchMirrors).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Add mirror' }));
+    const form = screen.getByRole('form', { name: 'Add mirror' });
+    const urlInput = within(form).getByLabelText('Remote URL');
+    await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.type(within(form).getByLabelText('Username'), 'bot');
+    const tokenInput = within(form).getByLabelText('Token');
+    await user.type(tokenInput, 's3cret');
+    expect(within(form).getByRole('button', { name: 'Add mirror' })).toBeDisabled();
+    expect(within(form).getByText(/This is the source of the pull mirror/)).toBeInTheDocument();
   });
 
   // Punto 6: token obbligatorio per un nuovo push mirror.

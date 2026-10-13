@@ -29,7 +29,7 @@ vi.mock('../../lib/mirrorsApi', () => ({
   syncMirror: vi.fn(),
 }));
 vi.mock('../../lib/pullMirrorsApi', () => ({
-  fetchPullMirror: vi.fn(),
+  fetchPullMirror: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../../lib/orgsApi', () => ({ fetchOrgMembers: vi.fn() }));
 vi.mock('../../lib/authApi', () => ({ fetchSession: vi.fn() }));
