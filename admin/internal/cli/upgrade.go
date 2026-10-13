@@ -32,6 +32,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	fs.SetOutput(io.Discard)
 	cfgPath := fs.String("config", "", configFlagUsage)
 	to := fs.String("to", "", "versione di destinazione: tag di versione, sha del commit o sha-<commit> (default: ultimo commit di "+upgrade.DefaultRef+")")
+	version := fs.String("version", "", "versione di rilascio vX.Y.Z (anche -rc.N): equivale a --to, ma accetta solo tag SemVer")
 	dest := fs.String("dest", "", "cartella del backup preventivo (default backup.destination del config)")
 	keyFile := fs.String("key-file", "", "file con la chiave per cifrare il backup preventivo (AES-256-GCM)")
 	timeout := fs.Duration("timeout", upgrade.DefaultTimeout, "tempo massimo per l'aggiornamento dei servizi e per la loro salute")
@@ -40,6 +41,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 	var sets, values multiFlag
 	fs.Var(&sets, "set", "valore del chart (chiave=valore), ripetibile")
 	fs.Var(&values, "values", "file di valori del chart, ripetibile")
+	allowUnsigned := fs.Bool("allow-unsigned-mirrors", false, "eccezione N9: non verificare le firme cosign (mirror interno non firmato)")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
 		if err == nil {
 			err = fmt.Errorf("argomento inatteso: %s", fs.Arg(0))
@@ -47,6 +49,17 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		a.errorf("upgrade: %v", err)
 		a.usage(a.Stderr)
 		return ExitUsage
+	}
+	if *version != "" {
+		if *to != "" {
+			a.errorf("upgrade: --version e --to si escludono a vicenda")
+			return ExitUsage
+		}
+		if !upgrade.IsVersionTag(*version) {
+			a.errorf("upgrade: --version %q non valida: serve vX.Y.Z (o vX.Y.Z-rc.N); per uno sha usa --to", *version)
+			return ExitUsage
+		}
+		*to = *version
 	}
 	if *timeout < time.Minute {
 		a.errorf("upgrade: --timeout troppo breve (almeno 1m)")
@@ -98,8 +111,28 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		HelmBin:       a.helmBin(),
 		ExePath:       a.exePath(),
 		Repo:          a.Getenv("GITSTACK_REPO"),
-		Ref:           a.Getenv("GITSTACK_REF"),
-		Log:           a.Stdout,
+		// N9a: k3s si aggiorna dal mirror dei download, se configurato, e il
+		// proxy arriva dall'ambiente (exportProxyEnv in loadConfig).
+		K3sDownloadMirror: cfg.Network.DownloadMirror,
+		SystemdDir:        a.networkPaths().SystemdDir,
+		Ref:               a.Getenv("GITSTACK_REF"),
+		Log:               a.Stdout,
+		// V5: firme cosign di binario, chart e immagini, col cosign pinnato
+		// dall'installer. L'eccezione N9 è quella dell'installazione (config)
+		// o, per questo solo aggiornamento, il flag. Mirror dei download e delle
+		// immagini (N9a): anche ciò che ne arriva si verifica.
+		DownloadMirror: cfg.Network.DownloadMirror,
+		V5: upgrade.V5Config{
+			Repo:             a.Getenv("GITSTACK_REPO"),
+			CosignPath:       cfg.V5.CosignPath,
+			AllowUnsigned:    cfg.V5.AllowUnsigned || *allowUnsigned,
+			RegistryMirror:   cfg.Network.RegistryMirror,
+			RegistryUsername: cfg.Network.RegistryUsername,
+			RegistryPassword: cfg.Network.RegistryPassword,
+		},
+	}
+	if o.V5.AllowUnsigned {
+		_, _ = fmt.Fprintln(a.Stderr, "AVVISO:", status.SupplyChainUnsignedWarning)
 	}
 	if status.ServesCA(cfg) {
 		o.CheckCA = func(ctx context.Context) error { return status.CheckCA(ctx, cfg, nil) }
@@ -122,6 +155,7 @@ func runUpgrade(ctx context.Context, a *App, args []string) int {
 		}
 		return ExitUnexpected
 	}
+	a.autoPublish(ctx, cfg, path)
 	w := a.Stdout
 	if res.Outcome == upgrade.RolledBack || res.Outcome == upgrade.Broken {
 		w = a.Stderr

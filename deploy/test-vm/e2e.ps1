@@ -71,6 +71,15 @@
          Verifica main uguale dopo il primo push e, dopo un push nuovo con un
          tag, main e tag con gli SHA della sorgente. Niente container: sulla VM
          c'e solo k3s e un pod avrebbe un IP del cluster, bloccato da C8.
+      e10. mirror in pull (GIT-201, M-09/A7): lo stesso server HTTPS di e9
+         (porta -MirrorOriginPort, default 8443) fa da ORIGINE. Importa da li
+         come mirror (POST /api/v1/repos/import, mode mirror), verifica che
+         main abbia lo SHA dell'origine, che un push sul repo mirror sia
+         rifiutato (sola lettura, codice mirror_read_only), aggiunge un commit
+         nell'origine, lancia "Sincronizza ora" (POST .../pull-mirror/sync) e
+         controlla che main abbia di nuovo lo stesso SHA. A fine passo
+         interrompe il mirror, elimina il repo e toglie il cablaggio. Niente
+         Internet.
       f. idempotenza: una seconda esecuzione dell'installer, senza reset,
          deve uscire con successo, non reinstallare k3s e non generare una
          nuova password di Postgres.
@@ -122,6 +131,10 @@
 .PARAMETER GitSshPort
     Passo (e5): porta SSH del servizio git sulla VM. Default 2222.
 
+.PARAMETER MirrorOriginPort
+    Passo e10 (GIT-201): porta HTTPS sulla VM dell'origine di prova del mirror
+    in pull (stesso server di e9, che a quel punto e' gia fermo). Default 8443.
+
 .PARAMETER JetStreamPollAttempts
     Passo (e): numero di letture del conteggio JetStream dopo la create,
     finche' supera la baseline (core pubblica l'evento in una goroutine
@@ -155,7 +168,8 @@ param(
     [int]$InstallTimeoutSeconds = 900,
     [int]$JetStreamPollAttempts = 6,
     [int]$JetStreamPollIntervalSeconds = 5,
-    [int]$GitSshPort = 2222
+    [int]$GitSshPort = 2222,
+    [int]$MirrorOriginPort = 8443
 )
 
 . (Join-Path $PSScriptRoot 'lib\common.ps1')
@@ -978,7 +992,7 @@ function Main {
             $mkAgent = Invoke-HttpRaw -Uri "$baseUrl/api/v1/users" -Method 'POST' -Cookie $ck -Body (@{ username = $agentName; kind = 'agent'; email = "$agentName@agents.example.com" } | ConvertTo-Json)
             if ($mkAgent.StatusCode -ne 201) { throw "creazione utente agente: status $($mkAgent.StatusCode), corpo '$($mkAgent.Body)' $($mkAgent.Error)" }
             $e8Expires = (Get-Date).ToUniversalTime().AddHours(2).ToString('yyyy-MM-ddTHH:mm:ssZ')
-            $mkAdminTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-gs-admin'; scopes = @('read:user', 'write:user'); expiresAt = $e8Expires } | ConvertTo-Json)
+            $mkAdminTok = Invoke-HttpRaw -Uri "$baseUrl/api/v1/user/tokens" -Method 'POST' -Cookie $ck -Body (@{ name = 'e2e-gs-admin'; scopes = @('read:user', 'write:user', 'read:resource'); expiresAt = $e8Expires } | ConvertTo-Json)
             if ($mkAdminTok.StatusCode -ne 201) { throw "token dell'admin: status $($mkAdminTok.StatusCode) $($mkAdminTok.Body)" }
             $adminGsToken = ($mkAdminTok.Body | ConvertFrom-Json).token
             if (-not $adminGsToken) { throw "token dell'admin: risposta senza 'token'" }
@@ -1137,6 +1151,148 @@ function Main {
             foreach ($n in $savedEnv9.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv9[$n]) }
         }
         Add-StepResult -Name 'e9. mirror in push (GIT-181): repo bare HTTPS sulla VM con la CA della VM, main e un tag con gli stessi SHA della sorgente' -Ok $e9Ok -Detail ($e9Details -join '; ')
+
+        # --- e10. mirror in pull da un'origine di prova sulla VM (GIT-201) --
+        # Riusa l'impianto di e9: repo bare servito in HTTPS sulla VM (git
+        # http-backend dietro mirror-dest.py, CA della VM), core con
+        # egress.allow sull'IP della VM e git che si fida della CA: lo fa
+        # remote.sh, e a fine passo lo toglie. Qui il repo bare fa da ORIGINE:
+        # si importa come mirror (POST /repos/import, mode mirror), si prova
+        # che il push sul repo mirror sia rifiutato (sola lettura, MP2), si
+        # aggiunge un commit nell'origine, "Sincronizza ora" via API e si
+        # controlla che main abbia lo stesso SHA. Niente Internet.
+        Write-Log "==> Passo e10: mirror in pull da un'origine HTTPS sulla VM (import, push rifiutato, Sincronizza ora, stesso SHA) ..."
+        $e10Ok = $true
+        $e10Details = @()
+        $e10Stage = 'preparazione'
+        $e10Port = $MirrorOriginPort
+        $e10Started = $false
+        $e10Wired = $false
+        $e10Bearer = $null
+        $e10Repo = $null
+        $e10PullUrl = $null
+        $savedEnv10 = @{}
+        foreach ($n in 'GIT_TERMINAL_PROMPT', 'GCM_INTERACTIVE', 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL') {
+            $savedEnv10[$n] = [Environment]::GetEnvironmentVariable($n)
+        }
+        try {
+            if (-not $e5Ok) { throw 'e5 non riuscito' }
+            $env:GIT_TERMINAL_PROMPT = '0'
+            $env:GCM_INTERACTIVE = 'never'
+            $env:GIT_AUTHOR_NAME = 'E2E'; $env:GIT_AUTHOR_EMAIL = 'e2e@example.com'
+            $env:GIT_COMMITTER_NAME = 'E2E'; $env:GIT_COMMITTER_EMAIL = 'e2e@example.com'
+            $e10Bearer = @{ Authorization = "Bearer $gitToken" }
+            $originUser = 'pull-bot'
+            $originToken = 'e2e-' + [guid]::NewGuid().ToString('N')
+            $e10Name = "pull-$suffix"
+
+            $e10Stage = 'origine sulla VM'
+            $cpOrigin = Copy-ToVm -LocalPath (Join-Path $PSScriptRoot 'e2e\mirror-dest.py') -RemotePath '/tmp/gitstack-e2e/mirror-dest.py' -TimeoutSeconds $SshCommandTimeoutSeconds
+            if ($cpOrigin.ExitCode -ne 0) { throw "copia di mirror-dest.py: exit $($cpOrigin.ExitCode) $($cpOrigin.StdErr)" }
+            $e10Started = $true
+            $startOrigin = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-start', "$e10Port", $originUser, $originToken) -TimeoutSeconds 90
+            if ($startOrigin.ExitCode -ne 0) { throw "mirror-dest-start: exit $($startOrigin.ExitCode) $($startOrigin.StdOut) $($startOrigin.StdErr)" }
+            $c1 = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-commit', 'origine-primo-commit') -TimeoutSeconds 30
+            $originSha1 = $c1.StdOut.Trim()
+            if ($c1.ExitCode -ne 0 -or $originSha1 -notmatch '^[0-9a-f]{40}$') { throw "mirror-dest-commit: exit $($c1.ExitCode) '$($c1.StdOut)' $($c1.StdErr)" }
+
+            $e10Stage = 'fiducia nella CA e egress.allow'
+            $e10Wired = $true
+            $wire10 = Invoke-RemoteHelper -RemoteArgs @('mirror-enable', 'gitstack', 'default', $script:VmIp) -TimeoutSeconds 600
+            if ($wire10.ExitCode -ne 0) { throw "mirror-enable: exit $($wire10.ExitCode) $($wire10.StdOut) $($wire10.StdErr)" }
+            $coreBack = $false
+            for ($i = 1; $i -le 24; $i++) {
+                $probe10 = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/$gitUser/$gitRepo" -Headers $e10Bearer
+                if ($probe10.StatusCode -eq 200) { $coreBack = $true; break }
+                Start-Sleep -Seconds 5
+            }
+            if (-not $coreBack) { throw "core non risponde 200 dopo il riavvio (ultimo status $($probe10.StatusCode))" }
+
+            $e10Stage = 'import come mirror'
+            $originUrl = "https://$($script:VmIp):$e10Port/mirror.git"
+            $imp = Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/import" -Method 'POST' -Headers $e10Bearer -Body (@{
+                    owner = $gitUser; name = $e10Name; visibility = 'private'; url = $originUrl; mode = 'mirror'
+                    username = $originUser; token = $originToken; intervalSeconds = 3600 } | ConvertTo-Json)
+            if ($imp.StatusCode -ne 201) { throw "POST /repos/import: status $($imp.StatusCode), corpo '$($imp.Body)' $($imp.Error)" }
+            $e10Repo = $e10Name
+            if ($imp.Body.Contains($originToken)) { throw "il token dell'origine compare nella risposta dell'import" }
+            $e10PullUrl = "$baseUrl/api/v1/repos/$gitUser/$e10Name/pull-mirror"
+            $mirrorHttps = "https://${gitUser}:$gitToken@$($script:VmIp)/$gitUser/$e10Name.git"
+
+            $e10Stage = 'prima copia'
+            $pullState = ''
+            $pullErr = ''
+            for ($i = 1; $i -le 36; $i++) {
+                $getPull = Invoke-HttpRaw -Uri $e10PullUrl -Headers $e10Bearer
+                if ($getPull.StatusCode -eq 200) {
+                    $pj = $getPull.Body | ConvertFrom-Json
+                    $pullState = [string]$pj.state
+                    $pullErr = [string]$pj.lastError
+                    if ($pullState -eq 'in_sync' -or $pullState -eq 'error') { break }
+                }
+                Start-Sleep -Seconds 5
+            }
+            if ($pullState -ne 'in_sync') { throw "stato del mirror in pull '$pullState' (atteso in_sync) dopo la prima copia: $pullErr" }
+            if ($getPull.Body.Contains($originToken)) { throw "il token dell'origine compare nel mirror in pull" }
+            $lsPull = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('ls-remote', $mirrorHttps, 'refs/heads/main')) -TimeoutSeconds 60
+            if ($lsPull.ExitCode -ne 0 -or $lsPull.StdOut.Trim() -notmatch '^([0-9a-f]{40})\s') { throw "ls-remote del repo mirror: exit $($lsPull.ExitCode) $($lsPull.StdOut) $($lsPull.StdErr)" }
+            if ($Matches[1] -ne $originSha1) { throw "main sul mirror '$($Matches[1])', nell'origine '$originSha1'" }
+
+            $e10Stage = 'push rifiutato (MP2)'
+            $w10 = Join-Path $gitWork 'w10'
+            $cl = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('clone', '-q', $mirrorHttps, $w10)) -TimeoutSeconds 120
+            if ($cl.ExitCode -ne 0) { throw "clone del repo mirror: exit $($cl.ExitCode) $($cl.StdOut) $($cl.StdErr)" }
+            Set-Content -LiteralPath (Join-Path $w10 'locale.txt') -Value 'non deve entrare' -Encoding ascii
+            foreach ($g in @(@('-C', $w10, 'add', '-A'), @('-C', $w10, 'commit', '-q', '-m', 'tentativo sul mirror'))) {
+                $r = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + $g) -TimeoutSeconds 60
+                if ($r.ExitCode -ne 0) { throw "git $($g[2]) sul mirror: exit $($r.ExitCode) $($r.StdOut) $($r.StdErr)" }
+            }
+            $rej = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('-C', $w10, 'push', 'origin', 'HEAD:main')) -TimeoutSeconds 120
+            if ($rej.ExitCode -eq 0) { throw "il push sul repo mirror e' riuscito: doveva essere rifiutato (sola lettura)" }
+            if (("$($rej.StdOut) $($rej.StdErr)") -notmatch 'mirror_read_only') { throw "push rifiutato ma senza il codice mirror_read_only: $($rej.StdOut) $($rej.StdErr)" }
+
+            $e10Stage = 'nuovo commit nell origine e Sincronizza ora'
+            $c2 = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-commit', 'origine-secondo-commit') -TimeoutSeconds 30
+            $originSha2 = $c2.StdOut.Trim()
+            if ($c2.ExitCode -ne 0 -or $originSha2 -notmatch '^[0-9a-f]{40}$' -or $originSha2 -eq $originSha1) { throw "mirror-dest-commit: exit $($c2.ExitCode) '$($c2.StdOut)' $($c2.StdErr)" }
+            $syncResp = Invoke-HttpRaw -Uri "$e10PullUrl/sync" -Method 'POST' -Headers $e10Bearer
+            if ($syncResp.StatusCode -ne 202) { throw "POST pull-mirror/sync: status $($syncResp.StatusCode), corpo '$($syncResp.Body)' $($syncResp.Error)" }
+            $mirrorMain = ''
+            for ($i = 1; $i -le 36; $i++) {
+                $ls2 = Invoke-ExternalCommand -FilePath 'git' -ArgumentList ($gitBase + @('ls-remote', $mirrorHttps, 'refs/heads/main')) -TimeoutSeconds 60
+                if ($ls2.ExitCode -eq 0 -and $ls2.StdOut.Trim() -match '^([0-9a-f]{40})\s') { $mirrorMain = $Matches[1] }
+                if ($mirrorMain -eq $originSha2) { break }
+                Start-Sleep -Seconds 5
+            }
+            if ($mirrorMain -ne $originSha2) { throw "dopo 3 minuti main sul mirror e' '$mirrorMain'; atteso '$originSha2'" }
+            $afterSync = Invoke-HttpRaw -Uri $e10PullUrl -Headers $e10Bearer
+            if ($afterSync.StatusCode -ne 200 -or $afterSync.Body.Contains($originToken)) { throw "GET pull-mirror: status $($afterSync.StatusCode) oppure il token compare nel corpo" }
+        } catch {
+            $e10Ok = $false
+            $e10Details += "[$e10Stage] $($_.Exception.Message)"
+            if ($e10Started) {
+                $dbgRefs10 = Invoke-RemoteHelper -RemoteArgs @('mirror-dest-refs') -TimeoutSeconds 30
+                $e10Details += "ref nell'origine: $($dbgRefs10.StdOut.Trim() -replace '\s+', ' ')"
+            }
+            if ($e10PullUrl) {
+                $dbgPull = Invoke-HttpRaw -Uri $e10PullUrl -Headers $e10Bearer
+                $e10Details += "mirror in pull: $($dbgPull.Body)"
+            }
+        } finally {
+            # Pulizia: mirror interrotto, repo eliminato, cablaggio e origine di prova.
+            try {
+                if ($e10Repo) {
+                    Invoke-HttpRaw -Uri "$e10PullUrl/stop" -Method 'POST' -Headers $e10Bearer -Body (@{ confirm = $e10Repo } | ConvertTo-Json) | Out-Null
+                    Invoke-HttpRaw -Uri "$baseUrl/api/v1/repos/$gitUser/$e10Repo" -Method 'DELETE' -Headers $e10Bearer | Out-Null
+                }
+                if ($e10Wired) { Invoke-RemoteHelper -RemoteArgs @('mirror-disable', 'gitstack', 'default') -TimeoutSeconds 600 | Out-Null }
+                if ($e10Started) { Invoke-RemoteHelper -RemoteArgs @('mirror-dest-stop') -TimeoutSeconds 30 | Out-Null }
+            } catch {
+                Write-Log "e10: pulizia non completata: $($_.Exception.Message)"
+            }
+            foreach ($n in $savedEnv10.Keys) { [Environment]::SetEnvironmentVariable($n, $savedEnv10[$n]) }
+        }
+        Add-StepResult -Name 'e10. mirror in pull (GIT-201): origine HTTPS sulla VM con la CA della VM, push sul mirror rifiutato (sola lettura), Sincronizza ora e main con lo stesso SHA dell origine' -Ok $e10Ok -Detail ($e10Details -join '; ')
 
         # --- f. idempotenza -----------------------------------------------
         Write-Log "==> Passo f: idempotenza (seconda esecuzione dell'installer, senza reset) ..."

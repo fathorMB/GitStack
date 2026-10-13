@@ -65,9 +65,20 @@ GITSTACK_RELEASE_NAME="${GITSTACK_RELEASE_NAME:-gitstack}"
 GITSTACK_NAMESPACE="${GITSTACK_NAMESPACE:-default}"
 GITSTACK_CHART_DIR="${GITSTACK_CHART_DIR:-}"
 GITSTACK_IMAGE_TAG="${GITSTACK_IMAGE_TAG:-}"
+# Versione di rilascio (GIT-222): vX.Y.Z o vX.Y.Z-rc.N. Fissa ref del sorgente,
+# tag immagine e release da cui si scaricano binario e chart firmati (stesso
+# nome del tag Git); vedi apply_version.
+GITSTACK_VERSION="${GITSTACK_VERSION:-}"
 GITSTACK_IMAGE_REGISTRY="${GITSTACK_IMAGE_REGISTRY:-}"
 GITSTACK_SKIP_PREFLIGHT="${GITSTACK_SKIP_PREFLIGHT:-0}"
 GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+# Argomenti di k3s (GIT-228, F2 del registro ASVS): kubeconfig cluster-admin
+# leggibile solo da root e Secret cifrati a riposo. Il valore è lo stesso di
+# K3sInstallExec in admin/internal/upgrade/k3s.go (un test li confronta).
+K3S_INSTALL_EXEC="server --write-kubeconfig-mode 600 --secrets-encryption"
+# 1 se questa esecuzione ha installato k3s (le installazioni nuove devono
+# avere la cifratura attiva; su quelle esistenti la abilita gitstack upgrade).
+K3S_FRESH_INSTALL=0
 
 # Comando di amministrazione `gitstack` (admin/, GIT-142). Sorgente del
 # binario: un percorso locale o un URL http(s). Senza, si prova la release
@@ -79,6 +90,30 @@ GITSTACK_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 GITSTACK_ADMIN_BINARY="${GITSTACK_ADMIN_BINARY:-}"
 GITSTACK_ADMIN_SHA256="${GITSTACK_ADMIN_SHA256:-}"
 GITSTACK_ADMIN_REQUIRED="${GITSTACK_ADMIN_REQUIRED:-0}"
+
+# Catena di fornitura (V5, GIT-209): binario, chart e immagini sono firmati
+# dalla CI con Sigstore/cosign (firma keyless del workflow ci.yml). Qui si
+# verificano con un cosign pinnato (stessa versione della CI, SHA-256
+# controllato come per Helm), l'identità del workflow del repository
+# GITSTACK_REPO e l'issuer OIDC di GitHub Actions. Se una firma manca o non
+# torna, l'installazione si ferma senza toccare il sistema.
+# Eccezione N9 (mirror interni non firmati): --allow-unsigned-mirrors, mai il
+# default; salta ogni verifica con un avviso e finisce in config.yaml
+# (v5.allow_unsigned), da dove la mostra `gitstack status`.
+GITSTACK_ALLOW_UNSIGNED="${GITSTACK_ALLOW_UNSIGNED:-0}"
+COSIGN_VERSION="v2.4.0"
+# Vuoto = GitHub, o con --download-mirror <mirror>/cosign/<versione>/cosign-linux-amd64
+# (vedi cosign_url): in ogni caso lo SHA-256 pinnato resta verificato.
+GITSTACK_COSIGN_URL="${GITSTACK_COSIGN_URL:-}"
+# SHA-256 di cosign-linux-amd64 v2.4.0 (cosign_checksums.txt della release).
+GITSTACK_COSIGN_SHA256="${GITSTACK_COSIGN_SHA256:-cd7636b3586a3bdac2d9c8f3b421ed119edcb20499107887fd929211110e8418}"
+# Dove si installa il cosign pinnato: lo stesso binario lo usa `gitstack
+# upgrade` (v5.cosign_path nel config). Non si usa un cosign del PATH.
+COSIGN_PATH="${GITSTACK_COSIGN_PATH:-/usr/local/bin/gitstack-cosign}"
+COSIGN_READY=0
+V5_OIDC_ISSUER="https://token.actions.githubusercontent.com"
+# Base degli asset delle release GitHub (chart e binario: <base>/<tag>/<file>).
+GITSTACK_RELEASE_URL="${GITSTACK_RELEASE_URL:-https://github.com/${GITSTACK_REPO}/releases/download}"
 ADMIN_BIN_PATH="/usr/local/bin/gitstack"
 # File di configurazione dell'installazione, root-only: lo scrive questo
 # script, lo leggono i comandi di `gitstack` (formato: admin/README.md).
@@ -146,6 +181,36 @@ GIT_SSH_PORT_DEFAULT=2222
 extra_helm_set=()
 extra_helm_values=()
 
+# --- Rete aziendale (N4, N9a) ------------------------------------------
+# Vuoto = non indicato: vale la scelta della volta prima (sezione `network:`
+# di config.yaml, resolve_network). Proxy, mirror delle immagini e dei
+# download, CA aziendale: docs/operations.md, sezione «Rete aziendale».
+GITSTACK_HTTP_PROXY="${GITSTACK_HTTP_PROXY:-}"
+GITSTACK_HTTPS_PROXY="${GITSTACK_HTTPS_PROXY:-}"
+GITSTACK_NO_PROXY="${GITSTACK_NO_PROXY:-}"
+GITSTACK_REGISTRY_MIRROR="${GITSTACK_REGISTRY_MIRROR:-}"
+# Reti LAN che webhook e mirror possono raggiungere (egress.allow, F7): elenco
+# separato da virgole di IP, CIDR o nomi. Vuoto = nessuna restrizione, ma gli
+# indirizzi del nodo e le porte di Kubernetes restano sempre bloccati.
+GITSTACK_EGRESS_ALLOW="${GITSTACK_EGRESS_ALLOW:-}"
+GITSTACK_REGISTRY_USERNAME="${GITSTACK_REGISTRY_USERNAME:-}"
+# La password non si passa mai in una riga di comando: file o variabile.
+GITSTACK_REGISTRY_PASSWORD="${GITSTACK_REGISTRY_PASSWORD:-}"
+GITSTACK_REGISTRY_PASSWORD_FILE="${GITSTACK_REGISTRY_PASSWORD_FILE:-}"
+GITSTACK_DOWNLOAD_MIRROR="${GITSTACK_DOWNLOAD_MIRROR:-}"
+GITSTACK_CA_BUNDLE="${GITSTACK_CA_BUNDLE:-}"
+# Percorsi scritti, sostituibili nei test (deploy/tests/network_test.sh).
+GITSTACK_NETWORK_DIR="${GITSTACK_NETWORK_DIR:-/etc/gitstack/network}"
+K3S_CONFIG_DIR="${GITSTACK_K3S_DIR:-/etc/rancher/k3s}"
+SYSTEM_CA_DIR="${GITSTACK_CA_CERTS_DIR:-/usr/local/share/ca-certificates}"
+SYSTEMD_UNIT_DIR="${GITSTACK_SYSTEMD_DIR:-/etc/systemd/system}"
+# Reti del cluster k3s (pod e Service) e suffissi interni: mai dietro il proxy.
+K3S_BUILTIN_NO_PROXY="localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local"
+# Valorizzate da resolve_network.
+NETWORK_CONFIGURED=0
+NETWORK_HELM_SETS=()
+NETWORK_K3S_CHANGED=0
+
 # --- HTTPS (N5, GIT-143) -----------------------------------------------
 # Vuoto = non indicato: vale la scelta della volta prima o internal (resolve_tls).
 # internal (default): CA interna + certificato dell'host; letsencrypt: ACME
@@ -196,6 +261,11 @@ Opzioni:
                              questo script o scaricato dal repository.
   --image-tag TAG           Tag immagine per gateway/identity/core/web (default:
                              risolto automaticamente dal commit corrente).
+  --version vX.Y.Z          Installa una versione di rilascio (anche vX.Y.Z-rc.N):
+                             immagini, binario e chart firmati si prendono
+                             dalla release con quel nome, con la verifica
+                             delle firme (V5) attiva. In alternativa al tag
+                             sha-<commit> di --image-tag.
   --image-registry HOST     Registry delle immagini GitStack (default: dal
                              chart, ghcr.io). Utile per un mirror (M-08).
   --admin-binary PERCORSO|URL
@@ -250,24 +320,60 @@ Opzioni:
                              senza, la configurazione S3 è rifiutata.
   --s3-retention N|bucket   Archivi da tenere su S3 (default 30) oppure «bucket»
                              per lasciar fare al bucket.
+  --egress-allow LISTA      Reti ammesse per le chiamate in uscita di webhook e
+                             mirror (egress.allow), separate da virgole: IP,
+                             CIDR (es. 192.168.1.0/24) o nomi. Se indicata, sono
+                             ammesse solo queste destinazioni. Gli indirizzi del
+                             nodo e le porte di Kubernetes (6443, 10250, 10255,
+                             2379-2380) sono bloccati comunque. Da ripetere a
+                             ogni upgrade.
   --values FILE             File di valori Helm aggiuntivo (-f), ripetibile.
   --set CHIAVE=VALORE       Valore Helm aggiuntivo (--set), ripetibile.
+  --http-proxy URL          Proxy per le destinazioni http (download di k3s e
+                             Helm, containerd di k3s, pod di GitStack).
+  --https-proxy URL         Proxy per le destinazioni https (default: quello
+                             indicato con --http-proxy).
+  --no-proxy LISTA          Destinazioni senza proxy, separate da virgole (si
+                             aggiungono a localhost, reti e suffissi del cluster).
+  --registry-mirror URL     Mirror per TUTTE le immagini, di sistema di k3s
+                             comprese (registries.yaml, endpoint "*").
+  --registry-username U     Credenziali del mirror (facoltative).
+  --registry-password-file FILE
+                            Password del mirror (o $GITSTACK_REGISTRY_PASSWORD).
+  --download-mirror URL     Mirror per i binari di k3s, Helm e gitstack e per il
+                             sorgente (struttura: docs/operations.md).
+  --ca-bundle FILE          CA aziendale in PEM: fidata dal sistema, da
+                             containerd e dai pod. Con le opzioni di rete il
+                             preflight prova a raggiungere ogni destinazione e
+                             ferma l'installazione se una non risponde.
+  --allow-unsigned-mirrors  Eccezione N9 per mirror interni non firmati: salta
+                             la verifica delle firme cosign di binario, chart
+                             e immagini (V5), anche se vengono da un mirror, e
+                             lo segnala in 'gitstack status'. Non è mai il
+                             default: senza, una firma mancante o non valida
+                             ferma l'installazione.
   -h, --help                Stampa questo aiuto ed esce.
 
 Variabili d'ambiente equivalenti (i flag ripetibili --values/--set non ne
 hanno una, solo da riga di comando): INSTALL_K3S_VERSION,
 GITSTACK_HELM_VERSION, GITSTACK_REPO, GITSTACK_REF, GITSTACK_RELEASE_NAME,
-GITSTACK_NAMESPACE, GITSTACK_CHART_DIR, GITSTACK_IMAGE_TAG,
+GITSTACK_NAMESPACE, GITSTACK_CHART_DIR, GITSTACK_IMAGE_TAG, GITSTACK_VERSION,
 GITSTACK_IMAGE_REGISTRY, GITSTACK_SKIP_PREFLIGHT=1, GITSTACK_FORCE=1, GITSTACK_TLS_MODE
 (internal|letsencrypt|insecure), GITSTACK_TLS_CERT, GITSTACK_TLS_KEY,
 GITSTACK_TLS_EMAIL, GITSTACK_ADMIN_BINARY,
 GITSTACK_ADMIN_SHA256, GITSTACK_ADMIN_REQUIRED=1, GITSTACK_BACKUP_DIR,
 GITSTACK_BACKUP_RETENTION, GITSTACK_BACKUP_TIMER_HOUR (0-23, default 02),
+GITSTACK_HTTP_PROXY, GITSTACK_HTTPS_PROXY, GITSTACK_NO_PROXY,
+GITSTACK_EGRESS_ALLOW,
+GITSTACK_REGISTRY_MIRROR, GITSTACK_REGISTRY_USERNAME, GITSTACK_REGISTRY_PASSWORD,
+GITSTACK_DOWNLOAD_MIRROR, GITSTACK_CA_BUNDLE,
 GITSTACK_POSTGRES_URL, GITSTACK_POSTGRES_PASSWORD_FILE, GITSTACK_POSTGRES_PASSWORD,
 GITSTACK_POSTGRES_CA_FILE,
 GITSTACK_S3_ENDPOINT, GITSTACK_S3_BUCKET, GITSTACK_S3_PREFIX,
 GITSTACK_S3_REGION, GITSTACK_S3_KEY_FILE, GITSTACK_S3_RETENTION,
-GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY.
+GITSTACK_S3_ACCESS_KEY, GITSTACK_S3_SECRET_KEY, GITSTACK_ALLOW_UNSIGNED=1,
+GITSTACK_COSIGN_URL, GITSTACK_COSIGN_SHA256, GITSTACK_COSIGN_PATH,
+GITSTACK_RELEASE_URL.
 EOF
 }
 
@@ -295,6 +401,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --image-tag)
       GITSTACK_IMAGE_TAG="$2"
+      shift 2
+      ;;
+    --version)
+      GITSTACK_VERSION="$2"
       shift 2
       ;;
     --image-registry)
@@ -332,6 +442,43 @@ while [ "$#" -gt 0 ]; do
     --insecure-http)
       GITSTACK_TLS_MODE="insecure"
       shift
+      ;;
+    --http-proxy)
+      GITSTACK_HTTP_PROXY="$2"
+      shift 2
+      ;;
+    --https-proxy)
+      GITSTACK_HTTPS_PROXY="$2"
+      shift 2
+      ;;
+    --no-proxy)
+      GITSTACK_NO_PROXY="$2"
+      shift 2
+      ;;
+    --registry-mirror)
+      GITSTACK_REGISTRY_MIRROR="$2"
+      shift 2
+      ;;
+    --egress-allow)
+      [ $# -ge 2 ] || fail "--egress-allow richiede una lista (IP, CIDR o nomi separati da virgole)."
+      GITSTACK_EGRESS_ALLOW="$2"
+      shift 2
+      ;;
+    --registry-username)
+      GITSTACK_REGISTRY_USERNAME="$2"
+      shift 2
+      ;;
+    --registry-password-file)
+      GITSTACK_REGISTRY_PASSWORD_FILE="$2"
+      shift 2
+      ;;
+    --download-mirror)
+      GITSTACK_DOWNLOAD_MIRROR="$2"
+      shift 2
+      ;;
+    --ca-bundle)
+      GITSTACK_CA_BUNDLE="$2"
+      shift 2
       ;;
     --postgres-url)
       GITSTACK_POSTGRES_URL="$2"
@@ -376,6 +523,10 @@ while [ "$#" -gt 0 ]; do
     --set)
       extra_helm_set+=("$2")
       shift 2
+      ;;
+    --allow-unsigned-mirrors)
+      GITSTACK_ALLOW_UNSIGNED=1
+      shift
       ;;
     -h|--help)
       usage
@@ -727,6 +878,7 @@ resolve_chart_dir() {
   if [ -n "${GITSTACK_CHART_DIR}" ]; then
     [ -f "${GITSTACK_CHART_DIR}/Chart.yaml" ] || fail "--chart-dir/${GITSTACK_CHART_DIR} non contiene Chart.yaml."
     CHART_DIR="${GITSTACK_CHART_DIR}"
+    warn_local_chart
     return 0
   fi
 
@@ -736,6 +888,7 @@ resolve_chart_dir() {
   fi
   if [ -n "${script_dir}" ] && [ -f "${script_dir}/gitstack/Chart.yaml" ]; then
     CHART_DIR="${script_dir}/gitstack"
+    warn_local_chart
     return 0
   fi
 
@@ -754,8 +907,8 @@ resolve_chart_dir() {
 
   log "Nessun checkout locale del repository: scarico deploy/gitstack da ${GITSTACK_REPO}@${sha} ..."
   local tarball="${workdir}/gitstack.tar.gz"
-  curl -fsSL -o "${tarball}" "https://codeload.github.com/${GITSTACK_REPO}/tar.gz/${sha}" \
-    || fail "download del sorgente fallito (https://codeload.github.com/${GITSTACK_REPO}/tar.gz/${sha})."
+  curl -fsSL -o "${tarball}" "$(source_tarball_url "${sha}")" \
+    || fail "download del sorgente fallito ($(source_tarball_url "${sha}"))."
   tar -xzf "${tarball}" -C "${workdir}"
 
   local extracted
@@ -765,6 +918,32 @@ resolve_chart_dir() {
   else
     fail "il sorgente scaricato non contiene deploy/gitstack/Chart.yaml."
   fi
+
+  # V5: il chart si usa solo se è quello firmato dalla CI (il .tgz della
+  # release sha-<commit>, non il sorgente di codeload: i byte firmati sono
+  # quelli del pacchetto).
+  local release_tag="sha-${sha}"
+  [ -z "${GITSTACK_VERSION}" ] || release_tag="${GITSTACK_VERSION}"
+  verify_downloaded_chart "${release_tag}" "${workdir}"
+}
+
+# Versione di rilascio (GIT-222). Un tag vX.Y.Z(-rc.N) è SemVer con prefisso
+# "v": è il nome della release GitHub, il ref del sorgente e il tag immagine
+# (la CI lo pubblica accanto a sha-<commit>, stesso digest, quindi stesse
+# firme). Non si combina con un --image-tag diverso.
+is_version_tag() {
+  printf '%s' "$1" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+}
+
+apply_version() {
+  [ -n "${GITSTACK_VERSION}" ] || return 0
+  is_version_tag "${GITSTACK_VERSION}" \
+    || fail "--version ${GITSTACK_VERSION}: formato non valido (atteso vX.Y.Z o vX.Y.Z-rc.N). Per un commit usa --image-tag sha-<commit>."
+  if [ -n "${GITSTACK_IMAGE_TAG}" ] && [ "${GITSTACK_IMAGE_TAG}" != "${GITSTACK_VERSION}" ]; then
+    fail "--version ${GITSTACK_VERSION} e --image-tag ${GITSTACK_IMAGE_TAG} non coincidono: usane uno solo."
+  fi
+  GITSTACK_IMAGE_TAG="${GITSTACK_VERSION}"
+  GITSTACK_REF="${GITSTACK_VERSION}"
 }
 
 # Sha del commit di GITSTACK_REPO al ref dato, via l'API di GitHub (nessuna
@@ -773,6 +952,19 @@ resolve_commit_sha() {
   local ref="$1"
   command -v curl >/dev/null 2>&1 || fail "serve 'curl' per risolvere il commit di ${GITSTACK_REPO}@${ref}."
   local response sha
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    # Senza l'API di GitHub: uno sha pieno vale com'è, altrimenti il mirror
+    # pubblica <ref>.sha accanto ai sorgenti.
+    if printf '%s' "${ref}" | grep -Eq '^[0-9a-f]{40}$'; then
+      printf '%s' "${ref}"
+      return 0
+    fi
+    sha="$(curl -fsSL "${GITSTACK_DOWNLOAD_MIRROR}/gitstack/source/${ref}.sha" | head -n1 | tr -d '[:space:]')" \
+      || fail "impossibile risolvere ${ref} dal mirror (${GITSTACK_DOWNLOAD_MIRROR}/gitstack/source/${ref}.sha): usa --image-tag o un checkout locale."
+    printf '%s' "${sha}" | grep -Eq '^[0-9a-f]{40}$' || fail "il mirror non dà uno sha valido per ${ref}."
+    printf '%s' "${sha}"
+    return 0
+  fi
   response="$(curl -fsSL "https://api.github.com/repos/${GITSTACK_REPO}/commits/${ref}")" \
     || fail "impossibile risolvere il commit di ${GITSTACK_REPO}@${ref} tramite l'API di GitHub."
   sha="$(printf '%s' "${response}" | grep -m1 '"sha"' | sed -E 's/.*"sha": *"([^"]+)".*/\1/')"
@@ -827,7 +1019,14 @@ resolve_k3s_version() {
 install_k3s() {
   if k3s_already_installed; then
     log "k3s è già installato ($(k3s --version | head -n1)): non reinstallo (idempotenza)."
-    if ! systemctl is-active --quiet k3s 2>/dev/null; then
+    if [ "${NETWORK_K3S_CHANGED}" -eq 1 ]; then
+      # Mirror, proxy o CA cambiati: containerd e kubelet li leggono solo
+      # all'avvio. Riavvio controllato, poi wait_for_k3s_ready.
+      log "La configurazione di rete di k3s è cambiata: riavvio k3s."
+      systemctl daemon-reload
+      systemctl restart k3s
+      NETWORK_K3S_CHANGED=0
+    elif ! systemctl is-active --quiet k3s 2>/dev/null; then
       log "Il servizio k3s non è attivo: lo avvio."
       systemctl start k3s
     fi
@@ -837,11 +1036,68 @@ install_k3s() {
   resolve_k3s_version
   log "Installo k3s ${INSTALL_K3S_VERSION} (pinnato, include Traefik v3) ..."
   command -v curl >/dev/null 2>&1 || fail "serve 'curl' per installare k3s."
-  curl -sfL https://get.k3s.io \
-    | INSTALL_K3S_VERSION="${INSTALL_K3S_VERSION}" \
-      INSTALL_K3S_EXEC="server --write-kubeconfig-mode 644" \
-      sh - \
-    || fail "installazione di k3s fallita."
+  local k3s_env=("INSTALL_K3S_VERSION=${INSTALL_K3S_VERSION}" "INSTALL_K3S_EXEC=${K3S_INSTALL_EXEC}")
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    # Lo script di k3s scarica binario e checksum da ${GITHUB_URL}/download/<versione>/.
+    k3s_env+=("GITHUB_URL=${GITSTACK_DOWNLOAD_MIRROR}/k3s/releases")
+  fi
+  curl -sfL "$(k3s_script_url)" \
+    | env "${k3s_env[@]}" sh - \
+    || fail "installazione di k3s fallita (script: $(k3s_script_url))."
+  NETWORK_K3S_CHANGED=0
+  K3S_FRESH_INSTALL=1
+  strip_k3s_env_proxy
+}
+
+# Modo ottale del file (es. 600). Ridefinibile nei test.
+file_mode() {
+  stat -c '%a' "$1" 2>/dev/null
+}
+
+# Vero se il file non ha permessi per gruppo e altri.
+kubeconfig_is_private() {
+  local m
+  m="$(file_mode "$1")" || return 1
+  [ -n "${m}" ] || return 1
+  # Le ultime due cifre (gruppo, altri) devono essere 0.
+  case "${m}" in
+    *00) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Vero se `k3s secrets-encrypt status` dice che la cifratura è attiva.
+# Ridefinibile nei test.
+k3s_secrets_encryption_enabled() {
+  k3s secrets-encrypt status 2>/dev/null | grep -q 'Encryption Status: Enabled'
+}
+
+# F2: il kubeconfig è cluster-admin, quindi legge tutti i Secret. Lo porta a
+# 600 anche se k3s lo aveva scritto più largo (k3s lo riscrive all'avvio col
+# modo dell'unità: su un'installazione vecchia lo corregge gitstack upgrade).
+secure_k3s_kubeconfig() {
+  local f="${1:-${GITSTACK_KUBECONFIG}}"
+  [ -f "${f}" ] || return 0
+  chmod 0600 "${f}" || fail "impossibile portare ${f} a 600."
+}
+
+# Dopo l'installazione di k3s: kubeconfig privato e, sulle installazioni
+# nuove, cifratura dei Secret attiva. Su un'installazione esistente senza
+# cifratura avvisa e indica `gitstack upgrade`: non riavvia k3s da qui.
+verify_k3s_hardening() {
+  local f="${GITSTACK_KUBECONFIG}"
+  secure_k3s_kubeconfig "${f}"
+  if [ -f "${f}" ] && ! kubeconfig_is_private "${f}"; then
+    fail "${f} è ancora leggibile da altri account (modo $(file_mode "${f}")): è un cluster-admin."
+  fi
+  if k3s_secrets_encryption_enabled; then
+    log "k3s: kubeconfig 600 e cifratura dei Secret attiva."
+    return 0
+  fi
+  if [ "${K3S_FRESH_INSTALL}" -eq 1 ]; then
+    fail "k3s è stato installato ma la cifratura dei Secret non risulta attiva (k3s secrets-encrypt status). Diagnostica: journalctl -u k3s -n 100."
+  fi
+  warn "k3s è già installato e i Secret non sono cifrati a riposo, oppure il kubeconfig è stato riscritto col vecchio modo dell'unità: esegui 'sudo gitstack upgrade' (abilita la cifratura e sistema i permessi) o segui docs/operations.md, sezione «Hardening di k3s»."
 }
 
 wait_for_k3s_ready() {
@@ -907,6 +1163,210 @@ wait_for_traefik_crd() {
   log "CRD middlewares.traefik.io Established."
 }
 
+# --- Verifica delle firme (V5, cosign) --------------------------------------
+
+# Vero se la verifica è attiva (cioè l'eccezione N9 NON è stata chiesta).
+v5_enabled() {
+  [ "${GITSTACK_ALLOW_UNSIGNED}" != "1" ]
+}
+
+# Identità accettata per i certificati di firma: il workflow ci.yml del
+# repository GITSTACK_REPO, da main o da un tag di versione (v*). È quella che
+# verifica anche la CI (--certificate-identity-regexp per i tag).
+v5_identity_regexp() {
+  local repo_re
+  repo_re="$(printf '%s' "${GITSTACK_REPO}" | sed -e 's/[][\.*^$+?(){}|]/\\&/g')"
+  printf '^https://github\\.com/%s/\\.github/workflows/ci\\.yml@refs/(heads/main|tags/v.+)$' "${repo_re}"
+}
+
+# Installa il cosign pinnato in COSIGN_PATH, verificandone lo SHA-256 (come
+# Helm). Un cosign già presente a quel percorso si riusa solo se il checksum
+# torna. Non si usa mai un cosign trovato nel PATH.
+ensure_cosign() {
+  [ "${COSIGN_READY}" = "1" ] && return 0
+  command -v sha256sum >/dev/null 2>&1 || fail "serve 'sha256sum' per verificare cosign."
+  local expected actual
+  expected="$(printf '%s' "${GITSTACK_COSIGN_SHA256}" | tr 'A-F' 'a-f')"
+  if [ -f "${COSIGN_PATH}" ] && [ -x "${COSIGN_PATH}" ]; then
+    actual="$(sha256sum "${COSIGN_PATH}" | awk '{ print $1 }')"
+    if [ "${actual}" = "${expected}" ]; then
+      COSIGN_READY=1
+      return 0
+    fi
+  fi
+  log "Installo cosign ${COSIGN_VERSION} (pinnato) in ${COSIGN_PATH} ..."
+  local workdir
+  workdir="$(mktemp -d)"
+  TMP_DIRS+=("${workdir}")
+  local url
+  url="$(cosign_url)"
+  fetch_resource "${url}" "${workdir}/cosign" \
+    || fail "download di cosign fallito (${url}): senza cosign le firme non si verificano. In una rete chiusa pubblica cosign sul mirror dei download (<mirror>/cosign/${COSIGN_VERSION}/cosign-linux-amd64) o passa GITSTACK_COSIGN_URL; per un mirror non firmato, --allow-unsigned-mirrors."
+  actual="$(sha256sum "${workdir}/cosign" | awk '{ print $1 }')"
+  if [ "${actual}" != "${expected}" ]; then
+    fail "cosign scaricato (${url}) non corrisponde al checksum SHA-256 pinnato: atteso ${expected}, trovato ${actual}. Non installato."
+  fi
+  mkdir -p "$(dirname "${COSIGN_PATH}")"
+  install -m 0755 "${workdir}/cosign" "${COSIGN_PATH}"
+  COSIGN_READY=1
+}
+
+# verify_blob_cosign FILE BUNDLE DESCRIZIONE: cosign verify-blob con identità
+# e issuer fissati. Il bundle deve esistere; qualunque esito diverso da «firma
+# valida» ferma l'installazione.
+verify_blob_cosign() {
+  local file="$1" bundle="$2" what="$3" out
+  ensure_cosign
+  [ -f "${bundle}" ] || fail "bundle cosign mancante per ${what} (${bundle}): l'artefatto non risulta firmato. Non installato."
+  if ! out="$("${COSIGN_PATH}" verify-blob \
+      --certificate-identity-regexp "$(v5_identity_regexp)" \
+      --certificate-oidc-issuer "${V5_OIDC_ISSUER}" \
+      --bundle "${bundle}" "${file}" 2>&1)"; then
+    fail "verifica della firma cosign fallita per ${what}: ${out}
+L'artefatto non è firmato dal workflow ci.yml di ${GITSTACK_REPO} (issuer ${V5_OIDC_ISSUER}) o è stato alterato. Non installato.
+Per un mirror interno non firmato: --allow-unsigned-mirrors (eccezione N9)."
+  fi
+  log "Firma cosign verificata: ${what}."
+}
+
+# verify_image_cosign IMMAGINE: cosign verify con la stessa identità.
+verify_image_cosign() {
+  local image="$1" out ref="$1"
+  ensure_cosign
+  # Con --registry-mirror le immagini (e le loro firme) stanno sul mirror,
+  # col nome originale senza host (docs/operations.md): si verifica lì.
+  local extra=() dockercfg=""
+  if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    ref="$(net_authority "${GITSTACK_REGISTRY_MIRROR}")/${image#*/}"
+    case "${GITSTACK_REGISTRY_MIRROR}" in http://*) extra+=(--allow-insecure-registry) ;; esac
+    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
+      dockercfg="$(mktemp -d)"
+      TMP_DIRS+=("${dockercfg}")
+      printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$(net_authority "${GITSTACK_REGISTRY_MIRROR}")" \
+        "$(printf '%s:%s' "${GITSTACK_REGISTRY_USERNAME}" "${GITSTACK_REGISTRY_PASSWORD}" | base64 | tr -d '\n')" \
+        >"${dockercfg}/config.json"
+      chmod 0600 "${dockercfg}/config.json"
+    fi
+  fi
+  if ! out="$(DOCKER_CONFIG="${dockercfg:-${DOCKER_CONFIG:-${HOME:-/root}/.docker}}" "${COSIGN_PATH}" verify \
+      --certificate-identity-regexp "$(v5_identity_regexp)" \
+      --certificate-oidc-issuer "${V5_OIDC_ISSUER}" \
+      ${extra[@]+"${extra[@]}"} "${ref}" 2>&1)"; then
+    fail "verifica della firma cosign fallita per l'immagine ${ref}: ${out}
+L'immagine non è firmata dal workflow ci.yml di ${GITSTACK_REPO} (issuer ${V5_OIDC_ISSUER}), o il mirror non ne ha la firma. Non installata.
+Per un mirror interno non firmato: --allow-unsigned-mirrors (eccezione N9)."
+  fi
+  log "Firma cosign verificata: ${image}."
+}
+
+# Avviso visibile dell'eccezione N9, ripetuto nel riepilogo.
+UNSIGNED_WARNED=0
+warn_unsigned_exception() {
+  [ "${UNSIGNED_WARNED}" = "1" ] && return 0
+  UNSIGNED_WARNED=1
+  warn "ECCEZIONE N9 ATTIVA (--allow-unsigned-mirrors): le firme cosign di binario, chart e immagini NON vengono verificate. Usala solo per un mirror interno non firmato."
+}
+
+# Un chart da cartella locale (--chart-dir o checkout) non ha un artefatto
+# firmato da confrontare: lo dice, le immagini si verificano comunque.
+warn_local_chart() {
+  if v5_enabled; then
+    warn "chart da cartella locale (${CHART_DIR}): non è un artefatto firmato e non si verifica; le immagini sì. Per verificare anche il chart usa l'installazione dalla release (senza --chart-dir)."
+  fi
+}
+
+# verify_downloaded_chart RELEASE_TAG WORKDIR: scarica il chart .tgz
+# pubblicato dalla CI nella release (sha-<commit>, o vX.Y.Z con
+# --version) con il suo bundle, ne verifica la firma e lo usa al posto del
+# chart ricavato dal sorgente (CHART_DIR).
+verify_downloaded_chart() {
+  local release_tag="$1" workdir="$2"
+  if ! v5_enabled; then
+    warn_unsigned_exception
+    return 0
+  fi
+  local version
+  version="$(awk '/^version:/ { print $2; exit }' "${CHART_DIR}/Chart.yaml" | tr -d '"\r')"
+  [ -n "${version}" ] || fail "versione del chart non trovata in ${CHART_DIR}/Chart.yaml."
+  # Rilascio vX.Y.Z: la CI pubblica gitstack-X.Y.Z.tgz con version e
+  # appVersion = X.Y.Z, qualunque cosa dica il Chart.yaml del sorgente.
+  if [ -n "${GITSTACK_VERSION}" ]; then
+    version="${GITSTACK_VERSION#v}"
+  fi
+  local url
+  url="$(release_base "${release_tag}")/gitstack-${version}.tgz"
+  local tgz="${workdir}/gitstack-chart.tgz"
+  log "Scarico il chart firmato ${url} ..."
+  fetch_resource "${url}" "${tgz}" \
+    || fail "chart firmato non trovato: ${url}. La release ${release_tag} deve contenere gitstack-${version}.tgz e il suo .sigstore.json (li pubblica la CI: il job di firma su main, il job release sui tag)."
+  fetch_resource "${url}.sigstore.json" "${tgz}.sigstore.json" \
+    || fail "bundle cosign del chart non trovato: ${url}.sigstore.json. Il chart non risulta firmato. Non installato."
+  verify_blob_cosign "${tgz}" "${tgz}.sigstore.json" "il chart gitstack-${version}.tgz"
+  local ex="${workdir}/chart-firmato"
+  mkdir -p "${ex}"
+  tar -xzf "${tgz}" -C "${ex}" || fail "il chart firmato non si estrae."
+  [ -f "${ex}/gitstack/Chart.yaml" ] || fail "il chart firmato non contiene gitstack/Chart.yaml."
+  if [ -n "${GITSTACK_VERSION}" ]; then
+    local signed_ver signed_app
+    signed_ver="$(awk '/^version:/ { print $2; exit }' "${ex}/gitstack/Chart.yaml" | tr -d '"\r')"
+    signed_app="$(awk '/^appVersion:/ { print $2; exit }' "${ex}/gitstack/Chart.yaml" | tr -d '"\r')"
+    if [ "${signed_ver}" != "${version}" ] || [ "${signed_app}" != "${version}" ]; then
+      fail "il chart firmato della release ${release_tag} ha version=${signed_ver} e appVersion=${signed_app} (attesi ${version}): non è il chart di questa versione. Non installato."
+    fi
+  fi
+  # Sul posto: deploy/k3s-version resta accanto (resolve_k3s_version).
+  rm -rf "${CHART_DIR}"
+  mv "${ex}/gitstack" "${CHART_DIR}"
+}
+
+# Immagini di GitStack (quelle firmate dalla CI) fra quelle che il chart
+# distribuirebbe con i valori scelti: si verificano PRIMA di installare.
+# Postgres e NATS sono immagini di terzi e non si verificano qui.
+verify_deployed_images() {
+  local chart_dir="$1" image_tag="$2"
+  if ! v5_enabled; then
+    warn_unsigned_exception
+    return 0
+  fi
+  ensure_cosign
+  helm_value_args "${image_tag}"
+  local rendered images img n=0
+  rendered="$(helm template "${GITSTACK_RELEASE_NAME}" "${chart_dir}" \
+    --namespace "${GITSTACK_NAMESPACE}" "${HELM_VALUE_ARGS[@]}")" \
+    || fail "'helm template' fallito: non posso elencare le immagini da verificare."
+  images="$(printf '%s\n' "${rendered}" | tr -d "\"'" \
+    | sed -n -E 's/^[[:space:]]*-?[[:space:]]*image:[[:space:]]*([^[:space:]]+)[[:space:]]*$/\1/p' \
+    | sort -u | grep -E '(^|/)gitstack-(gateway|identity|git|core|web)([:@]|$)' || true)"
+  [ -n "${images}" ] || fail "il chart non distribuisce nessuna immagine gitstack-*: chart inatteso, niente da verificare."
+  while IFS= read -r img; do
+    [ -n "${img}" ] || continue
+    verify_image_cosign "${img}"
+    n=$((n + 1))
+  done <<<"${images}"
+  log "Immagini verificate: ${n}."
+}
+
+# Sezione v5 di config.yaml: l'eccezione N9 (da mostrare in `gitstack status`)
+# e il cosign pinnato che usa `gitstack upgrade`.
+v5_config_section() {
+  printf 'v5:\n'
+  if v5_enabled; then
+    printf '  allow_unsigned: false\n'
+    printf '  cosign_path: %s\n' "${COSIGN_PATH}"
+  else
+    printf '  allow_unsigned: true\n'
+  fi
+}
+
+# Riepilogo: l'eccezione N9 resta in vista a fine installazione.
+print_v5_summary() {
+  if v5_enabled; then
+    printf 'Firme (V5): binario, chart e immagini verificati con cosign %s.' "${COSIGN_VERSION}"
+  else
+    printf 'ATTENZIONE - eccezione N9: le firme di binario, chart e immagini NON sono state verificate (--allow-unsigned-mirrors).\nSi vede in: sudo gitstack status. Per ripristinare la verifica rilancia questo script senza il flag.'
+  fi
+}
+
 # --- Helm ------------------------------------------------------------------
 
 # Tarball ufficiale pinnato alla versione esatta più il suo checksum
@@ -928,10 +1388,12 @@ install_helm() {
   workdir="$(mktemp -d)"
   TMP_DIRS+=("${workdir}")
 
-  curl -fsSL -o "${workdir}/${tarball_name}" "https://get.helm.sh/${tarball_name}" \
-    || fail "download del tarball di Helm fallito (https://get.helm.sh/${tarball_name})."
-  curl -fsSL -o "${workdir}/${tarball_name}.sha256sum" "https://get.helm.sh/${tarball_name}.sha256sum" \
-    || fail "download del checksum di Helm fallito (https://get.helm.sh/${tarball_name}.sha256sum)."
+  local helm_base
+  helm_base="$(helm_base_url)"
+  curl -fsSL -o "${workdir}/${tarball_name}" "${helm_base}/${tarball_name}" \
+    || fail "download del tarball di Helm fallito (${helm_base}/${tarball_name})."
+  curl -fsSL -o "${workdir}/${tarball_name}.sha256sum" "${helm_base}/${tarball_name}.sha256sum" \
+    || fail "download del checksum di Helm fallito (${helm_base}/${tarball_name}.sha256sum)."
   (cd "${workdir}" && sha256sum -c "${tarball_name}.sha256sum") \
     || fail "il tarball di Helm scaricato non corrisponde al checksum pubblicato."
 
@@ -940,16 +1402,20 @@ install_helm() {
   install -m 0755 "${workdir}/linux-amd64/helm" /usr/local/bin/helm
 }
 
-install_gitstack() {
-  local chart_dir="$1"
-  local image_tag="$2"
+# Indirizzi IPv4 del nodo (F7): sempre bloccati dalla policy di uscita, anche se
+# una rete di egress.allow li contiene. Il chart aggiunge status.hostIP.
+egress_node_addresses() {
+  local ips
+  ips="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$' | grep -v '^127[.]' | paste -sd, - || true)"
+  printf '%s' "${ips}"
+}
 
-  local helm_args=(
-    upgrade --install "${GITSTACK_RELEASE_NAME}" "${chart_dir}"
-    --namespace "${GITSTACK_NAMESPACE}" --create-namespace
-    --set "global.image.tag=${image_tag}"
-    --wait --timeout 5m
-  )
+# Valori del chart (--set / -f) in HELM_VALUE_ARGS: gli stessi per l'elenco
+# delle immagini da verificare (helm template) e per l'installazione.
+HELM_VALUE_ARGS=()
+helm_value_args() {
+  local image_tag="$1"
+  local helm_args=(--set "global.image.tag=${image_tag}")
   if [ -n "${GITSTACK_IMAGE_REGISTRY}" ]; then
     helm_args+=(--set "global.image.registry=${GITSTACK_IMAGE_REGISTRY}")
   fi
@@ -964,6 +1430,23 @@ install_gitstack() {
   for pg_set in "${POSTGRES_HELM_SETS[@]:-}"; do
     [ -n "${pg_set}" ] && helm_args+=(--set "${pg_set}")
   done
+  # Proxy e CA aziendale (N9): dopo il TLS, prima dei valori dell'utente.
+  local net_set
+  for net_set in "${NETWORK_HELM_SETS[@]:-}"; do
+    [ -n "${net_set}" ] && helm_args+=(--set "${net_set}")
+  done
+  # Policy di uscita (F7): LAN ammesse (esplicite) e indirizzi del nodo.
+  local egress_nodes
+  case "${GITSTACK_EGRESS_ALLOW}" in
+    *[[:space:]]*) fail "--egress-allow: elementi separati da virgole, senza spazi." ;;
+  esac
+  if [ -n "${GITSTACK_EGRESS_ALLOW}" ]; then
+    helm_args+=(--set "egress.allow={${GITSTACK_EGRESS_ALLOW}}")
+  fi
+  egress_nodes="$(egress_node_addresses)"
+  if [ -n "${egress_nodes}" ]; then
+    helm_args+=(--set "egress.nodeAddresses={${egress_nodes}}")
+  fi
   local f
   for f in "${extra_helm_values[@]:-}"; do
     [ -n "${f}" ] && helm_args+=(-f "${f}")
@@ -972,6 +1455,20 @@ install_gitstack() {
   for kv in "${extra_helm_set[@]:-}"; do
     [ -n "${kv}" ] && helm_args+=(--set "${kv}")
   done
+  HELM_VALUE_ARGS=("${helm_args[@]}")
+}
+
+install_gitstack() {
+  local chart_dir="$1"
+  local image_tag="$2"
+
+  helm_value_args "${image_tag}"
+  local helm_args=(
+    upgrade --install "${GITSTACK_RELEASE_NAME}" "${chart_dir}"
+    --namespace "${GITSTACK_NAMESPACE}" --create-namespace
+    --wait --timeout 5m
+    "${HELM_VALUE_ARGS[@]}"
+  )
 
   log "Installo/aggiorno GitStack (release '${GITSTACK_RELEASE_NAME}', namespace '${GITSTACK_NAMESPACE}', tag immagine '${image_tag}') ..."
   KUBECONFIG="${GITSTACK_KUBECONFIG}" helm "${helm_args[@]}" \
@@ -1020,7 +1517,7 @@ prepare_admin() {
   if [ -n "${src}" ]; then
     explicit=1
   else
-    src="https://github.com/${GITSTACK_REPO}/releases/download/${image_tag}/gitstack-linux-amd64"
+    src="$(admin_default_url "${image_tag}")"
   fi
   if [ "${GITSTACK_ADMIN_REQUIRED}" = "1" ]; then
     explicit=1
@@ -1057,6 +1554,16 @@ prepare_admin() {
     fail "il binario di gitstack (${src}) non corrisponde al checksum SHA-256: atteso ${expected}, trovato ${actual}. Non installato."
   fi
   chmod 0755 "${workdir}/gitstack"
+
+  # V5: oltre al checksum, la firma cosign del binario (bundle accanto
+  # all'artefatto: <sorgente>.sigstore.json). Senza bundle non si installa.
+  if v5_enabled; then
+    fetch_resource "${src}.sigstore.json" "${workdir}/gitstack.sigstore.json" \
+      || fail "bundle cosign del binario di gitstack non trovato (${src}.sigstore.json): il binario non risulta firmato. Non installato. Pubblica il bundle accanto al binario, oppure per un mirror interno non firmato usa --allow-unsigned-mirrors (eccezione N9)."
+    verify_blob_cosign "${workdir}/gitstack" "${workdir}/gitstack.sigstore.json" "il binario di gitstack"
+  else
+    warn_unsigned_exception
+  fi
   ADMIN_STAGED="${workdir}/gitstack"
   ADMIN_SOURCE_DESC="${src}"
   log "Binario di gitstack verificato (SHA-256 ${actual})."
@@ -1075,6 +1582,17 @@ install_admin() {
   log "Installato ${ADMIN_BIN_PATH} da ${ADMIN_SOURCE_DESC}: $("${ADMIN_BIN_PATH}" version 2>/dev/null || echo 'versione non leggibile')."
 }
 
+# Pubblica le informazioni per Admin · System (ConfigMap system-info, letto da
+# core: GIT-213). Best effort: un errore non fa fallire l'installazione.
+publish_system_info() {
+  [ -x "${ADMIN_BIN_PATH}" ] || return 0
+  if "${ADMIN_BIN_PATH}" system-info publish >/dev/null 2>&1; then
+    log "Informazioni per Admin · System pubblicate."
+  else
+    warn "Admin · System non aggiornato: rilancia 'sudo gitstack system-info publish'."
+  fi
+}
+
 # Valore di una chiave del config esistente: di primo livello (section vuota)
 # o dentro la sezione indicata (qui "backup"). Una riesecuzione non cancella
 # così le scelte sul backup.
@@ -1089,6 +1607,27 @@ existing_config_value() {
   else
     awk -v key="${key}:" '$1 == key { print $2; exit }' "${GITSTACK_CONFIG_FILE}"
   fi
+}
+
+# Sezione `network:` di config.yaml (vuota se non c'è niente da ricordare):
+# le riesecuzioni la rileggono (resolve_network) e `gitstack config set
+# network` la cambia. La password è nello stesso file, che è root-only (0600).
+render_config_network() {
+  local ca=""
+  [ -z "${GITSTACK_CA_BUNDLE}" ] || ca="$(net_ca_copy_path)"
+  if [ -z "${GITSTACK_HTTP_PROXY}${GITSTACK_HTTPS_PROXY}${GITSTACK_NO_PROXY}${GITSTACK_REGISTRY_MIRROR}${GITSTACK_DOWNLOAD_MIRROR}${ca}" ]; then
+    return 0
+  fi
+  printf 'network:\n'
+  local kv key val
+  for kv in http_proxy:"${GITSTACK_HTTP_PROXY}" https_proxy:"${GITSTACK_HTTPS_PROXY}" no_proxy:"${GITSTACK_NO_PROXY}" \
+    registry_mirror:"${GITSTACK_REGISTRY_MIRROR}" registry_username:"${GITSTACK_REGISTRY_USERNAME}" \
+    registry_password:"${GITSTACK_REGISTRY_PASSWORD}" download_mirror:"${GITSTACK_DOWNLOAD_MIRROR}" ca_bundle:"${ca}"; do
+    key="${kv%%:*}"
+    val="${kv#*:}"
+    [ -n "${val}" ] || continue
+    printf '  %s: %s\n' "${key}" "$(net_quote "${val}")"
+  done
 }
 
 # --- Backup su S3 (N7) -------------------------------------------------
@@ -1208,7 +1747,13 @@ EOF
   # backup.s3 sta dentro backup: va subito dopo; le sezioni di primo livello
   # (postgres) dopo, altrimenti s3 finirebbe dentro postgres.
   [ -z "${s3_block}" ] || printf '%s\n' "${s3_block}" >>"${tmp}"
-  postgres_config_section >>"${tmp}"
+  # Ultima sezione: la catena di fornitura (V5), cioè l'eccezione N9, se c'è,
+  # e il cosign pinnato.
+  {
+    postgres_config_section
+    render_config_network
+    v5_config_section
+  } >>"${tmp}"
   chmod 0600 "${tmp}"
   mv -f "${tmp}" "${GITSTACK_CONFIG_FILE}"
   log "Configurazione scritta in ${GITSTACK_CONFIG_FILE} (0600)."
@@ -1551,6 +2096,551 @@ setup_tls() {
   esac
 }
 
+# --- Rete aziendale (N4, N9a) ------------------------------------------
+# Proxy, mirror delle immagini e dei download, CA aziendale. Il formato dei
+# file generati (registries.yaml, drop-in di k3s) è lo stesso di
+# `gitstack config set network` (admin/internal/cli/confignetwork.go).
+# La verifica dei checksum (V5) e le regole di uscita dei servizi (C8,
+# pkg/egress) restano quelle di prima: il mirror cambia da dove si scarica,
+# non cosa si verifica.
+
+CORPORATE_CA_FILE_NAME="ca.crt"
+SYSTEM_CA_FILE_NAME="gitstack-corporate-ca.crt"
+K3S_DROPIN_NAME="10-gitstack-network.conf"
+# Secondi di attesa per ogni prova di raggiungibilità.
+NET_PROBE_TIMEOUT="${NET_PROBE_TIMEOUT:-10}"
+
+# Valore di una chiave della sezione `network:` di config.yaml (tra apici,
+# come la scrive write_config). Vuoto se manca.
+existing_network_value() {
+  [ -f "${GITSTACK_CONFIG_FILE}" ] || return 0
+  awk -v key="$1" '
+    $0 == "network:" { insec = 1; next }
+    /^[^ ]/ { insec = 0 }
+    insec {
+      k = $1; sub(/:$/, "", k)
+      if (k == key) {
+        v = $0; sub(/^[^:]*: */, "", v)
+        if (v ~ /^".*"$/) { v = substr(v, 2, length(v) - 2); gsub(/\\"/, "\"", v); gsub(/\\\\/, "\\", v) }
+        print v; exit
+      }
+    }' "${GITSTACK_CONFIG_FILE}"
+}
+
+# Scrive la stringa tra apici doppi, con \ e " protetti (stile YAML).
+net_quote() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '"%s"' "${s}"
+}
+
+# URL senza la password (per i messaggi).
+net_redact() {
+  printf '%s' "$1" | sed -E 's#(://[^:/@]*):[^@/]*@#\1:xxxxx@#'
+}
+
+# host[:porta] di un URL.
+net_authority() {
+  printf '%s' "$1" | sed -E 's#^[a-z0-9]+://##; s#^[^/@]*@##; s#/.*$##'
+}
+
+# net_valid_url OPZIONE VALORE SCHEMA...: URL con uno degli schemi.
+net_valid_url() {
+  local what="$1" v="$2" ok=0 sch
+  shift 2
+  [ -n "${v}" ] || return 0
+  for sch in "$@"; do
+    case "${v}" in "${sch}://"?*) ok=1 ;; esac
+  done
+  [ "${ok}" -eq 1 ] || fail "${what}: '$(net_redact "${v}")' non è un URL valido (atteso <schema>://host[:porta], schemi: $*)."
+}
+
+# Proxy HTTPS effettivo: senza --https-proxy vale quello HTTP.
+net_https_proxy() {
+  printf '%s' "${GITSTACK_HTTPS_PROXY:-${GITSTACK_HTTP_PROXY}}"
+}
+
+# Indirizzi IPv4 della macchina (senza loopback), ordinati, separati da
+# virgole: l'API server parla al kubelet su <IP del nodo>:10250, che non deve
+# passare dal proxy. Stesso elenco e stesso ordine di `gitstack config set
+# network` (nodeAddrs in admin/internal/cli/confignetwork.go).
+net_node_addrs() {
+  local_addrs | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | grep -v '^127\.' | LC_ALL=C sort -u | paste -sd, -
+}
+
+# NO_PROXY di k3s (e dell'installer): reti del cluster, indirizzi del nodo e
+# quanto indicato.
+net_k3s_no_proxy() {
+  local out="${K3S_BUILTIN_NO_PROXY}" addrs
+  addrs="$(net_node_addrs)"
+  if [ -n "${addrs}" ]; then
+    out="${out},${addrs}"
+  fi
+  if [ -n "${GITSTACK_NO_PROXY}" ]; then
+    out="${out},${GITSTACK_NO_PROXY}"
+  fi
+  printf '%s' "${out}"
+}
+
+net_ca_copy_path() {
+  printf '%s/%s' "${GITSTACK_NETWORK_DIR}" "${CORPORATE_CA_FILE_NAME}"
+}
+
+# Protegge virgole e backslash di un valore per helm --set.
+net_helm_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//,/\\,}"
+  printf '%s' "${s}"
+}
+
+# Il bundle è un file PEM con almeno un certificato.
+net_check_ca_bundle() {
+  local f="$1"
+  [ -f "${f}" ] || fail "--ca-bundle: file non trovato: ${f}"
+  grep -q -- '-----BEGIN CERTIFICATE-----' "${f}" || fail "--ca-bundle: ${f} non contiene certificati PEM (-----BEGIN CERTIFICATE-----)."
+  if command -v openssl >/dev/null 2>&1; then
+    openssl x509 -in "${f}" -noout >/dev/null 2>&1 || fail "--ca-bundle: il primo certificato di ${f} non è valido (openssl x509)."
+  fi
+}
+
+# Imposta le variabili di rete (opzioni, altrimenti le scelte della volta
+# prima), le convalida, esporta il proxy per curl, k3s e Helm dell'installer e
+# prepara i valori Helm di N9b (proxy.*, corporateCA.configMap).
+resolve_network() {
+  local user_given="${GITSTACK_REGISTRY_USERNAME}" v var key saved_ca
+  for v in HTTP_PROXY HTTPS_PROXY NO_PROXY REGISTRY_MIRROR REGISTRY_USERNAME DOWNLOAD_MIRROR; do
+    var="GITSTACK_${v}"
+    key="$(printf '%s' "${v}" | tr '[:upper:]' '[:lower:]')"
+    if [ -z "${!var}" ]; then
+      printf -v "${var}" '%s' "$(existing_network_value "${key}")"
+    fi
+  done
+  if [ -n "${GITSTACK_REGISTRY_PASSWORD_FILE}" ]; then
+    [ -f "${GITSTACK_REGISTRY_PASSWORD_FILE}" ] || fail "--registry-password-file: file non trovato: ${GITSTACK_REGISTRY_PASSWORD_FILE}"
+    GITSTACK_REGISTRY_PASSWORD="$(head -n1 "${GITSTACK_REGISTRY_PASSWORD_FILE}" | tr -d '\r\n')"
+  fi
+  if [ -z "${GITSTACK_REGISTRY_PASSWORD}" ] && [ -z "${user_given}" ]; then
+    GITSTACK_REGISTRY_PASSWORD="$(existing_network_value registry_password)"
+  fi
+  if [ -z "${GITSTACK_CA_BUNDLE}" ]; then
+    saved_ca="$(existing_network_value ca_bundle)"
+    if [ -n "${saved_ca}" ] && [ -f "${saved_ca}" ]; then
+      GITSTACK_CA_BUNDLE="${saved_ca}"
+    fi
+  fi
+
+  net_valid_url "--http-proxy" "${GITSTACK_HTTP_PROXY}" http https socks5
+  net_valid_url "--https-proxy" "${GITSTACK_HTTPS_PROXY}" http https socks5
+  net_valid_url "--registry-mirror" "${GITSTACK_REGISTRY_MIRROR}" http https
+  net_valid_url "--download-mirror" "${GITSTACK_DOWNLOAD_MIRROR}" http https
+  case "${GITSTACK_NO_PROXY}" in
+    *[[:space:]]*) fail "--no-proxy: elementi separati da virgole, senza spazi." ;;
+  esac
+  if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] && [ -z "${GITSTACK_REGISTRY_PASSWORD}" ]; then
+    fail "--registry-username senza password: usa --registry-password-file FILE (o GITSTACK_REGISTRY_PASSWORD)."
+  fi
+  if [ -z "${GITSTACK_REGISTRY_USERNAME}" ] && [ -n "${GITSTACK_REGISTRY_PASSWORD}" ]; then
+    fail "password del mirror senza --registry-username."
+  fi
+  if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] && [ -z "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    fail "--registry-username senza --registry-mirror."
+  fi
+  GITSTACK_DOWNLOAD_MIRROR="${GITSTACK_DOWNLOAD_MIRROR%/}"
+  GITSTACK_REGISTRY_MIRROR="${GITSTACK_REGISTRY_MIRROR%/}"
+  if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
+    net_check_ca_bundle "${GITSTACK_CA_BUNDLE}"
+  fi
+
+  NETWORK_CONFIGURED=0
+  if [ -n "${GITSTACK_HTTP_PROXY}${GITSTACK_HTTPS_PROXY}${GITSTACK_REGISTRY_MIRROR}${GITSTACK_DOWNLOAD_MIRROR}${GITSTACK_CA_BUNDLE}" ]; then
+    NETWORK_CONFIGURED=1
+  fi
+
+  # Proxy per tutto ciò che lancia l'installer (curl, script di k3s, Helm).
+  # NO_PROXY è quello di k3s: lo script di k3s lo copia in k3s.service.env, e
+  # così coincide con il drop-in.
+  if [ -n "${GITSTACK_HTTP_PROXY}" ]; then
+    export HTTP_PROXY="${GITSTACK_HTTP_PROXY}" http_proxy="${GITSTACK_HTTP_PROXY}"
+  fi
+  local https_proxy_value no_proxy_value
+  https_proxy_value="$(net_https_proxy)"
+  if [ -n "${https_proxy_value}" ]; then
+    export HTTPS_PROXY="${https_proxy_value}" https_proxy="${https_proxy_value}"
+    no_proxy_value="$(net_k3s_no_proxy)"
+    export NO_PROXY="${no_proxy_value}" no_proxy="${no_proxy_value}"
+  fi
+
+  # Valori del chart (contratto di N9b: proxy.http, proxy.https, proxy.noProxy,
+  # corporateCA.configMap).
+  NETWORK_HELM_SETS=()
+  if [ -n "${GITSTACK_HTTP_PROXY}$(net_https_proxy)" ]; then
+    NETWORK_HELM_SETS+=("proxy.http=$(net_helm_escape "${GITSTACK_HTTP_PROXY}")"
+      "proxy.https=$(net_helm_escape "$(net_https_proxy)")"
+      "proxy.noProxy=$(net_helm_escape "${GITSTACK_NO_PROXY}")")
+  fi
+  if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
+    NETWORK_HELM_SETS+=("corporateCA.configMap=${GITSTACK_RELEASE_NAME}-corporate-ca")
+  fi
+}
+
+# --- Download: da dove (--download-mirror) ----------------------------------
+# Struttura attesa del mirror (docs/operations.md):
+#   <mirror>/k3s/install.sh
+#   <mirror>/k3s/releases/download/<versione>/{k3s,sha256sum-amd64.txt}
+#   <mirror>/helm/helm-<versione>-linux-amd64.tar.gz[.sha256sum]
+#   <mirror>/gitstack/<tag>/gitstack-linux-amd64[.sha256]
+#   <mirror>/gitstack/source/<sha>.tar.gz  e  <ref>.sha (solo senza checkout)
+k3s_script_url() {
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    printf '%s/k3s/install.sh' "${GITSTACK_DOWNLOAD_MIRROR}"
+  else
+    printf 'https://get.k3s.io'
+  fi
+}
+
+helm_base_url() {
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    printf '%s/helm' "${GITSTACK_DOWNLOAD_MIRROR}"
+  else
+    printf 'https://get.helm.sh'
+  fi
+}
+
+# Cartella degli asset di una release (binario, chart, bundle .sigstore.json):
+# la release GitHub, o <mirror>/gitstack/<tag>. Ciò che arriva dal mirror si
+# verifica con cosign come ciò che arriva da GitHub (V5).
+release_base() {
+  local tag="$1"
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    printf '%s/gitstack/%s' "${GITSTACK_DOWNLOAD_MIRROR}" "${tag}"
+  else
+    printf '%s/%s' "${GITSTACK_RELEASE_URL}" "${tag}"
+  fi
+}
+
+admin_default_url() {
+  printf '%s/gitstack-linux-amd64' "$(release_base "$1")"
+}
+
+# cosign pinnato: GITSTACK_COSIGN_URL, altrimenti il mirror dei download
+# (<mirror>/cosign/<versione>/cosign-linux-amd64), altrimenti GitHub.
+cosign_url() {
+  if [ -n "${GITSTACK_COSIGN_URL}" ]; then
+    printf '%s' "${GITSTACK_COSIGN_URL}"
+  elif [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    printf '%s/cosign/%s/cosign-linux-amd64' "${GITSTACK_DOWNLOAD_MIRROR}" "${COSIGN_VERSION}"
+  else
+    printf 'https://github.com/sigstore/cosign/releases/download/%s/cosign-linux-amd64' "${COSIGN_VERSION}"
+  fi
+}
+
+source_tarball_url() {
+  local sha="$1"
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    printf '%s/gitstack/source/%s.tar.gz' "${GITSTACK_DOWNLOAD_MIRROR}" "${sha}"
+  else
+    printf 'https://codeload.github.com/%s/tar.gz/%s' "${GITSTACK_REPO}" "${sha}"
+  fi
+}
+
+# --- File generati per k3s ---------------------------------------------------
+
+# registries.yaml: il mirror vale per ogni immagine ("*"), comprese quelle di
+# sistema di k3s. Stampa niente senza mirror.
+render_registries_yaml() {
+  [ -n "${GITSTACK_REGISTRY_MIRROR}" ] || return 0
+  printf '%s\n' '# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.'
+  printf 'mirrors:\n  "*":\n    endpoint:\n      - %s\n' "$(net_quote "${GITSTACK_REGISTRY_MIRROR}")"
+  local has_ca=0
+  if [ -n "${GITSTACK_CA_BUNDLE}" ]; then
+    case "${GITSTACK_REGISTRY_MIRROR}" in https://*) has_ca=1 ;; esac
+  fi
+  if [ -n "${GITSTACK_REGISTRY_USERNAME}" ] || [ "${has_ca}" -eq 1 ]; then
+    printf 'configs:\n  %s:\n' "$(net_quote "$(net_authority "${GITSTACK_REGISTRY_MIRROR}")")"
+    if [ -n "${GITSTACK_REGISTRY_USERNAME}" ]; then
+      printf '    auth:\n      username: %s\n      password: %s\n' \
+        "$(net_quote "${GITSTACK_REGISTRY_USERNAME}")" "$(net_quote "${GITSTACK_REGISTRY_PASSWORD}")"
+    fi
+    if [ "${has_ca}" -eq 1 ]; then
+      printf '    tls:\n      ca_file: %s\n' "$(net_quote "$(net_ca_copy_path)")"
+    fi
+  fi
+}
+
+# Una riga Environment= di systemd: apici doppi, % raddoppiato.
+net_systemd_env() {
+  local v="$2"
+  v="${v//\\/\\\\}"
+  v="${v//\"/\\\"}"
+  v="${v//%/%%}"
+  printf 'Environment="%s=%s"\n' "$1" "${v}"
+}
+
+# Drop-in systemd di k3s con le variabili di proxy: containerd e kubelet le
+# ereditano. Stampa niente senza proxy.
+render_k3s_dropin() {
+  [ -n "${GITSTACK_HTTP_PROXY}$(net_https_proxy)" ] || return 0
+  printf '%s\n[Service]\n' '# Scritto da GitStack (install.sh o gitstack config set network): non modificarlo a mano.'
+  if [ -n "${GITSTACK_HTTP_PROXY}" ]; then
+    net_systemd_env HTTP_PROXY "${GITSTACK_HTTP_PROXY}"
+    net_systemd_env http_proxy "${GITSTACK_HTTP_PROXY}"
+  fi
+  net_systemd_env HTTPS_PROXY "$(net_https_proxy)"
+  net_systemd_env https_proxy "$(net_https_proxy)"
+  net_systemd_env NO_PROXY "$(net_k3s_no_proxy)"
+  net_systemd_env no_proxy "$(net_k3s_no_proxy)"
+}
+
+# write_managed_file PERCORSO MODO CONTENUTO: scrive solo se cambia (e imposta
+# NETWORK_K3S_CHANGED=1); contenuto vuoto = toglie il file. Il contenuto non
+# arriva da una pipe: la variabile deve restare nel processo principale. Il
+# file provvisorio ha già il modo giusto: una password non è mai leggibile da
+# altri.
+write_managed_file() {
+  local dest="$1" mode="$2" content="$3" tmp
+  mkdir -p "$(dirname "${dest}")"
+  tmp="$(mktemp "${dest}.XXXXXX")"
+  chmod "${mode}" "${tmp}"
+  if [ -n "${content}" ]; then
+    printf '%s
+' "${content}" >"${tmp}"
+  fi
+  if [ ! -s "${tmp}" ]; then
+    rm -f "${tmp}"
+    if [ -e "${dest}" ]; then
+      rm -f "${dest}"
+      NETWORK_K3S_CHANGED=1
+    fi
+    return 0
+  fi
+  if [ -f "${dest}" ] && cmp -s "${tmp}" "${dest}"; then
+    rm -f "${tmp}"
+    return 0
+  fi
+  mv -f "${tmp}" "${dest}"
+  NETWORK_K3S_CHANGED=1
+}
+
+# Fiducia nella CA aziendale: copia gestita e CA di sistema (curl, git, i
+# comandi dell'host). Containerd la legge da registries.yaml (ca_file) e dal
+# sistema; i pod dal ConfigMap (ensure_corporate_ca_configmap).
+apply_ca_trust() {
+  [ -n "${GITSTACK_CA_BUNDLE}" ] || return 0
+  mkdir -p "${GITSTACK_NETWORK_DIR}"
+  chmod 0755 "${GITSTACK_NETWORK_DIR}"
+  if [ "${GITSTACK_CA_BUNDLE}" != "$(net_ca_copy_path)" ]; then
+    install -m 0644 "${GITSTACK_CA_BUNDLE}" "$(net_ca_copy_path).new"
+    mv -f "$(net_ca_copy_path).new" "$(net_ca_copy_path)"
+  fi
+  mkdir -p "${SYSTEM_CA_DIR}"
+  local dest="${SYSTEM_CA_DIR}/${SYSTEM_CA_FILE_NAME}"
+  if [ ! -f "${dest}" ] || ! cmp -s "$(net_ca_copy_path)" "${dest}"; then
+    install -m 0644 "$(net_ca_copy_path)" "${dest}"
+    NETWORK_K3S_CHANGED=1
+    if command -v update-ca-certificates >/dev/null 2>&1; then
+      update-ca-certificates >/dev/null 2>&1 || warn "update-ca-certificates è fallito: la CA aziendale potrebbe non essere fidata dal sistema."
+    else
+      warn "update-ca-certificates non trovato (pacchetto ca-certificates): la CA aziendale non è nel sistema, solo in containerd e nei pod."
+    fi
+  fi
+  log "CA aziendale: $(net_ca_copy_path) e ${dest}."
+}
+
+# registries.yaml (0600: può contenere la password) e drop-in del proxy. Va
+# fatto prima di installare k3s (parte già col mirror) e a ogni riesecuzione.
+apply_k3s_network() {
+  [ "${NETWORK_CONFIGURED}" -eq 1 ] || return 0
+  write_managed_file "${K3S_CONFIG_DIR}/registries.yaml" 0600 "$(render_registries_yaml)"
+  write_managed_file "${SYSTEMD_UNIT_DIR}/k3s.service.d/${K3S_DROPIN_NAME}" 0644 "$(render_k3s_dropin)"
+  if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    log "Mirror delle immagini: ${GITSTACK_REGISTRY_MIRROR} (registries.yaml, tutte le immagini)."
+  fi
+  if [ -n "${GITSTACK_HTTP_PROXY}$(net_https_proxy)" ]; then
+    log "Proxy per k3s: drop-in ${SYSTEMD_UNIT_DIR}/k3s.service.d/${K3S_DROPIN_NAME}."
+  fi
+}
+
+# Lo script di k3s copia le variabili *_PROXY nell'ambiente in k3s.service.env:
+# il drop-in resta l'unica fonte, così `gitstack config set network` le cambia
+# in un posto solo.
+strip_k3s_env_proxy() {
+  local f="${SYSTEMD_UNIT_DIR}/k3s.service.env" tmp
+  [ -f "${f}" ] || return 0
+  if grep -qiE '^(http_proxy|https_proxy|no_proxy)=' "${f}"; then
+    tmp="$(mktemp "${f}.XXXXXX")"
+    grep -viE '^(http_proxy|https_proxy|no_proxy)=' "${f}" >"${tmp}" || true
+    chmod 0600 "${tmp}"
+    mv -f "${tmp}" "${f}"
+  fi
+}
+
+# ConfigMap <release>-corporate-ca (chiave ca.crt) nel namespace della
+# release: lo monta il chart (corporateCA.configMap). Prima di helm.
+# Il file contiene le CA di sistema (dopo apply_ca_trust includono già quella
+# aziendale) più la CA aziendale: per il mirror git il chart SOSTITUISCE le CA
+# di sistema con questo file, e un mirror verso un host pubblico (in NO_PROXY)
+# deve continuare a fidarsi delle CA pubbliche. Stessa logica di
+# `gitstack config set network` (corporateCABundle in confignetwork.go).
+SYSTEM_CA_BUNDLE_FILE="${GITSTACK_SYSTEM_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}"
+ensure_corporate_ca_configmap() {
+  [ -n "${GITSTACK_CA_BUNDLE}" ] || return 0
+  local name="${GITSTACK_RELEASE_NAME}-corporate-ca" dir combined
+  dir="$(mktemp -d)"
+  TMP_DIRS+=("${dir}")
+  combined="${dir}/${CORPORATE_CA_FILE_NAME}"
+  {
+    if [ -f "${SYSTEM_CA_BUNDLE_FILE}" ]; then cat "${SYSTEM_CA_BUNDLE_FILE}"; printf '\n'; fi
+    cat "$(net_ca_copy_path)"
+  } >"${combined}"
+  KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl create namespace "${GITSTACK_NAMESPACE}" >/dev/null 2>&1 || true
+  KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl -n "${GITSTACK_NAMESPACE}" create configmap "${name}" \
+    --from-file="${CORPORATE_CA_FILE_NAME}=${combined}" --dry-run=client -o yaml \
+    | KUBECONFIG="${GITSTACK_KUBECONFIG}" k3s kubectl apply -f - >/dev/null \
+    || fail "impossibile creare il ConfigMap ${name} con la CA aziendale."
+  log "ConfigMap ${name} aggiornato (CA di sistema e aziendale per i pod)."
+}
+
+# --- Preflight di rete ----------------------------------------------------------
+
+# Bundle per curl nel preflight: CA di sistema più quella aziendale (creato
+# da net_probe_url al primo uso), senza toccare il sistema prima che il
+# preflight abbia detto di sì.
+NET_PROBE_CACERT=""
+
+# net_probe_url URL [UTENTE PASSWORD]: stampa il codice HTTP (000 = nessuna
+# risposta). Una risposta qualunque, anche 401 o 404, vuol dire che la
+# destinazione è raggiungibile: è il silenzio a segnalare il guasto. I test
+# ridefiniscono questa funzione.
+net_probe_url() {
+  local url="$1" user="${2:-}" pass="${3:-}" cacert code
+  local args=(-s -o /dev/null --max-time "${NET_PROBE_TIMEOUT}" -w '%{http_code}')
+  if [ -n "${GITSTACK_CA_BUNDLE}" ] && [ -z "${NET_PROBE_CACERT}" ]; then
+    local d
+    d="$(mktemp -d)"
+    TMP_DIRS+=("${d}")
+    NET_PROBE_CACERT="${d}/bundle.pem"
+    { cat /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true; cat "${GITSTACK_CA_BUNDLE}"; } >"${NET_PROBE_CACERT}"
+  fi
+  cacert="${NET_PROBE_CACERT}"
+  [ -z "${cacert}" ] || args+=(--cacert "${cacert}")
+  if [ -n "${user}" ]; then
+    code="$(printf 'user = %s\n' "$(net_quote "${user}:${pass}")" | curl "${args[@]}" -K - "${url}" 2>/dev/null)" || code="000"
+  else
+    code="$(curl "${args[@]}" "${url}" 2>/dev/null)" || code="000"
+  fi
+  printf '%s' "${code:-000}"
+}
+
+# net_probe_tcp HOST PORTA: 0 se la porta risponde. Ridefinita nei test.
+net_probe_tcp() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "${NET_PROBE_TIMEOUT}" bash -c "exec 3<>/dev/tcp/$1/$2" 2>/dev/null
+  else
+    (exec 3<>"/dev/tcp/$1/$2") 2>/dev/null
+  fi
+}
+
+NET_PROBE_BAD=()
+
+# net_probe_check ETICHETTA URL TIPO [UTENTE PASSWORD]
+# TIPO: "registry" (un endpoint /v2/: risponde 200, o 401 se chiede le
+# credenziali) o "file" (un file da scaricare: 2xx o reindirizzamento).
+# Altri codici, il 403 o il 503 di un proxy compresi, sono un guasto: un proxy
+# che nega la destinazione risponde, ma non è la destinazione.
+net_probe_check() {
+  local label="$1" url="$2" kind="$3" user="${4:-}" pass="${5:-}" code via=""
+  code="$(net_probe_url "${url}" "${user}" "${pass}")"
+  case "${url}" in
+    https://*) [ -z "$(net_https_proxy)" ] || via=" (via proxy $(net_redact "$(net_https_proxy)"))" ;;
+    http://*) [ -z "${GITSTACK_HTTP_PROXY}" ] || via=" (via proxy $(net_redact "${GITSTACK_HTTP_PROXY}"))" ;;
+  esac
+  if [ "${code}" = "000" ]; then
+    NET_PROBE_BAD+=("${label}: ${url} non risponde${via}")
+    return 0
+  fi
+  case "${kind}:${code}" in
+    registry:200)
+      log "Rete: ${label} risponde (HTTP ${code})${via} OK"
+      ;;
+    registry:401)
+      if [ -n "${user}" ]; then
+        NET_PROBE_BAD+=("${label}: ${url} rifiuta le credenziali (HTTP 401)")
+      else
+        log "Rete: ${label} risponde (HTTP 401, chiede le credenziali)${via} OK"
+      fi
+      ;;
+    file:2??|file:3??)
+      log "Rete: ${label} risponde (HTTP ${code})${via} OK"
+      ;;
+    *)
+      NET_PROBE_BAD+=("${label}: ${url} risponde HTTP ${code} (atteso $([ "${kind}" = registry ] && echo '200 o 401' || echo '2xx o 3xx'))${via}")
+      ;;
+  esac
+}
+
+# net_probe_proxy URL: la porta del proxy risponde.
+net_probe_proxy() {
+  local p="$1" h port
+  h="$(net_authority "${p}")"
+  case "${h}" in
+    *:*) port="${h##*:}"; h="${h%:*}" ;;
+    *) port=3128 ;;
+  esac
+  if net_probe_tcp "${h}" "${port}"; then
+    log "Rete: proxy $(net_redact "${p}") raggiungibile OK"
+  else
+    NET_PROBE_BAD+=("proxy: $(net_redact "${p}") non raggiungibile (${h}:${port})")
+  fi
+}
+
+# Prova a raggiungere, attraverso proxy e mirror, tutto ciò che l'installazione
+# scarica; dice cosa non risponde. Con opzioni di rete un guasto ferma
+# l'installazione (altrimenti fallirebbe a metà); senza, è solo un avviso.
+preflight_network() {
+  NET_PROBE_BAD=()
+  [ -z "${GITSTACK_HTTP_PROXY}" ] || net_probe_proxy "${GITSTACK_HTTP_PROXY}"
+  if [ -n "${GITSTACK_HTTPS_PROXY}" ] && [ "${GITSTACK_HTTPS_PROXY}" != "${GITSTACK_HTTP_PROXY}" ]; then
+    net_probe_proxy "${GITSTACK_HTTPS_PROXY}"
+  fi
+
+  if [ -n "${GITSTACK_DOWNLOAD_MIRROR}" ]; then
+    k3s_already_installed || net_probe_check "download di k3s (mirror)" "$(k3s_script_url)" file
+    command -v helm >/dev/null 2>&1 || net_probe_check "download di Helm (mirror)" \
+      "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum" file
+  else
+    k3s_already_installed || net_probe_check "download di k3s" "$(k3s_script_url)" file
+    k3s_already_installed || net_probe_check "binario di k3s" "https://github.com/k3s-io/k3s/releases" file
+    command -v helm >/dev/null 2>&1 || net_probe_check "download di Helm" \
+      "$(helm_base_url)/helm-${GITSTACK_HELM_VERSION}-linux-amd64.tar.gz.sha256sum" file
+  fi
+  if [ -n "${GITSTACK_REGISTRY_MIRROR}" ]; then
+    net_probe_check "mirror delle immagini" "${GITSTACK_REGISTRY_MIRROR}/v2/" registry \
+      "${GITSTACK_REGISTRY_USERNAME}" "${GITSTACK_REGISTRY_PASSWORD}"
+  else
+    local reg
+    for reg in https://ghcr.io/v2/ https://registry-1.docker.io/v2/ https://registry.k8s.io/v2/; do
+      net_probe_check "registry delle immagini" "${reg}" registry
+    done
+  fi
+
+  if [ "${#NET_PROBE_BAD[@]}" -eq 0 ]; then
+    return 0
+  fi
+  local b msg="non rispondono:"
+  for b in "${NET_PROBE_BAD[@]}"; do
+    msg="${msg}
+  - ${b}"
+  done
+  if [ "${NETWORK_CONFIGURED}" -eq 1 ]; then
+    fail "preflight di rete: ${msg}
+Controlla proxy, mirror e CA (--http-proxy, --https-proxy, --no-proxy, --registry-mirror, --download-mirror, --ca-bundle) e rilancia."
+  fi
+  warn "preflight di rete: ${msg}
+L'installazione deve raggiungerli: in una rete chiusa usa --http-proxy, --registry-mirror e --download-mirror (docs/operations.md, «Rete aziendale»)."
+}
+
 # --- Riepilogo finale -------------------------------------------------
 
 primary_ip() {
@@ -1633,6 +2723,8 @@ Per leggerla:
 Al primo login la password va cambiata prima di qualunque altra operazione.
 
 $(print_tls_summary)
+
+$(print_v5_summary)
 
 Rieseguire questo script in qualsiasi momento è sicuro: non reinstalla k3s
 se è già presente e usa 'helm upgrade --install', che non rompe
@@ -1876,10 +2968,19 @@ EOF
 
 main() {
   check_root "$@"
+  apply_version
+  if ! v5_enabled; then
+    warn_unsigned_exception
+  fi
   validate_s3_options
   resolve_tls
+  resolve_network
   resolve_postgres
   run_preflight
+  if [ "${GITSTACK_SKIP_PREFLIGHT}" != "1" ]; then
+    preflight_network
+  fi
+  apply_ca_trust
 
   resolve_chart_dir
   local chart_dir="${CHART_DIR}"
@@ -1896,16 +2997,22 @@ main() {
   # installare k3s.
   preflight_postgres
 
+  apply_k3s_network
   install_k3s
   wait_for_k3s_ready
+  verify_k3s_hardening
   wait_for_traefik_crd
   install_helm
   create_postgres_secrets
+  ensure_corporate_ca_configmap
   setup_tls "${chart_dir}"
+  # V5: le immagini si verificano prima di distribuirle.
+  verify_deployed_images "${chart_dir}" "${image_tag}"
   install_gitstack "${chart_dir}" "${image_tag}"
   persist_chart "${chart_dir}"
   install_admin
   write_config "${image_tag}"
+  publish_system_info
   enable_backup_timer
 
   print_summary

@@ -159,8 +159,18 @@ jobs:
           mkdir -p ../reports
           pnpm audit --json > ../reports/pnpm-audit.json || true
 
+      # Lockfile del sito di documentazione (GIT-223), stessa logica di web/.
+      - name: pnpm audit (docs-site)
+        working-directory: docs-site
+        run: |
+          mkdir -p ../reports
+          pnpm audit --json > ../reports/pnpm-audit-docs-site.json || true
+
       - name: Gate
         run: node scripts/security/gate.mjs pnpm-audit --name "pnpm audit (web)" ${GATE_FLAGS} reports/pnpm-audit.json
+
+      - name: Gate (docs-site)
+        run: node scripts/security/gate.mjs pnpm-audit --name "pnpm audit (docs-site)" ${GATE_FLAGS} reports/pnpm-audit-docs-site.json
 
       - name: Report completo
         if: always()

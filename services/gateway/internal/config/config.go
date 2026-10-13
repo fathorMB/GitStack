@@ -5,9 +5,11 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -64,6 +66,27 @@ type Config struct {
 	// Traefik) di cui ci si fida per X-Forwarded-For. Vuoto (default):
 	// nessun proxy fidato, l'IP del client è quello della connessione.
 	TrustedProxies []*net.IPNet
+
+	// MaxBodyBytes è il tetto al corpo delle richieste (GITSTACK_GATEWAY_MAX_BODY_BYTES,
+	// 0 = default del proxy, 1 MiB): oltre, 413 body_too_large.
+	MaxBodyBytes int64
+
+	// MaxAttachmentBytes è il tetto al file di un upload di allegato
+	// (GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES, 0 = 10 MiB): deve essere almeno
+	// quello di core (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES).
+	MaxAttachmentBytes int64
+
+	// RateLimit sono le soglie del limitatore token-bucket (F6): richieste al
+	// secondo e burst per credenziale e per IP client. Rate 0 = disattivato.
+	RateLimit RateLimitConfig
+}
+
+// RateLimitConfig sono le soglie del rate limiting del gateway.
+type RateLimitConfig struct {
+	CredentialRate  float64
+	CredentialBurst int
+	IPRate          float64
+	IPBurst         int
 }
 
 const (
@@ -76,12 +99,28 @@ const (
 	// envTrustedProxies: CIDR separati da virgola (es. "10.42.0.0/16").
 	envTrustedProxies = "GITSTACK_GATEWAY_TRUSTED_PROXIES"
 
+	envMaxBody       = "GITSTACK_GATEWAY_MAX_BODY_BYTES"
+	envMaxAttachment = "GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES"
+
 	envIdentityURL     = "GITSTACK_IDENTITY_URL"
 	envIdentityTimeout = "GITSTACK_IDENTITY_TIMEOUT"
 
 	envIdentityServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
 	envAuthCacheTTL          = "GITSTACK_GATEWAY_AUTH_CACHE_TTL"
 	envAuthCacheNegativeTTL  = "GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL"
+
+	// Rate limiting (F6): richieste/secondo e burst. Default prudenti: una SPA
+	// che apre una pagina fa decine di chiamate in burst, e più utenti possono
+	// stare dietro lo stesso IP (NAT), quindi la soglia per IP è più larga.
+	envRateCredentialRPS   = "GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_RPS"
+	envRateCredentialBurst = "GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_BURST"
+	envRateIPRPS           = "GITSTACK_GATEWAY_RATE_LIMIT_IP_RPS"
+	envRateIPBurst         = "GITSTACK_GATEWAY_RATE_LIMIT_IP_BURST"
+
+	defaultRateCredentialRPS   = 20
+	defaultRateCredentialBurst = 200
+	defaultRateIPRPS           = 50
+	defaultRateIPBurst         = 500
 
 	defaultAuthCacheTTL         = 30 * time.Second
 	defaultAuthCacheNegativeTTL = 5 * time.Second
@@ -119,6 +158,44 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 		AuthCacheTTL:         defaultAuthCacheTTL,
 		AuthCacheNegativeTTL: defaultAuthCacheNegativeTTL,
+
+		RateLimit: RateLimitConfig{
+			CredentialRate: defaultRateCredentialRPS, CredentialBurst: defaultRateCredentialBurst,
+			IPRate: defaultRateIPRPS, IPBurst: defaultRateIPBurst,
+		},
+	}
+
+	for _, f := range []struct {
+		env string
+		dst *float64
+	}{
+		{envRateCredentialRPS, &cfg.RateLimit.CredentialRate},
+		{envRateIPRPS, &cfg.RateLimit.IPRate},
+	} {
+		if v, ok := lookup(f.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+			if err != nil || n < 0 || math.IsNaN(n) || math.IsInf(n, 0) {
+				errs = append(errs, fmt.Sprintf("%s non è un numero valido (>= 0, 0 disattiva): %q", f.env, v))
+			} else {
+				*f.dst = n
+			}
+		}
+	}
+	for _, f := range []struct {
+		env string
+		dst *int
+	}{
+		{envRateCredentialBurst, &cfg.RateLimit.CredentialBurst},
+		{envRateIPBurst, &cfg.RateLimit.IPBurst},
+	} {
+		if v, ok := lookup(f.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.Atoi(strings.TrimSpace(v))
+			if err != nil || n < 1 {
+				errs = append(errs, fmt.Sprintf("%s non è un intero valido (>= 1): %q", f.env, v))
+			} else {
+				*f.dst = n
+			}
+		}
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
@@ -162,6 +239,23 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 				continue
 			}
 			cfg.TrustedProxies = append(cfg.TrustedProxies, n)
+		}
+	}
+
+	for _, b := range []struct {
+		env string
+		dst *int64
+	}{
+		{envMaxBody, &cfg.MaxBodyBytes},
+		{envMaxAttachment, &cfg.MaxAttachmentBytes},
+	} {
+		if v, ok := lookup(b.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+			if err != nil || n <= 0 {
+				errs = append(errs, fmt.Sprintf("%s non è un numero di byte valido: %q", b.env, v))
+			} else {
+				*b.dst = n
+			}
 		}
 	}
 

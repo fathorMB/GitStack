@@ -28,11 +28,15 @@ spec:
       {{- end }}
       securityContext:
         # L'immagine gira come uid 10001 (gitsvc): il volume deve essere scrivibile.
-        fsGroup: 10001
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 10001 "fsGroup" 10001) | nindent 8 }}
       containers:
         - name: git
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.git) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          # Il filesystem radice resta scrivibile: git (alpine) e i suoi
+          # sottoprocessi scrivono HOME e file temporanei (residuo F8).
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" false) | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.git.containerPort }}
@@ -42,6 +46,7 @@ spec:
             {{- end }}
           env:
             {{- include "gitstack.proxy.env" . | nindent 12 }}
+            {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_GIT_ADDR
               value: {{ printf ":%d" (.Values.git.containerPort | int) | quote }}
             - name: GITSTACK_GIT_DATA_DIR

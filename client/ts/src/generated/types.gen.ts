@@ -24,6 +24,255 @@ export type Meta = {
 };
 
 /**
+ * Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
+ *
+ */
+export type AdminSystem = {
+    /**
+     * Vero se il ConfigMap `system-info` è presente. Falso: solo la versione del server Postgres (viva) è nota.
+     *
+     */
+    published: boolean;
+    /**
+     * Ultima pubblicazione da parte di `gitstack`.
+     */
+    updatedAt?: string | null;
+    database: AdminSystemDatabase;
+    backup: AdminSystemBackup;
+    versions: AdminSystemVersions;
+    network: AdminSystemNetwork;
+    access: AdminSystemAccess;
+    services: AdminSystemServices;
+    node: AdminSystemNode;
+    /**
+     * Avviso della catena di fornitura (V5): presente solo quando l'installazione ha `v5.allow_unsigned=true` (verifica delle firme disattivata per un mirror interno non firmato). Assente se le firme sono verificate. Lo stesso testo di `supply_chain_warning` in `gitstack status --json`.
+     *
+     */
+    supplyChainWarning?: string;
+};
+
+/**
+ * Come si raggiunge GitStack. Nessun segreto.
+ */
+export type AdminSystemAccess = {
+    host: string;
+    /**
+     * Modo HTTPS scelto dall'installer; `insecure` = solo HTTP.
+     */
+    tlsMode: 'internal' | 'custom' | 'letsencrypt' | 'insecure' | 'unknown';
+    /**
+     * Scadenza del certificato che il server presenta ora; assente se non è stato possibile leggerla o con HTTP.
+     *
+     */
+    tlsExpiresAt?: string | null;
+    /**
+     * Porta SSH del servizio git.
+     */
+    sshPort: number;
+};
+
+/**
+ * Stato dei workload della release, come `gitstack status`. È un'istantanea: la data di pubblicazione è `updatedAt` di AdminSystem.
+ *
+ */
+export type AdminSystemServices = {
+    /**
+     * Falso se il cluster non si è potuto interrogare.
+     */
+    available: boolean;
+    error?: string;
+    items: Array<AdminSystemService>;
+};
+
+export type AdminSystemService = {
+    name: string;
+    /**
+     * Deployment o StatefulSet.
+     */
+    kind: string;
+    desired: number;
+    ready: number;
+    image?: string;
+    /**
+     * Almeno una replica desiderata e tutte pronte.
+     */
+    healthy: boolean;
+};
+
+/**
+ * Una misura dell'host confrontata con il profilo N1. Unità: core per la CPU, byte (GB decimali) per memoria e disco.
+ *
+ */
+export type AdminSystemMetric = {
+    available: boolean;
+    value: number;
+    minimum: number;
+    recommended: number;
+    level: 'recommended' | 'below_recommended' | 'below_minimum' | 'unknown';
+};
+
+/**
+ * Il filesystem che ospita i dati di k3s: dimensione (`value`) e spazio libero, confrontati con minimo e consigliato.
+ *
+ */
+export type AdminSystemDisk = {
+    available: boolean;
+    /**
+     * Dimensione del filesystem in byte.
+     */
+    value: number;
+    minimum: number;
+    recommended: number;
+    /**
+     * `below_minimum` anche se lo spazio libero è sotto `minFreeBytes`.
+     */
+    level: 'recommended' | 'below_recommended' | 'below_minimum' | 'unknown';
+    path?: string;
+    freeBytes: number;
+    minFreeBytes: number;
+};
+
+/**
+ * La macchina, confrontata con il profilo N1.
+ */
+export type AdminSystemNode = {
+    /**
+     * Falso se nessuna misura è stata possibile («non disponibile»).
+     */
+    available: boolean;
+    cpu: AdminSystemMetric;
+    memory: AdminSystemMetric;
+    disk: AdminSystemDisk;
+};
+
+export type AdminSystemDatabase = {
+    /**
+     * Postgres interno (bundle), esterno (N8) o non pubblicato.
+     */
+    mode: 'internal' | 'external' | 'unknown';
+    host?: string;
+    port?: number;
+    /**
+     * Nome del database.
+     */
+    name?: string;
+    /**
+     * Per esempio `require` o `verify-full`.
+     */
+    sslmode?: string;
+    /**
+     * Versione del server (`SHOW server_version`).
+     */
+    serverVersion?: string;
+    /**
+     * Vero se `serverVersion` è stata letta ora da core sulla sua connessione; falso se è quella rilevata dall'installer.
+     *
+     */
+    versionLive?: boolean;
+};
+
+export type AdminSystemBackup = {
+    /**
+     * Cartella dei backup locali sull'host.
+     */
+    destination?: string;
+    /**
+     * Numero di backup locali conservati.
+     */
+    retention?: number;
+    last: AdminSystemBackupRun;
+    s3: AdminSystemBackupS3;
+};
+
+/**
+ * Esito di un backup o di un caricamento.
+ */
+export type AdminSystemBackupRun = {
+    state: 'none' | 'success' | 'failed';
+    at?: string | null;
+    /**
+     * Percorso dell'archivio locale o nome dell'oggetto su S3.
+     */
+    name?: string;
+    /**
+     * Causa, se `state` è `failed`.
+     */
+    error?: string;
+};
+
+export type AdminSystemBackupS3 = {
+    configured: boolean;
+    endpoint?: string;
+    bucket?: string;
+    prefix?: string;
+    /**
+     * Numero di archivi o `bucket` (lo decide il bucket).
+     */
+    retention?: string;
+    upload: AdminSystemBackupRun;
+};
+
+export type AdminSystemVersions = {
+    /**
+     * Versione di GitStack installata (tag delle immagini).
+     */
+    gitstack: string;
+    /**
+     * Versione di k3s in esecuzione; vuota se non letta.
+     */
+    k3s?: string;
+    /**
+     * Versione di k3s dichiarata (`deploy/k3s-version`).
+     */
+    k3sDeclared?: string;
+    /**
+     * `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
+     *
+     */
+    k3sUpdate: 'none' | 'patch' | 'minor';
+};
+
+/**
+ * Rete aziendale (N9). Mai credenziali del proxy.
+ */
+export type AdminSystemNetwork = {
+    /**
+     * Falso: nessun proxy né CA aziendale («non configurato»).
+     */
+    configured: boolean;
+    /**
+     * URL del proxy senza credenziali.
+     */
+    httpProxy?: string;
+    httpsProxy?: string;
+    noProxy?: string;
+    /**
+     * Il proxy richiede credenziali (non mostrate).
+     */
+    proxyHasCredentials: boolean;
+    /**
+     * Una CA aziendale è installata nei servizi.
+     */
+    corporateCA: boolean;
+    /**
+     * Una CA privata è usata per i mirror in push.
+     */
+    mirrorCA: boolean;
+    /**
+     * Mirror delle immagini (N9a), senza credenziali.
+     */
+    registryMirror?: string;
+    /**
+     * Il mirror delle immagini richiede credenziali (non mostrate).
+     */
+    registryHasCredentials: boolean;
+    /**
+     * Mirror dei download di k3s, Helm e binari (N9a), senza credenziali.
+     */
+    downloadMirror?: string;
+};
+
+/**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
  */
@@ -2600,6 +2849,44 @@ export type GetMetaResponses = {
 };
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses];
+
+export type GetAdminSystemData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/system';
+};
+
+export type GetAdminSystemErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    503: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetAdminSystemError = GetAdminSystemErrors[keyof GetAdminSystemErrors];
+
+export type GetAdminSystemResponses = {
+    /**
+     * Stato del sistema.
+     */
+    200: AdminSystem;
+};
+
+export type GetAdminSystemResponse = GetAdminSystemResponses[keyof GetAdminSystemResponses];
 
 export type ListResourcesData = {
     body?: never;

@@ -44,11 +44,12 @@ function formError(err: unknown, field: string): string {
   return describeError(err);
 }
 
-// Normalizza un URL HTTPS: host minuscolo, senza «.git», con «/» finale.
+// Normalizza un URL HTTPS: host minuscolo, senza «.git» e senza «/» finale, con «/» finale.
 function normalizeUrl(u: string): string {
   let s = u.trim().toLowerCase();
+  s = s.replace(/\/$/, '');
   if (s.endsWith('.git')) s = s.slice(0, -4);
-  if (!s.endsWith('/')) s = s + '/';
+  s = s + '/';
   return s;
 }
 

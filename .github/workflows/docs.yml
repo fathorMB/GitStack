@@ -1,0 +1,90 @@
+name: docs
+
+# Sito di documentazione pubblico (GIT-223, regola V6a): Docusaurus in
+# docs-site/, solo in inglese. Il job "build" gira su ogni pull request e su
+# ogni push a main: un link o un'ancora rotti fanno fallire la build
+# (onBrokenLinks/onBrokenAnchors/onBrokenMarkdownLinks = throw). Il job
+# "deploy" pubblica su GitHub Pages ed è l'unico che parte solo su main.
+#
+# Le reference non si scrivono a mano: `pnpm run build` rigenera la reference
+# CLI dai comandi cobra (cli/cmd/gsdocs) e la reference API da
+# api/openapi.yaml (@redocly/cli build-docs, stessa versione di
+# scripts/generate-api.sh), e copia SECURITY.md e le guide admin in inglese.
+#
+# Attivazione manuale, una tantum, nel repository del mirror pubblico:
+# Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Finché non è fatta il job "deploy" fallisce con "Pages not enabled"; la
+# build e il controllo dei link restano verdi.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Gruppo proprio: un push nuovo cancella il run vecchio dello stesso ramo/PR.
+# Su main non si cancella un deploy già avviato.
+concurrency:
+  group: docs-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    name: Sito — build e controllo dei link
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          package_json_file: docs-site/package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs-site/pnpm-lock.yaml
+
+      - name: pnpm install
+        working-directory: docs-site
+        run: pnpm install --frozen-lockfile
+
+      # generate (pagine, reference CLI, reference API) + docusaurus build.
+      - name: Build del sito
+        working-directory: docs-site
+        run: pnpm run build
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs-site/build
+
+  deploy:
+    name: Sito — pubblicazione su GitHub Pages
+    needs: build
+    # `if:` su un job con needs toglie il success() implicito: lo scrivo io.
+    if: ${{ success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

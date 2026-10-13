@@ -146,8 +146,8 @@ func TestBackupRoundTrip(t *testing.T) {
 	if e.f.replicas["gs-gateway"] != 2 || e.f.replicas["gs-git"] != 1 {
 		t.Fatalf("repliche non ripristinate: %v", e.f.replicas)
 	}
-	// l'ordine: stop, attesa, dump, riavvio
-	want := []string{"scale gs-gateway 0", "scale gs-git 0", "wait gateway", "wait git", "pg_dump", "scale gs-gateway 2", "scale gs-git 1"}
+	// l'ordine: stop, attesa, dump, riavvio, attesa che siano pronti
+	want := []string{"scale gs-gateway 0", "scale gs-git 0", "wait gateway", "wait git", "pg_dump", "scale gs-gateway 2", "scale gs-git 1", "ready gs-gateway", "ready gs-git"}
 	if got := strings.Join(e.f.calls, "|"); got != strings.Join(want, "|") {
 		t.Fatalf("chiamate:\n%v\nattese:\n%v", e.f.calls, want)
 	}
@@ -399,4 +399,33 @@ func (f *fakeCluster) Restart(_ context.Context, d string) error {
 		return errors.New("restart fallito")
 	}
 	return nil
+}
+
+// failReady fa fallire WaitReady: l'attesa dei Deployment riscalati non deve
+// far fallire il backup (lo stato «non pronto» è quello reale).
+type failReady struct{ *fakeCluster }
+
+func (failReady) WaitReady(context.Context, string) error { return errors.New("rollout non finito") }
+
+func TestBackupAttesaDiProntezzaNonFaFallireIlBackup(t *testing.T) {
+	e := newEnv(t)
+	e.o.Cluster = failReady{e.f}
+	if _, err := Backup(context.Background(), e.o); err != nil {
+		t.Fatalf("il backup non deve fallire se l'attesa fallisce: %v", err)
+	}
+	if !strings.Contains(e.log.String(), "attesa della ripartenza di gateway non riuscita") {
+		t.Errorf("log: %s", e.log.String())
+	}
+}
+
+func TestBackupFallitoAspettaComunqueLeRepliche(t *testing.T) {
+	e := newEnv(t)
+	e.f.failDump = true
+	if _, err := Backup(context.Background(), e.o); err == nil {
+		t.Fatal("atteso errore")
+	}
+	got := strings.Join(e.f.calls, "|")
+	if !strings.HasSuffix(got, "scale gs-gateway 2|scale gs-git 1|ready gs-gateway|ready gs-git") {
+		t.Errorf("chiamate: %s", got)
+	}
 }

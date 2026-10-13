@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -85,7 +86,7 @@ func NewClient(policy *Policy, opts Options) *http.Client {
 		}
 		var lastErr error = &net.DNSError{Err: "no addresses", Name: host}
 		for _, ip := range ips {
-			if err := policy.check(host, ip); err != nil {
+			if err := policy.checkPort(host, ip, portNum(port)); err != nil {
 				lastErr = err
 				continue
 			}
@@ -141,7 +142,7 @@ func (p *Policy) controlFor(host string) func(network, address string, c syscall
 		if err != nil {
 			return fmt.Errorf("%w: unparsable address %q", ErrBlocked, address)
 		}
-		return p.check(host, ap.Addr())
+		return p.checkPort(host, ap.Addr(), ap.Port())
 	}
 }
 
@@ -186,7 +187,7 @@ func (t *checkedTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	if t.proxy.For(req.URL) == nil {
 		return t.base.RoundTrip(req)
 	}
-	if err := t.checkDestination(req.Context(), req.URL.Hostname()); err != nil {
+	if err := t.checkDestination(req.Context(), req.URL.Hostname(), urlPort(req.URL)); err != nil {
 		if req.Body != nil {
 			_ = req.Body.Close()
 		}
@@ -196,7 +197,7 @@ func (t *checkedTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.base.RoundTrip(req.WithContext(ctx))
 }
 
-func (t *checkedTransport) checkDestination(ctx context.Context, host string) error {
+func (t *checkedTransport) checkDestination(ctx context.Context, host string, port uint16) error {
 	if t.policy.deny.matchHost(host) {
 		return fmt.Errorf("%w: host %s is denied by the administrator", ErrBlocked, host)
 	}
@@ -213,9 +214,28 @@ func (t *checkedTransport) checkDestination(ctx context.Context, host string) er
 		return &net.DNSError{Err: "no addresses", Name: host}
 	}
 	for _, ip := range ips {
-		if err := t.policy.check(host, ip); err != nil {
+		if err := t.policy.checkPort(host, ip, port); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func portNum(p string) uint16 {
+	n, err := strconv.ParseUint(p, 10, 16)
+	if err != nil {
+		return 0
+	}
+	return uint16(n)
+}
+
+// urlPort is the port a request to u connects to (the scheme default if absent).
+func urlPort(u *url.URL) uint16 {
+	if p := u.Port(); p != "" {
+		return portNum(p)
+	}
+	if u.Scheme == "https" {
+		return 443
+	}
+	return 80
 }

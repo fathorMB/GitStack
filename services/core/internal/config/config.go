@@ -72,6 +72,9 @@ type Config struct {
 	EgressAllow        []string
 	EgressDeny         []string
 	EgressClusterCIDRs []string
+	// EgressNodeAddresses: indirizzi del nodo, sempre bloccati (F7,
+	// GITSTACK_EGRESS_NODE_ADDRESSES + GITSTACK_NODE_IP da status.hostIP).
+	EgressNodeAddresses []string
 
 	// GitURL è la base URL interna del servizio git (GITSTACK_GIT_URL):
 	// core la chiama per creare i repo su disco (API interna firmata).
@@ -99,6 +102,9 @@ type Config struct {
 	// (GITSTACK_CORE_ATTACHMENTS_DIR, I9). Vuoto: upload e download di allegati
 	// rispondono 503. Il volume è coperto dal backup (D19).
 	AttachmentsDir string
+	// SystemInfoFile è system.json, il ConfigMap system-info montato come
+	// volume (GITSTACK_SYSTEM_INFO_FILE, GIT-213): lo legge GET /admin/system.
+	SystemInfoFile string
 
 	// AttachmentMaxBytes è il limite per allegato (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES,
 	// default 10 MiB).
@@ -142,9 +148,12 @@ const (
 	envEgressAllow          = "GITSTACK_EGRESS_ALLOW"
 	envEgressDeny           = "GITSTACK_EGRESS_DENY"
 	envEgressClusterCIDRs   = "GITSTACK_EGRESS_CLUSTER_CIDRS"
+	envEgressNodeAddresses  = "GITSTACK_EGRESS_NODE_ADDRESSES"
+	envNodeIP               = "GITSTACK_NODE_IP"
 	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
+	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
 	envAttachmentOrphan = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
 
@@ -247,6 +256,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	cfg.EgressAllow = splitList(lookup, envEgressAllow)
 	cfg.EgressDeny = splitList(lookup, envEgressDeny)
 	cfg.EgressClusterCIDRs = splitList(lookup, envEgressClusterCIDRs)
+	cfg.EgressNodeAddresses = append(splitList(lookup, envEgressNodeAddresses), splitList(lookup, envNodeIP)...)
 	if v, ok := lookup(envSSHHost); ok {
 		cfg.SSHHost = strings.TrimSpace(v)
 	}
@@ -263,6 +273,9 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envAttachmentsDir); ok {
 		cfg.AttachmentsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envSystemInfoFile); ok {
+		cfg.SystemInfoFile = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envAttachmentMax); ok && strings.TrimSpace(v) != "" {
 		n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)

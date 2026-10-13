@@ -27,10 +27,16 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      securityContext:
+        {{- include "gitstack.podSecurityContext" (dict) | nindent 8 }}
       containers:
         - name: pgclient
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.postgres.external.client) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          # Il client gira come root dell'immagine postgres (kubectl exec di
+          # gitstack backup/restore scrive in /tmp): capability tolte, radice scrivibile.
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" false) | nindent 12 }}
           command:
             - sh
             - -c

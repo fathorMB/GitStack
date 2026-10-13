@@ -25,6 +25,10 @@ Other distributions and WSL2 are not yet supported.
 | **Minimum** (blocking) | 4 vCPU | 8 GB | 60 GB (≥ 20 GB free on the filesystem that holds `/var/lib/rancher`) |
 | **Recommended** (advisory) | 8 vCPU | 16 GB | 200 GB SSD (≈ 100 users) |
 
+The sizing figures above (and the "≈ 100 users" of the recommended profile) are
+**indicative, not measured**: no capacity benchmark backs them. The only load
+test is a smoke test, see [Load smoke test (V3)](#load-smoke-test-v3).
+
 All values use decimal GB (1 GB = 10^9 bytes). The installer checks both the
 total filesystem size and the free space separately; free space drops after
 k3s and its images are pulled, so the preflight runs on every re-execution too.
@@ -65,7 +69,7 @@ The installer:
 1. Checks OS, CPU, RAM, disk, port availability, and hostname resolution
    (skip with `--skip-preflight` only if you have already verified).
 2. Installs k3s (pinned in `deploy/k3s-version`, today `v1.36.4+k3s1`) and Helm (`v3.16.3`, pinned).
-3. Generates an internal CA and a server certificate (see [HTTPS](#https)).
+3. Generates an internal CA and a server certificate (see [HTTPS](#https-modes)).
 4. Pulls GitStack images and deploys the Helm chart (`deploy/gitstack`) with
    `helm upgrade --install`.
 5. Installs the `gitstack` admin binary in `/usr/local/bin/gitstack`.
@@ -85,6 +89,7 @@ the admin binary if they differ, without touching k3s or the data.
 | `--namespace NS` | `GITSTACK_NAMESPACE` | `default` | Kubernetes namespace. |
 | `--chart-dir PATH` | `GITSTACK_CHART_DIR` | (detected) | Use a local chart copy instead of downloading from the repository. |
 | `--image-tag TAG` | `GITSTACK_IMAGE_TAG` | (auto-resolved) | Image tag for gateway/identity/core/web. |
+| `--version vX.Y.Z` | `GITSTACK_VERSION` | (none) | Install a released version (also `vX.Y.Z-rc.N`): image tag, chart and `gitstack` binary come from the release of that name, signatures verified (V5). Cannot be combined with a different `--image-tag`. See "Rilascio con versione". |
 | `--image-registry HOST` | `GITSTACK_IMAGE_REGISTRY` | (from chart) | Container registry for GitStack images. Useful for a mirror. |
 | `--admin-binary PATH\|URL` | `GITSTACK_ADMIN_BINARY` | (download from release) | Path or URL of the `gitstack` admin binary; its SHA-256 is verified. |
 | `--admin-sha256 HEX` | `GITSTACK_ADMIN_SHA256` | (from `<binary>.sha256`) | Expected SHA-256 of the admin binary. |
@@ -99,6 +104,14 @@ the admin binary if they differ, without touching k3s or the data.
 | `--postgres-ca-file FILE` | `GITSTACK_POSTGRES_CA_FILE` | — | PEM CA that signed the database server certificate (private CA with `verify-ca`/`verify-full`). |
 | `--values FILE` | — | — | Additional Helm values file (`-f`). Repeatable. |
 | `--set KEY=VALUE` | — | — | Additional Helm value (`--set`). Repeatable. |
+| `--http-proxy URL` | `GITSTACK_HTTP_PROXY` | — | Proxy for everything the server downloads and for the GitStack pods. See [Corporate network](#corporate-network-proxy-mirrors-and-ca). |
+| `--https-proxy URL` | `GITSTACK_HTTPS_PROXY` | (the HTTP proxy) | Proxy for `https://` destinations. |
+| `--no-proxy LIST` | `GITSTACK_NO_PROXY` | — | Comma-separated destinations that bypass the proxy (added to the cluster networks and suffixes, which never use it). |
+| `--egress-allow LIST` | `GITSTACK_EGRESS_ALLOW` | — | LAN ranges (IP, CIDR or names, comma-separated) that webhooks and mirrors may reach (`egress.allow`). If set, only these destinations are allowed. See [Egress policy and the LAN](#egress-policy-and-the-lan). |
+| `--registry-mirror URL` | `GITSTACK_REGISTRY_MIRROR` | — | Mirror for **all** images, k3s system images included (`registries.yaml`). |
+| `--registry-username U`, `--registry-password-file FILE` | `GITSTACK_REGISTRY_USERNAME`, `GITSTACK_REGISTRY_PASSWORD` | — | Optional mirror credentials. The password is never a command-line argument. |
+| `--download-mirror URL` | `GITSTACK_DOWNLOAD_MIRROR` | — | Mirror for the k3s, Helm and `gitstack` downloads. |
+| `--ca-bundle FILE` | `GITSTACK_CA_BUNDLE` | — | Corporate CA (PEM): trusted by the system, by containerd and by the pods. |
 
 Other environment variables: `INSTALL_K3S_VERSION`,
 `GITSTACK_BACKUP_DIR`, `GITSTACK_BACKUP_RETENTION`,
@@ -244,12 +257,169 @@ password stored in a Kubernetes Secret (`<release>-identity-admin`). It is not
 printed by the installer. To read it:
 
 ```sh
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n default get secret gitstack-identity-admin -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
 On first login the admin must change this password.
 
+### Corporate network: proxy, mirrors and CA
+
+For a server that has no direct way out (rules N4 and N9). Every option is
+optional and they combine; the installer remembers them for the next run (the
+`network:` section of `/etc/gitstack/config.yaml`).
+
+```sh
+sudo ./deploy/install.sh \
+  --http-proxy http://proxy.corp:3128 --no-proxy registry.corp,git.corp \
+  --registry-mirror https://registry.corp:5000 \
+  --registry-username puller --registry-password-file /root/registry.pw \
+  --download-mirror https://files.corp/gitstack \
+  --ca-bundle /root/corp-ca.pem
+```
+
+| What | Where it applies |
+|---|---|
+| `--http-proxy`, `--https-proxy`, `--no-proxy` | The installer's own downloads (curl, the k3s script, Helm); **k3s and containerd** (systemd drop-in `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf`); the **GitStack pods** (chart values `proxy.http`, `proxy.https`, `proxy.noProxy`: webhooks, mirrors, OIDC, SMTP). `NO_PROXY` for k3s always includes `localhost`, `10.42.0.0/16`, `10.43.0.0/16`, `.svc`, `.cluster.local` and the machine's own IPv4 addresses (the API server reaches the kubelet on `<node IP>:10250`; if the address changes, run `gitstack config set network --no-proxy ...` again to refresh it). Without `--https-proxy` the HTTP proxy is used for `https://` too. |
+| `--registry-mirror` | `/etc/rancher/k3s/registries.yaml` (mode `0600`) with a `"*"` mirror: every image is requested from the mirror first, including k3s system images (pause, coredns, traefik...). The mirror must serve images under their original name without the registry host (`ghcr.io/fathormb/gitstack-core` is `fathormb/gitstack-core`), as a pull-through cache or a registry you filled yourself. With `--ca-bundle` and an `https://` mirror, `registries.yaml` also trusts the CA. |
+| `--download-mirror` | See the layout below. |
+| `--ca-bundle` | Copied to `/etc/gitstack/network/ca.crt`; added to the system trust store (`update-ca-certificates`); referenced by `registries.yaml`; ConfigMap `<release>-corporate-ca` (key `ca.crt`) mounted in core, git and identity (chart value `corporateCA.configMap`). The ConfigMap holds the system CAs **plus** the corporate CA: for git mirrors the chart *replaces* the system CAs with this file, so a mirror to a public host reached directly (in `--no-proxy`) keeps trusting the public CAs. The Go services trust it in addition to their own CAs. After a system CA update, re-run `install.sh` or `gitstack config set network --ca-bundle FILE` to refresh the ConfigMap. |
+
+**Download mirror layout** (paths under the URL you give):
+
+| Path | Content |
+|---|---|
+| `k3s/install.sh` | The k3s install script (from `https://get.k3s.io`) |
+| `k3s/releases/download/<version>/k3s` and `sha256sum-amd64.txt` | The k3s binary and its checksums (what the script downloads from GitHub releases) |
+| `helm/helm-<version>-linux-amd64.tar.gz` and `.sha256sum` | The Helm tarball |
+| `gitstack/<image-tag>/gitstack-linux-amd64`, `.sha256` and `.sigstore.json` | The `gitstack` binary, its checksum and its cosign bundle (V5) |
+| `gitstack/<image-tag>/gitstack-<chart-version>.tgz` and `.sigstore.json` | The signed Helm chart package and its cosign bundle (V5) |
+| `cosign/<version>/cosign-linux-amd64` | The pinned cosign (`v2.4.0`; its SHA-256 is still checked) |
+| `gitstack/source/<sha>.tar.gz`, `gitstack/source/<ref>.sha` | Repository source and the commit of a ref (only when running the script without a checkout) |
+
+The signature rules do not change (V5): k3s and Helm are verified against their
+SHA-256 checksums fetched from the same mirror, and the `gitstack` binary, the
+chart and the `gitstack-*` images are verified with cosign exactly as when they
+come from GitHub (same workflow identity and OIDC issuer, bundle required): a
+mirror must therefore carry the `.sigstore.json` bundles above and, for the
+images, the signatures (a pull-through cache of `ghcr.io` has them; a registry
+you filled yourself needs them copied with the images, for example with
+`cosign copy`). The images are verified on the `--registry-mirror` under their
+original name without the host, with the mirror credentials, and
+`--allow-insecure-registry` for an `http://` mirror. The proxy and the
+corporate CA apply to cosign as to the other downloads. A mirror without
+signatures is refused unless you state the exception explicitly with
+`--allow-unsigned-mirrors` (see V5 below); for a stronger guarantee on the
+binary also pass `--admin-sha256` from a trusted channel.
+Outbound rules (C8) do not change either: the GitStack services apply
+`egress.*` to the real destination before talking to the proxy.
+
+**Preflight.** Before touching the system, the installer tries to reach the
+proxy, the mirrors and (without a mirror) the usual sources (`get.k3s.io`, GitHub
+releases, `get.helm.sh`, `ghcr.io`, Docker Hub, `registry.k8s.io`), through the
+proxy, and lists what does not answer:
+
+```
+ERRORE: preflight di rete: non rispondono:
+  - mirror delle immagini: https://registry.corp:5000/v2/ non risponde (via proxy http://proxy.corp:3128)
+  - proxy: http://proxy.corp:3128 non raggiungibile (proxy.corp:3128)
+```
+
+With any network option a failure stops the installation; without options it is
+only a warning. A mirror that answers 401 to the supplied credentials is also
+reported. Internal hosts (the mirror itself, usually) belong in `--no-proxy`
+unless the proxy can reach them.
+
+**Changing it later.** `gitstack config set network` (root) changes the same
+settings. It checks reachability first and changes nothing if something does
+not answer (`--force` applies anyway), regenerates `registries.yaml`, the k3s
+drop-in and the CA copies, restarts k3s only if those files changed (and waits
+for the node to be `Ready`), then updates the chart (`helm upgrade
+--reuse-values`) and finally `config.yaml`.
+
+```sh
+sudo gitstack config set network --no-proxy registry.corp,git.corp,10.1.0.0/16
+sudo gitstack config set network --registry-mirror https://registry2.corp:5000 \
+  --registry-username puller --registry-password-file /root/registry.pw
+sudo gitstack config set network --http-proxy ""      # remove the proxy
+sudo gitstack config set network --clear              # remove everything
+```
+
+An option given with an empty value removes that setting. `gitstack upgrade`
+keeps the network values (they are Helm values) and uses the configured proxy
+for its own downloads. This includes the k3s update step (N10): with a
+`--download-mirror` configured, `gitstack upgrade` fetches the k3s install script
+and binary from `<mirror>/k3s/install.sh` and `<mirror>/k3s/releases` (the same
+layout as the installer), not from `get.k3s.io`; afterwards it removes the
+`*_PROXY` lines that the k3s script copies into `k3s.service.env`, so the systemd
+drop-in stays the only source. The mirror must therefore also hold the k3s
+version declared in `deploy/k3s-version` of the version you upgrade to.
+
+**External PostgreSQL (N8) on a corporate network.** The database speaks the
+PostgreSQL protocol over plain TCP, not HTTP: the proxy settings do not apply to
+it. The installer's Postgres preflight and the services connect to the database
+directly, and the network preflight does not probe it, so the database host
+needs no `--no-proxy` entry. Its CA (`--postgres-ca-file`, Secret `caSecret`,
+mounted at `/etc/gitstack/postgres-ca` and passed as `sslrootcert`) and the
+corporate CA (`corporateCA.configMap`, mounted at `/etc/gitstack/corporate-ca`,
+`SSL_CERT_DIR`) are separate volumes and do not override each other.
+
+**Test.** `deploy/test-network/run.sh all` (`seed`, then `verify`) installs
+GitStack on the Hyper-V test VM of `deploy/test-vm` (Ubuntu Server 24.04),
+restored to its `clean` checkpoint before every run. The VM has no direct way
+out: iptables rules in `OUTPUT` let through only the proxy and the mirror on the
+host. On the host, Docker runs a Squid proxy (which in `verify` denies the image
+registries, so images can only come from the mirror) and a `registry:2` mirror;
+`seed` fills the mirror with the images k3s really pulled. `verify` checks the
+closed network, the preflight failure, the installation through proxy and mirror,
+what the proxy and the registry logged, and `gitstack config set network`.
+
+Requirements: Hyper-V with the test VM created by `deploy/test-vm/new-vm.ps1`,
+PowerShell as administrator (the script restores the checkpoint with
+`reset-vm.ps1`), Docker (Linux engine), `ssh`, `curl` and `go`. Variables:
+`GITSTACK_TEST_VM_NAME` (default `gitstack-test-vm`), `GITSTACK_TEST_VM_KEY`
+(SSH private key, default `~/.ssh/gitstack_vm`), `GITSTACK_TEST_HOST_IP` (the
+host address as seen by the VM; default: the host address on the Default
+Switch). A container as the node was discarded: on Docker Desktop/WSL2 the
+kernel uses cgroup v1 and the k3s kubelet does not start there. The test does
+not run in CI. Unit tests: `deploy/tests/network_test.sh` (installer) and
+`admin/internal/cli/confignetwork_test.go` (`config set network`).
+
 ---
+
+### Egress policy and the LAN
+
+Webhooks and mirrors call addresses given by users, so every outgoing connection goes through the egress policy (`pkg/egress`, values `egress.*`). Always blocked, whatever the lists say: loopback, link-local (cloud metadata), the cluster networks (`egress.clusterCIDRs`), **the node's own addresses** and **the Kubernetes ports 6443, 10250, 10255 and 2379-2380 on any private address**. This keeps a repository admin from making core call kubelet, the k3s API or a service listening on the host.
+
+The node's addresses are `status.hostIP` of the pod (`GITSTACK_NODE_IP`), the IPv4 addresses `install.sh` finds on the host (`egress.nodeAddresses`) and any address you add to `egress.nodeAddresses`. A host with other addresses (a second NIC, a VIP) should list them there.
+
+Other hosts of your LAN stay reachable by default, because CI servers and Git hosts usually live there. To close the list, state the networks webhooks and mirrors may reach:
+
+```bash
+sudo ./install.sh --egress-allow 192.168.1.0/24,ci.example.com
+```
+
+Entries are IPs, CIDRs, names (`hooks.example.com`) or suffixes (`*.example.com`). With a non-empty list, only what it covers is allowed (public addresses included). It is written in `egress.allow`, and like any `--set` it must be given again at every upgrade. A blocked delivery fails at once, without a retry, and the delivery log shows no response.
+
+### API rate limiting (F6)
+
+The gateway limits `/v1/*` calls with an in-memory token bucket, on two keys: the **credential** (personal token `gst_...` or `gst_session` cookie; the key is its SHA-256, the value is never logged) and the **client IP**. The IP is the real client one: `X-Forwarded-For` counts only when the connection comes from a proxy in `gateway.env.trustedProxies` (default `10.42.0.0/16`, Traefik on k3s); from any other peer it is ignored. Health probes (`/healthz`, `/readyz`) are not limited.
+
+| Value | Env of the gateway | Default | Meaning |
+|---|---|---|---|
+| `gateway.env.rateLimit.credentialRps` | `GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_RPS` | `20` | Requests per second per credential at steady state; `0` disables the per-credential limit |
+| `gateway.env.rateLimit.credentialBurst` | `GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_BURST` | `200` | Burst per credential (at least 1) |
+| `gateway.env.rateLimit.ipRps` | `GITSTACK_GATEWAY_RATE_LIMIT_IP_RPS` | `50` | Requests per second per client IP; `0` disables the per-IP limit |
+| `gateway.env.rateLimit.ipBurst` | `GITSTACK_GATEWAY_RATE_LIMIT_IP_BURST` | `500` | Burst per IP (at least 1) |
+
+The per-IP threshold is wider because several users can share one address behind a NAT. Change it with `--set gateway.env.rateLimit.ipRps=100` (like any `--set`, it must be given again at every upgrade).
+
+Over the threshold the gateway answers `429` with `Retry-After` (seconds) and the error code `rate_limited`. Every rejection is counted; the gateway logs it at `warn` with the message `rate limit exceeded` and the fields `scope` (`credential` or `ip`), `key` (credential hash prefix or IP), `rejected_total` and `suppressed_since_last_log` (at most one line per second and scope, so a flood does not flood the logs). To alert on abnormal volumes, match that message in your log pipeline (for example `kubectl logs deploy/<release>-gateway | grep 'rate limit exceeded'`).
+
+Residual limits:
+
+- Counters live in the memory of each gateway replica: with N replicas the effective ceiling is up to N times the value, and a restart resets them. Up to 100000 keys per scope are tracked; beyond that, new keys are not limited rather than exhausting memory.
+- The **Git endpoints** (clone, fetch and push over HTTPS on the Git ingress, and SSH) are served by the git service outside the gateway and are **not** covered by this limiter. Only the `/v1/*` API is. Throttling of Git traffic must come from the ingress (Traefik middleware) or the network; the login limiter of identity (`LOGIN_MAX_ATTEMPTS_*`) is separate and unchanged.
+- Credential guessing is not what the limiter is for (tokens have 256 bits): it bounds scraping and denial of service by a single credential or address.
 
 ## Backup
 
@@ -599,6 +769,7 @@ sudo gitstack upgrade --to v0.2.0 --dest /mnt/backup/gitstack \
 | Flag | Purpose | Default |
 |---|---|---|
 | `--to TAG\|SHA` | Target version: tag or commit SHA | latest on `main` |
+| `--version vX.Y.Z` | Target released version (`vX.Y.Z` or `vX.Y.Z-rc.N` only): same as `--to`, but strict SemVer; excludes `--to` | — |
 | `--dest DIR` | Override backup destination directory | `backup.destination` from config |
 | `--key-file FILE` | Path to AES-256-GCM encryption key | none (unencrypted backup) |
 | `--timeout D` | Max time for service health checks | `10m` |
@@ -650,6 +821,76 @@ If the k3s step fails, GitStack is **not** upgraded (the chart stays as it
 was), the command exits `70` and prints the path of the preventive backup.
 There is no automatic rollback of k3s: follow the procedure below.
 
+### Hardening k3s: private kubeconfig and encrypted Secrets (F2, GIT-228)
+
+`/etc/rancher/k3s/k3s.yaml` is cluster-admin: whoever reads it reads every
+Secret (database password, service secret, webhook and OIDC keys, admin
+password). Since GIT-228 the installer starts k3s with
+
+```
+server --write-kubeconfig-mode 600 --secrets-encryption
+```
+
+- the kubeconfig is `root:root` mode `600`: `kubectl`, `k3s kubectl` and
+  `helm` need `sudo` (or `sudo -i`); `gitstack` already runs as root;
+- the Secrets are encrypted at rest in the k3s datastore (AES-CBC, key in
+  `/var/lib/rancher/k3s/server/cred/encryption-config.json`, root only). The key
+  lives on the same disk: it protects copies of the datastore and backups of
+  the disk, not an attacker who is already root;
+- after an install check with `sudo k3s secrets-encrypt status`
+  (`Encryption Status: Enabled`) and `stat -c %a /etc/rancher/k3s/k3s.yaml` (`600`).
+  `install.sh` makes both checks and stops if they fail.
+
+**Existing installations.** An installation made before GIT-228 has mode 644 and
+plain Secrets. `sudo gitstack upgrade` fixes it, also when GitStack is already at
+the requested version (`--dry-run` shows the plan: "Hardening di k3s"):
+
+1. health check and preventive backup, as in every upgrade;
+2. a copy of the unit is kept in `/etc/systemd/system/k3s.service.pre-hardening`,
+   then `k3s.service` is rewritten (mode `600`, `--secrets-encryption`);
+3. `systemctl daemon-reload`, `systemctl restart k3s` and wait until all
+   services are healthy (a short interruption, like a k3s patch update);
+4. `k3s secrets-encrypt status` must say `Enabled`; then
+   `k3s secrets-encrypt rotate-keys` re-encrypts the Secrets that were in plain text;
+5. if step 3 or the check in step 4 fails, the unit is put back as it was, k3s is
+   restarted and the upgrade stops with exit code `70` before touching GitStack.
+   Once the encryption is active the flag is **not** removed automatically:
+   Secrets written after that would become unreadable.
+
+**When the same upgrade also updates k3s** (the usual case): the k3s installer
+script rewrites `k3s.service` itself with the new arguments (mode `600`,
+`--secrets-encryption`) and restarts k3s. `gitstack upgrade` then does only the
+encryption phase: `k3s secrets-encrypt status` must say `Enabled`, then
+`rotate-keys` re-encrypts the Secrets that were in plain text, before GitStack
+itself is updated. If `status` does not say `Enabled`, the upgrade stops before
+the chart (exit code `70`, the preventive backup is printed). There is **no
+automatic rollback of the unit** in this case, because k3s is already at the new
+version (see "Rolling back k3s"): fix the cause with `journalctl -u k3s`, check
+`sudo k3s secrets-encrypt status`, then run `sudo gitstack upgrade` again.
+
+If `rotate-keys` fails, encryption is active for new writes but the old Secrets are
+still plain: run `sudo k3s secrets-encrypt rotate-keys` again and check
+`k3s secrets-encrypt status` (`Current Rotation Stage: reencrypt_finished`).
+
+**Manual procedure** (unit in a format `gitstack upgrade` does not recognise, or a
+k3s not managed by `gitstack`). Take a backup first (`sudo gitstack backup`), then:
+
+```sh
+sudo cp /etc/systemd/system/k3s.service /root/k3s.service.pre-hardening
+# edit ExecStart: '--write-kubeconfig-mode' '600' and '--secrets-encryption'
+sudo systemctl daemon-reload && sudo systemctl restart k3s
+sudo k3s secrets-encrypt status          # Encryption Status: Enabled
+sudo k3s secrets-encrypt rotate-keys     # re-encrypts the existing Secrets
+sudo chmod 600 /etc/rancher/k3s/k3s.yaml # if k3s has not rewritten it yet
+sudo gitstack status
+```
+
+To undo **before** any Secret is written encrypted: restore the saved unit,
+`daemon-reload`, `restart k3s`. **After** the encryption is active, first run
+`sudo k3s secrets-encrypt disable` and `sudo k3s secrets-encrypt reencrypt`, then
+remove the flag from the unit and restart; otherwise restore the backup with
+`gitstack restore`.
+
 ### Rolling back k3s
 
 Not automatic, on purpose: Kubernetes does not support downgrading the
@@ -662,7 +903,7 @@ installer:
 
 ```sh
 curl -sfL https://get.k3s.io | sudo INSTALL_K3S_VERSION=v1.36.4+k3s1 \
-  INSTALL_K3S_EXEC="server --write-kubeconfig-mode 644" sh -
+  INSTALL_K3S_EXEC="server --write-kubeconfig-mode 600 --secrets-encryption" sh -
 k3s --version            # the version you asked for
 sudo gitstack status     # wait until all services are ready
 ```
@@ -735,7 +976,7 @@ The last error is shown in the UI and as `lastError` in the API, without any cre
 
 ### Destinations on a private network or with a private CA
 
-- **Egress policy.** Like webhooks, mirror destinations go through the egress protection (`egress.*` in the chart values). Loopback, link-local and the cluster networks are always blocked. A server on your LAN is allowed by default; if you set `egress.allow`, only what it lists is allowed, so add the destination's address (an IP/CIDR, or a host name). A blocked destination ends in a `blocked` run and is not retried.
+- **Egress policy.** Like webhooks, mirror destinations go through the egress protection (`egress.*` in the chart values). Loopback, link-local, the cluster networks, the node's own addresses and the Kubernetes ports (6443, 10250, 10255, 2379-2380) on private addresses are always blocked. A server on your LAN is allowed by default; if you set `egress.allow` (see [Egress policy and the LAN](#egress-policy-and-the-lan)), only what it lists is allowed, so add the destination's address (an IP/CIDR, or a host name). A blocked destination ends in a `blocked` run and is not retried.
 - **Private CA.** Git trusts the system CAs. For a destination with a certificate from a private CA (for example a second GitStack with its internal CA) put the CA in a ConfigMap and point the chart at it:
 
   ```bash
@@ -766,6 +1007,73 @@ To resolve it, first decide which side is right, look at the run log to see whic
 - **A tag points to the wrong commit on one side.** Delete the tag on the side that is wrong and recreate it where it should be.
 
 Then press **Sync now** (or `POST /api/v1/repos/{owner}/{repo}/mirrors/{id}/sync`, which answers `202`). The mirror pushes again and, if nothing else is different, goes back to **In sync**. A mirror stays `diverged` until you do: new pushes to GitStack do not restart it.
+
+## Pull mirror
+
+A **pull mirror** is the opposite of the [push mirror](#mirror): GitStack periodically downloads an external Git repository (for example one on GitHub) and keeps a **read-only** copy of it. Uses: a backup copy of a GitHub repository on your own machine, and the first step of moving a team off GitHub.
+
+What it does, and what it deliberately does not do:
+
+- **Prudent copy.** All branches and all tags are copied. GitStack **never deletes and never overwrites** anything. If the origin rewrites a branch (force-push) or a tag, or deletes a ref, the copy on GitStack keeps the previous version, the ref is marked **diverged** and the repository's admins are notified. All the other refs keep updating.
+- **Code is read-only, issues are normal.** While the mirror is active every push (HTTPS, SSH, `gs`) is rejected with a message that names the origin (`mirror_read_only`). Only the mirror updates refs. The repository shows a **Mirror** label with the origin and the time of the last update. Issues, labels, milestones and comments work as in any repository.
+- **Only Git content.** Issues, pull requests, releases, wikis and labels of the origin are not copied, and neither is Git LFS.
+- **Origins.** Only `https://` addresses, without credentials in the address, checked by the same egress protection as webhooks and push mirrors (loopback, cluster and link-local networks are always blocked; see [Destinations on a private network or with a private CA](#destinations-on-a-private-network-or-with-a-private-ca), which applies to pull mirrors too, including `git.mirror.caConfigMap`). SSH and `git://` origins are not supported.
+- **Same-address guard.** While a pull mirror is active you cannot configure a push mirror to the same address as its origin.
+
+Creating and managing a pull mirror needs the `admin` role on the repository, or being the installation administrator. The token (optional) is stored encrypted and is never shown again, nor written to logs or to the Git command line. Without the secret encryption key (`GITSTACK_WEBHOOK_SECRET_KEY`) the API answers `503 mirror_secrets_unavailable`.
+
+### Recipe: stage 1, a copy of `github.com/<org>/GitStack` on homehub
+
+Goal: homehub holds an up-to-date, read-only copy of the GitHub repository, as a backup and as the code that dogfooding builds on.
+
+1. **Decide the name.** For example `<org>/gitstack` (the owner can be a user or an organization on homehub); visibility **private** unless you want it public. The name must be free: the import creates the repository.
+2. **Credentials.**
+   - If `github.com/<org>/GitStack` is **public**, leave username and token empty: the origin is read anonymously.
+   - If it is **private**, create a **fine-grained personal access token** on GitHub: *Repository access* → **Only select repositories** → that repository; *Repository permissions* → **Contents: Read-only** (GitHub adds *Metadata: Read-only* by itself). Nothing else, and **no write permission**: this mirror never pushes. Note the expiry date; when the token expires the mirror goes to `error` until you replace it.
+3. **Create the mirror.** In the web UI: **New repository → Import from URL**, fill in `https://github.com/<org>/GitStack.git`, choose **Keep in sync** (not *Copy once*), set the interval and, for a private origin, the GitHub user name and the token. The repository appears immediately (empty) and the first copy starts in the background.
+
+   The same through the API (the token is only sent in this request):
+
+   ```bash
+   curl -fsS -X POST "https://homehub.example/api/v1/repos/import" \
+     -H "Authorization: Bearer $GITSTACK_TOKEN" -H "Content-Type: application/json" \
+     -d '{"owner":"<org>","name":"gitstack","visibility":"private",
+          "url":"https://github.com/<org>/GitStack.git","mode":"mirror","intervalSeconds":3600}'
+   # private origin: add  "username":"<github user>","token":"'"$GITHUB_TOKEN"'"
+   ```
+
+   On an **existing, empty** repository use **Settings → Pull mirror → Enable** (mockup P3–P6) or `POST /api/v1/repos/{owner}/{repo}/pull-mirror` with `{"url": …, "username": …, "token": …, "intervalSeconds": …}`.
+4. **Interval.** For a backup copy use **1 hour** (`intervalSeconds: 3600`): it is plenty for a backup and gentle with GitHub. The default is **10 minutes**; the allowed range is 5 minutes to 24 hours. **Sync now** (`POST /api/v1/repos/{owner}/{repo}/pull-mirror/sync`, answers `202`) updates immediately and does not change the interval.
+5. **Check it.** The mirror is healthy when its state is `in_sync` and `lastSyncedAt` is recent (`GET /api/v1/repos/{owner}/{repo}/pull-mirror`; the run log is `GET …/pull-mirror/runs`). Compare the tips:
+
+   ```bash
+   git ls-remote https://github.com/<org>/GitStack.git refs/heads/main
+   git ls-remote https://homehub.example/<org>/gitstack.git refs/heads/main   # same SHA
+   ```
+
+### States
+
+| State | Meaning |
+|---|---|
+| `pending` | Queued: first copy, or next round due. |
+| `syncing` | A fetch is running (one at a time per repository, with a timeout). |
+| `in_sync` | The last update succeeded. Refs listed in `divergedRefs` are kept as they were; the others are up to date. |
+| `error` | The last attempt failed. It retries after 30 s, 2 min, 10 min, 1 h, 3 h, then every 6 h. A destination blocked by the egress policy is **not** retried: fix the policy (or the origin) and press **Sync now**. |
+| `paused` | Updates are stopped by an admin; the repository stays read-only. **Resume** (`POST …/pull-mirror/resume`) brings it back. |
+| `stopped` | Interrupted: the repository is normal and writable, credentials are deleted, the run log and the `diverged` refs are kept. |
+
+The admins are also notified when there has been no successful update for more than 24 hours. The run log keeps the last 50 runs, for 30 days.
+
+### When a ref is `diverged`
+
+It means the origin rewrote or deleted a ref that GitStack already had. Nothing was lost: GitStack still has the old version, shown in **Settings → Pull mirror → Diverged refs** (`divergedRefs` in the API, with `localSha` and `remoteSha`). Decide which side is right. If the origin is right and you want its version, **Stop** the mirror, fix the ref in the now-writable repository, and enable the mirror again later; a mirror never accepts a rewrite on its own.
+
+### Stop, or copy once
+
+- **Stop** (**Settings → Pull mirror → Stop**, `POST …/pull-mirror/stop`): type the repository name to confirm (`{"confirm":"gitstack"}`). The repository becomes a normal one, credentials are deleted. This is how a copy becomes the new home after a migration. It can be enabled again later.
+- **Copy once** (**Import from URL → Copy once**, or `"mode":"once"` in `POST /api/v1/repos/import`) is "create the mirror, sync, stop" in one step: all branches and tags are copied once, then the credentials are deleted and the repository is normal and writable, with no link to the origin. If the copy fails the repository stays with the error visible and you can retry with **Sync now**.
+
+The pull mirror is proved end to end by `deploy/test-vm/e2e.ps1` (step e10) and by the stack test `TestPullMirrorGiroCompleto`.
 
 ---
 
@@ -859,7 +1167,130 @@ The script `deploy/gitstack/tls/gitstack-tls.sh` (installed as
 Both need `sudo` on internal CA because they read/write under
 `/etc/gitstack/`.
 
+### CI tests of install, upgrade and restore (N2, V1)
+
+The workflow `.github/workflows/install.yml` proves on a real runner what
+used to be tried only on the board's VM. It does **not** run on every push
+or pull request (each job installs k3s and every service and takes a long time):
+
+| Trigger | When |
+|---|---|
+| `push` of a `v*` tag | at every release |
+| `schedule` | every night at 02:30 UTC, on `main` |
+| `workflow_dispatch` | by hand, on any branch (inputs `previous_commit` and `k3s_from` are optional) |
+
+It runs two scenarios on `ubuntu-22.04` and `ubuntu-24.04`:
+
+- **fresh**: `install.sh` of the commit under test → `gitstack backup`
+  (encrypted) → more data → `gitstack restore` → the data written after the
+  backup is gone.
+- **upgrade**: `install.sh` of the **previous commit** (latest green CI run on
+  `main`, strict ancestor, with its images and binary published) with a k3s
+  **one patch older** than `deploy/k3s-version` → data → `gitstack upgrade`
+  (preventive backup → k3s patch → GitStack, N10) → k3s checked with
+  `k3s --version`, `kubectl version` and `gitstack status --json`
+  (`k3s_version`) → backup → more data → restore.
+
+Both check health, the admin login with the forced password change, user and
+token creation, repository creation, `git clone` and `git push` over HTTPS.
+The steps are in `deploy/ci/install-e2e.sh` (shellcheck in `ci.yml`).
+
+**Signatures (V5).** `install.sh` and `gitstack upgrade` verify the cosign
+signatures of the binary, the chart and the images, so the run tests that
+verification too. The job `release` decides where the artefacts of the commit
+come from:
+
+| Run | Artefacts | Signatures |
+|---|---|---|
+| `schedule` (main) and `v*` tag | only the signed release `sha-<commit>` and its images, published by `ci.yml` | **verified**. If the `.sigstore.json` bundles are not there yet (on a tag push `ci.yml` and this workflow start together) the job waits for them up to 75 minutes, then fails with an explicit error; it never builds artefacts itself and never passes the exception |
+| `workflow_dispatch` on a commit whose release is already signed | that release | **verified** |
+| `workflow_dispatch` on a branch or an unsigned commit | built by the jobs `images` and `admin-binary` | **not verified: exception N9**, passed explicitly as `--allow-unsigned-mirrors` to `install.sh` and to `gitstack upgrade` (only if the installed `gitstack` of the previous commit knows the flag; an older one verifies nothing), and written in the run summary (`GITHUB_STEP_SUMMARY`) |
+
+In the upgrade scenario the previous commit is installed with its own
+`install.sh` and its own signed artefacts, without the exception; then the
+installed `gitstack` (which already verifies, from GIT-209 on) checks the
+artefacts of the commit under test. The exception is never silent, and never
+on the runs of `main` and of the tags.
+
+The jobs `images` and `admin-binary` therefore run only in the last case: they
+publish the images (`ghcr.io`) and the `gitstack` binary (release
+`sha-<commit>`) with the same tags, because `gitstack upgrade` always downloads
+from GitHub, there is no local source for it. To try a change, push the branch
+and run the workflow by hand on it:
+
+```sh
+gh workflow run install.yml --ref my-branch
+gh run watch
+```
+
+Runners start with about 14 GB free: the installer is called with
+`--skip-preflight` (the hardware profile is covered by
+`deploy/tests/preflight_test.sh`).
+
+#### Pop!_OS 22.04 and 24.04
+
+Not covered in CI: GitHub hosts no Pop!_OS runner, and System76 does not
+publish a cloud image or a container with systemd that stands for the real
+system (to be verified again before deciding). What CI gives instead: Pop!_OS
+22.04 and 24.04 are Ubuntu 22.04 and 24.04 with the System76 packages, so the
+same installer path runs on the same base; the `ID=pop` detection is covered
+by `deploy/tests/preflight_test.sh`. The real run on Pop!_OS stays manual,
+on the test VM (`deploy/test-vm/`). Options, from the cheapest, for the CEO
+to choose:
+
+1. **Keep as is** (declared limit): Ubuntu in CI, Pop!_OS by hand before each
+   release, noted in the release checklist.
+2. **Self-hosted runner** on a Pop!_OS machine of the company (the board's
+   homehub): exact, but a permanent machine and a runner open to the repo.
+3. **KVM VM on the runner** with the Pop!_OS ISO: the installer of the ISO is
+   interactive, so it needs a preseeded image built and kept by us; the most
+   work, and the result is still a copy of the real system.
+
 ---
+
+### Load smoke test (V3)
+
+Rule V3 asks for a smoke test, not a benchmark. `TestCaricoFumo`
+(`services/core/internal/stackitest/smoke_load_integration_test.go`) starts the
+full test stack (gateway, identity and git service as real binaries, core
+in-process, Postgres) and runs five people and three `gs` agents at the same
+time for a configurable time: clone, push to their own branch and to `main`
+(HTTPS and SSH for people, HTTPS for agents), fetch, API reads, issue creation
+and comments.
+
+It passes when there are **zero 5xx responses and zero 429s**, no operation fails, **no push
+is lost** (every successful push is on `main`, and `main` has exactly the seed
+plus those commits), and there is **no race on refs** (each worker branch sits
+at the sha of its last push, `git fsck` is clean, issue numbers are unique and
+the totals match). A latency summary (n, p50, p95, max per operation) is printed
+in the log; it is informational only and has no target.
+
+The smoke stack runs the gateway with its **default rate limits**
+(per credential 20 requests/s with a burst of 200, per IP as shipped); the test
+does not set any `GITSTACK_GATEWAY_RATE_LIMIT_*` variable, so it also proves
+that the real load of the eight workers is not rejected. A `429` received by a
+worker during the load phase is counted in the summary (`429: N`) and fails
+the test, like a 5xx. The verification reads after the load (one token, hundreds
+of requests per second in sequence) behave like a polite client instead: on
+`429` they wait for `Retry-After` and retry, up to 30 attempts and 90
+seconds per read, and only then fail.
+
+**The capacity figures for N1 (hardware profiles) are indicative, not
+measured.** This test does not establish how many users a machine supports.
+
+Run it locally (needs Docker, `git`, `ssh` and `ssh-keygen`; on Windows set
+`DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine` and
+`TESTCONTAINERS_RYUK_DISABLED=true`):
+
+```bash
+cd services/core
+GITSTACK_SMOKE_DURATION=30s go test -tags=integration -run TestCaricoFumo -v -count=1 ./internal/stackitest/
+```
+
+Without `GITSTACK_SMOKE_DURATION` the test is skipped, so the `go` job of
+`ci.yml` does not run it. In CI it is the separate workflow
+`.github/workflows/smoke.yml`: on every push to `main`, every night
+(04:11 UTC) and on demand, with `-race` and a default of 3 minutes.
 
 ## Quick reference
 
@@ -878,6 +1309,7 @@ Both need `sudo` on internal CA because they read/write under
 | `gitstack upgrade` | yes | Upgrade with preventive backup and automatic rollback |
 | `gitstack upgrade --dry-run` | yes | Check readiness without making changes |
 | `gitstack config set host NEWNAME` | yes | Change the host name (certificates, services, config) |
+| `gitstack config set network [options]` | yes | Change proxy, registry mirror, download mirror and corporate CA (see [Corporate network](#corporate-network-proxy-mirrors-and-ca)) |
 
 \* `gitstack status` reads `/etc/gitstack/config.yaml` (mode `0600`),
 so it fails as a non-root user with a permission error.
@@ -890,6 +1322,7 @@ so it fails as a non-root user with a permission error.
 | `--dest DIR` | `backup`, `restore`, `upgrade` | Override the backup destination directory |
 | `--key-file FILE` | `backup`, `restore`, `upgrade` | Path to the AES-256-GCM encryption key |
 | `--to TAG\|SHA` | `upgrade` | Target version; default is latest on the `main` branch |
+| `--version vX.Y.Z` | `upgrade` | Target released version (SemVer tag only), signed release `vX.Y.Z` |
 | `--timeout D` | `upgrade` | Max time for health checks (default `10m`) |
 | `--set KEY=VAL` | `upgrade` | Helm value override, repeatable |
 | `--values FILE` | `upgrade` | Additional Helm values file, repeatable |
@@ -920,6 +1353,9 @@ so it fails as a non-root user with a permission error.
 |---|---|
 | `/etc/gitstack/config.yaml` | Main configuration (mode `0600`) |
 | `/etc/gitstack/tls/` | CA certificate, CA key, server certificate (internal CA mode) |
+| `/etc/gitstack/network/ca.crt` | Corporate CA copy (only with `--ca-bundle`) |
+| `/etc/rancher/k3s/registries.yaml` | k3s registry mirror (mode `0600`, may hold the mirror password) |
+| `/etc/systemd/system/k3s.service.d/10-gitstack-network.conf` | Proxy for k3s and containerd |
 | `deploy/postgres-prepare.sql` | Script for the DBA: database and user for an external PostgreSQL |
 | `/etc/gitstack/backup-state.json` | Last backup status written by `gitstack backup` |
 
@@ -1073,7 +1509,307 @@ La release `sha-<commit-sha>` contiene:
 4. Step di verifica interna: `cosign verify` su immagine,
    `cosign verify-blob` su chart e binario, tutti senza `|| true`.
 
-*V5 — Catena di fornitura (GIT-208)*
+### Rilascio con versione (`vX.Y.Z`, GIT-222)
+
+Oltre alle build `sha-<commit>` di ogni push su `main`, un tag Git `vX.Y.Z` o
+`vX.Y.Z-rc.N` (SemVer con prefisso `v`) produce una **GitHub Release con il nome
+della versione**. Lo fa il job `release` di `ci.yml`, dopo `registry`,
+`admin-binary`, `gs-binaries` e `sign`: le immagini sono quelle di `sha-<commit>`
+(stesso digest, quindi stesse firme), con in più i tag `vX.Y.Z` e `X.Y.Z`.
+
+La release `vX.Y.Z` contiene:
+
+| Tipo | File |
+|---|---|
+| Binari | `gitstack-linux-amd64` e `.sha256`, `gs_<os>_<arch>[.exe]` (6 piattaforme), `gs-skills.zip`: costruiti con la versione `vX.Y.Z` dentro il binario |
+| Chart | `gitstack-X.Y.Z.tgz`: `version` e `appVersion` = `X.Y.Z`, quindi il tag immagine di default è `X.Y.Z` |
+| Firme | `<file>.sigstore.json` per binari, chart e `SHA256SUMS` (cosign keyless, identità `ci.yml@refs/tags/v*`) |
+| SBOM | `gitstack-<servizio>-sbom.spdx.json` (5 immagini), `gitstack-chart-sbom.spdx.json`, `gitstack-binary-sbom.spdx.json`, `gs-binary-sbom.spdx.json` |
+| Checksum | `SHA256SUMS`: tutti i file sopra, firmato |
+| Changelog | `CHANGELOG-vX.Y.Z.md` (la sezione, anche nelle note della release) e `CHANGELOG.md` aggiornato |
+
+Una versione con prerelease (`-rc.N`, `-test.N`) è marcata «pre-release» e non è la
+«latest». Il job rifiuta un tag che non è SemVer.
+
+**Changelog.** `scripts/release-changelog.sh <tag>` elenca i commit fra il tag e il
+precedente (l'ultimo `v*` raggiungibile, senza i tag `v*-test.*` per un rilascio
+vero), raggruppati per tipo di conventional commit. La sezione va nelle note e in
+`CHANGELOG.md`: il job non scrive su `main`, apre una PR `changelog/vX.Y.Z` che il
+board approva. In locale: `scripts/release-changelog.sh v1.0.0 --prepend CHANGELOG.md`.
+
+**Installare una versione.**
+
+```sh
+# Senza checkout (curl | bash): chart, binario e immagini della versione, firme verificate
+curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/vX.Y.Z/deploy/install.sh \
+  | sudo bash -s -- --version vX.Y.Z --host homehub.local
+
+# Aggiornare un'installazione esistente (backup preventivo, verifica, rollback)
+sudo gitstack upgrade --version vX.Y.Z --dry-run
+sudo gitstack upgrade --version vX.Y.Z
+```
+
+`--version` fissa insieme il sorgente (ref), il tag immagine e la release da cui
+si scaricano binario e chart. Vale lo stesso trattamento di `sha-<commit>`: bundle
+obbligatorio, identità del workflow `ci.yml` (da `main` o da un tag `v*`) e issuer
+fissati, cosign pinnato, immagini verificate prima di `helm upgrade`. Il chart
+scaricato deve avere `version` e `appVersion` uguali alla versione richiesta, e
+`--version` non si combina con un `--image-tag` diverso. Un valore che non è
+`vX.Y.Z[-prerelease]` è rifiutato: per un commit si usa `--image-tag sha-<commit>`
+(install) o `--to sha-<commit>` (upgrade). Con `--download-mirror` la release si
+pubblica in `<mirror>/gitstack/vX.Y.Z/` (stessa struttura di `sha-<commit>`), il
+sorgente in `<mirror>/gitstack/source/vX.Y.Z.sha`.
+
+**Provare la pipeline.** Mai su un tag `v1`: si usa un tag di prova
+`v0.0.0-test.N` su un fork o un repository di prova (`git tag v0.0.0-test.1 &&
+git push <fork> v0.0.0-test.1`). Il tag `v1.0.0-rc.1` lo decide il board.
+
+### Verifica automatica in `install.sh` e `gitstack upgrade` (GIT-209)
+
+Binario, chart e immagini si verificano da soli, a ogni installazione e a ogni
+aggiornamento, con le stesse regole della CI. Se una firma manca o non torna,
+l'operazione si ferma **prima di toccare il sistema** con un messaggio che dice
+quale artefatto è in causa.
+
+| Artefatto | Come si verifica |
+|---|---|
+| Binario `gitstack` | SHA-256 (`.sha256` della release o `--admin-sha256`) **e** `cosign verify-blob` col bundle `gitstack-linux-amd64.sigstore.json` scaricato accanto al binario |
+| Chart Helm | si scarica il `.tgz` pubblicato dalla CI (`gitstack-<versione>.tgz` nella release `sha-<commit>`) con il suo `.sigstore.json`, si verifica e solo dopo si estrae: il sorgente di codeload non ha i byte firmati e non si usa |
+| Immagini `gitstack-gateway/identity/git/core/web` | `cosign verify` sull'immagine che il chart distribuirebbe (stessi `--set`/`-f` dell'installazione), prima di `helm upgrade --install`. Postgres e NATS sono immagini di terzi: non le firma GitStack |
+
+- **Identità fissata**: il workflow `ci.yml` del repository (`GITSTACK_REPO`,
+  default `fathorMB/GitStack`) da `main` o da un tag `v*`, regexp
+  `^https://github\.com/<repo>/\.github/workflows/ci\.yml@refs/(heads/main|tags/v.+)$`;
+  issuer `https://token.actions.githubusercontent.com`. Nessun flag che
+  salti il controllo del registro di trasparenza.
+- **Bundle obbligatorio**: senza `.sigstore.json` l'artefatto «non risulta
+  firmato» ed è rifiutato, mai accettato. Una release `sha-<commit>` ha i bundle
+  solo dopo che il job `sign` della CI è finito.
+- **cosign pinnato come Helm**: `install.sh` installa cosign `v2.4.0` (la
+  versione della CI) in `/usr/local/bin/gitstack-cosign` verificandone lo
+  SHA-256 pinnato; non usa un cosign trovato nel `PATH`. `gitstack upgrade` usa
+  lo stesso binario (`v5.cosign_path` in `/etc/gitstack/config.yaml`). In una
+  rete chiusa: `GITSTACK_COSIGN_URL` (percorso o URL del mirror interno di
+  cosign) e `GITSTACK_COSIGN_SHA256`; il checksum resta verificato.
+- **Chart da cartella locale** (`--chart-dir` o checkout): non è un artefatto
+  firmato e non si può verificare; `install.sh` lo dice con un avviso, e le
+  immagini si verificano comunque.
+
+#### Eccezione per mirror interni non firmati (N9)
+
+Per un mirror interno che copia release e immagini senza le firme esiste
+un'eccezione **esplicita**, mai il default:
+
+```sh
+sudo ./deploy/install.sh --allow-unsigned-mirrors     # installazione
+sudo gitstack upgrade --allow-unsigned-mirrors        # aggiornamento, solo per questa volta
+```
+
+- Salta **tutte** le verifiche cosign (binario, chart, immagini); il checksum
+  SHA-256 del binario resta obbligatorio.
+- Emette un avviso `ECCEZIONE N9 ATTIVA` a ogni passo saltato e nel riepilogo
+  finale.
+- Con l'installer l'eccezione è **salvata** in `/etc/gitstack/config.yaml`
+  (`v5.allow_unsigned: true`): `gitstack upgrade` la rispetta e
+  `gitstack status` mostra «AVVISO catena di fornitura» (campo
+  `supply_chain_warning` con `--json`). Non rende «non sano» lo stato: è un
+  avviso, non un guasto.
+- Rieseguire `install.sh` **senza** il flag la rimuove e ripristina la
+  verifica.
+- La pagina Admin · System (mockup 16) non esiste ancora nel web: finché non
+  c'è, l'avviso si vede in `gitstack status`; la pagina leggerà lo stesso
+  report.
+
+*V5 — Catena di fornitura (GIT-208, GIT-209)*
+
+---
+
+## Prove della tappa 2 di V7 (condizioni 2 e 4)
+
+Le due prove che seguono le lancia il **board**, non un agente. Servono a sbloccare il passaggio della casa su GitStack (V7, tappa 2; `rilascio-v1.md`). Ogni passo ha il comando e l'esito atteso: se l'esito è diverso, ci si ferma e si annota il comando, l'output e l'ora. Gli esiti attesi vengono dalle sezioni Backup, Restore, Mirror e Diagnostics di questo documento e dal codice di `admin/internal/cli/backup.go`; nessuna di queste prove è ancora stata eseguita su homehub.
+
+### Condizione 2: ripristino di prova su una macchina nuova
+
+**Cosa si prova:** un backup giornaliero di homehub, portato su una VM appena installata, si ripristina e l'istanza risponde con i dati di homehub.
+
+**Prerequisiti**
+
+- Una VM Ubuntu Server 22.04 o 24.04 amd64, pulita, con i requisiti di [Prerequisites](#prerequisites) e raggiungibile via SSH. Non è homehub e non ne prende il posto: il nome host della VM può essere diverso.
+- Un backup di homehub di **meno di 24 ore** (il timer giornaliero) e, se è cifrato, il file della chiave. Il restore rifiuta un archivio di un'altra versione del server: la VM va installata **alla stessa versione di homehub**.
+- Su homehub, per conoscere la versione e l'ultimo backup:
+
+```sh
+gitstack version
+# gitstack sha-<40 caratteri>   → annota questa versione: è <VERSIONE>
+sudo gitstack status
+# nella riga «Ultimo backup:» ci sono l'ora e il percorso dell'archivio; l'ora deve essere di meno di 24 ore fa
+# in fondo: «Stato: sano»
+```
+
+**Passo 1. Portare l'archivio e la chiave sulla VM**
+
+Con il backup locale (cartella `backup.destination`, di default `/var/backups/gitstack`), da homehub:
+
+```sh
+ARCH=$(ls -t /var/backups/gitstack/gitstack-backup-*.tar.gz* | grep -v '\.sha256$' | head -n 1)
+echo "$ARCH"
+scp "$ARCH" <utente>@<ip-vm>:/tmp/
+scp /etc/gitstack/backup.key <utente>@<ip-vm>:/tmp/      # solo se l'archivio è cifrato (.enc); usa il percorso della tua chiave
+```
+
+Esito atteso: `scp` termina con exit `0`; sulla VM `ls -l /tmp/gitstack-backup-*` mostra l'archivio. Se i backup vanno su S3 (N7), salta questo passo e usa `--from s3` al passo 3.
+
+**Passo 2. Installare GitStack sulla VM, alla stessa versione**
+
+Sulla VM, dal checkout del repo alla stessa versione di homehub (o con il binario e il chart di quella release):
+
+```sh
+sudo ./deploy/install.sh --image-tag <VERSIONE> --host <ip-vm>
+# se homehub gira una release (vX.Y.Z o vX.Y.Z-rc.N) invece di una build sha-…:
+# sudo ./deploy/install.sh --version <vX.Y.Z> --host <ip-vm>
+gitstack version
+sudo gitstack status; echo "exit=$?"
+```
+
+Esito atteso: `gitstack version` stampa `gitstack <VERSIONE>` (la stessa di homehub); `gitstack status` finisce con `Stato: sano`, tutti i servizi `N/N pronti  OK`, `exit=0`. Con Postgres esterno vale [External PostgreSQL](#external-postgresql) e un database **vuoto**.
+
+**Passo 3. Ripristinare**
+
+```sh
+sudo gitstack restore --key-file /tmp/backup.key /tmp/gitstack-backup-<data>-<VERSIONE>.tar.gz.enc
+# archivio non cifrato:
+sudo gitstack restore /tmp/gitstack-backup-<data>-<VERSIONE>.tar.gz
+# archivio su S3 (dopo aver passato le opzioni --s3-* a install.sh):
+sudo gitstack restore --from s3
+echo "exit=$?"
+```
+
+Esito atteso: le righe `archivio verificato: versione <VERSIONE> del <data>, N file`, `fermo i servizi: …`, `ripristino del database (in una sola transazione)`, `ripristino dei repo (git-data)`, `ripristino degli allegati`, `ripristino dei Secret`, `ripristinati N file di configurazione (config.yaml resta quello della nuova installazione)`, `riavvio i servizi`, poi `Restore completato: database, repo, allegati, Secret e configurazione ripristinati.` e `exit=0`. Un codice diverso: vedi [Exit codes](#exit-codes) (`6` = versione diversa, checksum sbagliato o chiave mancante: la prova **non** è riuscita, riparti dal passo 2 con la versione giusta).
+
+**Passo 4. Controlli di riuscita**
+
+Tutti sulla VM, dopo il restore:
+
+| # | Controllo | Comando | Esito atteso |
+|---|---|---|---|
+| 1 | Servizi sani | `sudo gitstack status; echo "exit=$?"` | `Stato: sano`, `exit=0` |
+| 2 | API raggiungibile | `curl -sk -o /dev/null -w '%{http_code}\n' https://<ip-vm>/api/healthz` | `200` |
+| 3 | I repo di homehub ci sono | `curl -sk -H "Authorization: Bearer $TOKEN" https://<ip-vm>/api/v1/repos` | l'elenco contiene gli stessi repo di homehub (stessi owner e nomi) |
+| 4 | Lo stesso storico | `git ls-remote https://<ip-vm>/<owner>/<repo>.git` e lo stesso comando su homehub (CA interna in `GIT_SSL_CAINFO`) | stessi SHA per `refs/heads/main` e per i tag, a meno dei push arrivati dopo il backup |
+| 5 | Le issues ci sono | `GS_HOST=<ip-vm> GS_TOKEN=$TOKEN gs issue list -R <owner>/<repo>` | stesse issues di homehub al momento del backup |
+| 6 | Login | accedere da browser a `https://<ip-vm>/` con un utente di homehub | login riuscito (le credenziali sono quelle di homehub) |
+| 7 | Scrittura | `git clone` di un repo della VM, un commit, `git push` | exit `0`, push accettato; scrive solo sulla VM |
+
+`$TOKEN` è un token di un utente di homehub (esiste nel database ripristinato) o uno creato dalla UI della VM dopo il login. I confronti dei controlli 3–5 si fanno con lo stato di homehub nell'istante del backup: push o issues arrivati dopo non ci saranno sulla VM.
+
+**Esito:** riuscita se i controlli 1–7 sono tutti ok. Il board annota data, versione, nome dell'archivio e risultato di ogni controllo.
+
+**Pulizia.** La VM si spegne e si cancella; nessun comando della prova scrive su homehub (il backup viene solo letto e copiato). Cancella anche la copia della chiave: `shred -u /tmp/backup.key`.
+
+### Condizione 4: mirror in push verso un repo GitHub di prova, senza `diverged`
+
+**Cosa si prova:** il mirror in push (V8-mirror, GIT-179) manda il ramo principale e i tag di un repo di homehub su un repo GitHub vuoto senza forzare; una destinazione con storia diversa lo ferma in `diverged` e non viene sovrascritta. Vedi anche [Mirror](#mirror).
+
+**Prerequisiti**
+
+- Un repo GitHub **vuoto** di prova (senza README, licenza o `.gitignore`), per esempio `<utente>/gitstack-mirror-prova`, e un **fine-grained token** con *Only select repositories* su quel repo e *Contents: Read and write* (nient'altro), con scadenza. Il ramo principale del repo di prova su GitHub **non** deve essere protetto.
+- Su homehub un repo **di prova**, non quello del codice di GitStack (che ha il mirror in pull): per esempio `<owner>/mirror-prova`, con almeno un commit su `main` e un tag. Se non c'è, con un token con permesso di scrittura:
+
+```sh
+export GS_HOST=<homehub> GS_TOKEN=<token>
+gs repo create <owner>/mirror-prova
+gs auth setup-git
+gs repo clone <owner>/mirror-prova && cd mirror-prova
+echo prova > README.md && git add README.md && git commit -m "prova del mirror" && git push origin HEAD:main
+git tag v0.0.1 && git push origin v0.0.1
+```
+
+Esito atteso: i push terminano con exit `0`. (Se il ramo predefinito non si chiama `main`, usa il suo nome.)
+
+- La chiave dei segreti di homehub è configurata (`GITSTACK_WEBHOOK_SECRET_KEY`): senza, la creazione del mirror risponde `503 mirror_secrets_unavailable`.
+- Il token GitHub in una variabile, mai in un file: `read -rs GITHUB_TOKEN; export GITHUB_TOKEN`.
+
+**Passo 1. Creare il mirror**
+
+Dalla UI: repo → **Settings → Mirrors → Add mirror**, con *Remote URL* `https://github.com/<utente>/gitstack-mirror-prova.git`, *Username* il tuo utente GitHub, *Token* il token. Oppure con l'API:
+
+```sh
+curl -fsS -X POST "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors" \
+  -H "Authorization: Bearer $GS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"url":"https://github.com/<utente>/gitstack-mirror-prova.git","username":"<utente>","token":"'"$GITHUB_TOKEN"'"}'
+```
+
+Esito atteso: risposta `201` con un oggetto mirror (`id`, `state`, `hasToken: true`; il token non compare). Annota l'`id` come `<MIRROR_ID>`. Il primo push parte da solo.
+
+**Passo 2. Il primo push**
+
+```sh
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" \
+  "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+```
+
+Esito atteso: entro poche decine di secondi `"state":"in_sync"`, `lastError` nullo e `lastPushed` con `refs/heads/main` e `refs/tags/v0.0.1`; nella UI lo stato è **In sync**. Se è `pending` o `syncing` ripeti dopo qualche secondo; se è `error`, leggi `lastError` e le esecuzioni (`GET .../mirrors/<MIRROR_ID>/runs`): la prova non è riuscita.
+
+**Passo 3. Gli stessi SHA su GitHub**
+
+```sh
+git ls-remote https://github.com/<utente>/gitstack-mirror-prova.git refs/heads/main 'refs/tags/*'
+git ls-remote https://<homehub>/<owner>/mirror-prova.git refs/heads/main 'refs/tags/*'
+```
+
+Esito atteso: gli SHA di `refs/heads/main` e del tag `v0.0.1` sono identici nelle due uscite.
+
+**Passo 4. Un push successivo arriva senza forzare**
+
+```sh
+cd mirror-prova && echo due >> README.md && git commit -am "secondo commit" && git push origin HEAD:main
+sleep 20
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+git ls-remote https://github.com/<utente>/gitstack-mirror-prova.git refs/heads/main
+```
+
+Esito atteso: `state` è `in_sync` e lo SHA su GitHub è quello del nuovo commit (fast-forward, nessun `diverged`).
+
+**Passo 5. La divergenza si ferma e non sovrascrive**
+
+Questo passo prova la garanzia «mai forzato»: è l'unico in cui `diverged` è l'esito **voluto**.
+
+```sh
+git clone https://github.com/<utente>/gitstack-mirror-prova.git /tmp/gh-prova && cd /tmp/gh-prova
+echo divergenza > divergenza.txt && git add divergenza.txt && git commit -m "commit diretto su GitHub" && git push origin HEAD:main
+SHA_GH=$(git rev-parse HEAD); echo "$SHA_GH"
+cd <clone-di-homehub> && echo tre >> README.md && git commit -am "terzo commit" && git push origin HEAD:main
+sleep 20
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+git ls-remote https://github.com/<utente>/gitstack-mirror-prova.git refs/heads/main
+```
+
+Esito atteso: `state` è `diverged` (UI: «Stopped: diverged»), `lastError` indica la storia diversa della destinazione e `git ls-remote` mostra ancora `$SHA_GH`: il commit diretto su GitHub non è stato sovrascritto. Gli admin del repo ricevono una notifica con motivo `mirror` (`gs notification list`).
+
+**Passo 6. Il ritorno a `in_sync`** (facoltativo; prova la risoluzione descritta in [If a mirror stops: divergence](#if-a-mirror-stops-divergence))
+
+```sh
+cd <clone-di-homehub> && git remote add github https://github.com/<utente>/gitstack-mirror-prova.git
+git fetch github && git merge github/main && git push origin HEAD:main
+curl -fsS -X POST -H "Authorization: Bearer $GS_TOKEN" \
+  "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>/sync"
+sleep 20
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+```
+
+Esito atteso: `sync` risponde `202`; poi `state` è `in_sync` e `git ls-remote` su GitHub dà lo stesso SHA di homehub.
+
+**Esito:** la condizione 4 è provata se i passi 1–4 danno gli esiti attesi **e** in quei passi `state` non è mai `diverged`; il passo 5 deve fermarsi in `diverged` senza sovrascrivere. Se nei passi 1–4 compare `diverged` (il repo GitHub non era vuoto, o qualcuno ha spinto lì) la prova va rifatta con un repo nuovo.
+
+**Pulizia**
+
+```sh
+curl -fsS -X DELETE -H "Authorization: Bearer $GS_TOKEN" \
+  "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"    # 204
+rm -rf /tmp/gh-prova
+```
+
+Poi su GitHub: cancella il repo di prova e **revoca** il token. Il mirror del repo vero di GitStack si crea solo nel giorno scelto per la tappa 2, con le regole di [Mirroring to GitHub](#mirroring-to-github).
 
 ---
 

@@ -207,6 +207,9 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
+	if cfg.SystemInfoFile != "" {
+		routerOpts = append(routerOpts, httpserver.WithSystemInfo(httpserver.SystemInfoConfig{File: cfg.SystemInfoFile}))
+	}
 	var disk *attachments.Disk
 	if cfg.AttachmentsDir != "" {
 		disk = &attachments.Disk{Dir: cfg.AttachmentsDir}
@@ -266,7 +269,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	if !keys.Enabled() {
 		logger.Warn("GITSTACK_WEBHOOK_SECRET_KEY non impostata: i webhook con segreto rispondono 503")
 	}
-	hookHTTP, hookCheck, err := webhooks.NewEgressWithProxy(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, proxy)
+	hookHTTP, hookCheck, err := webhooks.NewEgressForNode(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses, proxy)
 	if err != nil {
 		logger.Error("configurazione non valida", "err", err)
 		return 1
@@ -284,7 +287,7 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	// Mirror in push (V8, GIT-179): il push lo esegue il servizio git, core ha
 	// modello, coda, tentativi e la policy di uscita (C8). La credenziale usa lo
 	// stesso portachiavi dei segreti dei webhook.
-	mirrorEgress, err := mirrors.NewEgress(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs)
+	mirrorEgress, err := mirrors.NewEgressWithNode(cfg.EgressAllow, cfg.EgressDeny, cfg.EgressClusterCIDRs, cfg.EgressNodeAddresses)
 	if err != nil {
 		logger.Error("configurazione non valida", "err", err)
 		return 1
@@ -299,6 +302,21 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		go mirrorEng.Run(ctx)
 	} else {
 		logger.Warn("git non configurato: i mirror in push non partono")
+	}
+	// Mirror in pull (M-09/A3, GIT-197): stesso portachiavi e stessa policy di
+	// uscita; l'aggiornamento prudente lo esegue il servizio git.
+	pullEng := &mirrors.PullEngine{Pool: pool, Keys: keys, Egress: mirrorEgress, Log: logger}
+	if mgr, ok := repoLookup.(webhooks.Managers); ok {
+		pullEng.Managers = mgr
+	}
+	if look, ok := repoLookup.(webhooks.Users); ok {
+		pullEng.Users = look
+	}
+	if puller, ok := gitAPI.(gitclient.MirrorPuller); ok {
+		pullEng.Git = puller
+		go pullEng.Run(ctx)
+	} else {
+		logger.Warn("git non configurato: i mirror in pull non partono")
 	}
 	if js, err := jetstream.New(nc); err != nil {
 		logger.Error("apertura di JetStream per i webhook push non riuscita: i push non generano webhook", "err", err)

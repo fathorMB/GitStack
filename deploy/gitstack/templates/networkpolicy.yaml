@@ -1,0 +1,400 @@
+{{- if .Values.networkPolicy.enabled -}}
+{{- /*
+  NetworkPolicy (F8, ASVS V1.14.1): default-deny su ingresso e uscita di tutti
+  i pod del rilascio, poi un allow per ogni componente. I pod sono scelti con
+  le label app.kubernetes.io/name e app.kubernetes.io/instance del chart.
+*/ -}}
+{{- $root := . -}}
+{{- $inst := .Release.Name -}}
+{{- $np := .Values.networkPolicy -}}
+{{- $pgExternal := not .Values.postgres.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-default-deny
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $inst }}
+      app.kubernetes.io/part-of: gitstack
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# DNS: tutti i pod del rilascio risolvono i nomi dei Service.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-allow-dns
+  labels:
+    {{- include "gitstack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $inst }}
+      app.kubernetes.io/part-of: gitstack
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.dnsNamespace }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- if .Values.web.enabled }}
+---
+# web: ingresso dal controller di ingresso; uscita solo verso il gateway.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-web
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "web") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "web") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.ingressNamespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.web.containerPort }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "gateway") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.containerPort }}
+{{- end }}
+{{- if .Values.gateway.enabled }}
+---
+# gateway: ingresso da web e dal controller di ingresso (/api); uscita verso
+# core e identity.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-gateway
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "gateway") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "gateway") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.ingressNamespace }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "web") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.containerPort }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.core.containerPort }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "identity") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.identity.containerPort }}
+{{- end }}
+{{- if .Values.core.enabled }}
+---
+# core: ingresso da gateway e git; uscita verso Postgres, NATS, identity, git
+# e (webhook, SMTP) verso fuori.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-core
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "core") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "gateway") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.core.containerPort }}
+  egress:
+    {{- if $pgExternal }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.external.port | int }}
+    {{- else }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "postgres") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "nats") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.nats.service.clientPort }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "identity") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.identity.containerPort }}
+        - protocol: TCP
+          port: {{ .Values.git.containerPort }}
+    {{- if $np.allowInternetEgress }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            {{- with .Values.egress.clusterCIDRs }}
+            except:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+    {{- end }}
+{{- end }}
+{{- if .Values.identity.enabled }}
+---
+# identity: ingresso da gateway, core e git; uscita verso Postgres e verso
+# fuori (OIDC).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-identity
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "identity") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "identity") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "gateway") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.identity.containerPort }}
+  egress:
+    {{- if $pgExternal }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.external.port | int }}
+    {{- else }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "postgres") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    {{- if $np.allowInternetEgress }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            {{- with .Values.egress.clusterCIDRs }}
+            except:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+    {{- end }}
+{{- end }}
+{{- if .Values.git.enabled }}
+---
+# git: HTTP dal controller di ingresso e da core, SSH da chiunque (Service
+# LoadBalancer); uscita verso core, identity, NATS e fuori (mirror).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-git
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "git") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $np.ingressNamespace }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.git.containerPort }}
+    {{- if .Values.git.ssh.enabled }}
+    # SSH (R7): il traffico arriva dal Service LoadBalancer, da qualunque sorgente.
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.git.ssh.port }}
+    {{- end }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.core.containerPort }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "identity") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.identity.containerPort }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "nats") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.nats.service.clientPort }}
+    {{- if $np.allowInternetEgress }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            {{- with .Values.egress.clusterCIDRs }}
+            except:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+    {{- end }}
+{{- end }}
+{{- if .Values.nats.enabled }}
+---
+# NATS: porta client solo da core e git. La porta di monitoraggio (probe)
+# la raggiunge solo il kubelet del nodo. Nessuna uscita.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-nats
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "nats") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "nats") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "git") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.nats.service.clientPort }}
+  egress: []
+{{- end }}
+{{- if .Values.postgres.enabled }}
+---
+# Postgres incluso: solo core e identity (l'initContainer di bootstrap è nel
+# pod identity). Nessuna uscita.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-postgres
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "postgres") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "postgres") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "core") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "identity") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress: []
+{{- else }}
+---
+# Pod client del Postgres esterno (N8): esce solo verso il database.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gitstack.fullname" . }}-pgclient
+  labels:
+    {{- include "gitstack.componentLabels" (dict "root" $root "component" "pgclient") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gitstack.componentSelectorLabels" (dict "root" $root "component" "pgclient") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.external.port | int }}
+{{- end }}
+{{- end }}

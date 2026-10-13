@@ -383,3 +383,72 @@ func TestAllowByNameRealConnect(t *testing.T) {
 		t.Fatalf("loopback must stay blocked for an allowed name: %v", err)
 	}
 }
+
+// F7 (ASVS V12.6.1): the node's own addresses and the Kubernetes ports are
+// refused by default, on literals and on names, and no allow entry unlocks them.
+func TestNodeAddressesAreBlockedByDefault(t *testing.T) {
+	cfg := Config{NodeAddresses: []string{"192.168.1.50", "fd00::50"}}
+	p := mustPolicy(t, cfg)
+	for _, s := range []string{"192.168.1.50", "::ffff:192.168.1.50", "fd00::50"} {
+		if err := p.CheckIP(netip.MustParseAddr(s)); !errors.Is(err, ErrBlocked) {
+			t.Errorf("node address %s should be blocked, got %v", s, err)
+		}
+	}
+	// The other LAN hosts stay reachable (CI servers on the LAN).
+	if err := p.CheckIP(netip.MustParseAddr("192.168.1.51")); err != nil {
+		t.Errorf("LAN peer should be allowed: %v", err)
+	}
+	// No allow entry (IP, CIDR) unlocks the node.
+	cfg.Allow = []string{"192.168.1.0/24", "192.168.1.50", "fd00::/8"}
+	pa := mustPolicy(t, cfg)
+	if err := pa.CheckIP(netip.MustParseAddr("192.168.1.50")); !errors.Is(err, ErrBlocked) {
+		t.Errorf("allow must not unlock the node, got %v", err)
+	}
+	if err := pa.CheckIP(netip.MustParseAddr("192.168.1.9")); err != nil {
+		t.Errorf("allowed LAN range: %v", err)
+	}
+	if _, err := NewPolicy(Config{NodeAddresses: []string{"node.example"}}); err == nil {
+		t.Error("host names are not valid node addresses")
+	}
+
+	// Kubernetes ports on private addresses, with and without allow.
+	for _, pol := range []*Policy{mustPolicy(t, Config{}), mustPolicy(t, Config{Allow: []string{"10.1.0.0/16", "192.168.0.0/16"}})} {
+		for _, ip := range []string{"10.1.2.3", "172.16.0.9", "192.168.7.7", "fd12::1"} {
+			for _, port := range []uint16{6443, 10250, 10255, 2379, 2380} {
+				if err := pol.CheckAddrPort(netip.MustParseAddr(ip), port); !errors.Is(err, ErrBlocked) {
+					t.Errorf("%s:%d should be blocked, got %v", ip, port, err)
+				}
+			}
+			for _, port := range []uint16{80, 443, 8080, 2378, 2381, 10249, 10251} {
+				if err := pol.CheckAddrPort(netip.MustParseAddr(ip), port); err != nil && pol.allow.empty() {
+					t.Errorf("%s:%d should be allowed, got %v", ip, port, err)
+				}
+			}
+		}
+	}
+	// A public address on 6443 is not the cluster's business.
+	if err := mustPolicy(t, Config{}).CheckAddrPort(netip.MustParseAddr("8.8.8.8"), 6443); err != nil {
+		t.Errorf("public 6443: %v", err)
+	}
+
+	// Through the client: literal node address and name resolving to it, and
+	// a private address on kubelet's port; the dialer is never reached.
+	connected := false
+	c := NewClient(mustPolicy(t, Config{NodeAddresses: []string{"192.168.1.50"}}), Options{
+		lookup: func(context.Context, string) ([]netip.Addr, error) {
+			return []netip.Addr{netip.MustParseAddr("192.168.1.50")}, nil
+		},
+		connect: func(context.Context, *net.Dialer, string, string) (net.Conn, error) {
+			connected = true
+			return nil, errors.New("must not connect")
+		},
+	})
+	for _, u := range []string{"http://192.168.1.50/", "http://node.example/", "http://192.168.1.60:10250/", "https://10.1.2.3:6443/"} {
+		if _, err := c.Get(u); !IsBlocked(err) {
+			t.Errorf("%s: want blocked, got %v", u, err)
+		}
+	}
+	if connected {
+		t.Error("a blocked destination was dialed")
+	}
+}

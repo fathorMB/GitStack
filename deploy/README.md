@@ -5,6 +5,7 @@ Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno d
 - `postgres-prepare.sql` — script per il DBA: database e utente per un Postgres esterno (N8).
 - `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `identity`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` (GIT-36) è nel chart, con ruolo e schema Postgres dedicati e le sue rotte instradate dal gateway; `git` non ha ancora un'immagine: non è nel chart.
 - `install.sh` — Installer v0 (M-01/T-09, questo item): un solo comando installa k3s e GitStack (chart di `gitstack/`) su una macchina Linux pulita. Dettagli sotto.
+- `ci/install-e2e.sh` — passi del workflow `.github/workflows/install.yml` (GIT-203): installazione, backup, aggiornamento con cambio di patch di k3s e ripristino su Ubuntu 22.04 e 24.04, sui tag, ogni notte su main e a mano. Vedi `../docs/operations.md`, «CI tests of install, upgrade and restore».
 - `test-vm/` — script che creano, ripristinano e distruggono la VM Linux locale usata per provare l'installer (M-01/T-12, GIT-12). Vedi `test-vm/README.md`.
 
 Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
@@ -104,7 +105,28 @@ Come per k3s, mai un tag mobile. Se `--image-tag`/`GITSTACK_IMAGE_TAG` non è im
 - se lo script gira da un checkout Git locale (il caso tipico di `./deploy/install.sh`), usa lo sha del commit effettivamente presente su disco (`git rev-parse HEAD`);
 - altrimenti (nessun checkout locale, es. `curl | sh`) risolve `GITSTACK_REPO@GITSTACK_REF` (default `fathorMB/GitStack@main`) tramite l'API di GitHub.
 
-Un tag di versione `X.Y.Z` esisterà solo dopo il primo tag Git (vedi `gitstack/README.md`, sezione "Tag delle immagini"): non è inventato qui.
+Per installare una versione di rilascio si usa `--version vX.Y.Z` (vedi sotto): il tag immagine diventa `vX.Y.Z` e la CI lo pubblica accanto a `sha-<commit>`, con lo stesso digest. Il tag `X.Y.Z` senza `v` è quello di default del chart (`appVersion`).
+
+### Installare una versione di rilascio (`--version`, GIT-222)
+
+Un tag Git `vX.Y.Z` (o `vX.Y.Z-rc.N`) produce una GitHub Release firmata con il nome
+della versione (binari, chart `gitstack-X.Y.Z.tgz`, bundle cosign, SBOM, `SHA256SUMS`,
+changelog: vedi [`../docs/operations.md`](../docs/operations.md), «Rilascio con versione»).
+
+```sh
+# Da un checkout o da solo (curl | bash): versione fissata, firme verificate
+sudo ./deploy/install.sh --version v1.0.0 --host homehub.local
+curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/v1.0.0/deploy/install.sh \
+  | sudo bash -s -- --version v1.0.0 --host homehub.local
+
+# Aggiornamento di un'installazione esistente
+sudo gitstack upgrade --version v1.0.0
+```
+
+`--version` (o `GITSTACK_VERSION`) imposta ref del sorgente, tag immagine e release dei
+download; la verifica delle firme (V5) resta attiva come per `sha-<commit>` e il chart
+firmato deve avere `version` e `appVersion` uguali alla versione. Non si combina con un
+`--image-tag` diverso. Per un commit preciso: `--image-tag sha-<commit>`.
 
 ### Idempotenza
 
@@ -148,7 +170,27 @@ Dettagli operativi: [`../docs/operations.md`](../docs/operations.md#external-pos
 
 ### Opzioni principali
 
-`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
+**Rete aziendale (N4, N9a, GIT-206).** `--http-proxy`, `--https-proxy`, `--no-proxy` (download di k3s e Helm, containerd di k3s e pod di GitStack), `--registry-mirror` con `--registry-username`/`--registry-password-file` (tutte le immagini, di sistema di k3s comprese, via `registries.yaml`), `--download-mirror` (binari di k3s, Helm e gitstack) e `--ca-bundle` (CA aziendale: sistema, containerd, pod). Il preflight prova a raggiungere proxy e mirror e dice cosa non risponde; dopo l'installazione si cambia con `gitstack config set network`. Struttura del mirror, esempi e prova senza uscita diretta (`test-network/run.sh`): [`../docs/operations.md`](../docs/operations.md), sezione «Corporate network». I valori Helm sono `proxy.*` e `corporateCA.configMap` (GIT-207).
+
+`install.sh --help` le elenca tutte. Le più usate: `--force`, `--skip-preflight`, `--release-name`, `--namespace`, `--image-tag`, `--version` (versione di rilascio), `--image-registry` (mirror, M-08), `--host`, `--tls`, `--tls-cert`/`--tls-key`, `--insecure-http` (HTTPS, vedi sopra), `--postgres-url`/`--postgres-password-file`/`--postgres-ca-file` (Postgres esterno, vedi sopra), `--values`/`--set` (valori Helm aggiuntivi).
+
+### Firme (V5, GIT-209)
+
+Oltre allo SHA-256, `install.sh` verifica le firme cosign di **binario `gitstack`**
+(bundle `<sorgente>.sigstore.json` accanto al binario), **chart** (il `.tgz` della
+release `sha-<commit>`, o `vX.Y.Z` con `--version`, col suo bundle, verificato prima di estrarlo) e **immagini**
+`gitstack-*` (prima di `helm upgrade --install`), con l'identità del workflow `ci.yml` del
+repository e l'issuer OIDC di GitHub Actions fissati. Usa un cosign `v2.4.0` pinnato
+(SHA-256 verificato come per Helm), installato in `/usr/local/bin/gitstack-cosign` e
+ritrovato da `gitstack upgrade` tramite `v5.cosign_path` nel config. Una firma mancante,
+non valida o di un'altra identità ferma l'installazione senza toccare il sistema.
+
+Per un mirror interno che non ha le firme: `--allow-unsigned-mirrors` (o
+`GITSTACK_ALLOW_UNSIGNED=1`), eccezione esplicita e mai il default: salta le verifiche
+cosign con un avviso, si salva in `v5.allow_unsigned` e `gitstack status` la segnala.
+Rilanciare l'installer senza il flag la toglie. Con `--chart-dir` o un checkout locale il
+chart non è un artefatto firmato e non si verifica (avviso); le immagini sì. Dettagli in
+[../docs/operations.md](../docs/operations.md), sezione V5.
 
 ### Verifica in CI
 

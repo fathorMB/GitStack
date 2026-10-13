@@ -1,0 +1,11 @@
+allowBuilds:
+  core-js: false
+
+# Transitive dependencies of Docusaurus with a published fix (pnpm audit).
+# Build-time tooling only, nothing of this ships in the site. Remove an
+# override when Docusaurus itself requires the fixed version.
+overrides:
+  serialize-javascript: 7.1.2
+  tinypool: 2.2.0
+  uuid: 11.1.1
+  postcss-selector-parser: 7.1.6

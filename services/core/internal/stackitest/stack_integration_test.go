@@ -105,6 +105,8 @@ type reply struct {
 	status  int
 	body    []byte
 	cookies []*http.Cookie
+	// retryAfter è l'header Retry-After della risposta (vuoto se assente).
+	retryAfter string
 }
 
 func (r reply) json() map[string]any {
@@ -148,7 +150,7 @@ func (s *stack) do(method, url string, body any, hdr map[string]string, cookie *
 	}
 	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(resp.Body)
-	return reply{status: resp.StatusCode, body: b, cookies: resp.Cookies()}
+	return reply{status: resp.StatusCode, body: b, cookies: resp.Cookies(), retryAfter: resp.Header.Get("Retry-After")}
 }
 
 func (s *stack) gw(method, path string, body any, hdr map[string]string, cookie *http.Cookie) reply {

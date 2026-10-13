@@ -1,9 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { Bot, ChevronDown, Download, File as FileIcon, Folder, GitBranch, History, Search, Shield, Tag as TagIcon, Terminal } from 'lucide-react';
+import { Bot, ChevronDown, Clock, Download, File as FileIcon, Folder, GitBranch, History, MirrorRound, Search, Shield, Tag as TagIcon, Terminal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, CopyButton, ErrorAlert, Markdown } from '../../components';
+import { Button, CopyButton, ErrorAlert, Markdown, PullMirrorInfoBanner } from '../../components';
 import {
   archiveUrl,
   blobHref,
@@ -23,9 +23,12 @@ import {
   treeHref,
 } from '../../lib/codeApi';
 import type { Branch, CommitSummary, Tag, Tree, TreeEntry } from '../../lib/codeApi';
+import type { PullMirror } from '@gitstack/api-client';
 import { timeAgo } from '../../lib/format';
 import { describeError } from '../../lib/http';
 import type { Repository } from '../../lib/reposApi';
+import { fetchPullMirror } from '../../lib/pullMirrorsApi';
+import { mirrorVariant } from '../../lib/mirrorUtils';
 import { useLoad } from '../../lib/useLoad';
 
 export interface Refs {
@@ -37,21 +40,29 @@ export interface Refs {
 export function CodeBrowser({ repo, splat }: { repo: Repository; splat: string }) {
   const owner = repo.owner.name;
   const name = repo.name;
+  const defaultRef = repo.defaultBranch || 'main';
+
+  // Tutti gli hook prima dei return condizionali.
   const { data: refs, error } = useLoad<Refs>(async () => {
     const [branches, tags] = await Promise.all([fetchBranches(owner, name), fetchTags(owner, name)]);
     return { branches, tags };
   });
+  // Mirror in pull: dettagli completi (null se non e' un mirror).
+  const { data: pullMirror } = useLoad<PullMirror | null>(
+    repo.mirror ? () => fetchPullMirror(owner, name) : () => Promise.resolve(null),
+  );
+
   if (error) return <ErrorAlert message={error} />;
   if (!refs) return <p className="muted">Loading code…</p>;
 
-  const defaultRef = repo.defaultBranch || 'main';
   const names = [...refs.branches.items.map((b) => b.name), ...refs.tags.items.map((t) => t.name)];
   const { ref, path } = splat === '' ? { ref: defaultRef, path: '' } : splitRefPath(splat, names);
+
   // key: cambiando ref o cartella la vista si rimonta e ricarica i dati.
-  return <TreeView key={`${ref}\u0000${path}`} repo={repo} refs={refs} refName={ref} path={path} defaultRef={defaultRef} />;
+  return <TreeView key={`${ref}\u0000${path}`} repo={repo} refs={refs} refName={ref} path={path} defaultRef={defaultRef} mirror={pullMirror ?? null} />;
 }
 
-function TreeView({ repo, refs, refName, path, defaultRef }: { repo: Repository; refs: Refs; refName: string; path: string; defaultRef: string }) {
+function TreeView({ repo, refs, refName, path, defaultRef, mirror }: { repo: Repository; refs: Refs; refName: string; path: string; defaultRef: string; mirror: PullMirror | null }) {
   const owner = repo.owner.name;
   const name = repo.name;
   const { data: tree, error } = useLoad(() => fetchTree(owner, name, refName, path));
@@ -103,6 +114,8 @@ function TreeView({ repo, refs, refName, path, defaultRef }: { repo: Repository;
           </div>
         )}
 
+        <PullMirrorInfoBanner mirror={mirror} />
+
         {tree ? <ReadmeCard owner={owner} repo={name} refName={refName} path={path} /> : null}
       </div>
 
@@ -110,6 +123,24 @@ function TreeView({ repo, refs, refName, path, defaultRef }: { repo: Repository;
         <div>
           <h3>About</h3>
           <p className="muted">{repo.description || 'No description provided.'}</p>
+          {mirror && mirror.origin ? (
+            <>
+              <div className="row">
+                <MirrorRound size={16} aria-hidden="true" />
+                Pull mirror of <a className="mono small" href={mirror.origin} target="_blank" rel="noopener noreferrer">{mirror.origin}</a>
+              </div>
+              <div className="row">
+                <Clock size={16} aria-hidden="true" />
+                {mirrorVariant(mirror) === 'active' ? (
+                  <>Last update {mirror.lastSyncedAt ? timeAgo(mirror.lastSyncedAt) : 'never'}</>
+                ) : mirrorVariant(mirror) === 'paused' ? (
+                  <>Paused</>
+                ) : (
+                  <span style={{ color: 'var(--danger)' }}>Last success {mirror.lastSyncedAt ? timeAgo(mirror.lastSyncedAt) : 'never'}</span>
+                )}
+              </div>
+            </>
+          ) : null}
           {tree?.entries.some((e) => e.type === 'file' && /^(license|licence|copying)(\.|$)/i.test(e.name)) && path === '' ? (
             <div className="row">
               <Shield size={16} aria-hidden="true" />

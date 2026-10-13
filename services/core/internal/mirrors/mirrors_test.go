@@ -214,3 +214,26 @@ func TestRedactEClip(t *testing.T) {
 		t.Errorf("clip NUL: %q", got)
 	}
 }
+
+func TestNormalizeOrigin(t *testing.T) {
+	same := []string{
+		"https://github.com/o/r.git",
+		"https://GitHub.com/o/r",
+		"https://github.com:443/o/r.git/",
+		"https://github.com/O/R.GIT",
+		"  https://github.com/o/r.git ",
+	}
+	want := NormalizeOrigin(same[0])
+	for _, s := range same {
+		if got := NormalizeOrigin(s); got != want {
+			t.Errorf("NormalizeOrigin(%q) = %q, voluto %q", s, got, want)
+		}
+	}
+	for _, other := range []string{
+		"https://github.com/o/r2.git", "https://github.com:8443/o/r.git", "https://gitlab.com/o/r.git", "http://github.com/o/r.git",
+	} {
+		if got := NormalizeOrigin(other); got == want {
+			t.Errorf("NormalizeOrigin(%q) non deve coincidere con %q", other, want)
+		}
+	}
+}

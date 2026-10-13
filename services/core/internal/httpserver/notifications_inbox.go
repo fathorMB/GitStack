@@ -371,6 +371,12 @@ func notificationSummary(reason, event, actor, repo string, number *int64, title
 	case "webhook":
 		return "Un webhook che gestisci è stato disattivato dai fallimenti"
 	case "mirror":
+		switch event {
+		case "pull_mirror.diverged":
+			return "Il mirror in pull di " + repo + " ha ref divergenti: GitStack ha tenuto la propria versione"
+		case "pull_mirror.stale":
+			return "Il mirror in pull di " + repo + " non si aggiorna da più di 24 ore"
+		}
 		return "Un mirror di " + repo + " si è fermato: la destinazione ha una storia diversa"
 	}
 	switch event {

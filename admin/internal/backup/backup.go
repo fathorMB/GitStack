@@ -249,6 +249,12 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	// Finestra di sola lettura.
 	saved := map[string]int{}
 	restored := false
+	// scaledUp sono i Deployment riscalati al valore di prima: dopo il
+	// ripristino si aspetta che siano pronti (waitScaledUp), così chi legge lo
+	// stato subito dopo (la pubblicazione di Admin · System) non vede un
+	// «Not ready» che dura pochi secondi.
+	var scaledUp []string
+	waited := false
 	restoreReplicas := func() error {
 		if restored {
 			return nil
@@ -268,16 +274,34 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 				continue
 			}
 			delete(saved, c)
+			scaledUp = append(scaledUp, c)
 		}
 		if len(errs) == 0 {
 			restored = true
 		}
 		return errors.Join(errs...)
 	}
+	// waitScaledUp aspetta, con un tempo limite, che i Deployment riscalati
+	// siano pronti. Un'attesa che scade non è un errore del backup: lo stato
+	// reale «non pronto» è quello che chi legge deve vedere.
+	waitScaledUp := func() {
+		if waited || len(scaledUp) == 0 {
+			return
+		}
+		waited = true
+		wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), readyWait)
+		defer cancel()
+		for _, c := range scaledUp {
+			if e := o.Cluster.WaitReady(wctx, o.deployment(c)); e != nil {
+				o.logf("attesa della ripartenza di %s non riuscita: %v", c, e)
+			}
+		}
+	}
 	defer func() {
 		if rerr := restoreReplicas(); rerr != nil {
 			err = errors.Join(err, fmt.Errorf("ATTENZIONE: gli ingressi potrebbero essere ancora fermi, riportali a mano con kubectl scale: %w", rerr))
 		}
+		waitScaledUp()
 	}()
 
 	var windowStart time.Time
@@ -332,6 +356,9 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	}
 	window := time.Since(windowStart)
 	o.logf("finestra di sola lettura chiusa dopo %.1f s: ingressi riavviati", window.Seconds())
+	// Fuori dalla finestra (già misurata): i servizi tornano pronti prima che
+	// Backup ritorni.
+	waitScaledUp()
 
 	// Da qui in poi non serve più fermare niente.
 	sb, err := json.Marshal(secrets)
@@ -364,6 +391,9 @@ func Backup(ctx context.Context, o *Options) (res *Result, err error) {
 	o.prune(dest)
 	return &Result{Path: path, SHA256: sum, Manifest: m, Window: window}, nil
 }
+
+// readyWait è il tempo massimo di attesa dei Deployment riscalati.
+const readyWait = 3 * time.Minute
 
 func sortedKeys(m map[string]int) []string {
 	var k []string

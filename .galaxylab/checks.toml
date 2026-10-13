@@ -175,6 +175,13 @@ timeout_s = 600
 paths = ["api/**", ".golangci.yml", "go.work", "go.work.sum"]
 
 [[check]]
+name = "check-security-md"
+# Verifica che SECURITY.md esista e abbia le sezioni obbligatorie (V4).
+run = "go run scripts/check-security-md.go"
+timeout_s = 30
+paths = ["SECURITY.md", "scripts/check-security-md.go"]
+
+[[check]]
 name = "rules-coverage"
 run = "go run scripts/check-rules-coverage.go"
 timeout_s = 120

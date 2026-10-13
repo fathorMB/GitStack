@@ -100,7 +100,22 @@ func TestUpgradeUsageAndRoot(t *testing.T) {
 	if code := a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--timeout", "5s"}); code != ExitUsage {
 		t.Errorf("timeout corto: %d", code)
 	}
+	// GIT-222: --version vuole un tag SemVer e non si combina con --to.
+	for _, args := range [][]string{
+		{"--version", "sha-" + cliNew},
+		{"--version", "main"},
+		{"--version", "1.0.0"},
+		{"--version", "v1.0.0", "--to", "v1.0.1"},
+	} {
+		full := append([]string{"upgrade", "--config", cfg}, args...)
+		if code := a.Run(context.Background(), full); code != ExitUsage {
+			t.Errorf("%v: %d, atteso ExitUsage", args, code)
+		}
+	}
 	a.Geteuid = func() int { return 1000 }
+	if code := a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--version", "v1.0.0-rc.1"}); code != ExitNeedsRoot {
+		t.Errorf("--version v1.0.0-rc.1 valida, senza root: %d", code)
+	}
 	if code := a.Run(context.Background(), []string{"upgrade", "--config", cfg}); code != ExitNeedsRoot {
 		t.Errorf("senza root: %d", code)
 	}
@@ -114,5 +129,36 @@ func TestUpgradeMissingAssetsRefused(t *testing.T) {
 	code := a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--dest", t.TempDir(), "--dry-run"})
 	if code != ExitRefused {
 		t.Errorf("binario non pubblicato: exit %d", code)
+	}
+}
+
+// N9a: network.download_mirror di config.yaml arriva alle opzioni
+// dell'aggiornamento (k3s dal mirror) e la cartella systemd è quella
+// configurabile.
+func TestUpgradePassaIlMirrorDeiDownload(t *testing.T) {
+	a, cfg, _ := upgradeApp(t, "ahead")
+	body := "version: 1\nhost: h\nimage_tag: sha-" + cliOld + "\nnetwork:\n  download_mirror: \"http://dl.corp:8080\"\n"
+	if err := os.WriteFile(cfg, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var got *upgrade.Options
+	prev := a.TuneUpgrade
+	a.TuneUpgrade = func(o *upgrade.Options) {
+		prev(o)
+		got = o
+	}
+	sysd := t.TempDir()
+	a.Getenv = func(k string) string {
+		if k == "GITSTACK_SYSTEMD_DIR" {
+			return sysd
+		}
+		return ""
+	}
+	_ = a.Run(context.Background(), []string{"upgrade", "--config", cfg, "--dry-run"})
+	if got == nil {
+		t.Fatal("TuneUpgrade non chiamato")
+	}
+	if got.K3sDownloadMirror != "http://dl.corp:8080" || got.SystemdDir != sysd {
+		t.Errorf("mirror=%q systemd=%q", got.K3sDownloadMirror, got.SystemdDir)
 	}
 }

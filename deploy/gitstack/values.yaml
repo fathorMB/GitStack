@@ -75,6 +75,17 @@ gateway:
     # authCacheTTL.
     authCacheTTL: 30s
     authCacheNegativeTTL: 5s
+    # Rate limiting dell'API (F6, GIT-232): token-bucket in memoria per
+    # credenziale (token o sessione) e per IP client (X-Forwarded-For solo dai
+    # proxy in trustedProxies). rps = richieste/secondo a regime, burst = quante
+    # in raffica. Oltre soglia: 429 con Retry-After. 0 su rps disattiva il
+    # limitatore. La soglia per IP è più larga perché più utenti possono
+    # stare dietro lo stesso NAT. Vale per replica del gateway.
+    rateLimit:
+      credentialRps: 20
+      credentialBurst: 200
+      ipRps: 50
+      ipBurst: 500
   resources:
     requests:
       cpu: 25m
@@ -375,9 +386,10 @@ corporateCA:
 # (webhook, pkg/egress): core le legge da GITSTACK_EGRESS_ALLOW, _DENY e
 # _CLUSTER_CIDRS (elenchi separati da virgole). Voci: IP, CIDR, nomi host
 # ("hooks.example.com") o suffissi ("*.example.com").
-# Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster e le reti
-# speciali sono bloccati sempre: allow non sblocca mai loopback, link-local
-# e cluster (vedi pkg/egress/README.md).
+# Loopback, link-local, multicast, 0.0.0.0, i CIDR del cluster, gli indirizzi
+# del nodo e le reti speciali sono bloccati sempre: allow non sblocca mai
+# loopback, link-local, cluster e nodo (vedi pkg/egress/README.md).
+# Le reti LAN ammesse si elencano in allow (install.sh --egress-allow).
 egress:
   # Se non vuota, sono ammesse solo queste destinazioni (restringe); le voci
   # IP/CIDR sbloccano anche reti speciali come 100.64.0.0/10 (CGNAT).
@@ -389,6 +401,13 @@ egress:
   clusterCIDRs:
     - 10.42.0.0/16
     - 10.43.0.0/16
+  # Indirizzi del nodo, SEMPRE bloccati (F7, ASVS V12.6.1): nessuna voce di
+  # allow li sblocca, così un webhook non raggiunge kubelet, l'API di k3s o i
+  # servizi in ascolto sull'host. Il chart aggiunge da solo status.hostIP
+  # (GITSTACK_NODE_IP); install.sh qui scrive tutti gli IPv4 del nodo.
+  nodeAddresses: []
+  # Le porte di Kubernetes (6443, 10250, 10255, 2379-2380) sono bloccate su
+  # qualunque IP privato, sempre. Non è una voce di configurazione.
 
 # --- postgres -----------------------------------------------------------
 # PostgreSQL incluso di default (D6 [c_4df04d65b3ac4910]). Per un Postgres
@@ -464,6 +483,27 @@ postgres:
         limits:
           memory: 256Mi
 
+# --- NetworkPolicy (F8, ASVS V1.14.1) ----------------------------------------
+# Default-deny su ingresso e uscita di tutti i pod del rilascio, più allow
+# espliciti: ingress → web/gateway/git, web → gateway, gateway → core e identity,
+# core e git → identity, core → git, git → core, core, git e identity → Postgres,
+# core e git → NATS, DNS verso kube-system. Le applica il controller di rete del
+# cluster (k3s: kube-router, di default). Con `enabled: false` il chart non
+# crea nessuna policy.
+networkPolicy:
+  enabled: true
+  # Namespace del controller di ingresso (Traefik di k3s) che raggiunge web,
+  # gateway e git HTTP.
+  ingressNamespace: kube-system
+  # Namespace del DNS del cluster.
+  dnsNamespace: kube-system
+  # core, identity e git escono verso internet (webhook, SMTP, OIDC, mirror):
+  # la destinazione la giudica pkg/egress. Qui l'uscita è aperta a tutto
+  # tranne i CIDR di pod e servizi del cluster (egress.clusterCIDRs), dove
+  # valgono solo gli allow espliciti. Con false l'uscita verso fuori è chiusa
+  # (webhook, mirror e OIDC non funzionano).
+  allowInternetEgress: true
+
 # --- nats (JetStream, D11) -----------------------------------------------
 nats:
   # A differenza di postgres, non c'è (ancora) un'opzione NATS esterno del
@@ -479,6 +519,13 @@ nats:
     tag: "2.10-alpine"
   service:
     clientPort: 4222
+  # Autenticazione dei client (F8, ASVS V1.2.2): NATS accetta solo connessioni
+  # con utente e password. Il chart li genera una sola volta in un Secret
+  # <release>-nats-auth (chiavi `user` e `password`,
+  # helm.sh/resource-policy: keep) e li passa a core e git. Alternativa: nome
+  # di un Secret esistente con le stesse chiavi.
+  auth:
+    existingSecret: ""
   persistence:
     size: 5Gi
     storageClassName: ""

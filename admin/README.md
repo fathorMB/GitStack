@@ -93,6 +93,15 @@ backup:
   #   key_file: /etc/gitstack/backup.key   # obbligatoria: archivi sempre cifrati
   #   retention: 30                    # archivi su S3 (default 30) oppure "bucket"
   #   notify_command: 'mail ...'       # eseguito con sh -c se il caricamento fallisce
+network:                         # facoltativa: rete aziendale (N9), scritta da install.sh
+  http_proxy: "http://proxy.corp:3128"
+  https_proxy: ""                # vuoto = quello HTTP
+  no_proxy: "registry.corp"      # si aggiunge a reti del cluster e indirizzi del nodo
+  registry_mirror: "https://registry.corp:5000"   # tutte le immagini (registries.yaml di k3s)
+  registry_username: "puller"    # insieme a registry_password (il file è root-only, 0600)
+  registry_password: "..."
+  download_mirror: "https://files.corp/gitstack"
+  ca_bundle: /etc/gitstack/network/ca.crt         # copia gestita della CA aziendale
 ```
 
 **Backup su S3 (N7).** Con `backup.s3` il backup giornaliero crea l'archivio in
@@ -124,6 +133,18 @@ postgres:
   ca_secret: gitstack-postgres-ca          # facoltativo
 ```
 
+Catena di fornitura (V5, GIT-209): l'installer scrive sempre la sezione
+
+```yaml
+v5:
+  allow_unsigned: false                      # true = eccezione N9 (mirror interno non firmato)
+  cosign_path: /usr/local/bin/gitstack-cosign   # il cosign pinnato che ha installato
+```
+
+`allow_unsigned: true` è l'eccezione N9: la scrive solo `install.sh --allow-unsigned-mirrors`
+e `gitstack status` la mostra come «AVVISO catena di fornitura» (`supply_chain_warning` con
+`--json`). Vedi [docs/operations.md](../docs/operations.md), sezione V5.
+
 Mai password o URL completo: la password sta nel Secret del cluster. Con `external: true` backup, restore, upgrade e status eseguono i comandi di database nel pod `<release>-pgclient` e non nello StatefulSet del bundle; `gitstack postgres check` è il preflight (exit 11 se il database non è idoneo).
 
 Campi sconosciuti o valori non validi sono un errore (exit 3). L'installer
@@ -137,10 +158,12 @@ mantiene la sezione `backup` esistente alla riesecuzione; si imposta con
 | `gitstack status [--json] [--config F]` | versione, host, salute, ultimo backup | serve per leggere il config (0600) |
 | `gitstack backup [--dest D] [--key-file F] [--config F]` | archivio coerente di database, repo, allegati, Secret e configurazione | sì |
 | `gitstack restore [--dest D] [--key-file F] [--config F] <archivio>` | ripristina l'archivio su un'installazione pulita della stessa versione | sì |
-| `gitstack upgrade [--to V] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
+| `gitstack upgrade [--to V | --version vX.Y.Z] [--dest D] [--key-file F] [--timeout T] [--dry-run] [--allow-unsigned-mirrors] [--set k=v] [--values F] [--config F]` | aggiorna GitStack: controlli, backup preventivo, chart e binario, attesa della salute, rollback automatico se fallisce (D18) | sì |
 | `gitstack restore --from s3 [nome] [--dest D] [--key-file F] [--config F]` | scarica da `backup.s3` l'archivio più recente (o `nome`) e lo ripristina; la chiave è quella di `backup.s3.key_file` se manca `--key-file` | sì |
 | `gitstack config set backup.s3 --endpoint E --bucket B --key-file F [--prefix P] [--region R] [--retention N|bucket] [--notify-command C] [--no-check] [--remove]` | configura la copia cifrata su S3 (chiavi da `GITSTACK_S3_ACCESS_KEY`/`GITSTACK_S3_SECRET_KEY`); verifica il bucket prima di scrivere | sì |
+| `gitstack config set network [--http-proxy U] [--https-proxy U] [--no-proxy L] [--registry-mirror U] [--registry-username U] [--registry-password-file F] [--download-mirror U] [--ca-bundle F] [--clear] [--force] [--config F]` | cambia proxy, mirror e CA aziendale (N9): prova a raggiungere proxy e mirror (e non cambia niente se non rispondono, salvo `--force`), rigenera `registries.yaml` e il drop-in di proxy di k3s e la CA di sistema, riavvia k3s solo se questi file cambiano e attende il nodo `Ready`, crea il ConfigMap `<release>-corporate-ca` e aggiorna il chart (`proxy.*`, `corporateCA.configMap`, `--reuse-values`), poi `network:` del config. Un valore vuoto toglie l'impostazione. Dettagli: `docs/operations.md`, «Corporate network» | sì |
 | `gitstack config set host <nome> [--config F]` | cambia il nome (o IP) con cui si raggiunge GitStack: rigenera il certificato, aggiorna gli URL pubblici dei servizi (`helm upgrade --reuse-values` sul chart in `chart_dir`) e `host:` del config; avvisa se il nome non risolve e che cambiano indirizzi di clone e link nelle email | sì |
+| `gitstack system-info publish|show` | pubblica (o stampa) le informazioni per la pagina Admin · System: ConfigMap `<release>-system-info` letto da core | sì |
 | `gitstack postgres check --url U [--password-file F] [--ca-file F] [--json]` | preflight del Postgres esterno: versione 15–17, connessione, permessi per creare schemi e ruoli (exit 11 se non idoneo) | no |
 | `gitstack version` | versione del binario | no |
 
@@ -158,6 +181,10 @@ girare senza root, con exit 5 e il suggerimento `sudo`.
   (se il cluster non risponde, `image_tag` del config).
 - **Ultimo backup**: «nessuno» se il file `backup-state.json` non esiste nella cartella di configurazione;
   altrimenti mostra data, percorso dell'archivio e (in caso di fallimento) il messaggio di errore.
+
+### `gitstack system-info`: da dove arriva Admin · System (GIT-213)
+
+I servizi non vedono l'host. `gitstack system-info publish` scrive il ConfigMap `<release>-system-info` (chiave `system.json`) con: database (modo, host, porta, database, sslmode, versione), backup (destinazione, ultimo esito locale e S3 con l'errore di caricamento), versioni di GitStack e k3s con l'aggiornamento disponibile, rete aziendale (proxy senza credenziali, CA). Lo lanciano da soli `install.sh`, `gitstack backup` e `gitstack upgrade`. Il chart lo monta in core (volume opzionale, `GITSTACK_SYSTEM_INFO_FILE`), che lo espone con `GET /v1/admin/system` solo all'amministratore e vi aggiunge la versione di Postgres letta ora con `SHOW server_version`. `gitstack system-info show` stampa il documento senza pubblicarlo. Dal GIT-218 il documento ha anche: `access` (host, modo HTTPS, scadenza del certificato letta dal certificato che il server presenta, porta SSH), `services` (prontezza e repliche di ogni Deployment e StatefulSet, come `gitstack status`; la data di pubblicazione è `updatedAt`), `node` (CPU, memoria e disco della macchina confrontati con il profilo N1 di `install.sh`, o «non disponibile») e `supplyChainWarning` (lo stesso avviso V5 di `gitstack status`, presente solo con `v5.allow_unsigned=true`). Sezioni che l'host non sa leggere restano «non disponibile»: mai un valore inventato. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
 
 ### Codici di uscita
 
@@ -331,14 +358,21 @@ né root.
 
 `sudo gitstack upgrade [--to <versione|sha>]` porta l'installazione alla destinazione
 (default: ultimo commit di `main` di `$GITSTACK_REPO`, default `fathorMB/GitStack`).
+`--version vX.Y.Z` (anche `vX.Y.Z-rc.N`) è la forma stretta per un rilascio: accetta solo
+tag SemVer, esclude `--to`, e scarica binario e chart `gitstack-X.Y.Z.tgz` dalla release
+con quel nome (GIT-222), con la verifica delle firme (V5) attiva come per `sha-<commit>`.
 L'aggiornamento di k3s è un altro compito (M-08).
 
 1. **Controlli** (niente cambia se uno fallisce, exit 6): la destinazione esiste
    (API GitHub); **non è un downgrade** (confronto fra il commit installato e la
    destinazione: «behind» o storie diverse sono rifiutate, il downgrade non è supportato
    perché le migrazioni non si disfano); GitStack è sano adesso; il binario
-   `gitstack-linux-amd64` della release `sha-<commit>` si scarica e il suo SHA-256 torna
-   (V5); il chart `deploy/gitstack` del commit si scarica; ogni immagine che il chart
+   `gitstack-linux-amd64` della release `sha-<commit>` si scarica, il suo SHA-256 torna e
+   la sua firma cosign (`.sigstore.json` accanto, identità del workflow `ci.yml` e issuer
+   OIDC fissati, cosign pinnato dell'installer) è valida (V5); il chart si usa solo
+   se il `.tgz` della release è firmato (verificato prima di estrarlo; il sorgente
+   `deploy/gitstack` del commit serve per `deploy/k3s-version` e per la versione);
+   ogni immagine `gitstack-*` che il chart userebbe ha una firma valida; ogni immagine che il chart
    userebbe (da `helm template` con i valori attuali, quindi anche un mirror) esiste nel
    suo registry. `--dry-run` si ferma qui.
 2. **Backup preventivo** con la stessa logica di `gitstack backup` (`--dest`, `--key-file`).
@@ -361,7 +395,12 @@ riuscito, 8 se no (con i comandi per finire a mano).
 Il «sano» dell'upgrade comprende anche l'Ingress: con `tls: internal` o `custom`, dopo che i
 servizi sono sani, `GET http://<host>/downloads/ca.crt` deve dare 200 con un PEM (il web
 viene riavviato dall'upgrade). Entro il timeout di `--timeout` altrimenti l'upgrade conta come
-salute fallita e parte il rollback di prima (niente exit nuovo). `backup` non riavvia il
+salute fallita e parte il rollback di prima (niente exit nuovo).
+
+Se una firma manca, non è valida o è di un'altra identità, l'upgrade è rifiutato (exit 6)
+prima di toccare niente. Per un mirror interno non firmato c'è l'eccezione esplicita N9:
+`--allow-unsigned-mirrors` (per quella volta) oppure `v5.allow_unsigned: true` nel config,
+con avviso visibile; mai il default. `backup` non riavvia il
 web (ferma solo gli ingressi che scrivono): non cambia.
 
 `--set` e `--values` passano valori aggiuntivi a helm (una prova di rollback si fa, per

@@ -241,17 +241,43 @@ jobs:
         uses: actions/checkout@v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/test-vm/e2e/remote.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
       - name: test del preflight
         run: ./deploy/tests/preflight_test.sh
 
+      # GIT-206 (N4, N9a): opzioni di rete, registries.yaml, drop-in di proxy
+      # per k3s, valori Helm e preflight di rete. Senza root né rete.
+      - name: test della rete aziendale
+        run: ./deploy/tests/network_test.sh
+
       # GIT-171: install-gs.sh e install-gs.ps1 verificano lo SHA-256 e
       # falliscono se non coincide (server finto locale, nessuna istanza).
       - name: test di install-gs.sh (checksum)
         run: ./deploy/tests/install_gs_test.sh
+
+      # GIT-209 (V5b): install.sh rifiuta binario, chart e immagini senza
+      # firma, firmati da un'altra identità o alterati; l'eccezione N9 è
+      # esplicita. Cosign finto (nessuna rete, nessun root).
+      # GIT-234 (F8): NetworkPolicy, securityContext e credenziali NATS del
+      # chart, verificati sul rendering di helm template (nessun cluster).
+      - name: Installa Helm (test dell'hardening del chart)
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.16.3
+
+      - name: test dell'hardening del chart (F8)
+        run: ./deploy/tests/chart_hardening_test.sh
+
+      - name: test della verifica delle firme di install.sh (V5)
+        run: ./deploy/tests/v5_verify_test.sh
+
+      # GIT-222 (V5c): changelog di una release dai commit fra due tag
+      # (repository temporaneo, nessuna rete).
+      - name: test del changelog di rilascio
+        run: ./deploy/tests/release_changelog_test.sh
 
       - name: test di install-gs.ps1 (parser e checksum)
         shell: pwsh
@@ -265,13 +291,17 @@ jobs:
   # deployment e statefulset, poi fa uno smoke su https e sul comando
   # gitstack. Dipende da registry (immagini) e admin-binary (binario
   # gitstack): senza questi job le immagini e il binario non esistono
-  # ancora. Lo stesso `if` di registry e admin-binary: gira SOLO su push
+  # ancora. Dipende anche da sign (V5, GIT-209): install.sh verifica le firme
+  # cosign di immagini e binario, quindi l'installazione di prova gira sugli
+  # artefatti firmati: è la prova «installazione normale con verifica
+  # attiva» a ogni push su main. Lo stesso `if` di registry e admin-binary: gira SOLO su push
   # a main o tag, mai su PR.
   install-ubuntu-22:
     name: Installazione reale su Ubuntu 22.04 (GIT-202, criterio 2)
-    needs: [registry, admin-binary]
+    needs: [registry, admin-binary, sign]
     if: >-
       !cancelled() && needs.registry.result == 'success' && needs.admin-binary.result == 'success'
+      && needs.sign.result == 'success'
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-22.04
@@ -929,6 +959,249 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  # Rilascio con versione (GIT-222, V5c). Su un tag vX.Y.Z o vX.Y.Z-rc.N, DOPO
+  # il job "sign" (che ha già firmato le immagini per digest, sha-<commit> e
+  # tag di versione condividono lo stesso digest), pubblica la GitHub Release
+  # con il nome della versione: binari gitstack e gs costruiti con la versione
+  # nel binario, chart con version e appVersion = X.Y.Z, bundle cosign, SBOM,
+  # SHA256SUMS firmato e changelog. Sta in questo workflow (ci.yml) perché
+  # l'identità del certificato è quella verificata da install.sh e da
+  # `gitstack upgrade` (ci.yml@refs/tags/v*). Mai su main né sulle PR.
+  release:
+    name: Release — GitHub Release firmata della versione
+    needs: [sign]
+    if: >-
+      !cancelled() && needs.sign.result == 'success'
+      && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write       # firma keyless
+      packages: read        # verifica delle immagini
+      contents: write       # Release e asset
+      pull-requests: write  # PR che aggiunge il changelog a CHANGELOG.md
+    env:
+      REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+      REPO_OWNER: ${{ github.repository_owner }}
+      VERSION: ${{ github.ref_name }}
+      SHA_TAG: sha-${{ github.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Solo SemVer con prefisso "v": vX.Y.Z, con prerelease (-rc.N, -test.N).
+      - name: Valida il tag di versione
+        id: ver
+        run: |
+          set -euo pipefail
+          re='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if ! printf '%s' "${VERSION}" | grep -Eq "${re}"; then
+            echo "ERRORE: il tag ${VERSION} non è SemVer vX.Y.Z[-prerelease]: nessun rilascio." >&2
+            exit 1
+          fi
+          echo "plain=${VERSION#v}" >> "$GITHUB_OUTPUT"
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+
+      - name: Installa cosign
+        uses: sigstore/cosign-installer@v3.8.1
+        with:
+          cosign-release: v2.4.0
+
+      - name: Installa syft
+        uses: anchore/sbom-action/download-syft@v0.24.3
+
+      - name: Installa Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.16.3
+
+      - name: Login a ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Le immagini della versione sono quelle di sha-<commit> (stesso digest,
+      # già firmate dal job sign): il tag vX.Y.Z e X.Y.Z devono esistere e
+      # puntare allo STESSO digest, e la firma si verifica per digest.
+      - name: Immagini della versione (stesso digest di sha-<commit>, firmate)
+        run: |
+          set -euo pipefail
+          owner="${REPO_OWNER,,}"
+          identity_re="^https://github.com/${{ github.repository }}/\.github/workflows/ci\.yml@refs/tags/v.+$"
+          digest_of() {
+            docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -er '.digest'
+          }
+          for svc in gateway identity git core web; do
+            base="${REGISTRY}/${owner}/gitstack-${svc}"
+            want="$(digest_of "${base}:${SHA_TAG}")"
+            for t in "${VERSION}" "${{ steps.ver.outputs.plain }}"; do
+              got="$(digest_of "${base}:${t}")" \
+                || { echo "ERRORE: ${base}:${t} non esiste: il job registry non ha pubblicato il tag di versione." >&2; exit 1; }
+              if [ "${got}" != "${want}" ]; then
+                echo "ERRORE: ${base}:${t} (${got}) non è lo stesso digest di ${SHA_TAG} (${want})." >&2
+                exit 1
+              fi
+            done
+            cosign verify \
+              --certificate-identity-regexp "${identity_re}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "${base}@${want}" > /dev/null
+            echo "OK: ${svc} ${VERSION} -> ${want} (firma verificata)"
+          done
+
+      # Binari con la versione nel binario (gitstack version, gs --version).
+      - name: Build dei binari con la versione
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          (cd admin && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w -X main.version=${VERSION}" \
+            -o ../dist/gitstack-linux-amd64 ./cmd/gitstack)
+          (cd dist && sha256sum gitstack-linux-amd64 > gitstack-linux-amd64.sha256)
+          ./scripts/build-gs-dist.sh dist-gs "${VERSION}"
+          cp dist-gs/gs_* dist-gs/gs-skills.zip dist/
+
+      # Chart: version e appVersion = X.Y.Z, quindi il tag immagine di default
+      # (appVersion) è X.Y.Z, pubblicato dal job registry.
+      - name: Pacchetto del chart con la versione
+        run: |
+          set -euo pipefail
+          helm package deploy/gitstack \
+            --version "${{ steps.ver.outputs.plain }}" \
+            --app-version "${{ steps.ver.outputs.plain }}" \
+            --destination dist
+          test -s "dist/gitstack-${{ steps.ver.outputs.plain }}.tgz"
+
+      # SBOM: delle immagini quelli già generati dal job sign (stessi digest),
+      # di binari e chart quelli nuovi.
+      - name: SBOM
+        run: |
+          set -euo pipefail
+          mkdir -p dist/sbom
+          gh release download "${SHA_TAG}" --pattern 'gitstack-*-sbom.spdx.json' --dir dist/sbom
+          syft scan file:dist/gitstack-linux-amd64 -o "spdx-json=dist/sbom/gitstack-binary-sbom.spdx.json"
+          syft scan file:dist/gs_linux_amd64 -o "spdx-json=dist/sbom/gs-binary-sbom.spdx.json"
+          syft scan dir:deploy/gitstack -o "spdx-json=dist/sbom/gitstack-chart-sbom.spdx.json"
+          for f in dist/sbom/*.spdx.json; do
+            if [ ! -s "${f}" ] || ! jq empty "${f}"; then
+              echo "ERRORE: SBOM non valido: ${f}" >&2
+              exit 1
+            fi
+          done
+          for svc in gateway identity git core web; do
+            test -s "dist/sbom/gitstack-${svc}-sbom.spdx.json" \
+              || { echo "ERRORE: manca l'SBOM dell'immagine ${svc} nella release ${SHA_TAG}" >&2; exit 1; }
+          done
+          ls -l dist/sbom
+
+      # SHA256SUMS unico di tutti gli asset della versione, poi firma di ogni
+      # artefatto (bundle accanto: <file>.sigstore.json, come per sha-<commit>).
+      - name: Checksum e firma keyless
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum gitstack-linux-amd64 gs_* gs-skills.zip "gitstack-${{ steps.ver.outputs.plain }}.tgz" sbom/*.spdx.json > SHA256SUMS
+          cat SHA256SUMS
+          for f in gitstack-linux-amd64 gitstack-linux-amd64.sha256 gs_* gs-skills.zip \
+                   "gitstack-${{ steps.ver.outputs.plain }}.tgz" SHA256SUMS; do
+            case "${f}" in *.sigstore.json) continue ;; esac
+            cosign sign-blob --yes --bundle "${f}.sigstore.json" "${f}"
+          done
+          ls -l
+
+      # Changelog: commit fra questo tag e il precedente (scripts/
+      # release-changelog.sh). La sezione va nelle note e nell'asset
+      # CHANGELOG.md, aggiornato con la sezione nuova.
+      - name: Changelog
+        run: |
+          set -euo pipefail
+          ./scripts/release-changelog.sh "${VERSION}" --out dist/CHANGELOG-"${VERSION}".md
+          cp dist/CHANGELOG-"${VERSION}".md release-notes.md
+          # CHANGELOG.md aggiornato: dal ramo principale (se c'è già) più la sezione.
+          git show origin/main:CHANGELOG.md > CHANGELOG.md 2>/dev/null || rm -f CHANGELOG.md
+          ./scripts/release-changelog.sh "${VERSION}" --prepend CHANGELOG.md
+          cp CHANGELOG.md dist/CHANGELOG.md
+          cat dist/CHANGELOG-"${VERSION}".md
+
+      # Verifica finale come la fa un utente: ogni artefatto col suo bundle,
+      # identità del workflow su tag e issuer OIDC di GitHub.
+      - name: Verifica delle firme degli asset
+        run: |
+          set -euo pipefail
+          cd dist
+          identity_re="^https://github.com/${{ github.repository }}/\.github/workflows/ci\.yml@refs/tags/v.+$"
+          n=0
+          for b in *.sigstore.json; do
+            f="${b%.sigstore.json}"
+            cosign verify-blob \
+              --certificate-identity-regexp "${identity_re}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              --bundle "${b}" "${f}"
+            n=$((n + 1))
+          done
+          [ "${n}" -ge 10 ] || { echo "ERRORE: solo ${n} bundle verificati, ne attesi di più" >&2; exit 1; }
+          sha256sum -c SHA256SUMS
+          echo "OK: ${n} firme e SHA256SUMS verificati"
+
+      - name: Pubblica la GitHub Release
+        run: |
+          set -euo pipefail
+          files=(dist/gitstack-linux-amd64 dist/gitstack-linux-amd64.sha256 dist/gs_* dist/gs-skills.zip \
+                 "dist/gitstack-${{ steps.ver.outputs.plain }}.tgz" dist/SHA256SUMS dist/*.sigstore.json \
+                 dist/sbom/*.spdx.json dist/CHANGELOG.md "dist/CHANGELOG-${VERSION}.md")
+          flags=()
+          if [ "${{ steps.ver.outputs.prerelease }}" = "true" ]; then
+            flags+=(--prerelease)
+          else
+            flags+=(--latest)
+          fi
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            gh release upload "${VERSION}" "${files[@]}" --clobber
+            gh release edit "${VERSION}" --notes-file release-notes.md "${flags[@]}"
+          else
+            gh release create "${VERSION}" "${files[@]}" \
+              --verify-tag --title "${VERSION}" --notes-file release-notes.md "${flags[@]}"
+          fi
+          gh release view "${VERSION}" --json url,isPrerelease,assets \
+            --jq '"\(.url) prerelease=\(.isPrerelease) asset=\(.assets | length)"'
+
+      # La PR con CHANGELOG.md aggiornato: un ramo e una PR, mai un push su
+      # main (lo decide il board). Non blocca il rilascio se la creazione
+      # automatica di PR non è consentita nel repository.
+      - name: PR con CHANGELOG.md
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          branch="changelog/${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -f -B "${branch}" origin/main
+          cp dist/CHANGELOG.md CHANGELOG.md
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "CHANGELOG.md già aggiornato."
+            exit 0
+          fi
+          git commit -m "chore: changelog ${VERSION}"
+          git push --force origin "${branch}"
+          gh pr create --base main --head "${branch}" \
+            --title "chore: changelog ${VERSION}" \
+            --body "Sezione ${VERSION} generata da scripts/release-changelog.sh dal job release." \
+            || echo "::notice::PR non creata (già aperta o non consentita): il ramo ${branch} è pubblicato."
+
   # Chart Helm interno (GIT-8, deploy/gitstack): helm lint più
   # un'installazione di prova su un cluster effimero k3d (un k3s vero in
   # Docker: Traefik e le sue CRD, incluso il Middleware usato dall'Ingress
@@ -1129,6 +1402,44 @@ jobs:
           kubectl rollout status deployment/gitstack-core --timeout=120s
           kubectl rollout status deployment/gitstack-git --timeout=120s
           kubectl rollout status deployment/gitstack-web --timeout=120s
+
+      # GIT-234 (F8): k3s applica le NetworkPolicy. Un pod qualunque non
+      # raggiunge NATS né Postgres; un pod con le label di core raggiunge la
+      # porta di NATS, che dichiara auth_required (nessuna connessione senza
+      # credenziali). Il risultato si legge da `kubectl logs` dopo Succeeded
+      # o Failed, non con attach.
+      - name: NetworkPolicy attive e NATS con credenziali
+        run: |
+          set -euo pipefail
+          probe() { # nome, labels, comando...
+            local name="$1" labels="$2"; shift 2
+            kubectl run "${name}" --restart=Never --image=docker.io/busybox:1.36 \
+              --labels="${labels}" --command -- "$@" >/dev/null
+            local phase="" _i
+            for _i in $(seq 1 60); do
+              phase=$(kubectl get pod "${name}" -o jsonpath='{.status.phase}')
+              if [ "${phase}" = Succeeded ] || [ "${phase}" = Failed ]; then break; fi
+              sleep 2
+            done
+            echo "${phase}" >"/tmp/${name}.phase"
+            kubectl logs "${name}" >"/tmp/${name}.log" 2>&1 || true
+            kubectl delete pod "${name}" --wait=false >/dev/null
+          }
+          probe np-any-nats "app=np-probe" sh -c 'nc -z -w3 gitstack-nats 4222'
+          probe np-any-pg "app=np-probe" sh -c 'nc -z -w3 gitstack-postgres 5432'
+          probe np-core-nats "app.kubernetes.io/name=core,app.kubernetes.io/instance=gitstack,app.kubernetes.io/part-of=gitstack" \
+            sh -c 'sleep 1 | nc -w3 gitstack-nats 4222; true'
+          fail=0
+          for n in np-any-nats np-any-pg; do
+            if [ "$(cat /tmp/${n}.phase)" = Succeeded ]; then
+              echo "FALLITO: un pod qualunque ha raggiunto ${n} (NetworkPolicy non applicate)" >&2; fail=1
+            fi
+          done
+          if [ "$(cat /tmp/np-core-nats.phase)" != Succeeded ] || ! grep -q '"auth_required":true' /tmp/np-core-nats.log; then
+            echo "FALLITO: NATS non dichiara auth_required (fase $(cat /tmp/np-core-nats.phase)):" >&2
+            cat /tmp/np-core-nats.log >&2; fail=1
+          fi
+          exit "${fail}"
 
       # GIT-171: /downloads attraversa l'Ingress (web è già Ready): gs
       # scaricato dall'istanza, checksum da SHA256SUMS e `gs version` col tag

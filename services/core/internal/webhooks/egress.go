@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/fathorMB/GitStack/pkg/egress"
@@ -26,7 +27,14 @@ func NewEgress(allow, deny, clusterCIDRs []string) (Doer, URLChecker, error) {
 // una destinazione vietata non contatta il proxy. proxy nil = connessione
 // diretta.
 func NewEgressWithProxy(allow, deny, clusterCIDRs []string, proxy *egress.ProxyConfig) (Doer, URLChecker, error) {
-	policy, err := egress.NewPolicy(egress.Config{Allow: allow, Deny: deny, ClusterCIDRs: clusterCIDRs})
+	return NewEgressForNode(allow, deny, clusterCIDRs, nil, proxy)
+}
+
+// NewEgressForNode è NewEgressWithProxy con gli indirizzi del nodo
+// (status.hostIP, values egress.nodeAddresses): sempre bloccati, nessuna voce
+// allow li sblocca. Le porte di Kubernetes sono vietate sugli IP privati.
+func NewEgressForNode(allow, deny, clusterCIDRs, nodeAddresses []string, proxy *egress.ProxyConfig) (Doer, URLChecker, error) {
+	policy, err := egress.NewPolicy(egress.Config{Allow: allow, Deny: deny, ClusterCIDRs: clusterCIDRs, NodeAddresses: nodeAddresses})
 	if err != nil {
 		return nil, nil, fmt.Errorf("webhooks: policy di uscita non valida: %w", err)
 	}
@@ -57,10 +65,25 @@ func CheckURL(policy *egress.Policy) URLChecker {
 			return fmt.Errorf("%w: localhost è bloccato", ErrURLNotAllowed)
 		}
 		if ip, err := netip.ParseAddr(host); err == nil && policy != nil {
-			if err := policy.CheckIP(ip); err != nil {
+			if err := policy.CheckAddrPort(ip, urlPort(u)); err != nil {
 				return fmt.Errorf("%w: %s è bloccato", ErrURLNotAllowed, host)
 			}
 		}
 		return nil
 	}
+}
+
+// urlPort: la porta della destinazione (80 o 443 secondo lo schema se assente).
+func urlPort(u *url.URL) uint16 {
+	if p := u.Port(); p != "" {
+		n, err := strconv.ParseUint(p, 10, 16)
+		if err != nil {
+			return 0
+		}
+		return uint16(n)
+	}
+	if u.Scheme == "https" {
+		return 443
+	}
+	return 80
 }

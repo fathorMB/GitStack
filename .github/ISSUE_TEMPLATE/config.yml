@@ -1,0 +1,4 @@
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/fathorMB/GitStack/security/policy
+    about: Please report vulnerabilities privately, see SECURITY.md

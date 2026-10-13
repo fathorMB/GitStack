@@ -1,0 +1,441 @@
+name: Installazione, aggiornamento e ripristino
+
+# GIT-203 (regole N2 e V1): installazione, backup, aggiornamento e ripristino
+# provati su Ubuntu 22.04 e 24.04, i sistemi supportati che GitHub ospita
+# (Pop!_OS: vedi docs/operations.md, «CI tests of install, upgrade and restore»).
+#
+# Dura a lungo (ogni job installa k3s e tutti i servizi), quindi NON gira a
+# ogni push o PR: sui tag di versione, ogni notte su main e a mano.
+on:
+  push:
+    tags: ['v*']
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      previous_commit:
+        description: 'Commit da cui aggiornare (default: ultimo commit di main con CI verde, antenato del commit in prova)'
+        required: false
+        default: ''
+      k3s_from:
+        description: 'Versione di k3s da cui partire (default: la patch precedente a deploy/k3s-version)'
+        required: false
+        default: ''
+
+# Un solo giro per ramo o tag; un giro nuovo non interrompe uno in corso
+# (installare a metà lascia il runner in uno stato che nessuno guarda).
+concurrency:
+  group: install-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
+
+jobs:
+  # V5 (GIT-209): install.sh e `gitstack upgrade` verificano le firme cosign di
+  # binario, chart e immagini. Questo job decide da dove vengono gli artefatti
+  # del commit in prova:
+  #  - signed: la release sha-<commit> di ci.yml, con i bundle .sigstore.json
+  #    del job sign. Per i giri di main (schedule) e dei tag è l'unica strada:
+  #    se i bundle non ci sono ancora (ci.yml è in corso: nel push di un tag i
+  #    due workflow partono insieme) si aspetta, con un timeout e un errore
+  #    chiaro. Mai artefatti costruiti qui, mai l'eccezione N9.
+  #  - unsigned: solo nel giro manuale (workflow_dispatch) su un commit senza
+  #    release firmata (un ramo): immagini e binario si costruiscono qui, non
+  #    sono firmati, e gli scenari passano in modo esplicito
+  #    --allow-unsigned-mirrors a install.sh e a `gitstack upgrade` (N9), con
+  #    l'avviso nel riepilogo del giro.
+  release:
+    name: Artefatti del commit (firmati o costruiti qui)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      IMAGE_TAG: sha-${{ github.sha }}
+      EVENT: ${{ github.event_name }}
+      # Quanto aspettare il job sign di ci.yml (minuti).
+      WAIT_MINUTES: '75'
+    steps:
+      - name: Release firmata del commit
+        id: mode
+        run: |
+          set -euo pipefail
+          signed() {
+            local assets
+            assets="$(gh release view "${IMAGE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets -q '.assets[].name' 2>/dev/null || true)"
+            printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64' \
+              && printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64.sha256' \
+              && printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64.sigstore.json' \
+              && printf '%s\n' "${assets}" | grep -Eq '^gitstack-.*\.tgz\.sigstore\.json$'
+          }
+          if signed; then
+            echo "mode=signed" >> "$GITHUB_OUTPUT"
+            echo "::notice::release ${IMAGE_TAG} firmata: si usa quella."
+            exit 0
+          fi
+          if [ "${EVENT}" = "workflow_dispatch" ]; then
+            echo "mode=unsigned" >> "$GITHUB_OUTPUT"
+            {
+              echo "### ATTENZIONE: eccezione N9 attiva"
+              echo "La release \`${IMAGE_TAG}\` non ha le firme cosign (giro manuale su un ramo o su"
+              echo "un commit non ancora firmato da ci.yml): immagini e binario sono costruiti da"
+              echo "questo workflow e **non sono firmati**. install.sh e \`gitstack upgrade\` girano con"
+              echo "\`--allow-unsigned-mirrors\`: le firme **non** sono verificate in questo giro."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::${IMAGE_TAG} non è firmata: giro manuale con --allow-unsigned-mirrors (N9)."
+            exit 0
+          fi
+          # schedule e tag: solo la release firmata. Si aspetta il job sign di ci.yml.
+          deadline=$((SECONDS + WAIT_MINUTES * 60))
+          echo "Attendo i bundle .sigstore.json della release ${IMAGE_TAG} (al massimo ${WAIT_MINUTES} minuti)..."
+          while ! signed; do
+            if [ "${SECONDS}" -ge "${deadline}" ]; then
+              echo "::error::la release ${IMAGE_TAG} non ha i bundle .sigstore.json dopo ${WAIT_MINUTES} minuti: il job 'sign' di ci.yml non è arrivato in fondo (o ci.yml non è partito per questo commit). Questo giro usa solo artefatti firmati e non passa --allow-unsigned-mirrors: controlla ci.yml per ${GITHUB_SHA} e rilancia." >&2
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "mode=signed" >> "$GITHUB_OUTPUT"
+          echo "::notice::release ${IMAGE_TAG} firmata."
+
+  # Immagini e binario `gitstack` del commit in prova, SOLO nel giro manuale su
+  # un commit senza release firmata (mode=unsigned): non sono firmati. Con gli
+  # stessi tag della CI; se esistono già non si rifà niente.
+  images:
+    name: Immagine ${{ matrix.service }} del commit
+    needs: [release]
+    if: needs.release.outputs.mode == 'unsigned'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            context: .
+            dockerfile: services/gateway/Dockerfile
+          - service: identity
+            context: .
+            dockerfile: services/identity/Dockerfile
+          - service: git
+            context: .
+            dockerfile: services/git/Dockerfile
+          - service: core
+            context: .
+            dockerfile: services/core/Dockerfile
+          - service: web
+            context: .
+            dockerfile: web/Dockerfile
+            build_args: VERSION=sha-${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Log in a ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: L'immagine esiste già?
+        id: exists
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${OWNER,,}/gitstack-${{ matrix.service }}:sha-${GITHUB_SHA}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          if docker buildx imagetools inspect "${image}" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${image} è già pubblicata: niente da costruire."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & push
+        if: steps.exists.outputs.found == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args }}
+          push: true
+          tags: ${{ steps.exists.outputs.image }}
+
+  admin-binary:
+    name: Binario gitstack del commit
+    needs: [release]
+    if: needs.release.outputs.mode == 'unsigned'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: La release esiste già?
+        id: exists
+        run: |
+          set -euo pipefail
+          assets="$(gh release view "${IMAGE_TAG}" --json assets -q '.assets[].name' 2>/dev/null || true)"
+          if printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64.sha256' \
+            && printf '%s\n' "${assets}" | grep -qx 'gitstack-linux-amd64'; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::release ${IMAGE_TAG} già pubblicata: niente da costruire."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@v6
+        if: steps.exists.outputs.found == 'false'
+        with:
+          go-version-file: go.work
+
+      # Stessi comandi del job admin-binary di ci.yml.
+      - name: Build gitstack-linux-amd64
+        if: steps.exists.outputs.found == 'false'
+        working-directory: admin
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w -X main.version=sha-${GITHUB_SHA}" \
+            -o gitstack-linux-amd64 ./cmd/gitstack
+          sha256sum gitstack-linux-amd64 > gitstack-linux-amd64.sha256
+
+      - name: Pubblica gli asset nella release sha-<commit>
+        if: steps.exists.outputs.found == 'false'
+        working-directory: admin
+        run: |
+          if gh release view "${IMAGE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${IMAGE_TAG}" gitstack-linux-amd64 gitstack-linux-amd64.sha256 --clobber
+          else
+            gh release create "${IMAGE_TAG}" gitstack-linux-amd64 gitstack-linux-amd64.sha256 \
+              --prerelease --target "${GITHUB_SHA}" \
+              --title "${IMAGE_TAG}" \
+              --notes "Build del commit ${GITHUB_SHA}: comando gitstack per install.sh (non è una release di prodotto)."
+          fi
+
+  # Due scenari per sistema:
+  #  - fresh: installa il commit in prova, fa il backup, scrive altri dati,
+  #    ripristina e verifica che i dati successivi al backup siano spariti;
+  #  - upgrade: installa il commit precedente con k3s di una patch precedente
+  #    a deploy/k3s-version, poi `gitstack upgrade` (backup → k3s → GitStack)
+  #    al commit in prova, verifica la versione di k3s dichiarata, e infine
+  #    backup e restore del sistema aggiornato.
+  # In entrambi: salute, login API (con cambio password obbligatorio),
+  # clone e push via HTTPS.
+  e2e:
+    name: ${{ matrix.scenario }} su ${{ matrix.os }}
+    needs: [release, images, admin-binary]
+    # images e admin-binary sono saltati nei giri firmati: si parte se sono
+    # riusciti o saltati, mai se uno è fallito.
+    if: >-
+      !cancelled() && needs.release.result == 'success'
+      && contains(fromJSON('["success","skipped"]'), needs.images.result)
+      && contains(fromJSON('["success","skipped"]'), needs.admin-binary.result)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        scenario: [fresh, upgrade]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TARGET_SHA: ${{ github.sha }}
+      GITSTACK_REPO: ${{ github.repository }}
+      E2E_STATE_DIR: /var/tmp/gitstack-ci
+      # signed: firme verificate. unsigned: solo giro manuale, eccezione N9
+      # esplicita (vedi il job release e il riepilogo).
+      SIGN_MODE: ${{ needs.release.outputs.mode }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Un runner ha circa 14 GB liberi: servono k3s, le immagini (due
+      # versioni nello scenario upgrade) e gli archivi.
+      - name: Libera spazio
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Indirizzo della macchina
+        run: |
+          set -euo pipefail
+          ip="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
+          [ -n "${ip}" ] || { echo "indirizzo IPv4 non trovato" >&2; exit 1; }
+          echo "E2E_HOST=${ip}" >> "$GITHUB_ENV"
+          echo "Indirizzo: ${ip}"
+
+      - name: Firme (V5)
+        run: |
+          set -euo pipefail
+          case "${SIGN_MODE}" in
+            signed) echo "- firme cosign **verificate** (binario, chart, immagini) su ${{ matrix.os }}, ${{ matrix.scenario }}" >> "$GITHUB_STEP_SUMMARY" ;;
+            unsigned) echo "- ECCEZIONE N9: firme **non** verificate su ${{ matrix.os }}, ${{ matrix.scenario }} (giro manuale, artefatti costruiti dal workflow)" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "::error::modalità delle firme sconosciuta: '${SIGN_MODE}'" >&2; exit 1 ;;
+          esac
+
+      - name: Commit e k3s di partenza
+        if: matrix.scenario == 'upgrade'
+        env:
+          INPUT_PREVIOUS: ${{ inputs.previous_commit }}
+          INPUT_K3S: ${{ inputs.k3s_from }}
+        run: |
+          set -euo pipefail
+          prev="${INPUT_PREVIOUS:-}"
+          if [ -z "${prev}" ]; then prev="$(./deploy/ci/install-e2e.sh previous-commit)"; fi
+          prev="$(git rev-parse "${prev}^{commit}")"
+          k3s_from="${INPUT_K3S:-}"
+          if [ -z "${k3s_from}" ]; then k3s_from="$(./deploy/ci/install-e2e.sh older-k3s)"; fi
+          declared="$(tr -d '[:space:]' < deploy/k3s-version)"
+          {
+            echo "PREV_SHA=${prev}"
+            echo "K3S_FROM=${k3s_from}"
+            echo "K3S_TO=${declared}"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### Aggiornamento"
+            echo "- da: \`${prev}\` con k3s \`${k3s_from}\`"
+            echo "- a: \`${GITHUB_SHA}\` con k3s \`${declared}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          git worktree add --detach "${RUNNER_TEMP}/previous" "${prev}"
+
+      # sudo azzera l'ambiente: le variabili si passano con `sudo env`.
+      # --skip-preflight: il runner non ha i 60 GB del profilo minimo (N1,
+      # coperto da deploy/tests/preflight_test.sh).
+      - name: Installazione del commit in prova
+        if: matrix.scenario == 'fresh'
+        run: |
+          set -euo pipefail
+          # Il commit in prova ha install.sh con la verifica V5: l'eccezione N9
+          # c'è solo nel giro manuale con artefatti costruiti qui, ed è esplicita.
+          extra=()
+          if [ "${SIGN_MODE}" = "unsigned" ]; then extra+=(--allow-unsigned-mirrors); fi
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 \
+            ./deploy/install.sh --skip-preflight --host "${E2E_HOST}" --image-tag "sha-${GITHUB_SHA}" "${extra[@]}"
+
+      - name: Installazione del commit precedente (k3s più vecchio)
+        if: matrix.scenario == 'upgrade'
+        working-directory: ${{ runner.temp }}/previous
+        run: |
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" GITSTACK_ADMIN_REQUIRED=1 INSTALL_K3S_VERSION="${K3S_FROM}" \
+            ./deploy/install.sh --skip-preflight --host "${E2E_HOST}" --image-tag "sha-${PREV_SHA}"
+
+      - name: Salute
+        run: ./deploy/ci/install-e2e.sh wait-healthy 900
+
+      - name: Versione di partenza
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh verify-k3s "${K3S_FROM}"
+          sudo gitstack status --json | jq -e --arg v "sha-${PREV_SHA}" '.report.server_version == $v'
+
+      - name: Dati di prova (login admin, utente, token, repo, push, issue)
+        run: ./deploy/ci/install-e2e.sh seed
+
+      # Il `gitstack` installato è quello del commit precedente. Se ha la
+      # verifica V5 verifica le firme degli artefatti del commit in prova
+      # (nei giri firmati sono firmati). Solo nel giro manuale con artefatti
+      # costruiti qui gli si passa --allow-unsigned-mirrors, se il binario ce
+      # l'ha: uno più vecchio non verifica niente e non conosce il flag.
+      - name: Eccezione N9 per gitstack upgrade (solo giro manuale)
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          flag=""
+          if [ "${SIGN_MODE}" = "unsigned" ]; then
+            # il flag è una stringa del binario: niente --help (richiede root e esce != 0)
+            if grep -aq -- 'allow-unsigned-mirrors' "$(command -v gitstack)"; then
+              flag="--allow-unsigned-mirrors"
+              echo "- gitstack upgrade: \`--allow-unsigned-mirrors\` (N9, esplicita)" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- gitstack upgrade: il binario precedente non verifica le firme, nessuna eccezione necessaria" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          echo "UPGRADE_UNSIGNED_FLAG=${flag}" >> "$GITHUB_ENV"
+
+      - name: gitstack upgrade --dry-run
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          extra=()
+          if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --dry-run "${extra[@]}"
+
+      # Backup preventivo → k3s (cambio di patch) → GitStack, tutto da `gitstack upgrade`.
+      - name: gitstack upgrade
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          extra=()
+          if [ -n "${UPGRADE_UNSIGNED_FLAG}" ]; then extra+=("${UPGRADE_UNSIGNED_FLAG}"); fi
+          sudo env GITSTACK_REPO="${GITSTACK_REPO}" gitstack upgrade --to "sha-${GITHUB_SHA}" --timeout 20m "${extra[@]}"
+
+      - name: Dopo l'upgrade (salute, k3s dichiarato, dati intatti, push)
+        if: matrix.scenario == 'upgrade'
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh wait-healthy 600
+          ./deploy/ci/install-e2e.sh verify-k3s "${K3S_TO}"
+          sudo gitstack status --json | jq -e --arg v "sha-${GITHUB_SHA}" '.report.server_version == $v and .report.api_healthy == true'
+          ./deploy/ci/install-e2e.sh verify-seed --push
+
+      - name: gitstack backup (cifrato)
+        run: |
+          set -euo pipefail
+          sudo install -d -m 700 /var/lib/gitstack-ci
+          sudo sh -c 'umask 077; openssl rand -base64 32 > /var/lib/gitstack-ci/backup.key'
+          sudo gitstack backup --key-file /var/lib/gitstack-ci/backup.key
+          archive="$(./deploy/ci/install-e2e.sh latest-backup)"
+          echo "BACKUP_ARCHIVE=${archive}" >> "$GITHUB_ENV"
+          echo "Archivio: ${archive}"
+
+      - name: Dati scritti dopo il backup
+        run: |
+          ./deploy/ci/install-e2e.sh mutate
+          ./deploy/ci/install-e2e.sh verify-after-mutate
+
+      - name: gitstack restore
+        run: |
+          set -euo pipefail
+          sudo gitstack restore --key-file /var/lib/gitstack-ci/backup.key "${BACKUP_ARCHIVE}"
+          ./deploy/ci/install-e2e.sh wait-healthy 600
+          sudo gitstack status
+
+      - name: Dopo il restore (dati del backup, niente dati successivi, clone e push)
+        run: |
+          set -euo pipefail
+          ./deploy/ci/install-e2e.sh verify-seed --push
+          sudo gitstack status --json | jq -e '.report.api_healthy == true'
+
+      - name: Diagnostica
+        if: failure()
+        run: ./deploy/ci/install-e2e.sh diagnostics "${RUNNER_TEMP}/diagnostica"
+
+      - name: Carica la diagnostica
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnostica-${{ matrix.scenario }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/diagnostica
+          if-no-files-found: ignore
+          retention-days: 7

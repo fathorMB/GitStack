@@ -199,7 +199,7 @@ func TestGsNotification(t *testing.T) {
 		admin := g.gw("POST", "/auth/login", map[string]any{"username": "admin", "password": newPassword}, nil, nil)
 		want(t, admin, 200, "")
 		exp := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
-		at := g.gw("POST", "/user/tokens", map[string]any{"name": "admin-cli", "scopes": []string{"read:user", "write:user"}, "expiresAt": exp}, nil, g.session(admin))
+		at := g.gw("POST", "/user/tokens", map[string]any{"name": "admin-cli", "scopes": []string{"read:user", "write:user", "read:resource", "write:resource"}, "expiresAt": exp}, nil, g.session(admin))
 		want(t, at, 201, "")
 		adminTok, _ := at.json()["token"].(string)
 		r := g.gsToken(adminTok, "", "", "api", "-X", "POST", "/users/botty/tokens", "-f", "name=ciclo-c4",

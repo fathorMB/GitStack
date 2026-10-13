@@ -91,21 +91,35 @@ type Options struct {
 	AllowK3sMinor bool
 	// K3sInstallURL sostituisce lo script https://get.k3s.io (test, reti chiuse).
 	K3sInstallURL string
-	Timeout       time.Duration
-	Sets          []string // --set di helm
-	ValueFiles    []string // -f di helm
-	HelmBin       string
-	ExePath       string // binario gitstack da sostituire
-	Repo          string
-	Ref           string
-	APIBase       string
-	CodeloadURL   string
-	ReleaseURL    string
+	// K3sDownloadMirror è network.download_mirror (N9a): con un valore lo script
+	// di k3s e il binario vengono da <mirror>/k3s/install.sh e
+	// GITHUB_URL=<mirror>/k3s/releases, come in deploy/install.sh.
+	K3sDownloadMirror string
+	// DownloadMirror è network.download_mirror: binario, chart, bundle e
+	// sorgente si scaricano da <mirror>/gitstack/... e si verificano uguale.
+	DownloadMirror string
+	// SystemdDir è la cartella delle unità systemd (default /etc/systemd/system):
+	// serve a togliere le variabili *_PROXY che lo script di k3s ricopia in
+	// k3s.service.env, perché il drop-in resti l'unica fonte.
+	SystemdDir  string
+	Timeout     time.Duration
+	Sets        []string // --set di helm
+	ValueFiles  []string // -f di helm
+	HelmBin     string
+	ExePath     string // binario gitstack da sostituire
+	Repo        string
+	Ref         string
+	APIBase     string
+	CodeloadURL string
+	ReleaseURL  string
 	// ImageCheck sostituisce la verifica sul registry (test).
 	ImageCheck func(ctx context.Context, image string) error
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
 	Poll time.Duration
 	Log  io.Writer
+	// V5 è la verifica delle firme cosign (binario, chart, immagini). Il
+	// valore zero verifica: si salta solo con V5.AllowUnsigned (N9).
+	V5 V5Config
 }
 
 func (o *Options) client() *http.Client {
@@ -113,6 +127,16 @@ func (o *Options) client() *http.Client {
 		return o.HTTP
 	}
 	return &http.Client{Timeout: 5 * time.Minute}
+}
+
+// v5 è la configurazione di verifica con il repository di default: l'identità
+// accettata è sempre quella del repository da cui si scarica.
+func (o *Options) v5() V5Config {
+	v := o.V5
+	if v.Repo == "" {
+		v.Repo = o.repo()
+	}
+	return v
 }
 
 func (o *Options) repo() string {
@@ -355,9 +379,7 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 	switch dir {
 	case Identical:
-		res.Outcome = NoChange
-		res.add("GitStack è già alla versione %s: niente da fare.", t.Tag)
-		return res, nil
+		return o.hardenOnly(ctx, res, t.Tag)
 	case Behind:
 		res.Outcome = Refused
 		return res, refused("downgrade non supportato: la destinazione %s è più vecchia della versione installata (%s). "+
@@ -460,12 +482,31 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 			res.Outcome = Refused
 			return res, refused("%v", err)
 		}
-		o.logf("    ok %s", img)
+		switch {
+		case o.v5().AllowUnsigned:
+			o.logf("    ok %s (firma NON verificata: eccezione N9)", img)
+		case !IsGitstackImage(img):
+			o.logf("    ok %s (immagine di terzi: non firmata da GitStack)", img)
+		default:
+			if err := o.v5().VerifyImage(ctx, img); err != nil {
+				res.Outcome = Refused
+				return res, refused("immagine %s: %v. Per un mirror interno non firmato serve --allow-unsigned-mirrors (N9)", img, err)
+			}
+			o.logf("    ok %s (firma cosign verificata)", img)
+		}
 	}
 
+	hp, err := o.planHarden()
+	if err != nil {
+		res.Outcome = Refused
+		return res, err
+	}
 	if o.DryRun {
 		res.Outcome = NoChange
 		res.add("Controlli superati: %s → %s si può installare (%d immagini, binario con checksum, chart). Nessuna modifica fatta (--dry-run).", o.Cfg.ImageTag, t.Tag, len(images))
+		if hp.needed() {
+			res.add("Hardening di k3s (GIT-228): %s.", hp.describe())
+		}
 		if k3s.Needed() {
 			res.add("k3s: %s → %s (%s): passi nell'ordine %v.", k3s.From, k3s.To, k3s.Action, Steps(k3s))
 		}
@@ -473,21 +514,10 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	}
 
 	// 2. Backup preventivo.
-	o.logf("==> Backup preventivo")
-	bo := o.Backup
-	bo.Cfg, bo.Cluster = o.Cfg, o.Cluster
-	if bo.Log == nil {
-		bo.Log = o.Log
-	}
-	br, err := backup.Backup(ctx, &bo)
+	br, err := o.preventiveBackup(ctx, res)
 	if err != nil {
-		res.Outcome = Failed
-		res.Reason = "backup preventivo fallito: " + err.Error()
-		res.add("Aggiornamento NON eseguito: il backup preventivo è fallito, GitStack è com'era.")
-		return res, fmt.Errorf("backup preventivo: %w", err)
+		return res, err
 	}
-	res.BackupPath = br.Path
-	o.logf("    %s", br.Path)
 
 	// 2b. k3s, dopo il backup e prima di GitStack (Steps).
 	if k3s.Needed() {
@@ -501,6 +531,38 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 			return res, fmt.Errorf("aggiornamento di k3s: %w", err)
 		}
 		res.add("k3s aggiornato da %s a %s.", k3s.From, k3s.To)
+	}
+
+	// 2c. Hardening di k3s (GIT-228): kubeconfig a 600 e Secret cifrati. Dopo
+	// k3s (l'installer riscrive l'unità) e prima di GitStack.
+	if hp.needed() {
+		if k3s.Needed() {
+			// L'unità è stata riscritta dallo script di k3s (K3sInstallExec):
+			// si ripianifica sul file com'è ora, ma l'esigenza di cifratura è
+			// quella del piano iniziale. Se la cifratura mancava prima, va
+			// comunque verificata e i Secret in chiaro ricifrati.
+			needEnc := hp.encEnable
+			re, perr := o.planHarden()
+			if perr != nil {
+				res.Outcome = Failed
+				res.Reason = perr.Error()
+				return res, perr
+			}
+			if re == nil {
+				re = &hardenPlan{unitPath: hp.unitPath, kubeconfig: hp.kubeconfig}
+			}
+			re.encEnable = re.encEnable || needEnc
+			hp = re
+		}
+		if hp.needed() {
+			if err := o.hardenK3s(ctx, hp, res); err != nil {
+				res.Outcome = Failed
+				res.Reason = err.Error()
+				res.add("Hardening di k3s NON riuscito: GitStack non è stato aggiornato (il chart è com'era).")
+				res.add("Il backup preventivo è intatto: %s. Procedura manuale: «Hardening di k3s» in docs/operations.md", br.Path)
+				return res, fmt.Errorf("hardening di k3s: %w", err)
+			}
+		}
 	}
 
 	before, beforeErr := o.migrationState(ctx)
@@ -520,6 +582,74 @@ func Run(ctx context.Context, o *Options) (*Result, error) {
 	res.Outcome = Upgraded
 	res.add("Aggiornato da %s a %s: tutti i servizi sono sani.", o.Cfg.ImageTag, t.Tag)
 	res.add("Backup preventivo conservato: %s", br.Path)
+	return res, nil
+}
+
+// preventiveBackup fa il backup preventivo e ne registra il percorso in res.
+// In caso di errore compila res (Failed) e lo restituisce.
+func (o *Options) preventiveBackup(ctx context.Context, res *Result) (*backup.Result, error) {
+	o.logf("==> Backup preventivo")
+	bo := o.Backup
+	bo.Cfg, bo.Cluster = o.Cfg, o.Cluster
+	if bo.Log == nil {
+		bo.Log = o.Log
+	}
+	br, err := backup.Backup(ctx, &bo)
+	if err != nil {
+		res.Outcome = Failed
+		res.Reason = "backup preventivo fallito: " + err.Error()
+		res.add("Aggiornamento NON eseguito: il backup preventivo è fallito, GitStack è com'era.")
+		return nil, fmt.Errorf("backup preventivo: %w", err)
+	}
+	res.BackupPath = br.Path
+	o.logf("    %s", br.Path)
+	return br, nil
+}
+
+// hardenOnly è il caso «GitStack è già alla versione richiesta»: niente da
+// aggiornare, ma un'installazione con kubeconfig 644 o Secret in chiaro va
+// sistemata comunque (GIT-228). Stesse garanzie dell'upgrade: sani prima,
+// backup preventivo, unità ripristinata se qualcosa fallisce.
+func (o *Options) hardenOnly(ctx context.Context, res *Result, tag string) (*Result, error) {
+	res.Outcome = NoChange
+	hp, err := o.planHarden()
+	if err != nil {
+		res.Outcome = Refused
+		return res, err
+	}
+	if !hp.needed() {
+		res.add("GitStack è già alla versione %s: niente da fare.", tag)
+		return res, nil
+	}
+	res.add("GitStack è già alla versione %s, ma k3s va messo in sicurezza (GIT-228): %s.", tag, hp.describe())
+	if o.DryRun {
+		res.add("Nessuna modifica fatta (--dry-run).")
+		return res, nil
+	}
+	o.logf("==> Controllo lo stato attuale")
+	if rep := o.health(ctx); !rep.Healthy() {
+		res.Outcome = Refused
+		return res, refused("GitStack non è sano (%s): non riavvio k3s su un sistema già in difficoltà. Sistema il problema (gitstack status) e riprova", describeUnhealthy(rep))
+	}
+	base := o.Backup.DestDir
+	if base == "" {
+		base = o.Cfg.Backup.Destination
+	}
+	if err := os.MkdirAll(base, 0o700); err != nil {
+		res.Outcome = Failed
+		return res, fmt.Errorf("cartella di lavoro: %w", err)
+	}
+	br, err := o.preventiveBackup(ctx, res)
+	if err != nil {
+		return res, err
+	}
+	if err := o.hardenK3s(ctx, hp, res); err != nil {
+		res.Outcome = Failed
+		res.Reason = err.Error()
+		res.add("Hardening di k3s NON riuscito. Il backup preventivo è intatto: %s. Procedura manuale: «Hardening di k3s» in docs/operations.md", br.Path)
+		return res, fmt.Errorf("hardening di k3s: %w", err)
+	}
+	res.add("k3s messo in sicurezza. Backup preventivo conservato: %s", br.Path)
 	return res, nil
 }
 

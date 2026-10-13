@@ -10,7 +10,7 @@
 #   GS_VM_IP           indirizzo della VM (ingress HTTPS)
 #   GS_CA_SHA256       impronta SHA-256 della CA interna
 #   GS_USER_TOKEN      token read+write:resource dell'utente di prova
-#   GS_ADMIN_TOKEN     token read+write:user dell'admin
+#   GS_ADMIN_TOKEN     token read+write:user e read:resource dell'admin (non puo' dare scope che non ha, GIT-227)
 #   GS_USER_NAME       utente di prova (proprietario del repo)
 #   GS_REPO_NAME       nome del repo da creare
 #   GS_AGENT_NAME      utente agente a cui l'admin crea un token con gs api

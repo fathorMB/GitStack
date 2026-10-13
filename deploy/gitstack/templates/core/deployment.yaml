@@ -50,15 +50,16 @@ spec:
       # li trova raggiungibili (vedi values.yaml, core.waitFor). Questi
       # initContainer attendono la porta TCP prima di avviare "core",
       # invece di affidarsi al CrashLoopBackOff (più lento).
-      {{- if .Values.core.attachments.enabled }}
       securityContext:
-        # L'immagine gira come nonroot (uid 65532): il volume deve essere scrivibile.
-        fsGroup: 65532
-      {{- end }}
+        # L'immagine gira come nonroot (uid 65532): il volume degli allegati
+        # deve essere scrivibile.
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" (ternary 65532 0 .Values.core.attachments.enabled)) | nindent 8 }}
       initContainers:
         - name: wait-for-postgres
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           command:
             - sh
             - -c
@@ -66,6 +67,8 @@ spec:
         - name: wait-for-nats
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           command:
             - sh
             - -c
@@ -74,11 +77,14 @@ spec:
         - name: core
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.core.containerPort }}
           env:
             {{- include "gitstack.proxy.env" . | nindent 12 }}
+            {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_CORE_ADDR
               value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
             # POSTGRES_PASSWORD deve precedere GITSTACK_CORE_DB_URL: la
@@ -149,6 +155,11 @@ spec:
                   name: {{ .Values.core.webhookSecret.existingSecret | default (printf "%s-core-webhook-key" (include "gitstack.fullname" .)) }}
                   key: oldKeys
                   optional: true
+            # Informazioni dell'host per Admin · System (GIT-213): il ConfigMap
+            # <release>-system-info, scritto da `gitstack system-info publish`,
+            # montato come file. Core non interroga l'host né l'API di Kubernetes.
+            - name: GITSTACK_SYSTEM_INFO_FILE
+              value: /etc/gitstack/system-info/system.json
             # Protezione SSRF delle chiamate in uscita dei webhook (C8,
             # pkg/egress): values `egress.*`.
             {{- with .Values.egress.allow }}
@@ -161,6 +172,16 @@ spec:
             {{- end }}
             {{- with .Values.egress.clusterCIDRs }}
             - name: GITSTACK_EGRESS_CLUSTER_CIDRS
+              value: {{ join "," . | quote }}
+            {{- end }}
+            # Indirizzi del nodo, sempre bloccati (F7): quello del pod host
+            # dal downward API, più egress.nodeAddresses.
+            - name: GITSTACK_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            {{- with .Values.egress.nodeAddresses }}
+            - name: GITSTACK_EGRESS_NODE_ADDRESSES
               value: {{ join "," . | quote }}
             {{- end }}
             {{- if include "gitstack.smtp.enabled" . }}
@@ -215,8 +236,12 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
-          {{- if or .Values.core.attachments.enabled .Values.corporateCA.configMap $pgCA }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: system-info
+              mountPath: /etc/gitstack/system-info
+              readOnly: true
             {{- if .Values.core.attachments.enabled }}
             - name: attachments
               mountPath: {{ .Values.core.attachments.mountPath | quote }}
@@ -229,11 +254,17 @@ spec:
             {{- if .Values.corporateCA.configMap }}
             {{- include "gitstack.corporateCA.volumeMount" . | nindent 12 }}
             {{- end }}
-          {{- end }}
           resources:
             {{- toYaml .Values.core.resources | nindent 12 }}
-      {{- if or .Values.core.attachments.enabled .Values.corporateCA.configMap $pgCA }}
       volumes:
+        - name: tmp
+          emptyDir: {}
+        # Opzionale: prima della prima pubblicazione il ConfigMap non esiste e
+        # core parte lo stesso (Admin · System mostra «non pubblicato»).
+        - name: system-info
+          configMap:
+            name: {{ include "gitstack.fullname" . }}-system-info
+            optional: true
         {{- if .Values.core.attachments.enabled }}
         - name: attachments
           persistentVolumeClaim:
@@ -250,5 +281,4 @@ spec:
         {{- if .Values.corporateCA.configMap }}
         {{- include "gitstack.corporateCA.volume" . | nindent 8 }}
         {{- end }}
-      {{- end }}
 {{- end }}

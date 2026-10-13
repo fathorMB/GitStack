@@ -49,8 +49,25 @@ type Config struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Backup descrive dove e per quanto si conservano i backup.
 	Backup Backup `yaml:"backup"`
+	// Network è la sezione rete aziendale (N4, N9): proxy, mirror e CA.
+	Network Network `yaml:"network"`
 	// Postgres descrive il database esterno (N8). Vuoto = Postgres bundle.
 	Postgres Postgres `yaml:"postgres"`
+	// V5 è la sezione della catena di fornitura (firme cosign), scritta
+	// dall'installer e letta da `gitstack upgrade` e `gitstack status`.
+	V5 V5 `yaml:"v5"`
+}
+
+// V5 è la sezione v5 del file di configurazione.
+type V5 struct {
+	// AllowUnsigned è l'eccezione N9: l'installazione usa un mirror interno
+	// non firmato e la verifica cosign di binario, chart e immagini è
+	// disattivata. Mai il default: la scrive l'installer solo con
+	// --allow-unsigned-mirrors, e `gitstack status` la segnala.
+	AllowUnsigned bool `yaml:"allow_unsigned"`
+	// CosignPath è il cosign pinnato installato da deploy/install.sh
+	// (vuoto: upgrade.DefaultCosignPath).
+	CosignPath string `yaml:"cosign_path"`
 }
 
 // Postgres è la sezione postgres del file: scritta dall'installer quando si
@@ -187,6 +204,9 @@ func (c *Config) Validate() error {
 		if err := c.Backup.S3.Validate(); err != nil {
 			return fmt.Errorf("backup.s3: %w", err)
 		}
+	}
+	if err := c.Network.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

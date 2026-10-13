@@ -172,7 +172,7 @@ func TestGsE2E(t *testing.T) {
 		admin := g.gw("POST", "/auth/login", map[string]any{"username": "admin", "password": newPassword}, nil, nil)
 		want(t, admin, 200, "")
 		exp := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
-		at := g.gw("POST", "/user/tokens", map[string]any{"name": "admin-cli", "scopes": []string{"read:user", "write:user"}, "expiresAt": exp}, nil, g.session(admin))
+		at := g.gw("POST", "/user/tokens", map[string]any{"name": "admin-cli", "scopes": []string{"read:user", "write:user", "read:resource"}, "expiresAt": exp}, nil, g.session(admin))
 		want(t, at, 201, "")
 		adminTok, _ := at.json()["token"].(string)
 		sa := g.session2("admin", adminTok)
@@ -184,6 +184,15 @@ func TestGsE2E(t *testing.T) {
 		}
 		if r := alice.run("", "api", "-X", "POST", "/users/botty/tokens", "-f", "name=no", "-F", "scopes[]=read:resource", "-f", "expiresAt="+exp); r.code == 0 {
 			t.Errorf("alice ha creato un token per un altro utente: %+v", r)
+		}
+		// GIT-227: un token admin senza read:resource non può darlo all'agente.
+		nt := g.gw("POST", "/user/tokens", map[string]any{"name": "admin-stretto", "scopes": []string{"read:user", "write:user"}, "expiresAt": exp}, nil, g.session(admin))
+		want(t, nt, 201, "")
+		narrow, _ := nt.json()["token"].(string)
+		sn := g.session2("admin", narrow)
+		sn.ok(narrow+"\n", "auth", "login", "--with-token")
+		if r := sn.run("", "api", "-X", "POST", "/users/botty/tokens", "-f", "name=stretto", "-F", "scopes[]=read:resource", "-f", "expiresAt="+exp); r.code == 0 {
+			t.Errorf("un token senza read:resource ha creato un token con read:resource: %+v", r)
 		}
 	})
 }

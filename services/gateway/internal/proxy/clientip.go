@@ -20,6 +20,31 @@ type options struct {
 	// (core non li vede mai: si fida dell'identità firmata).
 	dropCredentials bool
 	now             func() time.Time
+
+	// maxBody e maxAttachment: tetti al corpo (0 = default del package).
+	maxBody, maxAttachment int64
+}
+
+// WithBodyLimits imposta il tetto al corpo delle richieste (JSON) e quello
+// dell'upload di un allegato (POST .../issue-attachments, senza overhead
+// multipart). Un valore <= 0 lascia il default.
+func WithBodyLimits(maxBody, maxAttachment int64) Option {
+	return func(o *options) { o.maxBody, o.maxAttachment = maxBody, maxAttachment }
+}
+
+// bodyLimit è il tetto al corpo per la richiesta: più ampio solo per
+// l'upload di un allegato.
+func (o *options) bodyLimit(r *http.Request) int64 {
+	if r.Method == http.MethodPost && strings.HasSuffix(strings.TrimSuffix(r.URL.Path, "/"), "/issue-attachments") {
+		if o.maxAttachment > 0 {
+			return o.maxAttachment + multipartOverhead
+		}
+		return DefaultMaxAttachmentBytes + multipartOverhead
+	}
+	if o.maxBody > 0 {
+		return o.maxBody
+	}
+	return DefaultMaxBodyBytes
 }
 
 // WithServiceSecret abilita l'inoltro dell'identità autenticata (header

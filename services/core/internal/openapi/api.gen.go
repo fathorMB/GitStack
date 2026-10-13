@@ -42,6 +42,144 @@ func (e AccessSourceKind) Valid() bool {
 	}
 }
 
+// Defines values for AdminSystemAccessTlsMode.
+const (
+	AdminSystemAccessTlsModeCustom      AdminSystemAccessTlsMode = "custom"
+	AdminSystemAccessTlsModeInsecure    AdminSystemAccessTlsMode = "insecure"
+	AdminSystemAccessTlsModeInternal    AdminSystemAccessTlsMode = "internal"
+	AdminSystemAccessTlsModeLetsencrypt AdminSystemAccessTlsMode = "letsencrypt"
+	AdminSystemAccessTlsModeUnknown     AdminSystemAccessTlsMode = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemAccessTlsMode enum.
+func (e AdminSystemAccessTlsMode) Valid() bool {
+	switch e {
+	case AdminSystemAccessTlsModeCustom:
+		return true
+	case AdminSystemAccessTlsModeInsecure:
+		return true
+	case AdminSystemAccessTlsModeInternal:
+		return true
+	case AdminSystemAccessTlsModeLetsencrypt:
+		return true
+	case AdminSystemAccessTlsModeUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemBackupRunState.
+const (
+	AdminSystemBackupRunStateFailed  AdminSystemBackupRunState = "failed"
+	AdminSystemBackupRunStateNone    AdminSystemBackupRunState = "none"
+	AdminSystemBackupRunStateSuccess AdminSystemBackupRunState = "success"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemBackupRunState enum.
+func (e AdminSystemBackupRunState) Valid() bool {
+	switch e {
+	case AdminSystemBackupRunStateFailed:
+		return true
+	case AdminSystemBackupRunStateNone:
+		return true
+	case AdminSystemBackupRunStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemDatabaseMode.
+const (
+	AdminSystemDatabaseModeExternal AdminSystemDatabaseMode = "external"
+	AdminSystemDatabaseModeInternal AdminSystemDatabaseMode = "internal"
+	AdminSystemDatabaseModeUnknown  AdminSystemDatabaseMode = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemDatabaseMode enum.
+func (e AdminSystemDatabaseMode) Valid() bool {
+	switch e {
+	case AdminSystemDatabaseModeExternal:
+		return true
+	case AdminSystemDatabaseModeInternal:
+		return true
+	case AdminSystemDatabaseModeUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemDiskLevel.
+const (
+	AdminSystemDiskLevelBelowMinimum     AdminSystemDiskLevel = "below_minimum"
+	AdminSystemDiskLevelBelowRecommended AdminSystemDiskLevel = "below_recommended"
+	AdminSystemDiskLevelRecommended      AdminSystemDiskLevel = "recommended"
+	AdminSystemDiskLevelUnknown          AdminSystemDiskLevel = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemDiskLevel enum.
+func (e AdminSystemDiskLevel) Valid() bool {
+	switch e {
+	case AdminSystemDiskLevelBelowMinimum:
+		return true
+	case AdminSystemDiskLevelBelowRecommended:
+		return true
+	case AdminSystemDiskLevelRecommended:
+		return true
+	case AdminSystemDiskLevelUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemMetricLevel.
+const (
+	AdminSystemMetricLevelBelowMinimum     AdminSystemMetricLevel = "below_minimum"
+	AdminSystemMetricLevelBelowRecommended AdminSystemMetricLevel = "below_recommended"
+	AdminSystemMetricLevelRecommended      AdminSystemMetricLevel = "recommended"
+	AdminSystemMetricLevelUnknown          AdminSystemMetricLevel = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemMetricLevel enum.
+func (e AdminSystemMetricLevel) Valid() bool {
+	switch e {
+	case AdminSystemMetricLevelBelowMinimum:
+		return true
+	case AdminSystemMetricLevelBelowRecommended:
+		return true
+	case AdminSystemMetricLevelRecommended:
+		return true
+	case AdminSystemMetricLevelUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminSystemVersionsK3sUpdate.
+const (
+	AdminSystemVersionsK3sUpdateMinor AdminSystemVersionsK3sUpdate = "minor"
+	AdminSystemVersionsK3sUpdateNone  AdminSystemVersionsK3sUpdate = "none"
+	AdminSystemVersionsK3sUpdatePatch AdminSystemVersionsK3sUpdate = "patch"
+)
+
+// Valid indicates whether the value is a known member of the AdminSystemVersionsK3sUpdate enum.
+func (e AdminSystemVersionsK3sUpdate) Valid() bool {
+	switch e {
+	case AdminSystemVersionsK3sUpdateMinor:
+		return true
+	case AdminSystemVersionsK3sUpdateNone:
+		return true
+	case AdminSystemVersionsK3sUpdatePatch:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CodeUserKind.
 const (
 	CodeUserKindAgent CodeUserKind = "agent"
@@ -1243,6 +1381,231 @@ type AccessSource struct {
 
 // AccessSourceKind defines model for AccessSource.Kind.
 type AccessSourceKind string
+
+// AdminSystem Stato dell'installazione per Admin · System (mockup 16). Nessun segreto. `published` dice se l'host ha pubblicato le sue informazioni: se no, le sezioni dell'host hanno `configured: false` o stati `none`.
+type AdminSystem struct {
+	// Access Come si raggiunge GitStack. Nessun segreto.
+	Access   AdminSystemAccess   `json:"access"`
+	Backup   AdminSystemBackup   `json:"backup"`
+	Database AdminSystemDatabase `json:"database"`
+
+	// Network Rete aziendale (N9). Mai credenziali del proxy.
+	Network AdminSystemNetwork `json:"network"`
+
+	// Node La macchina, confrontata con il profilo N1.
+	Node AdminSystemNode `json:"node"`
+
+	// Published Vero se il ConfigMap `system-info` è presente. Falso: solo la versione del server Postgres (viva) è nota.
+	Published bool `json:"published"`
+
+	// Services Stato dei workload della release, come `gitstack status`. È un'istantanea: la data di pubblicazione è `updatedAt` di AdminSystem.
+	Services AdminSystemServices `json:"services"`
+
+	// SupplyChainWarning Avviso della catena di fornitura (V5): presente solo quando l'installazione ha `v5.allow_unsigned=true` (verifica delle firme disattivata per un mirror interno non firmato). Assente se le firme sono verificate. Lo stesso testo di `supply_chain_warning` in `gitstack status --json`.
+	SupplyChainWarning *string `json:"supplyChainWarning,omitempty"`
+
+	// UpdatedAt Ultima pubblicazione da parte di `gitstack`.
+	UpdatedAt *time.Time          `json:"updatedAt,omitempty"`
+	Versions  AdminSystemVersions `json:"versions"`
+}
+
+// AdminSystemAccess Come si raggiunge GitStack. Nessun segreto.
+type AdminSystemAccess struct {
+	Host string `json:"host"`
+
+	// SshPort Porta SSH del servizio git.
+	SshPort int `json:"sshPort"`
+
+	// TlsExpiresAt Scadenza del certificato che il server presenta ora; assente se non è stato possibile leggerla o con HTTP.
+	TlsExpiresAt *time.Time `json:"tlsExpiresAt,omitempty"`
+
+	// TlsMode Modo HTTPS scelto dall'installer; `insecure` = solo HTTP.
+	TlsMode AdminSystemAccessTlsMode `json:"tlsMode"`
+}
+
+// AdminSystemAccessTlsMode Modo HTTPS scelto dall'installer; `insecure` = solo HTTP.
+type AdminSystemAccessTlsMode string
+
+// AdminSystemBackup defines model for AdminSystemBackup.
+type AdminSystemBackup struct {
+	// Destination Cartella dei backup locali sull'host.
+	Destination *string `json:"destination,omitempty"`
+
+	// Last Esito di un backup o di un caricamento.
+	Last AdminSystemBackupRun `json:"last"`
+
+	// Retention Numero di backup locali conservati.
+	Retention *int                `json:"retention,omitempty"`
+	S3        AdminSystemBackupS3 `json:"s3"`
+}
+
+// AdminSystemBackupRun Esito di un backup o di un caricamento.
+type AdminSystemBackupRun struct {
+	At *time.Time `json:"at,omitempty"`
+
+	// Error Causa, se `state` è `failed`.
+	Error *string `json:"error,omitempty"`
+
+	// Name Percorso dell'archivio locale o nome dell'oggetto su S3.
+	Name  *string                   `json:"name,omitempty"`
+	State AdminSystemBackupRunState `json:"state"`
+}
+
+// AdminSystemBackupRunState defines model for AdminSystemBackupRun.State.
+type AdminSystemBackupRunState string
+
+// AdminSystemBackupS3 defines model for AdminSystemBackupS3.
+type AdminSystemBackupS3 struct {
+	Bucket     *string `json:"bucket,omitempty"`
+	Configured bool    `json:"configured"`
+	Endpoint   *string `json:"endpoint,omitempty"`
+	Prefix     *string `json:"prefix,omitempty"`
+
+	// Retention Numero di archivi o `bucket` (lo decide il bucket).
+	Retention *string `json:"retention,omitempty"`
+
+	// Upload Esito di un backup o di un caricamento.
+	Upload AdminSystemBackupRun `json:"upload"`
+}
+
+// AdminSystemDatabase defines model for AdminSystemDatabase.
+type AdminSystemDatabase struct {
+	Host *string `json:"host,omitempty"`
+
+	// Mode Postgres interno (bundle), esterno (N8) o non pubblicato.
+	Mode AdminSystemDatabaseMode `json:"mode"`
+
+	// Name Nome del database.
+	Name *string `json:"name,omitempty"`
+	Port *int    `json:"port,omitempty"`
+
+	// ServerVersion Versione del server (`SHOW server_version`).
+	ServerVersion *string `json:"serverVersion,omitempty"`
+
+	// Sslmode Per esempio `require` o `verify-full`.
+	Sslmode *string `json:"sslmode,omitempty"`
+
+	// VersionLive Vero se `serverVersion` è stata letta ora da core sulla sua connessione; falso se è quella rilevata dall'installer.
+	VersionLive *bool `json:"versionLive,omitempty"`
+}
+
+// AdminSystemDatabaseMode Postgres interno (bundle), esterno (N8) o non pubblicato.
+type AdminSystemDatabaseMode string
+
+// AdminSystemDisk Il filesystem che ospita i dati di k3s: dimensione (`value`) e spazio libero, confrontati con minimo e consigliato.
+type AdminSystemDisk struct {
+	Available bool  `json:"available"`
+	FreeBytes int64 `json:"freeBytes"`
+
+	// Level `below_minimum` anche se lo spazio libero è sotto `minFreeBytes`.
+	Level        AdminSystemDiskLevel `json:"level"`
+	MinFreeBytes int64                `json:"minFreeBytes"`
+	Minimum      int64                `json:"minimum"`
+	Path         *string              `json:"path,omitempty"`
+	Recommended  int64                `json:"recommended"`
+
+	// Value Dimensione del filesystem in byte.
+	Value int64 `json:"value"`
+}
+
+// AdminSystemDiskLevel `below_minimum` anche se lo spazio libero è sotto `minFreeBytes`.
+type AdminSystemDiskLevel string
+
+// AdminSystemMetric Una misura dell'host confrontata con il profilo N1. Unità: core per la CPU, byte (GB decimali) per memoria e disco.
+type AdminSystemMetric struct {
+	Available   bool                   `json:"available"`
+	Level       AdminSystemMetricLevel `json:"level"`
+	Minimum     int64                  `json:"minimum"`
+	Recommended int64                  `json:"recommended"`
+	Value       int64                  `json:"value"`
+}
+
+// AdminSystemMetricLevel defines model for AdminSystemMetric.Level.
+type AdminSystemMetricLevel string
+
+// AdminSystemNetwork Rete aziendale (N9). Mai credenziali del proxy.
+type AdminSystemNetwork struct {
+	// Configured Falso: nessun proxy né CA aziendale («non configurato»).
+	Configured bool `json:"configured"`
+
+	// CorporateCA Una CA aziendale è installata nei servizi.
+	CorporateCA bool `json:"corporateCA"`
+
+	// DownloadMirror Mirror dei download di k3s, Helm e binari (N9a), senza credenziali.
+	DownloadMirror *string `json:"downloadMirror,omitempty"`
+
+	// HttpProxy URL del proxy senza credenziali.
+	HttpProxy  *string `json:"httpProxy,omitempty"`
+	HttpsProxy *string `json:"httpsProxy,omitempty"`
+
+	// MirrorCA Una CA privata è usata per i mirror in push.
+	MirrorCA bool    `json:"mirrorCA"`
+	NoProxy  *string `json:"noProxy,omitempty"`
+
+	// ProxyHasCredentials Il proxy richiede credenziali (non mostrate).
+	ProxyHasCredentials bool `json:"proxyHasCredentials"`
+
+	// RegistryHasCredentials Il mirror delle immagini richiede credenziali (non mostrate).
+	RegistryHasCredentials bool `json:"registryHasCredentials"`
+
+	// RegistryMirror Mirror delle immagini (N9a), senza credenziali.
+	RegistryMirror *string `json:"registryMirror,omitempty"`
+}
+
+// AdminSystemNode La macchina, confrontata con il profilo N1.
+type AdminSystemNode struct {
+	// Available Falso se nessuna misura è stata possibile («non disponibile»).
+	Available bool `json:"available"`
+
+	// Cpu Una misura dell'host confrontata con il profilo N1. Unità: core per la CPU, byte (GB decimali) per memoria e disco.
+	Cpu AdminSystemMetric `json:"cpu"`
+
+	// Disk Il filesystem che ospita i dati di k3s: dimensione (`value`) e spazio libero, confrontati con minimo e consigliato.
+	Disk AdminSystemDisk `json:"disk"`
+
+	// Memory Una misura dell'host confrontata con il profilo N1. Unità: core per la CPU, byte (GB decimali) per memoria e disco.
+	Memory AdminSystemMetric `json:"memory"`
+}
+
+// AdminSystemService defines model for AdminSystemService.
+type AdminSystemService struct {
+	Desired int `json:"desired"`
+
+	// Healthy Almeno una replica desiderata e tutte pronte.
+	Healthy bool    `json:"healthy"`
+	Image   *string `json:"image,omitempty"`
+
+	// Kind Deployment o StatefulSet.
+	Kind  string `json:"kind"`
+	Name  string `json:"name"`
+	Ready int    `json:"ready"`
+}
+
+// AdminSystemServices Stato dei workload della release, come `gitstack status`. È un'istantanea: la data di pubblicazione è `updatedAt` di AdminSystem.
+type AdminSystemServices struct {
+	// Available Falso se il cluster non si è potuto interrogare.
+	Available bool                 `json:"available"`
+	Error     *string              `json:"error,omitempty"`
+	Items     []AdminSystemService `json:"items"`
+}
+
+// AdminSystemVersions defines model for AdminSystemVersions.
+type AdminSystemVersions struct {
+	// Gitstack Versione di GitStack installata (tag delle immagini).
+	Gitstack string `json:"gitstack"`
+
+	// K3s Versione di k3s in esecuzione; vuota se non letta.
+	K3s *string `json:"k3s,omitempty"`
+
+	// K3sDeclared Versione di k3s dichiarata (`deploy/k3s-version`).
+	K3sDeclared *string `json:"k3sDeclared,omitempty"`
+
+	// K3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
+	K3sUpdate AdminSystemVersionsK3sUpdate `json:"k3sUpdate"`
+}
+
+// AdminSystemVersionsK3sUpdate `patch`: applicata da `gitstack upgrade`; `minor`: serve `gitstack upgrade --k3s`.
+type AdminSystemVersionsK3sUpdate string
 
 // Blame defines model for Blame.
 type Blame struct {
@@ -3371,6 +3734,9 @@ type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreference
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GetAdminSystem Stato dell'installazione (Admin · System)
+	// (GET /admin/system)
+	GetAdminSystem(w http.ResponseWriter, r *http.Request)
 	// GetHealth Stato del servizio
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -3714,6 +4080,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetAdminSystem operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminSystem(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminSystem(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
@@ -8975,6 +9355,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/meta", wrapper.GetMeta)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/admin/system", wrapper.GetAdminSystem)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/resources", wrapper.ListResources)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/resources", wrapper.CreateResource)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/resources/{resourceId}", wrapper.DeleteResource)
