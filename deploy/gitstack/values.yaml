@@ -75,6 +75,17 @@ gateway:
     # authCacheTTL.
     authCacheTTL: 30s
     authCacheNegativeTTL: 5s
+    # Rate limiting dell'API (F6, GIT-232): token-bucket in memoria per
+    # credenziale (token o sessione) e per IP client (X-Forwarded-For solo dai
+    # proxy in trustedProxies). rps = richieste/secondo a regime, burst = quante
+    # in raffica. Oltre soglia: 429 con Retry-After. 0 su rps disattiva il
+    # limitatore. La soglia per IP è più larga perché più utenti possono
+    # stare dietro lo stesso NAT. Vale per replica del gateway.
+    rateLimit:
+      credentialRps: 20
+      credentialBurst: 200
+      ipRps: 50
+      ipBurst: 500
   resources:
     requests:
       cpu: 25m

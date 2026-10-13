@@ -20,8 +20,8 @@ import (
 //     fanno parte dell'API pubblica.
 //   - /v1/*: le operazioni del contratto OpenAPI (generate in
 //     internal/openapi), instradate verso core, e le rotte di identity.
-//     Sotto la catena completa: request id, log, rate limiting (aggancio
-//     no-op) e Auth, che applica a ogni rotta la sua dichiarazione di
+//     Sotto la catena completa: request id, log, rate limiting (token-bucket per
+//     credenziale e per IP) e Auth, che applica a ogni rotta la sua dichiarazione di
 //     sicurezza ricavata da api/openapi.yaml (internal/security). Una rotta
 //     senza dichiarazione non passa (404).
 //
@@ -75,13 +75,20 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 	// rate limiting girano prima del gestore ma dopo request id/log, così
 	// finiscono comunque nei log anche le richieste che in M-02 verranno
 	// rifiutate.
+	limiter := middleware.NewRateLimiter(middleware.RateLimitConfig{
+		CredentialRate: cfg.RateLimit.CredentialRate, CredentialBurst: cfg.RateLimit.CredentialBurst,
+		IPRate: cfg.RateLimit.IPRate, IPBurst: cfg.RateLimit.IPBurst,
+		ClientIP: func(r *http.Request) string { return proxy.ClientIP(r, cfg.TrustedProxies) },
+		Logger:   logger,
+		Now:      o.now,
+	})
 	apiMiddlewares := []openapi.MiddlewareFunc{
 		middleware.SecurityHeaders,
-		middleware.RateLimit,
 		middleware.Auth(middleware.AuthConfig{
 			Table: table, Verifier: verifier, Permissions: o.permissions, Forgetter: forgetter,
 			Prefix: proxy.PrefixV1, Logger: logger,
 		}),
+		limiter.Middleware,
 		base,
 	}
 

@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
@@ -74,6 +75,18 @@ type Config struct {
 	// (GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES, 0 = 10 MiB): deve essere almeno
 	// quello di core (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES).
 	MaxAttachmentBytes int64
+
+	// RateLimit sono le soglie del limitatore token-bucket (F6): richieste al
+	// secondo e burst per credenziale e per IP client. Rate 0 = disattivato.
+	RateLimit RateLimitConfig
+}
+
+// RateLimitConfig sono le soglie del rate limiting del gateway.
+type RateLimitConfig struct {
+	CredentialRate  float64
+	CredentialBurst int
+	IPRate          float64
+	IPBurst         int
 }
 
 const (
@@ -95,6 +108,19 @@ const (
 	envIdentityServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
 	envAuthCacheTTL          = "GITSTACK_GATEWAY_AUTH_CACHE_TTL"
 	envAuthCacheNegativeTTL  = "GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL"
+
+	// Rate limiting (F6): richieste/secondo e burst. Default prudenti: una SPA
+	// che apre una pagina fa decine di chiamate in burst, e più utenti possono
+	// stare dietro lo stesso IP (NAT), quindi la soglia per IP è più larga.
+	envRateCredentialRPS   = "GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_RPS"
+	envRateCredentialBurst = "GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_BURST"
+	envRateIPRPS           = "GITSTACK_GATEWAY_RATE_LIMIT_IP_RPS"
+	envRateIPBurst         = "GITSTACK_GATEWAY_RATE_LIMIT_IP_BURST"
+
+	defaultRateCredentialRPS   = 20
+	defaultRateCredentialBurst = 200
+	defaultRateIPRPS           = 50
+	defaultRateIPBurst         = 500
 
 	defaultAuthCacheTTL         = 30 * time.Second
 	defaultAuthCacheNegativeTTL = 5 * time.Second
@@ -132,6 +158,44 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 		AuthCacheTTL:         defaultAuthCacheTTL,
 		AuthCacheNegativeTTL: defaultAuthCacheNegativeTTL,
+
+		RateLimit: RateLimitConfig{
+			CredentialRate: defaultRateCredentialRPS, CredentialBurst: defaultRateCredentialBurst,
+			IPRate: defaultRateIPRPS, IPBurst: defaultRateIPBurst,
+		},
+	}
+
+	for _, f := range []struct {
+		env string
+		dst *float64
+	}{
+		{envRateCredentialRPS, &cfg.RateLimit.CredentialRate},
+		{envRateIPRPS, &cfg.RateLimit.IPRate},
+	} {
+		if v, ok := lookup(f.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+			if err != nil || n < 0 || math.IsNaN(n) || math.IsInf(n, 0) {
+				errs = append(errs, fmt.Sprintf("%s non è un numero valido (>= 0, 0 disattiva): %q", f.env, v))
+			} else {
+				*f.dst = n
+			}
+		}
+	}
+	for _, f := range []struct {
+		env string
+		dst *int
+	}{
+		{envRateCredentialBurst, &cfg.RateLimit.CredentialBurst},
+		{envRateIPBurst, &cfg.RateLimit.IPBurst},
+	} {
+		if v, ok := lookup(f.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.Atoi(strings.TrimSpace(v))
+			if err != nil || n < 1 {
+				errs = append(errs, fmt.Sprintf("%s non è un intero valido (>= 1): %q", f.env, v))
+			} else {
+				*f.dst = n
+			}
+		}
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
