@@ -197,3 +197,62 @@ func TestLoad_Version(t *testing.T) {
 		t.Errorf("con env: Version = %q, err %v, voluto v1.2.3", cfg.Version, err)
 	}
 }
+
+func TestLoad_RateLimit(t *testing.T) {
+	base := func(extra map[string]string) map[string]string {
+		m := map[string]string{envCoreURL: "http://core:8080"}
+		for k, v := range extra {
+			m[k] = v
+		}
+		return m
+	}
+
+	t.Run("default", func(t *testing.T) {
+		cfg, err := load(lookupFrom(base(nil)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := RateLimitConfig{CredentialRate: 20, CredentialBurst: 200, IPRate: 50, IPBurst: 500}
+		if cfg.RateLimit != want {
+			t.Errorf("RateLimit = %+v, voluto %+v", cfg.RateLimit, want)
+		}
+	})
+
+	t.Run("valori validi, anche decimali", func(t *testing.T) {
+		cfg, err := load(lookupFrom(base(map[string]string{
+			envRateCredentialRPS: "0.5", envRateCredentialBurst: "7", envRateIPRPS: "12.25", envRateIPBurst: "9",
+		})))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := RateLimitConfig{CredentialRate: 0.5, CredentialBurst: 7, IPRate: 12.25, IPBurst: 9}
+		if cfg.RateLimit != want {
+			t.Errorf("RateLimit = %+v, voluto %+v", cfg.RateLimit, want)
+		}
+	})
+
+	t.Run("rps 0 disattiva", func(t *testing.T) {
+		cfg, err := load(lookupFrom(base(map[string]string{envRateCredentialRPS: "0", envRateIPRPS: "0"})))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.RateLimit.CredentialRate != 0 || cfg.RateLimit.IPRate != 0 {
+			t.Errorf("RateLimit = %+v, voluti rate 0", cfg.RateLimit)
+		}
+	})
+
+	for name, env := range map[string]map[string]string{
+		"rps negativo":       {envRateIPRPS: "-1"},
+		"rps non numerico":   {envRateCredentialRPS: "abc"},
+		"rps NaN":            {envRateIPRPS: "NaN"},
+		"burst 0":            {envRateIPBurst: "0"},
+		"burst non intero":   {envRateCredentialBurst: "2.5"},
+		"burst non numerico": {envRateCredentialBurst: "molti"},
+	} {
+		t.Run("errore: "+name, func(t *testing.T) {
+			if _, err := load(lookupFrom(base(env))); err == nil {
+				t.Errorf("valore non valido accettato: %v", env)
+			}
+		})
+	}
+}
