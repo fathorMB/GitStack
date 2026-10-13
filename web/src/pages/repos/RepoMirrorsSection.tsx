@@ -64,6 +64,7 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
   // Il blocco (avviso loop + pulsante spento) vale solo per paused/in_sync.
   // stopped → tappa 2 V7: messaggio informativo, pulsante attivo.
   // pending/syncing/error → nessun blocco.
+  // isActivePull vale true solo per paused e in_sync.
   useEffect(() => {
     fetchPullMirror(owner, repo).then((m) => {
       if (m) {
@@ -350,15 +351,14 @@ function MirrorForm(props: {
     return u.trim().toLowerCase().replace(/\/$/, '').replace(/\.git$/, '');
   }
 
-  // P5: conflitto solo per push mirror nuovi verso l'origine del pull mirror.
-  // Il controllo del conflitto vale solo per stopped/paused/in_sync (non pending/syncing/error).
-  // paused/in_sync → bloccato con avviso di loop.
-  // stopped → tappa 2: ammesso con messaggio informativo.
-  // pending/syncing/error → nessun blocco, nessun avviso.
-  const isInConflictState = ['stopped', 'paused', 'in_sync'].includes(pullMirrorState ?? '');
-  const isConflict = mirror === null && pullOrigin !== null && isInConflictState && normalizeUrl(url) === normalizeUrl(pullOrigin);
-  const isBlocked = pullMirrorState === 'paused' || pullMirrorState === 'in_sync';
-  const isStopped = pullMirrorState === 'stopped';
+  // P5: confronto URL con l'origine del pull mirror.
+  // isConflict = URL coincide con l'origine del pull mirror.
+  // isActivePull = pull mirror in stato paused/in_sync → blocca il form.
+  // stopped → tappa 2: mostra messaggio informativo, non blocca.
+  const isActivePull = pullMirrorState === 'paused' || pullMirrorState === 'in_sync';
+  const isConflict = mirror === null && pullOrigin !== null && normalizeUrl(url) === normalizeUrl(pullOrigin);
+  const isBlocked = isConflict && isActivePull;
+  const isStopped = isConflict && pullMirrorState === 'stopped';
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
       <div className="card-h">{mirror ? 'Edit mirror' : 'Add mirror'}</div>

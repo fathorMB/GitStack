@@ -12,6 +12,7 @@ import { PullMirrorSection } from './PullMirrorSection';
 import { EnablePullMirrorSection } from './EnablePullMirrorSection';
 import { RepoHeader } from './RepoHeader';
 import { isRepoAdmin, loadMe } from './repoAdmin';
+import { fetchPullMirror } from '../../lib/pullMirrorsApi';
 import type { PullMirror } from '../../lib/pullMirrorsApi';
 
 // Impostazioni del repo, sezione General (mockup 18): solo per chi ha admin.
@@ -287,25 +288,24 @@ function PullMirrorOrEnable({
   hasMirror: boolean;
   readOnly: boolean;
 }) {
-  const [mirror, setMirror] = useState<PullMirror | null>(null);
   const [stopped, setStopped] = useState(false);
 
+  const { data: mirror, loading, setData } = useLoad(() => fetchPullMirror(owner, repo));
+
   function handleSuccess(m: PullMirror) {
-    setMirror(m);
+    setData(m);
+    setStopped(false);
   }
 
   function handleStopped() {
-    setMirror(null);
+    setData(null);
     setStopped(true);
   }
 
   if (readOnly) return null;
 
-  if (stopped || !hasMirror && !mirror) {
-    return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
-  }
-
-  if (!mirror) return null;
+  if (hasMirror && loading) return <p className="muted">Loading pull mirror…</p>;
+  if (!mirror) return <EnablePullMirrorSection owner={owner} repo={repo} onSuccess={handleSuccess} />;
 
   return (
     <PullMirrorSection
