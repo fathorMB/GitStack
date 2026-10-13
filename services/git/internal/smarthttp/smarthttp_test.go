@@ -1,7 +1,12 @@
 package smarthttp_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -120,6 +125,12 @@ func setup(t *testing.T) *env { return setupWith(t, receiverules.DefaultLimits()
 // (nil = nessun evento).
 func setupWith(t *testing.T, limits receiverules.Limits, events *pushevent.Notifier) *env {
 	t.Helper()
+	return setupHandler(t, limits, events, nil)
+}
+
+// setupHandler come setupWith, con un hook per regolare il Handler.
+func setupHandler(t *testing.T, limits receiverules.Limits, events *pushevent.Notifier, tune func(*smarthttp.Handler)) *env {
+	t.Helper()
 	bin := gitBin(t)
 	store, err := repostore.New(t.TempDir())
 	if err != nil {
@@ -170,6 +181,9 @@ func setupWith(t *testing.T, limits receiverules.Limits, events *pushevent.Notif
 		GitBin: bin,
 		Rules:  rules,
 		Events: events,
+	}
+	if tune != nil {
+		tune(h)
 	}
 	srv := httptest.NewServer(httpserver.NewRouter(httpserver.Deps{Store: store, Secret: "s", Git: h}))
 	t.Cleanup(srv.Close)
@@ -415,4 +429,130 @@ func TestTokenSoloScritturaClonaFetchaEPusha(t *testing.T) {
 	}
 	mustGit(t, c, "commit", "--allow-empty", "-m", "vuoto")
 	mustGit(t, c, "push", "origin", "HEAD")
+}
+
+// zeroGzip è un flusso gzip che decomprime in n byte di zeri, senza tenerli in memoria.
+func zeroGzip(t *testing.T, n int) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	chunk := make([]byte, 64<<10)
+	for left := n; left > 0; {
+		k := len(chunk)
+		if k > left {
+			k = left
+		}
+		if _, err := zw.Write(chunk[:k]); err != nil {
+			t.Fatal(err)
+		}
+		left -= k
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// Il corpo gzip si decomprime fino a floor + ratio * byte compressi: una
+// gzip bomb viene interrotta con ErrGzipTooLarge dopo pochi byte, un corpo
+// normale (e un push, che viaggia non compresso) non ne risente.
+func TestGzipBodyIsBounded(t *testing.T) {
+	t.Run("lettore: la bomba si ferma al tetto", func(t *testing.T) {
+		bomb := zeroGzip(t, 256<<20) // ~250 KiB compressi, 256 MiB decompressi
+		exceeded := 0
+		zr, err := smarthttp.NewBoundedGzip(bytes.NewReader(bomb), 1<<20, 10, func() { exceeded++ })
+		if err != nil {
+			t.Fatal(err)
+		}
+		n, err := io.Copy(io.Discard, zr)
+		if !errors.Is(err, smarthttp.ErrGzipTooLarge) {
+			t.Fatalf("err = %v, voluto ErrGzipTooLarge", err)
+		}
+		if max := int64(1<<20) + 10*int64(len(bomb)) + 64<<10; n > max {
+			t.Errorf("letti %d byte decompressi, tetto %d", n, max)
+		}
+		if exceeded != 1 {
+			t.Errorf("onExceed chiamata %d volte", exceeded)
+		}
+	})
+
+	t.Run("lettore: corpo normale intero", func(t *testing.T) {
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf)
+		payload := strings.Repeat("0032have 0123456789012345678901234567890123456789\n", 2000)
+		_, _ = zw.Write([]byte(payload))
+		_ = zw.Close()
+		zr, err := smarthttp.NewBoundedGzip(&buf, 0, 0, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := io.ReadAll(zr)
+		if err != nil || string(got) != payload {
+			t.Fatalf("lettura: %d byte, err %v", len(got), err)
+		}
+	})
+
+	t.Run("HTTP: la bomba è interrotta e loggata, il server regge", func(t *testing.T) {
+		var logs bytes.Buffer
+		var mu sync.Mutex
+		e := setupHandler(t, receiverules.DefaultLimits(), nil, func(h *smarthttp.Handler) {
+			h.GzipFloor, h.GzipRatio = 64<<10, 5
+			h.Logger = slog.New(slog.NewTextHandler(lockedWriter{&mu, &logs}, nil))
+		})
+		// Un want valido seguito da have all'infinito: git continua a leggere.
+		work := t.TempDir()
+		c := filepath.Join(work, "c")
+		mustGit(t, work, "clone", e.url("alice", "gst_alice", "/alice/priv.git"), c)
+		oid := strings.TrimSpace(mustGit(t, c, "rev-parse", "HEAD"))
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf)
+		_, _ = zw.Write([]byte("0032want " + oid + "\n0000"))
+		have := []byte("0032have " + oid + "\n")
+		for i := 0; i < (64<<20)/len(have); i++ {
+			_, _ = zw.Write(have)
+		}
+		_ = zw.Close()
+		req, err := http.NewRequest(http.MethodPost, e.url("alice", "gst_alice", "/alice/priv.git/git-upload-pack"), &buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "application/x-git-upload-pack-request")
+		req.Header.Set("Content-Encoding", "gzip")
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+		}
+		mu.Lock()
+		logged := logs.String()
+		mu.Unlock()
+		if !strings.Contains(logged, "oltre il limite di decompressione") {
+			t.Errorf("la richiesta non è stata interrotta dal tetto gzip; log:\n%s", logged)
+		}
+		// Il server regge: un clone normale dopo la bomba riesce.
+		mustGit(t, work, "clone", e.url("alice", "gst_alice", "/alice/priv.git"), filepath.Join(work, "d"))
+	})
+
+	t.Run("richieste gzip normali e push continuano a funzionare", func(t *testing.T) {
+		e := setupHandler(t, receiverules.DefaultLimits(), nil, func(h *smarthttp.Handler) {
+			h.GzipFloor, h.GzipRatio = 0, 0
+		})
+		work := t.TempDir()
+		c := filepath.Join(work, "c")
+		mustGit(t, work, "clone", e.url("alice", "gst_alice", "/alice/priv.git"), c)
+		mustGit(t, c, "-c", "http.postBuffer=1", "commit", "--allow-empty", "-m", "vuoto")
+		mustGit(t, c, "push", "origin", "HEAD")
+		mustGit(t, c, "fetch", "origin")
+	})
+}
+
+type lockedWriter struct {
+	mu *sync.Mutex
+	b  *bytes.Buffer
+}
+
+func (l lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
 }

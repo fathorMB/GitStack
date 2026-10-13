@@ -52,6 +52,11 @@ spec:
               value: {{ .Values.gateway.env.authCacheNegativeTTL | quote }}
             - name: GITSTACK_CORE_TIMEOUT
               value: {{ .Values.gateway.env.coreTimeout | quote }}
+            # Tetto al corpo di un upload di allegato: lo stesso valore di core
+            # (core.attachments.maxBytes), così i due non possono divergere. Il
+            # resto dei corpi è tenuto a 1 MiB (GITSTACK_GATEWAY_MAX_BODY_BYTES).
+            - name: GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES
+              value: {{ .Values.core.attachments.maxBytes | int64 | quote }}
             {{- if .Values.gateway.env.trustedProxies }}
             - name: GITSTACK_GATEWAY_TRUSTED_PROXIES
               value: {{ .Values.gateway.env.trustedProxies | quote }}

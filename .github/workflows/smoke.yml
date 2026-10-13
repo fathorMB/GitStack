@@ -1,0 +1,52 @@
+name: smoke
+
+# Test di fumo di carico (V3, GIT-220): cinque persone e tre agenti gs
+# contemporanei su clone, push (HTTPS e SSH), API e issue, contro lo stack
+# completo. Nessun obiettivo numerico: esito = zero 5xx, nessun push perso,
+# nessuna corsa sui ref; le latenze sono solo nel log.
+#
+# Job separato da ci.yml: gira a ogni push su main, ogni notte alle 04:11 UTC
+# (schedule, sul ramo di default) e a mano (Run workflow, con la durata).
+# Comando locale: docs/operations.md, sezione «Load smoke test (V3)».
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '11 4 * * *'
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Durata del carico (es. 3m)'
+        required: false
+        default: '3m'
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  load-smoke:
+    name: Fumo V3 — utenti e agenti contemporanei
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: go work sync
+        run: go work sync
+
+      # Postgres lo avvia testcontainers (demone Docker di ubuntu-24.04);
+      # git, ssh e ssh-keygen sono già sul runner.
+      - name: TestCaricoFumo (-race, riepilogo delle latenze nel log)
+        working-directory: services/core
+        env:
+          GITSTACK_SMOKE_DURATION: ${{ inputs.duration || '3m' }}
+        run: go test -tags=integration -race -run TestCaricoFumo -v -count=1 -timeout 25m ./internal/stackitest/

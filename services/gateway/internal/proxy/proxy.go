@@ -9,10 +9,12 @@ package proxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +33,18 @@ const PrefixV1 = "/v1"
 // valore arrivato dal client: identity lo legge solo da proxy fidati
 // (services/identity/internal/httpapi, stesso nome).
 const ClientIPHeader = "X-Gitstack-Client-Ip"
+
+const (
+	// DefaultMaxBodyBytes è il tetto di default al corpo di una richiesta
+	// instradata (JSON): 1 MiB, lo stesso che core applica a issue e commenti
+	// (413 body_too_large nel contratto).
+	DefaultMaxBodyBytes int64 = 1 << 20
+	// DefaultMaxAttachmentBytes è il tetto al corpo dell'upload di un allegato
+	// (10 MiB di file, come core), più lo spazio per i delimitatori multipart.
+	DefaultMaxAttachmentBytes int64 = 10 << 20
+	// multipartOverhead come in core: intestazioni e delimitatori multipart.
+	multipartOverhead int64 = 64 << 10
+)
 
 // ToCore costruisce l'handler HTTP che instrada le richieste verso core.
 // coreURL è la base URL del servizio core (es. http://core:8080); timeout è
@@ -97,6 +111,11 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 			pr.Out.URL.Path = stripV1(pr.In.URL.Path)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			var tooLarge *http.MaxBytesError
+			if errors.As(err, &tooLarge) {
+				writeBodyTooLarge(w, tooLarge.Limit)
+				return
+			}
 			logger.Error("richiesta verso "+name+" non riuscita",
 				"request_id", middleware.RequestIDFromContext(r.Context()),
 				"path", r.URL.Path,
@@ -107,10 +126,24 @@ func ToService(name string, coreURL *url.URL, timeout time.Duration, logger *slo
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := o.bodyLimit(r)
+		if r.ContentLength > limit {
+			writeBodyTooLarge(w, limit)
+			return
+		}
+		if r.Body != nil && r.Body != http.NoBody {
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+		}
 		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 		rp.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// writeBodyTooLarge risponde 413 con l'errore del contratto.
+func writeBodyTooLarge(w http.ResponseWriter, limit int64) {
+	writeError(w, http.StatusRequestEntityTooLarge, "body_too_large",
+		"Corpo della richiesta oltre il limite di "+strconv.FormatInt(limit, 10)+" byte.")
 }
 
 // stripV1 rimuove il prefisso di versione /v1 dal percorso, per instradare a
