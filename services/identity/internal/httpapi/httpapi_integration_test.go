@@ -547,3 +547,76 @@ func TestCookieSecureDaProxyFidato(t *testing.T) {
 		t.Errorf("peer non fidato con https: Secure inatteso: %+v", ck)
 	}
 }
+
+func TestAuthEventsAreLogged(t *testing.T) {
+	var logs bytes.Buffer
+	e := newFullEnv(t, &logs, secret)
+	e.mk("alice", false)
+	e.mk("root", true)
+	const wrongPw = "password sbagliata ma lunga"
+	const newPw = "una nuova password lunga e buona"
+
+	// Login fallito: evento con username, IP e request id, mai la password.
+	r := e.do("POST", "/auth/login", map[string]string{"username": "alice", "password": wrongPw}, nil, "X-Request-Id", "req-fail-1")
+	errCode(t, r, 401, "invalid_credentials")
+	out := logs.String()
+	for _, want := range []string{"event=security.login.failure", "username=alice", "client_ip=192.0.2.10", "request_id=req-fail-1"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("manca %q nel log:\n%s", want, out)
+		}
+	}
+
+	// Login riuscito.
+	ck := e.mustLogin("alice")
+	if !strings.Contains(logs.String(), "event=security.login.success") || !strings.Contains(logs.String(), "actor=alice") {
+		t.Fatalf("manca il login riuscito:\n%s", logs.String())
+	}
+
+	// Token creato e revocato.
+	r = e.do("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"read:user"}, "expiresAt": e.clock.now().Add(48 * time.Hour).Format(time.RFC3339)}, ck)
+	status(t, r, 201)
+	plain, _ := r.json()["token"].(string)
+	tokenID, _ := r.json()["id"].(string)
+	status(t, e.do("DELETE", "/user/tokens/"+tokenID, nil, ck), 204)
+
+	// Chiave SSH aggiunta ed eliminata.
+	r = e.do("POST", "/user/ssh-keys", map[string]any{"title": "laptop", "publicKey": pubKey(t, "ed25519")}, ck)
+	status(t, r, 201)
+	keyID, _ := r.json()["id"].(string)
+	status(t, e.do("DELETE", "/user/ssh-keys/"+keyID, nil, ck), 204)
+
+	// Cambio password: prima con quella attuale sbagliata, poi giusta.
+	errCode(t, e.do("PUT", "/users/alice/password", map[string]any{"currentPassword": wrongPw, "newPassword": newPw}, ck), 403, "forbidden")
+	status(t, e.do("PUT", "/users/alice/password", map[string]any{"currentPassword": pw, "newPassword": newPw}, ck), 204)
+
+	// Logout.
+	status(t, e.do("POST", "/auth/logout", nil, ck), 204)
+
+	// Un amministratore disattiva l'utente.
+	rootCk := e.mustLogin("root")
+	status(t, e.do("PATCH", "/users/alice", map[string]any{"isActive": false}, rootCk), 200)
+
+	out = logs.String()
+	for _, want := range []string{
+		"event=security.token.created", "event=security.token.revoked", "revoked_token_id=" + tokenID,
+		"event=security.ssh_key.added", "event=security.ssh_key.deleted", "key_id=" + keyID,
+		"event=security.password.change_failed", "event=security.password.changed",
+		"event=security.logout", "event=security.user.deactivated", "target=alice", "actor=root",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("manca %q nel log", want)
+		}
+	}
+
+	// Nessun segreto nei log: password (vecchia, nuova, sbagliata), token in
+	// chiaro, valore del cookie di sessione.
+	secrets := []string{pw, newPw, wrongPw, plain, ck.Value, rootCk.Value, pubKey(t, "ed25519")}
+	for _, sec := range secrets {
+		if sec != "" && strings.Contains(out, sec) {
+			t.Errorf("il log contiene un segreto (%.6s…)", sec)
+		}
+	}
+	if t.Failed() {
+		t.Logf("log:\n%s", out)
+	}
+}

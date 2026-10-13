@@ -421,6 +421,56 @@ Residual limits:
 - The **Git endpoints** (clone, fetch and push over HTTPS on the Git ingress, and SSH) are served by the git service outside the gateway and are **not** covered by this limiter. Only the `/v1/*` API is. Throttling of Git traffic must come from the ingress (Traefik middleware) or the network; the login limiter of identity (`LOGIN_MAX_ATTEMPTS_*`) is separate and unchanged.
 - Credential guessing is not what the limiter is for (tokens have 256 bits): it bounds scraping and denial of service by a single credential or address.
 
+### Security logging (F10)
+
+Identity and the gateway write security events as one JSON line each on stdout, with the field `event` (`security.*`) so they can be selected without parsing messages. Passwords, tokens, cookies and the `Authorization` header are never logged: events carry only identifiers (user id, username, token id, key fingerprint). The `service` field says which service wrote the line.
+
+| `event` | Service | When | Useful fields |
+|---|---|---|---|
+| `security.login.success` | identity | password or OIDC login accepted | `actor`, `actor_id`, `method`, `session_id`, `client_ip`, `request_id` |
+| `security.login.failure` | identity | wrong credentials or failed OIDC login (`warn`) | `username`, `reason`, `client_ip`, `request_id` |
+| `security.login.rate_limited` | identity | login throttled after repeated failures (`warn`) | `username`, `client_ip` |
+| `security.logout` | identity | session revoked by the user | `actor`, `session_id` |
+| `security.password.changed`, `security.password.change_failed`, `security.password.change_rate_limited` | identity | password change, wrong current password (`warn`), throttled (`warn`) | `actor`, `target` |
+| `security.token.created`, `security.token.revoked` | identity | personal or agent token created/revoked | `created_token_id` / `revoked_token_id`, `token_name`, `scopes`, `target` |
+| `security.ssh_key.added`, `security.ssh_key.deleted` | identity | SSH key changes | `key_id`, `fingerprint` |
+| `security.grant.created`, `security.grant.updated`, `security.grant.deleted` | identity | resource grants | `resource_id`, `grant_id`, `subject_type`, `subject_id`, `role` |
+| `security.user.created`, `security.user.deactivated`, `security.user.activated`, `security.user.admin_changed`, `security.user.deleted` | identity | account lifecycle by an administrator | `actor`, `target`, `target_id` |
+| `security.panic` | gateway | a handler panicked: the client got a generic `500`, the line has `panic` and `stack` (`error`) | `request_id`, `method`, `path` |
+
+The gateway request line (message `richiesta gestita`) has `client_ip` (the real client: `X-Forwarded-For` counts only from `gateway.env.trustedProxies`, `remote_addr` stays the peer), `user_id`, `username` and `token_id` when the request was authenticated, and a `reason` for `401`, `403`, `429` and `500` (`missing_credential`, `credential_kind_not_allowed`, `credential_inactive`, `credential_too_long`, `insufficient_scope`, `password_change_required`, `permission_denied`, `identity_unavailable`, `rate_limited`, `panic`). The `request_id` is the same in the gateway line and in the identity events of that request.
+
+**Shipping the logs.** Logs stay on the node (`kubectl logs`, container runtime files under `/var/log/pods`). To keep them off the machine, run a collector on the node and send the JSON lines to your log store. Example with promtail (Loki), reading the pod files and selecting only the GitStack namespace:
+
+```yaml
+scrape_configs:
+  - job_name: gitstack
+    kubernetes_sd_configs: [{role: pod}]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace]
+        regex: gitstack
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        target_label: app
+    pipeline_stages:
+      - cri: {}
+      - json: {expressions: {event: event, service: service, level: level}}
+      - labels: {event: , service: , level: }
+```
+
+With vector the equivalent is a `kubernetes_logs` source, a `remap` that does `. = merge!(., parse_json!(.message))`, and your sink. Use the namespace you installed into.
+
+**What to alert on** (suggested thresholds, tune to your size):
+
+- `event="security.login.failure"` more than 10 per 5 minutes from one `client_ip`, or any `security.login.rate_limited`: password guessing.
+- A `security.login.success` for a user right after several failures from the same `client_ip`.
+- `security.token.created`, `security.grant.created`, `security.user.admin_changed` or `security.password.changed` outside working hours, or by an unexpected `actor`.
+- Any `security.panic`: a bug reachable from the network; the `stack` is in the line.
+- Gateway lines with `status` 403 and `reason="insufficient_scope"` or `permission_denied` repeated from one `user_id` or `token_id`: a credential probing what it may do.
+- The gateway `rate limit exceeded` warning (see "API rate limiting") and a sustained `status` 5xx rate.
+
+There is no separate audit table: the log stream is the audit trail, so keep it for as long as your policy requires. Timestamps are UTC, RFC 3339.
+
 ## Backup
 
 GitStack provides a coherent backup command that takes a short read-only

@@ -83,6 +83,7 @@ func (s *server) FinishOidcLogin(w http.ResponseWriter, r *http.Request, provide
 		writeError(w, http.StatusBadRequest, "oidc_invalid_state", "Login OIDC scaduto o non valido: riprova dall'inizio.")
 		return
 	case errors.Is(err, oidc.ErrLoginFailed), errors.Is(err, oidc.ErrUserInactive):
+		s.secWarn(r, "security.login.failure", nil, "method", "oidc", "provider", provider, "reason", "oidc_login_failed")
 		writeError(w, http.StatusUnauthorized, "oidc_login_failed", "Login OIDC non riuscito.")
 		return
 	case errors.Is(err, oidc.ErrUnlinked):
@@ -92,6 +93,7 @@ func (s *server) FinishOidcLogin(w http.ResponseWriter, r *http.Request, provide
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.login.success", &auth.Current{User: res.User, Session: res.Session}, "method", "oidc", "provider", provider, "session_id", res.Session.ID.String())
 	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, res.RedirectTo, http.StatusFound)

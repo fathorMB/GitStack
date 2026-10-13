@@ -153,6 +153,7 @@ func (s *server) CreateResourceGrant(w http.ResponseWriter, r *http.Request, res
 	case err != nil:
 		s.internal(w, r, err)
 	default:
+		s.secInfo(r, "security.grant.created", &cur, "resource_id", uuid.UUID(resourceId).String(), "grant_id", g.ID.String(), "subject_type", string(g.SubjectType), "subject_id", g.SubjectID.String(), "role", string(g.Role))
 		writeJSON(w, http.StatusCreated, toGrant(g))
 	}
 }
@@ -162,7 +163,8 @@ func (s *server) UpdateResourceGrant(w http.ResponseWriter, r *http.Request, res
 		unavailable(w)
 		return
 	}
-	if _, ok := s.requireAdmin(w, r, uuid.UUID(resourceId)); !ok {
+	cur, ok := s.requireAdmin(w, r, uuid.UUID(resourceId))
+	if !ok {
 		return
 	}
 	var in openapi.UpdateGrantInput
@@ -179,6 +181,7 @@ func (s *server) UpdateResourceGrant(w http.ResponseWriter, r *http.Request, res
 	case err != nil:
 		s.internal(w, r, err)
 	default:
+		s.secInfo(r, "security.grant.updated", &cur, "resource_id", uuid.UUID(resourceId).String(), "grant_id", g.ID.String(), "role", string(g.Role))
 		writeJSON(w, http.StatusOK, toGrant(g))
 	}
 }
@@ -188,7 +191,8 @@ func (s *server) DeleteResourceGrant(w http.ResponseWriter, r *http.Request, res
 		unavailable(w)
 		return
 	}
-	if _, ok := s.requireAdmin(w, r, uuid.UUID(resourceId)); !ok {
+	cur, ok := s.requireAdmin(w, r, uuid.UUID(resourceId))
+	if !ok {
 		return
 	}
 	err := s.permissions.Delete(r.Context(), uuid.UUID(resourceId), uuid.UUID(grantId))
@@ -198,6 +202,7 @@ func (s *server) DeleteResourceGrant(w http.ResponseWriter, r *http.Request, res
 	case err != nil:
 		s.internal(w, r, err)
 	default:
+		s.secInfo(r, "security.grant.deleted", &cur, "resource_id", uuid.UUID(resourceId).String(), "grant_id", uuid.UUID(grantId).String())
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
