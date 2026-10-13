@@ -282,6 +282,20 @@ identity:
       # Identificativo della chiave (GITSTACK_IDENTITY_OIDC_ENC_KEY_ID): va
       # cambiato insieme alla chiave (rotazione) per riscrivere i segreti.
       keyId: k1
+  # Secondo fattore TOTP per gli account locali (F11, GIT-237). Ogni utente lo
+  # attiva da Settings → Security; qui si decide solo se è obbligatorio per gli
+  # amministratori (GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS).
+  totp:
+    requiredForAdmins: false
+    # Keyring che cifra i segreti TOTP nel database (GITSTACK_IDENTITY_TOTP_KEYS,
+    # "<id>:<base64 di 32 byte>[,<id>:<base64>...]": la prima cifra, le altre
+    # solo decifrano). Il chart lo genera una sola volta in un Secret
+    # <release>-identity-totp-key (chiave `keys`, resource-policy keep).
+    # Alternativa: nome di un Secret esistente con la chiave `keys`.
+    keys:
+      existingSecret: ""
+      # Id della chiave generata dal chart.
+      keyId: k1
   resources:
     requests:
       cpu: 25m

@@ -30,6 +30,7 @@
 {{- $oidc := and .Values.identity.oidc.enabled -}}
 {{- $oidcSecret := .Values.identity.oidc.existingSecret | default (printf "%s-identity-oidc" (include "gitstack.fullname" .)) -}}
 {{- $oidcKeySecret := .Values.identity.oidc.encKey.existingSecret | default (printf "%s-identity-oidc-key" (include "gitstack.fullname" .)) -}}
+{{- $totpKeySecret := .Values.identity.totp.keys.existingSecret | default (printf "%s-identity-totp-key" (include "gitstack.fullname" .)) -}}
 {{- if and $oidc (not .Values.identity.oidc.publicUrl) -}}
 {{- fail "identity.oidc.enabled=true: compila identity.oidc.publicUrl (URL pubblico di GitStack, es. https://git.example.com)." -}}
 {{- end -}}
@@ -176,6 +177,16 @@ spec:
               value: {{ .Values.identity.oidc.encKey.keyId | quote }}
             - name: GITSTACK_IDENTITY_PUBLIC_URL
               value: {{ .Values.identity.oidc.publicUrl | quote }}
+            {{- end }}
+            # Secondo fattore TOTP (F11): keyring dei segreti da Secret.
+            - name: GITSTACK_IDENTITY_TOTP_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $totpKeySecret }}
+                  key: keys
+            {{- if .Values.identity.totp.requiredForAdmins }}
+            - name: GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS
+              value: "true"
             {{- end }}
             {{- if .Values.identity.env.tokenMaxLifetime }}
             - name: GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME

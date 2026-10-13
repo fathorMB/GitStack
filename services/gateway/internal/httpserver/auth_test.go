@@ -675,3 +675,43 @@ func TestAuth_CredenzialeDi512CaratteriArrivaAlVerifier(t *testing.T) {
 		t.Errorf("status %d, atteso 401 (credenziale non attiva)", rec.Code)
 	}
 }
+
+// Amministratore che deve ancora attivare il TOTP (F11): 403
+// totp_enrollment_required ovunque, tranne sessione, logout e /auth/totp*.
+func TestAuth_TotpDaAttivare(t *testing.T) {
+	enroll := identityclient.Result{Active: true, Principal: identityclient.Caller{
+		UserID: "33333333-3333-3333-3333-333333333333", Username: "admin", IsAdmin: true,
+		AuthMethod: "password", MustEnrollTotp: true,
+	}}
+	v := &stubVerifier{results: map[string]identityclient.Result{"admin-sess": enroll}}
+	cases := []struct {
+		name, method, path string
+		want               int
+	}{
+		{"GET /auth/session", "GET", "/v1/auth/session", 204},
+		{"POST /auth/logout", "POST", "/v1/auth/logout", 204},
+		{"GET /auth/totp", "GET", "/v1/auth/totp", 204},
+		{"POST /auth/totp/enroll", "POST", "/v1/auth/totp/enroll", 204},
+		{"POST /auth/totp/verify", "POST", "/v1/auth/totp/verify", 204},
+		{"POST /auth/totp/disable", "POST", "/v1/auth/totp/disable", 403},
+		{"GET /users", "GET", "/v1/users", 403},
+		{"GET /resources", "GET", "/v1/resources", 403},
+		{"GET /user/tokens", "GET", "/v1/user/tokens", 403},
+		{"DELETE /users/bob/totp", "DELETE", "/v1/users/bob/totp", 403},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			e := newEnv(t, v)
+			rec := e.do(cookieReq(c.method, c.path, "admin-sess"))
+			if rec.Code != c.want {
+				t.Fatalf("status = %d, voluto %d (%s)", rec.Code, c.want, rec.Body.String())
+			}
+			if c.want == 403 && errorCode(t, rec) != "totp_enrollment_required" {
+				t.Errorf("code = %s", rec.Body.String())
+			}
+			if c.want == 403 && (e.identity.count() != 0 || e.core.count() != 0) {
+				t.Errorf("a valle: identity %d core %d, atteso nessuna chiamata", e.identity.count(), e.core.count())
+			}
+		})
+	}
+}

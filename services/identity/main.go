@@ -29,6 +29,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
 	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
+	"github.com/fathorMB/GitStack/services/identity/internal/secondfactor"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
@@ -193,6 +194,19 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 		Sessions: sessions.New(pool, time.Now, cfg.SessionTTL),
 		Limiter:  loginlimit.New(lcfg, time.Now),
 	}
+	// Secondo fattore TOTP (F11): sempre montato, così un utente che lo ha già
+	// attivo non entra con la sola password anche se le chiavi sparissero (in
+	// quel caso il login fallisce con un errore interno, non fail open).
+	keys := make([]secondfactor.Key, 0, len(cfg.TOTPKeys))
+	for _, k := range cfg.TOTPKeys {
+		keys = append(keys, secondfactor.Key{ID: k.ID, Key: k.Key})
+	}
+	mfa := secondfactor.New(pool, time.Now, keys, "GitStack")
+	svc.Second = mfa
+	svc.RequireAdminTOTP = cfg.TOTPRequiredForAdmins
+	if cfg.TOTPRequiredForAdmins {
+		logger.Info("TOTP obbligatorio per gli amministratori", "env", config.EnvTOTPRequiredForAdmins)
+	}
 	oidcSvc, err := buildOIDC(ctx, cfg, pool, svc, logger)
 	if err != nil {
 		// Nessun segreto nell'errore: solo percorso del file e motivo.
@@ -240,6 +254,8 @@ func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcS
 		logger.Warn("segreti di servizio non configurati: /internal/* risponde sempre 401",
 			"env", []string{config.EnvSecretGateway, config.EnvSecretCore, config.EnvSecretGit})
 	}
+	// Il secondo fattore è quello montato su svc (nil nei test del router).
+	mfa, _ := svc.Second.(*secondfactor.Service)
 	api := httpapi.New(svc, logger,
 		httpapi.WithTrustedProxies(cfg.TrustedProxies),
 		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
@@ -248,6 +264,7 @@ func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcS
 		httpapi.WithServiceSecrets(cfg.GatewaySecret, cfg.CoreSecret, cfg.GitSecret),
 		httpapi.WithOIDC(oidcSvc),
 		httpapi.WithOrgs(orgs.New(pool, time.Now)),
+		httpapi.WithSecondFactor(mfa),
 	)
 	return httpserver.NewRouter(pool, api)
 }

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -240,5 +242,60 @@ func TestLoad_SegretiPerChiamante(t *testing.T) {
 	cfg, err = load(get)
 	if err != nil || cfg.GatewaySecret != "storico" || cfg.CoreSecret != "storico" || cfg.GitSecret != "kgit" {
 		t.Fatalf("fallback: err=%v cfg=%+v", err, cfg)
+	}
+}
+
+func TestLoad_TOTP(t *testing.T) {
+	k1 := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{1}, 32))
+	k2 := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{2}, 32))
+	base := map[string]string{EnvDatabaseURL: "postgres://identity:secret@localhost:5432/gitstack?sslmode=disable"}
+	with := func(kv map[string]string) map[string]string {
+		m := map[string]string{}
+		for k, v := range base {
+			m[k] = v
+		}
+		for k, v := range kv {
+			m[k] = v
+		}
+		return m
+	}
+
+	// Default: spento, nessuna chiave.
+	cfg, err := load(lookupFrom(with(nil)))
+	if err != nil || len(cfg.TOTPKeys) != 0 || cfg.TOTPRequiredForAdmins {
+		t.Fatalf("default: %+v %v", cfg, err)
+	}
+
+	// Keyring "nuova,vecchia" e obbligo per gli admin.
+	cfg, err = load(lookupFrom(with(map[string]string{
+		EnvTOTPKeys: "k2:" + k2 + ", k1:" + k1, EnvTOTPRequiredForAdmins: "true",
+	})))
+	if err != nil {
+		t.Fatalf("errore inatteso: %v", err)
+	}
+	if len(cfg.TOTPKeys) != 2 || cfg.TOTPKeys[0].ID != "k2" || cfg.TOTPKeys[1].ID != "k1" || !cfg.TOTPRequiredForAdmins {
+		t.Fatalf("keyring inatteso: %+v", cfg.TOTPKeys)
+	}
+	if len(cfg.TOTPKeys[0].Key) != 32 || cfg.TOTPKeys[0].Key[0] != 2 {
+		t.Fatalf("chiave inattesa")
+	}
+
+	// Errori: obbligo senza chiavi, chiave corta, id ripetuto, booleano.
+	for name, env := range map[string]map[string]string{
+		"obbligo senza chiavi": {EnvTOTPRequiredForAdmins: "true"},
+		"chiave corta":         {EnvTOTPKeys: "k1:" + base64.StdEncoding.EncodeToString([]byte("corta"))},
+		"senza id":             {EnvTOTPKeys: k1},
+		"id ripetuto":          {EnvTOTPKeys: "k1:" + k1 + ",k1:" + k2},
+		"booleano":             {EnvTOTPKeys: "k1:" + k1, EnvTOTPRequiredForAdmins: "forse"},
+	} {
+		_, err := load(lookupFrom(with(env)))
+		if err == nil {
+			t.Errorf("%s: atteso un errore", name)
+			continue
+		}
+		// Il valore della chiave non compare mai nell'errore.
+		if strings.Contains(err.Error(), k1) || strings.Contains(err.Error(), k2) {
+			t.Errorf("%s: l'errore contiene una chiave: %v", name, err)
+		}
 	}
 }

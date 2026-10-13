@@ -362,6 +362,61 @@ export type LoginInput = {
     username: string;
 };
 
+export type TotpStatus = {
+    /**
+     * Vero se l'utente ha confermato il TOTP.
+     */
+    enabled: boolean;
+    /**
+     * Vero se c'e' un'attivazione iniziata e non ancora confermata.
+     */
+    pending?: boolean;
+    /**
+     * Falso se l'installazione non ha chiavi di cifratura configurate (`GITSTACK_IDENTITY_TOTP_KEYS`): l'attivazione risponde 503.
+     *
+     */
+    available: boolean;
+    /**
+     * Vero se l'installazione impone il TOTP agli amministratori.
+     */
+    requiredForAdmins: boolean;
+    recoveryCodesRemaining: number;
+};
+
+export type TotpEnrollment = {
+    /**
+     * Segreto in base32, per l'inserimento manuale. Compare solo qui.
+     */
+    secret: string;
+    /**
+     * URI `otpauth://totp/...` da trasformare in QR code.
+     */
+    otpauthUri: string;
+};
+
+export type TotpCodeInput = {
+    /**
+     * Codice TOTP a 6 cifre.
+     */
+    code: string;
+};
+
+export type TotpRecoveryCodes = {
+    /**
+     * Codici di recupero monouso, mostrati una sola volta (nel database ci sono solo gli hash).
+     *
+     */
+    recoveryCodes: Array<string>;
+};
+
+export type TotpDisableInput = {
+    /**
+     * Codice TOTP attuale (o in alternativa `recoveryCode`).
+     */
+    code?: string;
+    recoveryCode?: string;
+};
+
 /**
  * Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
  *
@@ -425,6 +480,11 @@ export type CurrentSession = {
      *
      */
     mustChangePassword: boolean;
+    /**
+     * Vero per un amministratore con sessione a password quando l'installazione impone il TOTP e lui non l'ha ancora attivato. Finche' e' vero ogni chiamata autenticata risponde 403 `totp_enrollment_required`, tranne `GET /auth/session`, `POST /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
+     *
+     */
+    mustEnrollTotp?: boolean;
     /**
      * Solo per `authMethod` = `token`.
      */
@@ -670,6 +730,11 @@ export type Principal = {
      *
      */
     mustChangePassword?: boolean;
+    /**
+     * Vero per una sessione a password di un amministratore che deve ancora attivare il TOTP (installazione che lo impone). Il gateway risponde 403 `totp_enrollment_required` a ogni rotta senza `x-totp-enroll-exempt`. Assente equivale a falso.
+     *
+     */
+    mustEnrollTotp?: boolean;
     /**
      * Id della sessione o del token (per audit).
      */
@@ -2281,6 +2346,24 @@ export type LoginInputWritable = {
      */
     username: string;
     password: string;
+    /**
+     * Codice TOTP a 6 cifre (secondo passo del login).
+     */
+    totpCode?: string;
+    /**
+     * Codice di recupero monouso, in alternativa a `totpCode`. Maiuscole, minuscole e trattini non contano.
+     *
+     */
+    recoveryCode?: string;
+};
+
+export type TotpDisableInputWritable = {
+    password: string;
+    /**
+     * Codice TOTP attuale (o in alternativa `recoveryCode`).
+     */
+    code?: string;
+    recoveryCode?: string;
 };
 
 /**
@@ -2328,6 +2411,11 @@ export type CurrentSessionWritable = {
      *
      */
     mustChangePassword: boolean;
+    /**
+     * Vero per un amministratore con sessione a password quando l'installazione impone il TOTP e lui non l'ha ancora attivato. Finche' e' vero ogni chiamata autenticata risponde 403 `totp_enrollment_required`, tranne `GET /auth/session`, `POST /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
+     *
+     */
+    mustEnrollTotp?: boolean;
     /**
      * Solo per `authMethod` = `token`.
      */
@@ -3199,6 +3287,162 @@ export type GetCurrentSessionResponses = {
 
 export type GetCurrentSessionResponse = GetCurrentSessionResponses[keyof GetCurrentSessionResponses];
 
+export type GetTotpStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/totp';
+};
+
+export type GetTotpStatusErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetTotpStatusError = GetTotpStatusErrors[keyof GetTotpStatusErrors];
+
+export type GetTotpStatusResponses = {
+    /**
+     * Stato del TOTP.
+     */
+    200: TotpStatus;
+};
+
+export type GetTotpStatusResponse = GetTotpStatusResponses[keyof GetTotpStatusResponses];
+
+export type EnrollTotpData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/totp/enroll';
+};
+
+export type EnrollTotpErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type EnrollTotpError = EnrollTotpErrors[keyof EnrollTotpErrors];
+
+export type EnrollTotpResponses = {
+    /**
+     * Segreto e URI di provisioning.
+     */
+    200: TotpEnrollment;
+};
+
+export type EnrollTotpResponse = EnrollTotpResponses[keyof EnrollTotpResponses];
+
+export type VerifyTotpData = {
+    body: TotpCodeInput;
+    path?: never;
+    query?: never;
+    url: '/auth/totp/verify';
+};
+
+export type VerifyTotpErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di secondi indicato in `Retry-After`.
+     *
+     */
+    429: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type VerifyTotpError = VerifyTotpErrors[keyof VerifyTotpErrors];
+
+export type VerifyTotpResponses = {
+    /**
+     * TOTP attivo; codici di recupero.
+     */
+    200: TotpRecoveryCodes;
+};
+
+export type VerifyTotpResponse = VerifyTotpResponses[keyof VerifyTotpResponses];
+
+export type DisableTotpData = {
+    body: TotpDisableInputWritable;
+    path?: never;
+    query?: never;
+    url: '/auth/totp/disable';
+};
+
+export type DisableTotpErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di secondi indicato in `Retry-After`.
+     *
+     */
+    429: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DisableTotpError = DisableTotpErrors[keyof DisableTotpErrors];
+
+export type DisableTotpResponses = {
+    /**
+     * TOTP disattivato.
+     */
+    204: void;
+};
+
+export type DisableTotpResponse = DisableTotpResponses[keyof DisableTotpResponses];
+
 export type ListOidcProvidersData = {
     body?: never;
     path?: never;
@@ -3686,6 +3930,46 @@ export type RevokeUserTokenResponses = {
 };
 
 export type RevokeUserTokenResponse = RevokeUserTokenResponses[keyof RevokeUserTokenResponses];
+
+export type ResetUserTotpData = {
+    body?: never;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}/totp';
+};
+
+export type ResetUserTotpErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ResetUserTotpError = ResetUserTotpErrors[keyof ResetUserTotpErrors];
+
+export type ResetUserTotpResponses = {
+    /**
+     * TOTP azzerato.
+     */
+    204: void;
+};
+
+export type ResetUserTotpResponse = ResetUserTotpResponses[keyof ResetUserTotpResponses];
 
 export type ChangePasswordData = {
     body: ChangePasswordInput;

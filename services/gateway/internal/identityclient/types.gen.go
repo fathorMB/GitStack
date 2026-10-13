@@ -446,6 +446,9 @@ type Principal struct {
 	// MustChangePassword Vero per una sessione la cui password iniziale non e' ancora stata cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify` risponde comunque `active` true: il gateway risponde 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza. Assente equivale a falso.
 	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
 
+	// MustEnrollTotp Vero per una sessione a password di un amministratore che deve ancora attivare il TOTP (installazione che lo impone). Il gateway risponde 403 `totp_enrollment_required` a ogni rotta senza `x-totp-enroll-exempt`. Assente equivale a falso.
+	MustEnrollTotp *bool `json:"mustEnrollTotp,omitempty"`
+
 	// Scopes Solo per i token; assenti per le sessioni.
 	Scopes *[]TokenScope `json:"scopes,omitempty"`
 

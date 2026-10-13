@@ -141,6 +141,16 @@ func Auth(cfg AuthConfig) Middleware {
 				}
 			}
 
+			if p.MustEnrollTotp && !route.TotpEnrollExempt {
+				setLogReason(r.Context(), "totp_enrollment_required")
+				writeAuthError(w, http.StatusForbidden, "totp_enrollment_required", "L'installazione richiede il secondo fattore: attiva il TOTP prima di continuare.", nil)
+				return
+			}
+			if p.MustEnrollTotp && cfg.Forgetter != nil {
+				// Una richiesta esente può attivare il TOTP: la voce in cache non vale più.
+				defer cfg.Forgetter.Forget(cred)
+			}
+
 			if p.IsToken {
 				if missing := security.Missing(p.Scopes, route.Scopes); len(missing) > 0 {
 					setLogReason(r.Context(), "insufficient_scope")

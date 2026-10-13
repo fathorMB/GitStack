@@ -51,7 +51,10 @@ type Caller struct {
 	AuthMethod         string
 	Scopes             []string
 	MustChangePassword bool
-	ExpiresAt          *time.Time
+	// MustEnrollTotp: amministratore con sessione a password che deve
+	// ancora attivare il TOTP (F11).
+	MustEnrollTotp bool
+	ExpiresAt      *time.Time
 	// IsToken: la credenziale è un token personale (ha scope); false per le
 	// sessioni web, che non hanno scope.
 	IsToken bool
@@ -146,6 +149,9 @@ func (c *Client) Verify(ctx context.Context, credential string, kind Kind) (Resu
 	}
 	if p.MustChangePassword != nil {
 		res.Principal.MustChangePassword = *p.MustChangePassword
+	}
+	if p.MustEnrollTotp != nil {
+		res.Principal.MustEnrollTotp = *p.MustEnrollTotp
 	}
 	if p.Scopes != nil {
 		for _, s := range *p.Scopes {

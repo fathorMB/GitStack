@@ -35,6 +35,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
 	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
+	"github.com/fathorMB/GitStack/services/identity/internal/secondfactor"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/trust"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
@@ -74,6 +75,7 @@ type server struct {
 	permissions *permissions.Service
 	keys2       trust.Keyring // chiavi di servizio accettate, per chiamante (F9)
 	orgs        *orgs.Service
+	mfa         *secondfactor.Service // secondo fattore TOTP (F11); nil = spento
 
 	trustedProxies []*net.IPNet
 }
@@ -210,6 +212,10 @@ func (s *server) current(w http.ResponseWriter, r *http.Request) (auth.Current, 
 		passwordChangeRequired(w)
 		return auth.Current{}, false
 	}
+	if cur.MustEnrollTotp {
+		totpEnrollmentRequired(w)
+		return auth.Current{}, false
+	}
 	return cur, true
 }
 
@@ -308,7 +314,20 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 	if _, ok := decode(w, r, &in); !ok {
 		return
 	}
+	var totpCode, recoveryCode string
+	if in.TotpCode != nil {
+		totpCode = *in.TotpCode
+	}
+	if in.RecoveryCode != nil {
+		recoveryCode = *in.RecoveryCode
+	}
 	f := map[string]string{}
+	if totpCode != "" && !totpCodeRe.MatchString(totpCode) {
+		f["totpCode"] = "6 cifre"
+	}
+	if utf8.RuneCountInString(recoveryCode) > 64 {
+		f["recoveryCode"] = "al massimo 64 caratteri"
+	}
 	if n := utf8.RuneCountInString(in.Username); n < 1 || n > 254 {
 		f["username"] = "da 1 a 254 caratteri"
 	}
@@ -320,13 +339,18 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := s.auth.Login(r.Context(), auth.LoginInput{
-		Login: in.Username, Password: *in.Password, IP: s.clientIP(r), UserAgent: r.UserAgent(),
+		Login: in.Username, Password: *in.Password, TOTPCode: totpCode, RecoveryCode: recoveryCode,
+		IP: s.clientIP(r), UserAgent: r.UserAgent(),
 	})
 	var rl *auth.RateLimitedError
 	switch {
 	case errors.As(err, &rl):
 		s.secWarn(r, "security.login.rate_limited", nil, "username", in.Username)
 		s.tooMany(w, rl.RetryAfter)
+		return
+	case errors.Is(err, auth.ErrSecondFactorRequired):
+		// Nessuna sessione e nessun cookie: il client ripete il login con il codice.
+		writeError(w, http.StatusUnauthorized, "second_factor_required", "Serve il codice del secondo fattore.")
 		return
 	case errors.Is(err, auth.ErrInvalidCredentials):
 		s.secWarn(r, "security.login.failure", nil, "username", in.Username, "reason", "invalid_credentials")
@@ -339,10 +363,15 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
 	s.secInfo(r, "security.login.success", &auth.Current{User: res.User, Session: res.Session}, "method", "password", "session_id", res.Session.ID.String())
 	exp := res.Session.ExpiresAt
-	writeJSON(w, http.StatusOK, openapi.CurrentSession{
+	out := openapi.CurrentSession{
 		User: toUser(res.User, true), AuthMethod: openapi.CurrentSessionAuthMethod("password"), ExpiresAt: &exp,
 		MustChangePassword: res.MustChange,
-	})
+	}
+	if res.MustEnrollTotp {
+		t := true
+		out.MustEnrollTotp = &t
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
@@ -376,6 +405,10 @@ func (s *server) GetCurrentSession(w http.ResponseWriter, r *http.Request) {
 	out := openapi.CurrentSession{
 		User: toUser(cur.User, true), AuthMethod: openapi.CurrentSessionAuthMethod(cur.Session.AuthMethod),
 		MustChangePassword: cur.MustChange,
+	}
+	if cur.MustEnrollTotp {
+		t := true
+		out.MustEnrollTotp = &t
 	}
 	if !cur.Session.ExpiresAt.IsZero() {
 		exp := cur.Session.ExpiresAt
@@ -561,6 +594,10 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	if cur.MustChange && !self {
 		// Con la password da cambiare si può cambiare solo la propria.
 		passwordChangeRequired(w)
+		return
+	}
+	if cur.MustEnrollTotp {
+		totpEnrollmentRequired(w)
 		return
 	}
 	if !self && !cur.User.IsAdmin {
