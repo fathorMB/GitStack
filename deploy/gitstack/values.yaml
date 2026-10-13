@@ -483,6 +483,27 @@ postgres:
         limits:
           memory: 256Mi
 
+# --- NetworkPolicy (F8, ASVS V1.14.1) ----------------------------------------
+# Default-deny su ingresso e uscita di tutti i pod del rilascio, più allow
+# espliciti: ingress → web/gateway/git, web → gateway, gateway → core e identity,
+# core e git → identity, core → git, git → core, core, git e identity → Postgres,
+# core e git → NATS, DNS verso kube-system. Le applica il controller di rete del
+# cluster (k3s: kube-router, di default). Con `enabled: false` il chart non
+# crea nessuna policy.
+networkPolicy:
+  enabled: true
+  # Namespace del controller di ingresso (Traefik di k3s) che raggiunge web,
+  # gateway e git HTTP.
+  ingressNamespace: kube-system
+  # Namespace del DNS del cluster.
+  dnsNamespace: kube-system
+  # core, identity e git escono verso internet (webhook, SMTP, OIDC, mirror):
+  # la destinazione la giudica pkg/egress. Qui l'uscita è aperta a tutto
+  # tranne i CIDR di pod e servizi del cluster (egress.clusterCIDRs), dove
+  # valgono solo gli allow espliciti. Con false l'uscita verso fuori è chiusa
+  # (webhook, mirror e OIDC non funzionano).
+  allowInternetEgress: true
+
 # --- nats (JetStream, D11) -----------------------------------------------
 nats:
   # A differenza di postgres, non c'è (ancora) un'opzione NATS esterno del
@@ -498,6 +519,13 @@ nats:
     tag: "2.10-alpine"
   service:
     clientPort: 4222
+  # Autenticazione dei client (F8, ASVS V1.2.2): NATS accetta solo connessioni
+  # con utente e password. Il chart li genera una sola volta in un Secret
+  # <release>-nats-auth (chiavi `user` e `password`,
+  # helm.sh/resource-policy: keep) e li passa a core e git. Alternativa: nome
+  # di un Secret esistente con le stesse chiavi.
+  auth:
+    existingSecret: ""
   persistence:
     size: 5Gi
     storageClassName: ""

@@ -163,14 +163,23 @@ jetstream_count() {
   CLEANUP_FILES+=("${err_file}")
   CLEANUP_PODS+=("${ns}/${pod_name}")
 
+  # NATS vuole utente e password (F8) e le NetworkPolicy lasciano entrare
+  # sulla porta client solo core e git: il pod di prova prende le label di
+  # core (e quindi le sue regole) e le credenziali dal Secret del chart.
+  local nats_user nats_pass
+  nats_user="$(k3s_kubectl get secret "${release}-nats-auth" --namespace "${ns}" -o jsonpath='{.data.user}' | base64 -d)"
+  nats_pass="$(k3s_kubectl get secret "${release}-nats-auth" --namespace "${ns}" -o jsonpath='{.data.password}' | base64 -d)"
+  [ -n "${nats_pass}" ] || fail "Secret ${release}-nats-auth senza password (namespace ${ns})"
+
   # Niente attach (-i/--rm): con un pod che finisce subito l'attach puo'
   # perdere l'output ("If you don't see a command prompt...") e mescolare
   # stdout e stderr. Il pod gira fino in fondo, si attende la fase finale e
   # il JSON si legge da 'kubectl logs' (solo stdout del container). Il pod
   # viene cancellato dal trap EXIT dello script, anche in caso di errore.
   if ! k3s_kubectl run "${pod_name}" --namespace "${ns}" --restart=Never \
+      --labels="app.kubernetes.io/name=core,app.kubernetes.io/instance=${release},app.kubernetes.io/part-of=gitstack" \
       --image="${NATS_BOX_IMAGE}" --command -- \
-      nats stream info "${stream}" --server "nats://${nats_addr}" --json \
+      nats stream info "${stream}" --server "nats://${nats_user}:${nats_pass}@${nats_addr}" --json \
       >/dev/null 2>"${err_file}"; then
     fail "creazione del pod ${pod_name} fallita: $(cat "${err_file}")"
   fi

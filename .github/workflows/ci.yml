@@ -241,7 +241,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
@@ -261,6 +261,16 @@ jobs:
       # GIT-209 (V5b): install.sh rifiuta binario, chart e immagini senza
       # firma, firmati da un'altra identità o alterati; l'eccezione N9 è
       # esplicita. Cosign finto (nessuna rete, nessun root).
+      # GIT-234 (F8): NetworkPolicy, securityContext e credenziali NATS del
+      # chart, verificati sul rendering di helm template (nessun cluster).
+      - name: Installa Helm (test dell'hardening del chart)
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.16.3
+
+      - name: test dell'hardening del chart (F8)
+        run: ./deploy/tests/chart_hardening_test.sh
+
       - name: test della verifica delle firme di install.sh (V5)
         run: ./deploy/tests/v5_verify_test.sh
 
@@ -1392,6 +1402,44 @@ jobs:
           kubectl rollout status deployment/gitstack-core --timeout=120s
           kubectl rollout status deployment/gitstack-git --timeout=120s
           kubectl rollout status deployment/gitstack-web --timeout=120s
+
+      # GIT-234 (F8): k3s applica le NetworkPolicy. Un pod qualunque non
+      # raggiunge NATS né Postgres; un pod con le label di core raggiunge la
+      # porta di NATS, che dichiara auth_required (nessuna connessione senza
+      # credenziali). Il risultato si legge da `kubectl logs` dopo Succeeded
+      # o Failed, non con attach.
+      - name: NetworkPolicy attive e NATS con credenziali
+        run: |
+          set -euo pipefail
+          probe() { # nome, labels, comando...
+            local name="$1" labels="$2"; shift 2
+            kubectl run "${name}" --restart=Never --image=docker.io/busybox:1.36 \
+              --labels="${labels}" --command -- "$@" >/dev/null
+            local phase="" _i
+            for _i in $(seq 1 60); do
+              phase=$(kubectl get pod "${name}" -o jsonpath='{.status.phase}')
+              if [ "${phase}" = Succeeded ] || [ "${phase}" = Failed ]; then break; fi
+              sleep 2
+            done
+            echo "${phase}" >"/tmp/${name}.phase"
+            kubectl logs "${name}" >"/tmp/${name}.log" 2>&1 || true
+            kubectl delete pod "${name}" --wait=false >/dev/null
+          }
+          probe np-any-nats "app=np-probe" sh -c 'nc -z -w3 gitstack-nats 4222'
+          probe np-any-pg "app=np-probe" sh -c 'nc -z -w3 gitstack-postgres 5432'
+          probe np-core-nats "app.kubernetes.io/name=core,app.kubernetes.io/instance=gitstack,app.kubernetes.io/part-of=gitstack" \
+            sh -c 'sleep 1 | nc -w3 gitstack-nats 4222; true'
+          fail=0
+          for n in np-any-nats np-any-pg; do
+            if [ "$(cat /tmp/${n}.phase)" = Succeeded ]; then
+              echo "FALLITO: un pod qualunque ha raggiunto ${n} (NetworkPolicy non applicate)" >&2; fail=1
+            fi
+          done
+          if [ "$(cat /tmp/np-core-nats.phase)" != Succeeded ] || ! grep -q '"auth_required":true' /tmp/np-core-nats.log; then
+            echo "FALLITO: NATS non dichiara auth_required (fase $(cat /tmp/np-core-nats.phase)):" >&2
+            cat /tmp/np-core-nats.log >&2; fail=1
+          fi
+          exit "${fail}"
 
       # GIT-171: /downloads attraversa l'Ingress (web è già Ready): gs
       # scaricato dall'istanza, checksum da SHA256SUMS e `gs version` col tag
