@@ -250,7 +250,7 @@ describe('RepoSettingsPage', () => {
       updatedAt: '2026-10-12T10:05:00Z',
     });
     renderSettings();
-    // La regione Pull mirror con Sync now deve comparire senza need di enable.
+    // La regione Pull mirror con Sync now deve comparire senza bisogno di enable.
     expect(await screen.findByRole('region', { name: 'Pull mirror' })).toBeInTheDocument();
     // Il pulsante "Sync now" deve essere presente.
     expect(await screen.findByRole('button', { name: 'Sync now' })).toBeInTheDocument();
