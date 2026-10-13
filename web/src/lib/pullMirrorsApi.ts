@@ -16,11 +16,11 @@ import type {
   ImportRepositoryInput,
   PullMirror,
   PullMirrorRun,
-  UpdatePullMirrorInput,
+  UpdatePullMirrorInputWritable,
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { EnablePullMirrorInput, ImportRepositoryInput, PullMirror, PullMirrorRun, UpdatePullMirrorInput };
+export type { EnablePullMirrorInput, ImportRepositoryInput, PullMirror, PullMirrorRun, UpdatePullMirrorInputWritable };
 
 const RUNS = 50;
 
@@ -45,11 +45,11 @@ export async function fetchPullMirror(owner: string, repo: string): Promise<Pull
   }
 }
 
-/** Aggiorna le opzioni del mirror (intervallo, username). */
+/** Aggiorna le opzioni del mirror (intervallo, credenziali). */
 export async function updatePullMirror(
   owner: string,
   repo: string,
-  input: UpdatePullMirrorInput,
+  input: UpdatePullMirrorInputWritable,
 ): Promise<PullMirror> {
   return unwrap(
     await updateRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }),
