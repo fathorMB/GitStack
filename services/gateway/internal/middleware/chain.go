@@ -1,6 +1,6 @@
 // Package middleware contiene la catena di middleware HTTP del gateway:
 // request id, log strutturati e i punti di aggancio per verifica token e
-// rate limiting (no-op in M-01, implementati in M-02).
+// rate limiting (token-bucket, ratelimit.go).
 package middleware
 
 import "net/http"

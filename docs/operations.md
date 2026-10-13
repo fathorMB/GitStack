@@ -400,6 +400,27 @@ sudo ./install.sh --egress-allow 192.168.1.0/24,ci.example.com
 
 Entries are IPs, CIDRs, names (`hooks.example.com`) or suffixes (`*.example.com`). With a non-empty list, only what it covers is allowed (public addresses included). It is written in `egress.allow`, and like any `--set` it must be given again at every upgrade. A blocked delivery fails at once, without a retry, and the delivery log shows no response.
 
+### API rate limiting (F6)
+
+The gateway limits `/v1/*` calls with an in-memory token bucket, on two keys: the **credential** (personal token `gst_...` or `gst_session` cookie; the key is its SHA-256, the value is never logged) and the **client IP**. The IP is the real client one: `X-Forwarded-For` counts only when the connection comes from a proxy in `gateway.env.trustedProxies` (default `10.42.0.0/16`, Traefik on k3s); from any other peer it is ignored. Health probes (`/healthz`, `/readyz`) are not limited.
+
+| Value | Env of the gateway | Default | Meaning |
+|---|---|---|---|
+| `gateway.env.rateLimit.credentialRps` | `GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_RPS` | `20` | Requests per second per credential at steady state; `0` disables the per-credential limit |
+| `gateway.env.rateLimit.credentialBurst` | `GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_BURST` | `200` | Burst per credential (at least 1) |
+| `gateway.env.rateLimit.ipRps` | `GITSTACK_GATEWAY_RATE_LIMIT_IP_RPS` | `50` | Requests per second per client IP; `0` disables the per-IP limit |
+| `gateway.env.rateLimit.ipBurst` | `GITSTACK_GATEWAY_RATE_LIMIT_IP_BURST` | `500` | Burst per IP (at least 1) |
+
+The per-IP threshold is wider because several users can share one address behind a NAT. Change it with `--set gateway.env.rateLimit.ipRps=100` (like any `--set`, it must be given again at every upgrade).
+
+Over the threshold the gateway answers `429` with `Retry-After` (seconds) and the error code `rate_limited`. Every rejection is counted; the gateway logs it at `warn` with the message `rate limit exceeded` and the fields `scope` (`credential` or `ip`), `key` (credential hash prefix or IP), `rejected_total` and `suppressed_since_last_log` (at most one line per second and scope, so a flood does not flood the logs). To alert on abnormal volumes, match that message in your log pipeline (for example `kubectl logs deploy/<release>-gateway | grep 'rate limit exceeded'`).
+
+Residual limits:
+
+- Counters live in the memory of each gateway replica: with N replicas the effective ceiling is up to N times the value, and a restart resets them. Up to 100000 keys per scope are tracked; beyond that, new keys are not limited rather than exhausting memory.
+- The **Git endpoints** (clone, fetch and push over HTTPS on the Git ingress, and SSH) are served by the git service outside the gateway and are **not** covered by this limiter. Only the `/v1/*` API is. Throttling of Git traffic must come from the ingress (Traefik middleware) or the network; the login limiter of identity (`LOGIN_MAX_ATTEMPTS_*`) is separate and unchanged.
+- Credential guessing is not what the limiter is for (tokens have 256 bits): it bounds scraping and denial of service by a single credential or address.
+
 ## Backup
 
 GitStack provides a coherent backup command that takes a short read-only

@@ -4,11 +4,11 @@ Unico punto d'ingresso API di GitStack: routing verso gli altri servizi, autenti
 
 ## M-01/T-04: routing e osservabilità
 
-In M-01 il gateway fa routing e osservabilità; l'autenticazione (GIT-54) è descritta più sotto, il rate limiting resta un punto di aggancio no-op.
+In M-01 il gateway fa routing e osservabilità; l'autenticazione (GIT-54) è descritta più sotto, il rate limiting (token-bucket per credenziale e per IP, GIT-232) è descritto più sotto.
 
 - `GET /healthz`, `GET /readyz`: probe di liveness/readiness (convenzione k8s), non fanno parte del contratto pubblico `api/openapi.yaml`. Il corpo riusa comunque lo schema `Health` del contratto, per restare coerente. `/healthz` risponde sempre `ok` (il processo è vivo); `/readyz` risponde `ok` solo se riesce a raggiungere `core` in tempo utile.
 - `/v1/*`: le operazioni del contratto OpenAPI, generate in `internal/openapi` da `api/openapi.yaml` (vedi `scripts/generate-api.sh`, non modificare a mano). Il gateway non implementa logica di business: ogni operazione instrada la richiesta verso `core` (proxy generico, `internal/proxy`), rimuovendo il prefisso `/v1`. Fanno eccezione le rotte dei tag `auth`, `users`, `tokens`, `ssh-keys`, `organizations`, `teams` e `permissions` (`identityPatterns` in `internal/httpserver/router.go`): vanno a `identity` (`GITSTACK_IDENTITY_URL`, errore `identity_unavailable` se non risponde). Il test `TestIdentityRoutes_SecondoIlContratto` le confronta con `api/openapi.yaml`; `/v1/internal/*` (tag `internal`) non è mai instradato (404).
-- Catena di middleware (`internal/middleware`): request id (letto da `X-Request-Id` se presente, altrimenti generato; propagato a valle e in risposta), log strutturati JSON, `RateLimit` (aggancio no-op) e `Auth` (l'autenticazione reale, vedi sotto). Ordine dall'esterno: request id, log, `Auth`, `RateLimit`, gestore.
+- Catena di middleware (`internal/middleware`): request id (letto da `X-Request-Id` se presente, altrimenti generato; propagato a valle e in risposta), log strutturati JSON, rate limiting (`RateLimiter`, vedi sotto) e `Auth` (l'autenticazione reale, vedi sotto). Ordine dall'esterno: request id, log, rate limiting, `Auth`, gestore.
 
 ## Autenticazione centralizzata (GIT-54, M-02/J1)
 
@@ -45,6 +45,8 @@ Il progetto è in `services/identity/README.md` ("Come il gateway verifica sessi
 | `GITSTACK_GATEWAY_AUTH_CACHE_TTL` | no | `30s` | Durata in cache degli esiti positivi di verifica (mai oltre `expiresAt`) |
 | `GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL` | no | `5s` | Durata in cache degli esiti negativi |
 | `GITSTACK_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
+| `GITSTACK_GATEWAY_RATE_LIMIT_CREDENTIAL_RPS` / `..._CREDENTIAL_BURST` | no | `20` / `200` | Token-bucket per credenziale (token `gst_` o cookie di sessione): richieste al secondo e burst. Rps `0` disattiva il limite per credenziale; il burst deve essere >= 1 |
+| `GITSTACK_GATEWAY_RATE_LIMIT_IP_RPS` / `..._IP_BURST` | no | `50` / `500` | Token-bucket per IP client (quello di `GITSTACK_GATEWAY_TRUSTED_PROXIES`). Oltre soglia: 429 `rate_limited` con `Retry-After`; i rifiuti sono contati e loggati (`rate limit exceeded`, scope e chiave offuscata, al più un log al secondo). Il chart li imposta da `gateway.env.rateLimit.*` |
 | `GITSTACK_GATEWAY_TRUSTED_PROXIES` | no | vuoto | CIDR separati da virgola dei proxy davanti al gateway (es. la rete di Traefik, `10.42.0.0/16`). Solo da questi peer si legge `X-Forwarded-For` per l'IP del client (ultimo indirizzo non fidato da destra); vuoto = nessuno fidato, l'IP è quello della connessione e `X-Forwarded-For` di un peer non fidato è ignorato  Il chart lo imposta da `gateway.env.trustedProxies` (default `10.42.0.0/16`). Solo da questi peer il gateway conserva anche `X-Forwarded-Proto` (`http` o `https`) invece di sovrascriverlo con lo schema della propria connessione: identity lo usa per marcare `Secure` il cookie di sessione solo su HTTPS (GIT-153) |
 
 ### Sviluppo locale
