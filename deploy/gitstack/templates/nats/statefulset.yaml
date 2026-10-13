@@ -16,8 +16,12 @@ spec:
       labels:
         {{- include "gitstack.componentLabels" (dict "root" $ "component" "nats") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "gitstack.podSecurityContext" (dict) | nindent 8 }}
       containers:
         - name: nats
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.nats) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           # JetStream (D11 [c_74dcf9721e6f7b3e]) con storage su file, sulla
@@ -27,6 +31,11 @@ spec:
             - "-js"
             - "-sd=/data"
             - "-m=8222"
+            # Utente e password (F8): $(VAR) lo espande Kubernetes dalle env sotto.
+            - "--user=$(NATS_USER)"
+            - "--pass=$(NATS_PASSWORD)"
+          env:
+            {{- include "gitstack.nats.authEnv" . | nindent 12 }}
           ports:
             - name: client
               containerPort: {{ .Values.nats.service.clientPort }}

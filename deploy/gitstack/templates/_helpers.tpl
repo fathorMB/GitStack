@@ -113,7 +113,7 @@ Secret con la CA, sslrootcert sul file montato.
 URL NATS usato da core (GITSTACK_CORE_NATS_URL).
 */}}
 {{- define "gitstack.nats.url" -}}
-{{- printf "nats://%s-nats:%d" (include "gitstack.fullname" .) (.Values.nats.service.clientPort | int) -}}
+{{- printf "nats://$(NATS_USER):$(NATS_PASSWORD)@%s-nats:%d" (include "gitstack.fullname" .) (.Values.nats.service.clientPort | int) -}}
 {{- end -}}
 
 {{/*
@@ -251,4 +251,66 @@ proxy né CA. Uso: {{- include "gitstack.proxy.env" . | nindent 12 }}
     items:
       - key: ca.crt
         path: ca.crt
+{{- end -}}
+
+{{/*
+Credenziali NATS (F8, ASVS V1.2.2): Secret <release>-nats-auth con le chiavi
+`user` e `password`, generato una sola volta (nats-auth-secret.yaml) o dato
+con nats.auth.existingSecret.
+*/}}
+{{- define "gitstack.nats.secretName" -}}
+{{- .Values.nats.auth.existingSecret | default (printf "%s-nats-auth" (include "gitstack.fullname" .)) -}}
+{{- end -}}
+
+{{/*
+NATS_USER e NATS_PASSWORD dal Secret: vanno prima delle variabili che
+usano "$(NATS_USER)" (espansione di Kubernetes). Uso:
+{{- include "gitstack.nats.authEnv" . | nindent 12 }}
+*/}}
+{{- define "gitstack.nats.authEnv" -}}
+- name: NATS_USER
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "gitstack.nats.secretName" . }}
+      key: user
+- name: NATS_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "gitstack.nats.secretName" . }}
+      key: password
+{{- end -}}
+
+{{/*
+securityContext del pod (F8, V1.14.5): profilo seccomp RuntimeDefault sempre;
+runAsUser/runAsNonRoot/fsGroup solo se il chiamante li dà.
+Uso: {{ include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" 65532) | nindent 8 }}
+*/}}
+{{- define "gitstack.podSecurityContext" -}}
+seccompProfile:
+  type: RuntimeDefault
+{{- if .runAsUser }}
+runAsNonRoot: true
+runAsUser: {{ .runAsUser }}
+{{- end }}
+{{- if .fsGroup }}
+fsGroup: {{ .fsGroup }}
+{{- end }}
+{{- end -}}
+
+{{/*
+securityContext del container: niente escalation, tutte le capability tolte
+(`add` solo dove l'immagine ne ha bisogno, es. l'entrypoint di Postgres) e
+filesystem radice in sola lettura dove il processo non scrive.
+Uso: {{ include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
+*/}}
+{{- define "gitstack.containerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: {{ if .readOnly }}true{{ else }}false{{ end }}
+capabilities:
+  drop:
+    - ALL
+  {{- with .add }}
+  add:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end -}}

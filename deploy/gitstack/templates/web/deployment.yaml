@@ -19,10 +19,16 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      securityContext:
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 101) | nindent 8 }}
       containers:
         - name: web
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.web) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          # Filesystem radice scrivibile: l'entrypoint di nginx genera la
+          # configurazione da template e l'indirizzo dell'istanza (residuo F8).
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" false) | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.web.containerPort }}

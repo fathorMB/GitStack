@@ -238,3 +238,12 @@ Tutti i servizi Go (`gateway`, `identity`, `core`, `git`) hanno probe HTTP su `/
 ## Ambiente di sviluppo locale (`make dev-up`, GIT-10)
 
 Per uno sviluppo locale — cluster persistente, `web` incluso, ciclo modifica → rebuild → redeploy di un solo servizio — usa i target `make dev-*` alla radice del repo, che riusano questo stesso chart e la stessa sequenza del job `chart` sopra (k3d, build locale, `k3d image import`, `helm upgrade --install`). Guida completa: `docs/dev-environment.md`.
+
+## Isolamento di rete, NATS e securityContext (F8, GIT-234)
+
+- **NetworkPolicy** (`networkPolicy.enabled`, default `true`): default-deny su ingresso e uscita di tutti i pod del rilascio, più allow espliciti: il namespace del controller di ingresso (`networkPolicy.ingressNamespace`, default `kube-system`) verso web, gateway e git HTTP; SSH verso git da qualunque sorgente; web → gateway; gateway → core e identity; core e git → identity; core ↔ git; core e identity → Postgres; core e git → NATS; DNS verso kube-system. Core, identity e git escono anche verso fuori (webhook, OIDC, mirror) a meno dei CIDR del cluster (`networkPolicy.allowInternetEgress`); la destinazione la giudica `pkg/egress`. k3s le applica con il suo controller di rete. Con un Postgres esterno l'uscita è aperta sulla sola porta del database.
+- **NATS con credenziali**: il server parte con `--user`/`--pass` dal Secret `<release>-nats-auth` (chiavi `user` e `password`, generato una sola volta, `helm.sh/resource-policy: keep`; alternativa `nats.auth.existingSecret`). core e git lo ricevono come `NATS_USER`/`NATS_PASSWORD` e lo mettono nell'URL NATS. Un pod diverso da core e git non raggiunge la porta; chi la raggiunge non entra senza password.
+- **securityContext**: ogni container toglie tutte le capability e vieta l'escalation; ogni pod usa il profilo seccomp `RuntimeDefault`. Gateway, core, identity e NATS hanno il filesystem radice in sola lettura (`emptyDir` su `/tmp`); web, git, Postgres e il client Postgres no (scrivono all'avvio). L'entrypoint di Postgres tiene `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID` e `SETUID`.
+- **Residuo**: niente TLS dentro il cluster (HTTP fra i servizi, NATS e Postgres incluso in chiaro): vedi F8 in `docs/security/asvs-l2.md`.
+- Un pod di prova che deve parlare con NATS (come fa `deploy/test-vm/e2e/remote.sh`) prende le label di core e le credenziali dal Secret.
+- Test: `deploy/tests/chart_hardening_test.sh` (rendering con `helm template`).

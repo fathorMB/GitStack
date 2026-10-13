@@ -50,15 +50,16 @@ spec:
       # li trova raggiungibili (vedi values.yaml, core.waitFor). Questi
       # initContainer attendono la porta TCP prima di avviare "core",
       # invece di affidarsi al CrashLoopBackOff (più lento).
-      {{- if .Values.core.attachments.enabled }}
       securityContext:
-        # L'immagine gira come nonroot (uid 65532): il volume deve essere scrivibile.
-        fsGroup: 65532
-      {{- end }}
+        # L'immagine gira come nonroot (uid 65532): il volume degli allegati
+        # deve essere scrivibile.
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532 "fsGroup" (ternary 65532 0 .Values.core.attachments.enabled)) | nindent 8 }}
       initContainers:
         - name: wait-for-postgres
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           command:
             - sh
             - -c
@@ -66,6 +67,8 @@ spec:
         - name: wait-for-nats
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core.waitFor) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           command:
             - sh
             - -c
@@ -74,11 +77,14 @@ spec:
         - name: core
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.core) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.core.containerPort }}
           env:
             {{- include "gitstack.proxy.env" . | nindent 12 }}
+            {{- include "gitstack.nats.authEnv" . | nindent 12 }}
             - name: GITSTACK_CORE_ADDR
               value: {{ printf ":%d" (.Values.core.containerPort | int) | quote }}
             # POSTGRES_PASSWORD deve precedere GITSTACK_CORE_DB_URL: la
@@ -231,6 +237,8 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: system-info
               mountPath: /etc/gitstack/system-info
               readOnly: true
@@ -249,6 +257,8 @@ spec:
           resources:
             {{- toYaml .Values.core.resources | nindent 12 }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         # Opzionale: prima della prima pubblicazione il ConfigMap non esiste e
         # core parte lo stesso (Admin · System mostra «non pubblicato»).
         - name: system-info

@@ -67,10 +67,14 @@ spec:
       # controllo su pg_roles), quindi gira a ogni avvio del pod senza errori.
       # Le credenziali amministrative non arrivano mai al container di
       # identity, che si connette solo come identity_app.
+      securityContext:
+        {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532) | nindent 8 }}
       initContainers:
         - name: bootstrap-db
           image: {{ $pgClientImage }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           env:
             - name: PGHOST
               value: {{ $pgHost | quote }}
@@ -114,6 +118,8 @@ spec:
             {{- end }}
       containers:
         - name: identity
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" true) | nindent 12 }}
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.identity) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
@@ -195,8 +201,9 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.identity.resources | nindent 12 }}
-          {{- if or $oidc .Values.corporateCA.configMap $pgCA }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             {{- if $oidc }}
             - name: oidc
               mountPath: /etc/gitstack/oidc
@@ -210,8 +217,9 @@ spec:
             {{- if .Values.corporateCA.configMap }}
             {{- include "gitstack.corporateCA.volumeMount" . | nindent 12 }}
             {{- end }}
-          {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: bootstrap
           configMap:
             name: {{ include "gitstack.fullname" . }}-identity-bootstrap

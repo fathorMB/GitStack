@@ -16,8 +16,16 @@ spec:
       labels:
         {{- include "gitstack.componentLabels" (dict "root" $ "component" "postgres") | nindent 8 }}
     spec:
+      securityContext:
+        {{- include "gitstack.podSecurityContext" (dict) | nindent 8 }}
       containers:
         - name: postgres
+          # L'entrypoint dell'immagine parte come root, fa chown del volume e
+          # passa all'utente postgres: servono solo queste capability, il
+          # resto è tolto. Il filesystem radice resta scrivibile (socket in
+          # /var/run/postgresql, file temporanei).
+          securityContext:
+            {{- include "gitstack.containerSecurityContext" (dict "readOnly" false "add" (list "CHOWN" "DAC_OVERRIDE" "FOWNER" "SETGID" "SETUID")) | nindent 12 }}
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.postgres) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
