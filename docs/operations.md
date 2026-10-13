@@ -1555,5 +1555,187 @@ sudo gitstack upgrade --allow-unsigned-mirrors        # aggiornamento, solo per 
 
 ---
 
-*Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
-decisioni D17–D19 [c_1d1d61aca3dea601]*
+## Prove della tappa 2 di V7 (condizioni 2 e 4)
+
+Le due prove che seguono le lancia il **board**, non un agente. Servono a sbloccare il passaggio della casa su GitStack (V7, tappa 2; `rilascio-v1.md`). Ogni passo ha il comando e l'esito atteso: se l'esito è diverso, ci si ferma e si annota il comando, l'output e l'ora. Gli esiti attesi vengono dalle sezioni Backup, Restore, Mirror e Diagnostics di questo documento e dal codice di `admin/internal/cli/backup.go`; nessuna di queste prove è ancora stata eseguita su homehub.
+
+### Condizione 2: ripristino di prova su una macchina nuova
+
+**Cosa si prova:** un backup giornaliero di homehub, portato su una VM appena installata, si ripristina e l'istanza risponde con i dati di homehub.
+
+**Prerequisiti**
+
+- Una VM Ubuntu Server 22.04 o 24.04 amd64, pulita, con i requisiti di [Prerequisites](#prerequisites) e raggiungibile via SSH. Non è homehub e non ne prende il posto: il nome host della VM può essere diverso.
+- Un backup di homehub di **meno di 24 ore** (il timer giornaliero) e, se è cifrato, il file della chiave. Il restore rifiuta un archivio di un'altra versione del server: la VM va installata **alla stessa versione di homehub**.
+- Su homehub, per conoscere la versione e l'ultimo backup:
+
+```sh
+gitstack version
+# gitstack sha-<40 caratteri>   → annota questa versione: è <VERSIONE>
+sudo gitstack status
+# nella riga «Ultimo backup:» ci sono l'ora e il percorso dell'archivio; l'ora deve essere di meno di 24 ore fa
+# in fondo: «Stato: sano»
+```
+
+**Passo 1. Portare l'archivio e la chiave sulla VM**
+
+Con il backup locale (cartella `backup.destination`, di default `/var/backups/gitstack`), da homehub:
+
+```sh
+ARCH=$(ls -t /var/backups/gitstack/gitstack-backup-*.tar.gz* | grep -v '\.sha256$' | head -n 1)
+echo "$ARCH"
+scp "$ARCH" <utente>@<ip-vm>:/tmp/
+scp /etc/gitstack/backup.key <utente>@<ip-vm>:/tmp/      # solo se l'archivio è cifrato (.enc); usa il percorso della tua chiave
+```
+
+Esito atteso: `scp` termina con exit `0`; sulla VM `ls -l /tmp/gitstack-backup-*` mostra l'archivio. Se i backup vanno su S3 (N7), salta questo passo e usa `--from s3` al passo 3.
+
+**Passo 2. Installare GitStack sulla VM, alla stessa versione**
+
+Sulla VM, dal checkout del repo alla stessa versione di homehub (o con il binario e il chart di quella release):
+
+```sh
+sudo ./deploy/install.sh --image-tag <VERSIONE> --host <ip-vm>
+gitstack version
+sudo gitstack status; echo "exit=$?"
+```
+
+Esito atteso: `gitstack version` stampa `gitstack <VERSIONE>` (la stessa di homehub); `gitstack status` finisce con `Stato: sano`, tutti i servizi `N/N pronti  OK`, `exit=0`. Con Postgres esterno vale [External PostgreSQL](#external-postgresql) e un database **vuoto**.
+
+**Passo 3. Ripristinare**
+
+```sh
+sudo gitstack restore --key-file /tmp/backup.key /tmp/gitstack-backup-<data>-<VERSIONE>.tar.gz.enc
+# archivio non cifrato:
+sudo gitstack restore /tmp/gitstack-backup-<data>-<VERSIONE>.tar.gz
+# archivio su S3 (dopo aver passato le opzioni --s3-* a install.sh):
+sudo gitstack restore --from s3
+echo "exit=$?"
+```
+
+Esito atteso: le righe `archivio verificato: versione <VERSIONE> del <data>, N file`, `fermo i servizi: …`, `ripristino del database (in una sola transazione)`, `ripristino dei repo (git-data)`, `ripristino degli allegati`, `ripristino dei Secret`, `ripristinati N file di configurazione (config.yaml resta quello della nuova installazione)`, `riavvio i servizi`, poi `Restore completato: database, repo, allegati, Secret e configurazione ripristinati.` e `exit=0`. Un codice diverso: vedi [Exit codes](#exit-codes) (`6` = versione diversa, checksum sbagliato o chiave mancante: la prova **non** è riuscita, riparti dal passo 2 con la versione giusta).
+
+**Passo 4. Controlli di riuscita**
+
+Tutti sulla VM, dopo il restore:
+
+| # | Controllo | Comando | Esito atteso |
+|---|---|---|---|
+| 1 | Servizi sani | `sudo gitstack status; echo "exit=$?"` | `Stato: sano`, `exit=0` |
+| 2 | API raggiungibile | `curl -sk -o /dev/null -w '%{http_code}\n' https://<ip-vm>/api/healthz` | `200` |
+| 3 | I repo di homehub ci sono | `curl -sk -H "Authorization: Bearer $TOKEN" https://<ip-vm>/api/v1/repos` | l'elenco contiene gli stessi repo di homehub (stessi owner e nomi) |
+| 4 | Lo stesso storico | `git ls-remote https://<ip-vm>/<owner>/<repo>.git` e lo stesso comando su homehub (CA interna in `GIT_SSL_CAINFO`) | stessi SHA per `refs/heads/main` e per i tag, a meno dei push arrivati dopo il backup |
+| 5 | Le issues ci sono | `GS_HOST=<ip-vm> GS_TOKEN=$TOKEN gs issue list -R <owner>/<repo>` | stesse issues di homehub al momento del backup |
+| 6 | Login | accedere da browser a `https://<ip-vm>/` con un utente di homehub | login riuscito (le credenziali sono quelle di homehub) |
+| 7 | Scrittura | `git clone` di un repo della VM, un commit, `git push` | exit `0`, push accettato; scrive solo sulla VM |
+
+`$TOKEN` è un token di un utente di homehub (esiste nel database ripristinato) o uno creato dalla UI della VM dopo il login. I confronti dei controlli 3–5 si fanno con lo stato di homehub nell'istante del backup: push o issues arrivati dopo non ci saranno sulla VM.
+
+**Esito:** riuscita se i controlli 1–7 sono tutti ok. Il board annota data, versione, nome dell'archivio e risultato di ogni controllo.
+
+**Pulizia.** La VM si spegne e si cancella; nessun comando della prova scrive su homehub (il backup viene solo letto e copiato). Cancella anche la copia della chiave: `shred -u /tmp/backup.key`.
+
+### Condizione 4: mirror in push verso un repo GitHub di prova, senza `diverged`
+
+**Cosa si prova:** il mirror in push (V8-mirror, GIT-179) manda il ramo principale e i tag di un repo di homehub su un repo GitHub vuoto senza forzare; una destinazione con storia diversa lo ferma in `diverged` e non viene sovrascritta. Vedi anche [Mirror](#mirror).
+
+**Prerequisiti**
+
+- Un repo GitHub **vuoto** di prova (senza README, licenza o `.gitignore`), per esempio `<utente>/gitstack-mirror-prova`, e un **fine-grained token** con *Only select repositories* su quel repo e *Contents: Read and write* (nient'altro), con scadenza. Il ramo principale del repo di prova su GitHub **non** deve essere protetto.
+- Su homehub un repo **di prova**, non quello del codice di GitStack (che ha il mirror in pull): per esempio `<owner>/mirror-prova`, con almeno un commit su `main` e un tag. Se non c'è, con un token con permesso di scrittura:
+
+```sh
+export GS_HOST=<homehub> GS_TOKEN=<token>
+gs repo create <owner>/mirror-prova
+gs auth setup-git
+gs repo clone <owner>/mirror-prova && cd mirror-prova
+echo prova > README.md && git add README.md && git commit -m "prova del mirror" && git push origin HEAD:main
+git tag v0.0.1 && git push origin v0.0.1
+```
+
+Esito atteso: i push terminano con exit `0`. (Se il ramo predefinito non si chiama `main`, usa il suo nome.)
+
+- La chiave dei segreti di homehub è configurata (`GITSTACK_WEBHOOK_SECRET_KEY`): senza, la creazione del mirror risponde `503 mirror_secrets_unavailable`.
+- Il token GitHub in una variabile, mai in un file: `read -rs GITHUB_TOKEN; export GITHUB_TOKEN`.
+
+**Passo 1. Creare il mirror**
+
+Dalla UI: repo → **Settings → Mirrors → Add mirror**, con *Remote URL* `https://github.com/<utente>/gitstack-mirror-prova.git`, *Username* il tuo utente GitHub, *Token* il token. Oppure con l'API:
+
+```sh
+curl -fsS -X POST "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors" \
+  -H "Authorization: Bearer $GS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"url":"https://github.com/<utente>/gitstack-mirror-prova.git","username":"<utente>","token":"'"$GITHUB_TOKEN"'"}'
+```
+
+Esito atteso: risposta `201` con un oggetto mirror (`id`, `state`, `hasToken: true`; il token non compare). Annota l'`id` come `<MIRROR_ID>`. Il primo push parte da solo.
+
+**Passo 2. Il primo push**
+
+```sh
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" \
+  "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+```
+
+Esito atteso: entro poche decine di secondi `"state":"in_sync"`, `lastError` nullo e `lastPushed` con `refs/heads/main` e `refs/tags/v0.0.1`; nella UI lo stato è **In sync**. Se è `pending` o `syncing` ripeti dopo qualche secondo; se è `error`, leggi `lastError` e le esecuzioni (`GET .../mirrors/<MIRROR_ID>/runs`): la prova non è riuscita.
+
+**Passo 3. Gli stessi SHA su GitHub**
+
+```sh
+git ls-remote https://github.com/<utente>/gitstack-mirror-prova.git refs/heads/main 'refs/tags/*'
+git ls-remote https://<homehub>/<owner>/mirror-prova.git refs/heads/main 'refs/tags/*'
+```
+
+Esito atteso: gli SHA di `refs/heads/main` e del tag `v0.0.1` sono identici nelle due uscite.
+
+**Passo 4. Un push successivo arriva senza forzare**
+
+```sh
+cd mirror-prova && echo due >> README.md && git commit -am "secondo commit" && git push origin HEAD:main
+sleep 20
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+git ls-remote https://github.com/<utente>/gitstack-mirror-prova.git refs/heads/main
+```
+
+Esito atteso: `state` è `in_sync` e lo SHA su GitHub è quello del nuovo commit (fast-forward, nessun `diverged`).
+
+**Passo 5. La divergenza si ferma e non sovrascrive**
+
+Questo passo prova la garanzia «mai forzato»: è l'unico in cui `diverged` è l'esito **voluto**.
+
+```sh
+git clone https://github.com/<utente>/gitstack-mirror-prova.git /tmp/gh-prova && cd /tmp/gh-prova
+echo divergenza > divergenza.txt && git add divergenza.txt && git commit -m "commit diretto su GitHub" && git push origin HEAD:main
+SHA_GH=$(git rev-parse HEAD); echo "$SHA_GH"
+cd <clone-di-homehub> && echo tre >> README.md && git commit -am "terzo commit" && git push origin HEAD:main
+sleep 20
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+git ls-remote https://github.com/<utente>/gitstack-mirror-prova.git refs/heads/main
+```
+
+Esito atteso: `state` è `diverged` (UI: «Stopped: diverged»), `lastError` indica la storia diversa della destinazione e `git ls-remote` mostra ancora `$SHA_GH`: il commit diretto su GitHub non è stato sovrascritto. Gli admin del repo ricevono una notifica con motivo `mirror` (`gs notification list`).
+
+**Passo 6. Il ritorno a `in_sync`** (facoltativo; prova la risoluzione descritta in [If a mirror stops: divergence](#if-a-mirror-stops-divergence))
+
+```sh
+cd <clone-di-homehub> && git remote add github https://github.com/<utente>/gitstack-mirror-prova.git
+git fetch github && git merge github/main && git push origin HEAD:main
+curl -fsS -X POST -H "Authorization: Bearer $GS_TOKEN" \
+  "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>/sync"
+sleep 20
+curl -fsS -H "Authorization: Bearer $GS_TOKEN" "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"
+```
+
+Esito atteso: `sync` risponde `202`; poi `state` è `in_sync` e `git ls-remote` su GitHub dà lo stesso SHA di homehub.
+
+**Esito:** la condizione 4 è provata se i passi 1–4 danno gli esiti attesi **e** in quei passi `state` non è mai `diverged`; il passo 5 deve fermarsi in `diverged` senza sovrascrivere. Se nei passi 1–4 compare `diverged` (il repo GitHub non era vuoto, o qualcuno ha spinto lì) la prova va rifatta con un repo nuovo.
+
+**Pulizia**
+
+```sh
+curl -fsS -X DELETE -H "Authorization: Bearer $GS_TOKEN" \
+  "https://<homehub>/api/v1/repos/<owner>/mirror-prova/mirrors/<MIRROR_ID>"    # 204
+rm -rf /tmp/gh-prova
+```
+
+Poi su GitHub: cancella il repo di prova e **revoca** il token. Il mirror del repo vero di GitStack si crea solo nel giorno scelto per la tappa 2, con le regole di [Mirroring to GitHub](#mirroring-to-github).
