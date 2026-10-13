@@ -67,7 +67,7 @@ IMAGE_identity := $(REGISTRY)/$(OWNER)/gitstack-identity:$(IMAGE_TAG)
 IMAGE_core    := $(REGISTRY)/$(OWNER)/gitstack-core:$(IMAGE_TAG)
 IMAGE_web     := $(REGISTRY)/$(OWNER)/gitstack-web:$(IMAGE_TAG)
 
-.PHONY: help dev-up dev-down dev-redeploy dev-status \
+.PHONY: help dev-up dev-down dev-redeploy dev-status release-readiness \
         _dev-check-tools _dev-cluster _dev-build-all _dev-import-all _dev-helm \
         _dev-build _dev-import
 
@@ -77,6 +77,7 @@ help:
 	@echo "  make dev-down                   distrugge il cluster locale"
 	@echo "  make dev-redeploy SVC=<servizio> ricostruisce e ridistribuisce un solo servizio ($(DEV_SERVICES))"
 	@echo "  make dev-status                 pod e ingress del rilascio corrente"
+	@echo "  make release-readiness          criteri di uscita V1: automatici e manuali (docs/release-checklist.md)"
 
 dev-up: _dev-check-tools _dev-cluster _dev-build-all _dev-import-all _dev-helm
 	@echo "==> GitStack pronto sul cluster '$(CLUSTER_NAME)'."
@@ -105,6 +106,11 @@ dev-status:
 	@kubectl get pods -o wide
 	@echo
 	@kubectl get ingress
+
+# Criteri di uscita V1 (docs/release-checklist.md). Non crea tag; con
+# STRICT=1 esce con 1 se un criterio automatico è aperto.
+release-readiness:
+	@go run scripts/release-readiness.go $(if $(STRICT),--strict,)
 
 # --- passi interni, riusati da dev-up e dev-redeploy -----------------------
 

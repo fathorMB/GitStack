@@ -26,3 +26,5 @@ Licenza: AGPL-3.0, come il resto del server (vedi LICENSE in radice).
 `rules-coverage.md` (GIT-115) è la tabella regole di prodotto → test; `scripts/check-rules-coverage.go` ne verifica in CI che i test citati esistano.
 
 `agent-trial.md` (M-07/M, GIT-174) è la guida per il board alla prova reale di un agente di coding con `gs` e le skills, su una VM di prova o su homehub; gli script e il repo di prova sono in `scripts/agent-trial/`.
+
+`release-checklist.md` (M-09/B, GIT-226) è la lista di controllo della release candidate: un passo per criterio di uscita V1; `scripts/release-readiness.go` (`make release-readiness`) verifica gli automatici e stampa i manuali.
