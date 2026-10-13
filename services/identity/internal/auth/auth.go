@@ -71,8 +71,8 @@ type Service struct {
 
 // LoginInput sono i dati di un tentativo di login. Login è username o email.
 type LoginInput struct {
-	Login     string
-	Password  string
+	Login    string
+	Password string
 	// TOTPCode e RecoveryCode: secondo passo del login (uno dei due).
 	TOTPCode     string
 	RecoveryCode string
