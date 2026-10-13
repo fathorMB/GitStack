@@ -15,19 +15,19 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 152 |
-| n/a | 52 |
-| problem | 55 |
+| ok | 162 |
+| n/a | 43 |
+| problem | 54 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235 and F10 (medium) by GIT-236.
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 and F11 (medium) by GIT-237.
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
 | V1 Architecture, Design and Threat Modeling | 28 | 0 | 10 |
-| V2 Authentication | 20 | 24 | 9 |
+| V2 Authentication | 29 | 15 | 9 |
 | V3 Session Management | 14 | 1 | 3 |
-| V4 Access Control | 6 | 1 | 2 |
+| V4 Access Control | 7 | 1 | 1 |
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
 | V6 Stored Cryptography | 8 | 2 | 3 |
 | V7 Error Handling and Logging | 6 | 0 | 6 |
@@ -102,7 +102,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V2.2.2 | Weak authenticators not used as the main factor | ok | SMS and email are not authentication factors; there is no email-based recovery. |
 | V2.2.3 | Notification after credential changes | **problem** | No email or notification is sent on password change, token creation or SSH key addition. [F13] |
 | V2.3.1 | Generated initial passwords | ok | Bootstrap password is 24 random alphanumerics from the chart and must be changed at first login (`services/identity/internal/users/bootstrap_integration_test.go#TestBootstrapThenChangePasswordClearsMustChange`). |
-| V2.3.2 | Support for FIDO/U2F authenticators | **problem** | No second factor of any kind is supported. [F11] |
+| V2.3.2 | Support for FIDO/U2F authenticators | **ok** | TOTP (RFC 6238) is the second factor for local accounts, user-enabled with QR enrolment (`services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`, `services/identity/internal/httpapi/totp_integration_test.go#TestTotpLoginTwoStepsOverHTTP`, `web/src/pages/settings/SecurityPage.test.tsx#attiva il TOTP`). FIDO/U2F/WebAuthn is not supported: TOTP is the authenticator. OIDC users get MFA from their provider (`docs/rules-coverage.md`, row A2). [resolved F11 GIT-237] |
 | V2.3.3 | Renewal reminders for time-bound authenticators | **problem** | Personal tokens have a mandatory expiry (`services/identity/internal/apitokens/apitokens_integration_test.go#TestCreateValidation`) but nobody is warned before they expire. [F13] |
 | V2.4.1 | Passwords salted and hashed with an approved KDF | ok | argon2id m=19 MiB t=2 p=1: `services/identity/internal/password/password_test.go#TestHashFormatAndVerify`, `services/identity/internal/auth/auth_integration_test.go#TestRehashOnLogin`. |
 | V2.4.2 | Unique salt of at least 32 bits | ok | 16 random bytes per hash: `services/identity/internal/password/password_test.go#TestHashSaltIsRandom`. |
@@ -115,21 +115,21 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V2.5.4 | No shared or default accounts | ok | The default username `admin` has a per-installation random password with forced change (`deploy/gitstack/templates/identity/admin-secret.yaml`, `services/identity/internal/users/bootstrap_integration_test.go#TestBootstrapThenChangePasswordClearsMustChange`). |
 | V2.5.5 | User notified when an authentication factor changes | **problem** | Same gap as V2.2.3: an admin password reset or a changed password raises no notification. [F13] |
 | V2.5.6 | Secure recovery mechanism | n/a | There is no self-service forgotten-password flow; recovery is an admin password reset (P5). |
-| V2.5.7 | Identity proofing when OTP/MFA is lost | n/a | No OTP or MFA exists. |
-| V2.6.1 | Lookup secrets single use | n/a | No lookup secrets (recovery codes) exist. |
-| V2.6.2 | Lookup secret randomness | n/a | No lookup secrets exist. |
-| V2.6.3 | Lookup secrets resist offline attack | n/a | No lookup secrets exist. |
+| V2.5.7 | Identity proofing when OTP/MFA is lost | **ok** | A lost authenticator is recovered with a single-use recovery code (`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`) or, if those are lost too, by an administrator with `DELETE /users/{username}/totp` (`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRecoveryCodeOverHTTPAndAdminReset`). [resolved F11 GIT-237] |
+| V2.6.1 | Lookup secrets single use | **ok** | Recovery codes are single use: the second use is rejected (`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`). [resolved F11 GIT-237] |
+| V2.6.2 | Lookup secret randomness | **ok** | Recovery codes are 10 random characters (about 49 bits), so they are stored only as salted argon2id hashes (`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`) and wrong attempts count against the login limiter. [resolved F11 GIT-237] |
+| V2.6.3 | Lookup secrets resist offline attack | **ok** | Salted argon2id hash (the password hash, `identity.totp_recovery_codes.code_hash`); no code or reversible form is stored (`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`). [resolved F11 GIT-237] |
 | V2.7.1 | Out-of-band authenticators | n/a | No out-of-band authenticator exists. |
 | V2.7.2 | Out-of-band codes expire after 10 minutes | n/a | No out-of-band authenticator exists. |
 | V2.7.3 | Out-of-band codes single use | n/a | No out-of-band authenticator exists. |
 | V2.7.4 | Out-of-band secure channel | n/a | No out-of-band authenticator exists. |
 | V2.7.5 | Out-of-band code stored hashed | n/a | No out-of-band authenticator exists. |
 | V2.7.6 | Out-of-band code entropy | n/a | No out-of-band authenticator exists. |
-| V2.8.1 | TOTP lifetime | n/a | No OTP exists. |
-| V2.8.2 | OTP keys protected | n/a | No OTP exists. |
-| V2.8.3 | OTP algorithms | n/a | No OTP exists. |
-| V2.8.4 | TOTP single use | n/a | No OTP exists. |
-| V2.8.5 | TOTP reuse logged | n/a | No OTP exists. |
+| V2.8.1 | TOTP lifetime | **ok** | A code is valid for its 30 s step with a ±1 step window (`services/identity/internal/totp/totp_test.go#TestMatch_Finestra`, `services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`). [resolved F11 GIT-237] |
+| V2.8.2 | OTP keys protected | **ok** | The TOTP secret is stored encrypted with AES-256-GCM under a keyring key (`GITSTACK_IDENTITY_TOTP_KEYS`, rotation "new,old"), with the user id as AAD (`services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`, `services/identity/internal/auth/auth_integration_test.go#TestSecondFactor_KeyringRotationAndAAD`). [resolved F11 GIT-237] |
+| V2.8.3 | OTP algorithms | **ok** | HMAC-SHA1, 6 digits, 30 s as in RFC 6238, verified against the RFC vectors (`services/identity/internal/totp/totp_test.go#TestCode_RFC6238`); codes are compared in constant time. [resolved F11 GIT-237] |
+| V2.8.4 | TOTP single use | **ok** | A step that was already accepted is rejected, also under concurrency (`services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`). [resolved F11 GIT-237] |
+| V2.8.5 | TOTP reuse logged | **problem** | A re-used code is rejected and logged as `security.login.failure`, but the holder is not notified. [F13] |
 | V2.8.6 | Physical OTP generator revocable | n/a | No OTP exists. |
 | V2.8.7 | Biometrics only as secondary factor | n/a | No biometric authenticator exists. |
 | V2.9.1 | Cryptographic verification keys protected | n/a | No cryptographic device authenticators exist (SSH public keys are stored as public data and only grant Git access). |
@@ -173,7 +173,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V4.1.5 | Access control fails securely | ok | `services/gateway/internal/httpserver/auth_test.go#TestAuth_IdentityGiuNonAprePerErrore`, `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_SenzaCheckerEPermessoRichiesto503`. |
 | V4.2.1 | IDOR | ok | Denied and non-existent resources look the same: `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_NegatoUgualeSeLaRisorsaNonEsiste`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/risorsa_di_altra_organizzazione`, `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_IssueNascosta`. |
 | V4.2.2 | Anti-CSRF mechanism | **problem** | Cookie-authenticated API relies only on SameSite=Lax: no Origin or Fetch-Metadata check, no token. [F16] |
-| V4.3.1 | Multi-factor for administrative interfaces | **problem** | The installation admin signs in with password only. [F11] |
+| V4.3.1 | Multi-factor for administrative interfaces | **ok** | `GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS=true` makes TOTP mandatory for administrators: until enrolled every call answers 403 `totp_enrollment_required` (`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRequiredForAdminsOverHTTP`, `services/gateway/internal/httpserver/auth_test.go#TestAuth_TotpDaAttivare`). [resolved F11 GIT-237] |
 | V4.3.2 | No directory browsing | ok | nginx has no autoindex and only serves the built SPA and explicit downloads (`web/src/lib/nginxConf.test.ts#sta prima del fallback SPA`). |
 | V4.3.3 | Step-up or segregation of duties | n/a | No high-value transactional functions; destructive operations ask to retype the name (G8). |
 
@@ -384,9 +384,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F8 | medium | **Resolved (GIT-234), residual: no TLS inside the cluster.** Cluster isolation and in-cluster transport (V1.2.2, V1.9.1, V1.9.2, V1.14.1, V1.14.5, V9.2.1, V9.2.2) | `deploy/gitstack/templates/nats/statefulset.yaml`<br>`deploy/gitstack/templates/_helpers.tpl`<br>`deploy/gitstack/templates/gateway/deployment.yaml`<br>`deploy/gitstack/templates/core/deployment.yaml`<br>`deploy/gitstack/templates/networkpolicy.yaml`<br>`deploy/gitstack/templates/nats/auth-secret.yaml` | `deploy/tests/chart_hardening_test.sh#NetworkPolicy and securityContext are rendered`<br>`deploy/tests/chart_hardening_test.sh#NATS requires credentials` |
 | F9 | medium | **Resolved (GIT-235).** One static service secret for four services (V1.6.1, V2.10.1) | `deploy/gitstack/templates/service-secrets.yaml`<br>`services/core/internal/trust/trust.go`<br>`services/core/internal/httpserver/router.go`<br>`services/identity/internal/httpapi/tokens_keys.go`<br>`services/git/internal/config/config.go`<br>`admin/internal/upgrade/servicesecrets.go`<br>`docs/operations.md` | `services/core/internal/trust/trust_test.go#TestVerify_SegretoDiUnAltroServizioRifiutato`<br>`services/core/internal/trust/trust_test.go#TestRotazione_DoppiaChiaveNellaFinestra`<br>`services/core/internal/httpserver/router_trust_test.go#TestRouter_GitPuoSoloRisolvereOwnerERepo`<br>`services/identity/router_test.go#TestBuildRouter_SegretiPerChiamante`<br>`admin/internal/upgrade/upgrade_test.go#TestUpgrade_MigraISegretiDiServizio`<br>`deploy/tests/chart_hardening_test.sh#One service secret per caller (F9)` |
 | F10 | medium | **Resolved (GIT-236).** Security logging and audit trail (V1.2.3, V1.7.2, V7.1.3, V7.1.4, V7.2.1, V7.2.2, V7.4.3, V11.1.7) | `services/gateway/internal/middleware/logging.go`<br>`services/gateway/internal/middleware/recover.go`<br>`services/identity/internal/httpapi/securitylog.go`<br>`services/identity/internal/httpapi/httpapi.go`<br>`services/identity/internal/auth/auth.go`<br>`services/gateway/internal/httpserver/server.go` | `services/identity/internal/httpapi/httpapi_integration_test.go#TestAuthEventsAreLogged`<br>`services/gateway/internal/middleware/logging_test.go#TestLogging_UserAndClientIP`<br>`services/gateway/internal/middleware/recover_test.go#TestRecover_Generic500` |
-| F11 | medium | No multi-factor authentication (V2.3.2, V4.3.1) | `services/identity/internal/auth/auth.go`<br>`api/openapi.yaml` | `services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired` *(new)* |
+| F11 | medium | **Resolved (GIT-237).** No multi-factor authentication (V2.3.2, V4.3.1) | `services/identity/internal/auth/auth.go`<br>`services/identity/internal/secondfactor/secondfactor.go`<br>`services/identity/internal/totp/totp.go`<br>`services/identity/internal/migrate/sql/0004_totp.up.sql`<br>`services/identity/internal/httpapi/totp.go`<br>`services/gateway/internal/middleware/auth.go`<br>`api/openapi.yaml`<br>`web/src/pages/settings/SecurityPage.tsx` | `services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`<br>`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRequiredForAdminsOverHTTP`<br>`services/gateway/internal/httpserver/auth_test.go#TestAuth_TotpDaAttivare`<br>`web/src/pages/settings/SecurityPage.test.tsx#attiva il TOTP` |
 | F12 | low | Session lifetime and management (V3.3.2, V3.3.4) | `services/identity/internal/sessions/sessions.go`<br>`api/openapi.yaml` | `services/identity/internal/auth/auth_integration_test.go#TestSessionIdleTimeout` *(new)*<br>`services/identity/internal/httpapi/httpapi_integration_test.go#TestListAndRevokeOwnSessions` *(new)* |
-| F13 | low | No notification on credential changes (V2.2.3, V2.3.3, V2.5.5) | `services/identity/internal/users/users.go`<br>`services/core/internal/mailer/mailer.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user` *(new)* |
+| F13 | low | No notification on credential changes (V2.2.3, V2.3.3, V2.5.5, V2.8.5) | `services/identity/internal/users/users.go`<br>`services/core/internal/mailer/mailer.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user` *(new)* |
 | F14 | low | Password policy gaps (V2.1.2, V2.1.7, V2.1.8, V2.4.5) | `services/identity/internal/password/password.go`<br>`api/openapi.yaml`<br>`web/src/pages/ChangePasswordPage.tsx` | `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected` *(new)*<br>`services/identity/internal/password/password_test.go#TestValidatePolicy_Max128` *(new)* |
 | F15 | low | Content-Type not enforced on JSON bodies (V13.1.5, V13.2.5) | `services/core/internal/httpserver/resources.go`<br>`services/identity/internal/httpapi/httpapi.go`<br>`services/gateway/internal/httpserver/router.go` | `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415` *(new)* |
 | F16 | low | CSRF relies on SameSite=Lax only (V3.4.4, V4.2.2, V13.2.3) | `services/identity/internal/auth/auth.go`<br>`services/gateway/internal/middleware/auth.go` | `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin` *(new)* |
@@ -427,7 +427,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **F10 (medium, resolved by GIT-236) Security logging and audit trail.** No event is logged for login success or failure, logout, password change, token or SSH key creation and revocation, grant changes or user deactivation; there is no audit table. The gateway request log has no user or token id and `remote_addr` is the proxy address, not the client. 403 and 401 decisions are only a status code. There is no recover middleware, so a panic closes the connection without a body or a structured line. Logs are not shipped or alerted. Fix: structured security events from identity and gateway (with actor, client IP and request id), a recover middleware, and a documented shipping path.
 
-**F11 (medium) No multi-factor authentication.** Local accounts, including the installation admin, authenticate with a password only; no TOTP or FIDO second factor exists. OIDC users can get MFA from their provider. This is a product decision: either add a second factor for local accounts (at least for admins) or record an explicit exclusion in `docs/rules-coverage.md` with the OIDC recommendation for admins.
+**F11 (medium, resolved by GIT-237) No multi-factor authentication.** Local accounts, including the installation admin, authenticate with a password only; no TOTP or FIDO second factor exists. OIDC users can get MFA from their provider. This is a product decision: either add a second factor for local accounts (at least for admins) or record an explicit exclusion in `docs/rules-coverage.md` with the OIDC recommendation for admins.
+
+**Resolution (GIT-237).** Decision of the CEO (12/10): TOTP for local accounts, not a documented exclusion. A user enables it from Settings → Security (QR code or key, then one code to confirm) and gets 10 single-use recovery codes. The login is two-step: the right password without a code answers 401 `second_factor_required` (no session), the second call carries `totpCode` or `recoveryCode`; a wrong code is an ordinary failed attempt for the login limiter. Codes: RFC 6238 (HMAC-SHA1, 6 digits, 30 s, ±1 step), each step accepted once. The secret is AES-256-GCM encrypted with the key ring `GITSTACK_IDENTITY_TOTP_KEYS` (`id:base64,id:base64`, the first key encrypts, the others only decrypt: rotation as for the service secrets) and `GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS=true` makes it mandatory for administrators with a password session (403 `totp_enrollment_required` on every route but `/auth/session`, `/auth/logout` and `/auth/totp*`; an administrator cannot turn it off). Personal tokens stay without a second factor (they are the credential) and OIDC sessions are never prompted: the second factor of OIDC users is the provider's (`docs/rules-coverage.md`, row A2). An administrator can clear the TOTP of a user who lost device and codes with `DELETE /users/{username}/totp`. Not covered: FIDO/U2F/WebAuthn, and a notification to the holder when a code is re-used or the second factor changes (F13).
 
 **F12 (low) Session lifetime and management.** Sessions expire only at an absolute 7 days (`DefaultTTL`), with no idle timeout, and users cannot list or revoke individual sessions (only the global revoke on password change). ASVS asks for a re-authentication after an idle period and for a session list. Fix: idle timeout (configurable), `GET/DELETE /user/sessions`.
 

@@ -78,6 +78,10 @@ identity:
 
 Il chart genera la chiave di cifratura una sola volta (Secret `<release>-identity-oidc-key`, `helm.sh/resource-policy: keep`) o usa `identity.oidc.encKey.existingSecret`. Vedi `deploy/gitstack/README.md`.
 
+## Secondo fattore degli utenti OIDC
+
+GitStack non chiede un secondo fattore locale dopo un login OIDC: l'MFA degli utenti OIDC è quella del provider (regola A2 in `docs/rules-coverage.md`). Il TOTP di GitStack (`/auth/totp*`, F11) vale per gli account locali con password. Per gli amministratori che entrano con OIDC si raccomanda un provider con MFA imposto per quel gruppo; l'installazione può inoltre imporre il TOTP agli admin con sessione a password (`GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS`).
+
 ## Come si collega o si crea l'utente
 
 Dopo la validazione del token ID, in quest'ordine:

@@ -481,6 +481,7 @@ GitStack has four long-lived keys. This section says who owns each one, where it
 | Service secret of core | `<release>-service-secrets`, `core` | core; verified by identity and git | Bearer to identity `/internal/*`; HMAC of the identity core sends to git | three phases below, no downtime |
 | Service secret of git | `<release>-service-secrets`, `git` | git; verified by identity and core | Bearer to identity (`/internal/verify`, `permissions/check`, `ssh-keys`); HMAC of the identity git sends to core | three phases below, no downtime |
 | OIDC key | `<release>-identity-oidc-key`, `key` (+ `identity.oidc.encKey.keyId`) | identity | AES-256-GCM of the OIDC client secrets in the database and of the login state cookie | new key and new `keyId`, one restart of identity |
+| TOTP keyring | `<release>-identity-totp-key`, `keys` (+ `identity.totp.keys.keyId`) | identity | AES-256-GCM of the users' TOTP secrets (second factor, F11) | new key first in the list, old key after it, one restart of identity |
 | Webhook keyring | `<release>-core-webhook-key`, `key` and `oldKeys` (+ `core.webhookSecret.keyId`) | core | AES-256-GCM of webhook and mirror secrets | new key, new `keyId`, old key in `oldKeys`, one restart of core |
 
 Owner of all of them is the installation administrator (the operator who runs `gitstack`). Rotate a key when someone who could read the Secret leaves, when a pod or a backup may have leaked it, and at least once a year. After a suspected compromise of a single service, rotate that service's key first (see "Emergency").
@@ -542,6 +543,16 @@ A rollback (`helm rollback`) puts the previous chart back, which generates a new
 #### OIDC key
 
 The key encrypts the client secrets saved in `identity.oidc_providers` and the state cookie of a login in progress. Identity writes the providers of its configuration again at every start, so a rotation is: new key in `<release>-identity-oidc-key` (`key`, 32 bytes in base64: `openssl rand -base64 32`), a different `identity.oidc.encKey.keyId` in the values (e.g. `k2`), `helm upgrade`. At the restart identity re-encrypts every client secret with the new key. Logins in progress at that moment fail once. The old key is not kept: a provider whose row still has the old `keyId` answers an error until identity has restarted with the new pair. Keep a backup of the Secret before changing it.
+
+#### TOTP keyring (second factor, F11, GIT-237)
+
+Local accounts can turn on a second step at sign-in from Settings → Security: a time-based code (TOTP, RFC 6238) from an authenticator app, plus ten single-use recovery codes. Identity encrypts each user's TOTP secret with AES-256-GCM under a key of the ring in `GITSTACK_IDENTITY_TOTP_KEYS` (`<id>:<base64 of 32 bytes>[,<id>:<base64>...]`, the first key encrypts, all keys decrypt) and stores only the key id with the secret. The chart generates the first key once (Secret `<release>-identity-totp-key`, `keys`, `helm.sh/resource-policy: keep`) or reads `identity.totp.keys.existingSecret`. Without keys nobody can turn TOTP on (Settings → Security says so).
+
+Make it mandatory for administrators with `identity.totp.requiredForAdmins=true` (`GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS=true`): an administrator who signed in with a password and has no TOTP gets 403 `totp_enrollment_required` on every call except `GET /auth/session`, `POST /auth/logout` and `/auth/totp*` until the second factor is on, and cannot turn it off. Sessions that come from OIDC are never prompted (the second factor of OIDC users is their provider's), and personal tokens never have one (they are the credential).
+
+Rotation: generate a new key (`openssl rand -base64 32`), put `new-id:<base64>,old-id:<base64>` in the Secret and restart identity: new secrets use the new key, existing ones still decrypt with the old one, which must stay in the list while any row names it (`identity.totp_credentials.enc_key_id`). Losing every key a row names makes that user's second factor unverifiable and the login fails with an internal error until an administrator clears it.
+
+A user who lost the device and the recovery codes is unlocked by an administrator with `DELETE /v1/users/<username>/totp` (this also revokes the user's sessions); the user can then sign in with the password and set TOTP up again. If the only administrator is locked out and no other administrator exists, clear the rows by hand: `DELETE FROM identity.totp_recovery_codes WHERE user_id = ...; DELETE FROM identity.totp_credentials WHERE user_id = ...;` in the identity database.
 
 #### Webhook keyring
 

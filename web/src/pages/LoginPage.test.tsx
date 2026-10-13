@@ -7,6 +7,7 @@ import { ApiError } from '../lib/http';
 import { AuthProvider } from '../routes/auth';
 
 vi.mock('../lib/authApi', () => ({
+  SECOND_FACTOR_REQUIRED: 'second_factor_required',
   fetchOidcProviders: vi.fn(),
   loginWithPassword: vi.fn(),
   oidcStartUrl: (slug: string) => `/api/v1/auth/oidc/${slug}/start`,
@@ -80,5 +81,67 @@ describe('LoginPage', () => {
     renderLogin();
     await fill(user);
     expect(await screen.findByRole('alert')).toHaveTextContent('Try again in 30 seconds');
+  });
+
+  // F11: con il TOTP attivo il primo passo risponde 401 second_factor_required;
+  // la UI chiede il codice e ripete il login con username, password e codice.
+  describe('secondo fattore (TOTP)', () => {
+    const second = () =>
+      new ApiError({ error: { code: 'second_factor_required', message: 'Serve il codice del secondo fattore.' } }, 401);
+
+    it('chiede il codice e completa il login a due passi', async () => {
+      mockedLogin.mockRejectedValueOnce(second()).mockResolvedValueOnce({} as never);
+      const user = userEvent.setup();
+      renderLogin();
+      await fill(user);
+
+      expect(await screen.findByLabelText('Authentication code')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(mockedLogin).toHaveBeenCalledTimes(1);
+
+      await user.type(screen.getByLabelText('Authentication code'), '123 456');
+      await user.click(screen.getByRole('button', { name: 'Verify' }));
+
+      expect(mockedLogin).toHaveBeenLastCalledWith('mrossi', 'pw', { totpCode: '123456' });
+      expect(await screen.findByRole('heading', { name: 'Home page' })).toBeInTheDocument();
+    });
+
+    it('con un codice sbagliato resta sul secondo passo con un messaggio chiaro', async () => {
+      mockedLogin
+        .mockRejectedValueOnce(second())
+        .mockRejectedValueOnce(new ApiError({ error: { code: 'invalid_credentials', message: 'x' } }, 401));
+      const user = userEvent.setup();
+      renderLogin();
+      await fill(user);
+      await user.type(await screen.findByLabelText('Authentication code'), '000000');
+      await user.click(screen.getByRole('button', { name: 'Verify' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/code is not valid/i);
+      expect(screen.getByLabelText('Authentication code')).toBeInTheDocument();
+    });
+
+    it('accetta un codice di recupero', async () => {
+      mockedLogin.mockRejectedValueOnce(second()).mockResolvedValueOnce({} as never);
+      const user = userEvent.setup();
+      renderLogin();
+      await fill(user);
+      await user.click(await screen.findByRole('button', { name: 'Use a recovery code' }));
+      await user.type(screen.getByLabelText('Recovery code'), 'ABCDE-FGHJK');
+      await user.click(screen.getByRole('button', { name: 'Verify' }));
+
+      expect(mockedLogin).toHaveBeenLastCalledWith('mrossi', 'pw', { recoveryCode: 'ABCDE-FGHJK' });
+      expect(await screen.findByRole('heading', { name: 'Home page' })).toBeInTheDocument();
+    });
+
+    it('Back torna al form della password', async () => {
+      mockedLogin.mockRejectedValueOnce(second());
+      const user = userEvent.setup();
+      renderLogin();
+      await fill(user);
+      await user.click(await screen.findByRole('button', { name: 'Back' }));
+      expect(screen.getByLabelText('Password')).toHaveValue('');
+      expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    });
   });
 });

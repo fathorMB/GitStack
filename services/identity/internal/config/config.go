@@ -81,6 +81,22 @@ type Config struct {
 	// La password non va mai nei log né negli errori.
 	AdminUsername string
 	AdminPassword string
+
+	// TOTPKeys è il keyring che cifra i segreti TOTP (F11): la prima chiave
+	// cifra, tutte decifrano (rotazione "nuova,vecchia"). Vuoto (default): il
+	// secondo fattore non è attivabile. Le chiavi non vanno mai nei log.
+	TOTPKeys []TOTPKey
+
+	// TOTPRequiredForAdmins: gli amministratori con sessione a password
+	// devono attivare il TOTP (403 totp_enrollment_required finché non lo fanno).
+	TOTPRequiredForAdmins bool
+}
+
+// TOTPKey è una chiave del keyring TOTP: id (finisce nella riga del database)
+// e 32 byte.
+type TOTPKey struct {
+	ID  string
+	Key []byte
 }
 
 const (
@@ -145,6 +161,14 @@ const (
 	// EnvAdminPassword: password iniziale dell'admin (da Secret). Se vuota
 	// non si crea nessun admin.
 	EnvAdminPassword = "GITSTACK_IDENTITY_ADMIN_PASSWORD"
+
+	// EnvTOTPKeys: keyring dei segreti TOTP, elenco "id:base64,id:base64"
+	// (base64 di 32 byte). La prima chiave cifra, le altre solo decifrano.
+	EnvTOTPKeys = "GITSTACK_IDENTITY_TOTP_KEYS"
+
+	// EnvTOTPRequiredForAdmins: "true" impone il TOTP agli amministratori
+	// (richiede EnvTOTPKeys). Default falso.
+	EnvTOTPRequiredForAdmins = "GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS"
 
 	// DefaultAdminUsername è il nome dell'admin iniziale.
 	DefaultAdminUsername = "admin"
@@ -238,6 +262,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	errs = append(errs, loadOIDC(lookup, &cfg)...)
+	errs = append(errs, loadTOTP(lookup, &cfg)...)
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = v
@@ -329,6 +354,50 @@ func loadOIDC(lookup func(string) (string, bool), cfg *Config) []string {
 		errs = append(errs, fmt.Sprintf("%s è obbligatoria con %s (URL http(s) assoluto, es. https://git.example.com)", EnvPublicURL, EnvOIDCConfigFile))
 	} else {
 		cfg.PublicURL = pub
+	}
+	return errs
+}
+
+// loadTOTP legge il keyring TOTP e l'obbligo per gli admin. Gli errori non
+// contengono mai il valore delle chiavi.
+func loadTOTP(lookup func(string) (string, bool), cfg *Config) []string {
+	var errs []string
+	raw, _ := lookup(EnvTOTPKeys)
+	seen := map[string]bool{}
+	for i, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, b64, ok := strings.Cut(part, ":")
+		id = strings.TrimSpace(id)
+		if !ok || id == "" || len(id) > 64 {
+			errs = append(errs, fmt.Sprintf("%s: la voce %d deve essere id:base64 (id di 1-64 caratteri)", EnvTOTPKeys, i+1))
+			continue
+		}
+		if seen[id] {
+			errs = append(errs, fmt.Sprintf("%s: id %q ripetuto", EnvTOTPKeys, id))
+			continue
+		}
+		key, err := decodeKey(b64)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: la chiave %q non è valida: %s", EnvTOTPKeys, id, err))
+			continue
+		}
+		seen[id] = true
+		cfg.TOTPKeys = append(cfg.TOTPKeys, TOTPKey{ID: id, Key: key})
+	}
+	if v, ok := lookup(EnvTOTPRequiredForAdmins); ok && strings.TrimSpace(v) != "" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "true", "1", "yes":
+			cfg.TOTPRequiredForAdmins = true
+		case "false", "0", "no":
+		default:
+			errs = append(errs, fmt.Sprintf("%s non è un booleano valido: %q (true|false)", EnvTOTPRequiredForAdmins, v))
+		}
+	}
+	if cfg.TOTPRequiredForAdmins && len(cfg.TOTPKeys) == 0 && len(errs) == 0 {
+		errs = append(errs, fmt.Sprintf("%s richiede %s (senza chiavi nessun amministratore potrebbe attivare il TOTP)", EnvTOTPRequiredForAdmins, EnvTOTPKeys))
 	}
 	return errs
 }

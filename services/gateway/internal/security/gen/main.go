@@ -32,6 +32,7 @@ type operation struct {
 	Security             *[]map[string][]string `yaml:"security"`
 	RequiredScopes       []string               `yaml:"x-required-scopes"`
 	PasswordChangeExempt string                 `yaml:"x-password-change-exempt"`
+	TotpEnrollExempt     string                 `yaml:"x-totp-enroll-exempt"`
 	RequiredPermission   string                 `yaml:"x-required-permission"`
 }
 
@@ -54,6 +55,7 @@ type route struct {
 	Credentials                        []string
 	Scopes                             []string
 	Exempt                             string
+	TotpExempt                         bool
 	Permission                         string
 }
 
@@ -114,9 +116,9 @@ func run(contractPath, outPath string) error {
 	b.WriteString("// Routes è la dichiarazione di sicurezza di ogni operazione pubblica del\n// contratto, con il percorso senza prefisso di versione.\n")
 	b.WriteString("var Routes = []Route{\n")
 	for _, r := range routes {
-		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s},\n",
+		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s, TotpEnrollExempt: %t},\n",
 			r.Method, r.Path, r.OperationID, "Service"+strings.ToUpper(r.Service[:1])+r.Service[1:], r.Public,
-			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt))
+			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt), r.TotpExempt)
 	}
 	b.WriteString("}\n")
 	src, err := format.Source(b.Bytes())
@@ -152,7 +154,7 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 	if op.Security != nil {
 		reqs = *op.Security
 	}
-	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt, Permission: op.RequiredPermission}
+	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt, TotpExempt: op.TotpEnrollExempt == "always", Permission: op.RequiredPermission}
 	if len(reqs) == 0 {
 		if len(op.RequiredScopes) > 0 {
 			return route{}, false, fmt.Errorf("%s: rotta pubblica con x-required-scopes", where)
@@ -204,6 +206,11 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 	case "", "always", "self":
 	default:
 		return route{}, false, fmt.Errorf("%s: x-password-change-exempt %q non valido (always|self)", where, r.Exempt)
+	}
+	switch op.TotpEnrollExempt {
+	case "", "always":
+	default:
+		return route{}, false, fmt.Errorf("%s: x-totp-enroll-exempt %q non valido (always)", where, op.TotpEnrollExempt)
 	}
 	return r, false, nil
 }

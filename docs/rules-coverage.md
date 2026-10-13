@@ -43,6 +43,13 @@ Tabella di copertura richiesta dal criterio V1 di `.prisma/knowledge/topics/rila
 | P6 | Repo personali ammessi: admin al proprietario | `services/identity/internal/httpapi/owner_visibility_integration_test.go#TestOwnerAndVisibilityRules`<br>`services/core/internal/httpserver/repos_integration_test.go#TestRepos_Creazione/visibilita_private_di_default_e_contatore` | coperta | |
 | P7 | Default privato alla creazione, anche via API o `gs` | `services/core/internal/httpserver/repos_integration_test.go#TestRepos_Creazione/visibilita_private_di_default_e_contatore`<br>`web/src/pages/repos/Repos.test.tsx#crea con i default: private, readme false, nessun modello`<br>`services/core/internal/stackitest/gs_repo_integration_test.go#TestGsRepo/create_privato_di_default_P7`<br>`cli/internal/cmd/repo/repo_test.go#TestCreate_PrivatoDiDefaultEOwnerUtente` | coperta | |
 
+## A — Autenticazione: secondo fattore (`identita-e-sicurezza.md`; F11, GIT-237)
+
+| Id | Regola | Test | Stato | Cosa manca |
+|---|---|---|---|---|
+| A1 | Secondo fattore TOTP (RFC 6238) per gli account locali: lo attiva l'utente (QR o chiave, poi un codice), codici di recupero monouso, login a due passi, finestra ±1 e codice non riusabile; obbligatorio per gli admin con `GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS`; i token personali restano senza secondo fattore (sono la credenziale) | `services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`<br>`services/identity/internal/auth/auth_integration_test.go#TestSecondFactor_RequiredForAdmins`<br>`services/identity/internal/httpapi/totp_integration_test.go#TestTotpLoginTwoStepsOverHTTP`<br>`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRequiredForAdminsOverHTTP`<br>`services/gateway/internal/httpserver/auth_test.go#TestAuth_TotpDaAttivare`<br>`web/src/pages/settings/SecurityPage.test.tsx#attiva il TOTP`<br>`web/src/pages/LoginPage.test.tsx#chiede il codice e completa il login a due passi` | coperta | |
+| A2 | Gli utenti OIDC prendono l'MFA dal loro provider: GitStack non chiede un secondo fattore locale dopo un login OIDC (per gli admin si raccomanda un provider con MFA imposto, vedi `docs/identity-oidc.md`) | `services/identity/internal/auth/auth_integration_test.go#TestSecondFactor_RequiredForAdmins` | n/a, motivata | Esclusione di prodotto: il secondo fattore degli account OIDC è del provider; il test verifica solo che una sessione OIDC non sia mai obbligata al TOTP locale. |
+
 ## B — Browser del codice (`browser-codice.md`; GIT-89 completa)
 
 | Id | Regola | Test | Stato | Cosa manca |

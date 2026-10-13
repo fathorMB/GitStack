@@ -67,6 +67,7 @@ var domainTables = []string{
 	"users", "credentials", "sessions", "api_tokens", "ssh_keys",
 	"oidc_providers", "oidc_identities", "organizations", "org_members",
 	"teams", "team_members", "resource_grants", "owner_names", "resource_attributes",
+	"totp_credentials", "totp_recovery_codes",
 }
 
 func TestUpDownUp(t *testing.T) {
@@ -86,7 +87,7 @@ func TestUpDownUp(t *testing.T) {
 		}
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 	got = tables(t, pool)
@@ -184,8 +185,9 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 	if err := migrate.Up(ctx, pool, dsn); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("Down 1: %v", err)
+	// Due passi: 0004 (TOTP) e 0003 (nomi degli owner).
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+		t.Fatalf("Down 2: %v", err)
 	}
 	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'alice')`)
 	exec(`INSERT INTO identity.organizations (id, name) VALUES (gen_random_uuid(), 'acme')`)
@@ -198,8 +200,8 @@ func TestOwnerNamesBackfillAndCollision(t *testing.T) {
 	}
 
 	// Collisione: stesso nome in users e organizations prima della 0003.
-	if err := migrate.Down(ctx, pool, dsn, 1); err != nil {
-		t.Fatalf("Down 1 (bis): %v", err)
+	if err := migrate.Down(ctx, pool, dsn, 2); err != nil {
+		t.Fatalf("Down 2 (bis): %v", err)
 	}
 	exec(`INSERT INTO identity.users (id, username) VALUES (gen_random_uuid(), 'acme')`)
 	err := migrate.Up(ctx, pool, dsn)

@@ -21,6 +21,7 @@ import { OrgWebhooksPage } from './pages/orgs/OrgWebhooksPage';
 import { RepoWebhooksPage } from './pages/repos/RepoWebhooksPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
 import { SettingsLayout } from './pages/settings/SettingsLayout';
+import { SecurityPage } from './pages/settings/SecurityPage';
 import { SshKeysPage } from './pages/settings/SshKeysPage';
 import { TokensPage } from './pages/settings/TokensPage';
 import { AuthProvider, RequireAuth } from './routes/auth';
@@ -132,6 +133,7 @@ export function AppRoutes() {
         <Route path="notifications" element={<NotificationSettingsPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="tokens/new" element={<TokensPage startCreating />} />
+        <Route path="security" element={<SecurityPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
         <Route path="deleted-repos" element={<DeletedReposPage />} />
       </Route>

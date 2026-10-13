@@ -422,7 +422,7 @@ func (s *server) VerifyCredential(w http.ResponseWriter, r *http.Request) {
 		// Password iniziale da cambiare: la sessione e' valida, ma il gateway
 		// risponde 403 password_change_required a ogni rotta tranne le tre
 		// eccezioni del contratto (x-password-change-exempt).
-		MustChangePassword: &cur.MustChange,
+		MustChangePassword: &cur.MustChange, MustEnrollTotp: &cur.MustEnrollTotp,
 	}})
 }
 

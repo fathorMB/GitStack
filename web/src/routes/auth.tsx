@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { fetchSession } from '../lib/authApi';
 import { ApiError } from '../lib/http';
-import { installPasswordChangeHandler, installUnauthorizedHandler } from '../lib/unauthorized';
+import { installPasswordChangeHandler, installTotpEnrollmentHandler, installUnauthorizedHandler } from '../lib/unauthorized';
 
 interface AuthState {
   /** true dopo un 401 dal gateway, finche' l'utente non passa dal login. */
@@ -12,6 +12,9 @@ interface AuthState {
   /** true finche' la password iniziale non e' cambiata (403 password_change_required o mustChangePassword al login). */
   mustChangePassword: boolean;
   setMustChangePassword: (value: boolean) => void;
+  /** true finche' un amministratore non attiva il TOTP imposto dall'installazione (403 totp_enrollment_required). */
+  mustEnrollTotp: boolean;
+  setMustEnrollTotp: (value: boolean) => void;
   /** true dopo che /auth/session ha risposto (anche 401): il gateway e' raggiungibile. */
   sessionVerified: boolean;
   setSessionVerified: (value: boolean) => void;
@@ -25,11 +28,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => installUnauthorizedHandler(() => setUnauthorized(true)), []);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   useEffect(() => installPasswordChangeHandler(() => setMustChangePassword(true)), []);
+  const [mustEnrollTotp, setMustEnrollTotp] = useState(false);
+  useEffect(() => installTotpEnrollmentHandler(() => setMustEnrollTotp(true)), []);
   const [sessionVerified, setSessionVerified] = useState(false);
   const clearUnauthorized = useCallback(() => setUnauthorized(false), []);
   const value = useMemo(
-    () => ({ unauthorized, clearUnauthorized, mustChangePassword, setMustChangePassword, sessionVerified, setSessionVerified }),
-    [unauthorized, clearUnauthorized, mustChangePassword, sessionVerified],
+    () => ({
+      unauthorized,
+      clearUnauthorized,
+      mustChangePassword,
+      setMustChangePassword,
+      mustEnrollTotp,
+      setMustEnrollTotp,
+      sessionVerified,
+      setSessionVerified,
+    }),
+    [unauthorized, clearUnauthorized, mustChangePassword, mustEnrollTotp, sessionVerified],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -56,7 +70,7 @@ type SessionCheck = 'checking' | 'ok' | 'unreachable';
 // Rotta protetta: prima verifica la sessione (una volta, poi si ricorda), dopo
 // un 401 rimanda a /login ricordando dove si voleva andare.
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { unauthorized, mustChangePassword, sessionVerified, setSessionVerified } = useAuth();
+  const { unauthorized, mustChangePassword, mustEnrollTotp, sessionVerified, setSessionVerified } = useAuth();
   const location = useLocation();
   const [check, setCheck] = useState<SessionCheck>(sessionVerified ? 'ok' : 'checking');
   const [attempt, setAttempt] = useState(0);
@@ -79,6 +93,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
   if (mustChangePassword) {
     return <Navigate to="/change-password" replace state={{ from: location.pathname + location.search }} />;
+  }
+  // Amministratore senza TOTP in un'installazione che lo impone: l'unica
+  // pagina utile e' quella dove lo si attiva.
+  if (mustEnrollTotp && location.pathname !== '/settings/security') {
+    return <Navigate to="/settings/security" replace />;
   }
   if (check === 'unreachable') {
     return (

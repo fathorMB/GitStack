@@ -321,6 +321,16 @@ paths:
         con `invalid_credentials`, senza distinguere i casi. Dopo troppi
         tentativi falliti (per utente o per indirizzo IP) risponde 429
         `too_many_attempts` con l'header `Retry-After` in secondi.
+
+        Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola
+        password non basta. Il login e' a due passi: il primo invio con la
+        sola password giusta risponde 401 `second_factor_required` (nessuna
+        sessione, nessun cookie); il secondo ripete username e password con
+        `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi,
+        ogni codice vale una volta sola) oppure `recoveryCode` (codice di
+        recupero monouso). Un codice sbagliato risponde 401
+        `invalid_credentials` e conta come tentativo fallito. Gli utenti che
+        entrano con OIDC prendono l'MFA dal loro provider.
       security: []
       requestBody:
         required: true
@@ -356,6 +366,7 @@ paths:
       operationId: logout
       tags: [auth]
       x-password-change-exempt: always
+      x-totp-enroll-exempt: always
       summary: Termina la sessione corrente
       description: Revoca la sessione del cookie `gst_session` e lo cancella.
       security:
@@ -373,6 +384,7 @@ paths:
       operationId: getCurrentSession
       tags: [auth]
       x-password-change-exempt: always
+      x-totp-enroll-exempt: always
       summary: Sessione corrente
       description: >
         Chi e' il chiamante e con quale credenziale (sessione o token
@@ -387,6 +399,131 @@ paths:
                 $ref: "#/components/schemas/CurrentSession"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp:
+    get:
+      operationId: getTotpStatus
+      tags: [auth]
+      x-totp-enroll-exempt: always
+      summary: Stato del secondo fattore TOTP dell'utente corrente
+      description: >
+        Solo sessione (i token personali non hanno secondo fattore).
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Stato del TOTP.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp/enroll:
+    post:
+      operationId: enrollTotp
+      tags: [auth]
+      x-totp-enroll-exempt: always
+      summary: Inizia l'attivazione del TOTP
+      description: >
+        Genera un segreto nuovo (cifrato nel database) e lo restituisce una
+        sola volta, con l'URI `otpauth://` per il QR code. Il TOTP non e'
+        attivo finche' `POST /auth/totp/verify` non conferma un codice;
+        ripetere `enroll` prima della conferma sostituisce il segreto. Se il
+        TOTP e' gia' attivo: 409 `already_enabled`. Account senza password
+        (agent, solo OIDC): 409 `not_local`. Installazione senza chiavi
+        TOTP: 503 `totp_unavailable`.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Segreto e URI di provisioning.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpEnrollment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp/verify:
+    post:
+      operationId: verifyTotp
+      tags: [auth]
+      x-totp-enroll-exempt: always
+      summary: Conferma l'attivazione del TOTP
+      description: >
+        Verifica un codice del segreto in attesa, attiva il TOTP e restituisce
+        una sola volta i codici di recupero monouso. Codice sbagliato: 422
+        `validation_failed`; nessuna attivazione in corso: 409 `not_pending`.
+        I tentativi sbagliati passano dal limitatore del login.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpCodeInput"
+      responses:
+        "200":
+          description: TOTP attivo; codici di recupero.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpRecoveryCodes"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp/disable:
+    post:
+      operationId: disableTotp
+      tags: [auth]
+      summary: Disattiva il TOTP
+      description: >
+        Chiede la password e un codice TOTP (o un codice di recupero). Se
+        l'installazione impone il TOTP agli amministratori, un amministratore
+        non puo' disattivarlo: 409 `totp_required`. Dati errati: 403
+        `forbidden`. Revoca le altre sessioni.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpDisableInput"
+      responses:
+        "204":
+          description: TOTP disattivato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -751,6 +888,32 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /users/{username}/totp:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    delete:
+      operationId: resetUserTotp
+      tags: [users]
+      summary: Azzera il TOTP di un utente (amministratore)
+      description: >
+        Solo amministratori, scope `write:user`: per chi ha perso sia il
+        dispositivo sia i codici di recupero. Toglie segreto e codici e revoca
+        le sessioni dell'utente; al prossimo accesso basta la password (e, per
+        un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza
+        TOTP attivo risponde comunque 204.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: TOTP azzerato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -7063,6 +7226,97 @@ components:
           maxLength: 1024
           format: password
           writeOnly: true
+        totpCode:
+          type: string
+          pattern: '^[0-9]{6}$'
+          writeOnly: true
+          description: Codice TOTP a 6 cifre (secondo passo del login).
+        recoveryCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          writeOnly: true
+          description: >
+            Codice di recupero monouso, in alternativa a `totpCode`. Maiuscole,
+            minuscole e trattini non contano.
+
+    TotpStatus:
+      type: object
+      additionalProperties: false
+      required: [enabled, available, requiredForAdmins, recoveryCodesRemaining]
+      properties:
+        enabled:
+          type: boolean
+          description: Vero se l'utente ha confermato il TOTP.
+        pending:
+          type: boolean
+          description: Vero se c'e' un'attivazione iniziata e non ancora confermata.
+        available:
+          type: boolean
+          description: >
+            Falso se l'installazione non ha chiavi di cifratura configurate
+            (`GITSTACK_IDENTITY_TOTP_KEYS`): l'attivazione risponde 503.
+        requiredForAdmins:
+          type: boolean
+          description: Vero se l'installazione impone il TOTP agli amministratori.
+        recoveryCodesRemaining:
+          type: integer
+          minimum: 0
+
+    TotpEnrollment:
+      type: object
+      additionalProperties: false
+      required: [secret, otpauthUri]
+      properties:
+        secret:
+          type: string
+          description: Segreto in base32, per l'inserimento manuale. Compare solo qui.
+        otpauthUri:
+          type: string
+          description: URI `otpauth://totp/...` da trasformare in QR code.
+
+    TotpCodeInput:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Codice TOTP a 6 cifre.
+
+    TotpRecoveryCodes:
+      type: object
+      additionalProperties: false
+      required: [recoveryCodes]
+      properties:
+        recoveryCodes:
+          type: array
+          description: >
+            Codici di recupero monouso, mostrati una sola volta (nel database
+            ci sono solo gli hash).
+          items:
+            type: string
+
+    TotpDisableInput:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          format: password
+          writeOnly: true
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Codice TOTP attuale (o in alternativa `recoveryCode`).
+        recoveryCode:
+          type: string
+          minLength: 1
+          maxLength: 64
 
     User:
       type: object
@@ -7212,6 +7466,14 @@ components:
             risponde 403 `password_change_required`, tranne `GET
             /auth/session`, `POST /auth/logout` e `PUT
             /users/{username}/password` (solo sulla propria utenza).
+        mustEnrollTotp:
+          type: boolean
+          description: >
+            Vero per un amministratore con sessione a password quando
+            l'installazione impone il TOTP e lui non l'ha ancora attivato.
+            Finche' e' vero ogni chiamata autenticata risponde 403
+            `totp_enrollment_required`, tranne `GET /auth/session`, `POST
+            /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
         scopes:
           type: array
           description: Solo per `authMethod` = `token`.
@@ -7752,6 +8014,13 @@ components:
             `password_change_required` a ogni rotta tranne `GET /auth/session`,
             `POST /auth/logout` e `PUT /users/{username}/password` sulla propria
             utenza. Assente equivale a falso.
+        mustEnrollTotp:
+          type: boolean
+          description: >
+            Vero per una sessione a password di un amministratore che deve
+            ancora attivare il TOTP (installazione che lo impone). Il gateway
+            risponde 403 `totp_enrollment_required` a ogni rotta senza
+            `x-totp-enroll-exempt`. Assente equivale a falso.
         credentialId:
           type: string
           format: uuid

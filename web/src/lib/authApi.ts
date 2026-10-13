@@ -1,14 +1,66 @@
 // Auth e profilo via client generato. Usa il client di default dell'SDK
 // (niente `client:` nelle options), cosi' l'interceptor 401 di
 // unauthorized.ts vede tutte le risposte.
-import { changePassword, getCurrentSession, listOidcProviders, login, logout, updateUser } from '@gitstack/api-client';
-import type { CurrentSession, OidcProvider, UpdateUserInput, User } from '@gitstack/api-client';
+import {
+  changePassword,
+  disableTotp,
+  enrollTotp,
+  getCurrentSession,
+  getTotpStatus,
+  listOidcProviders,
+  login,
+  logout,
+  updateUser,
+  verifyTotp,
+} from '@gitstack/api-client';
+import type {
+  CurrentSession,
+  OidcProvider,
+  TotpEnrollment,
+  TotpStatus,
+  UpdateUserInput,
+  User,
+} from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { CurrentSession, OidcProvider, User };
+export type { CurrentSession, OidcProvider, TotpEnrollment, TotpStatus, User };
 
-export async function loginWithPassword(username: string, password: string): Promise<CurrentSession> {
-  return unwrap(await login({ baseUrl: API_BASE_URL, body: { username, password } }));
+/** Secondo passo del login (F11): un codice TOTP oppure un codice di recupero. */
+export interface SecondFactor {
+  totpCode?: string;
+  recoveryCode?: string;
+}
+
+/** Codice di errore del primo passo quando l'utente ha il TOTP attivo. */
+export const SECOND_FACTOR_REQUIRED = 'second_factor_required';
+
+export async function loginWithPassword(
+  username: string,
+  password: string,
+  second?: SecondFactor,
+): Promise<CurrentSession> {
+  return unwrap(await login({ baseUrl: API_BASE_URL, body: { username, password, ...second } }));
+}
+
+// Secondo fattore TOTP (GET /auth/totp, POST /auth/totp/{enroll,verify,disable}).
+export async function fetchTotpStatus(): Promise<TotpStatus> {
+  return unwrap(await getTotpStatus({ baseUrl: API_BASE_URL }));
+}
+
+export async function startTotpEnrollment(): Promise<TotpEnrollment> {
+  return unwrap(await enrollTotp({ baseUrl: API_BASE_URL }));
+}
+
+/** Conferma l'attivazione; ritorna i codici di recupero (visibili una sola volta). */
+export async function confirmTotp(code: string): Promise<string[]> {
+  return unwrap(await verifyTotp({ baseUrl: API_BASE_URL, body: { code } })).recoveryCodes;
+}
+
+export async function disableOwnTotp(password: string, second: SecondFactor): Promise<void> {
+  const { totpCode, recoveryCode } = second;
+  unwrapEmpty(
+    await disableTotp({ baseUrl: API_BASE_URL, body: { password, code: totpCode, recoveryCode } }),
+  );
 }
 
 export async function fetchSession(): Promise<CurrentSession> {

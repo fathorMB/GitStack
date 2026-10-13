@@ -2273,6 +2273,9 @@ type CurrentSession struct {
 	// MustChangePassword Vero per l'amministratore creato al primo avvio finche' non cambia la password iniziale. Finche' e' vero ogni chiamata autenticata risponde 403 `password_change_required`, tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` (solo sulla propria utenza).
 	MustChangePassword bool `json:"mustChangePassword"`
 
+	// MustEnrollTotp Vero per un amministratore con sessione a password quando l'installazione impone il TOTP e lui non l'ha ancora attivato. Finche' e' vero ogni chiamata autenticata risponde 403 `totp_enrollment_required`, tranne `GET /auth/session`, `POST /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
+	MustEnrollTotp *bool `json:"mustEnrollTotp,omitempty"`
+
 	// Scopes Solo per `authMethod` = `token`.
 	Scopes *[]TokenScope `json:"scopes,omitempty"`
 
@@ -2832,6 +2835,12 @@ type LockIssueInput struct {
 type LoginInput struct {
 	Password *string `json:"password,omitempty"`
 
+	// RecoveryCode Codice di recupero monouso, in alternativa a `totpCode`. Maiuscole, minuscole e trattini non contano.
+	RecoveryCode *string `json:"recoveryCode,omitempty"`
+
+	// TotpCode Codice TOTP a 6 cifre (secondo passo del login).
+	TotpCode *string `json:"totpCode,omitempty"`
+
 	// Username Username oppure email.
 	Username string `json:"username"`
 }
@@ -3103,6 +3112,9 @@ type Principal struct {
 
 	// MustChangePassword Vero per una sessione la cui password iniziale non e' ancora stata cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify` risponde comunque `active` true: il gateway risponde 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza. Assente equivale a falso.
 	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
+
+	// MustEnrollTotp Vero per una sessione a password di un amministratore che deve ancora attivare il TOTP (installazione che lo impone). Il gateway risponde 403 `totp_enrollment_required` a ogni rotta senza `x-totp-enroll-exempt`. Assente equivale a falso.
+	MustEnrollTotp *bool `json:"mustEnrollTotp,omitempty"`
 
 	// Scopes Solo per i token; assenti per le sessioni.
 	Scopes *[]TokenScope `json:"scopes,omitempty"`
@@ -3712,6 +3724,51 @@ type TokenList struct {
 
 // TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
 type TokenScope string
+
+// TotpCodeInput defines model for TotpCodeInput.
+type TotpCodeInput struct {
+	// Code Codice TOTP a 6 cifre.
+	Code string `json:"code"`
+}
+
+// TotpDisableInput defines model for TotpDisableInput.
+type TotpDisableInput struct {
+	// Code Codice TOTP attuale (o in alternativa `recoveryCode`).
+	Code         *string `json:"code,omitempty"`
+	Password     *string `json:"password,omitempty"`
+	RecoveryCode *string `json:"recoveryCode,omitempty"`
+}
+
+// TotpEnrollment defines model for TotpEnrollment.
+type TotpEnrollment struct {
+	// OtpauthUri URI `otpauth://totp/...` da trasformare in QR code.
+	OtpauthUri string `json:"otpauthUri"`
+
+	// Secret Segreto in base32, per l'inserimento manuale. Compare solo qui.
+	Secret string `json:"secret"`
+}
+
+// TotpRecoveryCodes defines model for TotpRecoveryCodes.
+type TotpRecoveryCodes struct {
+	// RecoveryCodes Codici di recupero monouso, mostrati una sola volta (nel database ci sono solo gli hash).
+	RecoveryCodes []string `json:"recoveryCodes"`
+}
+
+// TotpStatus defines model for TotpStatus.
+type TotpStatus struct {
+	// Available Falso se l'installazione non ha chiavi di cifratura configurate (`GITSTACK_IDENTITY_TOTP_KEYS`): l'attivazione risponde 503.
+	Available bool `json:"available"`
+
+	// Enabled Vero se l'utente ha confermato il TOTP.
+	Enabled bool `json:"enabled"`
+
+	// Pending Vero se c'e' un'attivazione iniziata e non ancora confermata.
+	Pending                *bool `json:"pending,omitempty"`
+	RecoveryCodesRemaining int   `json:"recoveryCodesRemaining"`
+
+	// RequiredForAdmins Vero se l'installazione impone il TOTP agli amministratori.
+	RequiredForAdmins bool `json:"requiredForAdmins"`
+}
 
 // Tree defines model for Tree.
 type Tree struct {
@@ -4785,6 +4842,12 @@ type ListUserTokensParams struct {
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
 
+// DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
+type DisableTotpJSONRequestBody = TotpDisableInput
+
+// VerifyTotpJSONRequestBody defines body for VerifyTotp for application/json ContentType.
+type VerifyTotpJSONRequestBody = TotpCodeInput
+
 // GitCreateRepoJSONRequestBody defines body for GitCreateRepo for application/json ContentType.
 type GitCreateRepoJSONRequestBody = GitCreateRepoInput
 
@@ -5037,6 +5100,7 @@ type ClientInterface interface {
 	// LoginWithBody Accede con username e password
 	//
 	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -5046,6 +5110,7 @@ type ClientInterface interface {
 	// Login Accede con username e password
 	//
 	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5086,6 +5151,56 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /auth/session (the `GetCurrentSession` operationId).
 	GetCurrentSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTotpStatus Stato del secondo fattore TOTP dell'utente corrente
+	//
+	// Solo sessione (i token personali non hanno secondo fattore).
+	//
+	// Corresponds with GET /auth/totp (the `GetTotpStatus` operationId).
+	GetTotpStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DisableTotpWithBody Disattiva il TOTP
+	//
+	// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+	DisableTotpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DisableTotp Disattiva il TOTP
+	//
+	// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+	DisableTotp(ctx context.Context, body DisableTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnrollTotp Inizia l'attivazione del TOTP
+	//
+	// Genera un segreto nuovo (cifrato nel database) e lo restituisce una sola volta, con l'URI `otpauth://` per il QR code. Il TOTP non e' attivo finche' `POST /auth/totp/verify` non conferma un codice; ripetere `enroll` prima della conferma sostituisce il segreto. Se il TOTP e' gia' attivo: 409 `already_enabled`. Account senza password (agent, solo OIDC): 409 `not_local`. Installazione senza chiavi TOTP: 503 `totp_unavailable`.
+	//
+	// Corresponds with POST /auth/totp/enroll (the `EnrollTotp` operationId).
+	EnrollTotp(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyTotpWithBody Conferma l'attivazione del TOTP
+	//
+	// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+	VerifyTotpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyTotp Conferma l'attivazione del TOTP
+	//
+	// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+	VerifyTotp(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth Stato del servizio
 	//
@@ -6918,6 +7033,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with DELETE /users/{username}/tokens/{tokenId} (the `RevokeUserToken` operationId).
 	RevokeUserToken(ctx context.Context, username UsernameParam, tokenId TokenIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResetUserTotp Azzera il TOTP di un utente (amministratore)
+	//
+	// Solo amministratori, scope `write:user`: per chi ha perso sia il dispositivo sia i codici di recupero. Toglie segreto e codici e revoca le sessioni dell'utente; al prossimo accesso basta la password (e, per un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza TOTP attivo risponde comunque 204.
+	//
+	// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
+	ResetUserTotp(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetAdminSystem Stato dell'installazione (Admin · System)
@@ -6940,6 +7062,7 @@ func (c *Client) GetAdminSystem(ctx context.Context, reqEditors ...RequestEditor
 // LoginWithBody Accede con username e password
 //
 // Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes any type of body and a specified content type.
 //
@@ -6959,6 +7082,7 @@ func (c *Client) LoginWithBody(ctx context.Context, contentType string, body io.
 // Login Accede con username e password
 //
 // Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -7050,6 +7174,116 @@ func (c *Client) StartOidcLogin(ctx context.Context, provider OidcProviderParam,
 // Corresponds with GET /auth/session (the `GetCurrentSession` operationId).
 func (c *Client) GetCurrentSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetCurrentSessionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetTotpStatus Stato del secondo fattore TOTP dell'utente corrente
+//
+// Solo sessione (i token personali non hanno secondo fattore).
+//
+// Corresponds with GET /auth/totp (the `GetTotpStatus` operationId).
+func (c *Client) GetTotpStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTotpStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DisableTotpWithBody Disattiva il TOTP
+//
+// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+func (c *Client) DisableTotpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDisableTotpRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DisableTotp Disattiva il TOTP
+//
+// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+func (c *Client) DisableTotp(ctx context.Context, body DisableTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDisableTotpRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnrollTotp Inizia l'attivazione del TOTP
+//
+// Genera un segreto nuovo (cifrato nel database) e lo restituisce una sola volta, con l'URI `otpauth://` per il QR code. Il TOTP non e' attivo finche' `POST /auth/totp/verify` non conferma un codice; ripetere `enroll` prima della conferma sostituisce il segreto. Se il TOTP e' gia' attivo: 409 `already_enabled`. Account senza password (agent, solo OIDC): 409 `not_local`. Installazione senza chiavi TOTP: 503 `totp_unavailable`.
+//
+// Corresponds with POST /auth/totp/enroll (the `EnrollTotp` operationId).
+func (c *Client) EnrollTotp(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnrollTotpRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyTotpWithBody Conferma l'attivazione del TOTP
+//
+// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+func (c *Client) VerifyTotpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyTotpRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyTotp Conferma l'attivazione del TOTP
+//
+// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+func (c *Client) VerifyTotp(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyTotpRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11252,6 +11486,23 @@ func (c *Client) RevokeUserToken(ctx context.Context, username UsernameParam, to
 	return c.Client.Do(req)
 }
 
+// ResetUserTotp Azzera il TOTP di un utente (amministratore)
+//
+// Solo amministratori, scope `write:user`: per chi ha perso sia il dispositivo sia i codici di recupero. Toglie segreto e codici e revoca le sessioni dell'utente; al prossimo accesso basta la password (e, per un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza TOTP attivo risponde comunque 204.
+//
+// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
+func (c *Client) ResetUserTotp(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResetUserTotpRequest(c.Server, username)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewGetAdminSystemRequest constructs an http.Request for the GetAdminSystem method
 func NewGetAdminSystemRequest(server string) (*http.Request, error) {
 	var err error
@@ -11522,6 +11773,140 @@ func NewGetCurrentSessionRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetTotpStatusRequest constructs an http.Request for the GetTotpStatus method
+func NewGetTotpStatusRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/totp")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDisableTotpRequest calls the generic DisableTotp builder with application/json body
+func NewDisableTotpRequest(server string, body DisableTotpJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDisableTotpRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewDisableTotpRequestWithBody constructs an http.Request for the DisableTotp method, with any body, and a specified content type
+func NewDisableTotpRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/totp/disable")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnrollTotpRequest constructs an http.Request for the EnrollTotp method
+func NewEnrollTotpRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/totp/enroll")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVerifyTotpRequest calls the generic VerifyTotp builder with application/json body
+func NewVerifyTotpRequest(server string, body VerifyTotpJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewVerifyTotpRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewVerifyTotpRequestWithBody constructs an http.Request for the VerifyTotp method, with any body, and a specified content type
+func NewVerifyTotpRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/totp/verify")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -21505,6 +21890,40 @@ func NewRevokeUserTokenRequest(server string, username UsernameParam, tokenId To
 	return req, nil
 }
 
+// NewResetUserTotpRequest constructs an http.Request for the ResetUserTotp method
+func NewResetUserTotpRequest(server string, username UsernameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/totp", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -21561,6 +21980,7 @@ type ClientWithResponsesInterface interface {
 	// LoginWithBodyWithResponse Accede con username e password
 	//
 	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -21570,6 +21990,7 @@ type ClientWithResponsesInterface interface {
 	// LoginWithResponse Accede con username e password
 	//
 	// Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+	// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -21620,6 +22041,60 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /auth/session (the `GetCurrentSession` operationId).
 	GetCurrentSessionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentSessionResponse, error)
+
+	// GetTotpStatusWithResponse Stato del secondo fattore TOTP dell'utente corrente
+	//
+	// Solo sessione (i token personali non hanno secondo fattore).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/totp (the `GetTotpStatus` operationId).
+	GetTotpStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTotpStatusResponse, error)
+
+	// DisableTotpWithBodyWithResponse Disattiva il TOTP
+	//
+	// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+	DisableTotpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DisableTotpResponse, error)
+
+	// DisableTotpWithResponse Disattiva il TOTP
+	//
+	// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+	DisableTotpWithResponse(ctx context.Context, body DisableTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*DisableTotpResponse, error)
+
+	// EnrollTotpWithResponse Inizia l'attivazione del TOTP
+	//
+	// Genera un segreto nuovo (cifrato nel database) e lo restituisce una sola volta, con l'URI `otpauth://` per il QR code. Il TOTP non e' attivo finche' `POST /auth/totp/verify` non conferma un codice; ripetere `enroll` prima della conferma sostituisce il segreto. Se il TOTP e' gia' attivo: 409 `already_enabled`. Account senza password (agent, solo OIDC): 409 `not_local`. Installazione senza chiavi TOTP: 503 `totp_unavailable`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/totp/enroll (the `EnrollTotp` operationId).
+	EnrollTotpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*EnrollTotpResponse, error)
+
+	// VerifyTotpWithBodyWithResponse Conferma l'attivazione del TOTP
+	//
+	// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+	VerifyTotpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VerifyTotpResponse, error)
+
+	// VerifyTotpWithResponse Conferma l'attivazione del TOTP
+	//
+	// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+	VerifyTotpWithResponse(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyTotpResponse, error)
 
 	// GetHealthWithResponse Stato del servizio
 	//
@@ -23702,6 +24177,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /users/{username}/tokens/{tokenId} (the `RevokeUserToken` operationId).
 	RevokeUserTokenWithResponse(ctx context.Context, username UsernameParam, tokenId TokenIdParam, reqEditors ...RequestEditorFn) (*RevokeUserTokenResponse, error)
+
+	// ResetUserTotpWithResponse Azzera il TOTP di un utente (amministratore)
+	//
+	// Solo amministratori, scope `write:user`: per chi ha perso sia il dispositivo sia i codici di recupero. Toglie segreto e codici e revoca le sessioni dell'utente; al prossimo accesso basta la password (e, per un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza TOTP attivo risponde comunque 204.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
+	ResetUserTotpWithResponse(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*ResetUserTotpResponse, error)
 }
 
 type GetAdminSystemResponse struct {
@@ -24140,6 +24624,296 @@ func (r GetCurrentSessionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetCurrentSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTotpStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TotpStatus
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetTotpStatusResponse) GetJSON200() *TotpStatus {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetTotpStatusResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetTotpStatusResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetTotpStatusResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTotpStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTotpStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTotpStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// DisableTotpResponse429Headers the declared response headers of an HTTP 429 response for DisableTotp
+type DisableTotpResponse429Headers struct {
+	RetryAfter *int
+}
+
+type DisableTotpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *DisableTotpResponse429Headers
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DisableTotpResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DisableTotpResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DisableTotpResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DisableTotpResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r DisableTotpResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DisableTotpResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DisableTotpResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DisableTotpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DisableTotpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DisableTotpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type EnrollTotpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TotpEnrollment
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnrollTotpResponse) GetJSON200() *TotpEnrollment {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnrollTotpResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnrollTotpResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r EnrollTotpResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r EnrollTotpResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnrollTotpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnrollTotpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnrollTotpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VerifyTotpResponse429Headers the declared response headers of an HTTP 429 response for VerifyTotp
+type VerifyTotpResponse429Headers struct {
+	RetryAfter *int
+}
+
+type VerifyTotpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TotpRecoveryCodes
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VerifyTotpResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VerifyTotpResponse) GetJSON200() *TotpRecoveryCodes {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r VerifyTotpResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r VerifyTotpResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r VerifyTotpResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r VerifyTotpResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r VerifyTotpResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r VerifyTotpResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VerifyTotpResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VerifyTotpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VerifyTotpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VerifyTotpResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -37734,6 +38508,68 @@ func (r RevokeUserTokenResponse) ContentType() string {
 	return ""
 }
 
+type ResetUserTotpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResetUserTotpResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ResetUserTotpResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ResetUserTotpResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ResetUserTotpResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ResetUserTotpResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResetUserTotpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResetUserTotpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResetUserTotpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetAdminSystemWithResponse Stato dell'installazione (Admin · System)
 //
 // Database (interno o esterno, N8), backup locale e S3 con l'esito dell'ultimo caricamento (N7), rete aziendale (N9) e versioni di GitStack e k3s con l'aggiornamento disponibile (N10). Solo l'amministratore dell'installazione. Le informazioni dell'host le pubblica `gitstack` in un ConfigMap che core legge da un file montato: niente accesso all'host dai servizi. La versione del server Postgres è quella letta ora da core sulla sua connessione. Mai segreti: né password, né chiavi S3, né credenziali del proxy.
@@ -37752,6 +38588,7 @@ func (c *ClientWithResponses) GetAdminSystemWithResponse(ctx context.Context, re
 // LoginWithBodyWithResponse Accede con username e password
 //
 // Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -37767,6 +38604,7 @@ func (c *ClientWithResponses) LoginWithBodyWithResponse(ctx context.Context, con
 // LoginWithResponse Accede con username e password
 //
 // Crea una sessione. La risposta imposta il cookie `gst_session` (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le credenziali sbagliate e l'utente disattivato rispondono entrambi 401 con `invalid_credentials`, senza distinguere i casi. Dopo troppi tentativi falliti (per utente o per indirizzo IP) risponde 429 `too_many_attempts` con l'header `Retry-After` in secondi.
+// Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola password non basta. Il login e' a due passi: il primo invio con la sola password giusta risponde 401 `second_factor_required` (nessuna sessione, nessun cookie); il secondo ripete username e password con `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi, ogni codice vale una volta sola) oppure `recoveryCode` (codice di recupero monouso). Un codice sbagliato risponde 401 `invalid_credentials` e conta come tentativo fallito. Gli utenti che entrano con OIDC prendono l'MFA dal loro provider.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -37852,6 +38690,96 @@ func (c *ClientWithResponses) GetCurrentSessionWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetCurrentSessionResponse(rsp)
+}
+
+// GetTotpStatusWithResponse Stato del secondo fattore TOTP dell'utente corrente
+//
+// Solo sessione (i token personali non hanno secondo fattore).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/totp (the `GetTotpStatus` operationId).
+func (c *ClientWithResponses) GetTotpStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTotpStatusResponse, error) {
+	rsp, err := c.GetTotpStatus(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTotpStatusResponse(rsp)
+}
+
+// DisableTotpWithBodyWithResponse Disattiva il TOTP
+//
+// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+func (c *ClientWithResponses) DisableTotpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DisableTotpResponse, error) {
+	rsp, err := c.DisableTotpWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDisableTotpResponse(rsp)
+}
+
+// DisableTotpWithResponse Disattiva il TOTP
+//
+// Chiede la password e un codice TOTP (o un codice di recupero). Se l'installazione impone il TOTP agli amministratori, un amministratore non puo' disattivarlo: 409 `totp_required`. Dati errati: 403 `forbidden`. Revoca le altre sessioni.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/totp/disable (the `DisableTotp` operationId).
+func (c *ClientWithResponses) DisableTotpWithResponse(ctx context.Context, body DisableTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*DisableTotpResponse, error) {
+	rsp, err := c.DisableTotp(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDisableTotpResponse(rsp)
+}
+
+// EnrollTotpWithResponse Inizia l'attivazione del TOTP
+//
+// Genera un segreto nuovo (cifrato nel database) e lo restituisce una sola volta, con l'URI `otpauth://` per il QR code. Il TOTP non e' attivo finche' `POST /auth/totp/verify` non conferma un codice; ripetere `enroll` prima della conferma sostituisce il segreto. Se il TOTP e' gia' attivo: 409 `already_enabled`. Account senza password (agent, solo OIDC): 409 `not_local`. Installazione senza chiavi TOTP: 503 `totp_unavailable`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/totp/enroll (the `EnrollTotp` operationId).
+func (c *ClientWithResponses) EnrollTotpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*EnrollTotpResponse, error) {
+	rsp, err := c.EnrollTotp(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnrollTotpResponse(rsp)
+}
+
+// VerifyTotpWithBodyWithResponse Conferma l'attivazione del TOTP
+//
+// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+func (c *ClientWithResponses) VerifyTotpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VerifyTotpResponse, error) {
+	rsp, err := c.VerifyTotpWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyTotpResponse(rsp)
+}
+
+// VerifyTotpWithResponse Conferma l'attivazione del TOTP
+//
+// Verifica un codice del segreto in attesa, attiva il TOTP e restituisce una sola volta i codici di recupero monouso. Codice sbagliato: 422 `validation_failed`; nessuna attivazione in corso: 409 `not_pending`. I tentativi sbagliati passano dal limitatore del login.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/totp/verify (the `VerifyTotp` operationId).
+func (c *ClientWithResponses) VerifyTotpWithResponse(ctx context.Context, body VerifyTotpJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyTotpResponse, error) {
+	rsp, err := c.VerifyTotp(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyTotpResponse(rsp)
 }
 
 // GetHealthWithResponse Stato del servizio
@@ -41352,6 +42280,21 @@ func (c *ClientWithResponses) RevokeUserTokenWithResponse(ctx context.Context, u
 	return ParseRevokeUserTokenResponse(rsp)
 }
 
+// ResetUserTotpWithResponse Azzera il TOTP di un utente (amministratore)
+//
+// Solo amministratori, scope `write:user`: per chi ha perso sia il dispositivo sia i codici di recupero. Toglie segreto e codici e revoca le sessioni dell'utente; al prossimo accesso basta la password (e, per un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza TOTP attivo risponde comunque 204.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /users/{username}/totp (the `ResetUserTotp` operationId).
+func (c *ClientWithResponses) ResetUserTotpWithResponse(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*ResetUserTotpResponse, error) {
+	rsp, err := c.ResetUserTotp(ctx, username, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResetUserTotpResponse(rsp)
+}
+
 // ParseGetAdminSystemResponse parses an HTTP response from a GetAdminSystemWithResponse call
 func ParseGetAdminSystemResponse(rsp *http.Response) (*GetAdminSystemResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -41720,6 +42663,251 @@ func ParseGetCurrentSessionResponse(rsp *http.Response) (*GetCurrentSessionRespo
 		}
 		response.JSONDefault = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseGetTotpStatusResponse parses an HTTP response from a GetTotpStatusWithResponse call
+func ParseGetTotpStatusResponse(rsp *http.Response) (*GetTotpStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTotpStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TotpStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDisableTotpResponse parses an HTTP response from a DisableTotpWithResponse call
+func ParseDisableTotpResponse(rsp *http.Response) (*DisableTotpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DisableTotpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers DisableTotpResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnrollTotpResponse parses an HTTP response from a EnrollTotpWithResponse call
+func ParseEnrollTotpResponse(rsp *http.Response) (*EnrollTotpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnrollTotpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TotpEnrollment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVerifyTotpResponse parses an HTTP response from a VerifyTotpWithResponse call
+func ParseVerifyTotpResponse(rsp *http.Response) (*VerifyTotpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VerifyTotpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TotpRecoveryCodes
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers VerifyTotpResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -52870,6 +54058,56 @@ func ParseRevokeUserTokenResponse(rsp *http.Response) (*RevokeUserTokenResponse,
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResetUserTotpResponse parses an HTTP response from a ResetUserTotpWithResponse call
+func ParseResetUserTotpResponse(rsp *http.Response) (*ResetUserTotpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResetUserTotpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError
