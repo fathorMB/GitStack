@@ -1741,3 +1741,8 @@ rm -rf /tmp/gh-prova
 ```
 
 Poi su GitHub: cancella il repo di prova e **revoca** il token. Il mirror del repo vero di GitStack si crea solo nel giorno scelto per la tappa 2, con le regole di [Mirroring to GitHub](#mirroring-to-github).
+
+---
+
+*Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
+decisioni D17–D19 [c_1d1d61aca3dea601]*
