@@ -61,10 +61,8 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
 
   // P5: carica l'origine del pull mirror per il controllo di conflitto.
   // pullOrigin viene impostato per ogni stato del mirror.
-  // Il blocco (avviso loop + pulsante spento) vale solo per paused/in_sync.
+  // Il blocco (avviso loop + pulsante spento) vale per ogni stato attivo (non stopped).
   // stopped → tappa 2 V7: messaggio informativo, pulsante attivo.
-  // pending/syncing/error → nessun blocco.
-  // isActivePull vale true solo per paused e in_sync.
   useEffect(() => {
     fetchPullMirror(owner, repo).then((m) => {
       if (m) {
@@ -352,19 +350,16 @@ function MirrorForm(props: {
   }
 
   // P5: confronto URL con l'origine del pull mirror.
-  // isConflict = URL coincide con l'origine del pull mirror.
-  // Blocked = pull mirror attivo (qualunque stato tranne stopped).
+  // isBlocked = URL coincide + pull mirror attivo (non stopped).
   // stopped → tappa 2: mostra messaggio informativo, non blocca.
-  const isActivePull = pullMirrorState !== 'stopped';
-  const isConflict = mirror === null && pullOrigin !== null && normalizeUrl(url) === normalizeUrl(pullOrigin);
-  const isBlocked = isConflict && isActivePull;
-  const isStopped = isConflict && pullMirrorState === 'stopped';
+  const isBlocked = mirror === null && pullOrigin !== null && pullMirrorState !== 'stopped' && normalizeUrl(url) === normalizeUrl(pullOrigin);
+  const isStopped = mirror === null && pullOrigin !== null && pullMirrorState === 'stopped' && normalizeUrl(url) === normalizeUrl(pullOrigin);
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
       <div className="card-h">{mirror ? 'Edit mirror' : 'Add mirror'}</div>
       <div className="card-b stack form-stack" style={{ gap: 16 }}>
         {general ? <ErrorAlert message={general} /> : null}
-        {isConflict && isBlocked ? (
+        {isBlocked ? (
           <div className="alert alert-danger">
             <AlertTriangle size={16} aria-hidden="true" />
             <div>
@@ -372,7 +367,7 @@ function MirrorForm(props: {
             </div>
           </div>
         ) : null}
-        {isConflict && isStopped ? (
+        {isStopped ? (
           <div className="alert alert-info">
             <svg className="icon" aria-hidden="true">
               <use href="#i-info" />
@@ -403,7 +398,7 @@ function MirrorForm(props: {
         </Button>
         <Button type="submit" variant="primary" disabled={
           busy ||
-          (isConflict && isBlocked) ||
+          isBlocked ||
           url.trim() === '' ||
           username.trim() === '' ||
           (mirror === null && token === '')

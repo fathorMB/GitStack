@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { describeError } from './http';
 
 // Carica dati all'ingresso della pagina: { data, loading, error, reload }.
-// Se initial è fornito, lo usa come dato iniziale e salta il fetch.
+// Se initial è fornito (anche null), lo usa come dato iniziale e salta il fetch.
+// Se initial non è fornito (undefined), parte con loading = true e fa il fetch.
 export function useLoad<T>(fn: () => Promise<T>, initial?: T | null) {
-  const [data, setData] = useState<T | null>(initial ?? null);
+  const [data, setData] = useState<T | null>(initial !== undefined ? initial : null);
   const [loading, setLoading] = useState(initial === undefined);
   const [error, setError] = useState<string | null>(null);
 

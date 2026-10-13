@@ -15,10 +15,10 @@ describe('useLoad', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it('loading true al mount con initial', async () => {
+  it('loading false al mount con initial (dati già pronti)', async () => {
     const fn = vi.fn();
     const { result } = renderHook(() => useLoad(fn, 'initial'));
-    expect(result.current.loading).toBe(true);
+    expect(result.current.loading).toBe(false);
     expect(result.current.data).toBe('initial');
     // La funzione non viene richiamata.
     expect(fn).not.toHaveBeenCalled();
