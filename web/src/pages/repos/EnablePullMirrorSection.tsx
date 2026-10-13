@@ -68,7 +68,7 @@ export function EnablePullMirrorSection({
     }
   }
 
-  const valid = url.trim() !== '' && username.trim() !== '' && token !== '';
+  const valid = url.trim() !== '';
 
   return (
     <section aria-label="Enable pull mirror">

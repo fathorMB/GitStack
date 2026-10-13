@@ -61,7 +61,9 @@ function NotificationRow({
     <li className={classes} data-testid="notification">
       {isMirror ? (
         <span className="avatar av-sys" aria-hidden="true">
-          <svg className="icon"><use href="#i-alert" /></svg>
+          <svg className="icon">
+            {n.event === 'mirror.ref_diverged' ? <use href="#i-mirror" /> : <use href="#i-alert" />}
+          </svg>
         </span>
       ) : actor ? (
         <span className={`avatar${isAgent ? ' av-bot' : ''}`} aria-hidden="true">
@@ -104,7 +106,11 @@ function NotificationRow({
           {isMirror ? (
             <>
               {repo ? <span className="mono">{repo}</span> : null}
-              {n.issue ? <span> #{n.issue.number}</span> : null}
+              {n.reason === 'mirror' && n.event === 'mirror.24h_no_update' ? (
+                <> · last error: {n.lastError ?? 'unknown'}. Check the token in Settings · Pull mirror.</>
+              ) : n.reason === 'mirror' && n.event === 'mirror.ref_diverged' ? (
+                <> · rewritten at the source. GitStack kept its version <span className="mono">{n.remoteSha ?? '—'}</span>.</>
+              ) : null}
             </>
           ) : (
             <>

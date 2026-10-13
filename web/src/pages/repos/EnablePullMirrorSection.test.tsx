@@ -59,7 +59,7 @@ describe('EnablePullMirrorSection', () => {
 
   it('mostra avvertenza MP1: nessun dato cancellato o sovrascritto', async () => {
     renderSection();
-    expect(await screen.findByText(/nothing is deleted or overwritten/)).toBeInTheDocument();
+    expect(await screen.findByText(/nothing is .*deleted or overwritten/i)).toBeInTheDocument();
   });
 
   it('il form contiene URL dell\'origine', async () => {
@@ -92,7 +92,11 @@ describe('EnablePullMirrorSection', () => {
     const user = userEvent.setup();
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
+    const usernameInput = screen.getByLabelText('Username (optional)');
+    const tokenInput = screen.getByLabelText('Access token (optional)');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.type(usernameInput, 'mirror-bot');
+    await user.type(tokenInput, 's3cret');
     expect(screen.getByRole('button', { name: 'Enable pull mirror' })).not.toBeDisabled();
   });
 
@@ -101,10 +105,16 @@ describe('EnablePullMirrorSection', () => {
     const user = userEvent.setup();
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
+    const usernameInput = screen.getByLabelText('Username (optional)');
+    const tokenInput = screen.getByLabelText('Access token (optional)');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.type(usernameInput, 'mirror-bot');
+    await user.type(tokenInput, 's3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(enablePullMirror).toHaveBeenCalledWith('acme', 'api', {
       url: 'https://github.com/acme/origin.git',
+      username: 'mirror-bot',
+      token: 's3cret',
       intervalSeconds: 600,
     });
   });
@@ -138,8 +148,12 @@ describe('EnablePullMirrorSection', () => {
     const user = userEvent.setup();
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
+    const usernameInput = screen.getByLabelText('Username (optional)');
+    const tokenInput = screen.getByLabelText('Access token (optional)');
     await user.type(urlInput, 'http://x');
-    await user.click(screen.getByRole('button', { name: 'Enable mirror' }));
+    await user.type(usernameInput, 'mirror-bot');
+    await user.type(tokenInput, 's3cret');
+    await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     expect(await screen.findByText('url must be https')).toBeInTheDocument();
   });
 
@@ -148,8 +162,12 @@ describe('EnablePullMirrorSection', () => {
     const user = userEvent.setup();
     renderSection();
     const urlInput = screen.getByLabelText('Source URL');
+    const usernameInput = screen.getByLabelText('Username (optional)');
+    const tokenInput = screen.getByLabelText('Access token (optional)');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
-    await user.click(screen.getByRole('button', { name: 'Enable mirror' }));
+    await user.type(usernameInput, 'mirror-bot');
+    await user.type(tokenInput, 's3cret');
+    await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     // describeError per un Error non-API torna il messaggio di connessione.
     expect(await screen.findByText(/Could not reach/)).toBeInTheDocument();
   });
@@ -160,7 +178,11 @@ describe('EnablePullMirrorSection', () => {
     const user = userEvent.setup();
     render(<ToastProvider><EnablePullMirrorSection owner="acme" repo="api" onSuccess={onSuccessMock} /></ToastProvider>);
     const urlInput = screen.getByLabelText('Source URL');
+    const usernameInput = screen.getByLabelText('Username (optional)');
+    const tokenInput = screen.getByLabelText('Access token (optional)');
     await user.type(urlInput, 'https://github.com/acme/origin.git');
+    await user.type(usernameInput, 'mirror-bot');
+    await user.type(tokenInput, 's3cret');
     await user.click(screen.getByRole('button', { name: 'Enable pull mirror' }));
     await waitFor(() => expect(onSuccessMock).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://github.com/acme/origin.git' })));
   });

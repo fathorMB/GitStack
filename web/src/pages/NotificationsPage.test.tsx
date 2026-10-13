@@ -214,6 +214,8 @@ describe('NotificationsPage', () => {
       webhook: null,
       commentId: null,
       readAt: null,
+      lastError: 'authentication failed (401)',
+      remoteSha: null,
     };
     mockedList.mockResolvedValue(page([mirror24h]));
     renderPage();
@@ -223,7 +225,7 @@ describe('NotificationsPage', () => {
     expect(screen.getByText('acme/GitStack')).toBeInTheDocument();
   });
 
-  it('renderizza una notifica mirror "ref diverged" con avatar di sistema', async () => {
+  it('renderizza una notifica mirror "ref diverged" con avatar di sistema e dettaglio', async () => {
     const mirrorDiv: Notification = {
       id: 'n-m2',
       reason: 'mirror',
@@ -238,10 +240,13 @@ describe('NotificationsPage', () => {
       webhook: null,
       commentId: null,
       readAt: null,
+      lastError: null,
+      remoteSha: '4be01d7',
     };
     mockedList.mockResolvedValue(page([mirrorDiv]));
     renderPage();
     expect(await screen.findByRole('link', { name: 'Ref diverged: feature/old-ui' })).toHaveAttribute('href', '/settings/pull-mirror');
+    expect(screen.getByText(/GitStack kept its version/)).toBeInTheDocument();
   });
 
   it('per le notifiche mirror non mostra il badge del motivo', async () => {
@@ -259,6 +264,8 @@ describe('NotificationsPage', () => {
       webhook: null,
       commentId: null,
       readAt: null,
+      lastError: null,
+      remoteSha: '4be01d7',
     };
     mockedList.mockResolvedValue(page([mirrorN, mention]));
     renderPage();

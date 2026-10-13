@@ -72,11 +72,11 @@ describe('PullMirrorSection', () => {
   beforeEach(() => {
     vi.mocked(fetchPullMirror).mockReset().mockResolvedValue(pullMirror());
     vi.mocked(fetchPullMirrorRuns).mockReset().mockResolvedValue([]);
-    vi.mocked(syncPullMirror).mockReset();
-    vi.mocked(pausePullMirror).mockReset();
-    vi.mocked(resumePullMirror).mockReset();
-    vi.mocked(stopPullMirror).mockReset();
-    vi.mocked(updatePullMirror).mockReset();
+    vi.mocked(syncPullMirror).mockReset().mockResolvedValue(pullMirror());
+    vi.mocked(pausePullMirror).mockReset().mockResolvedValue(pullMirror({ state: 'paused' }));
+    vi.mocked(resumePullMirror).mockReset().mockResolvedValue(pullMirror({ state: 'in_sync' }));
+    vi.mocked(stopPullMirror).mockReset().mockResolvedValue(pullMirror({ state: 'stopped' }));
+    vi.mocked(updatePullMirror).mockReset().mockResolvedValue(pullMirror());
   });
 
   it('mostra titolo, stato attivo e badge "Active"', async () => {
@@ -203,14 +203,14 @@ describe('PullMirrorSection', () => {
     // Apre il dialog ma non ferma
     await user.click(stopBtn);
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Moving your work to GitStack?')).toBeInTheDocument();
-    expect(within(dialog).getByText(/Type.*api.*to confirm/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Moving your work to GitStack\?/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Type.*acme\/api.*to confirm/)).toBeInTheDocument();
     expect(stopPullMirror).not.toHaveBeenCalled();
-    // Scrivi il nome del repo e clicca conferma
-    const input = within(dialog).getByRole('textbox', { name: '' });
-    await user.type(input, 'api');
+    // Scrivi il nome completo del repo e clicca conferma
+    const input = within(dialog).getByPlaceholderText(/Type.*acme\/api.*to confirm/);
+    await user.type(input, 'acme/api');
     await user.click(within(dialog).getByRole('button', { name: 'Stop mirroring' }));
-    await waitFor(() => expect(stopPullMirror).toHaveBeenCalledWith('acme', 'api', 'api'));
+    await waitFor(() => expect(stopPullMirror).toHaveBeenCalledWith('acme', 'api', 'acme/api'));
   });
 
   it('pulsante stop disabilitato finché il testo non corrisponde', async () => {
@@ -222,9 +222,9 @@ describe('PullMirrorSection', () => {
     // Pulsante disabilitato con testo errato
     const btn = within(dialog).getByRole('button', { name: 'Stop mirroring' });
     expect(btn).toBeDisabled();
-    // Scrivi il nome corretto
-    const input = within(dialog).getByRole('textbox', { name: '' });
-    await user.type(input, 'api');
+    // Scrivi il nome corretto (owner/repo)
+    const input = within(dialog).getByPlaceholderText(/Type.*acme\/api.*to confirm/);
+    await user.type(input, 'acme/api');
     // Pulsante abilitato
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Stop mirroring' })).not.toBeDisabled());
   });
@@ -287,6 +287,7 @@ describe('PullMirrorSection', () => {
   });
 
   it('sostituisce il token e salva', async () => {
+    vi.mocked(updatePullMirror).mockResolvedValue(pullMirror());
     const user = userEvent.setup();
     renderSection();
     // Cerca l'input del token per placeholder
@@ -301,9 +302,15 @@ describe('PullMirrorSection', () => {
   // ---- Punto 3: dopo le azioni lo stato si aggiorna ----
 
   it('dopo Pause mostra Resume e badge Paused', async () => {
-    vi.mocked(fetchPullMirror).mockResolvedValue(pullMirror({ state: 'paused' }));
+    const user = userEvent.setup();
     renderSection();
-    // Dopo reload il badge Paused e il pulsante Resume compaiono.
+    // Il mirror è inizialmente in_sync (from beforeEach).
+    expect(await screen.findByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    // Clicca Pause: l'azione chiama pausePullMirror che ritorna il mirror paused,
+    // setData(m) aggiorna lo stato locale e la UI si riconfigura.
+    await user.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(pausePullMirror).toHaveBeenCalledWith('acme', 'api');
+    // Dopo l'azione, setData(m) aggiorna lo stato: compare Resume e badge Paused.
     expect(await screen.findByText('Paused')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
@@ -320,15 +327,43 @@ describe('PullMirrorSection', () => {
     // Il pulsante dice sempre "Stop mirroring", non il testo digitato.
     const btn = within(dialog).getByRole('button', { name: 'Stop mirroring' });
     expect(btn).toBeDisabled();
-    // Dopo aver scritto il nome corretto, il pulsante resta etichettato "Stop mirroring".
-    const input = within(dialog).getByRole('textbox', { name: '' });
-    await user.type(input, 'api');
+    // Dopo aver scritto il nome corretto (owner/repo), il pulsante resta etichettato "Stop mirroring".
+    const input = within(dialog).getByPlaceholderText(/Type.*acme\/api.*to confirm/);
+    await user.type(input, 'acme/api');
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Stop mirroring' })).not.toBeDisabled());
+  });
+
+  // ---- Punto 2: Stop mirroring con conferma ----
+
+  it('Stop mirroring: passa il valore digitato a stopPullMirror', async () => {
+    vi.mocked(stopPullMirror).mockResolvedValue(pullMirror({ state: 'stopped' }));
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByRole('heading', { name: 'Danger zone' });
+    await user.click(screen.getByRole('button', { name: 'Stop mirroring' }));
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByPlaceholderText(/Type.*acme\/api.*to confirm/);
+    await user.type(input, 'acme/api');
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Stop mirroring' })).not.toBeDisabled());
+    await user.click(within(dialog).getByRole('button', { name: 'Stop mirroring' }));
+    expect(stopPullMirror).toHaveBeenCalledWith('acme', 'api', 'acme/api');
+  });
+
+  it('Stop mirroring: pulsante spento con nome sbagliato', async () => {
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByRole('heading', { name: 'Danger zone' });
+    await user.click(screen.getByRole('button', { name: 'Stop mirroring' }));
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByPlaceholderText(/Type.*acme\/api.*to confirm/);
+    await user.type(input, 'wrong-name');
+    expect(within(dialog).getByRole('button', { name: 'Stop mirroring' })).toBeDisabled();
   });
 
   // ---- Punto 4: Replace button test ----
 
   it('Replace chiama updatePullMirror una volta sola con { token }', async () => {
+    vi.mocked(updatePullMirror).mockResolvedValue(pullMirror());
     const user = userEvent.setup();
     renderSection();
     const tokenInput = await screen.findByPlaceholderText('New token');

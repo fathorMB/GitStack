@@ -1,8 +1,7 @@
 import { AlertCircle, Check, CheckCircle, Clock, GitBranch, Key, Loader2, StopCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
-import { Button, ErrorAlert, FormField, PasswordInput, Select, useToast } from '../../components';
+import { Button, ConfirmDialog, ErrorAlert, FormField, PasswordInput, Select, useToast } from '../../components';
 import { timeAgo } from '../../lib/format';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { fetchPullMirror, fetchPullMirrorRuns, pausePullMirror, resumePullMirror, stopPullMirror, syncPullMirror, updatePullMirror } from '../../lib/pullMirrorsApi';
@@ -76,9 +75,8 @@ export function PullMirrorSection({
   onStopped?: () => void;
 }) {
   const { toast } = useToast();
-  const { data, loading, error, reload } = useLoad(() => fetchPullMirror(owner, repo), initialData);
-  const [confirm, setConfirm] = useState<string | null>(null);
-  const [confirmText, setConfirmText] = useState('');
+  const { data, loading, error, reload, setData } = useLoad(() => fetchPullMirror(owner, repo), initialData);
+  const [stopConfirmed, setStopConfirmed] = useState(false);
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -92,14 +90,15 @@ export function PullMirrorSection({
   const isPaused = m.state === 'paused';
   const isActive = !isStopped && !isPaused;
 
-  async function action(fn: () => Promise<PullMirror>, label: string, onDone?: () => void) {
+  async function action(fn: () => Promise<PullMirror>, label: string, onDone?: () => void): Promise<PullMirror | null> {
     setBusy(label);
     setActionError('');
     try {
-      await fn();
+      const m = await fn();
       toast(`${label} completed successfully.`, 'success');
       onDone?.();
-      await reload();
+      setData(m);
+      return m;
     } catch (err) {
       if (err instanceof ApiError) {
         const fields = fieldErrors(err);
@@ -107,6 +106,7 @@ export function PullMirrorSection({
       } else {
         setActionError(describeError(err));
       }
+      return null;
     } finally {
       setBusy('');
     }
@@ -159,61 +159,9 @@ export function PullMirrorSection({
       <RecentRunsSection owner={owner} repo={repo} />
 
       {/* Danger zone */}
-      <DangerZone owner={owner} repo={repo} mirror={m} isPaused={isPaused} isStopped={isStopped} onAction={action} setConfirm={setConfirm} setConfirmText={setConfirmText} busy={busy} />
+      <DangerZone owner={owner} repo={repo} mirror={m} isPaused={isPaused} isStopped={isStopped} onAction={action} onStopped={onStopped} stopConfirmed={stopConfirmed} setStopConfirmed={setStopConfirmed} busy={busy} />
 
-      {/* Confirm dialog per stop */}
-      {confirm === 'stop' ? (
-        <Dialog.Root open={confirm === 'stop'} onOpenChange={(open: boolean) => { if (!open) { setConfirm(null); setConfirmText(''); } }}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="dialog-overlay" />
-            <Dialog.Content className="dialog">
-              <Dialog.Title className="dialog-title">Moving your work to GitStack?</Dialog.Title>
-              <Dialog.Description className="dialog-desc">
-                <p>
-                  Stop the pull mirror for <span className="mono">{repo}</span>. Credentials are deleted and the repository becomes writable.
-                  Diverged refs and run history are kept. You can enable a pull mirror again later.
-                </p>
-                <label htmlFor="stop-confirm" className="small muted" style={{ display: 'block', marginTop: 8 }}>
-                  Type <b>{repo}</b> to confirm.
-                </label>
-                <input
-                  id="stop-confirm"
-                  className="mono"
-                  autoComplete="off"
-                  autoFocus
-                  value={confirmText}
-                  placeholder={repo}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  style={{
-                    width: '100%',
-                    marginTop: 4,
-                    padding: '6px 8px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 4,
-                    fontSize: 'inherit',
-                  }}
-                />
-              </Dialog.Description>
-              <div className="dialog-actions">
-                <Dialog.Close asChild>
-                  <Button>Cancel</Button>
-                </Dialog.Close>
-                <Button
-                  variant="danger"
-                  disabled={confirmText !== repo}
-                  onClick={() => {
-                    void action(() => stopPullMirror(owner, repo, confirmText), 'Stopping', onStopped);
-                    setConfirm(null);
-                    setConfirmText('');
-                  }}
-                >
-                  Stop mirroring
-                </Button>
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      ) : null}
+
     </section>
   );
 }
@@ -295,7 +243,19 @@ function PullMirrorForm({
                 aria-label="New token to replace"
               />
             </FormField>
-            <Button type="submit" variant="ghost" size="sm" disabled={busy}>
+            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => {
+              if (token === '') return;
+              updatePullMirror(owner, repo, { token }).then(() => {
+                toast('Token updated.', 'success');
+                setToken('');
+              }).catch((err: unknown) => {
+                if (err instanceof ApiError) {
+                  setErrors({ token: err.message });
+                } else {
+                  setErrors({ token: describeError(err) });
+                }
+              });
+            }}>
               Replace
             </Button>
             {mirror.hasToken ? (
@@ -473,8 +433,9 @@ function DangerZone({
   isPaused,
   isStopped,
   onAction,
-  setConfirm,
-  setConfirmText,
+  onStopped,
+  stopConfirmed,
+  setStopConfirmed,
   busy,
 }: {
   owner: string;
@@ -483,8 +444,9 @@ function DangerZone({
   isPaused: boolean;
   isStopped: boolean;
   onAction: (fn: () => Promise<PullMirror>, label: string) => void;
-  setConfirm: (c: string | null) => void;
-  setConfirmText: (t: string) => void;
+  onStopped?: () => void;
+  stopConfirmed: boolean;
+  setStopConfirmed: (v: boolean) => void;
   busy: string;
 }) {
   return (
@@ -536,10 +498,7 @@ function DangerZone({
             </div>
             <Button
               variant="danger"
-              onClick={() => {
-                setConfirm('stop');
-                setConfirmText('');
-              }}
+              onClick={() => setStopConfirmed(true)}
               disabled={busy !== ''}
             >
               <StopCircle size={16} aria-hidden="true" />
@@ -548,6 +507,41 @@ function DangerZone({
           </div>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={stopConfirmed}
+        onOpenChange={(o) => !o && setStopConfirmed(false)}
+        title={`Stop mirroring ${owner}/${repo}?`}
+        description={
+          <>
+            <div>
+              After this, <b>pushes are accepted here</b> and GitStack stops fetching from{' '}
+              <span className="mono">{mirror.origin}</span>. The saved token is deleted.
+            </div>
+            <div className="alert alert-info" style={{ marginTop: 8 }}>
+              <svg className="icon" aria-hidden="true">
+                <use href="#i-info" />
+              </svg>
+              <div>
+                Moving your work to GitStack? After stopping, add a{' '}
+                <a href={`/settings/repos/${owner}/${repo}/push-mirrors`}>push mirror</a>{' '}
+                to {mirror.origin} so it keeps receiving the default branch and tags.
+              </div>
+            </div>
+          </>
+        }
+        confirmLabel="Stop mirroring"
+        confirmInput={{
+          placeholder: `Type ${owner}/${repo} to confirm`,
+          expected: `${owner}/${repo}`,
+        }}
+        destructive
+        onConfirm={(value) => {
+          onAction(() => stopPullMirror(owner, repo, value ?? ''), 'Stopping');
+          onStopped?.();
+          setStopConfirmed(false);
+        }}
+      />
     </section>
   );
 }

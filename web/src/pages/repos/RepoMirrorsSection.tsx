@@ -60,14 +60,15 @@ export function RepoMirrorsSection({ owner, repo, readOnly }: { owner: string; r
   const mirrors = data ?? [];
 
   // P5: carica l'origine del pull mirror per il controllo di conflitto.
-  // Solo stopped: nessun blocco (tappa 2 V7).
+  // pullOrigin viene impostato per ogni stato del mirror.
+  // Il blocco (avviso loop + pulsante spento) vale solo per paused/in_sync.
+  // stopped → tappa 2 V7: messaggio informativo, pulsante attivo.
+  // pending/syncing/error → nessun blocco.
   useEffect(() => {
     fetchPullMirror(owner, repo).then((m) => {
       if (m) {
         setPullMirrorState(m.state);
-        // Conflitto solo per stopped, paused, in_sync — non per pending, syncing, error.
-        const isBlocked = m.state !== 'pending' && m.state !== 'syncing' && m.state !== 'error';
-        setPullOrigin(isBlocked ? m.origin : null);
+        setPullOrigin(m.origin);
       } else {
         setPullMirrorState(null);
         setPullOrigin(null);
@@ -343,23 +344,27 @@ function MirrorForm(props: {
     }
   }
 
-  // Token obbligatorio solo per un nuovo push mirror; per la modifica si lascia vuoto per mantenere il token esistente.
-  const valid = url.trim() !== '' && username.trim() !== '' && (mirror !== null || token !== '');
+  // Validità del form: URL e username obbligatori per nuovo e modificato.
+  // Il token è richiesto solo per un nuovo push mirror (GIT-180).
   function normalizeUrl(u: string): string {
     return u.trim().toLowerCase().replace(/\/$/, '').replace(/\.git$/, '');
   }
 
   // P5: conflitto solo per push mirror nuovi verso l'origine del pull mirror.
+  // Il controllo del conflitto vale solo per stopped/paused/in_sync (non pending/syncing/error).
+  // paused/in_sync → bloccato con avviso di loop.
   // stopped → tappa 2: ammesso con messaggio informativo.
-  // pending/syncing/error/paused/in_sync → bloccato.
-  const isConflict = mirror === null && pullOrigin !== null && normalizeUrl(url) === normalizeUrl(pullOrigin);
+  // pending/syncing/error → nessun blocco, nessun avviso.
+  const isInConflictState = ['stopped', 'paused', 'in_sync'].includes(pullMirrorState ?? '');
+  const isConflict = mirror === null && pullOrigin !== null && isInConflictState && normalizeUrl(url) === normalizeUrl(pullOrigin);
+  const isBlocked = pullMirrorState === 'paused' || pullMirrorState === 'in_sync';
   const isStopped = pullMirrorState === 'stopped';
   return (
     <form className="card" onSubmit={(e) => void submit(e)} aria-label={mirror ? 'Edit mirror' : 'Add mirror'}>
       <div className="card-h">{mirror ? 'Edit mirror' : 'Add mirror'}</div>
       <div className="card-b stack form-stack" style={{ gap: 16 }}>
         {general ? <ErrorAlert message={general} /> : null}
-        {isConflict && !isStopped ? (
+        {isConflict && isBlocked ? (
           <div className="alert alert-danger">
             <AlertTriangle size={16} aria-hidden="true" />
             <div>
@@ -396,7 +401,13 @@ function MirrorForm(props: {
         <Button type="button" onClick={props.onCancel}>
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={busy || !valid || (isConflict && !isStopped)}>
+        <Button type="submit" variant="primary" disabled={
+          busy ||
+          (isConflict && isBlocked) ||
+          url.trim() === '' ||
+          username.trim() === '' ||
+          (mirror === null && token === '')
+        }>
           {mirror ? 'Save mirror' : 'Add mirror'}
         </Button>
       </div>

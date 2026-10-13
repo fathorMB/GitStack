@@ -63,6 +63,7 @@ export function ConfirmDialog({
                 className="mono"
                 autoComplete="off"
                 autoFocus
+                placeholder={confirmInput.placeholder}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 style={{
