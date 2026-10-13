@@ -478,4 +478,5 @@ describe('RepoMirrorsSection', () => {
     const addBtn = await screen.findByRole('button', { name: 'Add mirror' });
     expect(addBtn).not.toBeDisabled();
   });
+
 });

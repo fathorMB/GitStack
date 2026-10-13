@@ -443,7 +443,7 @@ function DangerZone({
   mirror: PullMirror;
   isPaused: boolean;
   isStopped: boolean;
-  onAction: (fn: () => Promise<PullMirror>, label: string) => void;
+  onAction: (fn: () => Promise<PullMirror>, label: string, onDone?: () => void) => void;
   onStopped?: () => void;
   stopConfirmed: boolean;
   setStopConfirmed: (v: boolean) => void;
@@ -537,9 +537,10 @@ function DangerZone({
         }}
         destructive
         onConfirm={(value) => {
-          onAction(() => stopPullMirror(owner, repo, value ?? ''), 'Stopping');
-          onStopped?.();
-          setStopConfirmed(false);
+          onAction(() => stopPullMirror(owner, repo, value ?? ''), 'Stopping', () => {
+            onStopped?.();
+            setStopConfirmed(false);
+          });
         }}
       />
     </section>
