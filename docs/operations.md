@@ -2052,6 +2052,41 @@ Limiti dichiarati: la parte dell'agente l'ha eseguita un agente GalaxyLab (DevOp
 
 Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva già `admin/agent-trial` con la issue #1 chiusa da una prova precedente (11/10), quindi la prova è stata rifatta con `TRIAL_REPO=agent-trial-homehub`; `gs auth status` ora stampa anche gli scope (la guida lo diceva senza, corretto in `agent-trial.md`). Il token admin di prova `agent-trial-admin` va revocato a fine prova (vedi la nota di revisione di GIT-254).
 
+### Condizione 2: esito del 2026-10-18 (GIT-293)
+
+**Stato: controlli 1, 2, 3, 4, 5 e 7 ok; il controllo 6 (login da browser con la password di un utente di homehub) resta da fare al board.** La condizione 2 si chiude quando il 6 è ok.
+
+- **Versione:** homehub e VM `sha-e984353074aeab42560042a2f79079417537819d`.
+- **Archivio ripristinato:** `gitstack-backup-20261018T184439Z-sha-e984353074aeab42560042a2f79079417537819d.tar.gz.enc` (8 710 458 byte, cifrato AES-256-GCM, creato il 2026-10-18 alle 18:44:39 UTC da `gitstack backup --key-file /etc/gitstack/backup.key`, meno di 24 ore).
+- **Cifratura (GIT-249):** i backup del timer erano non cifrati. Il board ha creato `/etc/gitstack/backup.key` (0600, root) e ha messo nel drop-in di `gitstack-backup.service` `ExecStart=/usr/local/bin/gitstack backup --key-file /etc/gitstack/backup.key`. La chiave va conservata anche fuori da homehub: senza, gli archivi non si aprono.
+- **VM:** `gitstack-test-vm` (Hyper-V, Ubuntu 24.04.5, 4 vCPU, 8 GB), riportata al checkpoint `clean` del 28/9 prima della prova (nessun GitStack, nessun k3s), poi installata con `install.sh` dello stesso commit, `GITSTACK_REF=<commit>` e `--image-tag sha-e984353…`; `gitstack status` sano prima del restore. Con `GITSTACK_REF` mancante l'installer risolve il chart da `main` e si ferma con «chart firmato non trovato».
+- **Restore:** `gitstack restore --key-file … <archivio>` ha eseguito tutti i passi (verifica archivio, database in una transazione, repo, allegati, Secret, 7 file di configurazione, CA e certificato per l'IP della VM) ma è uscito con **exit 70**: «gateway non è tornato pronto dopo il restore». **Difetto trovato** (visto nelle due prove): il restore sostituisce i Secret, tra cui le credenziali di NATS, ma non riavvia il `StatefulSet` `gitstack-nats`, che continua con la password vecchia; `core` va in CrashLoop con `nats: Authorization Violation` e il gateway non diventa pronto. Rimedio usato: `kubectl rollout restart statefulset/gitstack-nats`, poi `deploy/gitstack-core` e `deploy/gitstack-gateway`. Il restore va corretto perché riavvii anche NATS (da aprire come item).
+
+| # | Controllo | Esito |
+|---|---|---|
+| 1 | Servizi sani | ok: `Stato: sano`, `exit=0`, tutti i servizi 1/1 (dopo il riavvio di NATS) |
+| 2 | API raggiungibile | ok: `https://172.29.132.37/api/healthz` → `200` |
+| 3 | Repo di homehub | ok: `admin/agent-trial`, `admin/agent-trial-homehub`, `gitstack/gitstack-mirror` (il mirror in pull), come su homehub |
+| 4 | Stesso storico | ok: `git ls-remote` su `refs/heads/main` e tag byte per byte identico su VM e homehub per i tre repo (compresi tutti i tag `sha-…` di `gitstack/gitstack-mirror`) |
+| 5 | Issues | ok: `admin/agent-trial` e `admin/agent-trial-homehub` hanno la stessa issue #1 (chiusa); `gitstack/gitstack-mirror` nessuna, come su homehub (via API: il `gs` dell'host dava 410, vecchio) |
+| 6 | Login | **da fare al board**: l'utente `admin` esiste nel database ripristinato (un token creato su homehub prima del backup apre una sessione sulla VM con l'utente `admin`), ma il login con la password iniziale del Secret dà 401, perché su homehub la password è stata cambiata; la password non è nota all'agente |
+| 7 | Scrittura | ok: clone di `admin/agent-trial-homehub` dalla VM, ramo `prova-ripristino-GIT-293`, push con exit 0; homehub invariato |
+
+### Condizione 4: esito del 2026-10-18 (GIT-293)
+
+**Riuscita.** Repo GitHub di prova vuoto e privato `fathorMB/gitstack-mirror-prova`, fine-grained token con solo *Contents: Read and write* su quel repo; su homehub repo di prova `admin/mirror-prova` (non il repo di GitStack).
+
+| Passo | Esito |
+|---|---|
+| 1. Mirror creato | `201`, `hasToken: true`, id `ea1b225e-353a-4abb-9421-285ef404b00f`, nessun token nella risposta |
+| 2. Primo push | `in_sync` in meno di 2 s; `lastPushed`: `refs/heads/main` e `refs/tags/v0.0.1` = `f1d8d8282beeb58a3350bc7cbba06f2ef52f7b68`, `lastError` nullo |
+| 3. Stessi SHA | `git ls-remote` su GitHub e su homehub: identici per `main` e `v0.0.1` |
+| 4. Push successivo | secondo commit `3cb8399a76d6e74b6c24e273e3ec886f2e8a3bd3`: `in_sync`, arrivato su GitHub come fast-forward, nessun `diverged` |
+| 5. Divergenza | commit diretto su GitHub `a8e68f2ccf28e05dad4447064d2af8a092ec2b82`, poi terzo commit su homehub `a372c06a…`: `state: diverged`, `lastError`: «la destinazione ha una storia diversa, nessuna sovrascrittura: refs/heads/main: rejected (fetch first)». Sulla esecuzione `outcome: diverged`: tag `up-to-date`, `main` `rejected`. `git ls-remote` su GitHub resta `a8e68f2c…`: nulla è stato sovrascritto |
+| 6. Ritorno a `in_sync` | non provato (facoltativo) |
+
+Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Resta al board: revocare il fine-grained token GitHub e il token `git293-prova` di GitStack, cancellare il repo GitHub di prova, cancellare `admin/mirror-prova` su homehub se non serve, fermare la VM.
+
 ## Registro della tappa 1 di V7 (homehub)
 
 Registro del dogfooding: cosa è stato fatto su homehub (GIT-249, 18/10/2026, orari UTC). Ogni riga è un fatto verificato in quel giorno.
