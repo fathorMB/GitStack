@@ -606,6 +606,18 @@ var Tools = []Tool{
 		Schema:      "{\"additionalProperties\":false,\"properties\":{\"number\":{\"description\":\"Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).\",\"format\":\"int64\",\"minimum\":1,\"type\":\"integer\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"}},\"required\":[\"number\",\"owner\",\"repo\"],\"type\":\"object\"}",
 	},
 	{
+		Name:        "pr_events",
+		Operation:   "listPullRequestEvents",
+		Method:      "GET",
+		Path:        "/repos/{owner}/{repo}/pulls/{number}/events",
+		Description: "Cronologia degli eventi della Pull Request. Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge. Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404.",
+		Destructive: false,
+		PathParams:  []string{"number", "owner", "repo"},
+		QueryParams: []string{"page", "perPage"},
+		Body:        false,
+		Schema:      "{\"additionalProperties\":false,\"properties\":{\"number\":{\"description\":\"Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).\",\"format\":\"int64\",\"minimum\":1,\"type\":\"integer\"},\"owner\":{\"description\":\"Nome dell'utente o dell'organizzazione proprietaria (R1).\",\"maxLength\":39,\"minLength\":1,\"pattern\":\"^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$\",\"type\":\"string\"},\"page\":{\"default\":1,\"minimum\":1,\"type\":\"integer\"},\"perPage\":{\"default\":20,\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"repo\":{\"description\":\"Nome del repo.\",\"maxLength\":100,\"minLength\":1,\"pattern\":\"^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$\",\"type\":\"string\"}},\"required\":[\"number\",\"owner\",\"repo\"],\"type\":\"object\"}",
+	},
+	{
 		Name:        "pr_files",
 		Operation:   "listPullRequestFiles",
 		Method:      "GET",
