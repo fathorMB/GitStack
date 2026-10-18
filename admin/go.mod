@@ -1,9 +1,9 @@
 module github.com/fathorMB/GitStack/admin
 
-go 1.26.2
+go 1.26.9
 
 require (
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/minio/minio-go/v7 v7.3.0
 	gopkg.in/yaml.v3 v3.0.1
 )

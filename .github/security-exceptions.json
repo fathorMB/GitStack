@@ -6,6 +6,153 @@
       "tool": "pnpm-audit",
       "reason": "braces <=3.0.3 (stack exhaustion on deeply nested glob patterns) has no patched release on npm. It is a transitive build-time dependency of Docusaurus (docs-site/, micromatch via @docusaurus/utils) that only parses the glob patterns of our own docusaurus.config.js; nothing of it ships in the published site and no untrusted input reaches it. Re-evaluate when braces publishes a fix.",
       "expires": "2027-01-31"
+    },
+    {
+      "id": "security/detect-unsafe-regex",
+      "tool": "eslint-security",
+      "reason": "Falso positivo (GIT-247, prova reale della release): l'espressione e' ancorata o con quantificatori su classi disgiunte e non ha ripetizioni annidate; misurata con input patologici da 200.000 caratteri su matchAll/test risponde in meno di 5 ms (tempo lineare), quindi non c'e' ReDoS sul contenuto reso dal Markdown.",
+      "expires": "2027-01-31",
+      "path": "web/src/components/Markdown.tsx"
+    },
+    {
+      "id": "security/detect-unsafe-regex",
+      "tool": "eslint-security",
+      "reason": "Falso positivo (GIT-247, prova reale della release): l'espressione e' ancorata o con quantificatori su classi disgiunte e non ha ripetizioni annidate; misurata con input patologici da 200.000 caratteri su matchAll/test risponde in meno di 5 ms (tempo lineare), quindi non c'e' ReDoS sul contenuto reso dal Markdown.",
+      "expires": "2027-01-31",
+      "path": "web/src/lib/codeLines.ts"
+    },
+    {
+      "id": "security/detect-unsafe-regex",
+      "tool": "eslint-security",
+      "reason": "Falso positivo (GIT-247, prova reale della release): l'espressione e' ancorata o con quantificatori su classi disgiunte e non ha ripetizioni annidate; misurata con input patologici da 200.000 caratteri su matchAll/test risponde in meno di 5 ms (tempo lineare), quindi non c'e' ReDoS sul contenuto reso dal Markdown.",
+      "expires": "2027-01-31",
+      "path": "web/src/lib/diffParse.ts"
+    },
+    {
+      "id": "G407",
+      "tool": "gosec",
+      "reason": "Falso positivo: il nonce AES-GCM e' un contatore a 12 byte, univoco per blocco sotto una chiave AES-256 derivata (HKDF) da un salt casuale di 16 byte (crypto/rand) generato per ogni archivio; la coppia chiave/nonce non si ripete mai. Formato documentato in crypto.go.",
+      "expires": "2027-01-31",
+      "path": "admin/internal/backup/crypto.go"
+    },
+    {
+      "id": "G402",
+      "tool": "gosec",
+      "reason": "ProbeCertExpiry legge soltanto la data di scadenza del certificato presentato da un host interno: non invia dati e non prende nessuna decisione di fiducia, quindi non verificare la catena e' voluto (InsecureSkipVerify con MinVersion TLS 1.2).",
+      "expires": "2027-01-31",
+      "path": "admin/internal/sysinfo/host.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): Statfs: blocchi e dimensione del blocco di un filesystem reale restano molto sotto 2^63; la conversione serve solo alla differenza di tipo fra piattaforme.",
+      "expires": "2027-01-31",
+      "path": "admin/internal/sysinfo/disk_unix.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): Il valore e' la modalita' di un file letta da un archivio tar (hdr.Mode, int64) e usata solo per i bit di permesso e speciali via fs.FileMode(...).Perm() e modeBits: i bit alti sono scartati e non c'e' dimensionamento di memoria.",
+      "expires": "2027-01-31",
+      "path": "admin/internal/backup/files.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): Le conversioni sono su lunghezze di blocchi gia' limitate: il testo cifrato non supera chunkSize (64 KiB) piu' l'overhead GCM, e in lettura la lunghezza e' controllata contro chunkSize+Overhead prima dell'uso.",
+      "expires": "2027-01-31",
+      "path": "admin/internal/backup/crypto.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): parsePositiveInt32 rifiuta i valori fuori da 1..MaxInt32 prima della conversione.",
+      "expires": "2027-01-31",
+      "path": "services/core/internal/config/config.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): parsePositiveInt32 rifiuta i valori fuori da 1..MaxInt32 prima della conversione.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/config/config.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): Il codice di uscita di un processo figlio non e' negativo qui (ExitCode() vale -1 solo per un processo non terminato, e in quel caso si e' gia' impostato code = 1).",
+      "expires": "2027-01-31",
+      "path": "services/git/internal/sshd/server.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): uint32(len(h.key)): la lunghezza della chiave argon2 viene dal formato PHC letto dal nostro hash, di pochi byte (tipicamente 32); non e' controllabile da chi accede.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/password/password.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo: sono nomi di variabili d'ambiente o di header HTTP (costanti stringa), non credenziali; nessun segreto e' scritto nel sorgente.",
+      "expires": "2027-01-31",
+      "path": "admin/internal/cli/s3.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo: sono nomi di variabili d'ambiente o di header HTTP (costanti stringa), non credenziali; nessun segreto e' scritto nel sorgente.",
+      "expires": "2027-01-31",
+      "path": "admin/internal/cli/postgres.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo: sono nomi di variabili d'ambiente o di header HTTP (costanti stringa), non credenziali; nessun segreto e' scritto nel sorgente.",
+      "expires": "2027-01-31",
+      "path": "internal/trust/trust.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo: sono nomi di variabili d'ambiente o di header HTTP (costanti stringa), non credenziali; nessun segreto e' scritto nel sorgente.",
+      "expires": "2027-01-31",
+      "path": "services/core/internal/config/config.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): il contatore HOTP viene da Step(), cioe' t.Unix()/30 di un orologio dopo il 1970, quindi mai negativo; la conversione int64 -> uint64 serve solo al formato RFC 4226 §5.3.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/totp/totp.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/credevents/credevents.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/openapi/api.gen.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "services/gateway/internal/identityclient/types.gen.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "client/go/gitstack.gen.go"
     }
   ]
 }

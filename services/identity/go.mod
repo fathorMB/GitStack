@@ -1,12 +1,12 @@
 module github.com/fathorMB/GitStack/services/identity
 
-go 1.26.2
+go 1.26.9
 
 require (
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/oapi-codegen/runtime v1.7.0
 	golang.org/x/crypto v0.57.0
 	golang.org/x/oauth2 v0.37.0

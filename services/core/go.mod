@@ -1,6 +1,6 @@
 module github.com/fathorMB/GitStack/services/core
 
-go 1.26.2
+go 1.26.9
 
 require (
 	github.com/fathorMB/GitStack/pkg/egress v0.0.0-20261005212733-bd568d173cca
@@ -8,7 +8,7 @@ require (
 	github.com/fathorMB/GitStack/pkg/issuequery v0.0.0-20261005143150-21881eff6caa
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/nats-io/nats-server/v2 v2.15.0
 	github.com/nats-io/nats.go v1.54.0
 	github.com/oapi-codegen/runtime v1.7.0

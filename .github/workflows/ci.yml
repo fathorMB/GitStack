@@ -310,6 +310,7 @@ jobs:
     if: >-
       !cancelled() && needs.registry.result == 'success' && needs.admin-binary.result == 'success'
       && needs.sign.result == 'success'
+      && vars.IMAGE_NAMESPACE == ''
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-22.04
@@ -403,6 +404,10 @@ jobs:
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-24.04
+    # Il push di main e quello del tag sullo stesso commit avviano due run che pubblicano nella stessa release sha-<commit>: i job si mettono in fila (GIT-247, «ReleaseAsset.name already exists»).
+    concurrency:
+      group: publish-registry-${{ matrix.service }}-${{ github.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -463,7 +468,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/gitstack-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/${{ vars.IMAGE_NAMESPACE || github.repository_owner }}/gitstack-${{ matrix.service }}
           tags: |
             type=sha,format=long
             type=ref,event=tag
@@ -483,8 +488,48 @@ jobs:
       # cima a questo file); per un push su main (nessun tag) non produce
       # nulla, come gli altri tag basati su "ref"/"semver".
 
-      - name: Build & push
+      # Lo stesso commit può arrivare da due run (push su main e push del
+      # tag): se sha-<commit> esiste già non si ricostruisce, perché una
+      # seconda build ha un digest diverso (label con l'ora) e il tag di
+      # versione non punterebbe più all'immagine firmata (GIT-247, v0.0.0-test.4).
+      # Si aggiungono solo i tag mancanti sullo stesso digest.
+      - name: Immagine già pubblicata per questo commit
         if: steps.dockerfile.outputs.exists == 'true'
+        id: existing
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          SHA_TAG: sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          sha_ref=""
+          while IFS= read -r t; do
+            case "${t}" in *":${SHA_TAG}") sha_ref="${t}" ;; esac
+          done <<< "${TAGS}"
+          if [ -n "${sha_ref}" ] && docker buildx imagetools inspect "${sha_ref}" >/dev/null 2>&1; then
+            # skopeo copia i manifest byte per byte (--preserve-digests):
+            # `docker buildx imagetools create` rigenera l'indice e cambia il
+            # digest (visto su GHCR in v0.0.0-test.6). Immagine fissata per digest.
+            want="$(docker buildx imagetools inspect "${sha_ref}" --format '{{json .Manifest}}' | jq -er '.digest')"
+            while IFS= read -r t; do
+              if [ -n "${t}" ] && [ "${t}" != "${sha_ref}" ]; then
+                docker run --rm -v "${HOME}/.docker/config.json:/auth.json:ro" \
+                  quay.io/skopeo/stable@sha256:be15097a3e99a1fe72838b3d626d1c283db38626536fff5e04ab6bbb814baeca \
+                  copy --all --preserve-digests --authfile /auth.json "docker://${sha_ref}" "docker://${t}"
+                got="$(docker buildx imagetools inspect "${t}" --format '{{json .Manifest}}' | jq -er '.digest')"
+                if [ "${got}" != "${want}" ]; then
+                  echo "ERRORE: ${t} (${got}) non ha il digest di ${sha_ref} (${want})" >&2
+                  exit 1
+                fi
+              fi
+            done <<< "${TAGS}"
+            echo "reuse=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${sha_ref} esiste già: nessuna nuova build, tag aggiunti sullo stesso digest."
+          else
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & push
+        if: steps.dockerfile.outputs.exists == 'true' && steps.existing.outputs.reuse != 'true'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ${{ matrix.context }}
@@ -514,6 +559,10 @@ jobs:
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-24.04
+    # Il push di main e quello del tag sullo stesso commit avviano due run che pubblicano nella stessa release sha-<commit>: i job si mettono in fila (GIT-247, «ReleaseAsset.name already exists»).
+    concurrency:
+      group: publish-admin-binary-${{ github.sha }}
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -563,6 +612,10 @@ jobs:
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-24.04
+    # Il push di main e quello del tag sullo stesso commit avviano due run che pubblicano nella stessa release sha-<commit>: i job si mettono in fila (GIT-247, «ReleaseAsset.name already exists»).
+    concurrency:
+      group: publish-gs-binaries-${{ github.sha }}
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -605,13 +658,17 @@ jobs:
       && github.event_name == 'push'
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-24.04
+    # Il push di main e quello del tag sullo stesso commit avviano due run che pubblicano nella stessa release sha-<commit>: i job si mettono in fila (GIT-247, «ReleaseAsset.name already exists»).
+    concurrency:
+      group: publish-sign-${{ github.sha }}
+      cancel-in-progress: false
     permissions:
       id-token: write   # OIDC per firma keyless con Sigstore
       packages: write   # Attestazioni delle immagini
       contents: write   # Caricare firme e SBOM nella release
     env:
       REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
-      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_OWNER: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
       IMAGE_TAG: sha-${{ github.sha }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -989,7 +1046,7 @@ jobs:
       pull-requests: write  # PR che aggiunge il changelog a CHANGELOG.md
     env:
       REGISTRY: ${{ vars.CONTAINER_REGISTRY || 'ghcr.io' }}
-      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_OWNER: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
       VERSION: ${{ github.ref_name }}
       SHA_TAG: sha-${{ github.sha }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1169,6 +1226,11 @@ jobs:
           files=(dist/gitstack-linux-amd64 dist/gitstack-linux-amd64.sha256 dist/gs_* dist/gs-skills.zip \
                  "dist/gitstack-${{ steps.ver.outputs.plain }}.tgz" dist/SHA256SUMS dist/*.sigstore.json \
                  dist/sbom/*.spdx.json dist/CHANGELOG.md "dist/CHANGELOG-${VERSION}.md")
+          # dist/gs_* include già i bundle gs_*.sigstore.json, che torna anche in
+          # dist/*.sigstore.json: un nome doppio fa fallire il caricamento con
+          # «ReleaseAsset.name already exists» (v0.0.0-test.8). Un nome una volta sola.
+          mapfile -t files < <(printf '%s\n' "${files[@]}" | sort -u)
+          printf '%s\n' "${files[@]}"
           flags=()
           if [ "${{ steps.ver.outputs.prerelease }}" = "true" ]; then
             flags+=(--prerelease)
