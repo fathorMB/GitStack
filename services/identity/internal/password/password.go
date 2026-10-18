@@ -43,7 +43,12 @@ const (
 	// MinLength e MaxLength sono i limiti di lunghezza (in caratteri) della
 	// password, gli stessi del contratto (CreateUserInput/ChangePasswordInput).
 	MinLength = 12
-	MaxLength = 1024
+	MaxLength = 128
+
+	// LegacyMaxLength è il limite oltre cui il login rifiuta in anticipo: le
+	// password salvate prima di F14 potevano arrivare a 1024 caratteri e
+	// devono poter entrare per essere sostituite.
+	LegacyMaxLength = 1024
 )
 
 var (
@@ -52,13 +57,17 @@ var (
 	// ErrTooShort, ErrTooLong, ErrBlank, ErrSameAsUsername sono i motivi di
 	// rifiuto della politica.
 	ErrTooShort       = errors.New("la password deve avere almeno 12 caratteri")
-	ErrTooLong        = errors.New("la password non può superare 1024 caratteri")
+	ErrTooLong        = errors.New("la password non può superare 128 caratteri")
 	ErrBlank          = errors.New("la password non può essere fatta solo di spazi")
 	ErrSameAsUsername = errors.New("la password non può coincidere con lo username")
+	// ErrCommon: la password è nell'elenco incorporato di password comuni o è
+	// un solo carattere ripetuto.
+	ErrCommon = errors.New("la password è troppo comune: scegline un'altra")
 )
 
-// ValidatePolicy applica la politica minima: da 12 a 1024 caratteri, non
-// composta solo da spazi, diversa dallo username (e dall'email, se data).
+// ValidatePolicy applica la politica: da 12 a 128 caratteri, non composta solo
+// da spazi, diversa dallo username (e dall'email, se data), e non presente
+// nell'elenco incorporato di password comuni (vedi IsCommon).
 func ValidatePolicy(pw, username, email string) error {
 	n := utf8.RuneCountInString(pw)
 	switch {
@@ -71,6 +80,9 @@ func ValidatePolicy(pw, username, email string) error {
 	}
 	if pw == username || (email != "" && strings.EqualFold(pw, email)) {
 		return ErrSameAsUsername
+	}
+	if IsCommon(pw) {
+		return ErrCommon
 	}
 	return nil
 }

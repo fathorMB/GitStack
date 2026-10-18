@@ -21,6 +21,7 @@ spec:
       {{- end }}
       securityContext:
         {{- include "gitstack.podSecurityContext" (dict "runAsUser" 65532) | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.global.shutdown.terminationGracePeriodSeconds | int }}
       containers:
         - name: gateway
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.gateway) }}
@@ -83,6 +84,7 @@ spec:
               port: http
             initialDelaySeconds: 3
             periodSeconds: 10
+          {{- include "gitstack.preStop" . | nindent 10 }}
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
           volumeMounts:

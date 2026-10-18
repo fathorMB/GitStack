@@ -326,3 +326,18 @@ capabilities:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end -}}
+
+{{/*
+Arresto senza richieste perse (GIT-248). Traefik toglie l'endpoint di un pod
+in terminazione con un ritardo: se il processo muore subito, le richieste in
+volo danno 502/504. preStop con l'azione nativa `sleep` di Kubernetes (GA dalla
+1.34, k3s del chart >= 1.36): non serve nessun binario nell'immagine, quindi
+vale anche per il gateway (distroless, senza sleep né shell).
+Uso (nel container, prima di resources): {{- include "gitstack.preStop" . | nindent 10 }}
+*/}}
+{{- define "gitstack.preStop" -}}
+lifecycle:
+  preStop:
+    sleep:
+      seconds: {{ .Values.global.shutdown.preStopSeconds | int }}
+{{- end -}}

@@ -117,10 +117,10 @@ func TestLoginLogoutSession(t *testing.T) {
 
 	// Cookie: HttpOnly, SameSite=Lax, Path=/; Secure solo se richiesto (HTTPS).
 	ck := auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, true)
-	if !ck.HttpOnly || !ck.Secure || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Name != "gst_session" {
+	if !ck.HttpOnly || !ck.Secure || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Name != "__Host-gst_session" {
 		t.Fatalf("attributi cookie errati: %+v", ck)
 	}
-	if plain := auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, false); plain.Secure || !plain.HttpOnly {
+	if plain := auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, false); plain.Secure || !plain.HttpOnly || plain.Name != "gst_session" {
 		t.Fatalf("su HTTP il cookie non deve essere Secure: %+v", plain)
 	}
 
@@ -669,4 +669,40 @@ func TestSecondFactor_RequiredForAdmins(t *testing.T) {
 		t.Fatalf("login admin con TOTP: %+v %v", res, err)
 	}
 	_ = user
+}
+
+// F12 (V3.3.2): oltre alla scadenza assoluta c'è un idle timeout su
+// last_seen_at; ogni uso valido lo fa ripartire.
+func TestSessionIdleTimeout(t *testing.T) {
+	e := newEnv(t, cfgDefault)
+	e.sess = sessions.New(e.pool, e.clock.Now, 24*time.Hour)
+	e.sess.SetIdleTimeout(30 * time.Minute)
+	e.auth.Sessions = e.sess
+	e.mkUser(t, "alice", false)
+	ctx := context.Background()
+
+	res, err := e.login("alice", pw, "10.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Usata a intervalli sotto l'idle timeout: resta valida oltre i 30 minuti totali.
+	for i := 0; i < 4; i++ {
+		e.clock.advance(20 * time.Minute)
+		if _, err := e.auth.Session(ctx, res.SessionValue); err != nil {
+			t.Fatalf("sessione attiva scaduta al giro %d: %v", i, err)
+		}
+	}
+	// Ferma più dell'idle timeout (ma sotto il TTL assoluto): non vale più.
+	e.clock.advance(31 * time.Minute)
+	if _, err := e.auth.Session(ctx, res.SessionValue); !errors.Is(err, auth.ErrUnauthenticated) {
+		t.Fatalf("sessione inattiva ancora valida: %v", err)
+	}
+
+	// Senza idle timeout (0) vale solo il TTL assoluto.
+	e.sess.SetIdleTimeout(0)
+	res2, _ := e.login("alice", pw, "10.0.0.1")
+	e.clock.advance(5 * time.Hour)
+	if _, err := e.auth.Session(ctx, res2.SessionValue); err != nil {
+		t.Fatalf("con idle timeout disattivo la sessione deve valere: %v", err)
+	}
 }

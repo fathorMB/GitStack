@@ -75,7 +75,7 @@ func TestValidatePolicy(t *testing.T) {
 		{"            ", "alice", "", ErrBlank},
 		{"alicealicealice", "alicealicealice", "", ErrSameAsUsername},
 		{"alice@example.com", "alice", "alice@example.com", ErrSameAsUsername},
-		{strings.Repeat("a", 1025), "alice", "", ErrTooLong},
+		{strings.Repeat("ab", 65), "alice", "", ErrTooLong},
 		{"una password lunga", "alice", "", nil},
 		{"àèìòùàèìòùàè", "alice", "", nil}, // 12 caratteri, più di 12 byte
 	}
@@ -89,5 +89,46 @@ func TestValidatePolicy(t *testing.T) {
 func TestVerifyDummyAlwaysFalse(t *testing.T) {
 	if VerifyDummy("qualsiasi cosa") {
 		t.Fatal("VerifyDummy deve dare false")
+	}
+}
+
+// F14 (V2.1.2): da 12 a 128 caratteri; 129 sono troppi.
+func TestValidatePolicy_Max128(t *testing.T) {
+	ok := strings.Repeat("ab1", 42) + "xy" // 128 caratteri
+	if n := len([]rune(ok)); n != 128 {
+		t.Fatalf("fixture: %d caratteri", n)
+	}
+	if err := ValidatePolicy(ok, "alice", ""); err != nil {
+		t.Fatalf("128 caratteri devono andare: %v", err)
+	}
+	if err := ValidatePolicy(ok+"z", "alice", ""); err != ErrTooLong {
+		t.Fatalf("129 caratteri: %v, atteso ErrTooLong", err)
+	}
+	// Caratteri, non byte: 128 emoji sono 512 byte ma valgono.
+	if err := ValidatePolicy(strings.Repeat("é", 128), "alice", ""); err == ErrTooLong {
+		t.Fatal("la lunghezza si conta in caratteri")
+	}
+}
+
+// F14 (V2.1.7): un elenco incorporato di password comuni, senza chiamate in uscita.
+func TestValidatePolicy_CommonPasswordsRejected(t *testing.T) {
+	for _, pw := range []string{
+		"password1234", "PassWord1234", "  qwertyuiop12  ", "123456789012",
+		"1q2w3e4r5t6y", "iloveyou123456", "aaaaaaaaaaaa", "abcabcabcabc",
+		"administrator", "password12345!!",
+	} {
+		if err := ValidatePolicy(pw, "alice", ""); err != ErrCommon {
+			t.Errorf("ValidatePolicy(%q) = %v, atteso ErrCommon", pw, err)
+		}
+	}
+	for _, pw := range []string{"una password lunga e buona", "x7Kp-9vQmz-4Lw2", "cavallo batteria graffetta"} {
+		if err := ValidatePolicy(pw, "alice", ""); err != nil {
+			t.Errorf("ValidatePolicy(%q) = %v, atteso nil", pw, err)
+		}
+	}
+	// Le voci dell'elenco rispettano il formato: minuscole e almeno 12 caratteri
+	// dopo il caricamento (le più corte sono scartate, non cercate).
+	if len(commonPasswords()) < 200 {
+		t.Fatalf("elenco incorporato troppo corto: %d voci", len(commonPasswords()))
 	}
 }

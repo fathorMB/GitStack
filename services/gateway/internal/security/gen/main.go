@@ -34,6 +34,9 @@ type operation struct {
 	PasswordChangeExempt string                 `yaml:"x-password-change-exempt"`
 	TotpEnrollExempt     string                 `yaml:"x-totp-enroll-exempt"`
 	RequiredPermission   string                 `yaml:"x-required-permission"`
+	RequestBody          *struct {
+		Content map[string]yaml.Node `yaml:"content"`
+	} `yaml:"requestBody"`
 }
 
 var methods = map[string]string{
@@ -57,6 +60,7 @@ type route struct {
 	Exempt                             string
 	TotpExempt                         bool
 	Permission                         string
+	JSONBody                           bool
 }
 
 func main() {
@@ -116,9 +120,9 @@ func run(contractPath, outPath string) error {
 	b.WriteString("// Routes è la dichiarazione di sicurezza di ogni operazione pubblica del\n// contratto, con il percorso senza prefisso di versione.\n")
 	b.WriteString("var Routes = []Route{\n")
 	for _, r := range routes {
-		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s, TotpEnrollExempt: %t},\n",
+		fmt.Fprintf(&b, "\t{Method: %q, Path: %q, OperationID: %q, Service: %s, Public: %t, Credentials: %s, Scopes: %s, Permission: %s, PasswordChangeExempt: %s, TotpEnrollExempt: %t, JSONBody: %t},\n",
 			r.Method, r.Path, r.OperationID, "Service"+strings.ToUpper(r.Service[:1])+r.Service[1:], r.Public,
-			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt), r.TotpExempt)
+			creds(r.Credentials), strs(r.Scopes), permission(r.Permission), exempt(r.Exempt), r.TotpExempt, r.JSONBody)
 	}
 	b.WriteString("}\n")
 	src, err := format.Source(b.Bytes())
@@ -154,7 +158,8 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 	if op.Security != nil {
 		reqs = *op.Security
 	}
-	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt, TotpExempt: op.TotpEnrollExempt == "always", Permission: op.RequiredPermission}
+	r := route{Method: method, Path: path, OperationID: op.OperationID, Service: service, Scopes: op.RequiredScopes, Exempt: op.PasswordChangeExempt, TotpExempt: op.TotpEnrollExempt == "always", Permission: op.RequiredPermission,
+		JSONBody: jsonOnlyBody(op)}
 	if len(reqs) == 0 {
 		if len(op.RequiredScopes) > 0 {
 			return route{}, false, fmt.Errorf("%s: rotta pubblica con x-required-scopes", where)
@@ -213,6 +218,21 @@ func build(doc document, method, path string, op operation) (route, bool, error)
 		return route{}, false, fmt.Errorf("%s: x-totp-enroll-exempt %q non valido (always)", where, op.TotpEnrollExempt)
 	}
 	return r, false, nil
+}
+
+// jsonOnlyBody: l'operazione ha un corpo e l'unico tipo dichiarato è
+// application/json. Le operazioni con altri tipi (multipart degli allegati)
+// restano libere: il Content-Type lo verifica il loro handler.
+func jsonOnlyBody(op operation) bool {
+	if op.RequestBody == nil || len(op.RequestBody.Content) == 0 {
+		return false
+	}
+	for ct := range op.RequestBody.Content {
+		if ct != "application/json" {
+			return false
+		}
+	}
+	return true
 }
 
 func creds(c []string) string {
