@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, Checkbox, ConfirmDialog, ErrorAlert, FormField, TextInput, useToast } from '../../components';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
 import { deleteRepo, fetchDeletedRepos, fetchRepo, updateRepo } from '../../lib/reposApi';
-import { purgeDate, trashPath } from './NameInTrashNotice';
+import { purgeDate, trashPath } from './nameInTrash';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { RepoMirrorsSection } from './RepoMirrorsSection';
 import { PullMirrorSection } from './PullMirrorSection';

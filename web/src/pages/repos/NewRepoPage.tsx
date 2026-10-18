@@ -25,8 +25,9 @@ import type { CreateRepositoryInput, RepoVisibility } from '../../lib/reposApi';
 import { importRepo } from '../../lib/pullMirrorsApi';
 import type { ImportRepositoryInput } from '../../lib/pullMirrorsApi';
 import { useLoad } from '../../lib/useLoad';
-import { NameInTrashNotice, nameInTrashInfo } from './NameInTrashNotice';
-import type { NameInTrashInfo } from './NameInTrashNotice';
+import { NameInTrashNotice } from './NameInTrashNotice';
+import { nameInTrashInfo } from './nameInTrash';
+import type { NameInTrashInfo } from './nameInTrash';
 import { repoPath } from './ReposPage';
 
 async function loadOwners(): Promise<string[]> {
