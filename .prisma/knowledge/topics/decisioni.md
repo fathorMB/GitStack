@@ -1,6 +1,7 @@
 ---
-{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-1565db4b-4108-490d-aca1-28d30c36ad99","DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"],"reopen_reason":"D14 rivista il 2026-10-18 dall'operatore: Pop!_OS non supportato ufficialmente nella v1.0 (installazione con avviso).","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-18T00:08:00.616515300+00:00"}
+{"area":"technical-choices","id":"DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","related":["DOC-1565db4b-4108-490d-aca1-28d30c36ad99","DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"],"reopen_reason":"Voce per la decisione del 2026-10-18 sul dogfooding accorciato; la scelta A del 2026-10-12 risulta precisata.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["decisioni","architettura","licenze"],"title":"Decisioni di prodotto e architettura (D1–D20)","updated":"2026-10-18T21:56:42.432030900+00:00"}
 ---
+
 
 
 
@@ -37,6 +38,8 @@ Registro delle scelte prese nell'analisi pre-sviluppo (2026-09-27) con l'operato
 
 Scelte di default (prese senza domanda, modificabili): monorepo unico; Git lato server con il binario `git` ufficiale (upload-pack/receive-pack), `go-git` solo per letture leggere; ingresso Traefik (incluso in k3s); TLS con CA interna auto-generata, opzione Let's Encrypt o certificato del cliente (HTTPS sempre, HTTP solo con `--insecure-http`: N5 in [[knowledge/topics/installazione-e-deploy]]); server SSH integrato nel servizio git su porta dedicata (**2222 di default, configurabile all'installazione**; l'installer non tocca l'SSH dell'host: R7 in [[knowledge/topics/repository-git]]); UI in inglese con i18n (italiano incluso) dalla v1; codice su GitHub finché GitStack non si ospita da solo, poi GitHub resta come mirror pubblico in sola lettura (V8 in [[knowledge/topics/rilascio-v1]], 2026-10-05).
 
+**Dogfooding accorciato (operatore, 2026-10-18):** tolta la condizione 1 della tappa 2 di V7 (mirror in pull da almeno 2 settimane); dopo la tappa 2 il dogfooding dura **almeno 2 settimane** ed è superato con 0 perdite di dati, almeno 1 ripristino riuscito, almeno 1 aggiornamento di homehub da una release candidate alla successiva e nessun bug aperto critico o alto. Obiettivi, non vincoli: tappa 2 fra il 23 e il 25/10/2026, v1.0 fra l'8 e il 10/11/2026. Perché: accorciare i tempi della v1.0 rendendo esplicite le garanzie che contano invece di affidarle alla sola durata. Dettagli in [[knowledge/topics/rilascio-v1]].
+
 ## Superseded
 
 - D20, prima proposta: palette teal, **scartata** dall'operatore perché troppo simile a LMBrain; sostituita da Aurora.
@@ -45,6 +48,7 @@ Scelte di default (prese senza domanda, modificabili): monorepo unico; Git lato 
 - D14, versione del 2026-10-05: "Linux (Ubuntu Server e Pop!_OS, N2)" con Pop!_OS supportato ufficialmente: **sostituita** il 2026-10-18 per scelta dell'operatore, perché V1 chiede test automatici in CI su tutti i sistemi supportati e per Pop!_OS non c'è un runner; Pop!_OS resta installabile con avviso.
 - Scelta di default "codice su GitHub finché GitStack non si ospita da solo" (GitHub temporaneo): **precisata** il 2026-10-05 da V8: dopo il dogfooding GitHub resta come mirror pubblico permanente in sola lettura.
 - Visibilità "pubblico" dei repo (prevista in M-03 T-02 della roadmap Lite): **eliminata** il 2026-09-30 (P2, P3): nessun accesso anonimo; restano privato e interno.
+- Scelta A del 2026-10-12 (cinque condizioni per la tappa 2 di V7) e parte di V1 sul dogfooding ("almeno 4 settimane senza perdite di dati"): **precisate** il 2026-10-18 dal dogfooding accorciato (sopra): la condizione 1 è tolta, la durata passa a almeno 2 settimane con 4 condizioni esplicite.
 
 ## Open questions
 
@@ -56,4 +60,5 @@ Nessuna nella fonte originale. Punti tecnici aperti emersi dall'implementazione 
 - [[knowledge/topics/architettura]]
 - [[knowledge/topics/identita-e-sicurezza]]
 - [[knowledge/topics/installazione-e-deploy]]
+
 
