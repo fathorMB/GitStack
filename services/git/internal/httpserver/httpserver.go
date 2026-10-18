@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/git/internal/gitmerge"
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/mirrorpull"
 	"github.com/fathorMB/GitStack/services/git/internal/mirrorpush"
@@ -48,6 +49,8 @@ type Deps struct {
 	Store   Store
 	Content Content
 	Reads   *gitread.Service // letture sulla storia (nil = rotte non montate)
+	// Merge: unibilità, merge ed eliminazione dei branch (GIT-260); nil = rotte non montate.
+	Merge *gitmerge.Service
 	// Mirror esegue i mirror in push (GIT-179); nil = rotta non montata.
 	Mirror *mirrorpush.Service
 	// Pull esegue i mirror in pull (GIT-196); nil = rotta non montata.
@@ -97,6 +100,10 @@ func NewRouter(d Deps) http.Handler {
 	}
 	if d.Reads != nil {
 		h.mountReads(api)
+		h.mountCompare(api)
+	}
+	if d.Merge != nil {
+		h.mountMerge(api)
 	}
 	mux.Handle("/internal/", trust.Require(d.Secret, nil, d.Now)(api))
 	if d.Git == nil {
