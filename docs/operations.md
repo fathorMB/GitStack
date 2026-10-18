@@ -2088,13 +2088,13 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 
 ### Condizione 2: esito del 2026-10-18 (GIT-293)
 
-**Stato: controlli 1, 2, 3, 4, 5 e 7 ok; il controllo 6 (login da browser con la password di un utente di homehub) resta da fare al board.** La condizione 2 si chiude quando il 6 è ok.
+**Stato: riuscita, controlli 1–7 tutti ok (2026-10-18), con un'avvertenza:** il restore è uscito con exit 70 e ha richiesto il riavvio a mano di NATS, core e gateway (difetto aperto come GIT-297). Dopo la correzione di GIT-297 il restore si rifà sulla stessa VM, che per questo non si spegne né si ripristina.
 
 - **Versione:** homehub e VM `sha-e984353074aeab42560042a2f79079417537819d`.
 - **Archivio ripristinato:** `gitstack-backup-20261018T184439Z-sha-e984353074aeab42560042a2f79079417537819d.tar.gz.enc` (8 710 458 byte, cifrato AES-256-GCM, creato il 2026-10-18 alle 18:44:39 UTC da `gitstack backup --key-file /etc/gitstack/backup.key`, meno di 24 ore).
 - **Cifratura (GIT-249):** i backup del timer erano non cifrati. Il board ha creato `/etc/gitstack/backup.key` (0600, root) e ha messo nel drop-in di `gitstack-backup.service` `ExecStart=/usr/local/bin/gitstack backup --key-file /etc/gitstack/backup.key`. La chiave va conservata anche fuori da homehub: senza, gli archivi non si aprono.
 - **VM:** `gitstack-test-vm` (Hyper-V, Ubuntu 24.04.5, 4 vCPU, 8 GB), riportata al checkpoint `clean` del 28/9 prima della prova (nessun GitStack, nessun k3s), poi installata con `install.sh` dello stesso commit, `GITSTACK_REF=<commit>` e `--image-tag sha-e984353…`; `gitstack status` sano prima del restore. Con `GITSTACK_REF` mancante l'installer risolve il chart da `main` e si ferma con «chart firmato non trovato».
-- **Restore:** `gitstack restore --key-file … <archivio>` ha eseguito tutti i passi (verifica archivio, database in una transazione, repo, allegati, Secret, 7 file di configurazione, CA e certificato per l'IP della VM) ma è uscito con **exit 70**: «gateway non è tornato pronto dopo il restore». **Difetto trovato** (visto nelle due prove): il restore sostituisce i Secret, tra cui le credenziali di NATS, ma non riavvia il `StatefulSet` `gitstack-nats`, che continua con la password vecchia; `core` va in CrashLoop con `nats: Authorization Violation` e il gateway non diventa pronto. Rimedio usato: `kubectl rollout restart statefulset/gitstack-nats`, poi `deploy/gitstack-core` e `deploy/gitstack-gateway`. Il restore va corretto perché riavvii anche NATS (da aprire come item).
+- **Restore:** `gitstack restore --key-file … <archivio>` ha eseguito tutti i passi (verifica archivio, database in una transazione, repo, allegati, Secret, 7 file di configurazione, CA e certificato per l'IP della VM) ma è uscito con **exit 70**: «gateway non è tornato pronto dopo il restore». **Difetto trovato** (visto nelle due prove): il restore sostituisce i Secret, tra cui le credenziali di NATS, ma non riavvia il `StatefulSet` `gitstack-nats`, che continua con la password vecchia; `core` va in CrashLoop con `nats: Authorization Violation` e il gateway non diventa pronto. Rimedio usato: `kubectl rollout restart statefulset/gitstack-nats`, poi `deploy/gitstack-core` e `deploy/gitstack-gateway`. Il restore va corretto perché riavvii anche NATS (GIT-297).
 
 | # | Controllo | Esito |
 |---|---|---|
@@ -2103,7 +2103,7 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 | 3 | Repo di homehub | ok: `admin/agent-trial`, `admin/agent-trial-homehub`, `gitstack/gitstack-mirror` (il mirror in pull), come su homehub |
 | 4 | Stesso storico | ok: `git ls-remote` su `refs/heads/main` e tag byte per byte identico su VM e homehub per i tre repo (compresi tutti i tag `sha-…` di `gitstack/gitstack-mirror`) |
 | 5 | Issues | ok: `admin/agent-trial` e `admin/agent-trial-homehub` hanno la stessa issue #1 (chiusa); `gitstack/gitstack-mirror` nessuna, come su homehub (via API: il `gs` dell'host dava 410, vecchio) |
-| 6 | Login | **da fare al board**: l'utente `admin` esiste nel database ripristinato (un token creato su homehub prima del backup apre una sessione sulla VM con l'utente `admin`), ma il login con la password iniziale del Secret dà 401, perché su homehub la password è stata cambiata; la password non è nota all'agente |
+| 6 | Login | ok, fatto dal board il 2026-10-18: login da browser su `https://172.29.132.37/` come `admin` con la password di homehub riuscito, repo attesi presenti. (L'agente non conosce la password: col Secret iniziale il login dava 401, perché su homehub è stata cambiata) |
 | 7 | Scrittura | ok: clone di `admin/agent-trial-homehub` dalla VM, ramo `prova-ripristino-GIT-293`, push con exit 0; homehub invariato |
 
 ### Condizione 4: esito del 2026-10-18 (GIT-293)
@@ -2119,7 +2119,7 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 | 5. Divergenza | commit diretto su GitHub `a8e68f2ccf28e05dad4447064d2af8a092ec2b82`, poi terzo commit su homehub `a372c06a…`: `state: diverged`, `lastError`: «la destinazione ha una storia diversa, nessuna sovrascrittura: refs/heads/main: rejected (fetch first)». Sulla esecuzione `outcome: diverged`: tag `up-to-date`, `main` `rejected`. `git ls-remote` su GitHub resta `a8e68f2c…`: nulla è stato sovrascritto |
 | 6. Ritorno a `in_sync` | non provato (facoltativo) |
 
-Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Resta al board: revocare il fine-grained token GitHub e il token `git293-prova` di GitStack, cancellare il repo GitHub di prova, cancellare `admin/mirror-prova` su homehub se non serve, fermare la VM.
+Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Resta al board: revocare il fine-grained token GitHub e il token `git293-prova` di GitStack, cancellare il repo GitHub di prova, cancellare `admin/mirror-prova` su homehub se non serve. La VM `gitstack-test-vm` NON si ferma né si ripristina: serve per rifare il restore dopo GIT-297.
 
 ## Registro della tappa 1 di V7 (homehub)
 
