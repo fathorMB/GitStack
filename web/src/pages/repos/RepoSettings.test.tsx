@@ -74,6 +74,7 @@ function renderSettings() {
         <Routes>
           <Route path="/:owner/:repo/settings" element={<RepoSettingsPage />} />
           <Route path="/repos" element={<p>Repos list</p>} />
+          <Route path="/orgs/:org/deleted-repos" element={<p>Org trash</p>} />
         </Routes>
       </MemoryRouter>
     </ToastProvider>,
@@ -182,7 +183,11 @@ describe('RepoSettingsPage', () => {
     expect(screen.getByRole('button', { name: 'Unarchive' })).toBeEnabled();
   });
 
-  it('elimina con conferma che spiega i 7 giorni e torna all\'elenco', async () => {
+  it('elimina con conferma che spiega i 7 giorni, porta al cestino e dice la data del server', async () => {
+    const purgeAt = '2026-10-25T14:31:47Z';
+    vi.mocked(fetchDeletedRepos).mockReset().mockResolvedValue([
+      { id: 'r1', owner: { type: 'organization', name: 'acme' }, name: 'api-gateway', deletedAt: '2026-10-18T14:31:47Z', purgeAt },
+    ]);
     const user = userEvent.setup();
     renderSettings();
     await user.click(await screen.findByRole('button', { name: 'Delete' }));
@@ -191,7 +196,32 @@ describe('RepoSettingsPage', () => {
     expect(deleteRepo).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole('button', { name: 'Delete repository' }));
     await waitFor(() => expect(deleteRepo).toHaveBeenCalledWith('acme', 'api-gateway'));
-    expect(await screen.findByText('Repos list')).toBeInTheDocument();
+    // Repo di organizzazione: va al cestino dell'organizzazione.
+    expect(await screen.findByText('Org trash')).toBeInTheDocument();
+    expect(fetchDeletedRepos).toHaveBeenCalledWith('acme');
+    const toastText = await screen.findByText(/acme\/api-gateway was deleted/);
+    expect(toastText).toHaveTextContent('Deleted repositories');
+    expect(toastText).toHaveTextContent(new Date(purgeAt).toLocaleDateString());
+  });
+
+  it('un repo personale eliminato porta a /settings/deleted-repos, anche se la data non si legge', async () => {
+    vi.mocked(fetchRepo).mockResolvedValue(repo({ owner: { type: 'user', name: 'alice' }, fullName: 'alice/api-gateway' }));
+    vi.mocked(fetchDeletedRepos).mockReset().mockRejectedValue(new Error('rete'));
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={['/alice/api-gateway/settings']}>
+          <Routes>
+            <Route path="/:owner/:repo/settings" element={<RepoSettingsPage />} />
+            <Route path="/settings/deleted-repos" element={<p>My trash</p>} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete repository' }));
+    expect(await screen.findByText('My trash')).toBeInTheDocument();
+    expect(await screen.findByText(/alice\/api-gateway was deleted.*for 7 days/)).toBeInTheDocument();
   });
 
   it('annulla l\'eliminazione senza chiamare l\'API', async () => {
@@ -349,6 +379,33 @@ describe('DeletedReposPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Restore acme/old-docs' }));
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('acme/old-docs')).toBeInTheDocument();
+  });
+
+  it('in /settings/deleted-repos non filtra per owner e mostra anche le organizzazioni', async () => {
+    vi.mocked(fetchDeletedRepos).mockResolvedValue([
+      deleted('d1', 'experiment-grpc', 6),
+      { id: 'd9', owner: { type: 'user', name: 'alice' }, name: 'mine', deletedAt: new Date().toISOString(), purgeAt: new Date(Date.now() + 3 * day).toISOString() },
+    ]);
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={['/settings/deleted-repos']}>
+          <Routes>
+            <Route path="/settings/deleted-repos" element={<DeletedReposPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+    const list = await screen.findByRole('list', { name: 'Deleted repositories' });
+    expect(fetchDeletedRepos).toHaveBeenCalledWith(undefined);
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]).getByText('acme/experiment-grpc')).toBeInTheDocument();
+    expect(within(rows[0]).getByText('organization')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('alice/mine')).toBeInTheDocument();
+    await user.click(within(rows[0]).getByRole('button', { name: 'Restore acme/experiment-grpc' }));
+    await waitFor(() => expect(restoreRepo).toHaveBeenCalledWith('d1'));
+    await waitFor(() => expect(screen.queryByText('acme/experiment-grpc')).not.toBeInTheDocument());
   });
 
   it('mostra lo stato vuoto', async () => {

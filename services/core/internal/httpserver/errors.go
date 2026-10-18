@@ -24,3 +24,15 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
 }
+
+// writeErrorDetails è writeError con i dettagli strutturati dell'errore.
+func writeErrorDetails(w http.ResponseWriter, status int, code, message string, details map[string]any) {
+	var body openapi.Error
+	body.Error.Code = code
+	body.Error.Message = message
+	body.Error.Details = &details
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}

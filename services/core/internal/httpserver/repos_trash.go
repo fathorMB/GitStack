@@ -227,3 +227,36 @@ func (s *apiServer) gitBestEffort(f func(context.Context) error, what string, id
 		slog.Default().Error("annullamento su disco non riuscito: stato da riallineare", "passo", what, "repo_id", id, "err", err)
 	}
 }
+
+// writeNameTaken risponde 409 a una creazione (o import) il cui nome è già
+// occupato per l'owner. Se a tenerlo è un repo nel cestino (R2) il codice è
+// `name_in_trash`, con la data di cancellazione definitiva (`purgeAt`) e il
+// nome dell'owner per costruire il link al cestino giusto; l'id del repo
+// (`repoId`) solo se il chiamante è admin su di esso: a chi non lo è non si
+// rivela altro che l'esistenza del nome occupato e la data. Se il nome è di un
+// repo attivo resta il 409 `conflict`.
+func (s *apiServer) writeNameTaken(w http.ResponseWriter, r *http.Request, userID uuid.UUID, ownerType string, ownerID uuid.UUID, ownerName, name string) {
+	const activeMsg = "Esiste già un repo con questo nome per questo owner."
+	trashed, err := s.resources.GetDeletedRepoByName(r.Context(), ownerType, ownerID, name)
+	if err != nil || trashed.DeletedAt == nil {
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			slog.Default().Warn("ricerca del repo nel cestino non riuscita", "err", err)
+		}
+		writeError(w, http.StatusConflict, "conflict", activeMsg)
+		return
+	}
+	purgeAt := store.PurgeAt(*trashed.DeletedAt).UTC()
+	details := map[string]any{
+		"purgeAt": purgeAt.Format(time.RFC3339),
+		"owner":   ownerName,
+	}
+	isAdmin, err := s.repoIdentity.HasRole(r.Context(), userID, trashed.ID, "admin")
+	if err != nil {
+		slog.Default().Warn("verifica del permesso sul repo nel cestino non riuscita", "err", err)
+	} else if isAdmin {
+		details["repoId"] = trashed.ID.String()
+	}
+	writeErrorDetails(w, http.StatusConflict, "name_in_trash",
+		"Il nome è tenuto da un repo eliminato, ancora nel cestino: si libera il "+purgeAt.Format("2006-01-02")+
+			" (R2). Un amministratore del repo può ripristinarlo prima.", details)
+}

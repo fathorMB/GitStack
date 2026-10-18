@@ -25,7 +25,7 @@ identity, gateway né la UI dei token. Dopo la v1 si potranno introdurre
 
 Errori: un repo che l'utente non può leggere risponde 404 (non 403, per non
 rivelarne l'esistenza); 403 se lo legge ma non ha il ruolo; 409 per un nome
-occupato (anche da un repo eliminato) e per modifiche a un repo archiviato.
+occupato (`conflict`; `name_in_trash` con `details.purgeAt` se lo tiene un repo eliminato) e per modifiche a un repo archiviato.
 
 ## Owner e visibilità in identity (D-C)
 

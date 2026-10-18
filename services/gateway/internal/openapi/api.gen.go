@@ -2365,6 +2365,18 @@ type MilestoneList struct {
 // Example: alice
 type Name = string
 
+// NameInTrashDetails `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
+type NameInTrashDetails struct {
+	// Owner Nome dell'owner del repo nel cestino, per il link al cestino giusto.
+	Owner string `json:"owner"`
+
+	// PurgeAt Istante dopo il quale il repo nel cestino e' cancellato definitivamente e il nome si libera.
+	PurgeAt time.Time `json:"purgeAt"`
+
+	// RepoId Id del repo nel cestino, presente solo se il chiamante e' admin su di esso (per ripristinarlo).
+	RepoId *openapi_types.UUID `json:"repoId,omitempty"`
+}
+
 // Notification defines model for Notification.
 type Notification struct {
 	// Actor Chi ha causato la notifica; assente per gli eventi di sistema (es. chiusura da commit).
@@ -2676,6 +2688,20 @@ type RepoMirrorState string
 //
 // Example: my-app
 type RepoName = string
+
+// RepoNameConflictError Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
+type RepoNameConflictError struct {
+	Error struct {
+		// Code `conflict` o `name_in_trash`.
+		//
+		// Example: name_in_trash
+		Code string `json:"code"`
+
+		// Details `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
+		Details *NameInTrashDetails `json:"details,omitempty"`
+		Message string              `json:"message"`
+	} `json:"error"`
+}
 
 // RepoOwner defines model for RepoOwner.
 type RepoOwner struct {
@@ -3336,6 +3362,9 @@ type NotFound = Error
 
 // PayloadTooLarge Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type PayloadTooLarge = Error
+
+// RepoNameConflict Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
+type RepoNameConflict = RepoNameConflictError
 
 // Unauthorized Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Unauthorized = Error

@@ -1035,6 +1035,40 @@ export type DeletedRepositoryList = {
     items: Array<DeletedRepository>;
 };
 
+/**
+ * Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
+ *
+ */
+export type RepoNameConflictError = {
+    error: {
+        /**
+         * `conflict` o `name_in_trash`.
+         */
+        code: string;
+        message: string;
+        details?: NameInTrashDetails;
+    };
+};
+
+/**
+ * `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
+ *
+ */
+export type NameInTrashDetails = {
+    /**
+     * Istante dopo il quale il repo nel cestino e' cancellato definitivamente e il nome si libera.
+     */
+    purgeAt: string;
+    /**
+     * Nome dell'owner del repo nel cestino, per il link al cestino giusto.
+     */
+    owner: string;
+    /**
+     * Id del repo nel cestino, presente solo se il chiamante e' admin su di esso (per ripristinarlo).
+     */
+    repoId?: string;
+};
+
 export type ResourceAttributesInput = {
     ownerType: OwnerType;
     ownerId: string;
@@ -5604,9 +5638,10 @@ export type CreateRepositoryErrors = {
      */
     404: Error;
     /**
-     * Conflitto con lo stato attuale della risorsa.
+     * Il nome e' occupato per l'owner. Codice `conflict` se lo tiene un repo attivo; `name_in_trash`, con `details` di tipo `NameInTrashDetails`, se lo tiene un repo eliminato ancora nel cestino (R2).
+     *
      */
-    409: Error;
+    409: RepoNameConflictError;
     /**
      * Errore imprevisto.
      */
@@ -5650,9 +5685,10 @@ export type ImportRepositoryErrors = {
      */
     404: Error;
     /**
-     * Conflitto con lo stato attuale della risorsa.
+     * Il nome e' occupato per l'owner. Codice `conflict` se lo tiene un repo attivo; `name_in_trash`, con `details` di tipo `NameInTrashDetails`, se lo tiene un repo eliminato ancora nel cestino (R2).
+     *
      */
-    409: Error;
+    409: RepoNameConflictError;
     /**
      * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
      *
