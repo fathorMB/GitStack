@@ -711,3 +711,59 @@ func TestListAndRevokeOwnSessions(t *testing.T) {
 		t.Fatalf("dopo la revoca: %s", r.body)
 	}
 }
+
+// TestExportOwnData: l'utente scarica i propri dati (F20, V8.3.2). Ci sono
+// profilo, token (senza valore), chiave SSH con la chiave pubblica e sessioni;
+// non ci sono password, hash né dati di altri utenti.
+func TestExportOwnData(t *testing.T) {
+	var logs bytes.Buffer
+	e := newFullEnv(t, &logs, secret)
+	e.mk("alice", false)
+	e.mk("bob", false)
+	a, b := e.mustLogin("alice"), e.mustLogin("bob")
+
+	errCode(t, e.do("GET", "/user/export", nil, nil), 401, "unauthenticated")
+
+	exp := e.clock.now().Add(48 * time.Hour).Format(time.RFC3339)
+	r := e.do("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"read:user"}, "expiresAt": exp}, a)
+	status(t, r, 201)
+	plain, _ := r.json()["token"].(string)
+	pub := pubKey(t, "ed25519")
+	status(t, e.do("POST", "/user/ssh-keys", map[string]any{"title": "laptop", "publicKey": pub}, a), 201)
+	// Dati di bob: non devono comparire nell'export di alice.
+	status(t, e.do("POST", "/user/tokens", map[string]any{"name": "di-bob", "scopes": []string{"read:user"}, "expiresAt": exp}, b), 201)
+
+	r = e.do("GET", "/user/export", nil, a)
+	status(t, r, 200)
+	if cd := r.Header.Get("Content-Disposition"); cd != `attachment; filename="gitstack-alice.json"` {
+		t.Errorf("Content-Disposition %q", cd)
+	}
+	if cc := r.Header.Get("Cache-Control"); !strings.Contains(cc, "no-store") {
+		t.Errorf("Cache-Control %q", cc)
+	}
+	doc := r.json()
+	user, _ := doc["user"].(map[string]any)
+	if user["username"] != "alice" || user["email"] != "alice@example.com" || user["displayName"] != "alice" {
+		t.Errorf("profilo: %v", user)
+	}
+	tokens, _ := doc["tokens"].([]any)
+	if len(tokens) != 1 || tokens[0].(map[string]any)["name"] != "ci" {
+		t.Errorf("token: %v", doc["tokens"])
+	}
+	keys, _ := doc["sshKeys"].([]any)
+	if len(keys) != 1 || keys[0].(map[string]any)["title"] != "laptop" || keys[0].(map[string]any)["publicKey"] != pub {
+		t.Errorf("chiavi: %v", doc["sshKeys"])
+	}
+	if sess, _ := doc["sessions"].([]any); len(sess) != 1 {
+		t.Errorf("sessioni: %v", doc["sessions"])
+	}
+	if doc["totpEnabled"] != false || doc["exportedAt"] == nil {
+		t.Errorf("totpEnabled/exportedAt: %v %v", doc["totpEnabled"], doc["exportedAt"])
+	}
+	// Mai segreti né dati altrui.
+	for _, forbidden := range []string{plain, "di-bob", "bob@example.com", pw, "passwordHash", "password_hash", "$argon2", "$2a$"} {
+		if forbidden != "" && bytes.Contains(r.body, []byte(forbidden)) {
+			t.Errorf("l'export contiene %q", forbidden)
+		}
+	}
+}

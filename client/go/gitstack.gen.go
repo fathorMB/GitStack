@@ -2371,6 +2371,16 @@ type Error struct {
 	} `json:"error"`
 }
 
+// ExportedSshKey Chiave SSH dell'utente, con la chiave pubblica.
+type ExportedSshKey struct {
+	CreatedAt   time.Time  `json:"createdAt"`
+	Fingerprint string     `json:"fingerprint"`
+	KeyType     string     `json:"keyType"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	PublicKey   string     `json:"publicKey"`
+	Title       string     `json:"title"`
+}
+
 // FileContent defines model for FileContent.
 type FileContent struct {
 	// Binary True per tutto cio' che non e' testo (anche le immagini, SVG compreso).
@@ -3103,6 +3113,18 @@ type OrganizationList struct {
 	Page    int            `json:"page"`
 	PerPage int            `json:"perPage"`
 	Total   int            `json:"total"`
+}
+
+// OwnDataExport Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+type OwnDataExport struct {
+	ExportedAt  time.Time        `json:"exportedAt"`
+	Sessions    []Session        `json:"sessions"`
+	SshKeys     []ExportedSshKey `json:"sshKeys"`
+	Tokens      []Token          `json:"tokens"`
+	TotpEnabled bool             `json:"totpEnabled"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
 }
 
 // OwnerRef defines model for OwnerRef.
@@ -6874,6 +6896,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExportOwnData Esporta i dati personali dell'utente corrente
+	//
+	// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+	//
+	// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+	ExportOwnData(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNotificationPreferences Preferenze email delle notifiche
 	//
@@ -11071,6 +11100,23 @@ func (c *Client) GetMyResourcePermission(ctx context.Context, resourceId Resourc
 // Corresponds with GET /search/issues (the `SearchIssues` operationId).
 func (c *Client) SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchIssuesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ExportOwnData Esporta i dati personali dell'utente corrente
+//
+// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+//
+// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+func (c *Client) ExportOwnData(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExportOwnDataRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -21088,6 +21134,33 @@ func NewSearchIssuesRequest(server string, params *SearchIssuesParams) (*http.Re
 	return req, nil
 }
 
+// NewExportOwnDataRequest constructs an http.Request for the ExportOwnData method
+func NewExportOwnDataRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/export")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNotificationPreferencesRequest constructs an http.Request for the GetNotificationPreferences method
 func NewGetNotificationPreferencesRequest(server string) (*http.Request, error) {
 	var err error
@@ -24103,6 +24176,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssuesWithResponse(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*SearchIssuesResponse, error)
+
+	// ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
+	//
+	// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+	ExportOwnDataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ExportOwnDataResponse, error)
 
 	// GetNotificationPreferencesWithResponse Preferenze email delle notifiche
 	//
@@ -37257,6 +37339,75 @@ func (r SearchIssuesResponse) ContentType() string {
 	return ""
 }
 
+// ExportOwnDataResponse200Headers the declared response headers of an HTTP 200 response for ExportOwnData
+type ExportOwnDataResponse200Headers struct {
+	ContentDisposition *string
+}
+
+type ExportOwnDataResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OwnDataExport
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ExportOwnDataResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ExportOwnDataResponse) GetJSON200() *OwnDataExport {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ExportOwnDataResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ExportOwnDataResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ExportOwnDataResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ExportOwnDataResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ExportOwnDataResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExportOwnDataResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ExportOwnDataResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetNotificationPreferencesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -42190,6 +42341,21 @@ func (c *ClientWithResponses) SearchIssuesWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseSearchIssuesResponse(rsp)
+}
+
+// ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
+//
+// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+func (c *ClientWithResponses) ExportOwnDataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ExportOwnDataResponse, error) {
+	rsp, err := c.ExportOwnData(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExportOwnDataResponse(rsp)
 }
 
 // GetNotificationPreferencesWithResponse Preferenze email delle notifiche
@@ -53215,6 +53381,66 @@ func ParseSearchIssuesResponse(rsp *http.Response) (*SearchIssuesResponse, error
 		}
 		response.JSONDefault = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseExportOwnDataResponse parses an HTTP response from a ExportOwnDataWithResponse call
+func ParseExportOwnDataResponse(rsp *http.Response) (*ExportOwnDataResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExportOwnDataResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OwnDataExport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ExportOwnDataResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

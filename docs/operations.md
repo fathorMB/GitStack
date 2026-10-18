@@ -562,6 +562,59 @@ A user who lost the device and the recovery codes is unlocked by an administrato
 
 Core encrypts webhook and mirror secrets with the primary key and decrypts each row with the key named by its `secret_key_id`, so old rows stay readable after a rotation. Rotation: put the current key in `oldKeys` as `<keyId>:<key>` (comma separated for more than one), put a new 32-byte key (`openssl rand -hex 32`) in `key`, set a new `core.webhookSecret.keyId`, `helm upgrade`. New and edited secrets use the new key; old rows are decrypted with the entry of `oldKeys` (`services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`). Do not remove an old key from `oldKeys` while rows still use it: the secret would be unreadable and the webhook has to be configured again. A lost key has the same effect.
 
+### Personal data at rest and data export (F20, GIT-239)
+
+GitStack stores user names, e-mail addresses and display names in clear in
+Postgres (`identity.users`, and the names inside `core`). There is no
+application-level encryption of these fields: for an on-prem tool the
+protection of that data at rest is the encryption of the disks that hold it.
+This is a requirement of the installation, not an option of GitStack
+(ASVS V6.1.1).
+
+**What to encrypt**
+
+| What | Where | How |
+|---|---|---|
+| Data disk | the volume mounted at `/var/lib/rancher`: k3s, the bundled Postgres volume, the Git repositories and the attachments | full-disk or volume encryption done before the install: LUKS (`cryptsetup luksFormat`, then `luksOpen`, `mkfs`, mount at `/var/lib/rancher` and an entry in `/etc/crypttab`), or the encryption of the cloud/hypervisor disk |
+| Local backup copy | `backup.destination` (default `/var/backups/gitstack`) | put it on an encrypted volume as well, and create the archives with `gitstack backup --key-file` (AES-256-GCM), which protects them when the file is copied elsewhere |
+| External PostgreSQL | managed by whoever runs the database server | encrypted storage and encrypted backups on that server; `sslmode=verify-full` for the connection (see [External PostgreSQL](#external-postgresql)) |
+| Off-host copies | S3 and every copy you take | always encrypted (S3 uploads are encrypted by GitStack, [Backup to S3](#backup-to-s3-n7)); keep the key file (`0600`) away from the archives |
+
+A minimal LUKS setup for a dedicated data disk (adapt the device name; this
+destroys what is on it):
+
+```sh
+sudo cryptsetup luksFormat /dev/sdb
+sudo cryptsetup luksOpen /dev/sdb gitstack-data
+sudo mkfs.ext4 /dev/mapper/gitstack-data
+echo 'gitstack-data /dev/sdb none luks' | sudo tee -a /etc/crypttab
+echo '/dev/mapper/gitstack-data /var/lib/rancher ext4 defaults 0 2' | sudo tee -a /etc/fstab
+sudo mkdir -p /var/lib/rancher && sudo mount /var/lib/rancher
+```
+
+Check it after the install: `lsblk -f` must show `crypto_LUKS` under the disk
+that backs `/var/lib/rancher`, and the same for the backup destination.
+Losing the LUKS passphrase means losing the data: keep it in your password
+manager together with the backup key.
+
+**Export of your own data (V8.3.2).** Every user can download the personal data
+that the identity service keeps about them: `GET /v1/user/export` (scope
+`read:user`; in the web UI session or with a personal token).
+
+```sh
+curl -fsS -H "Authorization: Bearer $GITSTACK_TOKEN" \
+  https://git.example.com/api/v1/user/export -o gitstack-me.json
+```
+
+The JSON has the profile (username, e-mail, display name, role), the personal
+tokens (name, scopes, last four characters, dates; never the value), the SSH
+keys (with the public key), the active web sessions and whether TOTP is on.
+It never contains passwords, hashes, TOTP secrets or recovery codes. Issues,
+comments and repositories live in `core` and are read with their own APIs.
+Each export is logged as `security.data.exported`. To remove an account an
+administrator deletes the user (`DELETE /v1/users/{username}`); there is no
+self-service removal.
+
 ## Backup
 
 GitStack provides a coherent backup command that takes a short read-only

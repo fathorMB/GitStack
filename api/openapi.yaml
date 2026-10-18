@@ -1090,6 +1090,40 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /user/export:
+    get:
+      operationId: exportOwnData
+      tags: [auth]
+      summary: Esporta i dati personali dell'utente corrente
+      description: >
+        Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come
+        file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con
+        i dati che identity conserva sull'utente: profilo (nome, email, ruolo),
+        token personali (mai il valore: solo nome, scope, suffisso e date),
+        chiavi SSH (chiave pubblica compresa), sessioni web attive e se il
+        TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici
+        di recupero. I contenuti creati in core (issue, commenti, repository)
+        non fanno parte dell'export: restano leggibili con le loro API.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Documento di esportazione.
+          headers:
+            Content-Disposition:
+              description: "`attachment; filename=\"gitstack-<username>.json\"`."
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnDataExport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /user/ssh-keys:
     get:
       operationId: listSshKeys
@@ -7591,6 +7625,56 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Session"
+
+    ExportedSshKey:
+      type: object
+      description: Chiave SSH dell'utente, con la chiave pubblica.
+      additionalProperties: false
+      required: [title, keyType, fingerprint, publicKey, createdAt]
+      properties:
+        title:
+          type: string
+        keyType:
+          type: string
+        fingerprint:
+          type: string
+        publicKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    OwnDataExport:
+      type: object
+      description: >
+        Dati personali che identity conserva su un utente (V8.3.2). Senza
+        password, hash, segreto TOTP e valori dei token.
+      additionalProperties: false
+      required: [exportedAt, user, tokens, sshKeys, sessions, totpEnabled]
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Token"
+        sshKeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportedSshKey"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+        totpEnabled:
+          type: boolean
 
     OidcProvider:
       type: object

@@ -581,6 +581,16 @@ type Error struct {
 	} `json:"error"`
 }
 
+// ExportedSshKey Chiave SSH dell'utente, con la chiave pubblica.
+type ExportedSshKey struct {
+	CreatedAt   time.Time  `json:"createdAt"`
+	Fingerprint string     `json:"fingerprint"`
+	KeyType     string     `json:"keyType"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	PublicKey   string     `json:"publicKey"`
+	Title       string     `json:"title"`
+}
+
 // Grant Ruolo su una risorsa generica (D15) per un utente o un team.
 type Grant struct {
 	CreatedAt  *time.Time          `json:"createdAt,omitempty"`
@@ -740,6 +750,18 @@ type OrganizationList struct {
 	Page    int            `json:"page"`
 	PerPage int            `json:"perPage"`
 	Total   int            `json:"total"`
+}
+
+// OwnDataExport Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+type OwnDataExport struct {
+	ExportedAt  time.Time        `json:"exportedAt"`
+	Sessions    []Session        `json:"sessions"`
+	SshKeys     []ExportedSshKey `json:"sshKeys"`
+	Tokens      []Token          `json:"tokens"`
+	TotpEnabled bool             `json:"totpEnabled"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
 }
 
 // OwnerRef defines model for OwnerRef.
@@ -1537,6 +1559,9 @@ type ServerInterface interface {
 	// GetMyResourcePermission Permesso effettivo del chiamante su una risorsa
 	// (GET /resources/{resourceId}/permissions)
 	GetMyResourcePermission(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// ExportOwnData Esporta i dati personali dell'utente corrente
+	// (GET /user/export)
+	ExportOwnData(w http.ResponseWriter, r *http.Request)
 	// ListOwnSessions Elenca le sessioni web attive dell'utente corrente
 	// (GET /user/sessions)
 	ListOwnSessions(w http.ResponseWriter, r *http.Request)
@@ -2846,6 +2871,20 @@ func (siw *ServerInterfaceWrapper) GetMyResourcePermission(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ExportOwnData operation middleware
+func (siw *ServerInterfaceWrapper) ExportOwnData(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportOwnData(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListOwnSessions operation middleware
 func (siw *ServerInterfaceWrapper) ListOwnSessions(w http.ResponseWriter, r *http.Request) {
 
@@ -3548,6 +3587,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/tokens/{tokenId}", wrapper.RevokeToken)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/sessions", wrapper.ListOwnSessions)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/sessions/{sessionId}", wrapper.RevokeOwnSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/export", wrapper.ExportOwnData)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys", wrapper.ListSshKeys)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)

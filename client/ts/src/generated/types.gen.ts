@@ -517,6 +517,31 @@ export type SessionList = {
     items: Array<Session>;
 };
 
+/**
+ * Chiave SSH dell'utente, con la chiave pubblica.
+ */
+export type ExportedSshKey = {
+    title: string;
+    keyType: string;
+    fingerprint: string;
+    publicKey: string;
+    createdAt: string;
+    lastUsedAt?: string | null;
+};
+
+/**
+ * Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+ *
+ */
+export type OwnDataExport = {
+    exportedAt: string;
+    user: User;
+    tokens: Array<Token>;
+    sshKeys: Array<ExportedSshKey>;
+    sessions: Array<Session>;
+    totpEnabled: boolean;
+};
+
 export type OidcProvider = {
     slug: Name;
     displayName: string;
@@ -2450,6 +2475,19 @@ export type CurrentSessionWritable = {
 };
 
 /**
+ * Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+ *
+ */
+export type OwnDataExportWritable = {
+    exportedAt: string;
+    user: UserWritable;
+    tokens: Array<TokenWritable>;
+    sshKeys: Array<ExportedSshKey>;
+    sessions: Array<Session>;
+    totpEnabled: boolean;
+};
+
+/**
  * Token personale, senza il valore (che non e' recuperabile).
  */
 export type TokenWritable = {
@@ -4245,6 +4283,40 @@ export type RevokeOwnSessionResponses = {
 };
 
 export type RevokeOwnSessionResponse = RevokeOwnSessionResponses[keyof RevokeOwnSessionResponses];
+
+export type ExportOwnDataData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/export';
+};
+
+export type ExportOwnDataErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ExportOwnDataError = ExportOwnDataErrors[keyof ExportOwnDataErrors];
+
+export type ExportOwnDataResponses = {
+    /**
+     * Documento di esportazione.
+     */
+    200: OwnDataExport;
+};
+
+export type ExportOwnDataResponse = ExportOwnDataResponses[keyof ExportOwnDataResponses];
 
 export type ListSshKeysData = {
     body?: never;
