@@ -56,7 +56,36 @@ describe('DownloadsPage', () => {
     expect(within(list).getAllByText(/sha256 aaaaaaaaaaaa/)).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'SHA256SUMS' })).toHaveAttribute('href', '/downloads/SHA256SUMS');
     expect(screen.getByRole('link', { name: 'Download skills (.zip)' })).toHaveAttribute('href', '/downloads/gs-skills.zip');
-    expect(screen.queryByText(/MCP/)).not.toBeInTheDocument();
+    expect(screen.getByText('MCP server')).toBeInTheDocument();
+  }, 15000);
+
+  it('riquadro MCP: configurazione pronta per ogni assistente, con l\'host corrente', async () => {
+    mockFetch(Promise.resolve(new Response(JSON.stringify(index()), { status: 200 })));
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    renderPage();
+    await screen.findByRole('list', { name: 'Binaries' });
+    const host = window.location.host;
+    const block = () => screen.getByLabelText('MCP configuration');
+    expect(block()).toHaveTextContent(`claude mcp add gitstack -- gs mcp --host ${host}`);
+    await user.click(screen.getByRole('button', { name: 'Claude Desktop' }));
+    expect(JSON.parse(block().textContent ?? '')).toEqual({
+      mcpServers: { gitstack: { command: 'gs', args: ['mcp', '--host', host] } },
+    });
+    await user.click(screen.getByRole('button', { name: 'VS Code' }));
+    expect(JSON.parse(block().textContent ?? '')).toEqual({
+      servers: { gitstack: { type: 'stdio', command: 'gs', args: ['mcp', '--host', host] } },
+    });
+    await user.click(screen.getByRole('button', { name: 'Cursor' }));
+    expect(block()).toHaveTextContent('"mcpServers"');
+    await user.click(screen.getByRole('button', { name: 'Codex' }));
+    expect(block()).toHaveTextContent('[mcp_servers.gitstack]');
+    expect(block()).toHaveTextContent(`args = ["mcp","--host","${host}"]`);
+    await user.click(screen.getByRole('checkbox', { name: /Read-only/ }));
+    expect(block()).toHaveTextContent(`args = ["mcp","--host","${host}","--read-only"]`);
+    const copies = screen.getAllByRole('button', { name: 'Copy' });
+    await user.click(copies[copies.length - 1]!);
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(block().textContent));
   }, 15000);
 
   it('comandi copiabili con l\'host corrente, sh e PowerShell', async () => {

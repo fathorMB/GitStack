@@ -23,6 +23,7 @@ var expectedSkills = []string{
 	"gitstack-issue-to-commit",
 	"gitstack-issue-triage",
 	"gitstack-notifications",
+	"gitstack-pr-review",
 	"gitstack-repo-admin",
 	"gitstack-setup",
 }

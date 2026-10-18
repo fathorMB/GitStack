@@ -1,4 +1,4 @@
-import { Bot, Download, Key, Terminal } from 'lucide-react';
+import { Bot, Download, Key, Plug, Terminal } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyButton, ErrorAlert, Logo } from '../components';
@@ -19,9 +19,55 @@ function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+type McpAssistant = 'claude-code' | 'claude-desktop' | 'cursor' | 'vscode' | 'codex';
+
+interface McpConfig {
+  label: string;
+  where: string;
+  text: string;
+}
+
+// Configurazione del server MCP (`gs mcp`, M5) per gli assistenti più diffusi,
+// con l'host di questa istanza: il server usa login e token di gs.
+function mcpConfigs(host: string, readOnly: boolean): Record<McpAssistant, McpConfig> {
+  const args = ['mcp', '--host', host, ...(readOnly ? ['--read-only'] : [])];
+  const argsJson = JSON.stringify(args);
+  const json = (key: string, extra: Record<string, unknown> = {}) =>
+    JSON.stringify({ [key]: { gitstack: { ...extra, command: 'gs', args } } }, null, 2);
+  return {
+    'claude-code': {
+      label: 'Claude Code',
+      where: 'Run once in your terminal (add --scope user to use it in every project).',
+      text: `claude mcp add gitstack -- gs ${args.join(' ')}`,
+    },
+    'claude-desktop': {
+      label: 'Claude Desktop',
+      where: 'Add to claude_desktop_config.json, then restart Claude Desktop.',
+      text: json('mcpServers'),
+    },
+    cursor: {
+      label: 'Cursor',
+      where: 'Add to .cursor/mcp.json in the project, or ~/.cursor/mcp.json for every project.',
+      text: json('mcpServers'),
+    },
+    vscode: {
+      label: 'VS Code',
+      where: 'Add to .vscode/mcp.json in the workspace.',
+      text: json('servers', { type: 'stdio' }),
+    },
+    codex: {
+      label: 'Codex',
+      where: 'Add to ~/.codex/config.toml.',
+      text: `[mcp_servers.gitstack]\ncommand = "gs"\nargs = ${argsJson}`,
+    },
+  };
+}
+
+const MCP_ORDER: McpAssistant[] = ['claude-code', 'claude-desktop', 'cursor', 'vscode', 'codex'];
+
 // Pagina pubblica /downloads (mockup "downloads"): binari gs per piattaforma
-// con checksum, comandi d'installazione con l'host corrente, skills e
-// certificato della CA. Sta fuori da RequireAuth e da AppShell (sidebar e
+// con checksum, comandi d'installazione con l'host corrente, skills, server
+// MCP e certificato della CA. Sta fuori da RequireAuth e da AppShell (sidebar e
 // topbar chiamano API che richiedono la sessione).
 export function DownloadsPage() {
   const { data, loading, error } = useLoad(fetchDownloadsIndex);
@@ -31,6 +77,9 @@ export function DownloadsPage() {
   const shCmd = `curl -fsSL ${origin}${data?.install.sh ?? '/install-gs.sh'} | sh`;
   const psCmd = `irm ${origin}${data?.install.ps1 ?? '/install-gs.ps1'} | iex`;
   const cmd = tab === 'unix' ? shCmd : psCmd;
+  const [assistant, setAssistant] = useState<McpAssistant>('claude-code');
+  const [readOnly, setReadOnly] = useState(false);
+  const mcp = mcpConfigs(host, readOnly)[assistant];
 
   const groups = OS_ORDER.map((os) => ({ os, items: (data?.binaries ?? []).filter((b) => b.os === os) })).filter(
     (g) => g.items.length > 0,
@@ -182,6 +231,45 @@ export function DownloadsPage() {
                 </>
               ) : null}
             </div>
+          </div>
+        </div>
+
+        <div className="card section-gap">
+          <div className="card-h">
+            <Plug size={16} aria-hidden="true" />
+            MCP server
+            <span className="sp" />
+            <span className="seg" role="group" aria-label="Assistant">
+              {MCP_ORDER.map((a) => (
+                <button key={a} type="button" className={assistant === a ? 'active' : ''} aria-pressed={assistant === a} onClick={() => setAssistant(a)}>
+                  {mcpConfigs(host, readOnly)[a].label}
+                </button>
+              ))}
+            </span>
+          </div>
+          <div className="card-b stack">
+            <p className="small muted">
+              Let your coding assistant work on this GitStack through MCP. <span className="mono">gs mcp</span> runs on your
+              computer, uses the same login and token as <span className="mono">gs</span>, and talks to {host}. It needs the{' '}
+              <span className="mono">gs</span> installed above and a <span className="mono">gs auth login</span>.
+            </p>
+            <p className="small muted">{mcp.where}</p>
+            <div className="row nowrap">
+              <div className="cmdblock grow" aria-label="MCP configuration">
+                {mcp.text}
+              </div>
+              <CopyButton value={mcp.text} />
+            </div>
+            <label className="small row">
+              <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} /> Read-only: the
+              assistant can read but not change anything (<span className="mono">--read-only</span>)
+            </label>
+            <p className="small muted">
+              The assistant also gets prompts for the common flows — issue to Pull Request, issue triage, Pull Request
+              review — built from the agent skills. If <span className="mono">gs</span> is older than this instance
+              (same major version) the server starts and warns you to update; with a different major version it does
+              not start.
+            </p>
           </div>
         </div>
       </main>

@@ -24,7 +24,8 @@ func NewCmd(f *cmdutil.Factory) *cobra.Command {
 			"token. Le azioni distruttive (chiusure, merge, eliminazioni, occultamenti) portano l'annotazione destructive; " +
 			"il server non chiede conferme: le chiede l'assistente. Non c'è uno strumento dedicato per eliminare o archiviare " +
 			"repository, né per impostazioni, webhook, token e amministrazione.\n\n" +
-			"--read-only limita il server alle sole letture, api_request compreso.\n\n" +
+			"Offre anche i prompt issue_to_pr, issue_triage e pr_review (M4), generati dalle skills di skills/; nessuna risorsa MCP.\n\n" +
+				"--read-only limita il server alle sole letture, api_request compreso.\n\n" +
 			"Se gs è più vecchio dell'istanza nella stessa versione maggiore, il server parte e avvisa su stderr di " +
 			"aggiornare; con una versione maggiore diversa non parte (M5). Stdout è riservato al protocollo.",
 		Example: "  gs mcp\n  gs mcp --read-only\n  gs mcp --host git.example.com",
