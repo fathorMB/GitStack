@@ -185,7 +185,7 @@ paths = ["SECURITY.md", "scripts/check-security-md.go"]
 name = "rules-coverage"
 run = "go run scripts/check-rules-coverage.go"
 timeout_s = 120
-paths = ["docs/rules-coverage.md", "scripts/check-rules-coverage.go", "cli/**", "services/**", "web/src/**"]
+paths = ["docs/rules-coverage.md", "scripts/check-rules-coverage.go", "admin/**", "cli/**", "pkg/**", "scripts/**", "services/**", "web/**"]
 
 [[check]]
 name = "go-gofmt"
