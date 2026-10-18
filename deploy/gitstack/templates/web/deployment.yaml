@@ -21,6 +21,7 @@ spec:
       {{- end }}
       securityContext:
         {{- include "gitstack.podSecurityContext" (dict "runAsUser" 101) | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.global.shutdown.terminationGracePeriodSeconds | int }}
       containers:
         - name: web
           image: {{ include "gitstack.image" (dict "root" $ "component" .Values.web) }}
@@ -63,6 +64,7 @@ spec:
               mountPath: /etc/gitstack/ca
               readOnly: true
           {{- end }}
+          {{- include "gitstack.preStop" . | nindent 10 }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
       {{- if .Values.ingress.tls.caConfigMap }}

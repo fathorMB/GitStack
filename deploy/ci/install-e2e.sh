@@ -13,7 +13,8 @@
 #   older-k3s                  Una patch di k3s precedente a quella dichiarata
 #                              in deploy/k3s-version (esiste su GitHub).
 #   wait-healthy [secondi]     Attende https://$E2E_HOST/api/healthz = ok, il rollout di
-#                              tutti i Deployment/StatefulSet e /downloads/ca.crt = 200.
+#                              tutti i Deployment/StatefulSet, nessun pod in terminazione e
+#                              /downloads/ca.crt = 200 per 3 volte di fila.
 #   seed                       Admin (cambio password obbligatorio), utente,
 #                              token, repo con un commit spinto via HTTPS e
 #                              una issue. Stato in $E2E_STATE_DIR.
@@ -132,17 +133,57 @@ wait_healthy() {
     # Nessuna risorsa: rollout status senza nomi non fallisce con -l.
     "${KUBECTL[@]}" -n default rollout status "${kind}" -l app.kubernetes.io/instance --timeout="${remaining}s"       || fail "rollout dei ${kind} non finito entro ${timeout}s"
   done
-  local code=""
+  # Il rollout può essere "finito" mentre un vecchio pod è ancora in
+  # terminazione ma nell'endpoint di Traefik (502/504 sul client, GIT-248):
+  # si esce solo senza pod in terminazione e con 3 risposte 200 di fila.
+  local code="" ok=0 terminating
   while [ "${SECONDS}" -lt "${deadline}" ]; do
+    terminating="$(terminating_pods)"
+    if [ -n "${terminating}" ]; then
+      log "pod in terminazione: ${terminating//$'
+'/ }"
+      ok=0
+      sleep 5
+      continue
+    fi
     code="$(curl -sk -m 10 -o /dev/null -w '%{http_code}' "$(base_url)/downloads/ca.crt" || true)"
     if [ "${code}" = "200" ]; then
-      log "rollout completo e /downloads/ca.crt 200"
-      return 0
+      ok=$((ok + 1))
+      if [ "${ok}" -ge 3 ]; then
+        log "rollout completo, nessun pod in terminazione e /downloads/ca.crt 200 (${ok} volte di fila)"
+        return 0
+      fi
+      sleep 2
+      continue
     fi
+    ok=0
     sleep 5
   done
   res="${code:-nessuna risposta}"
-  fail "/downloads/ca.crt: HTTP ${res} dopo ${timeout}s"
+  fail "/downloads/ca.crt: HTTP ${res} (o pod in terminazione) dopo ${timeout}s"
+}
+
+# Nomi dei pod dei rilasci GitStack con deletionTimestamp (uno per riga).
+terminating_pods() {
+  "${KUBECTL[@]}" -n default get pods -l app.kubernetes.io/instance -o json 2>/dev/null     | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | .metadata.name' 2>/dev/null || true
+}
+
+# download_ca <file> [secondi]: scarica /downloads/ca.crt e riprova per un tempo
+# limitato (502/504 mentre un pod si ferma); riesce solo con HTTP 200 e un
+# certificato leggibile. Su errore dice l'ultimo codice HTTP.
+download_ca() {
+  local out="$1" limit="${2:-90}" end code="" tries=0
+  end=$((SECONDS + limit))
+  while :; do
+    tries=$((tries + 1))
+    code="$(curl -sk -m 15 -o "${out}" -w '%{http_code}' "$(base_url)/downloads/ca.crt" || true)"
+    if [ "${code}" = "200" ] && openssl x509 -in "${out}" -noout 2>/dev/null; then
+      return 0
+    fi
+    [ "${SECONDS}" -lt "${end}" ] || break
+    sleep 3
+  done
+  fail "download di /downloads/ca.crt: ultimo HTTP ${code:-nessuna risposta} dopo ${tries} tentativi in ${limit}s"
 }
 
 fetch_ca() {
@@ -150,7 +191,7 @@ fetch_ca() {
   chmod 700 "${STATE_DIR}"
   # Il primo scaricamento è senza verifica: la CA si confronta subito con
   # l'impronta che dà la macchina (gitstack-tls fingerprint).
-  curl -fsSk -o "${STATE_DIR}/ca.crt" "$(base_url)/downloads/ca.crt" || fail "download di /downloads/ca.crt"
+  download_ca "${STATE_DIR}/ca.crt"
   local got want
   got="$(openssl x509 -in "${STATE_DIR}/ca.crt" -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')"
   want="$(sudo gitstack-tls fingerprint | tr -d ': \n' | tr 'A-F' 'a-f')"
@@ -279,7 +320,8 @@ verify_seed() {
   load_seed
   local head fp
   # La CA è quella di prima (il restore la riporta com'era).
-  fp="$(curl -fsSk "$(base_url)/downloads/ca.crt" | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')"
+  download_ca "${STATE_DIR}/ca-verify.crt"
+  fp="$(openssl x509 -in "${STATE_DIR}/ca-verify.crt" -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')"
   [ "${fp}" = "$(cat "${STATE_DIR}/ca.sha256")" ] || fail "la CA è cambiata (${fp})"
   login admin "${NEW_ADMIN_PASSWORD}" "${STATE_DIR}/admin.jar"
   expect 200 "${CODE}" "login admin con la password cambiata"
@@ -303,7 +345,12 @@ verify_seed() {
   [ -f "${c}/seed.txt" ] || fail "seed.txt manca nel clone"
   [ ! -e "${c}/dopo-backup.txt" ] || fail "dopo-backup.txt presente: il restore non ha tolto il commit successivo"
   if [ "${push}" = 1 ]; then
-    printf 'dopo il verify\n' > "${c}/verify-${SECONDS}.txt"
+    # Nome e contenuto unici per chiamata: nello scenario upgrade verify-seed --push
+    # gira due volte in processi diversi (SECONDS riparte da 0) e il backup
+    # contiene già il file del primo giro: un file identico dà "nothing to commit".
+    local uniq
+    uniq="$(date +%s%N)-$$-$(mktemp -u XXXXXX)"
+    printf 'dopo il verify %s\n' "${uniq}" > "${c}/verify-${uniq}.txt"
     cigit -C "${c}" add -A
     cigit -C "${c}" commit -q -m 'verify: push dopo il ripristino'
     cigit -C "${c}" push -q origin main
