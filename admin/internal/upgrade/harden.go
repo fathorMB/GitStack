@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Hardening di k3s (GIT-228, F2 del registro ASVS in docs/security/asvs-l2.md).
@@ -26,6 +27,15 @@ import (
 //     l'unità com'era e riavvia k3s.
 //
 // Il backup preventivo precede sempre questo passo (Run).
+
+// encryptionStatusWait è quanto si riprova `k3s secrets-encrypt status` dopo
+// il riavvio di k3s.
+func (o *Options) encryptionStatusWait() time.Duration {
+	if o.EncryptionStatusWait > 0 {
+		return o.EncryptionStatusWait
+	}
+	return 2 * time.Minute
+}
 
 // k3sUnitName è l'unità systemd creata dallo script di k3s.
 const k3sUnitName = "k3s.service"
@@ -202,8 +212,26 @@ func (o *Options) hardenK3s(ctx context.Context, p *hardenPlan, res *Result) err
 }
 
 // verifyEncryption chiede a k3s se la cifratura dei Secret è attiva.
+//
+// Subito dopo il riavvio i servizi possono essere sani prima che k3s abbia
+// scritto le annotazioni del nodo: `status` allora esce con errore («missing
+// annotation on node», visto su homehub il 18/10, GIT-249). Un errore del
+// comando si riprova fino a encryptionStatusWait; una risposta «Disabled» è
+// definitiva e non si riprova.
 func (o *Options) verifyEncryption(ctx context.Context) ([]byte, error) {
-	out, err := o.Runner.Run(ctx, nil, "k3s", "secrets-encrypt", "status")
+	deadline := time.Now().Add(o.encryptionStatusWait())
+	var out []byte
+	var err error
+	for {
+		out, err = o.Runner.Run(ctx, nil, "k3s", "secrets-encrypt", "status")
+		if err == nil || ctx.Err() != nil || !time.Now().Add(o.poll()).Before(deadline) {
+			break
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(o.poll()):
+		}
+	}
 	if err != nil {
 		return out, err
 	}

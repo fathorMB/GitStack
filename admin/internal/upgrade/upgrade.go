@@ -116,7 +116,10 @@ type Options struct {
 	ImageCheck func(ctx context.Context, image string) error
 	// Poll è l'intervallo fra due controlli di salute (default 5 s).
 	Poll time.Duration
-	Log  io.Writer
+	// EncryptionStatusWait è quanto si riprova `k3s secrets-encrypt status`
+	// dopo il riavvio di k3s (default 2 min).
+	EncryptionStatusWait time.Duration
+	Log                  io.Writer
 	// V5 è la verifica delle firme cosign (binario, chart, immagini). Il
 	// valore zero verifica: si salta solo con V5.AllowUnsigned (N9).
 	V5 V5Config
