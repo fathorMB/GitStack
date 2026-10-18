@@ -888,10 +888,21 @@ services.
    ripristino dei repo (git-data)
    ripristino degli allegati
    ripristino dei Secret
+   riavvio NATS per le credenziali ripristinate
    ripristinati 7 file di configurazione (config.yaml resta quello della nuova installazione)
    riavvio i servizi
    Restore completato: database, repo, allegati, Secret e configurazione ripristinati.
    ```
+
+   After the Secrets are restored, the restore restarts the NATS StatefulSet
+   (`<release>-nats`, if the chart runs it) and waits for it to be ready,
+   **before** it starts identity, core, git and the gateway again: NATS reads
+   its credentials from the restored `<release>-nats-auth` Secret only at
+   startup. No manual `rollout restart` is needed (older versions exited with
+   code `70`, "gateway non è tornato pronto", and needed
+   `kubectl rollout restart statefulset/<release>-nats`, then core and
+   gateway: superseded by this fix, GIT-297). PostgreSQL is not restarted (its
+   Secret is not restored) and the web reads no Secret.
 
 4. Verify with `gitstack status` that all services are ready (exit code `0`).
 
@@ -1951,7 +1962,7 @@ sudo gitstack restore --from s3
 echo "exit=$?"
 ```
 
-Esito atteso: le righe `archivio verificato: versione <VERSIONE> del <data>, N file`, `fermo i servizi: …`, `ripristino del database (in una sola transazione)`, `ripristino dei repo (git-data)`, `ripristino degli allegati`, `ripristino dei Secret`, `ripristinati N file di configurazione (config.yaml resta quello della nuova installazione)`, `riavvio i servizi`, poi `Restore completato: database, repo, allegati, Secret e configurazione ripristinati.` e `exit=0`. Un codice diverso: vedi [Exit codes](#exit-codes) (`6` = versione diversa, checksum sbagliato o chiave mancante: la prova **non** è riuscita, riparti dal passo 2 con la versione giusta).
+Esito atteso: le righe `archivio verificato: versione <VERSIONE> del <data>, N file`, `fermo i servizi: …`, `ripristino del database (in una sola transazione)`, `ripristino dei repo (git-data)`, `ripristino degli allegati`, `ripristino dei Secret`, `riavvio NATS per le credenziali ripristinate` (solo se NATS è quello del chart), `ripristinati N file di configurazione (config.yaml resta quello della nuova installazione)`, `riavvio i servizi`, poi `Restore completato: database, repo, allegati, Secret e configurazione ripristinati.` e `exit=0`. Un codice diverso: vedi [Exit codes](#exit-codes) (`6` = versione diversa, checksum sbagliato o chiave mancante: la prova **non** è riuscita, riparti dal passo 2 con la versione giusta).
 
 **Passo 4. Controlli di riuscita**
 
