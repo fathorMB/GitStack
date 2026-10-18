@@ -3641,7 +3641,7 @@ export const listCredentialEvents = <ThrowOnError extends boolean = false>(optio
 /**
  * Conferma la consegna degli eventi sulle credenziali
  *
- * Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+ * Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
  *
  */
 export const ackCredentialEvents = <ThrowOnError extends boolean = false>(options: Options<AckCredentialEventsData, ThrowOnError>): RequestResult<AckCredentialEventsResponses, AckCredentialEventsErrors, ThrowOnError> => (options.client ?? client).post<AckCredentialEventsResponses, AckCredentialEventsErrors, ThrowOnError>({

@@ -97,7 +97,7 @@ func run(out io.Writer) int {
 		up := upstream.New(cfg.IdentityURL, cfg.CoreURL, cfg.ServiceSecret, 5*time.Second)
 		auth = &access.Authorizer{Identity: up, Core: up, Disk: store}
 		keys = up
-		rules, err = receiverules.Install(filepath.Join(cfg.DataDir, "hooks"), receiverules.Limits{MaxBlobBytes: cfg.MaxBlobBytes, WarnRepoBytes: cfg.RepoWarnBytes})
+		rules, err = receiverules.Install(filepath.Join(cfg.DataDir, "hooks"), receiverules.Limits{MaxBlobBytes: cfg.MaxBlobBytes, WarnRepoBytes: cfg.RepoWarnBytes, NoFsck: cfg.NoFsck})
 		if err != nil {
 			logger.Error("regole alla ricezione del push non installabili", "err", err)
 			return 1

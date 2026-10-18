@@ -583,7 +583,7 @@ type CredentialEventList struct {
 
 // CredentialEventsAckInput defines model for CredentialEventsAckInput.
 type CredentialEventsAckInput struct {
-	UpTo int64 `json:"upTo"`
+	Ids []int64 `json:"ids"`
 }
 
 // CurrentSession defines model for CurrentSession.

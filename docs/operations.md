@@ -562,6 +562,8 @@ A user who lost the device and the recovery codes is unlocked by an administrato
 
 Core encrypts webhook and mirror secrets with the primary key and decrypts each row with the key named by its `secret_key_id`, so old rows stay readable after a rotation. Rotation: put the current key in `oldKeys` as `<keyId>:<key>` (comma separated for more than one), put a new 32-byte key (`openssl rand -hex 32`) in `key`, set a new `core.webhookSecret.keyId`, `helm upgrade`. New and edited secrets use the new key; old rows are decrypted with the entry of `oldKeys` (`services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`). Do not remove an old key from `oldKeys` while rows still use it: the secret would be unreadable and the webhook has to be configured again. A lost key has the same effect.
 
+**Pushing an imported history (F18).** The git service runs `receive-pack` with `receive.fsckObjects=true`: a push that carries a malformed object is rejected with the fsck message. Two harmless oddities common in imported repositories, zero-padded file modes (`zeroPaddedFilemode`) and an invalid timezone (`badTimezone`), are accepted as warnings. If a push of an old history is still rejected for another fsck message (for example `missingEmail`), an administrator can relax the check for the import by setting `GITSTACK_GIT_RECEIVE_FSCK=off` on the `git` service (chart: an extra env of the git deployment), pushing the history, and then removing the variable so the check is back on. Pull mirrors are not affected: a fetch is not checked with `fsckObjects`.
+
 ### Notices on credential changes (F13, GIT-239)
 
 When a password is changed or reset, a personal token or an SSH key is added,

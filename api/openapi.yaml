@@ -5876,8 +5876,11 @@ paths:
       tags: [internal]
       summary: Conferma la consegna degli eventi sulle credenziali
       description: >
-        Per core (F13): segna come consegnati gli eventi con id fino a `upTo`
-        compreso. Ripetere la conferma e' innocuo.
+        Per core (F13): segna come consegnati esattamente gli eventi con gli id
+        indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una
+        soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit
+        e un evento committato dopo la lettura, con id minore, andrebbe perso.
+        Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
       security:
         - serviceAuth: []
       requestBody:
@@ -7774,12 +7777,16 @@ components:
     CredentialEventsAckInput:
       type: object
       additionalProperties: false
-      required: [upTo]
+      required: [ids]
       properties:
-        upTo:
-          type: integer
-          format: int64
-          minimum: 0
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: integer
+            format: int64
+            minimum: 1
 
     OidcProvider:
       type: object

@@ -371,7 +371,7 @@ type CredentialEventList struct {
 
 // CredentialEventsAckInput defines model for CredentialEventsAckInput.
 type CredentialEventsAckInput struct {
-	UpTo int64 `json:"upTo"`
+	Ids []int64 `json:"ids"`
 }
 
 // Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".

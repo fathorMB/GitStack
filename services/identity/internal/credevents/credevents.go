@@ -119,11 +119,16 @@ func (s *Service) Pending(ctx context.Context, limit int) ([]Event, error) {
 	return out, rows.Err()
 }
 
-// Ack segna come consegnati gli eventi con id fino a upTo (compreso). Ritorna
-// quanti ne ha segnati.
-func (s *Service) Ack(ctx context.Context, upTo int64) (int64, error) {
+// Ack segna come consegnati esattamente gli eventi con quegli id. Non una
+// soglia: gli id di una sequence non seguono l'ordine di commit, quindi un
+// evento con id minore committato dopo la lettura di Pending non va confermato
+// per sbaglio. Ritorna quanti ne ha segnati.
+func (s *Service) Ack(ctx context.Context, ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
 	tag, err := s.pool.Exec(ctx, `UPDATE identity.credential_events SET delivered_at = $2
-		WHERE id <= $1 AND delivered_at IS NULL`, upTo, s.now())
+		WHERE id = ANY($1) AND delivered_at IS NULL`, ids, s.now())
 	if err != nil {
 		return 0, fmt.Errorf("credevents: conferma: %w", err)
 	}

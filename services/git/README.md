@@ -19,6 +19,7 @@ Servizio git di GitStack: tiene i repo bare su un volume e li gestisce con il bi
 | `GITSTACK_GIT_MAX_FILE_SIZE` | `100MB` | Dimensione massima di un file (blob) in un push (R6). Numero di byte o con suffisso `KB`, `MB`, `GB` (multipli di 1024: 100MB = 104 857 600 byte); `0` = nessun limite. |
 | `GITSTACK_GIT_REPO_SIZE_WARN` | `5GB` | Oltre questa dimensione del repo il push è accettato con un avviso (R6, avviso di quota per repo). Stesso formato; `0` = nessun avviso. |
 | `GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE` | `5GB` | Tetto di crescita del repo in un singolo fetch di un pull mirror (F18): oltre, il fetch è interrotto, gli oggetti scaricati sono eliminati e l'aggiornamento fallisce. Stesso formato; `0` = nessun tetto. |
+| `GITSTACK_GIT_RECEIVE_FSCK` | `on` | `off` spegne `receive.fsckObjects` sul receive-pack (F18). Con il controllo attivo git rifiuta il push di un oggetto malformato; zero-padded filemode e fuso orario non valido (`badTimezone`), tipici delle storie importate, restano avvisi (`receive.fsck.zeroPaddedFilemode=warn`, `receive.fsck.badTimezone=warn`). Se un import ha altre anomalie (per esempio `missingEmail`), `off` fa passare il push: riattivalo dopo l'import. |
 
 Probe: `GET /healthz` (liveness, sempre `ok`) e `GET /readyz` (503 se `DATA_DIR` non esiste o non è scrivibile).
 

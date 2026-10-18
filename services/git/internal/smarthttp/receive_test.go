@@ -194,3 +194,32 @@ func TestPushFsckRejectsMalformedObjects(t *testing.T) {
 	mustGit(t, w, "commit", "--allow-empty", "-m", "regolare")
 	mustGit(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", "HEAD")
 }
+
+// Le anomalie innocue delle storie importate (fuso orario non valido) non
+// fanno rifiutare il push, e con GITSTACK_GIT_RECEIVE_FSCK=off passa anche un
+// oggetto malformato.
+func TestPushFsckLegacyWarningsAndOff(t *testing.T) {
+	mk := func(t *testing.T, w, author string) string {
+		head := strings.TrimSpace(mustGit(t, w, "rev-parse", "HEAD"))
+		tree := strings.TrimSpace(mustGit(t, w, "rev-parse", "HEAD^{tree}"))
+		raw := "tree " + tree + "\nparent " + head + "\nauthor " + author + "\ncommitter Old <old@example.com> 1700000000 +0000\n\nstoria vecchia\n"
+		f := filepath.Join(t.TempDir(), "c.txt")
+		if err := os.WriteFile(f, []byte(raw), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(mustGit(t, w, "hash-object", "-t", "commit", "-w", "--literally", f))
+	}
+	e := setup(t)
+	w := cloneAlice(t, e)
+	tz := mk(t, w, "Old <old@example.com> 1700000000 +051800")
+	if out, err := git(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", tz+":refs/heads/vecchia"); err != nil {
+		t.Fatalf("un fuso orario non valido doveva passare con un avviso: %v\n%s", err, out)
+	}
+
+	e = setupWith(t, receiverules.Limits{NoFsck: true}, nil)
+	w = cloneAlice(t, e)
+	bad := mk(t, w, "Mallory <broken 1700000000 +0000")
+	if out, err := git(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", bad+":refs/heads/malformato"); err != nil {
+		t.Fatalf("con fsck spento il push doveva passare: %v\n%s", err, out)
+	}
+}

@@ -56,6 +56,10 @@ const MirrorCode = "mirror_read_only"
 type Limits struct {
 	MaxBlobBytes  int64
 	WarnRepoBytes int64
+	// NoFsck spegne receive.fsckObjects (GITSTACK_GIT_RECEIVE_FSCK=off): per chi
+	// importa storie vecchie con oggetti che git considera malformati. Zero =
+	// controllo attivo.
+	NoFsck bool
 }
 
 // DefaultLimits sono le soglie di prodotto.
@@ -104,11 +108,21 @@ func (r *Rules) GitArgs() []string {
 	// la protezione di GitStack (R9), non il default di git per HEAD.
 	// fsckObjects=true (F18, V12.1.1): git controlla ogni oggetto ricevuto e
 	// rifiuta il push se ce n'è uno malformato.
-	return []string{
+	args := []string{
 		"-c", "core.hooksPath=" + filepath.ToSlash(r.dir),
 		"-c", "receive.denyDeleteCurrent=ignore",
-		"-c", "receive.fsckObjects=true",
 	}
+	if r.limits.NoFsck {
+		return args
+	}
+	// Due anomalie innocue, tipiche delle storie importate, restano avvisi
+	// invece di far rifiutare il push: modo zero-padded nei tree e fuso orario
+	// non valido nei commit.
+	return append(args,
+		"-c", "receive.fsckObjects=true",
+		"-c", "receive.fsck.zeroPaddedFilemode=warn",
+		"-c", "receive.fsck.badTimezone=warn",
+	)
 }
 
 // Env sono le variabili d'ambiente per il processo receive-pack. protected è

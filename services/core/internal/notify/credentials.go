@@ -21,7 +21,7 @@ const ReasonCredential = "credential"
 // consegnare e la loro conferma (implementato da identityclient.Client).
 type CredentialSource interface {
 	CredentialEvents(ctx context.Context, limit int) ([]identityclient.CredentialEvent, error)
-	AckCredentialEvents(ctx context.Context, upTo int64) error
+	AckCredentialEvents(ctx context.Context, ids []int64) error
 }
 
 // credentialAdvisoryKey serializza i giri fra le repliche.
@@ -110,7 +110,7 @@ func (n *CredentialNotifier) Process(ctx context.Context) (int, error) {
 		if err != nil {
 			return total, err
 		}
-		var last int64
+		ids := make([]int64, 0, len(events))
 		for _, ev := range events {
 			data, merr := json.Marshal(ev.Detail)
 			if merr != nil || ev.Detail == nil {
@@ -126,13 +126,13 @@ func (n *CredentialNotifier) Process(ctx context.Context) (int, error) {
 				_ = tx.Rollback(ctx)
 				return total, fmt.Errorf("scrittura dell'avviso sulle credenziali: %w", err)
 			}
-			last = max(last, ev.ID)
+			ids = append(ids, ev.ID)
 		}
 		if err := tx.Commit(ctx); err != nil {
 			return total, err
 		}
 		total += len(events)
-		if err := n.Source.AckCredentialEvents(ctx, last); err != nil {
+		if err := n.Source.AckCredentialEvents(ctx, ids); err != nil {
 			// Gli avvisi sono scritti: al giro dopo identity li ripropone e
 			// si duplicano (consegna almeno una volta). Si segnala e si ferma.
 			return total, fmt.Errorf("conferma degli eventi a identity: %w", err)

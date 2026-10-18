@@ -69,11 +69,11 @@ func (s *server) AckCredentialEvents(w http.ResponseWriter, r *http.Request) {
 	if _, ok := decode(w, r, &in); !ok {
 		return
 	}
-	if in.UpTo < 0 {
-		validationFailed(w, map[string]string{"upTo": "non negativo"})
+	if len(in.Ids) == 0 || len(in.Ids) > 500 {
+		validationFailed(w, map[string]string{"ids": "da 1 a 500 id"})
 		return
 	}
-	if _, err := s.cred.Ack(r.Context(), in.UpTo); err != nil {
+	if _, err := s.cred.Ack(r.Context(), in.Ids); err != nil {
 		s.internal(w, r, err)
 		return
 	}

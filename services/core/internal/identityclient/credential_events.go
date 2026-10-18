@@ -51,10 +51,10 @@ func (c *Client) CredentialEvents(ctx context.Context, limit int) ([]CredentialE
 	return out, nil
 }
 
-// AckCredentialEvents conferma gli eventi fino a upTo compreso
+// AckCredentialEvents conferma esattamente gli eventi con quegli id
 // (POST /internal/credential-events/ack).
-func (c *Client) AckCredentialEvents(ctx context.Context, upTo int64) error {
-	st, err := c.call(ctx, http.MethodPost, "/internal/credential-events/ack", map[string]int64{"upTo": upTo}, http.StatusNoContent, nil)
+func (c *Client) AckCredentialEvents(ctx context.Context, ids []int64) error {
+	st, err := c.call(ctx, http.MethodPost, "/internal/credential-events/ack", map[string][]int64{"ids": ids}, http.StatusNoContent, nil)
 	if err != nil {
 		return err
 	}

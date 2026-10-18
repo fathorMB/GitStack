@@ -560,7 +560,7 @@ export type CredentialEventList = {
 };
 
 export type CredentialEventsAckInput = {
-    upTo: number;
+    ids: Array<number>;
 };
 
 export type OidcProvider = {

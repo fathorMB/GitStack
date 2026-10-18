@@ -68,18 +68,46 @@ func TestEventsLifecycle(t *testing.T) {
 		t.Fatal("il dettaglio non deve contenere il token")
 	}
 
-	if got, err := svc.Ack(ctx, list[0].ID); err != nil || got != 1 {
+	if got, err := svc.Ack(ctx, []int64{list[0].ID}); err != nil || got != 1 {
 		t.Fatalf("ack del primo: %d (%v)", got, err)
 	}
 	rest, _ := svc.Pending(ctx, 100)
 	if len(rest) != 1 || rest[0].ID != list[1].ID {
 		t.Fatalf("dopo l'ack: %+v", rest)
 	}
-	if got, _ := svc.Ack(ctx, list[1].ID+100); got != 1 {
-		t.Fatalf("ack oltre l'ultimo: %d", got)
+
+	// Un evento con id minore committato dopo la lettura non si perde: nella
+	// sequence gli id non seguono l'ordine di commit. Si simula con id espliciti:
+	// l'evento alto è già committato quando core legge, quello basso arriva dopo.
+	base := list[1].ID
+	insert := func(id int64) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, `INSERT INTO identity.credential_events (id, user_id, kind, detail)
+			OVERRIDING SYSTEM VALUE VALUES ($1, $2, 'ssh_key_added', '{}')`, id, alice.ID); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if got, _ := svc.Ack(ctx, list[1].ID); got != 0 {
-		t.Fatalf("ack ripetuto: %d, innocuo", got)
+	insert(base + 10)
+	read, err := svc.Pending(ctx, 100)
+	if err != nil || len(read) != 2 || read[1].ID != base+10 {
+		t.Fatalf("lettura: %+v (%v)", read, err)
+	}
+	insert(base + 5) // committato dopo la lettura, con id minore dell'ultimo letto
+	if got, err := svc.Ack(ctx, []int64{read[0].ID, read[1].ID}); err != nil || got != 2 {
+		t.Fatalf("ack di quanto letto: %d (%v)", got, err)
+	}
+	p, _ := svc.Pending(ctx, 100)
+	if len(p) != 1 || p[0].ID != base+5 {
+		t.Fatalf("l'evento con id minore inserito dopo la lettura doveva restare pending: %+v", p)
+	}
+	if got, _ := svc.Ack(ctx, []int64{read[0].ID, base + 1000}); got != 0 {
+		t.Fatalf("ack ripetuto o di id inesistenti: %d, innocuo", got)
+	}
+	if got, _ := svc.Ack(ctx, nil); got != 0 {
+		t.Fatalf("ack vuoto: %d", got)
+	}
+	if got, _ := svc.Ack(ctx, []int64{base + 5}); got != 1 {
+		t.Fatalf("ack dell'evento tardivo: %d", got)
 	}
 	if p, _ := svc.Pending(ctx, 100); len(p) != 0 {
 		t.Fatalf("restano eventi: %+v", p)

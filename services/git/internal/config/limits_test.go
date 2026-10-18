@@ -38,3 +38,17 @@ func TestParseSize(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_ReceiveFsck(t *testing.T) {
+	cfg, err := load(env(map[string]string{EnvDataDir: "/data"}))
+	if err != nil || cfg.NoFsck {
+		t.Fatalf("default: NoFsck=%v (%v)", cfg.NoFsck, err)
+	}
+	cfg, err = load(env(map[string]string{EnvDataDir: "/data", EnvReceiveFsck: "OFF"}))
+	if err != nil || !cfg.NoFsck {
+		t.Fatalf("off: NoFsck=%v (%v)", cfg.NoFsck, err)
+	}
+	if _, err := load(env(map[string]string{EnvDataDir: "/data", EnvReceiveFsck: "forse"})); err == nil {
+		t.Fatal("valore non valido accettato")
+	}
+}

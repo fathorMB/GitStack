@@ -47,7 +47,10 @@ const (
 	// pull mirror (F18, V12.1.1). Oltre il fetch è interrotto e l'aggiornamento
 	// fallisce. Stesso formato; default 5GB; 0 = nessun tetto.
 	EnvMirrorMaxFetch = "GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE"
-	EnvCoreURL        = "GITSTACK_CORE_URL"
+	// EnvReceiveFsck: `off` spegne receive.fsckObjects sul receive-pack (F18);
+	// vuoto o `on` lo lascia attivo (default).
+	EnvReceiveFsck = "GITSTACK_GIT_RECEIVE_FSCK"
+	EnvCoreURL     = "GITSTACK_CORE_URL"
 	// EnvNatsURL: indirizzo del bus NATS JetStream (es. nats://nats:4222) su
 	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
 	// log all'avvio); NATS non raggiungibile non ferma né i push né l'avvio.
@@ -88,6 +91,8 @@ type Config struct {
 	RepoWarnBytes int64
 	// MirrorMaxFetchBytes: vedi EnvMirrorMaxFetch (0 = nessun tetto).
 	MirrorMaxFetchBytes int64
+	// NoFsck: vedi EnvReceiveFsck.
+	NoFsck bool
 	// NatsURL: vuoto = git.push non viene pubblicato.
 	NatsURL string
 	// MirrorCAFile: vedi EnvMirrorCAFile; vuoto = CA di sistema.
@@ -158,6 +163,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if v, ok := lookup(EnvNatsURL); ok {
 		cfg.NatsURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(EnvReceiveFsck); ok {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "on":
+		case "off":
+			cfg.NoFsck = true
+		default:
+			errs = append(errs, fmt.Sprintf("%s deve essere on oppure off: %q", EnvReceiveFsck, v))
+		}
 	}
 	if v, ok := lookup(EnvMirrorCAFile); ok {
 		cfg.MirrorCAFile = strings.TrimSpace(v)

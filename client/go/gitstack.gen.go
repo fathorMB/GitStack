@@ -2335,7 +2335,7 @@ type CredentialEventList struct {
 
 // CredentialEventsAckInput defines model for CredentialEventsAckInput.
 type CredentialEventsAckInput struct {
-	UpTo int64 `json:"upTo"`
+	Ids []int64 `json:"ids"`
 }
 
 // CurrentSession defines model for CurrentSession.
@@ -5347,7 +5347,7 @@ type ClientInterface interface {
 
 	// AckCredentialEventsWithBody Conferma la consegna degli eventi sulle credenziali
 	//
-	// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -5356,7 +5356,7 @@ type ClientInterface interface {
 
 	// AckCredentialEvents Conferma la consegna degli eventi sulle credenziali
 	//
-	// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -7505,7 +7505,7 @@ func (c *Client) ListCredentialEvents(ctx context.Context, params *ListCredentia
 
 // AckCredentialEventsWithBody Conferma la consegna degli eventi sulle credenziali
 //
-// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 //
 // Takes any type of body and a specified content type.
 //
@@ -7524,7 +7524,7 @@ func (c *Client) AckCredentialEventsWithBody(ctx context.Context, contentType st
 
 // AckCredentialEvents Conferma la consegna degli eventi sulle credenziali
 //
-// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -22579,7 +22579,7 @@ type ClientWithResponsesInterface interface {
 
 	// AckCredentialEventsWithBodyWithResponse Conferma la consegna degli eventi sulle credenziali
 	//
-	// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -22588,7 +22588,7 @@ type ClientWithResponsesInterface interface {
 
 	// AckCredentialEventsWithResponse Conferma la consegna degli eventi sulle credenziali
 	//
-	// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -39641,7 +39641,7 @@ func (c *ClientWithResponses) ListCredentialEventsWithResponse(ctx context.Conte
 
 // AckCredentialEventsWithBodyWithResponse Conferma la consegna degli eventi sulle credenziali
 //
-// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -39656,7 +39656,7 @@ func (c *ClientWithResponses) AckCredentialEventsWithBodyWithResponse(ctx contex
 
 // AckCredentialEventsWithResponse Conferma la consegna degli eventi sulle credenziali
 //
-// Per core (F13): segna come consegnati gli eventi con id fino a `upTo` compreso. Ripetere la conferma e' innocuo.
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
