@@ -962,6 +962,25 @@ If the k3s step fails, GitStack is **not** upgraded (the chart stays as it
 was), the command exits `70` and prints the path of the preventive backup.
 There is no automatic rollback of k3s: follow the procedure below.
 
+### The k3s install script is pinned by checksum (F19, GIT-239)
+
+`install.sh` does not pipe `https://get.k3s.io` into `sh`: it downloads the
+script, compares its SHA-256 with the one pinned in `deploy/k3s-install.sha256`
+and runs it only if they match. A different script (changed upstream, or
+tampered with on the way or on a mirror) stops the install with
+`lo script di k3s ... non corrisponde allo sha256 fissato` before anything is
+executed.
+
+- When the pin is stale because k3s changed its script, update it with the
+  version bump: `curl -sfL https://get.k3s.io | sha256sum`, review the script,
+  and put the hash in `deploy/k3s-install.sha256`.
+- With `--download-mirror` the mirror's `k3s/install.sh` must be the same
+  script; if it is a deliberately different one, set
+  `GITSTACK_K3S_SCRIPT_SHA256=<sha256 of your script>` for the install.
+- `gitstack upgrade --k3s` is not covered by this pin (it uses its own
+  download path, `admin/internal/upgrade/k3s.go`).
+- The test is `deploy/tests/k3s_script_test.sh`, run in CI.
+
 ### Hardening k3s: private kubeconfig and encrypted Secrets (F2, GIT-228)
 
 `/etc/rancher/k3s/k3s.yaml` is cluster-admin: whoever reads it reads every
