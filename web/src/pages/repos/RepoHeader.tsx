@@ -1,8 +1,9 @@
-import { CircleDot, FileCode, Settings } from 'lucide-react';
+import { CircleDot, FileCode, GitPullRequest, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PullMirrorBadge } from '../../components';
 import { countIssues } from '../../lib/issuesApi';
+import { countPulls } from '../../lib/pullsApi';
 import type { Repository } from '../../lib/reposApi';
 import { RepoWatchSelect } from './RepoWatchSelect';
 import { VisibilityBadge } from './ReposPage';
@@ -21,12 +22,16 @@ export type RepoHeaderMode =
   | 'newissue'
   | 'labels'
   | 'milestones'
+  | 'pulls'
+  | 'pull'
+  | 'newpull'
   | 'settings'
   | 'webhooks';
 
 // Regola dell'attiva per elenco esplicito: un mode nuovo non accende nessuna scheda.
 const CODE_MODES: readonly RepoHeaderMode[] = ['tree', 'commits', 'commit', 'tags', 'search', 'blob', 'blame'];
 const ISSUES_MODES: readonly RepoHeaderMode[] = ['issues', 'issue', 'newissue', 'labels', 'milestones'];
+const PULLS_MODES: readonly RepoHeaderMode[] = ['pulls', 'pull', 'newpull'];
 const SETTINGS_MODES: readonly RepoHeaderMode[] = ['settings', 'webhooks'];
 
 // Intestazione del repo condivisa (titolo, badge, Watch, descrizione, schede):
@@ -45,6 +50,23 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
       },
       () => {
         if (live) setOpenIssues(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [owner, name]);
+
+  // Idem per le Pull Request aperte.
+  const [openPulls, setOpenPulls] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    countPulls(owner, name, 'is:open').then(
+      (n) => {
+        if (live) setOpenPulls(n);
+      },
+      () => {
+        if (live) setOpenPulls(null);
       },
     );
     return () => {
@@ -76,6 +98,10 @@ export function RepoHeader({ repo, mode, admin }: { repo: Repository; mode: Repo
         <NavLink className={tab(ISSUES_MODES.includes(mode))} to={`${base}/issues`}>
           <CircleDot size={16} aria-hidden="true" />
           Issues {openIssues !== null ? <span className="counter">{openIssues}</span> : null}
+        </NavLink>
+        <NavLink className={tab(PULLS_MODES.includes(mode))} to={`${base}/pulls`}>
+          <GitPullRequest size={16} aria-hidden="true" />
+          Pull requests {openPulls !== null ? <span className="counter">{openPulls}</span> : null}
         </NavLink>
         {admin ? (
           <NavLink className={tab(SETTINGS_MODES.includes(mode))} to={`${base}/settings`}>

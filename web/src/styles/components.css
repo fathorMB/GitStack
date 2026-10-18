@@ -422,3 +422,11 @@ ul.list{margin:0;padding:0;list-style:none}
 .pw-meter-bar>span{display:block;height:100%;background:var(--danger);transition:width .15s}
 .pw-meter[data-score="2"] .pw-meter-bar>span{background:var(--warning)}
 .pw-meter[data-score="3"] .pw-meter-bar>span,.pw-meter[data-score="4"] .pw-meter-bar>span{background:var(--success)}
+
+/* Pull request (mockup 25-26): chip dei branch, badge Merged, eventi della cronologia */
+.badge-merged{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.branch-chip{font:12px var(--font-mono);padding:1px 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent-text)}
+.ev .evi.ok{background:var(--success);color:#fff}.ev .evi.merged{background:var(--accent);color:var(--accent-fg)}
+.mb-menu{position:absolute;z-index:5;margin-top:4px;min-width:220px;padding:4px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-2)}
+.mb-menu button{display:block;width:100%;text-align:left;padding:6px 10px;border:0;border-radius:var(--r-sm);background:none;color:var(--text);font:inherit;cursor:pointer}
+.mb-menu button:hover,.mb-menu button[aria-checked="true"]{background:var(--surface-3)}
