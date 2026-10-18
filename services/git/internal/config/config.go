@@ -47,7 +47,7 @@ const (
 	// pull mirror (F18, V12.1.1). Oltre il fetch è interrotto e l'aggiornamento
 	// fallisce. Stesso formato; default 5GB; 0 = nessun tetto.
 	EnvMirrorMaxFetch = "GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE"
-	EnvCoreURL      = "GITSTACK_CORE_URL"
+	EnvCoreURL        = "GITSTACK_CORE_URL"
 	// EnvNatsURL: indirizzo del bus NATS JetStream (es. nats://nats:4222) su
 	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
 	// log all'avvio); NATS non raggiungibile non ferma né i push né l'avvio.
