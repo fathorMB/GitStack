@@ -49,7 +49,7 @@ func TestRestoreRestartsNATSAfterSecretsBeforeServices(t *testing.T) {
 	// ApplySecret avviene tra psql e il restart di NATS (le chiamate a
 	// ApplySecret non finiscono in calls): NATS si riavvia dopo il database
 	// e il restore dei Secret, e si attende prima di ogni riaccensione.
-	if !(psql < rst && rst < rdy) {
+	if psql >= rst || rst >= rdy {
 		t.Errorf("ordine sbagliato: %v", c)
 	}
 	for _, d := range []string{"gs-identity", "gs-core", "gs-git", "gs-gateway"} {
