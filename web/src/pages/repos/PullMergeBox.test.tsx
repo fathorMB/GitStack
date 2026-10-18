@@ -96,6 +96,7 @@ describe('PullMergeBox: varianti', () => {
   it('pronta: tre righe verdi, squash di default e Delete branch after merge', () => {
     const { props, container } = setup();
     expect(container.querySelector('.mergebox')).toHaveAttribute('data-variant', 'ready');
+    expect(container.querySelector('.mergebox.ok')).toHaveAttribute('data-variant', 'ready');
     expect(screen.getByText('Approved')).toBeInTheDocument();
     expect(screen.getByText('All required checks passed')).toBeInTheDocument();
     expect(screen.getByText('No conflicts with the base branch')).toBeInTheDocument();
@@ -126,6 +127,7 @@ describe('PullMergeBox: varianti', () => {
       reviews: [review({ id: 'a', author: agent, countsAsApproval: false }), review({ id: 'b', stale: true, countsAsApproval: false })],
     });
     expect(container.querySelector('.mergebox')).toHaveAttribute('data-variant', 'approval');
+    expect(container.querySelector('.mergebox.warn')).toHaveAttribute('data-variant', 'approval');
     expect(screen.getByText('Review required')).toBeInTheDocument();
     expect(screen.getByText(/agent approvals don.t count/)).toBeInTheDocument();
     expect(screen.getByText(/lbianchi.s approval was dismissed/)).toBeInTheDocument();
@@ -147,6 +149,7 @@ describe('PullMergeBox: varianti', () => {
       mergeability: mergeability({ state: 'blocked', mergeable: false, blockers: [{ code: 'status_failed', message: 'x', contexts: ['test'] }] }),
     });
     expect(container.querySelector('.mergebox')).toHaveAttribute('data-variant', 'failing');
+    expect(container.querySelector('.mergebox.bad')).toHaveAttribute('data-variant', 'failing');
     expect(screen.getByText('Some required checks failed')).toBeInTheDocument();
     expect(screen.getByText('2 of 212 tests failed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Squash and merge' })).toBeDisabled();
@@ -158,6 +161,7 @@ describe('PullMergeBox: varianti', () => {
       mergeability: mergeability({ state: 'conflicts', mergeable: false, conflictFiles: ['internal/webhooks/deliver.go', 'internal/webhooks/deliver_test.go'], blockers: [{ code: 'conflicts', message: 'x' }] }),
     });
     expect(container.querySelector('.mergebox')).toHaveAttribute('data-variant', 'conflicts');
+    expect(container.querySelector('.mergebox.bad')).toHaveAttribute('data-variant', 'conflicts');
     expect(screen.getByText('This branch has conflicts that must be resolved')).toBeInTheDocument();
     const files = within(screen.getByRole('list', { name: 'Conflicting files' })).getAllByRole('listitem');
     expect(files.map((f) => f.textContent)).toEqual(['internal/webhooks/deliver.go', 'internal/webhooks/deliver_test.go']);
@@ -179,6 +183,7 @@ describe('PullMergeBox: varianti', () => {
   it('unita: Delete branch finché il branch esiste', () => {
     const { props, container } = setup({ pr: pr({ state: 'merged' }), mergeability: null });
     expect(container.querySelector('.mergebox')).toHaveAttribute('data-variant', 'merged');
+    expect(container.querySelector('.mergebox.merged')).toHaveAttribute('data-variant', 'merged');
     expect(screen.getByText('Pull request successfully merged and closed')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Delete branch' }));
     expect(props.onDeleteBranch).toHaveBeenCalled();

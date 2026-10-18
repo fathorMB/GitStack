@@ -182,7 +182,7 @@ function PullRow({ pr, base }: { pr: PullRequestSummary; base: string }) {
   const when = pr.state === 'merged' && pr.mergedAt ? `merged ${timeAgo(pr.mergedAt)}` : pr.state === 'closed' && pr.closedAt ? `closed ${timeAgo(pr.closedAt)}` : `opened ${timeAgo(pr.createdAt)}`;
   const parts = [<Reviews key="r" pr={pr} />, <Checks key="c" pr={pr} />].filter((e) => e.type !== null);
   return (
-    <div className="list-row hover" style={{ alignItems: 'flex-start' }} data-testid={`pull-${pr.number}`}>
+    <div className="list-row" style={{ alignItems: 'flex-start' }} data-testid={`pull-${pr.number}`}>
       <GitBranch size={16} aria-label={stateLabel} role="img" style={stateStyle(pr)} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <Link className="ititle" to={`${base}/pulls/${pr.number}`}>
