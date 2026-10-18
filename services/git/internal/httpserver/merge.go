@@ -7,8 +7,8 @@ import (
 
 	"github.com/fathorMB/GitStack/pkg/events/gitpush"
 	"github.com/fathorMB/GitStack/services/git/internal/gitmerge"
-	"github.com/fathorMB/GitStack/services/git/internal/gitref"
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
+	"github.com/fathorMB/GitStack/services/git/internal/gitref"
 )
 
 // mountCompare aggiunge il confronto fra branch (GIT-260). Con Merge attivo la
