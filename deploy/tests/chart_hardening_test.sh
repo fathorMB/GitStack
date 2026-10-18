@@ -198,6 +198,37 @@ for c in gateway core git identity; do
   expect_has "${c}: Secret dato" "$(doc Deployment "gitstack-${c}")" "name: miei-segreti"
 done
 
+# ---------------------------------------------------------------------------
+# N3 (nodo singolo, installazione-e-deploy.md): con il volume degli allegati
+# ReadWriteOnce il chart si ferma se core.replicaCount > 1; senza il volume più
+# repliche sono ammesse. `render` passa l'output a tr e restituisce il codice di
+# tr, quindi il codice di helm lo legge helm_rc.
+helm_rc() { helm template gitstack "${CHART}" "$@" >/dev/null 2>&1; }
+if helm_rc --set core.replicaCount=2; then
+  bad "nodo singolo: helm template non si ferma con core.replicaCount=2"
+else
+  ok
+  expect_has "nodo singolo: messaggio del guard" "$(render --set core.replicaCount=2 2>&1)" \
+    "core.attachments.enabled=true richiede core.replicaCount=1"
+fi
+OUT="$(render --set core.attachments.enabled=false --set core.replicaCount=3)" ||
+  bad "nodo singolo: rendering con 3 repliche senza il volume degli allegati fallito"
+expect_has "nodo singolo: più repliche senza il volume RWO" "$(doc Deployment gitstack-core)" "replicas: 3"
+
+# Il PVC degli allegati è ReadWriteOnce e core gira con strategia Recreate.
+OUT="$(render)"
+expect_has "nodo singolo: PVC degli allegati ReadWriteOnce" \
+  "$(doc PersistentVolumeClaim gitstack-attachments-data)" "- ReadWriteOnce"
+d="$(doc Deployment gitstack-core)"
+expect_has "nodo singolo: core con strategia Recreate" "${d}" "type: Recreate"
+expect_has "nodo singolo: una sola replica di default" "${d}" "replicas: 1"
+# Postgres e NATS sono a una sola replica: il chart non fa alta disponibilità
+# (N3, dopo la v1).
+expect_has "nodo singolo: Postgres con una sola replica" \
+  "$(doc StatefulSet gitstack-postgres)" "replicas: 1"
+expect_has "nodo singolo: NATS con una sola replica" \
+  "$(doc StatefulSet gitstack-nats)" "replicas: 1"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]
