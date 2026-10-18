@@ -137,3 +137,20 @@ func TestReleaseReadiness_NessunRischioNoto(t *testing.T) {
 		t.Errorf("atteso «nessuno» nei rischi noti:\n%s", out)
 	}
 }
+
+// GIT-292: il dogfooding è di almeno 2 settimane dalla tappa 2, con quattro criteri.
+func TestReleaseReadiness_M6DueSettimaneDallaTappa2(t *testing.T) {
+	out, _ := run(t, registerHead)
+	l := lineWith(out, "M6")
+	if l == "" {
+		t.Fatalf("manca la riga M6:\n%s", out)
+	}
+	for _, want := range []string{"almeno 2 settimane dalla tappa 2", "nessuna perdita di dati", "restore", "rc.N → rc.N+1", "gitstack upgrade", "nessun bug critico o alto"} {
+		if !strings.Contains(l, want) {
+			t.Errorf("M6 deve contenere %q: %q", want, l)
+		}
+	}
+	if strings.Contains(l, "4 settimane") {
+		t.Errorf("M6 non deve più dire 4 settimane: %q", l)
+	}
+}

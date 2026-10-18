@@ -150,7 +150,7 @@ func main() {
 		"M3  Smoke, install, upgrade e restore verdi in CI sull'ultimo commit di main (rilancia con --ci o guarda Actions)",
 		"M4  Prova del rilascio su un tag di prova v0.0.0-test.N su un fork, prima di v1.0.0-rc.1 (V4)",
 		"M5  Prova reale dell'agente: chiude una issue end-to-end solo con gs e skills (docs/agent-trial.md)",
-		"M6  Dogfooding: almeno 4 settimane senza perdite di dati, dalla tappa 2 di V7 (passaggio a GitStack)",
+		"M6  Dogfooding: almeno 2 settimane dalla tappa 2 di V7 (passaggio a GitStack), con nessuna perdita di dati, almeno un restore da un backup di homehub, almeno un upgrade rc.N → rc.N+1 con gitstack upgrade su homehub e nessun bug critico o alto aperto",
 		"M7  Il tag v1.0.0-rc.1 lo crea il board, poi v1.0.0 dopo le rc",
 	}
 	for _, m := range manual {
