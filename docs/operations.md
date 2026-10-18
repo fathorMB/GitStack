@@ -1859,7 +1859,7 @@ sudo gitstack upgrade --allow-unsigned-mirrors        # aggiornamento, solo per 
 
 ## Prove della tappa 2 di V7 (condizioni 2 e 4)
 
-Le due prove che seguono le lancia il **board**, non un agente. Servono a sbloccare il passaggio della casa su GitStack (V7, tappa 2; `rilascio-v1.md`). Ogni passo ha il comando e l'esito atteso: se l'esito è diverso, ci si ferma e si annota il comando, l'output e l'ora. Gli esiti attesi vengono dalle sezioni Backup, Restore, Mirror e Diagnostics di questo documento e dal codice di `admin/internal/cli/backup.go`; nessuna di queste prove è ancora stata eseguita su homehub.
+Le due prove che seguono le lancia il **board**, non un agente. Servono a sbloccare il passaggio della casa su GitStack (V7, tappa 2; `rilascio-v1.md`). Dal 18/10/2026 la tappa 2 si fa appena sono vere le condizioni 2 (ripristino di prova), 3 (prova dell'agente, GIT-254), 4 (mirror in push su un repo di prova) e 5 (istruzioni, già fatta): la condizione 1 (mirror in pull per 2 settimane) non c'è più. Ogni passo ha il comando e l'esito atteso: se l'esito è diverso, ci si ferma e si annota il comando, l'output e l'ora. Gli esiti attesi vengono dalle sezioni Backup, Restore, Mirror e Diagnostics di questo documento e dal codice di `admin/internal/cli/backup.go`; nessuna di queste prove è ancora stata eseguita su homehub.
 
 ### Condizione 2: ripristino di prova su una macchina nuova
 
@@ -2066,7 +2066,22 @@ Registro del dogfooding: cosa è stato fatto su homehub (GIT-249, 18/10/2026, or
 | F2 (GIT-228) | `gitstack upgrade` col binario nuovo **ha fallito due volte** (exit 70, unità k3s rimessa com'era, servizi sani) con `secret-encrypt error ID …: missing annotation on node homehub`: `k3s secrets-encrypt status` girava prima che k3s scrivesse le annotazioni del nodo. Difetto corretto sul ramo (`admin/internal/upgrade/harden.go`: `status` si riprova fino a 2 minuti; test `TestUpgrade_HardeningStatusRiprovato`, `TestUpgrade_HardeningStatusSempreInErrore_RipristinaUnita`). Su homehub la procedura è stata applicata a mano: unità `k3s.service` con `--secrets-encryption` e `600` (copia in `/root/k3s.service.pre-hardening-GIT249`), `daemon-reload`, `restart`, attesa di `status`, `k3s secrets-encrypt rotate-keys`. Esito: `Encryption Status: Enabled`, `Current Rotation Stage: reencrypt_finished` |
 | F1 (GIT-227) | `/etc/rancher/k3s/k3s.yaml` a `600` dopo il riavvio; `~/.kube/config` di moreno rinnovato (copia di k3s.yaml, `600`; il vecchio è `config.scaduto-20261018`) e `kubectl get nodes` risponde |
 | Segreti per chiamante (GIT-235) | Il secondo `gitstack upgrade` ha cancellato `gitstack-identity-service` e lasciato `gitstack-service-secrets` (gateway, core, git). Servizi sani |
-| Mirror in pull di `fathorMB/GitStack` | Creato dal board dalla UI (Importa da URL, «Mantieni sincronizzato») il 18/10 alle 14:39 UTC come `gitstack/gitstack-mirror` (non `GitStack`: il vecchio repo è nel cestino dell'organizzazione fino al 25/10 e il nome è occupato, GIT-257). Origine `https://github.com/fathorMB/GitStack.git`, senza credenziali, `intervalSeconds: 3600`. Primo sync riuscito alle 14:39:52 UTC: stato `in_sync`, nessun errore, prossimo giro 15:39:52. Verifica dei ref sul disco del servizio git: 67 ref (branch e tag) identici a `git ls-remote` di GitHub, `main` a `1c78ff42e8c2552799ea2197d08ad3694c34a5e0`. Il login dal browser in HTTPS è da confermare dal board (l'agente non ha un browser). Il conteggio delle 2 settimane della condizione 1 parte da questo sync |
+| Mirror in pull di `fathorMB/GitStack` | Creato dal board dalla UI (Importa da URL, «Mantieni sincronizzato») il 18/10 alle 14:39 UTC come `gitstack/gitstack-mirror` (non `GitStack`: il vecchio repo è nel cestino dell'organizzazione fino al 25/10 e il nome è occupato, GIT-257). Origine `https://github.com/fathorMB/GitStack.git`, senza credenziali, `intervalSeconds: 3600`. Primo sync riuscito alle 14:39:52 UTC: stato `in_sync`, nessun errore, prossimo giro 15:39:52. Verifica dei ref sul disco del servizio git: 67 ref (branch e tag) identici a `git ls-remote` di GitHub, `main` a `1c78ff42e8c2552799ea2197d08ad3694c34a5e0`. Il login dal browser in HTTPS è da confermare dal board (l'agente non ha un browser). La condizione 1 della tappa 2 (2 settimane di mirror senza errori) è stata tolta dal board il 18/10: questo sync non fa partire nessun conteggio |
+
+## Registro del dogfooding (dalla tappa 2 di V7)
+
+Il dogfooding della v1.0 dura almeno **2 settimane dalla tappa 2** (decisione del board del 18/10/2026). Lo compila il board: la data di inizio è il giorno della tappa 2; i fatti si scrivono quando succedono, con data e orari UTC.
+
+| Voce | Valore |
+|---|---|
+| Data di inizio (tappa 2) | da compilare |
+| Data di fine prevista (inizio + 14 giorni) | da compilare |
+| Perdite di dati | da compilare (nessuna / descrizione) |
+| Restore eseguito su homehub o su una VM da un backup di homehub (data, archivio, esito) | da compilare |
+| Aggiornamento rc.N → rc.N+1 su homehub con `gitstack upgrade` (data, versioni, esito) | da compilare |
+| Bug critici o alti aperti (controllo a fine periodo) | da compilare |
+
+Il periodo è valido solo se tutti i quattro criteri valgono: nessuna perdita di dati, almeno un restore, almeno un upgrade rc.N → rc.N+1, nessun bug critico o alto aperto.
 
 ---
 

@@ -14,6 +14,8 @@ For Prisma knowledge consultation and development notes, read `.prisma/CODING.md
 
 Regole per gli agenti di coding che lavorano su questo repo dopo il passaggio della casa su GitStack (V7, tappa 2, condizione 5; fonte: `.prisma/knowledge/topics/rilascio-v1.md`). Vanno lette insieme alle regole sopra; non le sostituiscono.
 
+Dalla tappa 2 parte il dogfooding della v1.0: almeno 2 settimane con nessuna perdita di dati, almeno un restore da un backup di homehub, almeno un upgrade rc.N → rc.N+1 su homehub con `gitstack upgrade` e nessun bug critico o alto aperto (registro in `docs/operations.md`).
+
 ## Dove si lavora
 
 - **Casa del codice: homehub.** Gli agenti fanno push su homehub con `gs` e le skills (`skills/`), non su GitHub. GitHub è un mirror in push del ramo principale e dei tag (V8-mirror): **non si fa push diretto su GitHub**, e un commit lì creerebbe una divergenza (il mirror non forza mai, si ferma in `diverged`).
