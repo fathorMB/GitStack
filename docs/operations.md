@@ -1956,6 +1956,22 @@ rm -rf /tmp/gh-prova
 
 Poi su GitHub: cancella il repo di prova e **revoca** il token. Il mirror del repo vero di GitStack si crea solo nel giorno scelto per la tappa 2, con le regole di [Mirroring to GitHub](#mirroring-to-github).
 
+## Registro della tappa 1 di V7 (homehub)
+
+Registro del dogfooding: cosa è stato fatto su homehub (GIT-249, 18/10/2026, orari UTC). Ogni riga è un fatto verificato in quel giorno.
+
+| Passo | Esito |
+|---|---|
+| Stato iniziale | `sha-e7087078776db0b98df12080997c1b15cc2325a8`, servizi sani |
+| Backup giornaliero | Girava già: `gitstack-backup.timer` attivo (02:00:00 ogni giorno), 7 archivi da ~39 KB in `/srv/backup/gitstack`. I 316K di `/srv/backup` sono la dimensione vera dei backup (database e repo piccoli), non un backup mancante. I vecchi sono ruotati da `gitstack backup` stesso (si tengono gli ultimi 7). Gli archivi sono **non cifrati** (root-only 0600): manca `--key-file` |
+| Backup manuale prima dell'upgrade | `sudo gitstack backup` alle 08:05:36: `gitstack-backup-20261018T080536Z-sha-e7087078…tar.gz`, finestra di sola lettura 1,4 s |
+| Upgrade | `sudo gitstack upgrade --dry-run --to e984353` (8 immagini, binario con checksum, chart: ok), poi `sudo gitstack upgrade --to e984353`, exit 0: `sha-e708707…` → `sha-e984353074aeab42560042a2f79079417537819d`, tutti i servizi sani, backup preventivo `…T082001Z…`. `/api/v1/meta` risponde `server_version: sha-e984353…`. Il main più recente (01bca88) aveva la CI rossa (bind: address already in use nello stackitest di core) e senza immagini pubblicate, quindi la destinazione è e984353 (CI, api-contract, smoke, docs verdi) |
+| Firme | L'upgrade da e708707 lo ha fatto il **binario vecchio**, che non verifica le firme cosign (arrivano con il binario nuovo): non verificate in quel passo. Verificate a mano dopo: `cosign verify` di `ghcr.io/fathormb/gitstack-core:sha-e984353…` con identità `ci.yml@refs/heads/main` e issuer GitHub Actions: ok (claims, transparency log, certificato). Il prossimo upgrade, col binario nuovo, le verifica da sé |
+| F2 (GIT-228) | `gitstack upgrade` col binario nuovo **ha fallito due volte** (exit 70, unità k3s rimessa com'era, servizi sani) con `secret-encrypt error ID …: missing annotation on node homehub`: `k3s secrets-encrypt status` girava prima che k3s scrivesse le annotazioni del nodo. Difetto corretto sul ramo (`admin/internal/upgrade/harden.go`: `status` si riprova fino a 2 minuti; test `TestUpgrade_HardeningStatusRiprovato`, `TestUpgrade_HardeningStatusSempreInErrore_RipristinaUnita`). Su homehub la procedura è stata applicata a mano: unità `k3s.service` con `--secrets-encryption` e `600` (copia in `/root/k3s.service.pre-hardening-GIT249`), `daemon-reload`, `restart`, attesa di `status`, `k3s secrets-encrypt rotate-keys`. Esito: `Encryption Status: Enabled`, `Current Rotation Stage: reencrypt_finished` |
+| F1 (GIT-227) | `/etc/rancher/k3s/k3s.yaml` a `600` dopo il riavvio; `~/.kube/config` di moreno rinnovato (copia di k3s.yaml, `600`; il vecchio è `config.scaduto-20261018`) e `kubectl get nodes` risponde |
+| Segreti per chiamante (GIT-235) | Il secondo `gitstack upgrade` ha cancellato `gitstack-identity-service` e lasciato `gitstack-service-secrets` (gateway, core, git). Servizi sani |
+| Mirror in pull di `fathorMB/GitStack` | **Non creato**: serve un accesso admin di GitStack (la password iniziale del Secret `gitstack-identity-admin` non vale più, cambiata al primo accesso: login 401). Si crea con la ricetta di [Pull mirror](#pull-mirror) (origine pubblica, niente token, `intervalSeconds: 3600`) |
+
 ---
 
 *Guida operativa — install.sh (T-09 di M-08 [c_8458909a21d9035f]),
