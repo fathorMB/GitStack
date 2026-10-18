@@ -378,26 +378,37 @@ func TestEventi_UnoPerOgniTipo(t *testing.T) {
 	}, "repository.restored")
 
 	// Ogni riga dell'outbox è stata inviata, con l'id della busta.
-	if pend := e.outboxCount(`sent_at IS NULL`); pend != 0 {
-		t.Fatalf("righe non inviate: %d", pend)
-	}
+	e.waitOutboxDrained()
 }
 
 // markSeen segna come già visti tutti gli eventi finora pubblicati (dopo
 // aver aspettato che l'outbox sia vuota), per isolare i passi successivi.
 func (e *eventsEnv) markSeen(seen map[string]bool) map[string]bool {
 	e.t.Helper()
-	deadline := time.Now().Add(20 * time.Second)
-	for e.outboxCount(`sent_at IS NULL`) > 0 {
-		if time.Now().After(deadline) {
-			e.t.Fatal("outbox non svuotata")
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	e.waitOutboxDrained()
 	for _, env := range e.published() {
 		seen[env.ID] = true
 	}
 	return seen
+}
+
+// waitOutboxDrained aspetta (polling ogni 50 ms, al massimo 20 s) che nessuna
+// riga dell'outbox sia più `sent_at IS NULL`: il relay scrive sent_at con un
+// UPDATE DOPO la publish, quindi vedere l'evento su JetStream non basta.
+// A scadenza fallisce dicendo quante righe restano.
+func (e *eventsEnv) waitOutboxDrained() {
+	e.t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		pend := e.outboxCount(`sent_at IS NULL`)
+		if pend == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			e.t.Fatalf("outbox non svuotata dopo 20s: righe non inviate: %d", pend)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 // TestEventi_NessunEventoPerOperazioneFallita: una richiesta che fallisce
@@ -483,13 +494,7 @@ func TestEventi_NatsIrraggiungibile(t *testing.T) {
 	if err := e.pool.QueryRow(context.Background(), `SELECT id FROM core.event_outbox WHERE name = 'issue.created' ORDER BY seq DESC LIMIT 1`).Scan(&id); err != nil || id.String() != got[0].ID {
 		t.Fatalf("l'id della busta (%s) non è quello dell'outbox (%s, %v)", got[0].ID, id, err)
 	}
-	deadline = time.Now().Add(10 * time.Second)
-	for e.outboxCount(`sent_at IS NULL`) > 0 {
-		if time.Now().After(deadline) {
-			t.Fatal("riga non segnata come inviata")
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	e.waitOutboxDrained()
 	time.Sleep(300 * time.Millisecond)
 	if all := e.published(); len(all) != len(seen) {
 		t.Fatalf("eventi pubblicati %d, voluti %d (doppio invio?)", len(all), len(seen))
