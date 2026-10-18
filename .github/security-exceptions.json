@@ -118,6 +118,41 @@
       "reason": "Falso positivo: sono nomi di variabili d'ambiente o di header HTTP (costanti stringa), non credenziali; nessun segreto e' scritto nel sorgente.",
       "expires": "2027-01-31",
       "path": "services/core/internal/config/config.go"
+    },
+    {
+      "id": "G115",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): il contatore HOTP viene da Step(), cioe' t.Unix()/30 di un orologio dopo il 1970, quindi mai negativo; la conversione int64 -> uint64 serve solo al formato RFC 4226 §5.3.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/totp/totp.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/credevents/credevents.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "services/identity/internal/openapi/api.gen.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "services/gateway/internal/identityclient/types.gen.go"
+    },
+    {
+      "id": "G101",
+      "tool": "gosec",
+      "reason": "Falso positivo (GIT-247): TokenExpiring = \"token_expiring\" e' il nome di un tipo di evento (avviso di scadenza di un token), non una credenziale; gosec G101 si basa sul nome 'token'.",
+      "expires": "2027-01-31",
+      "path": "client/go/gitstack.gen.go"
     }
   ]
 }
