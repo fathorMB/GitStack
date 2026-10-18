@@ -60,6 +60,13 @@ RUN bash scripts/build-gs-dist.sh /out "${VERSION}"
 # distroless "nonroot" di gateway e core, adattato a un server statico.
 FROM nginxinc/nginx-unprivileged:1.30-alpine
 
+# I pacchetti Alpine dell'immagine di base invecchiano fra una pubblicazione e
+# l'altra (libexpat 2.8.5-r0 -> 2.9.0-r0 in pochi giorni, GIT-247): si aggiornano
+# alla build, poi si torna all'utente non privilegiato dell'immagine (uid 101).
+USER root
+RUN apk upgrade --no-cache
+USER 101
+
 COPY web/deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/web/dist /usr/share/nginx/html
 
