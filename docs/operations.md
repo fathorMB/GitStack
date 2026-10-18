@@ -5,20 +5,24 @@
 > It is written for operators who manage the machine directly (for example the
 > `homehub` appliance described in M-08 [c_8458909a21d9035f]).
 >
-> **Supported systems:** Ubuntu Server 22.04 and 24.04 LTS, Pop!_OS 22.04 and 24.04 (all amd64). Other systems require `--force`.
+> **Supported systems (N2, revised 2026-10-18):** officially only Ubuntu Server
+> 22.04 and 24.04 LTS (amd64), tested in CI. Pop!_OS 22.04 and 24.04 installs
+> without `--force`, but with a warning in the preflight: not officially
+> supported in v1.0, no guarantee and no CI test. Other systems require
+> `--force`.
 
 ## Installation
 
 ### Prerequisites
 
-GitStack runs on a clean machine with one of the following supported systems (all amd64):
+GitStack runs on a clean machine with one of the following systems (all amd64):
 
-- Ubuntu Server 22.04 LTS
-- Ubuntu Server 24.04 LTS
-- Pop!_OS 22.04
-- Pop!_OS 24.04
+- Ubuntu Server 22.04 LTS — officially supported in v1.0, tested in CI
+- Ubuntu Server 24.04 LTS — officially supported in v1.0, tested in CI
+- Pop!_OS 22.04 — installs without `--force`, with a warning in the preflight (not officially supported in v1.0)
+- Pop!_OS 24.04 — installs without `--force`, with a warning in the preflight (not officially supported in v1.0)
 
-Other distributions and WSL2 are not yet supported.
+Other distributions and WSL2 are not supported: the preflight stops there, and only `--force` proceeds, at your own risk.
 
 | Profile | CPU | RAM | Disk |
 |---|---|---|---|
@@ -1365,6 +1369,10 @@ Runners start with about 14 GB free: the installer is called with
 `deploy/tests/preflight_test.sh`).
 
 #### Pop!_OS 22.04 and 24.04
+
+Not officially supported in v1.0 (decision of 2026-10-18): the installer accepts
+Pop!_OS without `--force` but prints a warning in the preflight, with no
+guarantee and no CI test.
 
 Not covered in CI: GitHub hosts no Pop!_OS runner, and System76 does not
 publish a cloud image or a container with systemd that stands for the real

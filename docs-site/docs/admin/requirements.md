@@ -8,10 +8,12 @@ The installer sets everything up; you do not need to know Kubernetes.
 
 ## Supported systems
 
+Only Ubuntu Server 22.04 and 24.04 are officially supported in v1.0 (N2, revised 2026-10-18).
+
 | System | Status |
 |---|---|
-| Ubuntu Server 22.04 LTS and 24.04 LTS (amd64) | Supported. Install, backup, restore and upgrade run in CI on both. |
-| Pop!_OS 22.04 and 24.04 (amd64) | Supported. CI has no Pop!_OS runner: it is Ubuntu with System76 packages and follows the same installer path. |
+| Ubuntu Server 22.04 LTS and 24.04 LTS (amd64) | Officially supported in v1.0. Install, backup, restore and upgrade run in CI on both. |
+| Pop!_OS 22.04 and 24.04 (amd64) | Not officially supported in v1.0: `install.sh` proceeds without `--force` but warns in the preflight, with no guarantee. CI has no Pop!_OS runner; the real run stays on the test VM. |
 | Windows with WSL2 | **Trial and demo only**, never production. See [WSL2 on Windows](./install.md#windows-with-wsl2-trial-only). |
 | Other Linux distributions | Not supported. `install.sh --force` proceeds with a warning and no guarantee. |
 
