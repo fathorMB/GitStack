@@ -43,6 +43,10 @@ const (
 	// EnvRepoSizeWarn: oltre questa dimensione del repo il push è accettato con
 	// un avviso (R6). Stesso formato; default 5GB; 0 = nessun avviso.
 	EnvRepoSizeWarn = "GITSTACK_GIT_REPO_SIZE_WARN"
+	// EnvMirrorMaxFetch: tetto di crescita del repo in un singolo fetch di un
+	// pull mirror (F18, V12.1.1). Oltre il fetch è interrotto e l'aggiornamento
+	// fallisce. Stesso formato; default 5GB; 0 = nessun tetto.
+	EnvMirrorMaxFetch = "GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE"
 	EnvCoreURL      = "GITSTACK_CORE_URL"
 	// EnvNatsURL: indirizzo del bus NATS JetStream (es. nats://nats:4222) su
 	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
@@ -82,6 +86,8 @@ type Config struct {
 	// MaxBlobBytes e RepoWarnBytes sono le soglie di R6 in byte (0 = disattivata).
 	MaxBlobBytes  int64
 	RepoWarnBytes int64
+	// MirrorMaxFetchBytes: vedi EnvMirrorMaxFetch (0 = nessun tetto).
+	MirrorMaxFetchBytes int64
 	// NatsURL: vuoto = git.push non viene pubblicato.
 	NatsURL string
 	// MirrorCAFile: vedi EnvMirrorCAFile; vuoto = CA di sistema.
@@ -93,7 +99,7 @@ func Load() (Config, error) { return load(os.LookupEnv) }
 
 func load(lookup func(string) (string, bool)) (Config, error) {
 	var errs []string
-	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30}
+	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30, MirrorMaxFetchBytes: 5 << 30}
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = strings.TrimSpace(v)
@@ -160,7 +166,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	for _, s := range []struct {
 		env string
 		dst *int64
-	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}} {
+	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}, {EnvMirrorMaxFetch, &cfg.MirrorMaxFetchBytes}} {
 		if v, ok := lookup(s.env); ok && strings.TrimSpace(v) != "" {
 			n, err := ParseSize(v)
 			if err != nil {

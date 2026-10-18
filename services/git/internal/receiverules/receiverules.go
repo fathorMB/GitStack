@@ -102,7 +102,13 @@ func (r *Rules) GitArgs() []string {
 	}
 	// denyDeleteCurrent=ignore: l'eliminazione del branch principale la decide
 	// la protezione di GitStack (R9), non il default di git per HEAD.
-	return []string{"-c", "core.hooksPath=" + filepath.ToSlash(r.dir), "-c", "receive.denyDeleteCurrent=ignore"}
+	// fsckObjects=true (F18, V12.1.1): git controlla ogni oggetto ricevuto e
+	// rifiuta il push se ce n'è uno malformato.
+	return []string{
+		"-c", "core.hooksPath=" + filepath.ToSlash(r.dir),
+		"-c", "receive.denyDeleteCurrent=ignore",
+		"-c", "receive.fsckObjects=true",
+	}
 }
 
 // Env sono le variabili d'ambiente per il processo receive-pack. protected è

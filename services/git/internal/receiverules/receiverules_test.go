@@ -30,8 +30,10 @@ func TestInstallScriveLHook(t *testing.T) {
 		t.Fatal("l'hook deve avere shebang e fine riga LF")
 	}
 	args := strings.Join(r.GitArgs(), " ")
-	if !strings.Contains(args, "core.hooksPath=") {
-		t.Fatalf("args = %s", args)
+	for _, want := range []string{"core.hooksPath=", "receive.denyDeleteCurrent=ignore", "receive.fsckObjects=true"} {
+		if !strings.Contains(args, want) {
+			t.Fatalf("manca %s in args = %s", want, args)
+		}
 	}
 	env := strings.Join(r.Env("main"), " ")
 	for _, want := range []string{"GITSTACK_RULE_MAX_BLOB_BYTES=104857600", "GITSTACK_RULE_WARN_REPO_BYTES=5368709120", "GITSTACK_RULE_PROTECT_BRANCH=main"} {
