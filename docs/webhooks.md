@@ -23,6 +23,7 @@ sono compatibili, quindi un ricevitore ignora i campi che non conosce.
 | `issues` | cambia una issue | `opened`, `edited`, `closed`, `reopened`, `assigned`, `unassigned`, `labeled`, `unlabeled`, `milestoned`, `demilestoned`, `locked`, `unlocked` |
 | `issue_comment` | cambia un commento di una issue | `created`, `edited`, `deleted` |
 | `repository` | cambia un repo | `created`, `deleted`, `restored`, `archived`, `unarchived`, `visibility_changed` |
+| `pull_request`, `pull_request_review`, `commit_status` | v1.1 (PR11): vedi la sezione dedicata | |
 
 Nessun webhook per una issue nascosta (I4) né per i suoi commenti. Nella v1
 non c'è l'evento `ping`: si prova un webhook con una consegna vera e si
@@ -34,7 +35,7 @@ rinvia dal log (`redeliver`).
 |---|---|
 | `Content-Type` | `application/json` |
 | `User-Agent` | `GitStack-Webhook/1` |
-| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment` o `repository` |
+| `X-GitStack-Event` | l'evento: `push`, `issues`, `issue_comment`, `repository`, `pull_request`, `pull_request_review` o `commit_status` |
 | `X-GitStack-Delivery` | uuid della consegna: è l'`id` nel log (`…/deliveries`); una *Redeliver* ne ha uno nuovo |
 | `X-GitStack-Payload-Version` | `1` |
 | `X-GitStack-Signature` | `sha256=<hex>`, solo se il webhook ha un segreto |
@@ -263,6 +264,25 @@ Nella v1 non c'è l'azione di rinomina né di trasferimento (R3).
   "sender": { "id": "7a9e1b20-5c3d-4e8f-a1b2-c3d4e5f60718", "username": "ada", "type": "human" }
 }
 ```
+
+## `pull_request`, `pull_request_review`, `commit_status` (v1.1, PR11)
+
+Contratto fissato da GIT-258 (schemi `WebhookPullRequestPayload`,
+`WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload` in
+`api/openapi.yaml`, callback di `createRepoWebhook`); la consegna vera arriva
+con gli item a valle. Valgono corpo comune, intestazioni, firma e tentativi
+di sopra; `X-GitStack-Event` ne è il nome. Il numero `number` di una PR è
+quello condiviso con le issues (I1).
+
+| Evento | Quando | Valori di `action` | Campi in più |
+|---|---|---|---|
+| `pull_request` | cambia una PR | `opened`, `edited`, `closed` (senza merge), `reopened`, `merged`, `ready_for_review`, `converted_to_draft`, `synchronize` (nuovi commit sul branch di origine), `review_requested`, `review_request_removed` | `pullRequest` (come `GET …/pulls/{number}`), `requestedReviewer` per le due azioni di review |
+| `pull_request_review` | una review viene inviata o la sua approvazione annullata | `submitted`, `dismissed` | `pullRequest` (sintesi), `review` (con `state`, `countsAsApproval`) |
+| `commit_status` | un sistema esterno invia uno stato (PR9) | `created` | `commitStatus`, `combinedState`, `branches` (al massimo 20) |
+
+Si selezionano con `events` come gli altri (`WebhookEvent`). Nessuna
+consegna per i commenti sulle righe: arrivano dentro `pull_request_review`.
+Come per le issues, i campi sono quelli di quando il motore elabora l'evento.
 
 ## Da dove nascono
 

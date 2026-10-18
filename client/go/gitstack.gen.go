@@ -201,6 +201,57 @@ func (e CodeUserKind) Valid() bool {
 	}
 }
 
+// Defines values for CombinedCommitStatusState.
+const (
+	CombinedCommitStatusStateError   CombinedCommitStatusState = "error"
+	CombinedCommitStatusStateFailure CombinedCommitStatusState = "failure"
+	CombinedCommitStatusStateNone    CombinedCommitStatusState = "none"
+	CombinedCommitStatusStatePending CombinedCommitStatusState = "pending"
+	CombinedCommitStatusStateSuccess CombinedCommitStatusState = "success"
+)
+
+// Valid indicates whether the value is a known member of the CombinedCommitStatusState enum.
+func (e CombinedCommitStatusState) Valid() bool {
+	switch e {
+	case CombinedCommitStatusStateError:
+		return true
+	case CombinedCommitStatusStateFailure:
+		return true
+	case CombinedCommitStatusStateNone:
+		return true
+	case CombinedCommitStatusStatePending:
+		return true
+	case CombinedCommitStatusStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommitStatusState.
+const (
+	CommitStatusStateError   CommitStatusState = "error"
+	CommitStatusStateFailure CommitStatusState = "failure"
+	CommitStatusStatePending CommitStatusState = "pending"
+	CommitStatusStateSuccess CommitStatusState = "success"
+)
+
+// Valid indicates whether the value is a known member of the CommitStatusState enum.
+func (e CommitStatusState) Valid() bool {
+	switch e {
+	case CommitStatusStateError:
+		return true
+	case CommitStatusStateFailure:
+		return true
+	case CommitStatusStatePending:
+		return true
+	case CommitStatusStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGrantInputSubjectType.
 const (
 	CreateGrantInputSubjectTypeTeam CreateGrantInputSubjectType = "team"
@@ -279,6 +330,24 @@ func (e CurrentSessionAuthMethod) Valid() bool {
 	case CurrentSessionAuthMethodPassword:
 		return true
 	case CurrentSessionAuthMethodToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DiffSide.
+const (
+	New DiffSide = "new"
+	Old DiffSide = "old"
+)
+
+// Valid indicates whether the value is a known member of the DiffSide enum.
+func (e DiffSide) Valid() bool {
+	switch e {
+	case New:
+		return true
+	case Old:
 		return true
 	default:
 		return false
@@ -726,6 +795,57 @@ func (e LookupIdsResultUsersKind) Valid() bool {
 	}
 }
 
+// Defines values for MergeBlockerCode.
+const (
+	MergeBlockerCodeApprovalsRequired MergeBlockerCode = "approvals_required"
+	MergeBlockerCodeChangesRequested  MergeBlockerCode = "changes_requested"
+	MergeBlockerCodeConflicts         MergeBlockerCode = "conflicts"
+	MergeBlockerCodeDraft             MergeBlockerCode = "draft"
+	MergeBlockerCodeNotOpen           MergeBlockerCode = "not_open"
+	MergeBlockerCodeStatusFailed      MergeBlockerCode = "status_failed"
+	MergeBlockerCodeStatusRequired    MergeBlockerCode = "status_required"
+)
+
+// Valid indicates whether the value is a known member of the MergeBlockerCode enum.
+func (e MergeBlockerCode) Valid() bool {
+	switch e {
+	case MergeBlockerCodeApprovalsRequired:
+		return true
+	case MergeBlockerCodeChangesRequested:
+		return true
+	case MergeBlockerCodeConflicts:
+		return true
+	case MergeBlockerCodeDraft:
+		return true
+	case MergeBlockerCodeNotOpen:
+		return true
+	case MergeBlockerCodeStatusFailed:
+		return true
+	case MergeBlockerCodeStatusRequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MergeMethod.
+const (
+	Merge  MergeMethod = "merge"
+	Squash MergeMethod = "squash"
+)
+
+// Valid indicates whether the value is a known member of the MergeMethod enum.
+func (e MergeMethod) Valid() bool {
+	switch e {
+	case Merge:
+		return true
+	case Squash:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MilestoneState.
 const (
 	MilestoneStateClosed MilestoneState = "closed"
@@ -1014,6 +1134,51 @@ func (e PullMirrorState) Valid() bool {
 	}
 }
 
+// Defines values for PullRequestMergeabilityState.
+const (
+	PullRequestMergeabilityStateBlocked   PullRequestMergeabilityState = "blocked"
+	PullRequestMergeabilityStateConflicts PullRequestMergeabilityState = "conflicts"
+	PullRequestMergeabilityStateMergeable PullRequestMergeabilityState = "mergeable"
+	PullRequestMergeabilityStateUnknown   PullRequestMergeabilityState = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the PullRequestMergeabilityState enum.
+func (e PullRequestMergeabilityState) Valid() bool {
+	switch e {
+	case PullRequestMergeabilityStateBlocked:
+		return true
+	case PullRequestMergeabilityStateConflicts:
+		return true
+	case PullRequestMergeabilityStateMergeable:
+		return true
+	case PullRequestMergeabilityStateUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullRequestState.
+const (
+	PullRequestStateClosed PullRequestState = "closed"
+	PullRequestStateMerged PullRequestState = "merged"
+	PullRequestStateOpen   PullRequestState = "open"
+)
+
+// Valid indicates whether the value is a known member of the PullRequestState enum.
+func (e PullRequestState) Valid() bool {
+	switch e {
+	case PullRequestStateClosed:
+		return true
+	case PullRequestStateMerged:
+		return true
+	case PullRequestStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RepoMirrorRunOutcome.
 const (
 	RepoMirrorRunOutcomeBlocked  RepoMirrorRunOutcome = "blocked"
@@ -1185,6 +1350,72 @@ func (e ResourceRole) Valid() bool {
 	}
 }
 
+// Defines values for ReviewDecision.
+const (
+	ReviewDecisionApproved         ReviewDecision = "approved"
+	ReviewDecisionChangesRequested ReviewDecision = "changes_requested"
+	ReviewDecisionNone             ReviewDecision = "none"
+	ReviewDecisionRequired         ReviewDecision = "required"
+)
+
+// Valid indicates whether the value is a known member of the ReviewDecision enum.
+func (e ReviewDecision) Valid() bool {
+	switch e {
+	case ReviewDecisionApproved:
+		return true
+	case ReviewDecisionChangesRequested:
+		return true
+	case ReviewDecisionNone:
+		return true
+	case ReviewDecisionRequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewEvent.
+const (
+	Approve        ReviewEvent = "approve"
+	Comment        ReviewEvent = "comment"
+	RequestChanges ReviewEvent = "request_changes"
+)
+
+// Valid indicates whether the value is a known member of the ReviewEvent enum.
+func (e ReviewEvent) Valid() bool {
+	switch e {
+	case Approve:
+		return true
+	case Comment:
+		return true
+	case RequestChanges:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewState.
+const (
+	ReviewStateApproved         ReviewState = "approved"
+	ReviewStateChangesRequested ReviewState = "changes_requested"
+	ReviewStateCommented        ReviewState = "commented"
+)
+
+// Valid indicates whether the value is a known member of the ReviewState enum.
+func (e ReviewState) Valid() bool {
+	switch e {
+	case ReviewStateApproved:
+		return true
+	case ReviewStateChangesRequested:
+		return true
+	case ReviewStateCommented:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SessionAuthMethod.
 const (
 	SessionAuthMethodOidc     SessionAuthMethod = "oidc"
@@ -1347,6 +1578,51 @@ func (e WebhookDisabledReason) Valid() bool {
 	}
 }
 
+// Defines values for WebhookCommitStatusPayloadAction.
+const (
+	WebhookCommitStatusPayloadActionCreated WebhookCommitStatusPayloadAction = "created"
+)
+
+// Valid indicates whether the value is a known member of the WebhookCommitStatusPayloadAction enum.
+func (e WebhookCommitStatusPayloadAction) Valid() bool {
+	switch e {
+	case WebhookCommitStatusPayloadActionCreated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookCommitStatusPayloadEvent.
+const (
+	WebhookCommitStatusPayloadEventCommitStatus WebhookCommitStatusPayloadEvent = "commit_status"
+)
+
+// Valid indicates whether the value is a known member of the WebhookCommitStatusPayloadEvent enum.
+func (e WebhookCommitStatusPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookCommitStatusPayloadEventCommitStatus:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookCommitStatusPayloadVersion.
+const (
+	WebhookCommitStatusPayloadVersionN1 WebhookCommitStatusPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookCommitStatusPayloadVersion enum.
+func (e WebhookCommitStatusPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookCommitStatusPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookDeliveryStatus.
 const (
 	WebhookDeliveryStatusFailed  WebhookDeliveryStatus = "failed"
@@ -1373,22 +1649,151 @@ func (e WebhookDeliveryStatus) Valid() bool {
 
 // Defines values for WebhookEvent.
 const (
-	WebhookEventIssueComment WebhookEvent = "issue_comment"
-	WebhookEventIssues       WebhookEvent = "issues"
-	WebhookEventPush         WebhookEvent = "push"
-	WebhookEventRepository   WebhookEvent = "repository"
+	WebhookEventCommitStatus      WebhookEvent = "commit_status"
+	WebhookEventIssueComment      WebhookEvent = "issue_comment"
+	WebhookEventIssues            WebhookEvent = "issues"
+	WebhookEventPullRequest       WebhookEvent = "pull_request"
+	WebhookEventPullRequestReview WebhookEvent = "pull_request_review"
+	WebhookEventPush              WebhookEvent = "push"
+	WebhookEventRepository        WebhookEvent = "repository"
 )
 
 // Valid indicates whether the value is a known member of the WebhookEvent enum.
 func (e WebhookEvent) Valid() bool {
 	switch e {
+	case WebhookEventCommitStatus:
+		return true
 	case WebhookEventIssueComment:
 		return true
 	case WebhookEventIssues:
 		return true
+	case WebhookEventPullRequest:
+		return true
+	case WebhookEventPullRequestReview:
+		return true
 	case WebhookEventPush:
 		return true
 	case WebhookEventRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestPayloadAction.
+const (
+	WebhookPullRequestPayloadActionClosed               WebhookPullRequestPayloadAction = "closed"
+	WebhookPullRequestPayloadActionConvertedToDraft     WebhookPullRequestPayloadAction = "converted_to_draft"
+	WebhookPullRequestPayloadActionEdited               WebhookPullRequestPayloadAction = "edited"
+	WebhookPullRequestPayloadActionMerged               WebhookPullRequestPayloadAction = "merged"
+	WebhookPullRequestPayloadActionOpened               WebhookPullRequestPayloadAction = "opened"
+	WebhookPullRequestPayloadActionReadyForReview       WebhookPullRequestPayloadAction = "ready_for_review"
+	WebhookPullRequestPayloadActionReopened             WebhookPullRequestPayloadAction = "reopened"
+	WebhookPullRequestPayloadActionReviewRequestRemoved WebhookPullRequestPayloadAction = "review_request_removed"
+	WebhookPullRequestPayloadActionReviewRequested      WebhookPullRequestPayloadAction = "review_requested"
+	WebhookPullRequestPayloadActionSynchronize          WebhookPullRequestPayloadAction = "synchronize"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestPayloadAction enum.
+func (e WebhookPullRequestPayloadAction) Valid() bool {
+	switch e {
+	case WebhookPullRequestPayloadActionClosed:
+		return true
+	case WebhookPullRequestPayloadActionConvertedToDraft:
+		return true
+	case WebhookPullRequestPayloadActionEdited:
+		return true
+	case WebhookPullRequestPayloadActionMerged:
+		return true
+	case WebhookPullRequestPayloadActionOpened:
+		return true
+	case WebhookPullRequestPayloadActionReadyForReview:
+		return true
+	case WebhookPullRequestPayloadActionReopened:
+		return true
+	case WebhookPullRequestPayloadActionReviewRequestRemoved:
+		return true
+	case WebhookPullRequestPayloadActionReviewRequested:
+		return true
+	case WebhookPullRequestPayloadActionSynchronize:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestPayloadEvent.
+const (
+	WebhookPullRequestPayloadEventPullRequest WebhookPullRequestPayloadEvent = "pull_request"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestPayloadEvent enum.
+func (e WebhookPullRequestPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookPullRequestPayloadEventPullRequest:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestPayloadVersion.
+const (
+	WebhookPullRequestPayloadVersionN1 WebhookPullRequestPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestPayloadVersion enum.
+func (e WebhookPullRequestPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookPullRequestPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestReviewPayloadAction.
+const (
+	Dismissed WebhookPullRequestReviewPayloadAction = "dismissed"
+	Submitted WebhookPullRequestReviewPayloadAction = "submitted"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestReviewPayloadAction enum.
+func (e WebhookPullRequestReviewPayloadAction) Valid() bool {
+	switch e {
+	case Dismissed:
+		return true
+	case Submitted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestReviewPayloadEvent.
+const (
+	WebhookPullRequestReviewPayloadEventPullRequestReview WebhookPullRequestReviewPayloadEvent = "pull_request_review"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestReviewPayloadEvent enum.
+func (e WebhookPullRequestReviewPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookPullRequestReviewPayloadEventPullRequestReview:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestReviewPayloadVersion.
+const (
+	WebhookPullRequestReviewPayloadVersionN1 WebhookPullRequestReviewPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestReviewPayloadVersion enum.
+func (e WebhookPullRequestReviewPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookPullRequestReviewPayloadVersionN1:
 		return true
 	default:
 		return false
@@ -1407,6 +1812,24 @@ func (e WebhookScope) Valid() bool {
 	case Org:
 		return true
 	case Repo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookSenderType.
+const (
+	WebhookSenderTypeAgent WebhookSenderType = "agent"
+	WebhookSenderTypeHuman WebhookSenderType = "human"
+)
+
+// Valid indicates whether the value is a known member of the WebhookSenderType enum.
+func (e WebhookSenderType) Valid() bool {
+	switch e {
+	case WebhookSenderTypeAgent:
+		return true
+	case WebhookSenderTypeHuman:
 		return true
 	default:
 		return false
@@ -1533,6 +1956,51 @@ func (e PatchFormatParam) Valid() bool {
 	case PatchFormatParamDiff:
 		return true
 	case PatchFormatParamPatch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullSortParam.
+const (
+	PullSortParamComments PullSortParam = "comments"
+	PullSortParamCreated  PullSortParam = "created"
+	PullSortParamUpdated  PullSortParam = "updated"
+)
+
+// Valid indicates whether the value is a known member of the PullSortParam enum.
+func (e PullSortParam) Valid() bool {
+	switch e {
+	case PullSortParamComments:
+		return true
+	case PullSortParamCreated:
+		return true
+	case PullSortParamUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullStateFilter.
+const (
+	PullStateFilterAll    PullStateFilter = "all"
+	PullStateFilterClosed PullStateFilter = "closed"
+	PullStateFilterMerged PullStateFilter = "merged"
+	PullStateFilterOpen   PullStateFilter = "open"
+)
+
+// Valid indicates whether the value is a known member of the PullStateFilter enum.
+func (e PullStateFilter) Valid() bool {
+	switch e {
+	case PullStateFilterAll:
+		return true
+	case PullStateFilterClosed:
+		return true
+	case PullStateFilterMerged:
+		return true
+	case PullStateFilterOpen:
 		return true
 	default:
 		return false
@@ -1695,6 +2163,51 @@ func (e ListMilestonesParamsState) Valid() bool {
 	case ListMilestonesParamsStateClosed:
 		return true
 	case ListMilestonesParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListPullRequestsParamsState.
+const (
+	ListPullRequestsParamsStateAll    ListPullRequestsParamsState = "all"
+	ListPullRequestsParamsStateClosed ListPullRequestsParamsState = "closed"
+	ListPullRequestsParamsStateMerged ListPullRequestsParamsState = "merged"
+	ListPullRequestsParamsStateOpen   ListPullRequestsParamsState = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListPullRequestsParamsState enum.
+func (e ListPullRequestsParamsState) Valid() bool {
+	switch e {
+	case ListPullRequestsParamsStateAll:
+		return true
+	case ListPullRequestsParamsStateClosed:
+		return true
+	case ListPullRequestsParamsStateMerged:
+		return true
+	case ListPullRequestsParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListPullRequestsParamsSort.
+const (
+	ListPullRequestsParamsSortComments ListPullRequestsParamsSort = "comments"
+	ListPullRequestsParamsSortCreated  ListPullRequestsParamsSort = "created"
+	ListPullRequestsParamsSortUpdated  ListPullRequestsParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListPullRequestsParamsSort enum.
+func (e ListPullRequestsParamsSort) Valid() bool {
+	switch e {
+	case ListPullRequestsParamsSortComments:
+		return true
+	case ListPullRequestsParamsSortCreated:
+		return true
+	case ListPullRequestsParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -2006,6 +2519,33 @@ type BranchList struct {
 	Total int      `json:"total"`
 }
 
+// BranchSettings defines model for BranchSettings.
+type BranchSettings struct {
+	// AllowMergeCommit Ammette il merge commit (PR3). Default true.
+	AllowMergeCommit bool `json:"allowMergeCommit"`
+
+	// AllowSquashMerge Ammette lo squash (PR3). Default true.
+	AllowSquashMerge bool `json:"allowSquashMerge"`
+
+	// DefaultMergeMethod Metodo di merge (PR3). Il rebase non esiste.
+	DefaultMergeMethod MergeMethod `json:"defaultMergeMethod"`
+
+	// DeleteBranchOnMerge Elimina il branch di origine dopo ogni merge (PR3). Default false.
+	DeleteBranchOnMerge bool `json:"deleteBranchOnMerge"`
+
+	// DismissStaleApprovals Sempre true: nuovi commit annullano le approvazioni (PR4). Non configurabile nella v1.1.
+	DismissStaleApprovals *bool `json:"dismissStaleApprovals,omitempty"`
+
+	// RequirePullRequest «Richiedi una Pull Request» sul branch principale (PR4). Se acceso nessun push diretto, `admin` compresi. Default false.
+	RequirePullRequest bool `json:"requirePullRequest"`
+
+	// RequiredApprovals Approvazioni di persone con `write` richieste per il merge, quando `requirePullRequest` e' acceso (PR4). Default 1.
+	RequiredApprovals int `json:"requiredApprovals"`
+
+	// RequiredStatusContexts Contesti di stato (PR9) che devono essere `success` sulla punta della PR per unire.
+	RequiredStatusContexts []string `json:"requiredStatusContexts"`
+}
+
 // ChangePasswordInput defines model for ChangePasswordInput.
 type ChangePasswordInput struct {
 	CurrentPassword *string `json:"currentPassword,omitempty"`
@@ -2076,6 +2616,22 @@ type CodeUser struct {
 // CodeUserKind defines model for CodeUser.Kind.
 type CodeUserKind string
 
+// CombinedCommitStatus defines model for CombinedCommitStatus.
+type CombinedCommitStatus struct {
+	RequiredContexts []RequiredStatusContext `json:"requiredContexts"`
+	Sha              string                  `json:"sha"`
+
+	// State Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+	State CombinedCommitStatusState `json:"state"`
+
+	// Statuses L'ultimo stato di ciascun contesto.
+	Statuses   []CommitStatus `json:"statuses"`
+	TotalCount int            `json:"totalCount"`
+}
+
+// CombinedCommitStatusState Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+type CombinedCommitStatusState string
+
 // CommitDetail defines model for CommitDetail.
 type CommitDetail struct {
 	Additions int           `json:"additions"`
@@ -2116,6 +2672,36 @@ type CommitPerson struct {
 	User  *CodeUser `json:"user,omitempty"`
 }
 
+// CommitStatus defines model for CommitStatus.
+type CommitStatus struct {
+	Context     string             `json:"context"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Creator     IssueUser          `json:"creator"`
+	Description *string            `json:"description,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Sha         string             `json:"sha"`
+
+	// State Stato di un commit (PR9).
+	State CommitStatusState `json:"state"`
+
+	// TargetUrl Link ai dettagli, per esempio il log della CI.
+	TargetUrl *string `json:"targetUrl,omitempty"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
+}
+
+// CommitStatusList defines model for CommitStatusList.
+type CommitStatusList struct {
+	Items   []CommitStatus `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
+// CommitStatusState Stato di un commit (PR9).
+type CommitStatusState string
+
 // CommitSummary defines model for CommitSummary.
 type CommitSummary struct {
 	// Author Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
@@ -2131,6 +2717,18 @@ type CommitSummary struct {
 
 	// Subject Prima riga del messaggio.
 	Subject string `json:"subject"`
+}
+
+// CreateCommitStatusInput defines model for CreateCommitStatusInput.
+type CreateCommitStatusInput struct {
+	Context     *string `json:"context,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	// State Stato di un commit (PR9).
+	State CommitStatusState `json:"state"`
+
+	// TargetUrl Solo http o https (422 altrimenti).
+	TargetUrl *string `json:"targetUrl,omitempty"`
 }
 
 // CreateGrantInput defines model for CreateGrantInput.
@@ -2192,6 +2790,54 @@ type CreateOrganizationInput struct {
 	//
 	// Example: alice
 	Name Name `json:"name"`
+}
+
+// CreatePullRequestCommentInput defines model for CreatePullRequestCommentInput.
+type CreatePullRequestCommentInput struct {
+	Body string `json:"body"`
+
+	// CommitSha Punta della PR su cui sta la riga (409 `head_changed` se non e' piu' quella).
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// InReplyTo Id di un commento sulle righe: il nuovo entra nella sua conversazione. Esclude `path`.
+	InReplyTo *openapi_types.UUID `json:"inReplyTo,omitempty"`
+	Line      *int                `json:"line,omitempty"`
+
+	// Path File commentato; con `path` servono anche `side`, `line` e `commitSha`.
+	Path *string `json:"path,omitempty"`
+
+	// Side Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+	Side      *DiffSide `json:"side,omitempty"`
+	StartLine *int      `json:"startLine,omitempty"`
+}
+
+// CreatePullRequestInput defines model for CreatePullRequestInput.
+type CreatePullRequestInput struct {
+	// Body Markdown (D10); le parole chiave di C2 collegano le issues (PR8).
+	Body *string `json:"body,omitempty"`
+
+	// Draft Apre in bozza (PR6, PR10).
+	Draft *bool `json:"draft,omitempty"`
+
+	// Reviewers Nomi utente dei revisori richiesti (PR12); almeno `read` sul repo.
+	Reviewers    *[]Name `json:"reviewers,omitempty"`
+	SourceBranch string  `json:"sourceBranch"`
+
+	// TargetBranch Se manca, il branch principale del repo (R4).
+	TargetBranch *string `json:"targetBranch,omitempty"`
+	Title        string  `json:"title"`
+}
+
+// CreatePullRequestReviewInput defines model for CreatePullRequestReviewInput.
+type CreatePullRequestReviewInput struct {
+	Body     *string               `json:"body,omitempty"`
+	Comments *[]ReviewCommentInput `json:"comments,omitempty"`
+
+	// CommitSha Punta della PR che si e' vista; se e' cambiata, 409 `head_changed`.
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// Event Esito scelto all'invio (PR5).
+	Event ReviewEvent `json:"event"`
 }
 
 // CreateRepoMirrorInput Example: {"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-mirror"}
@@ -2385,6 +3031,9 @@ type DeletedRepository struct {
 type DeletedRepositoryList struct {
 	Items []DeletedRepository `json:"items"`
 }
+
+// DiffSide Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+type DiffSide string
 
 // EffectivePermission defines model for EffectivePermission.
 type EffectivePermission struct {
@@ -2984,6 +3633,39 @@ type MarkedNotifications struct {
 	Marked int `json:"marked"`
 }
 
+// MergeBlocker defines model for MergeBlocker.
+type MergeBlocker struct {
+	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+	Code MergeBlockerCode `json:"code"`
+
+	// Contexts I contesti coinvolti, per `status_required` e `status_failed`.
+	Contexts *[]string `json:"contexts,omitempty"`
+	Message  string    `json:"message"`
+}
+
+// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+type MergeBlockerCode string
+
+// MergeMethod Metodo di merge (PR3). Il rebase non esiste.
+type MergeMethod string
+
+// MergePullRequestInput defines model for MergePullRequestInput.
+type MergePullRequestInput struct {
+	CommitMessage *string `json:"commitMessage,omitempty"`
+
+	// CommitTitle Titolo del commit di merge o di squash; se manca lo propone il server.
+	CommitTitle *string `json:"commitTitle,omitempty"`
+
+	// DeleteBranch Elimina il branch di origine dopo il merge (PR3); vale anche l'impostazione `deleteBranchOnMerge`.
+	DeleteBranch *bool `json:"deleteBranch,omitempty"`
+
+	// ExpectedHeadSha Se la punta del branch di origine e' cambiata, 409 `head_changed`.
+	ExpectedHeadSha *string `json:"expectedHeadSha,omitempty"`
+
+	// Method Metodo di merge (PR3). Il rebase non esiste.
+	Method MergeMethod `json:"method"`
+}
+
 // Meta defines model for Meta.
 type Meta struct {
 	// ApiVersion Versione del contratto API (`info.version`).
@@ -3364,6 +4046,270 @@ type PullMirrorRunRefStatus string
 // PullMirrorState Stato di un mirror in pull, con gli stessi nomi del mirror in push. `pending`: in coda (primo aggiornamento o prossimo giro); `syncing`: un worker lo sta aggiornando; `in_sync`: l'ultimo aggiornamento e' riuscito (anche con ref `diverged`: gli altri ref si aggiornano); `error`: l'ultimo tentativo e' fallito, si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora, 3 ore, poi ogni 6 ore, tranne un blocco della policy di uscita (C8) che non si ritenta; `paused`: fermato da un admin, repo in sola lettura; `stopped`: interrotto (MP6), il repo e' normale, restano registro e ref `diverged`.
 type PullMirrorState string
 
+// PullRequest defines model for PullRequest.
+type PullRequest struct {
+	Additions int `json:"additions"`
+
+	// Approvals Approvazioni valide: di persone con `write`, sull'ultimo commit, non dell'autore (PR2, PR4).
+	Approvals int       `json:"approvals"`
+	Author    IssueUser `json:"author"`
+
+	// BaseSha Merge-base fra i due branch al momento dell'ultimo calcolo.
+	BaseSha *string `json:"baseSha,omitempty"`
+
+	// Body Markdown (D10).
+	Body         string `json:"body"`
+	ChangedFiles int    `json:"changedFiles"`
+
+	// ClosedAt Chiusura senza merge; azzerato dalla riapertura.
+	ClosedAt *time.Time `json:"closedAt,omitempty"`
+
+	// ClosingIssues Numeri delle issues che le parole chiave di C2 chiudono al merge (PR8).
+	ClosingIssues []int64 `json:"closingIssues"`
+
+	// CommentCount Commenti non eliminati, generali e sulle righe.
+	CommentCount int       `json:"commentCount"`
+	CommitCount  int       `json:"commitCount"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Deletions    int       `json:"deletions"`
+
+	// Draft Bozza (PR6). Sempre false se `state` non e' `open`.
+	Draft bool `json:"draft"`
+
+	// HeadSha Punta del branch di origine; per una PR unita quella al momento del merge.
+	HeadSha string             `json:"headSha"`
+	Id      openapi_types.UUID `json:"id"`
+
+	// MergeCommitSha Commit creato dal merge; solo per una PR unita.
+	MergeCommitSha *string `json:"mergeCommitSha,omitempty"`
+
+	// MergeMethod Solo per una PR unita.
+	MergeMethod *MergeMethod `json:"mergeMethod,omitempty"`
+	MergedAt    *time.Time   `json:"mergedAt,omitempty"`
+	MergedBy    *IssueUser   `json:"mergedBy,omitempty"`
+
+	// Number `#n`, dal contatore del repo condiviso con le issues (I1); non si riusa mai.
+	Number             int64       `json:"number"`
+	RequestedReviewers []IssueUser `json:"requestedReviewers"`
+
+	// RequiredApprovals Approvazioni richieste dal branch di destinazione; 0 se «Richiedi una Pull Request» e' spenta.
+	RequiredApprovals int `json:"requiredApprovals"`
+
+	// ReviewDecision Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+	ReviewDecision ReviewDecision `json:"reviewDecision"`
+
+	// SourceBranch Branch di origine, dello stesso repo (PR1).
+	SourceBranch string `json:"sourceBranch"`
+
+	// SourceBranchExists Il branch di origine esiste ancora (condizione per riaprire, PR6).
+	SourceBranchExists bool `json:"sourceBranchExists"`
+
+	// State Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+	State PullRequestState `json:"state"`
+
+	// StatusState Stato complessivo dei commit sulla punta di `headSha` (PR9); `null` se non calcolato.
+	StatusState *CombinedCommitStatusState `json:"statusState,omitempty"`
+
+	// TargetBranch Branch di destinazione.
+	TargetBranch          string    `json:"targetBranch"`
+	Title                 string    `json:"title"`
+	UnresolvedThreadCount int       `json:"unresolvedThreadCount"`
+	UpdatedAt             time.Time `json:"updatedAt"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
+}
+
+// PullRequestComment defines model for PullRequestComment.
+type PullRequestComment struct {
+	Author IssueUser `json:"author"`
+
+	// Body Vuoto se `deleted`.
+	Body string `json:"body"`
+
+	// CommitSha Punta della PR su cui e' stato scritto il commento sulle righe.
+	CommitSha *string   `json:"commitSha,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Deleted Segnaposto di un commento eliminato che ha ancora risposte.
+	Deleted bool               `json:"deleted"`
+	Edited  bool               `json:"edited"`
+	Id      openapi_types.UUID `json:"id"`
+	Line    *int               `json:"line,omitempty"`
+
+	// Outdated Le righe commentate sono cambiate dopo il commento (PR5).
+	Outdated bool `json:"outdated"`
+
+	// Path File commentato; `null` per un commento generale.
+	Path *string `json:"path,omitempty"`
+
+	// ReviewId Review con cui e' stato inviato, se c'e'.
+	ReviewId  *openapi_types.UUID `json:"reviewId,omitempty"`
+	Side      *DiffSide           `json:"side,omitempty"`
+	StartLine *int                `json:"startLine,omitempty"`
+
+	// ThreadId Conversazione sulle righe; `null` per un commento generale.
+	ThreadId  *openapi_types.UUID `json:"threadId,omitempty"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
+}
+
+// PullRequestCommentList defines model for PullRequestCommentList.
+type PullRequestCommentList struct {
+	Items   []PullRequestComment `json:"items"`
+	Page    int                  `json:"page"`
+	PerPage int                  `json:"perPage"`
+	Total   int                  `json:"total"`
+}
+
+// PullRequestFiles defines model for PullRequestFiles.
+type PullRequestFiles struct {
+	Additions int `json:"additions"`
+
+	// BaseSha Merge-base da cui e' calcolato il diff.
+	BaseSha   string     `json:"baseSha"`
+	Deletions int        `json:"deletions"`
+	Files     []FileDiff `json:"files"`
+
+	// FilesChanged Numero reale di file toccati, anche oltre i 300 elencati.
+	FilesChanged     int    `json:"filesChanged"`
+	HeadSha          string `json:"headSha"`
+	IgnoreWhitespace *bool  `json:"ignoreWhitespace,omitempty"`
+
+	// ListOnly Oltre i limiti di B6 solo l'elenco dei file, senza patch.
+	ListOnly *bool `json:"listOnly,omitempty"`
+
+	// Truncated Come in `CommitDetail`.
+	Truncated bool `json:"truncated"`
+
+	// ViewedPaths File marcati Viewed da chi chiama (PR12).
+	ViewedPaths []string `json:"viewedPaths"`
+}
+
+// PullRequestList defines model for PullRequestList.
+type PullRequestList struct {
+	Items   []PullRequestSummary `json:"items"`
+	Page    int                  `json:"page"`
+	PerPage int                  `json:"perPage"`
+	Total   int                  `json:"total"`
+}
+
+// PullRequestMergeability defines model for PullRequestMergeability.
+type PullRequestMergeability struct {
+	AheadBy        int           `json:"aheadBy"`
+	AllowedMethods []MergeMethod `json:"allowedMethods"`
+	Approvals      int           `json:"approvals"`
+
+	// BehindBy Commit della destinazione non ancora nel branch di origine. Non impedisce il merge (PR7).
+	BehindBy int            `json:"behindBy"`
+	Blockers []MergeBlocker `json:"blockers"`
+
+	// ConflictFiles File in conflitto (percorsi), vuoto se non ce ne sono. Al massimo 100: oltre, `conflictFilesTruncated`.
+	ConflictFiles          []string `json:"conflictFiles"`
+	ConflictFilesTruncated *bool    `json:"conflictFilesTruncated,omitempty"`
+
+	// DefaultMethod Metodo di merge (PR3). Il rebase non esiste.
+	DefaultMethod MergeMethod `json:"defaultMethod"`
+
+	// HeadSha Punta del branch di origine su cui e' stato calcolato lo stato.
+	HeadSha string `json:"headSha"`
+
+	// Mergeable True solo con `state` uguale a `mergeable`.
+	Mergeable         bool `json:"mergeable"`
+	RequiredApprovals int  `json:"requiredApprovals"`
+
+	// State `mergeable` si puo' unire; `conflicts` il merge produce conflitti (PR7); `blocked` nessun conflitto ma c'e' un blocco in `blockers`; `unknown` calcolo non ancora pronto.
+	State PullRequestMergeabilityState `json:"state"`
+}
+
+// PullRequestMergeabilityState `mergeable` si puo' unire; `conflicts` il merge produce conflitti (PR7); `blocked` nessun conflitto ma c'e' un blocco in `blockers`; `unknown` calcolo non ancora pronto.
+type PullRequestMergeabilityState string
+
+// PullRequestReview defines model for PullRequestReview.
+type PullRequestReview struct {
+	Author IssueUser `json:"author"`
+	Body   string    `json:"body"`
+
+	// CommentCount Commenti sulle righe inviati con la review.
+	CommentCount int `json:"commentCount"`
+
+	// CommitSha Punta della PR al momento della review.
+	CommitSha string `json:"commitSha"`
+
+	// CountsAsApproval True solo per `approved` di una persona con `write`, non annullata e non dell'autore. Gli agenti possono approvare ma non contano (PR2).
+	CountsAsApproval bool               `json:"countsAsApproval"`
+	Id               openapi_types.UUID `json:"id"`
+
+	// Stale Nuovi commit hanno annullato l'approvazione (PR4); la review resta nella cronologia.
+	Stale       bool        `json:"stale"`
+	State       ReviewState `json:"state"`
+	SubmittedAt time.Time   `json:"submittedAt"`
+}
+
+// PullRequestReviewList defines model for PullRequestReviewList.
+type PullRequestReviewList struct {
+	Items   []PullRequestReview `json:"items"`
+	Page    int                 `json:"page"`
+	PerPage int                 `json:"perPage"`
+	Total   int                 `json:"total"`
+}
+
+// PullRequestState Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+type PullRequestState string
+
+// PullRequestSummary Pull Request negli elenchi: senza testo.
+type PullRequestSummary struct {
+	Author             IssueUser   `json:"author"`
+	ClosedAt           *time.Time  `json:"closedAt,omitempty"`
+	CommentCount       int         `json:"commentCount"`
+	CreatedAt          time.Time   `json:"createdAt"`
+	Draft              bool        `json:"draft"`
+	MergedAt           *time.Time  `json:"mergedAt,omitempty"`
+	Number             int64       `json:"number"`
+	RequestedReviewers []IssueUser `json:"requestedReviewers"`
+
+	// ReviewDecision Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+	ReviewDecision ReviewDecision `json:"reviewDecision"`
+	SourceBranch   string         `json:"sourceBranch"`
+
+	// State Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+	State        PullRequestState           `json:"state"`
+	StatusState  *CombinedCommitStatusState `json:"statusState,omitempty"`
+	TargetBranch string                     `json:"targetBranch"`
+	Title        string                     `json:"title"`
+	UpdatedAt    time.Time                  `json:"updatedAt"`
+}
+
+// PullRequestThread defines model for PullRequestThread.
+type PullRequestThread struct {
+	Comments []PullRequestComment `json:"comments"`
+
+	// Id Id del primo commento.
+	Id       openapi_types.UUID `json:"id"`
+	Line     int                `json:"line"`
+	Outdated bool               `json:"outdated"`
+	Path     string             `json:"path"`
+
+	// Resolved Risolta dall'autore della PR o da chi ha `write` (PR5).
+	Resolved   bool       `json:"resolved"`
+	ResolvedAt *time.Time `json:"resolvedAt,omitempty"`
+	ResolvedBy *IssueUser `json:"resolvedBy,omitempty"`
+
+	// Side Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+	Side      DiffSide `json:"side"`
+	StartLine *int     `json:"startLine,omitempty"`
+}
+
+// PullRequestThreadList defines model for PullRequestThreadList.
+type PullRequestThreadList struct {
+	Items   []PullRequestThread `json:"items"`
+	Page    int                 `json:"page"`
+	PerPage int                 `json:"perPage"`
+	Total   int                 `json:"total"`
+}
+
 // ReadableResourcesInput defines model for ReadableResourcesInput.
 type ReadableResourcesInput struct {
 	UserId openapi_types.UUID `json:"userId"`
@@ -3584,6 +4530,22 @@ type RepositoryMirror struct {
 	Origin string `json:"origin"`
 }
 
+// RequestReviewersInput defines model for RequestReviewersInput.
+type RequestReviewersInput struct {
+	Reviewers []Name `json:"reviewers"`
+}
+
+// RequiredStatusContext defines model for RequiredStatusContext.
+type RequiredStatusContext struct {
+	Context string `json:"context"`
+
+	// Satisfied True solo con ultimo stato `success`.
+	Satisfied bool `json:"satisfied"`
+
+	// State Ultimo stato del contesto sul commit; `null` se non e' mai arrivato.
+	State *CommitStatusState `json:"state,omitempty"`
+}
+
 // ResolveMentionsInput defines model for ResolveMentionsInput.
 type ResolveMentionsInput struct {
 	Names []string `json:"names"`
@@ -3662,6 +4624,31 @@ type ResourceList struct {
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
+// ReviewCommentInput defines model for ReviewCommentInput.
+type ReviewCommentInput struct {
+	// Body Markdown (D10); un blocco `suggestion` si mostra come diff, senza «Applica» (PR5).
+	Body string `json:"body"`
+
+	// Line Ultima riga commentata.
+	Line int    `json:"line"`
+	Path string `json:"path"`
+
+	// Side Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+	Side DiffSide `json:"side"`
+
+	// StartLine Prima riga, per un gruppo di righe; deve essere minore di `line` e sullo stesso lato.
+	StartLine *int `json:"startLine,omitempty"`
+}
+
+// ReviewDecision Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+type ReviewDecision string
+
+// ReviewEvent Esito scelto all'invio (PR5).
+type ReviewEvent string
+
+// ReviewState defines model for ReviewState.
+type ReviewState string
+
 // Session Sessione web attiva, senza il valore del cookie.
 type Session struct {
 	AuthMethod SessionAuthMethod `json:"authMethod"`
@@ -3682,6 +4669,12 @@ type SessionAuthMethod string
 // SessionList defines model for SessionList.
 type SessionList struct {
 	Items []Session `json:"items"`
+}
+
+// SetFileViewedInput defines model for SetFileViewedInput.
+type SetFileViewedInput struct {
+	Path   string `json:"path"`
+	Viewed bool   `json:"viewed"`
 }
 
 // SetIssueAssigneesInput defines model for SetIssueAssigneesInput.
@@ -3944,6 +4937,19 @@ type TreeEntry struct {
 // TreeEntryType defines model for TreeEntry.Type.
 type TreeEntryType string
 
+// UpdateBranchSettingsInput defines model for UpdateBranchSettingsInput.
+type UpdateBranchSettingsInput struct {
+	AllowMergeCommit *bool `json:"allowMergeCommit,omitempty"`
+	AllowSquashMerge *bool `json:"allowSquashMerge,omitempty"`
+
+	// DefaultMergeMethod Metodo di merge (PR3). Il rebase non esiste.
+	DefaultMergeMethod     *MergeMethod `json:"defaultMergeMethod,omitempty"`
+	DeleteBranchOnMerge    *bool        `json:"deleteBranchOnMerge,omitempty"`
+	RequirePullRequest     *bool        `json:"requirePullRequest,omitempty"`
+	RequiredApprovals      *int         `json:"requiredApprovals,omitempty"`
+	RequiredStatusContexts *[]string    `json:"requiredStatusContexts,omitempty"`
+}
+
 // UpdateGrantInput defines model for UpdateGrantInput.
 type UpdateGrantInput struct {
 	// Role Ruolo su una risorsa, in ordine crescente di potere.
@@ -4014,6 +5020,18 @@ type UpdatePullMirrorInput struct {
 
 	// Username Stringa vuota toglie l'utente.
 	Username *string `json:"username,omitempty"`
+}
+
+// UpdatePullRequestCommentInput defines model for UpdatePullRequestCommentInput.
+type UpdatePullRequestCommentInput struct {
+	Body string `json:"body"`
+}
+
+// UpdatePullRequestInput defines model for UpdatePullRequestInput.
+type UpdatePullRequestInput struct {
+	Body         *string `json:"body,omitempty"`
+	TargetBranch *string `json:"targetBranch,omitempty"`
+	Title        *string `json:"title,omitempty"`
 }
 
 // UpdateRepoMirrorInput defines model for UpdateRepoMirrorInput.
@@ -4207,6 +5225,34 @@ type Webhook struct {
 // WebhookDisabledReason defines model for Webhook.DisabledReason.
 type WebhookDisabledReason string
 
+// WebhookCommitStatusPayload Corpo di una consegna con `X-GitStack-Event: commit_status` (PR11).
+type WebhookCommitStatusPayload struct {
+	// Action `created`: un sistema esterno ha inviato uno stato (PR9).
+	Action WebhookCommitStatusPayloadAction `json:"action"`
+
+	// Branches Branch la cui punta e' il commit (al massimo 20).
+	Branches *[]string `json:"branches,omitempty"`
+
+	// CombinedState Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+	CombinedState *CombinedCommitStatusState        `json:"combinedState,omitempty"`
+	CommitStatus  CommitStatus                      `json:"commitStatus"`
+	Event         WebhookCommitStatusPayloadEvent   `json:"event"`
+	Organization  *WebhookOrganizationRef           `json:"organization,omitempty"`
+	Repository    WebhookRepositoryRef              `json:"repository"`
+	Sender        *WebhookSender                    `json:"sender"`
+	Time          time.Time                         `json:"time"`
+	Version       WebhookCommitStatusPayloadVersion `json:"version"`
+}
+
+// WebhookCommitStatusPayloadAction `created`: un sistema esterno ha inviato uno stato (PR9).
+type WebhookCommitStatusPayloadAction string
+
+// WebhookCommitStatusPayloadEvent defines model for WebhookCommitStatusPayload.Event.
+type WebhookCommitStatusPayloadEvent string
+
+// WebhookCommitStatusPayloadVersion defines model for WebhookCommitStatusPayload.Version.
+type WebhookCommitStatusPayloadVersion int
+
 // WebhookDelivery defines model for WebhookDelivery.
 type WebhookDelivery = WebhookDeliverySummary
 
@@ -4224,7 +5270,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -4285,7 +5331,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -4300,7 +5346,7 @@ type WebhookDeliverySummary struct {
 	StatusCode *int `json:"statusCode,omitempty"`
 }
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -4311,8 +5357,85 @@ type WebhookList struct {
 	Total   int       `json:"total"`
 }
 
+// WebhookOrganizationRef defines model for WebhookOrganizationRef.
+type WebhookOrganizationRef struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+}
+
+// WebhookPullRequestPayload Corpo di una consegna con `X-GitStack-Event: pull_request` (PR11). Intestazioni, firma e corpo comune in docs/webhooks.md. Nessun webhook per le PR di un repo che l'evento non vede.
+type WebhookPullRequestPayload struct {
+	// Action `opened`, `edited` (titolo, testo o destinazione), `closed` (senza merge), `reopened`, `merged`, `ready_for_review`, `converted_to_draft`, `synchronize` (nuovi commit sul branch di origine, annullano le approvazioni), `review_requested` e `review_request_removed` (con `requestedReviewer`).
+	Action            WebhookPullRequestPayloadAction  `json:"action"`
+	Event             WebhookPullRequestPayloadEvent   `json:"event"`
+	Organization      *WebhookOrganizationRef          `json:"organization,omitempty"`
+	PullRequest       PullRequest                      `json:"pullRequest"`
+	Repository        WebhookRepositoryRef             `json:"repository"`
+	RequestedReviewer *IssueUser                       `json:"requestedReviewer,omitempty"`
+	Sender            *WebhookSender                   `json:"sender"`
+	Time              time.Time                        `json:"time"`
+	Version           WebhookPullRequestPayloadVersion `json:"version"`
+}
+
+// WebhookPullRequestPayloadAction `opened`, `edited` (titolo, testo o destinazione), `closed` (senza merge), `reopened`, `merged`, `ready_for_review`, `converted_to_draft`, `synchronize` (nuovi commit sul branch di origine, annullano le approvazioni), `review_requested` e `review_request_removed` (con `requestedReviewer`).
+type WebhookPullRequestPayloadAction string
+
+// WebhookPullRequestPayloadEvent defines model for WebhookPullRequestPayload.Event.
+type WebhookPullRequestPayloadEvent string
+
+// WebhookPullRequestPayloadVersion defines model for WebhookPullRequestPayload.Version.
+type WebhookPullRequestPayloadVersion int
+
+// WebhookPullRequestReviewPayload Corpo di una consegna con `X-GitStack-Event: pull_request_review` (PR11).
+type WebhookPullRequestReviewPayload struct {
+	// Action `submitted` (review inviata, con la sua `state`), `dismissed` (l'approvazione e' annullata da nuovi commit).
+	Action       WebhookPullRequestReviewPayloadAction `json:"action"`
+	Event        WebhookPullRequestReviewPayloadEvent  `json:"event"`
+	Organization *WebhookOrganizationRef               `json:"organization,omitempty"`
+
+	// PullRequest Pull Request negli elenchi: senza testo.
+	PullRequest PullRequestSummary                     `json:"pullRequest"`
+	Repository  WebhookRepositoryRef                   `json:"repository"`
+	Review      PullRequestReview                      `json:"review"`
+	Sender      *WebhookSender                         `json:"sender"`
+	Time        time.Time                              `json:"time"`
+	Version     WebhookPullRequestReviewPayloadVersion `json:"version"`
+}
+
+// WebhookPullRequestReviewPayloadAction `submitted` (review inviata, con la sua `state`), `dismissed` (l'approvazione e' annullata da nuovi commit).
+type WebhookPullRequestReviewPayloadAction string
+
+// WebhookPullRequestReviewPayloadEvent defines model for WebhookPullRequestReviewPayload.Event.
+type WebhookPullRequestReviewPayloadEvent string
+
+// WebhookPullRequestReviewPayloadVersion defines model for WebhookPullRequestReviewPayload.Version.
+type WebhookPullRequestReviewPayloadVersion int
+
+// WebhookRepositoryRef defines model for WebhookRepositoryRef.
+type WebhookRepositoryRef struct {
+	Archived      bool               `json:"archived"`
+	DefaultBranch string             `json:"defaultBranch"`
+	FullName      string             `json:"fullName"`
+	Id            openapi_types.UUID `json:"id"`
+	Name          string             `json:"name"`
+	Owner         string             `json:"owner"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
+}
+
 // WebhookScope defines model for WebhookScope.
 type WebhookScope string
+
+// WebhookSender defines model for WebhookSender.
+type WebhookSender struct {
+	Id       openapi_types.UUID `json:"id"`
+	Type     WebhookSenderType  `json:"type"`
+	Username string             `json:"username"`
+}
+
+// WebhookSenderType defines model for WebhookSender.Type.
+type WebhookSenderType string
 
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
@@ -4429,6 +5552,30 @@ type PathParam = string
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
 
+// PullBaseFilter defines model for PullBaseFilter.
+type PullBaseFilter = string
+
+// PullCommentIdParam defines model for PullCommentIdParam.
+type PullCommentIdParam = openapi_types.UUID
+
+// PullHeadFilter defines model for PullHeadFilter.
+type PullHeadFilter = string
+
+// PullNumberParam defines model for PullNumberParam.
+type PullNumberParam = int64
+
+// PullQueryParam defines model for PullQueryParam.
+type PullQueryParam = string
+
+// PullSortParam defines model for PullSortParam.
+type PullSortParam string
+
+// PullStateFilter defines model for PullStateFilter.
+type PullStateFilter string
+
+// PullThreadIdParam defines model for PullThreadIdParam.
+type PullThreadIdParam = openapi_types.UUID
+
 // RefAndPathParam defines model for RefAndPathParam.
 type RefAndPathParam = string
 
@@ -4466,6 +5613,9 @@ type SshKeyIdParam = openapi_types.UUID
 //
 // Example: alice
 type TeamParam = Name
+
+// ThreadResolvedFilter defines model for ThreadResolvedFilter.
+type ThreadResolvedFilter = bool
 
 // TokenIdParam defines model for TokenIdParam.
 type TokenIdParam = openapi_types.UUID
@@ -4789,6 +5939,12 @@ type GetRepositoryCommitPatchParams struct {
 // GetRepositoryCommitPatchParamsFormat defines parameters for GetRepositoryCommitPatch.
 type GetRepositoryCommitPatchParamsFormat string
 
+// ListCommitStatusesParams defines parameters for ListCommitStatuses.
+type ListCommitStatusesParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryFileParams defines parameters for GetRepositoryFile.
 type GetRepositoryFileParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -4896,6 +6052,69 @@ type ListRepoMirrorRunsParams struct {
 type ListRepoPullMirrorRunsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestsParams defines parameters for ListPullRequests.
+type ListPullRequestsParams struct {
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// State Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
+	State *ListPullRequestsParamsState `form:"state,omitempty" json:"state,omitempty"`
+
+	// Head Filtra per branch di origine.
+	Head *PullHeadFilter `form:"head,omitempty" json:"head,omitempty"`
+
+	// Base Filtra per branch di destinazione.
+	Base *PullBaseFilter `form:"base,omitempty" json:"base,omitempty"`
+
+	// Sort Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+	Sort    *ListPullRequestsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam                  `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam               `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestsParamsState defines parameters for ListPullRequests.
+type ListPullRequestsParamsState string
+
+// ListPullRequestsParamsSort defines parameters for ListPullRequests.
+type ListPullRequestsParamsSort string
+
+// ListPullRequestCommentsParams defines parameters for ListPullRequestComments.
+type ListPullRequestCommentsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestCommitsParams defines parameters for ListPullRequestCommits.
+type ListPullRequestCommitsParams struct {
+	Page *CommitPageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// PerPage Commit per pagina (default 30, massimo 100).
+	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestFilesParams defines parameters for ListPullRequestFiles.
+type ListPullRequestFilesParams struct {
+	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+	Path *DiffFilePathParam `form:"path,omitempty" json:"path,omitempty"`
+
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// ListPullRequestReviewsParams defines parameters for ListPullRequestReviews.
+type ListPullRequestReviewsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestThreadsParams defines parameters for ListPullRequestThreads.
+type ListPullRequestThreadsParams struct {
+	// Resolved `true` solo le conversazioni risolte, `false` solo quelle aperte; senza il parametro tutte.
+	Resolved *ThreadResolvedFilter `form:"resolved,omitempty" json:"resolved,omitempty"`
+	Page     *PageParam            `form:"page,omitempty" json:"page,omitempty"`
+	PerPage  *PerPageParam         `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // GetRepositoryRawParams defines parameters for GetRepositoryRaw.
@@ -5072,6 +6291,12 @@ type ImportRepositoryJSONRequestBody = ImportRepositoryInput
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 
+// UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
+type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
+
+// CreateCommitStatusJSONRequestBody defines body for CreateCommitStatus for application/json ContentType.
+type CreateCommitStatusJSONRequestBody = CreateCommitStatusInput
+
 // CreateRepoWebhookJSONRequestBody defines body for CreateRepoWebhook for application/json ContentType.
 type CreateRepoWebhookJSONRequestBody = CreateWebhookInput
 
@@ -5138,6 +6363,30 @@ type EnableRepoPullMirrorJSONRequestBody = EnablePullMirrorInput
 // StopRepoPullMirrorJSONRequestBody defines body for StopRepoPullMirror for application/json ContentType.
 type StopRepoPullMirrorJSONRequestBody = StopPullMirrorInput
 
+// CreatePullRequestJSONRequestBody defines body for CreatePullRequest for application/json ContentType.
+type CreatePullRequestJSONRequestBody = CreatePullRequestInput
+
+// UpdatePullRequestJSONRequestBody defines body for UpdatePullRequest for application/json ContentType.
+type UpdatePullRequestJSONRequestBody = UpdatePullRequestInput
+
+// CreatePullRequestCommentJSONRequestBody defines body for CreatePullRequestComment for application/json ContentType.
+type CreatePullRequestCommentJSONRequestBody = CreatePullRequestCommentInput
+
+// UpdatePullRequestCommentJSONRequestBody defines body for UpdatePullRequestComment for application/json ContentType.
+type UpdatePullRequestCommentJSONRequestBody = UpdatePullRequestCommentInput
+
+// MergePullRequestJSONRequestBody defines body for MergePullRequest for application/json ContentType.
+type MergePullRequestJSONRequestBody = MergePullRequestInput
+
+// RequestPullRequestReviewersJSONRequestBody defines body for RequestPullRequestReviewers for application/json ContentType.
+type RequestPullRequestReviewersJSONRequestBody = RequestReviewersInput
+
+// CreatePullRequestReviewJSONRequestBody defines body for CreatePullRequestReview for application/json ContentType.
+type CreatePullRequestReviewJSONRequestBody = CreatePullRequestReviewInput
+
+// SetPullRequestFileViewedJSONRequestBody defines body for SetPullRequestFileViewed for application/json ContentType.
+type SetPullRequestFileViewedJSONRequestBody = SetFileViewedInput
+
 // SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
 type SetRepoWatchJSONRequestBody = SetRepoWatchInput
 
@@ -5173,6 +6422,15 @@ type ChangePasswordJSONRequestBody = ChangePasswordInput
 
 // CreateUserTokenJSONRequestBody defines body for CreateUserToken for application/json ContentType.
 type CreateUserTokenJSONRequestBody = CreateTokenInput
+
+// CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
+type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
+
+// PullRequestJSONRequestBody defines body for PullRequest for application/json ContentType.
+type PullRequestJSONRequestBody = WebhookPullRequestPayload
+
+// PullRequestReviewJSONRequestBody defines body for PullRequestReview for application/json ContentType.
+type PullRequestReviewJSONRequestBody = WebhookPullRequestReviewPayload
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -6137,6 +7395,31 @@ type ClientInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/blame (the `GetRepositoryBlame` operationId).
 	GetRepositoryBlame(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetBranchSettings Legge le impostazioni «Branches & merge» del repo
+	//
+	// Metodi di merge ammessi, eliminazione automatica del branch (PR3) e protezione «Richiedi una Pull Request» del branch principale (PR4). Le legge chi puo' leggere il repo (servono per proporre il metodo di merge); le modifica solo `admin`. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/branch-settings (the `GetBranchSettings` operationId).
+	GetBranchSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateBranchSettingsWithBody Modifica le impostazioni «Branches & merge»
+	//
+	// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+	UpdateBranchSettingsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateBranchSettings Modifica le impostazioni «Branches & merge»
+	//
+	// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+	UpdateBranchSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateBranchSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRepositoryBranches Branch del repo, con conteggi
 	//
 	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
@@ -6164,6 +7447,38 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
 	GetRepositoryCommitPatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCombinedCommitStatus Stato complessivo di un commit
+	//
+	// Per ogni contesto vale l'ultimo stato (PR9). `state` e' `failure` o `error` se almeno un contesto lo e', altrimenti `pending` se almeno uno e' in corso, altrimenti `success`; `none` se non ci sono stati. `requiredContexts` sono i contesti obbligatori del branch principale (PR4) con il loro ultimo stato, `null` se non e' mai arrivato. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/status (the `GetCombinedCommitStatus` operationId).
+	GetCombinedCommitStatus(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCommitStatuses Storico degli stati di un commit
+	//
+	// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/statuses (the `ListCommitStatuses` operationId).
+	ListCommitStatuses(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCommitStatusWithBody Invia lo stato di un commit da un sistema esterno
+	//
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+	CreateCommitStatusWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCommitStatus Invia lo stato di un commit da un sistema esterno
+	//
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+	CreateCommitStatus(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, body CreateCommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryFile Contenuto di un file
 	//
@@ -6831,6 +8146,269 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/pull-mirror/sync (the `SyncRepoPullMirror` operationId).
 	SyncRepoPullMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequests Elenca e cerca le Pull Request del repo
+	//
+	// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls (the `ListPullRequests` operationId).
+	ListPullRequests(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePullRequestWithBody Apre una Pull Request fra due branch del repo
+	//
+	// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+	CreatePullRequestWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePullRequest Apre una Pull Request fra due branch del repo
+	//
+	// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+	CreatePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPullRequest Legge una Pull Request per numero
+	//
+	// Chi puo' leggere il repo legge la PR. Un numero che non e' una PR (per esempio una issue) risponde 404. Porta lo stato (`open`, `closed`, `merged`, PR6), la bozza, i revisori richiesti, la decisione di review, le approvazioni valide contro quelle richieste (PR2, PR4) e lo stato dei commit sull'ultimo commit del branch di origine (PR9). Per i conflitti e i blocchi al merge c'e' `getPullRequestMergeability`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number} (the `GetPullRequest` operationId).
+	GetPullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePullRequestWithBody Modifica titolo, testo e branch di destinazione
+	//
+	// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+	UpdatePullRequestWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePullRequest Modifica titolo, testo e branch di destinazione
+	//
+	// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+	UpdatePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body UpdatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeletePullRequestBranch Elimina il branch di origine di una Pull Request unita (Delete branch)
+	//
+	// Serve `write` e una PR unita (409 `not_merged` altrimenti). Il branch di origine non puo' essere il branch principale ne' avere altre PR aperte (409 `branch_in_use`). Un branch gia' eliminato risponde 404 `branch_not_found`. Con `deleteBranchOnMerge` attivo (PR3) lo fa il merge. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/branch (the `DeletePullRequestBranch` operationId).
+	DeletePullRequestBranch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ClosePullRequest Chiude una Pull Request senza unirla
+	//
+	// Possono l'autore e chi ha `write`. Chiudere non elimina il branch (PR6). Una PR gia' chiusa o unita risponde 409 (`already_closed`, `already_merged`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/close (the `ClosePullRequest` operationId).
+	ClosePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequestComments Elenca i commenti di una Pull Request, generali e sulle righe
+	//
+	// Elenco piatto, dal meno recente: commenti della conversazione (senza `path`) e commenti sulle righe del diff (PR5). Per i commenti sulle righe raggruppati in conversazioni risolvibili c'e' `listPullRequestThreads`. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/comments (the `ListPullRequestComments` operationId).
+	ListPullRequestComments(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePullRequestCommentWithBody Aggiunge un commento generale, sulle righe o una risposta
+	//
+	// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+	CreatePullRequestCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePullRequestComment Aggiunge un commento generale, sulle righe o una risposta
+	//
+	// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+	CreatePullRequestComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeletePullRequestComment Elimina un commento
+	//
+	// Possono l'autore del commento e chi ha `admin` sul repo. Se il commento apre una conversazione con risposte, resta il segnaposto `deleted` e le risposte restano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `DeletePullRequestComment` operationId).
+	DeletePullRequestComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePullRequestCommentWithBody Modifica il testo di un commento
+	//
+	// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+	UpdatePullRequestCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePullRequestComment Modifica il testo di un commento
+	//
+	// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+	UpdatePullRequestComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, body UpdatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequestCommits Commit della Pull Request
+	//
+	// I commit del branch di origine non ancora nel branch di destinazione (quelli di `base..head`), dal piu' recente, nella stessa forma di `getRepositoryCommits` (limite di 100 per pagina). Per una PR unita sono quelli che il merge ha portato. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/commits (the `ListPullRequestCommits` operationId).
+	ListPullRequestCommits(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MarkPullRequestDraft Riporta una Pull Request pronta allo stato di bozza
+	//
+	// Possono l'autore e chi ha `write`. Le approvazioni gia' date restano registrate. Una PR gia' in bozza risponde 409 `already_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
+	MarkPullRequestDraft(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequestFiles File modificati dalla Pull Request, con il diff (Files changed)
+	//
+	// Diff fra il merge-base e la punta del branch di origine, per file, con gli stessi limiti progressivi di `getRepositoryCommit` (B6, costanti in `x-code-read-limits`). `viewedPaths` elenca i file che il chiamante ha marcato Viewed (PR12, personale: una sessione senza utente non ne ha). `path` restringe a quel file; `ignoreWhitespace` usa `git diff -w`. Per una PR unita il diff e' quello congelato al merge. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/files (the `ListPullRequestFiles` operationId).
+	ListPullRequestFiles(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MergePullRequestWithBody Unisce la Pull Request nel branch di destinazione
+	//
+	// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+	MergePullRequestWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MergePullRequest Unisce la Pull Request nel branch di destinazione
+	//
+	// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+	MergePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body MergePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPullRequestMergeability Dice se la Pull Request si puo' unire e perche' no
+	//
+	// Stato di merge calcolato sui commit attuali (PR7): conflitti con l'elenco dei file in conflitto, quanti commit e' indietro rispetto alla destinazione (una PR solo «indietro» si unisce, niente «Update branch»), e i blocchi di PR4, PR6 e PR9 (bozza, approvazioni mancanti, modifiche richieste, stati obbligatori). `allowedMethods` sono i metodi di merge che l'impostazione del repo ammette (PR3). Lo stesso stato e' usato da `mergePullRequest`. Se il calcolo non e' ancora pronto `state` e' `unknown` e va richiesto di nuovo. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/mergeability (the `GetPullRequestMergeability` operationId).
+	GetPullRequestMergeability(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MarkPullRequestReady Segna una bozza come pronta per la review (Ready for review)
+	//
+	// Da qui la PR si puo' unire e chiede review ai revisori gia' indicati (PR6, PR11). Possono l'autore e chi ha `write`. Una PR che non e' una bozza risponde 409 `not_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/ready (the `MarkPullRequestReady` operationId).
+	MarkPullRequestReady(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReopenPullRequest Riapre una Pull Request chiusa
+	//
+	// Possono l'autore e chi ha `write`. Si riapre solo se i due branch esistono ancora (PR6): altrimenti 409 `branch_missing`. Una PR unita e' definitiva (409 `already_merged`), una gia' aperta 409 `already_open`. Se esiste un'altra PR aperta con la stessa coppia di branch: 409 `already_exists`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reopen (the `ReopenPullRequest` operationId).
+	ReopenPullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RequestPullRequestReviewersWithBody Chiede (o richiede di nuovo) la review a una o piu' persone
+	//
+	// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+	RequestPullRequestReviewersWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RequestPullRequestReviewers Chiede (o richiede di nuovo) la review a una o piu' persone
+	//
+	// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+	RequestPullRequestReviewers(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body RequestPullRequestReviewersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemovePullRequestReviewer Toglie una richiesta di review
+	//
+	// Possono l'autore della PR e chi ha `write`. Non cancella la review gia' inviata, toglie solo la richiesta pendente. Una persona che non era fra i revisori richiesti risponde 404. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username} (the `RemovePullRequestReviewer` operationId).
+	RemovePullRequestReviewer(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequestReviews Elenca le review di una Pull Request
+	//
+	// Review inviate, dalla meno recente. Ogni review dice se la sua approvazione e' ancora valida (`stale`, PR4) e se conta per il merge (`countsAsApproval`, PR2: non conta se e' di un agente). Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/reviews (the `ListPullRequestReviews` operationId).
+	ListPullRequestReviews(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestReviewsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePullRequestReviewWithBody Invia una review (Comment, Approve o Request changes)
+	//
+	// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+	CreatePullRequestReviewWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePullRequestReview Invia una review (Comment, Approve o Request changes)
+	//
+	// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+	CreatePullRequestReview(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequestThreads Elenca le conversazioni sulle righe, risolte e aperte
+	//
+	// Le conversazioni (PR5) raggruppano un commento sulle righe e le sue risposte. `resolved` e' il segno «risolta»; `outdated` dice che le righe commentate sono cambiate dopo il commento. Il filtro `resolved` restringe l'elenco. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/threads (the `ListPullRequestThreads` operationId).
+	ListPullRequestThreads(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestThreadsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResolvePullRequestThread Segna una conversazione come risolta
+	//
+	// Possono l'autore della PR e chi ha `write` (PR5). Idempotente: una conversazione gia' risolta risponde 200 con lo stato attuale. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve (the `ResolvePullRequestThread` operationId).
+	ResolvePullRequestThread(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnresolvePullRequestThread Riapre una conversazione risolta
+	//
+	// Come `resolvePullRequestThread`: l'autore della PR e chi ha `write`. Idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve (the `UnresolvePullRequestThread` operationId).
+	UnresolvePullRequestThread(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPullRequestFileViewedWithBody Marca o smarca un file come Viewed
+	//
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+	SetPullRequestFileViewedWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPullRequestFileViewed Marca o smarca un file come Viewed
+	//
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+	SetPullRequestFileViewed(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body SetPullRequestFileViewedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	//
@@ -9285,6 +10863,61 @@ func (c *Client) GetRepositoryBlame(ctx context.Context, owner RepoOwnerParam, r
 	return c.Client.Do(req)
 }
 
+// GetBranchSettings Legge le impostazioni «Branches & merge» del repo
+//
+// Metodi di merge ammessi, eliminazione automatica del branch (PR3) e protezione «Richiedi una Pull Request» del branch principale (PR4). Le legge chi puo' leggere il repo (servono per proporre il metodo di merge); le modifica solo `admin`. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/branch-settings (the `GetBranchSettings` operationId).
+func (c *Client) GetBranchSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBranchSettingsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateBranchSettingsWithBody Modifica le impostazioni «Branches & merge»
+//
+// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+func (c *Client) UpdateBranchSettingsWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateBranchSettingsRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateBranchSettings Modifica le impostazioni «Branches & merge»
+//
+// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+func (c *Client) UpdateBranchSettings(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateBranchSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateBranchSettingsRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetRepositoryBranches Branch del repo, con conteggi
 //
 // Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
@@ -9343,6 +10976,78 @@ func (c *Client) GetRepositoryCommit(ctx context.Context, owner RepoOwnerParam, 
 // Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
 func (c *Client) GetRepositoryCommitPatch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRepositoryCommitPatchRequest(c.Server, owner, repo, sha, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCombinedCommitStatus Stato complessivo di un commit
+//
+// Per ogni contesto vale l'ultimo stato (PR9). `state` e' `failure` o `error` se almeno un contesto lo e', altrimenti `pending` se almeno uno e' in corso, altrimenti `success`; `none` se non ci sono stati. `requiredContexts` sono i contesti obbligatori del branch principale (PR4) con il loro ultimo stato, `null` se non e' mai arrivato. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/status (the `GetCombinedCommitStatus` operationId).
+func (c *Client) GetCombinedCommitStatus(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCombinedCommitStatusRequest(c.Server, owner, repo, sha)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCommitStatuses Storico degli stati di un commit
+//
+// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/statuses (the `ListCommitStatuses` operationId).
+func (c *Client) ListCommitStatuses(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCommitStatusesRequest(c.Server, owner, repo, sha, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCommitStatusWithBody Invia lo stato di un commit da un sistema esterno
+//
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+func (c *Client) CreateCommitStatusWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCommitStatusRequestWithBody(c.Server, owner, repo, sha, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCommitStatus Invia lo stato di un commit da un sistema esterno
+//
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+func (c *Client) CreateCommitStatus(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, body CreateCommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCommitStatusRequest(c.Server, owner, repo, sha, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10840,6 +12545,599 @@ func (c *Client) StopRepoPullMirror(ctx context.Context, owner RepoOwnerParam, r
 // Corresponds with POST /repos/{owner}/{repo}/pull-mirror/sync (the `SyncRepoPullMirror` operationId).
 func (c *Client) SyncRepoPullMirror(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSyncRepoPullMirrorRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequests Elenca e cerca le Pull Request del repo
+//
+// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls (the `ListPullRequests` operationId).
+func (c *Client) ListPullRequests(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestsRequest(c.Server, owner, repo, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePullRequestWithBody Apre una Pull Request fra due branch del repo
+//
+// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+func (c *Client) CreatePullRequestWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePullRequestRequestWithBody(c.Server, owner, repo, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePullRequest Apre una Pull Request fra due branch del repo
+//
+// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+func (c *Client) CreatePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePullRequestRequest(c.Server, owner, repo, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPullRequest Legge una Pull Request per numero
+//
+// Chi puo' leggere il repo legge la PR. Un numero che non e' una PR (per esempio una issue) risponde 404. Porta lo stato (`open`, `closed`, `merged`, PR6), la bozza, i revisori richiesti, la decisione di review, le approvazioni valide contro quelle richieste (PR2, PR4) e lo stato dei commit sull'ultimo commit del branch di origine (PR9). Per i conflitti e i blocchi al merge c'e' `getPullRequestMergeability`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number} (the `GetPullRequest` operationId).
+func (c *Client) GetPullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPullRequestRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePullRequestWithBody Modifica titolo, testo e branch di destinazione
+//
+// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+func (c *Client) UpdatePullRequestWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePullRequestRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePullRequest Modifica titolo, testo e branch di destinazione
+//
+// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+func (c *Client) UpdatePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body UpdatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePullRequestRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeletePullRequestBranch Elimina il branch di origine di una Pull Request unita (Delete branch)
+//
+// Serve `write` e una PR unita (409 `not_merged` altrimenti). Il branch di origine non puo' essere il branch principale ne' avere altre PR aperte (409 `branch_in_use`). Un branch gia' eliminato risponde 404 `branch_not_found`. Con `deleteBranchOnMerge` attivo (PR3) lo fa il merge. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/branch (the `DeletePullRequestBranch` operationId).
+func (c *Client) DeletePullRequestBranch(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeletePullRequestBranchRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ClosePullRequest Chiude una Pull Request senza unirla
+//
+// Possono l'autore e chi ha `write`. Chiudere non elimina il branch (PR6). Una PR gia' chiusa o unita risponde 409 (`already_closed`, `already_merged`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/close (the `ClosePullRequest` operationId).
+func (c *Client) ClosePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewClosePullRequestRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequestComments Elenca i commenti di una Pull Request, generali e sulle righe
+//
+// Elenco piatto, dal meno recente: commenti della conversazione (senza `path`) e commenti sulle righe del diff (PR5). Per i commenti sulle righe raggruppati in conversazioni risolvibili c'e' `listPullRequestThreads`. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/comments (the `ListPullRequestComments` operationId).
+func (c *Client) ListPullRequestComments(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestCommentsRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePullRequestCommentWithBody Aggiunge un commento generale, sulle righe o una risposta
+//
+// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+func (c *Client) CreatePullRequestCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePullRequestCommentRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePullRequestComment Aggiunge un commento generale, sulle righe o una risposta
+//
+// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+func (c *Client) CreatePullRequestComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePullRequestCommentRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeletePullRequestComment Elimina un commento
+//
+// Possono l'autore del commento e chi ha `admin` sul repo. Se il commento apre una conversazione con risposte, resta il segnaposto `deleted` e le risposte restano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `DeletePullRequestComment` operationId).
+func (c *Client) DeletePullRequestComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeletePullRequestCommentRequest(c.Server, owner, repo, number, commentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePullRequestCommentWithBody Modifica il testo di un commento
+//
+// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+func (c *Client) UpdatePullRequestCommentWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePullRequestCommentRequestWithBody(c.Server, owner, repo, number, commentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePullRequestComment Modifica il testo di un commento
+//
+// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+func (c *Client) UpdatePullRequestComment(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, body UpdatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePullRequestCommentRequest(c.Server, owner, repo, number, commentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequestCommits Commit della Pull Request
+//
+// I commit del branch di origine non ancora nel branch di destinazione (quelli di `base..head`), dal piu' recente, nella stessa forma di `getRepositoryCommits` (limite di 100 per pagina). Per una PR unita sono quelli che il merge ha portato. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/commits (the `ListPullRequestCommits` operationId).
+func (c *Client) ListPullRequestCommits(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommitsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestCommitsRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MarkPullRequestDraft Riporta una Pull Request pronta allo stato di bozza
+//
+// Possono l'autore e chi ha `write`. Le approvazioni gia' date restano registrate. Una PR gia' in bozza risponde 409 `already_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
+func (c *Client) MarkPullRequestDraft(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMarkPullRequestDraftRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequestFiles File modificati dalla Pull Request, con il diff (Files changed)
+//
+// Diff fra il merge-base e la punta del branch di origine, per file, con gli stessi limiti progressivi di `getRepositoryCommit` (B6, costanti in `x-code-read-limits`). `viewedPaths` elenca i file che il chiamante ha marcato Viewed (PR12, personale: una sessione senza utente non ne ha). `path` restringe a quel file; `ignoreWhitespace` usa `git diff -w`. Per una PR unita il diff e' quello congelato al merge. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/files (the `ListPullRequestFiles` operationId).
+func (c *Client) ListPullRequestFiles(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestFilesRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MergePullRequestWithBody Unisce la Pull Request nel branch di destinazione
+//
+// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+func (c *Client) MergePullRequestWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMergePullRequestRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MergePullRequest Unisce la Pull Request nel branch di destinazione
+//
+// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+func (c *Client) MergePullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body MergePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMergePullRequestRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPullRequestMergeability Dice se la Pull Request si puo' unire e perche' no
+//
+// Stato di merge calcolato sui commit attuali (PR7): conflitti con l'elenco dei file in conflitto, quanti commit e' indietro rispetto alla destinazione (una PR solo «indietro» si unisce, niente «Update branch»), e i blocchi di PR4, PR6 e PR9 (bozza, approvazioni mancanti, modifiche richieste, stati obbligatori). `allowedMethods` sono i metodi di merge che l'impostazione del repo ammette (PR3). Lo stesso stato e' usato da `mergePullRequest`. Se il calcolo non e' ancora pronto `state` e' `unknown` e va richiesto di nuovo. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/mergeability (the `GetPullRequestMergeability` operationId).
+func (c *Client) GetPullRequestMergeability(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPullRequestMergeabilityRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MarkPullRequestReady Segna una bozza come pronta per la review (Ready for review)
+//
+// Da qui la PR si puo' unire e chiede review ai revisori gia' indicati (PR6, PR11). Possono l'autore e chi ha `write`. Una PR che non e' una bozza risponde 409 `not_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/ready (the `MarkPullRequestReady` operationId).
+func (c *Client) MarkPullRequestReady(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMarkPullRequestReadyRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReopenPullRequest Riapre una Pull Request chiusa
+//
+// Possono l'autore e chi ha `write`. Si riapre solo se i due branch esistono ancora (PR6): altrimenti 409 `branch_missing`. Una PR unita e' definitiva (409 `already_merged`), una gia' aperta 409 `already_open`. Se esiste un'altra PR aperta con la stessa coppia di branch: 409 `already_exists`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reopen (the `ReopenPullRequest` operationId).
+func (c *Client) ReopenPullRequest(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReopenPullRequestRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RequestPullRequestReviewersWithBody Chiede (o richiede di nuovo) la review a una o piu' persone
+//
+// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+func (c *Client) RequestPullRequestReviewersWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPullRequestReviewersRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RequestPullRequestReviewers Chiede (o richiede di nuovo) la review a una o piu' persone
+//
+// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+func (c *Client) RequestPullRequestReviewers(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body RequestPullRequestReviewersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestPullRequestReviewersRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemovePullRequestReviewer Toglie una richiesta di review
+//
+// Possono l'autore della PR e chi ha `write`. Non cancella la review gia' inviata, toglie solo la richiesta pendente. Una persona che non era fra i revisori richiesti risponde 404. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username} (the `RemovePullRequestReviewer` operationId).
+func (c *Client) RemovePullRequestReviewer(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePullRequestReviewerRequest(c.Server, owner, repo, number, username)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequestReviews Elenca le review di una Pull Request
+//
+// Review inviate, dalla meno recente. Ogni review dice se la sua approvazione e' ancora valida (`stale`, PR4) e se conta per il merge (`countsAsApproval`, PR2: non conta se e' di un agente). Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/reviews (the `ListPullRequestReviews` operationId).
+func (c *Client) ListPullRequestReviews(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestReviewsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestReviewsRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePullRequestReviewWithBody Invia una review (Comment, Approve o Request changes)
+//
+// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+func (c *Client) CreatePullRequestReviewWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePullRequestReviewRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePullRequestReview Invia una review (Comment, Approve o Request changes)
+//
+// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+func (c *Client) CreatePullRequestReview(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePullRequestReviewRequest(c.Server, owner, repo, number, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequestThreads Elenca le conversazioni sulle righe, risolte e aperte
+//
+// Le conversazioni (PR5) raggruppano un commento sulle righe e le sue risposte. `resolved` e' il segno «risolta»; `outdated` dice che le righe commentate sono cambiate dopo il commento. Il filtro `resolved` restringe l'elenco. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/threads (the `ListPullRequestThreads` operationId).
+func (c *Client) ListPullRequestThreads(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestThreadsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestThreadsRequest(c.Server, owner, repo, number, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResolvePullRequestThread Segna una conversazione come risolta
+//
+// Possono l'autore della PR e chi ha `write` (PR5). Idempotente: una conversazione gia' risolta risponde 200 con lo stato attuale. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve (the `ResolvePullRequestThread` operationId).
+func (c *Client) ResolvePullRequestThread(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolvePullRequestThreadRequest(c.Server, owner, repo, number, threadId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UnresolvePullRequestThread Riapre una conversazione risolta
+//
+// Come `resolvePullRequestThread`: l'autore della PR e chi ha `write`. Idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve (the `UnresolvePullRequestThread` operationId).
+func (c *Client) UnresolvePullRequestThread(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnresolvePullRequestThreadRequest(c.Server, owner, repo, number, threadId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPullRequestFileViewedWithBody Marca o smarca un file come Viewed
+//
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+func (c *Client) SetPullRequestFileViewedWithBody(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPullRequestFileViewedRequestWithBody(c.Server, owner, repo, number, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPullRequestFileViewed Marca o smarca un file come Viewed
+//
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+func (c *Client) SetPullRequestFileViewed(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body SetPullRequestFileViewedJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPullRequestFileViewedRequest(c.Server, owner, repo, number, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16235,6 +18533,101 @@ func NewGetRepositoryBlameRequest(server string, owner RepoOwnerParam, repo Repo
 	return req, nil
 }
 
+// NewGetBranchSettingsRequest constructs an http.Request for the GetBranchSettings method
+func NewGetBranchSettingsRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/branch-settings", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateBranchSettingsRequest calls the generic UpdateBranchSettings builder with application/json body
+func NewUpdateBranchSettingsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body UpdateBranchSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateBranchSettingsRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewUpdateBranchSettingsRequestWithBody constructs an http.Request for the UpdateBranchSettings method, with any body, and a specified content type
+func NewUpdateBranchSettingsRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/branch-settings", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetRepositoryBranchesRequest constructs an http.Request for the GetRepositoryBranches method
 func NewGetRepositoryBranchesRequest(server string, owner RepoOwnerParam, repo RepoNameParam) (*http.Request, error) {
 	var err error
@@ -16562,6 +18955,202 @@ func NewGetRepositoryCommitPatchRequest(server string, owner RepoOwnerParam, rep
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetCombinedCommitStatusRequest constructs an http.Request for the GetCombinedCommitStatus method
+func NewGetCombinedCommitStatusRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits/%s/status", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListCommitStatusesRequest constructs an http.Request for the ListCommitStatuses method
+func NewListCommitStatusesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits/%s/statuses", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateCommitStatusRequest calls the generic CreateCommitStatus builder with application/json body
+func NewCreateCommitStatusRequest(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, body CreateCommitStatusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCommitStatusRequestWithBody(server, owner, repo, sha, "application/json", bodyReader)
+}
+
+// NewCreateCommitStatusRequestWithBody constructs an http.Request for the CreateCommitStatus method, with any body, and a specified content type
+func NewCreateCommitStatusRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "sha", sha, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/commits/%s/statuses", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -20290,6 +22879,1637 @@ func NewSyncRepoPullMirrorRequest(server string, owner RepoOwnerParam, repo Repo
 	return req, nil
 }
 
+// NewListPullRequestsRequest constructs an http.Request for the ListPullRequests method
+func NewListPullRequestsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Head != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "head", *params.Head, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Base != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "base", *params.Base, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sort", *params.Sort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreatePullRequestRequest calls the generic CreatePullRequest builder with application/json body
+func NewCreatePullRequestRequest(server string, owner RepoOwnerParam, repo RepoNameParam, body CreatePullRequestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePullRequestRequestWithBody(server, owner, repo, "application/json", bodyReader)
+}
+
+// NewCreatePullRequestRequestWithBody constructs an http.Request for the CreatePullRequest method, with any body, and a specified content type
+func NewCreatePullRequestRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetPullRequestRequest constructs an http.Request for the GetPullRequest method
+func NewGetPullRequestRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdatePullRequestRequest calls the generic UpdatePullRequest builder with application/json body
+func NewUpdatePullRequestRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body UpdatePullRequestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdatePullRequestRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewUpdatePullRequestRequestWithBody constructs an http.Request for the UpdatePullRequest method, with any body, and a specified content type
+func NewUpdatePullRequestRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeletePullRequestBranchRequest constructs an http.Request for the DeletePullRequestBranch method
+func NewDeletePullRequestBranchRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/branch", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewClosePullRequestRequest constructs an http.Request for the ClosePullRequest method
+func NewClosePullRequestRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/close", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListPullRequestCommentsRequest constructs an http.Request for the ListPullRequestComments method
+func NewListPullRequestCommentsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommentsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/comments", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreatePullRequestCommentRequest calls the generic CreatePullRequestComment builder with application/json body
+func NewCreatePullRequestCommentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestCommentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePullRequestCommentRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewCreatePullRequestCommentRequestWithBody constructs an http.Request for the CreatePullRequestComment method, with any body, and a specified content type
+func NewCreatePullRequestCommentRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/comments", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeletePullRequestCommentRequest constructs an http.Request for the DeletePullRequestComment method
+func NewDeletePullRequestCommentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "commentId", commentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/comments/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdatePullRequestCommentRequest calls the generic UpdatePullRequestComment builder with application/json body
+func NewUpdatePullRequestCommentRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, body UpdatePullRequestCommentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdatePullRequestCommentRequestWithBody(server, owner, repo, number, commentId, "application/json", bodyReader)
+}
+
+// NewUpdatePullRequestCommentRequestWithBody constructs an http.Request for the UpdatePullRequestComment method, with any body, and a specified content type
+func NewUpdatePullRequestCommentRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "commentId", commentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/comments/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListPullRequestCommitsRequest constructs an http.Request for the ListPullRequestCommits method
+func NewListPullRequestCommitsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommitsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/commits", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMarkPullRequestDraftRequest constructs an http.Request for the MarkPullRequestDraft method
+func NewMarkPullRequestDraftRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/draft", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListPullRequestFilesRequest constructs an http.Request for the ListPullRequestFiles method
+func NewListPullRequestFilesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestFilesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/files", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Path != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "path", *params.Path, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IgnoreWhitespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "ignoreWhitespace", *params.IgnoreWhitespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMergePullRequestRequest calls the generic MergePullRequest builder with application/json body
+func NewMergePullRequestRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body MergePullRequestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewMergePullRequestRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewMergePullRequestRequestWithBody constructs an http.Request for the MergePullRequest method, with any body, and a specified content type
+func NewMergePullRequestRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/merge", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetPullRequestMergeabilityRequest constructs an http.Request for the GetPullRequestMergeability method
+func NewGetPullRequestMergeabilityRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/mergeability", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMarkPullRequestReadyRequest constructs an http.Request for the MarkPullRequestReady method
+func NewMarkPullRequestReadyRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/ready", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewReopenPullRequestRequest constructs an http.Request for the ReopenPullRequest method
+func NewReopenPullRequestRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/reopen", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRequestPullRequestReviewersRequest calls the generic RequestPullRequestReviewers builder with application/json body
+func NewRequestPullRequestReviewersRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body RequestPullRequestReviewersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRequestPullRequestReviewersRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewRequestPullRequestReviewersRequestWithBody constructs an http.Request for the RequestPullRequestReviewers method, with any body, and a specified content type
+func NewRequestPullRequestReviewersRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/requested-reviewers", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemovePullRequestReviewerRequest constructs an http.Request for the RemovePullRequestReviewer method
+func NewRemovePullRequestReviewerRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, username UsernameParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/requested-reviewers/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListPullRequestReviewsRequest constructs an http.Request for the ListPullRequestReviews method
+func NewListPullRequestReviewsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestReviewsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/reviews", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreatePullRequestReviewRequest calls the generic CreatePullRequestReview builder with application/json body
+func NewCreatePullRequestReviewRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestReviewJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePullRequestReviewRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewCreatePullRequestReviewRequestWithBody constructs an http.Request for the CreatePullRequestReview method, with any body, and a specified content type
+func NewCreatePullRequestReviewRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/reviews", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListPullRequestThreadsRequest constructs an http.Request for the ListPullRequestThreads method
+func NewListPullRequestThreadsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestThreadsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/threads", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Resolved != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resolved", *params.Resolved, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewResolvePullRequestThreadRequest constructs an http.Request for the ResolvePullRequestThread method
+func NewResolvePullRequestThreadRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "threadId", threadId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/threads/%s/resolve", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUnresolvePullRequestThreadRequest constructs an http.Request for the UnresolvePullRequestThread method
+func NewUnresolvePullRequestThreadRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "threadId", threadId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/threads/%s/unresolve", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetPullRequestFileViewedRequest calls the generic SetPullRequestFileViewed builder with application/json body
+func NewSetPullRequestFileViewedRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body SetPullRequestFileViewedJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetPullRequestFileViewedRequestWithBody(server, owner, repo, number, "application/json", bodyReader)
+}
+
+// NewSetPullRequestFileViewedRequestWithBody constructs an http.Request for the SetPullRequestFileViewed method, with any body, and a specified content type
+func NewSetPullRequestFileViewedRequestWithBody(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/viewed", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetRepositoryRawRequest constructs an http.Request for the GetRepositoryRaw method
 func NewGetRepositoryRawRequest(server string, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryRawParams) (*http.Request, error) {
 	var err error
@@ -23475,6 +27695,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /repos/{owner}/{repo}/blame (the `GetRepositoryBlame` operationId).
 	GetRepositoryBlameWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *GetRepositoryBlameParams, reqEditors ...RequestEditorFn) (*GetRepositoryBlameResponse, error)
 
+	// GetBranchSettingsWithResponse Legge le impostazioni «Branches & merge» del repo
+	//
+	// Metodi di merge ammessi, eliminazione automatica del branch (PR3) e protezione «Richiedi una Pull Request» del branch principale (PR4). Le legge chi puo' leggere il repo (servono per proporre il metodo di merge); le modifica solo `admin`. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/branch-settings (the `GetBranchSettings` operationId).
+	GetBranchSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetBranchSettingsResponse, error)
+
+	// UpdateBranchSettingsWithBodyWithResponse Modifica le impostazioni «Branches & merge»
+	//
+	// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+	UpdateBranchSettingsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateBranchSettingsResponse, error)
+
+	// UpdateBranchSettingsWithResponse Modifica le impostazioni «Branches & merge»
+	//
+	// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+	UpdateBranchSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateBranchSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateBranchSettingsResponse, error)
+
 	// GetRepositoryBranchesWithResponse Branch del repo, con conteggi
 	//
 	// Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
@@ -23510,6 +27757,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/patch (the `GetRepositoryCommitPatch` operationId).
 	GetRepositoryCommitPatchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *GetRepositoryCommitPatchParams, reqEditors ...RequestEditorFn) (*GetRepositoryCommitPatchResponse, error)
+
+	// GetCombinedCommitStatusWithResponse Stato complessivo di un commit
+	//
+	// Per ogni contesto vale l'ultimo stato (PR9). `state` e' `failure` o `error` se almeno un contesto lo e', altrimenti `pending` se almeno uno e' in corso, altrimenti `success`; `none` se non ci sono stati. `requiredContexts` sono i contesti obbligatori del branch principale (PR4) con il loro ultimo stato, `null` se non e' mai arrivato. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/status (the `GetCombinedCommitStatus` operationId).
+	GetCombinedCommitStatusWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GetCombinedCommitStatusResponse, error)
+
+	// ListCommitStatusesWithResponse Storico degli stati di un commit
+	//
+	// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/statuses (the `ListCommitStatuses` operationId).
+	ListCommitStatusesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams, reqEditors ...RequestEditorFn) (*ListCommitStatusesResponse, error)
+
+	// CreateCommitStatusWithBodyWithResponse Invia lo stato di un commit da un sistema esterno
+	//
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+	CreateCommitStatusWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommitStatusResponse, error)
+
+	// CreateCommitStatusWithResponse Invia lo stato di un commit da un sistema esterno
+	//
+	// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+	CreateCommitStatusWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, body CreateCommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommitStatusResponse, error)
 
 	// GetRepositoryFileWithResponse Contenuto di un file
 	//
@@ -24257,6 +28540,303 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/pull-mirror/sync (the `SyncRepoPullMirror` operationId).
 	SyncRepoPullMirrorWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*SyncRepoPullMirrorResponse, error)
+
+	// ListPullRequestsWithResponse Elenca e cerca le Pull Request del repo
+	//
+	// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls (the `ListPullRequests` operationId).
+	ListPullRequestsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams, reqEditors ...RequestEditorFn) (*ListPullRequestsResponse, error)
+
+	// CreatePullRequestWithBodyWithResponse Apre una Pull Request fra due branch del repo
+	//
+	// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+	CreatePullRequestWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePullRequestResponse, error)
+
+	// CreatePullRequestWithResponse Apre una Pull Request fra due branch del repo
+	//
+	// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+	CreatePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePullRequestResponse, error)
+
+	// GetPullRequestWithResponse Legge una Pull Request per numero
+	//
+	// Chi puo' leggere il repo legge la PR. Un numero che non e' una PR (per esempio una issue) risponde 404. Porta lo stato (`open`, `closed`, `merged`, PR6), la bozza, i revisori richiesti, la decisione di review, le approvazioni valide contro quelle richieste (PR2, PR4) e lo stato dei commit sull'ultimo commit del branch di origine (PR9). Per i conflitti e i blocchi al merge c'e' `getPullRequestMergeability`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number} (the `GetPullRequest` operationId).
+	GetPullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*GetPullRequestResponse, error)
+
+	// UpdatePullRequestWithBodyWithResponse Modifica titolo, testo e branch di destinazione
+	//
+	// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+	UpdatePullRequestWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePullRequestResponse, error)
+
+	// UpdatePullRequestWithResponse Modifica titolo, testo e branch di destinazione
+	//
+	// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+	UpdatePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body UpdatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePullRequestResponse, error)
+
+	// DeletePullRequestBranchWithResponse Elimina il branch di origine di una Pull Request unita (Delete branch)
+	//
+	// Serve `write` e una PR unita (409 `not_merged` altrimenti). Il branch di origine non puo' essere il branch principale ne' avere altre PR aperte (409 `branch_in_use`). Un branch gia' eliminato risponde 404 `branch_not_found`. Con `deleteBranchOnMerge` attivo (PR3) lo fa il merge. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/branch (the `DeletePullRequestBranch` operationId).
+	DeletePullRequestBranchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*DeletePullRequestBranchResponse, error)
+
+	// ClosePullRequestWithResponse Chiude una Pull Request senza unirla
+	//
+	// Possono l'autore e chi ha `write`. Chiudere non elimina il branch (PR6). Una PR gia' chiusa o unita risponde 409 (`already_closed`, `already_merged`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/close (the `ClosePullRequest` operationId).
+	ClosePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*ClosePullRequestResponse, error)
+
+	// ListPullRequestCommentsWithResponse Elenca i commenti di una Pull Request, generali e sulle righe
+	//
+	// Elenco piatto, dal meno recente: commenti della conversazione (senza `path`) e commenti sulle righe del diff (PR5). Per i commenti sulle righe raggruppati in conversazioni risolvibili c'e' `listPullRequestThreads`. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/comments (the `ListPullRequestComments` operationId).
+	ListPullRequestCommentsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommentsParams, reqEditors ...RequestEditorFn) (*ListPullRequestCommentsResponse, error)
+
+	// CreatePullRequestCommentWithBodyWithResponse Aggiunge un commento generale, sulle righe o una risposta
+	//
+	// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+	CreatePullRequestCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePullRequestCommentResponse, error)
+
+	// CreatePullRequestCommentWithResponse Aggiunge un commento generale, sulle righe o una risposta
+	//
+	// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+	CreatePullRequestCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePullRequestCommentResponse, error)
+
+	// DeletePullRequestCommentWithResponse Elimina un commento
+	//
+	// Possono l'autore del commento e chi ha `admin` sul repo. Se il commento apre una conversazione con risposte, resta il segnaposto `deleted` e le risposte restano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `DeletePullRequestComment` operationId).
+	DeletePullRequestCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, reqEditors ...RequestEditorFn) (*DeletePullRequestCommentResponse, error)
+
+	// UpdatePullRequestCommentWithBodyWithResponse Modifica il testo di un commento
+	//
+	// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+	UpdatePullRequestCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePullRequestCommentResponse, error)
+
+	// UpdatePullRequestCommentWithResponse Modifica il testo di un commento
+	//
+	// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+	UpdatePullRequestCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, body UpdatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePullRequestCommentResponse, error)
+
+	// ListPullRequestCommitsWithResponse Commit della Pull Request
+	//
+	// I commit del branch di origine non ancora nel branch di destinazione (quelli di `base..head`), dal piu' recente, nella stessa forma di `getRepositoryCommits` (limite di 100 per pagina). Per una PR unita sono quelli che il merge ha portato. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/commits (the `ListPullRequestCommits` operationId).
+	ListPullRequestCommitsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommitsParams, reqEditors ...RequestEditorFn) (*ListPullRequestCommitsResponse, error)
+
+	// MarkPullRequestDraftWithResponse Riporta una Pull Request pronta allo stato di bozza
+	//
+	// Possono l'autore e chi ha `write`. Le approvazioni gia' date restano registrate. Una PR gia' in bozza risponde 409 `already_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
+	MarkPullRequestDraftWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*MarkPullRequestDraftResponse, error)
+
+	// ListPullRequestFilesWithResponse File modificati dalla Pull Request, con il diff (Files changed)
+	//
+	// Diff fra il merge-base e la punta del branch di origine, per file, con gli stessi limiti progressivi di `getRepositoryCommit` (B6, costanti in `x-code-read-limits`). `viewedPaths` elenca i file che il chiamante ha marcato Viewed (PR12, personale: una sessione senza utente non ne ha). `path` restringe a quel file; `ignoreWhitespace` usa `git diff -w`. Per una PR unita il diff e' quello congelato al merge. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/files (the `ListPullRequestFiles` operationId).
+	ListPullRequestFilesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestFilesParams, reqEditors ...RequestEditorFn) (*ListPullRequestFilesResponse, error)
+
+	// MergePullRequestWithBodyWithResponse Unisce la Pull Request nel branch di destinazione
+	//
+	// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+	MergePullRequestWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MergePullRequestResponse, error)
+
+	// MergePullRequestWithResponse Unisce la Pull Request nel branch di destinazione
+	//
+	// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+	MergePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body MergePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*MergePullRequestResponse, error)
+
+	// GetPullRequestMergeabilityWithResponse Dice se la Pull Request si puo' unire e perche' no
+	//
+	// Stato di merge calcolato sui commit attuali (PR7): conflitti con l'elenco dei file in conflitto, quanti commit e' indietro rispetto alla destinazione (una PR solo «indietro» si unisce, niente «Update branch»), e i blocchi di PR4, PR6 e PR9 (bozza, approvazioni mancanti, modifiche richieste, stati obbligatori). `allowedMethods` sono i metodi di merge che l'impostazione del repo ammette (PR3). Lo stesso stato e' usato da `mergePullRequest`. Se il calcolo non e' ancora pronto `state` e' `unknown` e va richiesto di nuovo. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/mergeability (the `GetPullRequestMergeability` operationId).
+	GetPullRequestMergeabilityWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*GetPullRequestMergeabilityResponse, error)
+
+	// MarkPullRequestReadyWithResponse Segna una bozza come pronta per la review (Ready for review)
+	//
+	// Da qui la PR si puo' unire e chiede review ai revisori gia' indicati (PR6, PR11). Possono l'autore e chi ha `write`. Una PR che non e' una bozza risponde 409 `not_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/ready (the `MarkPullRequestReady` operationId).
+	MarkPullRequestReadyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*MarkPullRequestReadyResponse, error)
+
+	// ReopenPullRequestWithResponse Riapre una Pull Request chiusa
+	//
+	// Possono l'autore e chi ha `write`. Si riapre solo se i due branch esistono ancora (PR6): altrimenti 409 `branch_missing`. Una PR unita e' definitiva (409 `already_merged`), una gia' aperta 409 `already_open`. Se esiste un'altra PR aperta con la stessa coppia di branch: 409 `already_exists`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reopen (the `ReopenPullRequest` operationId).
+	ReopenPullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*ReopenPullRequestResponse, error)
+
+	// RequestPullRequestReviewersWithBodyWithResponse Chiede (o richiede di nuovo) la review a una o piu' persone
+	//
+	// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+	RequestPullRequestReviewersWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestPullRequestReviewersResponse, error)
+
+	// RequestPullRequestReviewersWithResponse Chiede (o richiede di nuovo) la review a una o piu' persone
+	//
+	// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+	RequestPullRequestReviewersWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body RequestPullRequestReviewersJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPullRequestReviewersResponse, error)
+
+	// RemovePullRequestReviewerWithResponse Toglie una richiesta di review
+	//
+	// Possono l'autore della PR e chi ha `write`. Non cancella la review gia' inviata, toglie solo la richiesta pendente. Una persona che non era fra i revisori richiesti risponde 404. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username} (the `RemovePullRequestReviewer` operationId).
+	RemovePullRequestReviewerWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, username UsernameParam, reqEditors ...RequestEditorFn) (*RemovePullRequestReviewerResponse, error)
+
+	// ListPullRequestReviewsWithResponse Elenca le review di una Pull Request
+	//
+	// Review inviate, dalla meno recente. Ogni review dice se la sua approvazione e' ancora valida (`stale`, PR4) e se conta per il merge (`countsAsApproval`, PR2: non conta se e' di un agente). Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/reviews (the `ListPullRequestReviews` operationId).
+	ListPullRequestReviewsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestReviewsParams, reqEditors ...RequestEditorFn) (*ListPullRequestReviewsResponse, error)
+
+	// CreatePullRequestReviewWithBodyWithResponse Invia una review (Comment, Approve o Request changes)
+	//
+	// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+	CreatePullRequestReviewWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePullRequestReviewResponse, error)
+
+	// CreatePullRequestReviewWithResponse Invia una review (Comment, Approve o Request changes)
+	//
+	// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+	CreatePullRequestReviewWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePullRequestReviewResponse, error)
+
+	// ListPullRequestThreadsWithResponse Elenca le conversazioni sulle righe, risolte e aperte
+	//
+	// Le conversazioni (PR5) raggruppano un commento sulle righe e le sue risposte. `resolved` e' il segno «risolta»; `outdated` dice che le righe commentate sono cambiate dopo il commento. Il filtro `resolved` restringe l'elenco. Un repo che l'utente non puo' leggere risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/threads (the `ListPullRequestThreads` operationId).
+	ListPullRequestThreadsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestThreadsParams, reqEditors ...RequestEditorFn) (*ListPullRequestThreadsResponse, error)
+
+	// ResolvePullRequestThreadWithResponse Segna una conversazione come risolta
+	//
+	// Possono l'autore della PR e chi ha `write` (PR5). Idempotente: una conversazione gia' risolta risponde 200 con lo stato attuale. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve (the `ResolvePullRequestThread` operationId).
+	ResolvePullRequestThreadWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*ResolvePullRequestThreadResponse, error)
+
+	// UnresolvePullRequestThreadWithResponse Riapre una conversazione risolta
+	//
+	// Come `resolvePullRequestThread`: l'autore della PR e chi ha `write`. Idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve (the `UnresolvePullRequestThread` operationId).
+	UnresolvePullRequestThreadWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*UnresolvePullRequestThreadResponse, error)
+
+	// SetPullRequestFileViewedWithBodyWithResponse Marca o smarca un file come Viewed
+	//
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+	SetPullRequestFileViewedWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPullRequestFileViewedResponse, error)
+
+	// SetPullRequestFileViewedWithResponse Marca o smarca un file come Viewed
+	//
+	// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+	SetPullRequestFileViewedWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body SetPullRequestFileViewedJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPullRequestFileViewedResponse, error)
 
 	// GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
 	//
@@ -30945,6 +35525,172 @@ func (r GetRepositoryBlameResponse) ContentType() string {
 	return ""
 }
 
+type GetBranchSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BranchSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetBranchSettingsResponse) GetJSON200() *BranchSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetBranchSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetBranchSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetBranchSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetBranchSettingsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetBranchSettingsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetBranchSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBranchSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBranchSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBranchSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateBranchSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BranchSettings
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON200() *BranchSettings {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdateBranchSettingsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateBranchSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateBranchSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateBranchSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateBranchSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRepositoryBranchesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -31245,6 +35991,248 @@ func (r GetRepositoryCommitPatchResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRepositoryCommitPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCombinedCommitStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CombinedCommitStatus
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCombinedCommitStatusResponse) GetJSON200() *CombinedCommitStatus {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCombinedCommitStatusResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCombinedCommitStatusResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCombinedCommitStatusResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCombinedCommitStatusResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetCombinedCommitStatusResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCombinedCommitStatusResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCombinedCommitStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCombinedCommitStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCombinedCommitStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListCommitStatusesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CommitStatusList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCommitStatusesResponse) GetJSON200() *CommitStatusList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListCommitStatusesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListCommitStatusesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListCommitStatusesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListCommitStatusesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListCommitStatusesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCommitStatusesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCommitStatusesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCommitStatusesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCommitStatusesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateCommitStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CommitStatus
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON201() *CommitStatus {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateCommitStatusResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreateCommitStatusResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCommitStatusResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCommitStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCommitStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCommitStatusResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -36287,6 +41275,2116 @@ func (r SyncRepoPullMirrorResponse) ContentType() string {
 	return ""
 }
 
+type ListPullRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestsResponse) GetJSON200() *PullRequestList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListPullRequestsResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// CreatePullRequestResponse201Headers the declared response headers of an HTTP 201 response for CreatePullRequest
+type CreatePullRequestResponse201Headers struct {
+	Location *string
+}
+
+type CreatePullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *CreatePullRequestResponse201Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreatePullRequestResponse) GetJSON201() *PullRequest {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreatePullRequestResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreatePullRequestResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreatePullRequestResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreatePullRequestResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreatePullRequestResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r CreatePullRequestResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreatePullRequestResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreatePullRequestResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreatePullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetPullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPullRequestResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetPullRequestResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetPullRequestResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetPullRequestResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetPullRequestResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetPullRequestResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdatePullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdatePullRequestResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdatePullRequestResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdatePullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdatePullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdatePullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdatePullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeletePullRequestBranchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeletePullRequestBranchResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeletePullRequestBranchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeletePullRequestBranchResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeletePullRequestBranchResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeletePullRequestBranchResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeletePullRequestBranchResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeletePullRequestBranchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeletePullRequestBranchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeletePullRequestBranchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeletePullRequestBranchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ClosePullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ClosePullRequestResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ClosePullRequestResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ClosePullRequestResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ClosePullRequestResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ClosePullRequestResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ClosePullRequestResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ClosePullRequestResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ClosePullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ClosePullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ClosePullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ClosePullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListPullRequestCommentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestCommentList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestCommentsResponse) GetJSON200() *PullRequestCommentList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestCommentsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestCommentsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestCommentsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestCommentsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestCommentsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestCommentsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestCommentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestCommentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestCommentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreatePullRequestCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PullRequestComment
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON201() *PullRequestComment {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreatePullRequestCommentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreatePullRequestCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePullRequestCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePullRequestCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePullRequestCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeletePullRequestCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeletePullRequestCommentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeletePullRequestCommentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeletePullRequestCommentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeletePullRequestCommentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeletePullRequestCommentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeletePullRequestCommentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeletePullRequestCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeletePullRequestCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeletePullRequestCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeletePullRequestCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdatePullRequestCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestComment
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON200() *PullRequestComment {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UpdatePullRequestCommentResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdatePullRequestCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdatePullRequestCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdatePullRequestCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdatePullRequestCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListPullRequestCommitsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CommitList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestCommitsResponse) GetJSON200() *CommitList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestCommitsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestCommitsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestCommitsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestCommitsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestCommitsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestCommitsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestCommitsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestCommitsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestCommitsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MarkPullRequestDraftResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r MarkPullRequestDraftResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MarkPullRequestDraftResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MarkPullRequestDraftResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MarkPullRequestDraftResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MarkPullRequestDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListPullRequestFilesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestFiles
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestFilesResponse) GetJSON200() *PullRequestFiles {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestFilesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestFilesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestFilesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestFilesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestFilesResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestFilesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestFilesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestFilesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestFilesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MergePullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MergePullRequestResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r MergePullRequestResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r MergePullRequestResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r MergePullRequestResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r MergePullRequestResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r MergePullRequestResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r MergePullRequestResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r MergePullRequestResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MergePullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MergePullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MergePullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MergePullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetPullRequestMergeabilityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestMergeability
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPullRequestMergeabilityResponse) GetJSON200() *PullRequestMergeability {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetPullRequestMergeabilityResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetPullRequestMergeabilityResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetPullRequestMergeabilityResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetPullRequestMergeabilityResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetPullRequestMergeabilityResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPullRequestMergeabilityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPullRequestMergeabilityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPullRequestMergeabilityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPullRequestMergeabilityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MarkPullRequestReadyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r MarkPullRequestReadyResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MarkPullRequestReadyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MarkPullRequestReadyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MarkPullRequestReadyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MarkPullRequestReadyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReopenPullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReopenPullRequestResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReopenPullRequestResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReopenPullRequestResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReopenPullRequestResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReopenPullRequestResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReopenPullRequestResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ReopenPullRequestResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ReopenPullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReopenPullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReopenPullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReopenPullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RequestPullRequestReviewersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RequestPullRequestReviewersResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RequestPullRequestReviewersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RequestPullRequestReviewersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RequestPullRequestReviewersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RequestPullRequestReviewersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemovePullRequestReviewerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequest
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSON200() *PullRequest {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r RemovePullRequestReviewerResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RemovePullRequestReviewerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemovePullRequestReviewerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemovePullRequestReviewerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemovePullRequestReviewerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListPullRequestReviewsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestReviewList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestReviewsResponse) GetJSON200() *PullRequestReviewList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestReviewsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestReviewsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestReviewsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestReviewsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestReviewsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestReviewsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestReviewsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestReviewsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestReviewsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreatePullRequestReviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PullRequestReview
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON201() *PullRequestReview {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r CreatePullRequestReviewResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreatePullRequestReviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePullRequestReviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePullRequestReviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePullRequestReviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListPullRequestThreadsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestThreadList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestThreadsResponse) GetJSON200() *PullRequestThreadList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestThreadsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestThreadsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestThreadsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestThreadsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestThreadsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestThreadsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestThreadsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestThreadsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestThreadsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ResolvePullRequestThreadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestThread
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSON200() *PullRequestThread {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ResolvePullRequestThreadResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ResolvePullRequestThreadResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResolvePullRequestThreadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResolvePullRequestThreadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResolvePullRequestThreadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UnresolvePullRequestThreadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestThread
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSON200() *PullRequestThread {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r UnresolvePullRequestThreadResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UnresolvePullRequestThreadResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UnresolvePullRequestThreadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnresolvePullRequestThreadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnresolvePullRequestThreadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetPullRequestFileViewedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SetFileViewedInput
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *UnprocessableEntity
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON200() *SetFileViewedInput {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSON422() *UnprocessableEntity {
+	return r.JSON422
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetPullRequestFileViewedResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetPullRequestFileViewedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetPullRequestFileViewedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetPullRequestFileViewedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetPullRequestFileViewedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetRepositoryRawResponse200Headers the declared response headers of an HTTP 200 response for GetRepositoryRaw
 type GetRepositoryRawResponse200Headers struct {
 	ContentDisposition    *string
@@ -41131,6 +48229,51 @@ func (c *ClientWithResponses) GetRepositoryBlameWithResponse(ctx context.Context
 	return ParseGetRepositoryBlameResponse(rsp)
 }
 
+// GetBranchSettingsWithResponse Legge le impostazioni «Branches & merge» del repo
+//
+// Metodi di merge ammessi, eliminazione automatica del branch (PR3) e protezione «Richiedi una Pull Request» del branch principale (PR4). Le legge chi puo' leggere il repo (servono per proporre il metodo di merge); le modifica solo `admin`. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/branch-settings (the `GetBranchSettings` operationId).
+func (c *ClientWithResponses) GetBranchSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, reqEditors ...RequestEditorFn) (*GetBranchSettingsResponse, error) {
+	rsp, err := c.GetBranchSettings(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBranchSettingsResponse(rsp)
+}
+
+// UpdateBranchSettingsWithBodyWithResponse Modifica le impostazioni «Branches & merge»
+//
+// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+func (c *ClientWithResponses) UpdateBranchSettingsWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateBranchSettingsResponse, error) {
+	rsp, err := c.UpdateBranchSettingsWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateBranchSettingsResponse(rsp)
+}
+
+// UpdateBranchSettingsWithResponse Modifica le impostazioni «Branches & merge»
+//
+// Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/branch-settings (the `UpdateBranchSettings` operationId).
+func (c *ClientWithResponses) UpdateBranchSettingsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body UpdateBranchSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateBranchSettingsResponse, error) {
+	rsp, err := c.UpdateBranchSettings(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateBranchSettingsResponse(rsp)
+}
+
 // GetRepositoryBranchesWithResponse Branch del repo, con conteggi
 //
 // Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches"). Come per `getRepository`: un repo che l'utente non puo' leggere, o eliminato, risponde 404. Non ha `ref`: elenca tutti i branch.
@@ -41189,6 +48332,66 @@ func (c *ClientWithResponses) GetRepositoryCommitPatchWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseGetRepositoryCommitPatchResponse(rsp)
+}
+
+// GetCombinedCommitStatusWithResponse Stato complessivo di un commit
+//
+// Per ogni contesto vale l'ultimo stato (PR9). `state` e' `failure` o `error` se almeno un contesto lo e', altrimenti `pending` se almeno uno e' in corso, altrimenti `success`; `none` se non ci sono stati. `requiredContexts` sono i contesti obbligatori del branch principale (PR4) con il loro ultimo stato, `null` se non e' mai arrivato. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/status (the `GetCombinedCommitStatus` operationId).
+func (c *ClientWithResponses) GetCombinedCommitStatusWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, reqEditors ...RequestEditorFn) (*GetCombinedCommitStatusResponse, error) {
+	rsp, err := c.GetCombinedCommitStatus(ctx, owner, repo, sha, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCombinedCommitStatusResponse(rsp)
+}
+
+// ListCommitStatusesWithResponse Storico degli stati di un commit
+//
+// Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/commits/{sha}/statuses (the `ListCommitStatuses` operationId).
+func (c *ClientWithResponses) ListCommitStatusesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params *ListCommitStatusesParams, reqEditors ...RequestEditorFn) (*ListCommitStatusesResponse, error) {
+	rsp, err := c.ListCommitStatuses(ctx, owner, repo, sha, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCommitStatusesResponse(rsp)
+}
+
+// CreateCommitStatusWithBodyWithResponse Invia lo stato di un commit da un sistema esterno
+//
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+func (c *ClientWithResponses) CreateCommitStatusWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommitStatusResponse, error) {
+	rsp, err := c.CreateCommitStatusWithBody(ctx, owner, repo, sha, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCommitStatusResponse(rsp)
+}
+
+// CreateCommitStatusWithResponse Invia lo stato di un commit da un sistema esterno
+//
+// Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/commits/{sha}/statuses (the `CreateCommitStatus` operationId).
+func (c *ClientWithResponses) CreateCommitStatusWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, body CreateCommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommitStatusResponse, error) {
+	rsp, err := c.CreateCommitStatus(ctx, owner, repo, sha, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCommitStatusResponse(rsp)
 }
 
 // GetRepositoryFileWithResponse Contenuto di un file
@@ -42434,6 +49637,501 @@ func (c *ClientWithResponses) SyncRepoPullMirrorWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseSyncRepoPullMirrorResponse(rsp)
+}
+
+// ListPullRequestsWithResponse Elenca e cerca le Pull Request del repo
+//
+// Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls (the `ListPullRequests` operationId).
+func (c *ClientWithResponses) ListPullRequestsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, params *ListPullRequestsParams, reqEditors ...RequestEditorFn) (*ListPullRequestsResponse, error) {
+	rsp, err := c.ListPullRequests(ctx, owner, repo, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestsResponse(rsp)
+}
+
+// CreatePullRequestWithBodyWithResponse Apre una Pull Request fra due branch del repo
+//
+// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+func (c *ClientWithResponses) CreatePullRequestWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePullRequestResponse, error) {
+	rsp, err := c.CreatePullRequestWithBody(ctx, owner, repo, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePullRequestResponse(rsp)
+}
+
+// CreatePullRequestWithResponse Apre una Pull Request fra due branch del repo
+//
+// Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls (the `CreatePullRequest` operationId).
+func (c *ClientWithResponses) CreatePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, body CreatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePullRequestResponse, error) {
+	rsp, err := c.CreatePullRequest(ctx, owner, repo, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePullRequestResponse(rsp)
+}
+
+// GetPullRequestWithResponse Legge una Pull Request per numero
+//
+// Chi puo' leggere il repo legge la PR. Un numero che non e' una PR (per esempio una issue) risponde 404. Porta lo stato (`open`, `closed`, `merged`, PR6), la bozza, i revisori richiesti, la decisione di review, le approvazioni valide contro quelle richieste (PR2, PR4) e lo stato dei commit sull'ultimo commit del branch di origine (PR9). Per i conflitti e i blocchi al merge c'e' `getPullRequestMergeability`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number} (the `GetPullRequest` operationId).
+func (c *ClientWithResponses) GetPullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*GetPullRequestResponse, error) {
+	rsp, err := c.GetPullRequest(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPullRequestResponse(rsp)
+}
+
+// UpdatePullRequestWithBodyWithResponse Modifica titolo, testo e branch di destinazione
+//
+// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+func (c *ClientWithResponses) UpdatePullRequestWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePullRequestResponse, error) {
+	rsp, err := c.UpdatePullRequestWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePullRequestResponse(rsp)
+}
+
+// UpdatePullRequestWithResponse Modifica titolo, testo e branch di destinazione
+//
+// Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number} (the `UpdatePullRequest` operationId).
+func (c *ClientWithResponses) UpdatePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body UpdatePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePullRequestResponse, error) {
+	rsp, err := c.UpdatePullRequest(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePullRequestResponse(rsp)
+}
+
+// DeletePullRequestBranchWithResponse Elimina il branch di origine di una Pull Request unita (Delete branch)
+//
+// Serve `write` e una PR unita (409 `not_merged` altrimenti). Il branch di origine non puo' essere il branch principale ne' avere altre PR aperte (409 `branch_in_use`). Un branch gia' eliminato risponde 404 `branch_not_found`. Con `deleteBranchOnMerge` attivo (PR3) lo fa il merge. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/branch (the `DeletePullRequestBranch` operationId).
+func (c *ClientWithResponses) DeletePullRequestBranchWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*DeletePullRequestBranchResponse, error) {
+	rsp, err := c.DeletePullRequestBranch(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeletePullRequestBranchResponse(rsp)
+}
+
+// ClosePullRequestWithResponse Chiude una Pull Request senza unirla
+//
+// Possono l'autore e chi ha `write`. Chiudere non elimina il branch (PR6). Una PR gia' chiusa o unita risponde 409 (`already_closed`, `already_merged`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/close (the `ClosePullRequest` operationId).
+func (c *ClientWithResponses) ClosePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*ClosePullRequestResponse, error) {
+	rsp, err := c.ClosePullRequest(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClosePullRequestResponse(rsp)
+}
+
+// ListPullRequestCommentsWithResponse Elenca i commenti di una Pull Request, generali e sulle righe
+//
+// Elenco piatto, dal meno recente: commenti della conversazione (senza `path`) e commenti sulle righe del diff (PR5). Per i commenti sulle righe raggruppati in conversazioni risolvibili c'e' `listPullRequestThreads`. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/comments (the `ListPullRequestComments` operationId).
+func (c *ClientWithResponses) ListPullRequestCommentsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommentsParams, reqEditors ...RequestEditorFn) (*ListPullRequestCommentsResponse, error) {
+	rsp, err := c.ListPullRequestComments(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestCommentsResponse(rsp)
+}
+
+// CreatePullRequestCommentWithBodyWithResponse Aggiunge un commento generale, sulle righe o una risposta
+//
+// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+func (c *ClientWithResponses) CreatePullRequestCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePullRequestCommentResponse, error) {
+	rsp, err := c.CreatePullRequestCommentWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePullRequestCommentResponse(rsp)
+}
+
+// CreatePullRequestCommentWithResponse Aggiunge un commento generale, sulle righe o una risposta
+//
+// Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/comments (the `CreatePullRequestComment` operationId).
+func (c *ClientWithResponses) CreatePullRequestCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePullRequestCommentResponse, error) {
+	rsp, err := c.CreatePullRequestComment(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePullRequestCommentResponse(rsp)
+}
+
+// DeletePullRequestCommentWithResponse Elimina un commento
+//
+// Possono l'autore del commento e chi ha `admin` sul repo. Se il commento apre una conversazione con risposte, resta il segnaposto `deleted` e le risposte restano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `DeletePullRequestComment` operationId).
+func (c *ClientWithResponses) DeletePullRequestCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, reqEditors ...RequestEditorFn) (*DeletePullRequestCommentResponse, error) {
+	rsp, err := c.DeletePullRequestComment(ctx, owner, repo, number, commentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeletePullRequestCommentResponse(rsp)
+}
+
+// UpdatePullRequestCommentWithBodyWithResponse Modifica il testo di un commento
+//
+// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+func (c *ClientWithResponses) UpdatePullRequestCommentWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePullRequestCommentResponse, error) {
+	rsp, err := c.UpdatePullRequestCommentWithBody(ctx, owner, repo, number, commentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePullRequestCommentResponse(rsp)
+}
+
+// UpdatePullRequestCommentWithResponse Modifica il testo di un commento
+//
+// Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId} (the `UpdatePullRequestComment` operationId).
+func (c *ClientWithResponses) UpdatePullRequestCommentWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam, body UpdatePullRequestCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePullRequestCommentResponse, error) {
+	rsp, err := c.UpdatePullRequestComment(ctx, owner, repo, number, commentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePullRequestCommentResponse(rsp)
+}
+
+// ListPullRequestCommitsWithResponse Commit della Pull Request
+//
+// I commit del branch di origine non ancora nel branch di destinazione (quelli di `base..head`), dal piu' recente, nella stessa forma di `getRepositoryCommits` (limite di 100 per pagina). Per una PR unita sono quelli che il merge ha portato. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/commits (the `ListPullRequestCommits` operationId).
+func (c *ClientWithResponses) ListPullRequestCommitsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestCommitsParams, reqEditors ...RequestEditorFn) (*ListPullRequestCommitsResponse, error) {
+	rsp, err := c.ListPullRequestCommits(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestCommitsResponse(rsp)
+}
+
+// MarkPullRequestDraftWithResponse Riporta una Pull Request pronta allo stato di bozza
+//
+// Possono l'autore e chi ha `write`. Le approvazioni gia' date restano registrate. Una PR gia' in bozza risponde 409 `already_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
+func (c *ClientWithResponses) MarkPullRequestDraftWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*MarkPullRequestDraftResponse, error) {
+	rsp, err := c.MarkPullRequestDraft(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMarkPullRequestDraftResponse(rsp)
+}
+
+// ListPullRequestFilesWithResponse File modificati dalla Pull Request, con il diff (Files changed)
+//
+// Diff fra il merge-base e la punta del branch di origine, per file, con gli stessi limiti progressivi di `getRepositoryCommit` (B6, costanti in `x-code-read-limits`). `viewedPaths` elenca i file che il chiamante ha marcato Viewed (PR12, personale: una sessione senza utente non ne ha). `path` restringe a quel file; `ignoreWhitespace` usa `git diff -w`. Per una PR unita il diff e' quello congelato al merge. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/files (the `ListPullRequestFiles` operationId).
+func (c *ClientWithResponses) ListPullRequestFilesWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestFilesParams, reqEditors ...RequestEditorFn) (*ListPullRequestFilesResponse, error) {
+	rsp, err := c.ListPullRequestFiles(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestFilesResponse(rsp)
+}
+
+// MergePullRequestWithBodyWithResponse Unisce la Pull Request nel branch di destinazione
+//
+// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+func (c *ClientWithResponses) MergePullRequestWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MergePullRequestResponse, error) {
+	rsp, err := c.MergePullRequestWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMergePullRequestResponse(rsp)
+}
+
+// MergePullRequestWithResponse Unisce la Pull Request nel branch di destinazione
+//
+// Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/merge (the `MergePullRequest` operationId).
+func (c *ClientWithResponses) MergePullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body MergePullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*MergePullRequestResponse, error) {
+	rsp, err := c.MergePullRequest(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMergePullRequestResponse(rsp)
+}
+
+// GetPullRequestMergeabilityWithResponse Dice se la Pull Request si puo' unire e perche' no
+//
+// Stato di merge calcolato sui commit attuali (PR7): conflitti con l'elenco dei file in conflitto, quanti commit e' indietro rispetto alla destinazione (una PR solo «indietro» si unisce, niente «Update branch»), e i blocchi di PR4, PR6 e PR9 (bozza, approvazioni mancanti, modifiche richieste, stati obbligatori). `allowedMethods` sono i metodi di merge che l'impostazione del repo ammette (PR3). Lo stesso stato e' usato da `mergePullRequest`. Se il calcolo non e' ancora pronto `state` e' `unknown` e va richiesto di nuovo. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/mergeability (the `GetPullRequestMergeability` operationId).
+func (c *ClientWithResponses) GetPullRequestMergeabilityWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*GetPullRequestMergeabilityResponse, error) {
+	rsp, err := c.GetPullRequestMergeability(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPullRequestMergeabilityResponse(rsp)
+}
+
+// MarkPullRequestReadyWithResponse Segna una bozza come pronta per la review (Ready for review)
+//
+// Da qui la PR si puo' unire e chiede review ai revisori gia' indicati (PR6, PR11). Possono l'autore e chi ha `write`. Una PR che non e' una bozza risponde 409 `not_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/ready (the `MarkPullRequestReady` operationId).
+func (c *ClientWithResponses) MarkPullRequestReadyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*MarkPullRequestReadyResponse, error) {
+	rsp, err := c.MarkPullRequestReady(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMarkPullRequestReadyResponse(rsp)
+}
+
+// ReopenPullRequestWithResponse Riapre una Pull Request chiusa
+//
+// Possono l'autore e chi ha `write`. Si riapre solo se i due branch esistono ancora (PR6): altrimenti 409 `branch_missing`. Una PR unita e' definitiva (409 `already_merged`), una gia' aperta 409 `already_open`. Se esiste un'altra PR aperta con la stessa coppia di branch: 409 `already_exists`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reopen (the `ReopenPullRequest` operationId).
+func (c *ClientWithResponses) ReopenPullRequestWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*ReopenPullRequestResponse, error) {
+	rsp, err := c.ReopenPullRequest(ctx, owner, repo, number, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReopenPullRequestResponse(rsp)
+}
+
+// RequestPullRequestReviewersWithBodyWithResponse Chiede (o richiede di nuovo) la review a una o piu' persone
+//
+// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+func (c *ClientWithResponses) RequestPullRequestReviewersWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestPullRequestReviewersResponse, error) {
+	rsp, err := c.RequestPullRequestReviewersWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRequestPullRequestReviewersResponse(rsp)
+}
+
+// RequestPullRequestReviewersWithResponse Chiede (o richiede di nuovo) la review a una o piu' persone
+//
+// Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers (the `RequestPullRequestReviewers` operationId).
+func (c *ClientWithResponses) RequestPullRequestReviewersWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body RequestPullRequestReviewersJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestPullRequestReviewersResponse, error) {
+	rsp, err := c.RequestPullRequestReviewers(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRequestPullRequestReviewersResponse(rsp)
+}
+
+// RemovePullRequestReviewerWithResponse Toglie una richiesta di review
+//
+// Possono l'autore della PR e chi ha `write`. Non cancella la review gia' inviata, toglie solo la richiesta pendente. Una persona che non era fra i revisori richiesti risponde 404. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username} (the `RemovePullRequestReviewer` operationId).
+func (c *ClientWithResponses) RemovePullRequestReviewerWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, username UsernameParam, reqEditors ...RequestEditorFn) (*RemovePullRequestReviewerResponse, error) {
+	rsp, err := c.RemovePullRequestReviewer(ctx, owner, repo, number, username, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemovePullRequestReviewerResponse(rsp)
+}
+
+// ListPullRequestReviewsWithResponse Elenca le review di una Pull Request
+//
+// Review inviate, dalla meno recente. Ogni review dice se la sua approvazione e' ancora valida (`stale`, PR4) e se conta per il merge (`countsAsApproval`, PR2: non conta se e' di un agente). Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/reviews (the `ListPullRequestReviews` operationId).
+func (c *ClientWithResponses) ListPullRequestReviewsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestReviewsParams, reqEditors ...RequestEditorFn) (*ListPullRequestReviewsResponse, error) {
+	rsp, err := c.ListPullRequestReviews(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestReviewsResponse(rsp)
+}
+
+// CreatePullRequestReviewWithBodyWithResponse Invia una review (Comment, Approve o Request changes)
+//
+// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+func (c *ClientWithResponses) CreatePullRequestReviewWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePullRequestReviewResponse, error) {
+	rsp, err := c.CreatePullRequestReviewWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePullRequestReviewResponse(rsp)
+}
+
+// CreatePullRequestReviewWithResponse Invia una review (Comment, Approve o Request changes)
+//
+// Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/reviews (the `CreatePullRequestReview` operationId).
+func (c *ClientWithResponses) CreatePullRequestReviewWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body CreatePullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePullRequestReviewResponse, error) {
+	rsp, err := c.CreatePullRequestReview(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePullRequestReviewResponse(rsp)
+}
+
+// ListPullRequestThreadsWithResponse Elenca le conversazioni sulle righe, risolte e aperte
+//
+// Le conversazioni (PR5) raggruppano un commento sulle righe e le sue risposte. `resolved` e' il segno «risolta»; `outdated` dice che le righe commentate sono cambiate dopo il commento. Il filtro `resolved` restringe l'elenco. Un repo che l'utente non puo' leggere risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/threads (the `ListPullRequestThreads` operationId).
+func (c *ClientWithResponses) ListPullRequestThreadsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestThreadsParams, reqEditors ...RequestEditorFn) (*ListPullRequestThreadsResponse, error) {
+	rsp, err := c.ListPullRequestThreads(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestThreadsResponse(rsp)
+}
+
+// ResolvePullRequestThreadWithResponse Segna una conversazione come risolta
+//
+// Possono l'autore della PR e chi ha `write` (PR5). Idempotente: una conversazione gia' risolta risponde 200 con lo stato attuale. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve (the `ResolvePullRequestThread` operationId).
+func (c *ClientWithResponses) ResolvePullRequestThreadWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*ResolvePullRequestThreadResponse, error) {
+	rsp, err := c.ResolvePullRequestThread(ctx, owner, repo, number, threadId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolvePullRequestThreadResponse(rsp)
+}
+
+// UnresolvePullRequestThreadWithResponse Riapre una conversazione risolta
+//
+// Come `resolvePullRequestThread`: l'autore della PR e chi ha `write`. Idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve (the `UnresolvePullRequestThread` operationId).
+func (c *ClientWithResponses) UnresolvePullRequestThreadWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam, reqEditors ...RequestEditorFn) (*UnresolvePullRequestThreadResponse, error) {
+	rsp, err := c.UnresolvePullRequestThread(ctx, owner, repo, number, threadId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnresolvePullRequestThreadResponse(rsp)
+}
+
+// SetPullRequestFileViewedWithBodyWithResponse Marca o smarca un file come Viewed
+//
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+func (c *ClientWithResponses) SetPullRequestFileViewedWithBodyWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPullRequestFileViewedResponse, error) {
+	rsp, err := c.SetPullRequestFileViewedWithBody(ctx, owner, repo, number, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPullRequestFileViewedResponse(rsp)
+}
+
+// SetPullRequestFileViewedWithResponse Marca o smarca un file come Viewed
+//
+// La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /repos/{owner}/{repo}/pulls/{number}/viewed (the `SetPullRequestFileViewed` operationId).
+func (c *ClientWithResponses) SetPullRequestFileViewedWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, body SetPullRequestFileViewedJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPullRequestFileViewedResponse, error) {
+	rsp, err := c.SetPullRequestFileViewed(ctx, owner, repo, number, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPullRequestFileViewedResponse(rsp)
 }
 
 // GetRepositoryRawWithResponse Contenuto grezzo di un file (streaming)
@@ -48285,6 +55983,142 @@ func ParseGetRepositoryBlameResponse(rsp *http.Response) (*GetRepositoryBlameRes
 	return response, nil
 }
 
+// ParseGetBranchSettingsResponse parses an HTTP response from a GetBranchSettingsWithResponse call
+func ParseGetBranchSettingsResponse(rsp *http.Response) (*GetBranchSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBranchSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BranchSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateBranchSettingsResponse parses an HTTP response from a UpdateBranchSettingsWithResponse call
+func ParseUpdateBranchSettingsResponse(rsp *http.Response) (*UpdateBranchSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateBranchSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BranchSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetRepositoryBranchesResponse parses an HTTP response from a GetRepositoryBranchesWithResponse call
 func ParseGetRepositoryBranchesResponse(rsp *http.Response) (*GetRepositoryBranchesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -48544,6 +56378,203 @@ func ParseGetRepositoryCommitPatchResponse(rsp *http.Response) (*GetRepositoryCo
 			headers.XContentTypeOptions = &value
 		}
 		response.Headers200 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetCombinedCommitStatusResponse parses an HTTP response from a GetCombinedCommitStatusWithResponse call
+func ParseGetCombinedCommitStatusResponse(rsp *http.Response) (*GetCombinedCommitStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCombinedCommitStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CombinedCommitStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCommitStatusesResponse parses an HTTP response from a ListCommitStatusesWithResponse call
+func ParseListCommitStatusesResponse(rsp *http.Response) (*ListCommitStatusesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCommitStatusesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CommitStatusList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCommitStatusResponse parses an HTTP response from a CreateCommitStatusWithResponse call
+func ParseCreateCommitStatusResponse(rsp *http.Response) (*CreateCommitStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCommitStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CommitStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
 	}
 
 	return response, nil
@@ -52718,6 +60749,1753 @@ func ParseSyncRepoPullMirrorResponse(rsp *http.Response) (*SyncRepoPullMirrorRes
 	return response, nil
 }
 
+// ParseListPullRequestsResponse parses an HTTP response from a ListPullRequestsWithResponse call
+func ParseListPullRequestsResponse(rsp *http.Response) (*ListPullRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreatePullRequestResponse parses an HTTP response from a CreatePullRequestWithResponse call
+func ParseCreatePullRequestResponse(rsp *http.Response) (*CreatePullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers CreatePullRequestResponse201Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers201 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetPullRequestResponse parses an HTTP response from a GetPullRequestWithResponse call
+func ParseGetPullRequestResponse(rsp *http.Response) (*GetPullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdatePullRequestResponse parses an HTTP response from a UpdatePullRequestWithResponse call
+func ParseUpdatePullRequestResponse(rsp *http.Response) (*UpdatePullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdatePullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeletePullRequestBranchResponse parses an HTTP response from a DeletePullRequestBranchWithResponse call
+func ParseDeletePullRequestBranchResponse(rsp *http.Response) (*DeletePullRequestBranchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeletePullRequestBranchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseClosePullRequestResponse parses an HTTP response from a ClosePullRequestWithResponse call
+func ParseClosePullRequestResponse(rsp *http.Response) (*ClosePullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ClosePullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestCommentsResponse parses an HTTP response from a ListPullRequestCommentsWithResponse call
+func ParseListPullRequestCommentsResponse(rsp *http.Response) (*ListPullRequestCommentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestCommentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestCommentList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreatePullRequestCommentResponse parses an HTTP response from a CreatePullRequestCommentWithResponse call
+func ParseCreatePullRequestCommentResponse(rsp *http.Response) (*CreatePullRequestCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePullRequestCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PullRequestComment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeletePullRequestCommentResponse parses an HTTP response from a DeletePullRequestCommentWithResponse call
+func ParseDeletePullRequestCommentResponse(rsp *http.Response) (*DeletePullRequestCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeletePullRequestCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdatePullRequestCommentResponse parses an HTTP response from a UpdatePullRequestCommentWithResponse call
+func ParseUpdatePullRequestCommentResponse(rsp *http.Response) (*UpdatePullRequestCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdatePullRequestCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestComment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestCommitsResponse parses an HTTP response from a ListPullRequestCommitsWithResponse call
+func ParseListPullRequestCommitsResponse(rsp *http.Response) (*ListPullRequestCommitsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestCommitsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CommitList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMarkPullRequestDraftResponse parses an HTTP response from a MarkPullRequestDraftWithResponse call
+func ParseMarkPullRequestDraftResponse(rsp *http.Response) (*MarkPullRequestDraftResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MarkPullRequestDraftResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestFilesResponse parses an HTTP response from a ListPullRequestFilesWithResponse call
+func ParseListPullRequestFilesResponse(rsp *http.Response) (*ListPullRequestFilesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestFilesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestFiles
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMergePullRequestResponse parses an HTTP response from a MergePullRequestWithResponse call
+func ParseMergePullRequestResponse(rsp *http.Response) (*MergePullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MergePullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPullRequestMergeabilityResponse parses an HTTP response from a GetPullRequestMergeabilityWithResponse call
+func ParseGetPullRequestMergeabilityResponse(rsp *http.Response) (*GetPullRequestMergeabilityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPullRequestMergeabilityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestMergeability
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMarkPullRequestReadyResponse parses an HTTP response from a MarkPullRequestReadyWithResponse call
+func ParseMarkPullRequestReadyResponse(rsp *http.Response) (*MarkPullRequestReadyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MarkPullRequestReadyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReopenPullRequestResponse parses an HTTP response from a ReopenPullRequestWithResponse call
+func ParseReopenPullRequestResponse(rsp *http.Response) (*ReopenPullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReopenPullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRequestPullRequestReviewersResponse parses an HTTP response from a RequestPullRequestReviewersWithResponse call
+func ParseRequestPullRequestReviewersResponse(rsp *http.Response) (*RequestPullRequestReviewersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RequestPullRequestReviewersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemovePullRequestReviewerResponse parses an HTTP response from a RemovePullRequestReviewerWithResponse call
+func ParseRemovePullRequestReviewerResponse(rsp *http.Response) (*RemovePullRequestReviewerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemovePullRequestReviewerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestReviewsResponse parses an HTTP response from a ListPullRequestReviewsWithResponse call
+func ParseListPullRequestReviewsResponse(rsp *http.Response) (*ListPullRequestReviewsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestReviewsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestReviewList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreatePullRequestReviewResponse parses an HTTP response from a CreatePullRequestReviewWithResponse call
+func ParseCreatePullRequestReviewResponse(rsp *http.Response) (*CreatePullRequestReviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePullRequestReviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PullRequestReview
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestThreadsResponse parses an HTTP response from a ListPullRequestThreadsWithResponse call
+func ParseListPullRequestThreadsResponse(rsp *http.Response) (*ListPullRequestThreadsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestThreadsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestThreadList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResolvePullRequestThreadResponse parses an HTTP response from a ResolvePullRequestThreadWithResponse call
+func ParseResolvePullRequestThreadResponse(rsp *http.Response) (*ResolvePullRequestThreadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResolvePullRequestThreadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestThread
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnresolvePullRequestThreadResponse parses an HTTP response from a UnresolvePullRequestThreadWithResponse call
+func ParseUnresolvePullRequestThreadResponse(rsp *http.Response) (*UnresolvePullRequestThreadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnresolvePullRequestThreadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestThread
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetPullRequestFileViewedResponse parses an HTTP response from a SetPullRequestFileViewedWithResponse call
+func ParseSetPullRequestFileViewedResponse(rsp *http.Response) (*SetPullRequestFileViewedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetPullRequestFileViewedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SetFileViewedInput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest UnprocessableEntity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetRepositoryRawResponse parses an HTTP response from a GetRepositoryRawWithResponse call
 func ParseGetRepositoryRawResponse(rsp *http.Response) (*GetRepositoryRawResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -55312,4 +65090,252 @@ func ParseResetUserTotpResponse(rsp *http.Response) (*ResetUserTotpResponse, err
 	}
 
 	return response, nil
+}
+
+// CallbackInitiator sends OpenAPI callback requests to target URLs.
+// Modeled on the generated Client, but with no stored Server -- the full
+// target URL is provided per-call by the caller (typically discovered
+// from a callback expression on the parent operation's request body,
+// e.g. `{$request.body#/callbackUrl}`).
+type CallbackInitiator struct {
+	// Doer for performing requests, typically a *http.Client with any
+	// customized settings, such as certificate chains.
+	Client HttpRequestDoer
+
+	// A list of callbacks for modifying requests which are generated before sending over
+	// the network.
+	RequestEditors []RequestEditorFn
+}
+
+// CallbackInitiatorOption allows setting custom parameters during construction.
+type CallbackInitiatorOption func(*CallbackInitiator) error
+
+// NewCallbackInitiator creates a new CallbackInitiator with reasonable defaults.
+func NewCallbackInitiator(opts ...CallbackInitiatorOption) (*CallbackInitiator, error) {
+	initiator := CallbackInitiator{}
+	for _, o := range opts {
+		if err := o(&initiator); err != nil {
+			return nil, err
+		}
+	}
+	if initiator.Client == nil {
+		initiator.Client = &http.Client{}
+	}
+	return &initiator, nil
+}
+
+// WithCallbackHTTPClient allows overriding the default Doer, which is
+// automatically created using http.Client. This is useful for tests.
+func WithCallbackHTTPClient(doer HttpRequestDoer) CallbackInitiatorOption {
+	return func(p *CallbackInitiator) error {
+		p.Client = doer
+		return nil
+	}
+}
+
+// WithCallbackRequestEditorFn allows setting up a callback function, which
+// will be called right before sending the callback request. This can be
+// used to mutate the request, e.g. to add signature headers.
+func WithCallbackRequestEditorFn(fn RequestEditorFn) CallbackInitiatorOption {
+	return func(p *CallbackInitiator) error {
+		p.RequestEditors = append(p.RequestEditors, fn)
+		return nil
+	}
+}
+
+func (p *CallbackInitiator) applyCallbackEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
+	for _, r := range p.RequestEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	for _, r := range additionalEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CallbackInitiatorInterface is the interface specification for the callback initiator.
+type CallbackInitiatorInterface interface {
+	// CommitStatusWithBody fires the commit_status callback with any body
+	CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CommitStatus(ctx context.Context, targetURL string, body CommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PullRequestWithBody fires the pull_request callback with any body
+	PullRequestWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PullRequest(ctx context.Context, targetURL string, body PullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PullRequestReviewWithBody fires the pull_request_review callback with any body
+	PullRequestReviewWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PullRequestReview(ctx context.Context, targetURL string, body PullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (p *CallbackInitiator) CommitStatusWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCommitStatusCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) CommitStatus(ctx context.Context, targetURL string, body CommitStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCommitStatusCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) PullRequestWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPullRequestCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) PullRequest(ctx context.Context, targetURL string, body PullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPullRequestCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) PullRequestReviewWithBody(ctx context.Context, targetURL string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPullRequestReviewCallbackRequestWithBody(targetURL, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+func (p *CallbackInitiator) PullRequestReview(ctx context.Context, targetURL string, body PullRequestReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPullRequestReviewCallbackRequest(targetURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := p.applyCallbackEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return p.Client.Do(req)
+}
+
+// NewCommitStatusCallbackRequest builds a application/json POST request for the commit_status callback
+func NewCommitStatusCallbackRequest(targetURL string, body CommitStatusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCommitStatusCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewCommitStatusCallbackRequestWithBody builds a POST request for the commit_status callback with any body
+func NewCommitStatusCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPullRequestCallbackRequest builds a application/json POST request for the pull_request callback
+func NewPullRequestCallbackRequest(targetURL string, body PullRequestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPullRequestCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewPullRequestCallbackRequestWithBody builds a POST request for the pull_request callback with any body
+func NewPullRequestCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPullRequestReviewCallbackRequest builds a application/json POST request for the pull_request_review callback
+func NewPullRequestReviewCallbackRequest(targetURL string, body PullRequestReviewJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPullRequestReviewCallbackRequestWithBody(targetURL, "application/json", bodyReader)
+}
+
+// NewPullRequestReviewCallbackRequestWithBody builds a POST request for the pull_request_review callback with any body
+func NewPullRequestReviewCallbackRequestWithBody(targetURL string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+	_ = err
+
+	reqURL, err := url.Parse(targetURL)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, reqURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }

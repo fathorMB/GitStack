@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AckCredentialEventsData, AckCredentialEventsErrors, AckCredentialEventsResponses, AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CloseIssueData, CloseIssueErrors, CloseIssueResponses, CreateIssueCommentData, CreateIssueCommentErrors, CreateIssueCommentResponses, CreateIssueData, CreateIssueErrors, CreateIssueResponses, CreateLabelData, CreateLabelErrors, CreateLabelResponses, CreateMilestoneData, CreateMilestoneErrors, CreateMilestoneResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateOrgWebhookData, CreateOrgWebhookErrors, CreateOrgWebhookResponses, CreateRepoMirrorData, CreateRepoMirrorErrors, CreateRepoMirrorResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateRepoWebhookData, CreateRepoWebhookErrors, CreateRepoWebhookResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteIssueCommentData, DeleteIssueCommentErrors, DeleteIssueCommentResponses, DeleteLabelData, DeleteLabelErrors, DeleteLabelResponses, DeleteMilestoneData, DeleteMilestoneErrors, DeleteMilestoneResponses, DeleteNotificationData, DeleteNotificationErrors, DeleteNotificationResponses, DeleteNotificationsData, DeleteNotificationsErrors, DeleteNotificationsResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteOrgWebhookData, DeleteOrgWebhookErrors, DeleteOrgWebhookResponses, DeleteRepoMirrorData, DeleteRepoMirrorErrors, DeleteRepoMirrorResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteRepoWebhookData, DeleteRepoWebhookErrors, DeleteRepoWebhookResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, DisableTotpData, DisableTotpErrors, DisableTotpResponses, EnableRepoPullMirrorData, EnableRepoPullMirrorErrors, EnableRepoPullMirrorResponses, EnrollTotpData, EnrollTotpErrors, EnrollTotpResponses, ExportOwnDataData, ExportOwnDataErrors, ExportOwnDataResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetAdminSystemData, GetAdminSystemErrors, GetAdminSystemResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetIssueAttachmentData, GetIssueAttachmentErrors, GetIssueAttachmentResponses, GetIssueData, GetIssueErrors, GetIssueResponses, GetIssueSubscriptionData, GetIssueSubscriptionErrors, GetIssueSubscriptionResponses, GetLabelData, GetLabelErrors, GetLabelResponses, GetMetaData, GetMetaResponses, GetMilestoneData, GetMilestoneErrors, GetMilestoneResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetNotificationData, GetNotificationErrors, GetNotificationPreferencesData, GetNotificationPreferencesErrors, GetNotificationPreferencesResponses, GetNotificationResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetOrgWebhookData, GetOrgWebhookDeliveryData, GetOrgWebhookDeliveryErrors, GetOrgWebhookDeliveryResponses, GetOrgWebhookErrors, GetOrgWebhookResponses, GetRepoMirrorData, GetRepoMirrorErrors, GetRepoMirrorResponses, GetRepoPullMirrorData, GetRepoPullMirrorErrors, GetRepoPullMirrorResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetRepoWatchData, GetRepoWatchErrors, GetRepoWatchResponses, GetRepoWebhookData, GetRepoWebhookDeliveryData, GetRepoWebhookDeliveryErrors, GetRepoWebhookDeliveryResponses, GetRepoWebhookErrors, GetRepoWebhookResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetTotpStatusData, GetTotpStatusErrors, GetTotpStatusResponses, GetUserAccessData, GetUserAccessErrors, GetUserAccessResponses, GetUserAccessSourcesData, GetUserAccessSourcesErrors, GetUserAccessSourcesResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ImportRepositoryData, ImportRepositoryErrors, ImportRepositoryResponses, ListCredentialEventsData, ListCredentialEventsErrors, ListCredentialEventsResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListIssueCommentsData, ListIssueCommentsErrors, ListIssueCommentsResponses, ListIssueCommentVersionsData, ListIssueCommentVersionsErrors, ListIssueCommentVersionsResponses, ListIssueEventsData, ListIssueEventsErrors, ListIssueEventsResponses, ListIssuesData, ListIssuesErrors, ListIssuesResponses, ListIssueTemplatesData, ListIssueTemplatesErrors, ListIssueTemplatesResponses, ListIssueVersionsData, ListIssueVersionsErrors, ListIssueVersionsResponses, ListLabelsData, ListLabelsErrors, ListLabelsResponses, ListMilestonesData, ListMilestonesErrors, ListMilestonesResponses, ListNotificationsData, ListNotificationsErrors, ListNotificationsResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListOrgOwnersData, ListOrgOwnersErrors, ListOrgOwnersResponses, ListOrgWebhookDeliveriesData, ListOrgWebhookDeliveriesErrors, ListOrgWebhookDeliveriesResponses, ListOrgWebhooksData, ListOrgWebhooksErrors, ListOrgWebhooksResponses, ListOwnSessionsData, ListOwnSessionsErrors, ListOwnSessionsResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepoMirrorRunsData, ListRepoMirrorRunsErrors, ListRepoMirrorRunsResponses, ListRepoMirrorsData, ListRepoMirrorsErrors, ListRepoMirrorsResponses, ListRepoPullMirrorRunsData, ListRepoPullMirrorRunsErrors, ListRepoPullMirrorRunsResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListRepoWebhookDeliveriesData, ListRepoWebhookDeliveriesErrors, ListRepoWebhookDeliveriesResponses, ListRepoWebhooksData, ListRepoWebhooksErrors, ListRepoWebhooksResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LockIssueData, LockIssueErrors, LockIssueResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, LookupUsersByIdsData, LookupUsersByIdsErrors, LookupUsersByIdsResponses, MarkAllNotificationsReadData, MarkAllNotificationsReadErrors, MarkAllNotificationsReadResponses, PauseRepoPullMirrorData, PauseRepoPullMirrorErrors, PauseRepoPullMirrorResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, ReactivateOrgWebhookData, ReactivateOrgWebhookErrors, ReactivateOrgWebhookResponses, ReactivateRepoWebhookData, ReactivateRepoWebhookErrors, ReactivateRepoWebhookResponses, RedeliverOrgWebhookDeliveryData, RedeliverOrgWebhookDeliveryErrors, RedeliverOrgWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryData, RedeliverRepoWebhookDeliveryErrors, RedeliverRepoWebhookDeliveryResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ReopenIssueData, ReopenIssueErrors, ReopenIssueResponses, ResetRepoWatchData, ResetRepoWatchErrors, ResetRepoWatchResponses, ResetUserTotpData, ResetUserTotpErrors, ResetUserTotpResponses, ResolveMentionsData, ResolveMentionsErrors, ResolveMentionsResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, ResumeRepoPullMirrorData, ResumeRepoPullMirrorErrors, ResumeRepoPullMirrorResponses, RevokeOwnSessionData, RevokeOwnSessionErrors, RevokeOwnSessionResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchIssuesData, SearchIssuesErrors, SearchIssuesResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetIssueAssigneesData, SetIssueAssigneesErrors, SetIssueAssigneesResponses, SetIssueHiddenData, SetIssueHiddenErrors, SetIssueHiddenResponses, SetIssueLabelsData, SetIssueLabelsErrors, SetIssueLabelsResponses, SetIssueMilestoneData, SetIssueMilestoneErrors, SetIssueMilestoneResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetRepoWatchData, SetRepoWatchErrors, SetRepoWatchResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, StopRepoPullMirrorData, StopRepoPullMirrorErrors, StopRepoPullMirrorResponses, SubscribeIssueData, SubscribeIssueErrors, SubscribeIssueResponses, SyncRepoMirrorData, SyncRepoMirrorErrors, SyncRepoMirrorResponses, SyncRepoPullMirrorData, SyncRepoPullMirrorErrors, SyncRepoPullMirrorResponses, UnlockIssueData, UnlockIssueErrors, UnlockIssueResponses, UnsubscribeIssueData, UnsubscribeIssueErrors, UnsubscribeIssueResponses, UpdateIssueCommentData, UpdateIssueCommentErrors, UpdateIssueCommentResponses, UpdateIssueData, UpdateIssueErrors, UpdateIssueResponses, UpdateLabelData, UpdateLabelErrors, UpdateLabelResponses, UpdateMilestoneData, UpdateMilestoneErrors, UpdateMilestoneResponses, UpdateNotificationData, UpdateNotificationErrors, UpdateNotificationPreferencesData, UpdateNotificationPreferencesErrors, UpdateNotificationPreferencesResponses, UpdateNotificationResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateOrgWebhookData, UpdateOrgWebhookErrors, UpdateOrgWebhookResponses, UpdateRepoMirrorData, UpdateRepoMirrorErrors, UpdateRepoMirrorResponses, UpdateRepoPullMirrorData, UpdateRepoPullMirrorErrors, UpdateRepoPullMirrorResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateRepoWebhookData, UpdateRepoWebhookErrors, UpdateRepoWebhookResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, UploadIssueAttachmentData, UploadIssueAttachmentErrors, UploadIssueAttachmentResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses, VerifyTotpData, VerifyTotpErrors, VerifyTotpResponses } from './types.gen';
+import type { AckCredentialEventsData, AckCredentialEventsErrors, AckCredentialEventsResponses, AddSshKeyData, AddSshKeyErrors, AddSshKeyResponses, ChangePasswordData, ChangePasswordErrors, ChangePasswordResponses, CheckPermissionData, CheckPermissionErrors, CheckPermissionResponses, CloseIssueData, CloseIssueErrors, CloseIssueResponses, ClosePullRequestData, ClosePullRequestErrors, ClosePullRequestResponses, CreateCommitStatusData, CreateCommitStatusErrors, CreateCommitStatusResponses, CreateIssueCommentData, CreateIssueCommentErrors, CreateIssueCommentResponses, CreateIssueData, CreateIssueErrors, CreateIssueResponses, CreateLabelData, CreateLabelErrors, CreateLabelResponses, CreateMilestoneData, CreateMilestoneErrors, CreateMilestoneResponses, CreateOrganizationData, CreateOrganizationErrors, CreateOrganizationResponses, CreateOrgWebhookData, CreateOrgWebhookErrors, CreateOrgWebhookResponses, CreatePullRequestCommentData, CreatePullRequestCommentErrors, CreatePullRequestCommentResponses, CreatePullRequestData, CreatePullRequestErrors, CreatePullRequestResponses, CreatePullRequestReviewData, CreatePullRequestReviewErrors, CreatePullRequestReviewResponses, CreateRepoMirrorData, CreateRepoMirrorErrors, CreateRepoMirrorResponses, CreateRepositoryData, CreateRepositoryErrors, CreateRepositoryResponses, CreateRepoWebhookData, CreateRepoWebhookErrors, CreateRepoWebhookResponses, CreateResourceData, CreateResourceErrors, CreateResourceGrantData, CreateResourceGrantErrors, CreateResourceGrantResponses, CreateResourceResponses, CreateTeamData, CreateTeamErrors, CreateTeamResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateUserTokenData, CreateUserTokenErrors, CreateUserTokenResponses, DeleteIssueCommentData, DeleteIssueCommentErrors, DeleteIssueCommentResponses, DeleteLabelData, DeleteLabelErrors, DeleteLabelResponses, DeleteMilestoneData, DeleteMilestoneErrors, DeleteMilestoneResponses, DeleteNotificationData, DeleteNotificationErrors, DeleteNotificationResponses, DeleteNotificationsData, DeleteNotificationsErrors, DeleteNotificationsResponses, DeleteOrganizationData, DeleteOrganizationErrors, DeleteOrganizationResponses, DeleteOrgWebhookData, DeleteOrgWebhookErrors, DeleteOrgWebhookResponses, DeletePullRequestBranchData, DeletePullRequestBranchErrors, DeletePullRequestBranchResponses, DeletePullRequestCommentData, DeletePullRequestCommentErrors, DeletePullRequestCommentResponses, DeleteRepoMirrorData, DeleteRepoMirrorErrors, DeleteRepoMirrorResponses, DeleteRepositoryData, DeleteRepositoryErrors, DeleteRepositoryResponses, DeleteRepoWebhookData, DeleteRepoWebhookErrors, DeleteRepoWebhookResponses, DeleteResourceData, DeleteResourceErrors, DeleteResourceGrantData, DeleteResourceGrantErrors, DeleteResourceGrantResponses, DeleteResourceResponses, DeleteSshKeyData, DeleteSshKeyErrors, DeleteSshKeyResponses, DeleteTeamData, DeleteTeamErrors, DeleteTeamResponses, DeleteUserData, DeleteUserErrors, DeleteUserResponses, DisableTotpData, DisableTotpErrors, DisableTotpResponses, EnableRepoPullMirrorData, EnableRepoPullMirrorErrors, EnableRepoPullMirrorResponses, EnrollTotpData, EnrollTotpErrors, EnrollTotpResponses, ExportOwnDataData, ExportOwnDataErrors, ExportOwnDataResponses, FinishOidcLoginData, FinishOidcLoginErrors, FinishOidcLoginResponses, GetAdminSystemData, GetAdminSystemErrors, GetAdminSystemResponses, GetBranchSettingsData, GetBranchSettingsErrors, GetBranchSettingsResponses, GetCombinedCommitStatusData, GetCombinedCommitStatusErrors, GetCombinedCommitStatusResponses, GetCurrentSessionData, GetCurrentSessionErrors, GetCurrentSessionResponses, GetHealthData, GetHealthResponses, GetIssueAttachmentData, GetIssueAttachmentErrors, GetIssueAttachmentResponses, GetIssueData, GetIssueErrors, GetIssueResponses, GetIssueSubscriptionData, GetIssueSubscriptionErrors, GetIssueSubscriptionResponses, GetLabelData, GetLabelErrors, GetLabelResponses, GetMetaData, GetMetaResponses, GetMilestoneData, GetMilestoneErrors, GetMilestoneResponses, GetMyResourcePermissionData, GetMyResourcePermissionErrors, GetMyResourcePermissionResponses, GetNotificationData, GetNotificationErrors, GetNotificationPreferencesData, GetNotificationPreferencesErrors, GetNotificationPreferencesResponses, GetNotificationResponses, GetOrganizationData, GetOrganizationErrors, GetOrganizationResponses, GetOrgWebhookData, GetOrgWebhookDeliveryData, GetOrgWebhookDeliveryErrors, GetOrgWebhookDeliveryResponses, GetOrgWebhookErrors, GetOrgWebhookResponses, GetPullRequestData, GetPullRequestErrors, GetPullRequestMergeabilityData, GetPullRequestMergeabilityErrors, GetPullRequestMergeabilityResponses, GetPullRequestResponses, GetRepoMirrorData, GetRepoMirrorErrors, GetRepoMirrorResponses, GetRepoPullMirrorData, GetRepoPullMirrorErrors, GetRepoPullMirrorResponses, GetRepositoryArchiveData, GetRepositoryArchiveErrors, GetRepositoryArchiveResponses, GetRepositoryBlameData, GetRepositoryBlameErrors, GetRepositoryBlameResponses, GetRepositoryBranchesData, GetRepositoryBranchesErrors, GetRepositoryBranchesResponses, GetRepositoryCommitData, GetRepositoryCommitErrors, GetRepositoryCommitPatchData, GetRepositoryCommitPatchErrors, GetRepositoryCommitPatchResponses, GetRepositoryCommitResponses, GetRepositoryCommitsData, GetRepositoryCommitsErrors, GetRepositoryCommitsResponses, GetRepositoryData, GetRepositoryErrors, GetRepositoryFileData, GetRepositoryFileErrors, GetRepositoryFileResponses, GetRepositoryLanguagesData, GetRepositoryLanguagesErrors, GetRepositoryLanguagesResponses, GetRepositoryRawByPathData, GetRepositoryRawByPathErrors, GetRepositoryRawByPathResponses, GetRepositoryRawData, GetRepositoryRawErrors, GetRepositoryRawResponses, GetRepositoryReadmeData, GetRepositoryReadmeErrors, GetRepositoryReadmeResponses, GetRepositoryResponses, GetRepositoryTagsData, GetRepositoryTagsErrors, GetRepositoryTagsResponses, GetRepositoryTreeData, GetRepositoryTreeErrors, GetRepositoryTreeResponses, GetRepoWatchData, GetRepoWatchErrors, GetRepoWatchResponses, GetRepoWebhookData, GetRepoWebhookDeliveryData, GetRepoWebhookDeliveryErrors, GetRepoWebhookDeliveryResponses, GetRepoWebhookErrors, GetRepoWebhookResponses, GetResourceData, GetResourceErrors, GetResourceResponses, GetSshKeyData, GetSshKeyErrors, GetSshKeyResponses, GetTeamData, GetTeamErrors, GetTeamResponses, GetTotpStatusData, GetTotpStatusErrors, GetTotpStatusResponses, GetUserAccessData, GetUserAccessErrors, GetUserAccessResponses, GetUserAccessSourcesData, GetUserAccessSourcesErrors, GetUserAccessSourcesResponses, GetUserData, GetUserErrors, GetUserResponses, GitCreateRepoData, GitCreateRepoErrors, GitCreateRepoResponses, GitDeleteRepoData, GitDeleteRepoErrors, GitDeleteRepoResponses, GitGetArchiveData, GitGetArchiveErrors, GitGetArchiveResponses, GitGetBlameData, GitGetBlameErrors, GitGetBlameResponses, GitGetBranchesData, GitGetBranchesErrors, GitGetBranchesResponses, GitGetCommitData, GitGetCommitDiffData, GitGetCommitDiffErrors, GitGetCommitDiffResponses, GitGetCommitErrors, GitGetCommitPatchData, GitGetCommitPatchErrors, GitGetCommitPatchResponses, GitGetCommitResponses, GitGetCommitsData, GitGetCommitsErrors, GitGetCommitsResponses, GitGetFileData, GitGetFileErrors, GitGetFileResponses, GitGetLanguagesData, GitGetLanguagesErrors, GitGetLanguagesResponses, GitGetRawData, GitGetRawErrors, GitGetRawResponses, GitGetReadmeData, GitGetReadmeErrors, GitGetReadmeResponses, GitGetRepoData, GitGetRepoErrors, GitGetRepoResponses, GitGetTagsData, GitGetTagsErrors, GitGetTagsResponses, GitGetTreeData, GitGetTreeErrors, GitGetTreeResponses, GitListFilesData, GitListFilesErrors, GitListFilesResponses, GitRestoreRepoData, GitRestoreRepoErrors, GitRestoreRepoResponses, GitSearchCodeData, GitSearchCodeErrors, GitSearchCodeResponses, GitTrashRepoData, GitTrashRepoErrors, GitTrashRepoResponses, GrantResourceCreatorData, GrantResourceCreatorErrors, GrantResourceCreatorResponses, ImportRepositoryData, ImportRepositoryErrors, ImportRepositoryResponses, ListCommitStatusesData, ListCommitStatusesErrors, ListCommitStatusesResponses, ListCredentialEventsData, ListCredentialEventsErrors, ListCredentialEventsResponses, ListDeletedRepositoriesData, ListDeletedRepositoriesErrors, ListDeletedRepositoriesResponses, ListIssueCommentsData, ListIssueCommentsErrors, ListIssueCommentsResponses, ListIssueCommentVersionsData, ListIssueCommentVersionsErrors, ListIssueCommentVersionsResponses, ListIssueEventsData, ListIssueEventsErrors, ListIssueEventsResponses, ListIssuesData, ListIssuesErrors, ListIssuesResponses, ListIssueTemplatesData, ListIssueTemplatesErrors, ListIssueTemplatesResponses, ListIssueVersionsData, ListIssueVersionsErrors, ListIssueVersionsResponses, ListLabelsData, ListLabelsErrors, ListLabelsResponses, ListMilestonesData, ListMilestonesErrors, ListMilestonesResponses, ListNotificationsData, ListNotificationsErrors, ListNotificationsResponses, ListOidcProvidersData, ListOidcProvidersErrors, ListOidcProvidersResponses, ListOrganizationsData, ListOrganizationsErrors, ListOrganizationsResponses, ListOrgMembersData, ListOrgMembersErrors, ListOrgMembersResponses, ListOrgOwnersData, ListOrgOwnersErrors, ListOrgOwnersResponses, ListOrgWebhookDeliveriesData, ListOrgWebhookDeliveriesErrors, ListOrgWebhookDeliveriesResponses, ListOrgWebhooksData, ListOrgWebhooksErrors, ListOrgWebhooksResponses, ListOwnSessionsData, ListOwnSessionsErrors, ListOwnSessionsResponses, ListPullRequestCommentsData, ListPullRequestCommentsErrors, ListPullRequestCommentsResponses, ListPullRequestCommitsData, ListPullRequestCommitsErrors, ListPullRequestCommitsResponses, ListPullRequestFilesData, ListPullRequestFilesErrors, ListPullRequestFilesResponses, ListPullRequestReviewsData, ListPullRequestReviewsErrors, ListPullRequestReviewsResponses, ListPullRequestsData, ListPullRequestsErrors, ListPullRequestsResponses, ListPullRequestThreadsData, ListPullRequestThreadsErrors, ListPullRequestThreadsResponses, ListReadableResourcesData, ListReadableResourcesErrors, ListReadableResourcesResponses, ListRepoMirrorRunsData, ListRepoMirrorRunsErrors, ListRepoMirrorRunsResponses, ListRepoMirrorsData, ListRepoMirrorsErrors, ListRepoMirrorsResponses, ListRepoPullMirrorRunsData, ListRepoPullMirrorRunsErrors, ListRepoPullMirrorRunsResponses, ListRepositoriesData, ListRepositoriesErrors, ListRepositoriesResponses, ListRepositoryFilesData, ListRepositoryFilesErrors, ListRepositoryFilesResponses, ListRepoWebhookDeliveriesData, ListRepoWebhookDeliveriesErrors, ListRepoWebhookDeliveriesResponses, ListRepoWebhooksData, ListRepoWebhooksErrors, ListRepoWebhooksResponses, ListResourceGrantsData, ListResourceGrantsErrors, ListResourceGrantsResponses, ListResourcesData, ListResourcesErrors, ListResourcesResponses, ListSshKeysData, ListSshKeysErrors, ListSshKeysResponses, ListTeamMembersData, ListTeamMembersErrors, ListTeamMembersResponses, ListTeamsData, ListTeamsErrors, ListTeamsResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListUserTokensData, ListUserTokensErrors, ListUserTokensResponses, LockIssueData, LockIssueErrors, LockIssueResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, LookupSshKeyData, LookupSshKeyErrors, LookupSshKeyResponses, LookupUsersByEmailData, LookupUsersByEmailErrors, LookupUsersByEmailResponses, LookupUsersByIdsData, LookupUsersByIdsErrors, LookupUsersByIdsResponses, MarkAllNotificationsReadData, MarkAllNotificationsReadErrors, MarkAllNotificationsReadResponses, MarkPullRequestDraftData, MarkPullRequestDraftErrors, MarkPullRequestDraftResponses, MarkPullRequestReadyData, MarkPullRequestReadyErrors, MarkPullRequestReadyResponses, MergePullRequestData, MergePullRequestErrors, MergePullRequestResponses, PauseRepoPullMirrorData, PauseRepoPullMirrorErrors, PauseRepoPullMirrorResponses, PurgeResourceAccessData, PurgeResourceAccessErrors, PurgeResourceAccessResponses, ReactivateOrgWebhookData, ReactivateOrgWebhookErrors, ReactivateOrgWebhookResponses, ReactivateRepoWebhookData, ReactivateRepoWebhookErrors, ReactivateRepoWebhookResponses, RedeliverOrgWebhookDeliveryData, RedeliverOrgWebhookDeliveryErrors, RedeliverOrgWebhookDeliveryResponses, RedeliverRepoWebhookDeliveryData, RedeliverRepoWebhookDeliveryErrors, RedeliverRepoWebhookDeliveryResponses, RemoveOrgMemberData, RemoveOrgMemberErrors, RemoveOrgMemberResponses, RemovePullRequestReviewerData, RemovePullRequestReviewerErrors, RemovePullRequestReviewerResponses, RemoveTeamMemberData, RemoveTeamMemberErrors, RemoveTeamMemberResponses, ReopenIssueData, ReopenIssueErrors, ReopenIssueResponses, ReopenPullRequestData, ReopenPullRequestErrors, ReopenPullRequestResponses, RequestPullRequestReviewersData, RequestPullRequestReviewersErrors, RequestPullRequestReviewersResponses, ResetRepoWatchData, ResetRepoWatchErrors, ResetRepoWatchResponses, ResetUserTotpData, ResetUserTotpErrors, ResetUserTotpResponses, ResolveMentionsData, ResolveMentionsErrors, ResolveMentionsResponses, ResolveOwnerData, ResolveOwnerErrors, ResolveOwnerResponses, ResolvePullRequestThreadData, ResolvePullRequestThreadErrors, ResolvePullRequestThreadResponses, RestoreRepositoryData, RestoreRepositoryErrors, RestoreRepositoryResponses, ResumeRepoPullMirrorData, ResumeRepoPullMirrorErrors, ResumeRepoPullMirrorResponses, RevokeOwnSessionData, RevokeOwnSessionErrors, RevokeOwnSessionResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, RevokeUserTokenData, RevokeUserTokenErrors, RevokeUserTokenResponses, SearchIssuesData, SearchIssuesErrors, SearchIssuesResponses, SearchRepositoryCodeData, SearchRepositoryCodeErrors, SearchRepositoryCodeResponses, SetIssueAssigneesData, SetIssueAssigneesErrors, SetIssueAssigneesResponses, SetIssueHiddenData, SetIssueHiddenErrors, SetIssueHiddenResponses, SetIssueLabelsData, SetIssueLabelsErrors, SetIssueLabelsResponses, SetIssueMilestoneData, SetIssueMilestoneErrors, SetIssueMilestoneResponses, SetOrgMemberData, SetOrgMemberErrors, SetOrgMemberResponses, SetPullRequestFileViewedData, SetPullRequestFileViewedErrors, SetPullRequestFileViewedResponses, SetRepoWatchData, SetRepoWatchErrors, SetRepoWatchResponses, SetResourceAttributesData, SetResourceAttributesErrors, SetResourceAttributesResponses, SetTeamMemberData, SetTeamMemberErrors, SetTeamMemberResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, StopRepoPullMirrorData, StopRepoPullMirrorErrors, StopRepoPullMirrorResponses, SubscribeIssueData, SubscribeIssueErrors, SubscribeIssueResponses, SyncRepoMirrorData, SyncRepoMirrorErrors, SyncRepoMirrorResponses, SyncRepoPullMirrorData, SyncRepoPullMirrorErrors, SyncRepoPullMirrorResponses, UnlockIssueData, UnlockIssueErrors, UnlockIssueResponses, UnresolvePullRequestThreadData, UnresolvePullRequestThreadErrors, UnresolvePullRequestThreadResponses, UnsubscribeIssueData, UnsubscribeIssueErrors, UnsubscribeIssueResponses, UpdateBranchSettingsData, UpdateBranchSettingsErrors, UpdateBranchSettingsResponses, UpdateIssueCommentData, UpdateIssueCommentErrors, UpdateIssueCommentResponses, UpdateIssueData, UpdateIssueErrors, UpdateIssueResponses, UpdateLabelData, UpdateLabelErrors, UpdateLabelResponses, UpdateMilestoneData, UpdateMilestoneErrors, UpdateMilestoneResponses, UpdateNotificationData, UpdateNotificationErrors, UpdateNotificationPreferencesData, UpdateNotificationPreferencesErrors, UpdateNotificationPreferencesResponses, UpdateNotificationResponses, UpdateOrganizationData, UpdateOrganizationErrors, UpdateOrganizationResponses, UpdateOrgWebhookData, UpdateOrgWebhookErrors, UpdateOrgWebhookResponses, UpdatePullRequestCommentData, UpdatePullRequestCommentErrors, UpdatePullRequestCommentResponses, UpdatePullRequestData, UpdatePullRequestErrors, UpdatePullRequestResponses, UpdateRepoMirrorData, UpdateRepoMirrorErrors, UpdateRepoMirrorResponses, UpdateRepoPullMirrorData, UpdateRepoPullMirrorErrors, UpdateRepoPullMirrorResponses, UpdateRepositoryData, UpdateRepositoryErrors, UpdateRepositoryResponses, UpdateRepoWebhookData, UpdateRepoWebhookErrors, UpdateRepoWebhookResponses, UpdateResourceData, UpdateResourceErrors, UpdateResourceGrantData, UpdateResourceGrantErrors, UpdateResourceGrantResponses, UpdateResourceResponses, UpdateTeamData, UpdateTeamErrors, UpdateTeamResponses, UpdateUserData, UpdateUserErrors, UpdateUserResponses, UploadIssueAttachmentData, UploadIssueAttachmentErrors, UploadIssueAttachmentResponses, VerifyCredentialData, VerifyCredentialErrors, VerifyCredentialResponses, VerifyTotpData, VerifyTotpErrors, VerifyTotpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -2333,6 +2333,646 @@ export const updateMilestone = <ThrowOnError extends boolean = false>(options: O
             type: 'apiKey'
         }],
     url: '/repos/{owner}/{repo}/milestones/{milestoneNumber}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca e cerca le Pull Request del repo
+ *
+ * Chi puo' leggere il repo legge le sue PR. Il numero `#n` e' quello condiviso con le issues (I1). `q` usa la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:`, `no:`, piu' testo libero; `is:pr` e' implicito. I filtri espliciti si sommano a quelli di `q`. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+ *
+ */
+export const listPullRequests = <ThrowOnError extends boolean = false>(options: Options<ListPullRequestsData, ThrowOnError>): RequestResult<ListPullRequestsResponses, ListPullRequestsErrors, ThrowOnError> => (options.client ?? client).get<ListPullRequestsResponses, ListPullRequestsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls',
+    ...options
+});
+
+/**
+ * Apre una Pull Request fra due branch del repo
+ *
+ * Serve `write` sul repo (PR1); chi ha solo `read` propone con una issue (403). Origine e destinazione sono due branch dello stesso repo (niente fork): branch uguali, inesistenti o senza commit di differenza rispondono 422 (`details.fields`). La destinazione, se manca, e' il branch principale. Esiste gia' una PR aperta con la stessa coppia di branch: 409 `already_exists`. `draft` apre la PR in bozza (PR6). I `reviewers` richiesti hanno almeno `read` (PR12, 422 altrimenti) e sono ignorati per una bozza. Il numero viene dal contatore del repo condiviso con le issues (I1). Le parole chiave di C2 nel testo (`fixes #n`) chiudono la issue al merge (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10); un repo in mirror in pull (sola lettura) risponde 409 `read_only_mirror`. Testo oltre il limite: 413 (`body_too_large`). Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403).
+ *
+ */
+export const createPullRequest = <ThrowOnError extends boolean = false>(options: Options<CreatePullRequestData, ThrowOnError>): RequestResult<CreatePullRequestResponses, CreatePullRequestErrors, ThrowOnError> => (options.client ?? client).post<CreatePullRequestResponses, CreatePullRequestErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Legge una Pull Request per numero
+ *
+ * Chi puo' leggere il repo legge la PR. Un numero che non e' una PR (per esempio una issue) risponde 404. Porta lo stato (`open`, `closed`, `merged`, PR6), la bozza, i revisori richiesti, la decisione di review, le approvazioni valide contro quelle richieste (PR2, PR4) e lo stato dei commit sull'ultimo commit del branch di origine (PR9). Per i conflitti e i blocchi al merge c'e' `getPullRequestMergeability`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404 (non 403), per non rivelarne l'esistenza.
+ *
+ */
+export const getPullRequest = <ThrowOnError extends boolean = false>(options: Options<GetPullRequestData, ThrowOnError>): RequestResult<GetPullRequestResponses, GetPullRequestErrors, ThrowOnError> => (options.client ?? client).get<GetPullRequestResponses, GetPullRequestErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}',
+    ...options
+});
+
+/**
+ * Modifica titolo, testo e branch di destinazione
+ *
+ * Possono modificare l'autore e chi ha `write`. Solo una PR aperta si modifica (409 `not_open` altrimenti). Cambiare `targetBranch` e' possibile se il branch esiste e non e' quello di origine (422); le parole chiave di C2 nel testo vengono rilette (PR8). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const updatePullRequest = <ThrowOnError extends boolean = false>(options: Options<UpdatePullRequestData, ThrowOnError>): RequestResult<UpdatePullRequestResponses, UpdatePullRequestErrors, ThrowOnError> => (options.client ?? client).patch<UpdatePullRequestResponses, UpdatePullRequestErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Segna una bozza come pronta per la review (Ready for review)
+ *
+ * Da qui la PR si puo' unire e chiede review ai revisori gia' indicati (PR6, PR11). Possono l'autore e chi ha `write`. Una PR che non e' una bozza risponde 409 `not_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const markPullRequestReady = <ThrowOnError extends boolean = false>(options: Options<MarkPullRequestReadyData, ThrowOnError>): RequestResult<MarkPullRequestReadyResponses, MarkPullRequestReadyErrors, ThrowOnError> => (options.client ?? client).post<MarkPullRequestReadyResponses, MarkPullRequestReadyErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/ready',
+    ...options
+});
+
+/**
+ * Riporta una Pull Request pronta allo stato di bozza
+ *
+ * Possono l'autore e chi ha `write`. Le approvazioni gia' date restano registrate. Una PR gia' in bozza risponde 409 `already_draft`, una PR non aperta 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const markPullRequestDraft = <ThrowOnError extends boolean = false>(options: Options<MarkPullRequestDraftData, ThrowOnError>): RequestResult<MarkPullRequestDraftResponses, MarkPullRequestDraftErrors, ThrowOnError> => (options.client ?? client).post<MarkPullRequestDraftResponses, MarkPullRequestDraftErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/draft',
+    ...options
+});
+
+/**
+ * Chiude una Pull Request senza unirla
+ *
+ * Possono l'autore e chi ha `write`. Chiudere non elimina il branch (PR6). Una PR gia' chiusa o unita risponde 409 (`already_closed`, `already_merged`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const closePullRequest = <ThrowOnError extends boolean = false>(options: Options<ClosePullRequestData, ThrowOnError>): RequestResult<ClosePullRequestResponses, ClosePullRequestErrors, ThrowOnError> => (options.client ?? client).post<ClosePullRequestResponses, ClosePullRequestErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/close',
+    ...options
+});
+
+/**
+ * Riapre una Pull Request chiusa
+ *
+ * Possono l'autore e chi ha `write`. Si riapre solo se i due branch esistono ancora (PR6): altrimenti 409 `branch_missing`. Una PR unita e' definitiva (409 `already_merged`), una gia' aperta 409 `already_open`. Se esiste un'altra PR aperta con la stessa coppia di branch: 409 `already_exists`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const reopenPullRequest = <ThrowOnError extends boolean = false>(options: Options<ReopenPullRequestData, ThrowOnError>): RequestResult<ReopenPullRequestResponses, ReopenPullRequestErrors, ThrowOnError> => (options.client ?? client).post<ReopenPullRequestResponses, ReopenPullRequestErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/reopen',
+    ...options
+});
+
+/**
+ * Commit della Pull Request
+ *
+ * I commit del branch di origine non ancora nel branch di destinazione (quelli di `base..head`), dal piu' recente, nella stessa forma di `getRepositoryCommits` (limite di 100 per pagina). Per una PR unita sono quelli che il merge ha portato. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const listPullRequestCommits = <ThrowOnError extends boolean = false>(options: Options<ListPullRequestCommitsData, ThrowOnError>): RequestResult<ListPullRequestCommitsResponses, ListPullRequestCommitsErrors, ThrowOnError> => (options.client ?? client).get<ListPullRequestCommitsResponses, ListPullRequestCommitsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/commits',
+    ...options
+});
+
+/**
+ * File modificati dalla Pull Request, con il diff (Files changed)
+ *
+ * Diff fra il merge-base e la punta del branch di origine, per file, con gli stessi limiti progressivi di `getRepositoryCommit` (B6, costanti in `x-code-read-limits`). `viewedPaths` elenca i file che il chiamante ha marcato Viewed (PR12, personale: una sessione senza utente non ne ha). `path` restringe a quel file; `ignoreWhitespace` usa `git diff -w`. Per una PR unita il diff e' quello congelato al merge. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const listPullRequestFiles = <ThrowOnError extends boolean = false>(options: Options<ListPullRequestFilesData, ThrowOnError>): RequestResult<ListPullRequestFilesResponses, ListPullRequestFilesErrors, ThrowOnError> => (options.client ?? client).get<ListPullRequestFilesResponses, ListPullRequestFilesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/files',
+    ...options
+});
+
+/**
+ * Marca o smarca un file come Viewed
+ *
+ * La casella Viewed di *Files changed* e' personale (PR12): vale per chi chiama, non per gli altri, e si legge in `viewedPaths` di `listPullRequestFiles`. Serve poter leggere il repo; lo scope `write:resource` e' richiesto perche' scrive uno stato dell'utente. `path` deve essere un file della PR (422 altrimenti). Idempotente. Una PR unita o chiusa accetta comunque la casella. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const setPullRequestFileViewed = <ThrowOnError extends boolean = false>(options: Options<SetPullRequestFileViewedData, ThrowOnError>): RequestResult<SetPullRequestFileViewedResponses, SetPullRequestFileViewedErrors, ThrowOnError> => (options.client ?? client).put<SetPullRequestFileViewedResponses, SetPullRequestFileViewedErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/viewed',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Dice se la Pull Request si puo' unire e perche' no
+ *
+ * Stato di merge calcolato sui commit attuali (PR7): conflitti con l'elenco dei file in conflitto, quanti commit e' indietro rispetto alla destinazione (una PR solo «indietro» si unisce, niente «Update branch»), e i blocchi di PR4, PR6 e PR9 (bozza, approvazioni mancanti, modifiche richieste, stati obbligatori). `allowedMethods` sono i metodi di merge che l'impostazione del repo ammette (PR3). Lo stesso stato e' usato da `mergePullRequest`. Se il calcolo non e' ancora pronto `state` e' `unknown` e va richiesto di nuovo. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const getPullRequestMergeability = <ThrowOnError extends boolean = false>(options: Options<GetPullRequestMergeabilityData, ThrowOnError>): RequestResult<GetPullRequestMergeabilityResponses, GetPullRequestMergeabilityErrors, ThrowOnError> => (options.client ?? client).get<GetPullRequestMergeabilityResponses, GetPullRequestMergeabilityErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/mergeability',
+    ...options
+});
+
+/**
+ * Unisce la Pull Request nel branch di destinazione
+ *
+ * Serve `write`, agenti compresi (PR3), nel rispetto di PR4 e PR9. `method` e' `merge` (merge commit) o `squash`, fra quelli ammessi dal repo; il rebase non esiste. Rifiuta con 409: `draft`, `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4: contano solo le approvazioni di persone con `write` date sull'ultimo commit), `status_required` (PR9), `method_not_allowed`, `head_changed` (se `expectedHeadSha` non e' piu' la punta). `getPullRequestMergeability` anticipa tutti questi motivi. Dopo il merge sul branch principale le issues collegate dalle parole chiave si chiudono come *completate* (PR8), con qualunque metodo. `deleteBranch` elimina il branch di origine subito dopo (PR3), come `deletePullRequestBranch`. L'unione e' definitiva. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const mergePullRequest = <ThrowOnError extends boolean = false>(options: Options<MergePullRequestData, ThrowOnError>): RequestResult<MergePullRequestResponses, MergePullRequestErrors, ThrowOnError> => (options.client ?? client).post<MergePullRequestResponses, MergePullRequestErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/merge',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina il branch di origine di una Pull Request unita (Delete branch)
+ *
+ * Serve `write` e una PR unita (409 `not_merged` altrimenti). Il branch di origine non puo' essere il branch principale ne' avere altre PR aperte (409 `branch_in_use`). Un branch gia' eliminato risponde 404 `branch_not_found`. Con `deleteBranchOnMerge` attivo (PR3) lo fa il merge. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const deletePullRequestBranch = <ThrowOnError extends boolean = false>(options: Options<DeletePullRequestBranchData, ThrowOnError>): RequestResult<DeletePullRequestBranchResponses, DeletePullRequestBranchErrors, ThrowOnError> => (options.client ?? client).delete<DeletePullRequestBranchResponses, DeletePullRequestBranchErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/branch',
+    ...options
+});
+
+/**
+ * Elenca le review di una Pull Request
+ *
+ * Review inviate, dalla meno recente. Ogni review dice se la sua approvazione e' ancora valida (`stale`, PR4) e se conta per il merge (`countsAsApproval`, PR2: non conta se e' di un agente). Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const listPullRequestReviews = <ThrowOnError extends boolean = false>(options: Options<ListPullRequestReviewsData, ThrowOnError>): RequestResult<ListPullRequestReviewsResponses, ListPullRequestReviewsErrors, ThrowOnError> => (options.client ?? client).get<ListPullRequestReviewsResponses, ListPullRequestReviewsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/reviews',
+    ...options
+});
+
+/**
+ * Invia una review (Comment, Approve o Request changes)
+ *
+ * Raccoglie in un invio unico i commenti sulle righe (`comments`) e un testo generale (PR5). `event` e' `comment`, `approve` o `request_changes`. `approve` e `request_changes` richiedono `write` e non valgono sulla propria PR (403 `own_pull_request`, PR2); un agente le puo' inviare, ma la sua approvazione si vede e non conta (`countsAsApproval` false). `comment` lo puo' inviare chi legge il repo. `request_changes` vuole `body` o almeno un commento (422). Le righe commentate devono stare nel diff (422 `line_not_in_diff`). Se `commitSha` non e' piu' la punta della PR: 409 `head_changed`. Una bozza si puo' commentare ma non approvare ne' chiedere modifiche (409 `draft`, PR6). Una PR non aperta risponde 409 `not_open`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+ *
+ */
+export const createPullRequestReview = <ThrowOnError extends boolean = false>(options: Options<CreatePullRequestReviewData, ThrowOnError>): RequestResult<CreatePullRequestReviewResponses, CreatePullRequestReviewErrors, ThrowOnError> => (options.client ?? client).post<CreatePullRequestReviewResponses, CreatePullRequestReviewErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/reviews',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca i commenti di una Pull Request, generali e sulle righe
+ *
+ * Elenco piatto, dal meno recente: commenti della conversazione (senza `path`) e commenti sulle righe del diff (PR5). Per i commenti sulle righe raggruppati in conversazioni risolvibili c'e' `listPullRequestThreads`. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const listPullRequestComments = <ThrowOnError extends boolean = false>(options: Options<ListPullRequestCommentsData, ThrowOnError>): RequestResult<ListPullRequestCommentsResponses, ListPullRequestCommentsErrors, ThrowOnError> => (options.client ?? client).get<ListPullRequestCommentsResponses, ListPullRequestCommentsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments',
+    ...options
+});
+
+/**
+ * Aggiunge un commento generale, sulle righe o una risposta
+ *
+ * Tre forme. Senza `path`: commento della conversazione. Con `path`, `side` e `line` (e `startLine` per un gruppo di righe): commento su una riga o su un gruppo di righe del diff (PR5), che apre una conversazione. Con `inReplyTo`: risposta nella conversazione del commento indicato. Un blocco `suggestion` nel testo si mostra come diff, senza «Applica» (PR5). Un commento sulle righe fuori dal diff risponde 422 `line_not_in_diff`. Chi legge il repo commenta; le righe vogliono `commitSha` uguale alla punta della PR (409 `head_changed` altrimenti). Una PR chiusa o unita accetta i commenti generali ma non quelli sulle righe (409 `not_open`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413 (`body_too_large`, 1 MiB).
+ *
+ */
+export const createPullRequestComment = <ThrowOnError extends boolean = false>(options: Options<CreatePullRequestCommentData, ThrowOnError>): RequestResult<CreatePullRequestCommentResponses, CreatePullRequestCommentErrors, ThrowOnError> => (options.client ?? client).post<CreatePullRequestCommentResponses, CreatePullRequestCommentErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elimina un commento
+ *
+ * Possono l'autore del commento e chi ha `admin` sul repo. Se il commento apre una conversazione con risposte, resta il segnaposto `deleted` e le risposte restano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const deletePullRequestComment = <ThrowOnError extends boolean = false>(options: Options<DeletePullRequestCommentData, ThrowOnError>): RequestResult<DeletePullRequestCommentResponses, DeletePullRequestCommentErrors, ThrowOnError> => (options.client ?? client).delete<DeletePullRequestCommentResponses, DeletePullRequestCommentErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments/{commentId}',
+    ...options
+});
+
+/**
+ * Modifica il testo di un commento
+ *
+ * Solo l'autore modifica il proprio commento (403 per chiunque altro). Compare `edited`. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10). Testo oltre il limite: 413.
+ *
+ */
+export const updatePullRequestComment = <ThrowOnError extends boolean = false>(options: Options<UpdatePullRequestCommentData, ThrowOnError>): RequestResult<UpdatePullRequestCommentResponses, UpdatePullRequestCommentErrors, ThrowOnError> => (options.client ?? client).patch<UpdatePullRequestCommentResponses, UpdatePullRequestCommentErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments/{commentId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Elenca le conversazioni sulle righe, risolte e aperte
+ *
+ * Le conversazioni (PR5) raggruppano un commento sulle righe e le sue risposte. `resolved` e' il segno «risolta»; `outdated` dice che le righe commentate sono cambiate dopo il commento. Il filtro `resolved` restringe l'elenco. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const listPullRequestThreads = <ThrowOnError extends boolean = false>(options: Options<ListPullRequestThreadsData, ThrowOnError>): RequestResult<ListPullRequestThreadsResponses, ListPullRequestThreadsErrors, ThrowOnError> => (options.client ?? client).get<ListPullRequestThreadsResponses, ListPullRequestThreadsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/threads',
+    ...options
+});
+
+/**
+ * Segna una conversazione come risolta
+ *
+ * Possono l'autore della PR e chi ha `write` (PR5). Idempotente: una conversazione gia' risolta risponde 200 con lo stato attuale. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const resolvePullRequestThread = <ThrowOnError extends boolean = false>(options: Options<ResolvePullRequestThreadData, ThrowOnError>): RequestResult<ResolvePullRequestThreadResponses, ResolvePullRequestThreadErrors, ThrowOnError> => (options.client ?? client).post<ResolvePullRequestThreadResponses, ResolvePullRequestThreadErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve',
+    ...options
+});
+
+/**
+ * Riapre una conversazione risolta
+ *
+ * Come `resolvePullRequestThread`: l'autore della PR e chi ha `write`. Idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const unresolvePullRequestThread = <ThrowOnError extends boolean = false>(options: Options<UnresolvePullRequestThreadData, ThrowOnError>): RequestResult<UnresolvePullRequestThreadResponses, UnresolvePullRequestThreadErrors, ThrowOnError> => (options.client ?? client).post<UnresolvePullRequestThreadResponses, UnresolvePullRequestThreadErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve',
+    ...options
+});
+
+/**
+ * Chiede (o richiede di nuovo) la review a una o piu' persone
+ *
+ * Possono l'autore della PR e chi ha `write` (PR12). I revisori hanno almeno `read` sul repo (422 `reviewer_no_access`, `details.fields.reviewers`), sono al massimo 10 per chiamata e non possono essere l'autore. Rifare la richiesta a chi ha gia' recensito e' la «nuova richiesta di review»: la riporta fra i revisori richiesti. Una bozza non chiede review (409 `draft`, PR6); una PR non aperta 409 `not_open`. I revisori richiesti ricevono la notifica (PR11) e seguono la PR. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const requestPullRequestReviewers = <ThrowOnError extends boolean = false>(options: Options<RequestPullRequestReviewersData, ThrowOnError>): RequestResult<RequestPullRequestReviewersResponses, RequestPullRequestReviewersErrors, ThrowOnError> => (options.client ?? client).post<RequestPullRequestReviewersResponses, RequestPullRequestReviewersErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/requested-reviewers',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Toglie una richiesta di review
+ *
+ * Possono l'autore della PR e chi ha `write`. Non cancella la review gia' inviata, toglie solo la richiesta pendente. Una persona che non era fra i revisori richiesti risponde 404. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const removePullRequestReviewer = <ThrowOnError extends boolean = false>(options: Options<RemovePullRequestReviewerData, ThrowOnError>): RequestResult<RemovePullRequestReviewerResponses, RemovePullRequestReviewerErrors, ThrowOnError> => (options.client ?? client).delete<RemovePullRequestReviewerResponses, RemovePullRequestReviewerErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username}',
+    ...options
+});
+
+/**
+ * Storico degli stati di un commit
+ *
+ * Tutti gli stati inviati per il commit (PR9), dal piu' recente, anche piu' d'uno per contesto. Lo stato che conta per un contesto e' l'ultimo; la sintesi e' in `getCombinedCommitStatus`. `sha` completo o prefisso univoco di almeno 7 caratteri (400 se non e' esadecimale, 404 se non esiste). Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const listCommitStatuses = <ThrowOnError extends boolean = false>(options: Options<ListCommitStatusesData, ThrowOnError>): RequestResult<ListCommitStatusesResponses, ListCommitStatusesErrors, ThrowOnError> => (options.client ?? client).get<ListCommitStatusesResponses, ListCommitStatusesErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/commits/{sha}/statuses',
+    ...options
+});
+
+/**
+ * Invia lo stato di un commit da un sistema esterno
+ *
+ * Serve `write` (PR9). Lo stato e' `pending`, `success`, `failure` o `error`, per un `context` (default `default`); un nuovo stato dello stesso contesto sostituisce il precedente nella sintesi e lascia lo storico. Il commit deve esistere nel repo (404). Gli stati compaiono nella PR, nella vista del commit, nell'API e in `gs`, e quelli dei contesti obbligatori (PR4) bloccano il merge. La CI di v2 usera' la stessa operazione. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const createCommitStatus = <ThrowOnError extends boolean = false>(options: Options<CreateCommitStatusData, ThrowOnError>): RequestResult<CreateCommitStatusResponses, CreateCommitStatusErrors, ThrowOnError> => (options.client ?? client).post<CreateCommitStatusResponses, CreateCommitStatusErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/commits/{sha}/statuses',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Stato complessivo di un commit
+ *
+ * Per ogni contesto vale l'ultimo stato (PR9). `state` e' `failure` o `error` se almeno un contesto lo e', altrimenti `pending` se almeno uno e' in corso, altrimenti `success`; `none` se non ci sono stati. `requiredContexts` sono i contesti obbligatori del branch principale (PR4) con il loro ultimo stato, `null` se non e' mai arrivato. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const getCombinedCommitStatus = <ThrowOnError extends boolean = false>(options: Options<GetCombinedCommitStatusData, ThrowOnError>): RequestResult<GetCombinedCommitStatusResponses, GetCombinedCommitStatusErrors, ThrowOnError> => (options.client ?? client).get<GetCombinedCommitStatusResponses, GetCombinedCommitStatusErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/commits/{sha}/status',
+    ...options
+});
+
+/**
+ * Legge le impostazioni «Branches & merge» del repo
+ *
+ * Metodi di merge ammessi, eliminazione automatica del branch (PR3) e protezione «Richiedi una Pull Request» del branch principale (PR4). Le legge chi puo' leggere il repo (servono per proporre il metodo di merge); le modifica solo `admin`. Un repo che l'utente non puo' leggere risponde 404.
+ *
+ */
+export const getBranchSettings = <ThrowOnError extends boolean = false>(options: Options<GetBranchSettingsData, ThrowOnError>): RequestResult<GetBranchSettingsResponses, GetBranchSettingsErrors, ThrowOnError> => (options.client ?? client).get<GetBranchSettingsResponses, GetBranchSettingsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/branch-settings',
+    ...options
+});
+
+/**
+ * Modifica le impostazioni «Branches & merge»
+ *
+ * Serve il ruolo `admin` (403 altrimenti). Almeno un metodo di merge resta ammesso (422 `no_merge_method`) e `defaultMergeMethod` deve essere ammesso. Con `requirePullRequest` acceso nessun push diretto sul branch principale, `admin` compresi (PR4); i contesti di `requiredStatusContexts` diventano obbligatori per il merge (PR9). Gli stati e le approvazioni gia' date non cambiano. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+ *
+ */
+export const updateBranchSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateBranchSettingsData, ThrowOnError>): RequestResult<UpdateBranchSettingsResponses, UpdateBranchSettingsErrors, ThrowOnError> => (options.client ?? client).patch<UpdateBranchSettingsResponses, UpdateBranchSettingsErrors, ThrowOnError>({
+    security: [{
+            key: 'bearerAuth',
+            scheme: 'bearer',
+            type: 'http'
+        }, {
+            in: 'cookie',
+            name: 'gst_session',
+            type: 'apiKey'
+        }],
+    url: '/repos/{owner}/{repo}/branch-settings',
     ...options,
     headers: {
         'Content-Type': 'application/json',
