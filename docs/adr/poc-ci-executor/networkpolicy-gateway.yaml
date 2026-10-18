@@ -1,0 +1,11 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ci-job-to-gateway, namespace: gitstack-ci-jobs}
+spec:
+  podSelector: {matchLabels: {gitstack.io/ci-job: "true"}}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gitstack}}
+          podSelector: {matchLabels: {app: peer}}
+      ports: [{protocol: TCP, port: 8080}]

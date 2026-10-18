@@ -1,0 +1,68 @@
+# Prova di fattibilita' ADR 0001: spazio separato, PriorityClass, NetworkPolicy,
+# pod del job senza privilegi. Il pod di un job vero lo crea lo scheduler (core);
+# qui e' scritto a mano. "peer" e' un servizio finto di GitStack in un altro namespace.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: gitstack-services}
+value: 1000000
+description: Servizi di GitStack
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: gitstack-apps}
+value: 100000
+description: App ospitate
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: {name: gitstack-ci-job}
+value: 1000
+preemptionPolicy: Never
+description: Job di CI, sempre per ultimi
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitstack
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitstack-ci-jobs
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: peer
+  namespace: gitstack
+  labels: {app: peer}
+spec:
+  priorityClassName: gitstack-services
+  containers:
+    - name: peer
+      image: gitstack-ci-poc:0
+      imagePullPolicy: Never
+      command: [node, -e, "require('http').createServer((q,r)=>r.end('peer')).listen(8080)"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: ci-job, namespace: gitstack-ci-jobs}
+automountServiceAccountToken: false
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ci-job-egress, namespace: gitstack-ci-jobs}
+spec:
+  podSelector: {matchLabels: {gitstack.io/ci-job: "true"}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    # Solo Internet per indirizzo: pod CIDR, service CIDR e rete dei nodi esclusi.
+    # Nessun DNS del cluster: i nomi li risolve un resolver dedicato o il proxy di egress (vedi ADR).
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16]

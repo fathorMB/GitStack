@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: job-poc
+  namespace: gitstack-ci-jobs
+  labels:
+    gitstack.io/ci-job: "true"
+spec:
+  priorityClassName: gitstack-ci-job
+  serviceAccountName: ci-job
+  automountServiceAccountToken: false
+  enableServiceLinks: true
+  restartPolicy: Never
+  activeDeadlineSeconds: 3600
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile: {type: RuntimeDefault}
+  # La NetworkPolicy viene applicata dal CNI in modo asincrono: senza questo cancello il
+  # job parte prima delle regole (visto su k3d, kube-router). Il cancello e' fail-closed:
+  # il job parte solo dopo che l'API server del cluster risulta irraggiungibile.
+  initContainers:
+    - name: gate
+      image: gitstack-ci-poc:0
+      imagePullPolicy: Never
+      command: [bash, -ec]
+      args:
+        - |
+          for i in $(seq 90); do
+            if ! timeout 2 bash -c "exec 3<>/dev/tcp/${KUBERNETES_SERVICE_HOST}/${KUBERNETES_SERVICE_PORT}" 2>/dev/null; then
+              echo "gate: rete del cluster chiusa dopo ${i} tentativi"; exit 0
+            fi
+            sleep 1
+          done
+          echo "gate: la NetworkPolicy non e' attiva, il job non parte"; exit 1
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: {drop: [ALL]}
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
+  containers:
+    - name: job
+      image: gitstack-ci-poc:0
+      imagePullPolicy: Never
+      workingDir: /work
+      command: [bash, -ec]
+      args:
+        - |
+          tar -xzmf /in/workspace.tgz --no-same-owner -C /work
+          git init -q -b main . && git add -A && git -c user.name=ci -c user.email=ci@gitstack.local commit -qm poc
+          act push -W .github/workflows/poc.yml -P ubuntu-24.04=-self-hosted --pull=false --no-cache-server --bind
+      env:
+        - {name: HOME, value: /tmp/home}
+        - {name: CLUSTER_PEER_IP, value: "@PEER@"}
+        - {name: ACT_LOG_NO_COLOR, value: "1"}
+        - {name: GIT_CONFIG_COUNT, value: "1"}
+        - {name: GIT_CONFIG_KEY_0, value: safe.directory}
+        - {name: GIT_CONFIG_VALUE_0, value: "*"}
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: {drop: [ALL]}
+      resources:
+        requests: {cpu: 500m, memory: 512Mi, ephemeral-storage: 1Gi}
+        limits: {cpu: "2", memory: 4Gi, ephemeral-storage: 20Gi}
+      volumeMounts:
+        - {name: work, mountPath: /work}
+        - {name: tmp, mountPath: /tmp}
+        - {name: in, mountPath: /in, readOnly: true}
+  volumes:
+    - {name: work, emptyDir: {}}
+    - {name: tmp, emptyDir: {}}
+    - {name: in, configMap: {name: workspace}}

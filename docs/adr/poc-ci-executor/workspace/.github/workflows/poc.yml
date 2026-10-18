@@ -1,0 +1,19 @@
+name: poc-due-passi
+on: push
+jobs:
+  prova:
+    runs-on: ubuntu-24.04
+    steps:
+      # Equivalente di actions/checkout (la rete del job non raggiunge il cluster e
+      # la prova non scarica action): in modalita' host il workspace di act parte vuoto.
+      - name: Checkout (copia locale)
+        run: cp -a /work/.github "$GITHUB_WORKSPACE/.github"
+      - name: Passo 1 - run con output
+        id: uno
+        run: |
+          echo "uid=$(id -u) gid=$(id -g) host=$(hostname)"
+          echo "valore=ciao-da-gitstack" >> "$GITHUB_OUTPUT"
+      - name: Passo 2 - action locale e verifica della rete
+        uses: ./.github/actions/verifica
+        with:
+          atteso: ${{ steps.uno.outputs.valore }}
