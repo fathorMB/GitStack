@@ -163,7 +163,7 @@ func (s *Store) purgeOne(ctx context.Context, now time.Time, skip []uuid.UUID, c
 // se il nome è tenuto da un repo attivo o da nessuno.
 func (s *Store) GetDeletedRepoByName(ctx context.Context, ownerType string, ownerID uuid.UUID, name string) (Repo, error) {
 	row := s.pool.QueryRow(ctx, `SELECT `+repoCols+` FROM core.repositories r
-		WHERE r.owner_type = $1 AND r.owner_id = $2 AND r.name = $3 AND r.deleted_at IS NOT NULL`, ownerType, ownerID, name)
+		WHERE r.owner_type = $1 AND r.owner_id = $2 AND lower(r.name) = lower($3) AND r.deleted_at IS NOT NULL`, ownerType, ownerID, name)
 	repo, err := scanRepo(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Repo{}, ErrNotFound

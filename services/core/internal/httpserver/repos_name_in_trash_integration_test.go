@@ -96,6 +96,14 @@ func TestRepos_CestinoDiOrganizzazione(t *testing.T) {
 		}
 	})
 
+	t.Run("creazione_con_maiuscole_diverse", func(t *testing.T) {
+		// L'unicità è su lower(name) (0013): SITE urta acme/site nel cestino.
+		c := decodeNameConflict(t, e.do(http.MethodPost, "/repos", "alice", `{"owner":"acme","name":"SITE"}`))
+		if c.Error.Code != "name_in_trash" || c.Error.Details["repoId"] != orgID.String() || c.Error.Details["owner"] != "acme" {
+			t.Fatalf("maiuscole diverse: %+v", c.Error)
+		}
+	})
+
 	t.Run("ripristino_dal_link_e_poi_conflict", func(t *testing.T) {
 		e.want(e.do(http.MethodPost, "/repos/deleted/"+orgID.String()+"/restore", "alice", ""), http.StatusOK)
 		c := decodeNameConflict(t, e.do(http.MethodPost, "/repos", "alice", `{"owner":"acme","name":"site"}`))
