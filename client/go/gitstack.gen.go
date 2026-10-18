@@ -1134,6 +1134,45 @@ func (e PullMirrorState) Valid() bool {
 	}
 }
 
+// Defines values for PullRequestEventType.
+const (
+	PullRequestEventTypeClosed           PullRequestEventType = "closed"
+	PullRequestEventTypeConvertedToDraft PullRequestEventType = "converted_to_draft"
+	PullRequestEventTypeEdited           PullRequestEventType = "edited"
+	PullRequestEventTypeMerged           PullRequestEventType = "merged"
+	PullRequestEventTypeOpened           PullRequestEventType = "opened"
+	PullRequestEventTypeReadyForReview   PullRequestEventType = "ready_for_review"
+	PullRequestEventTypeRenamed          PullRequestEventType = "renamed"
+	PullRequestEventTypeReopened         PullRequestEventType = "reopened"
+	PullRequestEventTypeRetargeted       PullRequestEventType = "retargeted"
+)
+
+// Valid indicates whether the value is a known member of the PullRequestEventType enum.
+func (e PullRequestEventType) Valid() bool {
+	switch e {
+	case PullRequestEventTypeClosed:
+		return true
+	case PullRequestEventTypeConvertedToDraft:
+		return true
+	case PullRequestEventTypeEdited:
+		return true
+	case PullRequestEventTypeMerged:
+		return true
+	case PullRequestEventTypeOpened:
+		return true
+	case PullRequestEventTypeReadyForReview:
+		return true
+	case PullRequestEventTypeRenamed:
+		return true
+	case PullRequestEventTypeReopened:
+		return true
+	case PullRequestEventTypeRetargeted:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PullRequestMergeabilityState.
 const (
 	PullRequestMergeabilityStateBlocked   PullRequestMergeabilityState = "blocked"
@@ -4164,6 +4203,29 @@ type PullRequestCommentList struct {
 	Total   int                  `json:"total"`
 }
 
+// PullRequestEvent defines model for PullRequestEvent.
+type PullRequestEvent struct {
+	// Actor Assente per gli eventi di sistema.
+	Actor     *IssueUser `json:"actor,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+
+	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+	Data *map[string]interface{} `json:"data,omitempty"`
+	Id   openapi_types.UUID      `json:"id"`
+	Type PullRequestEventType    `json:"type"`
+}
+
+// PullRequestEventType defines model for PullRequestEvent.Type.
+type PullRequestEventType string
+
+// PullRequestEventList defines model for PullRequestEventList.
+type PullRequestEventList struct {
+	Items   []PullRequestEvent `json:"items"`
+	Page    int                `json:"page"`
+	PerPage int                `json:"perPage"`
+	Total   int                `json:"total"`
+}
+
 // PullRequestFiles defines model for PullRequestFiles.
 type PullRequestFiles struct {
 	Additions int `json:"additions"`
@@ -6092,6 +6154,12 @@ type ListPullRequestCommitsParams struct {
 
 	// PerPage Commit per pagina (default 30, massimo 100).
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestEventsParams defines parameters for ListPullRequestEvents.
+type ListPullRequestEventsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
 // ListPullRequestFilesParams defines parameters for ListPullRequestFiles.
@@ -8274,6 +8342,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
 	MarkPullRequestDraft(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequestEvents Cronologia degli eventi della Pull Request
+	//
+	// Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge. Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404.
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/events (the `ListPullRequestEvents` operationId).
+	ListPullRequestEvents(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPullRequestFiles File modificati dalla Pull Request, con il diff (Files changed)
 	//
@@ -12833,6 +12908,23 @@ func (c *Client) ListPullRequestCommits(ctx context.Context, owner RepoOwnerPara
 // Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
 func (c *Client) MarkPullRequestDraft(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMarkPullRequestDraftRequest(c.Server, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPullRequestEvents Cronologia degli eventi della Pull Request
+//
+// Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge. Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404.
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/events (the `ListPullRequestEvents` operationId).
+func (c *Client) ListPullRequestEvents(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestEventsRequest(c.Server, owner, repo, number, params)
 	if err != nil {
 		return nil, err
 	}
@@ -23684,6 +23776,93 @@ func NewMarkPullRequestDraftRequest(server string, owner RepoOwnerParam, repo Re
 	return req, nil
 }
 
+// NewListPullRequestEventsRequest constructs an http.Request for the ListPullRequestEvents method
+func NewListPullRequestEventsRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestEventsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "owner", owner, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "repo", repo, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "number", number, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls/%s/events", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "perPage", *params.PerPage, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListPullRequestFilesRequest constructs an http.Request for the ListPullRequestFiles method
 func NewListPullRequestFilesRequest(server string, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestFilesParams) (*http.Request, error) {
 	var err error
@@ -28684,6 +28863,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /repos/{owner}/{repo}/pulls/{number}/draft (the `MarkPullRequestDraft` operationId).
 	MarkPullRequestDraftWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, reqEditors ...RequestEditorFn) (*MarkPullRequestDraftResponse, error)
+
+	// ListPullRequestEventsWithResponse Cronologia degli eventi della Pull Request
+	//
+	// Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge. Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/events (the `ListPullRequestEvents` operationId).
+	ListPullRequestEventsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestEventsParams, reqEditors ...RequestEditorFn) (*ListPullRequestEventsResponse, error)
 
 	// ListPullRequestFilesWithResponse File modificati dalla Pull Request, con il diff (Files changed)
 	//
@@ -42299,6 +42487,82 @@ func (r MarkPullRequestDraftResponse) ContentType() string {
 	return ""
 }
 
+type ListPullRequestEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PullRequestEventList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPullRequestEventsResponse) GetJSON200() *PullRequestEventList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListPullRequestEventsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListPullRequestEventsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListPullRequestEventsResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListPullRequestEventsResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListPullRequestEventsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPullRequestEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPullRequestEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListPullRequestFilesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -49877,6 +50141,21 @@ func (c *ClientWithResponses) MarkPullRequestDraftWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseMarkPullRequestDraftResponse(rsp)
+}
+
+// ListPullRequestEventsWithResponse Cronologia degli eventi della Pull Request
+//
+// Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge. Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo' leggere, eliminato o inesistente risponde 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repos/{owner}/{repo}/pulls/{number}/events (the `ListPullRequestEvents` operationId).
+func (c *ClientWithResponses) ListPullRequestEventsWithResponse(ctx context.Context, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params *ListPullRequestEventsParams, reqEditors ...RequestEditorFn) (*ListPullRequestEventsResponse, error) {
+	rsp, err := c.ListPullRequestEvents(ctx, owner, repo, number, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestEventsResponse(rsp)
 }
 
 // ListPullRequestFilesWithResponse File modificati dalla Pull Request, con il diff (Files changed)
@@ -61592,6 +61871,67 @@ func ParseMarkPullRequestDraftResponse(rsp *http.Response) (*MarkPullRequestDraf
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestEventsResponse parses an HTTP response from a ListPullRequestEventsWithResponse call
+func ParseListPullRequestEventsResponse(rsp *http.Response) (*ListPullRequestEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PullRequestEventList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest UnexpectedError

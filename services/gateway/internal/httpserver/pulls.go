@@ -129,3 +129,7 @@ func (s *apiServer) UnresolvePullRequestThread(w http.ResponseWriter, r *http.Re
 func (s *apiServer) SetPullRequestFileViewed(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
 	s.proxy.ServeHTTP(w, r)
 }
+
+func (s *apiServer) ListPullRequestEvents(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.ListPullRequestEventsParams) {
+	s.proxy.ServeHTTP(w, r)
+}

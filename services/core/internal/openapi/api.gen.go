@@ -936,6 +936,45 @@ func (e PullMirrorState) Valid() bool {
 	}
 }
 
+// Defines values for PullRequestEventType.
+const (
+	PullRequestEventTypeClosed           PullRequestEventType = "closed"
+	PullRequestEventTypeConvertedToDraft PullRequestEventType = "converted_to_draft"
+	PullRequestEventTypeEdited           PullRequestEventType = "edited"
+	PullRequestEventTypeMerged           PullRequestEventType = "merged"
+	PullRequestEventTypeOpened           PullRequestEventType = "opened"
+	PullRequestEventTypeReadyForReview   PullRequestEventType = "ready_for_review"
+	PullRequestEventTypeRenamed          PullRequestEventType = "renamed"
+	PullRequestEventTypeReopened         PullRequestEventType = "reopened"
+	PullRequestEventTypeRetargeted       PullRequestEventType = "retargeted"
+)
+
+// Valid indicates whether the value is a known member of the PullRequestEventType enum.
+func (e PullRequestEventType) Valid() bool {
+	switch e {
+	case PullRequestEventTypeClosed:
+		return true
+	case PullRequestEventTypeConvertedToDraft:
+		return true
+	case PullRequestEventTypeEdited:
+		return true
+	case PullRequestEventTypeMerged:
+		return true
+	case PullRequestEventTypeOpened:
+		return true
+	case PullRequestEventTypeReadyForReview:
+		return true
+	case PullRequestEventTypeRenamed:
+		return true
+	case PullRequestEventTypeReopened:
+		return true
+	case PullRequestEventTypeRetargeted:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PullRequestMergeabilityState.
 const (
 	PullRequestMergeabilityStateBlocked   PullRequestMergeabilityState = "blocked"
@@ -3377,6 +3416,29 @@ type PullRequestCommentList struct {
 	Total   int                  `json:"total"`
 }
 
+// PullRequestEvent defines model for PullRequestEvent.
+type PullRequestEvent struct {
+	// Actor Assente per gli eventi di sistema.
+	Actor     *IssueUser `json:"actor,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+
+	// Data Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+	Data *map[string]interface{} `json:"data,omitempty"`
+	Id   openapi_types.UUID      `json:"id"`
+	Type PullRequestEventType    `json:"type"`
+}
+
+// PullRequestEventType defines model for PullRequestEvent.Type.
+type PullRequestEventType string
+
+// PullRequestEventList defines model for PullRequestEventList.
+type PullRequestEventList struct {
+	Items   []PullRequestEvent `json:"items"`
+	Page    int                `json:"page"`
+	PerPage int                `json:"perPage"`
+	Total   int                `json:"total"`
+}
+
 // PullRequestFiles defines model for PullRequestFiles.
 type PullRequestFiles struct {
 	Additions int `json:"additions"`
@@ -4803,6 +4865,12 @@ type ListPullRequestCommitsParams struct {
 	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListPullRequestEventsParams defines parameters for ListPullRequestEvents.
+type ListPullRequestEventsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // ListPullRequestFilesParams defines parameters for ListPullRequestFiles.
 type ListPullRequestFilesParams struct {
 	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
@@ -5360,6 +5428,9 @@ type ServerInterface interface {
 	// MarkPullRequestDraft Riporta una Pull Request pronta allo stato di bozza
 	// (POST /repos/{owner}/{repo}/pulls/{number}/draft)
 	MarkPullRequestDraft(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// ListPullRequestEvents Cronologia degli eventi della Pull Request
+	// (GET /repos/{owner}/{repo}/pulls/{number}/events)
+	ListPullRequestEvents(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestEventsParams)
 	// ListPullRequestFiles File modificati dalla Pull Request, con il diff (Files changed)
 	// (GET /repos/{owner}/{repo}/pulls/{number}/files)
 	ListPullRequestFiles(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestFilesParams)
@@ -10781,6 +10852,79 @@ func (siw *ServerInterfaceWrapper) MarkPullRequestDraft(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// ListPullRequestEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequestEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestEventsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequestEvents(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListPullRequestFiles operation middleware
 func (siw *ServerInterfaceWrapper) ListPullRequestFiles(w http.ResponseWriter, r *http.Request) {
 
@@ -12419,6 +12563,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/draft", wrapper.MarkPullRequestDraft)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/close", wrapper.ClosePullRequest)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/reopen", wrapper.ReopenPullRequest)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/events", wrapper.ListPullRequestEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/commits", wrapper.ListPullRequestCommits)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/files", wrapper.ListPullRequestFiles)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/viewed", wrapper.SetPullRequestFileViewed)
