@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Unità scritta dallo script di k3s con il vecchio INSTALL_K3S_EXEC (GIT-228).
@@ -79,7 +80,11 @@ type hardenRunner struct {
 	events     []string
 	failState  string // sottocomando systemctl che fallisce ("restart")
 	notEnabled bool   // `status` non dichiara la cifratura attiva
-	restarts   int
+	// statusErrors: quante prime chiamate a `status` escono con errore
+	// (k3s non ha ancora scritto le annotazioni del nodo, GIT-249).
+	statusErrors int
+	statusCalls  int
+	restarts     int
 
 	// Aggiornamento di k3s: lo script di installazione riscrive l'unità col
 	// nuovo K3sInstallExec e k3s riparte (come fa lo script vero).
@@ -136,6 +141,10 @@ func (r *hardenRunner) Run(ctx context.Context, env []string, name string, args 
 		if args[0] == "secrets-encrypt" {
 			r.events = append(r.events, "k3s "+strings.Join(args, " "))
 			if args[1] == "status" {
+				r.statusCalls++
+				if r.statusCalls <= r.statusErrors {
+					return []byte(`level=fatal msg="Error: see server log for details: Internal error occurred: secret-encrypt error ID 48327"`), errors.New("exit status 1")
+				}
 				if r.notEnabled || !r.k3sUpdated && r.installed != "" {
 					return []byte("Encryption Status: Disabled\n"), nil
 				}
@@ -307,6 +316,46 @@ func TestUpgrade_HardeningCifraturaNonAttiva_RipristinaUnita(t *testing.T) {
 		t.Error("rotate-keys senza cifratura attiva")
 	}
 	w.assertUntouched()
+}
+
+// `k3s secrets-encrypt status` esce con errore finché k3s non scrive le
+// annotazioni del nodo (homehub, 18/10, GIT-249): si riprova, non si torna
+// indietro.
+func TestUpgrade_HardeningStatusRiprovato(t *testing.T) {
+	w, r, unitPath, kc := newHardenWorld(t, oldUnit, 0o644)
+	r.statusErrors = 3
+	w.o.EncryptionStatusWait = 5 * time.Second
+	res, err := Run(context.Background(), w.o)
+	if err != nil || res.Outcome != Upgraded {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if r.statusCalls != 4 {
+		t.Errorf("chiamate a status: %d, attese 4", r.statusCalls)
+	}
+	if !slices.Contains(r.events, "k3s secrets-encrypt rotate-keys") {
+		t.Error("rotate-keys non eseguito")
+	}
+	if u := readFile(t, unitPath); !strings.Contains(u, "--secrets-encryption") {
+		t.Errorf("unità non indurita:\n%s", u)
+	}
+	assertKubeconfig600(t, kc)
+}
+
+// Se `status` non si riprende entro l'attesa, l'unità torna com'era.
+func TestUpgrade_HardeningStatusSempreInErrore_RipristinaUnita(t *testing.T) {
+	w, r, unitPath, _ := newHardenWorld(t, oldUnit, 0o644)
+	r.statusErrors = 1 << 20
+	w.o.EncryptionStatusWait = 100 * time.Millisecond
+	res, err := Run(context.Background(), w.o)
+	if err == nil || res.Outcome != Failed {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+	if readFile(t, unitPath) != oldUnit {
+		t.Error("unità non ripristinata")
+	}
+	if slices.Contains(r.events, "k3s secrets-encrypt rotate-keys") {
+		t.Error("rotate-keys senza cifratura verificata")
+	}
 }
 
 func TestUpgrade_UnitaNonRiconosciuta_Rifiutata(t *testing.T) {
