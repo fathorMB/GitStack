@@ -1266,6 +1266,15 @@ type PageParam = int
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
 
+// PullCommentIdParam defines model for PullCommentIdParam.
+type PullCommentIdParam = openapi_types.UUID
+
+// PullNumberParam defines model for PullNumberParam.
+type PullNumberParam = int64
+
+// PullThreadIdParam defines model for PullThreadIdParam.
+type PullThreadIdParam = openapi_types.UUID
+
 // RefAndPathParam defines model for RefAndPathParam.
 type RefAndPathParam = string
 

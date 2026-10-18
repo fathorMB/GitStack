@@ -198,6 +198,75 @@ func (e CodeUserKind) Valid() bool {
 	}
 }
 
+// Defines values for CombinedCommitStatusState.
+const (
+	CombinedCommitStatusStateError   CombinedCommitStatusState = "error"
+	CombinedCommitStatusStateFailure CombinedCommitStatusState = "failure"
+	CombinedCommitStatusStateNone    CombinedCommitStatusState = "none"
+	CombinedCommitStatusStatePending CombinedCommitStatusState = "pending"
+	CombinedCommitStatusStateSuccess CombinedCommitStatusState = "success"
+)
+
+// Valid indicates whether the value is a known member of the CombinedCommitStatusState enum.
+func (e CombinedCommitStatusState) Valid() bool {
+	switch e {
+	case CombinedCommitStatusStateError:
+		return true
+	case CombinedCommitStatusStateFailure:
+		return true
+	case CombinedCommitStatusStateNone:
+		return true
+	case CombinedCommitStatusStatePending:
+		return true
+	case CombinedCommitStatusStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CommitStatusState.
+const (
+	CommitStatusStateError   CommitStatusState = "error"
+	CommitStatusStateFailure CommitStatusState = "failure"
+	CommitStatusStatePending CommitStatusState = "pending"
+	CommitStatusStateSuccess CommitStatusState = "success"
+)
+
+// Valid indicates whether the value is a known member of the CommitStatusState enum.
+func (e CommitStatusState) Valid() bool {
+	switch e {
+	case CommitStatusStateError:
+		return true
+	case CommitStatusStateFailure:
+		return true
+	case CommitStatusStatePending:
+		return true
+	case CommitStatusStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DiffSide.
+const (
+	New DiffSide = "new"
+	Old DiffSide = "old"
+)
+
+// Valid indicates whether the value is a known member of the DiffSide enum.
+func (e DiffSide) Valid() bool {
+	switch e {
+	case New:
+		return true
+	case Old:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FileContentDisplay.
 const (
 	FileContentDisplayDownload  FileContentDisplay = "download"
@@ -585,6 +654,57 @@ func (e LicenseTemplate) Valid() bool {
 	}
 }
 
+// Defines values for MergeBlockerCode.
+const (
+	MergeBlockerCodeApprovalsRequired MergeBlockerCode = "approvals_required"
+	MergeBlockerCodeChangesRequested  MergeBlockerCode = "changes_requested"
+	MergeBlockerCodeConflicts         MergeBlockerCode = "conflicts"
+	MergeBlockerCodeDraft             MergeBlockerCode = "draft"
+	MergeBlockerCodeNotOpen           MergeBlockerCode = "not_open"
+	MergeBlockerCodeStatusFailed      MergeBlockerCode = "status_failed"
+	MergeBlockerCodeStatusRequired    MergeBlockerCode = "status_required"
+)
+
+// Valid indicates whether the value is a known member of the MergeBlockerCode enum.
+func (e MergeBlockerCode) Valid() bool {
+	switch e {
+	case MergeBlockerCodeApprovalsRequired:
+		return true
+	case MergeBlockerCodeChangesRequested:
+		return true
+	case MergeBlockerCodeConflicts:
+		return true
+	case MergeBlockerCodeDraft:
+		return true
+	case MergeBlockerCodeNotOpen:
+		return true
+	case MergeBlockerCodeStatusFailed:
+		return true
+	case MergeBlockerCodeStatusRequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MergeMethod.
+const (
+	Merge  MergeMethod = "merge"
+	Squash MergeMethod = "squash"
+)
+
+// Valid indicates whether the value is a known member of the MergeMethod enum.
+func (e MergeMethod) Valid() bool {
+	switch e {
+	case Merge:
+		return true
+	case Squash:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MilestoneState.
 const (
 	MilestoneStateClosed MilestoneState = "closed"
@@ -816,6 +936,51 @@ func (e PullMirrorState) Valid() bool {
 	}
 }
 
+// Defines values for PullRequestMergeabilityState.
+const (
+	PullRequestMergeabilityStateBlocked   PullRequestMergeabilityState = "blocked"
+	PullRequestMergeabilityStateConflicts PullRequestMergeabilityState = "conflicts"
+	PullRequestMergeabilityStateMergeable PullRequestMergeabilityState = "mergeable"
+	PullRequestMergeabilityStateUnknown   PullRequestMergeabilityState = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the PullRequestMergeabilityState enum.
+func (e PullRequestMergeabilityState) Valid() bool {
+	switch e {
+	case PullRequestMergeabilityStateBlocked:
+		return true
+	case PullRequestMergeabilityStateConflicts:
+		return true
+	case PullRequestMergeabilityStateMergeable:
+		return true
+	case PullRequestMergeabilityStateUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullRequestState.
+const (
+	PullRequestStateClosed PullRequestState = "closed"
+	PullRequestStateMerged PullRequestState = "merged"
+	PullRequestStateOpen   PullRequestState = "open"
+)
+
+// Valid indicates whether the value is a known member of the PullRequestState enum.
+func (e PullRequestState) Valid() bool {
+	switch e {
+	case PullRequestStateClosed:
+		return true
+	case PullRequestStateMerged:
+		return true
+	case PullRequestStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RepoMirrorRunOutcome.
 const (
 	RepoMirrorRunOutcomeBlocked  RepoMirrorRunOutcome = "blocked"
@@ -951,6 +1116,72 @@ func (e ResourceRole) Valid() bool {
 	}
 }
 
+// Defines values for ReviewDecision.
+const (
+	ReviewDecisionApproved         ReviewDecision = "approved"
+	ReviewDecisionChangesRequested ReviewDecision = "changes_requested"
+	ReviewDecisionNone             ReviewDecision = "none"
+	ReviewDecisionRequired         ReviewDecision = "required"
+)
+
+// Valid indicates whether the value is a known member of the ReviewDecision enum.
+func (e ReviewDecision) Valid() bool {
+	switch e {
+	case ReviewDecisionApproved:
+		return true
+	case ReviewDecisionChangesRequested:
+		return true
+	case ReviewDecisionNone:
+		return true
+	case ReviewDecisionRequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewEvent.
+const (
+	Approve        ReviewEvent = "approve"
+	Comment        ReviewEvent = "comment"
+	RequestChanges ReviewEvent = "request_changes"
+)
+
+// Valid indicates whether the value is a known member of the ReviewEvent enum.
+func (e ReviewEvent) Valid() bool {
+	switch e {
+	case Approve:
+		return true
+	case Comment:
+		return true
+	case RequestChanges:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReviewState.
+const (
+	ReviewStateApproved         ReviewState = "approved"
+	ReviewStateChangesRequested ReviewState = "changes_requested"
+	ReviewStateCommented        ReviewState = "commented"
+)
+
+// Valid indicates whether the value is a known member of the ReviewState enum.
+func (e ReviewState) Valid() bool {
+	switch e {
+	case ReviewStateApproved:
+		return true
+	case ReviewStateChangesRequested:
+		return true
+	case ReviewStateCommented:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TreeEntryType.
 const (
 	Dir       TreeEntryType = "dir"
@@ -1008,6 +1239,51 @@ func (e WebhookDisabledReason) Valid() bool {
 	}
 }
 
+// Defines values for WebhookCommitStatusPayloadAction.
+const (
+	WebhookCommitStatusPayloadActionCreated WebhookCommitStatusPayloadAction = "created"
+)
+
+// Valid indicates whether the value is a known member of the WebhookCommitStatusPayloadAction enum.
+func (e WebhookCommitStatusPayloadAction) Valid() bool {
+	switch e {
+	case WebhookCommitStatusPayloadActionCreated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookCommitStatusPayloadEvent.
+const (
+	WebhookCommitStatusPayloadEventCommitStatus WebhookCommitStatusPayloadEvent = "commit_status"
+)
+
+// Valid indicates whether the value is a known member of the WebhookCommitStatusPayloadEvent enum.
+func (e WebhookCommitStatusPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookCommitStatusPayloadEventCommitStatus:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookCommitStatusPayloadVersion.
+const (
+	WebhookCommitStatusPayloadVersionN1 WebhookCommitStatusPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookCommitStatusPayloadVersion enum.
+func (e WebhookCommitStatusPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookCommitStatusPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookDeliveryStatus.
 const (
 	WebhookDeliveryStatusFailed  WebhookDeliveryStatus = "failed"
@@ -1034,22 +1310,151 @@ func (e WebhookDeliveryStatus) Valid() bool {
 
 // Defines values for WebhookEvent.
 const (
-	WebhookEventIssueComment WebhookEvent = "issue_comment"
-	WebhookEventIssues       WebhookEvent = "issues"
-	WebhookEventPush         WebhookEvent = "push"
-	WebhookEventRepository   WebhookEvent = "repository"
+	WebhookEventCommitStatus      WebhookEvent = "commit_status"
+	WebhookEventIssueComment      WebhookEvent = "issue_comment"
+	WebhookEventIssues            WebhookEvent = "issues"
+	WebhookEventPullRequest       WebhookEvent = "pull_request"
+	WebhookEventPullRequestReview WebhookEvent = "pull_request_review"
+	WebhookEventPush              WebhookEvent = "push"
+	WebhookEventRepository        WebhookEvent = "repository"
 )
 
 // Valid indicates whether the value is a known member of the WebhookEvent enum.
 func (e WebhookEvent) Valid() bool {
 	switch e {
+	case WebhookEventCommitStatus:
+		return true
 	case WebhookEventIssueComment:
 		return true
 	case WebhookEventIssues:
 		return true
+	case WebhookEventPullRequest:
+		return true
+	case WebhookEventPullRequestReview:
+		return true
 	case WebhookEventPush:
 		return true
 	case WebhookEventRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestPayloadAction.
+const (
+	WebhookPullRequestPayloadActionClosed               WebhookPullRequestPayloadAction = "closed"
+	WebhookPullRequestPayloadActionConvertedToDraft     WebhookPullRequestPayloadAction = "converted_to_draft"
+	WebhookPullRequestPayloadActionEdited               WebhookPullRequestPayloadAction = "edited"
+	WebhookPullRequestPayloadActionMerged               WebhookPullRequestPayloadAction = "merged"
+	WebhookPullRequestPayloadActionOpened               WebhookPullRequestPayloadAction = "opened"
+	WebhookPullRequestPayloadActionReadyForReview       WebhookPullRequestPayloadAction = "ready_for_review"
+	WebhookPullRequestPayloadActionReopened             WebhookPullRequestPayloadAction = "reopened"
+	WebhookPullRequestPayloadActionReviewRequestRemoved WebhookPullRequestPayloadAction = "review_request_removed"
+	WebhookPullRequestPayloadActionReviewRequested      WebhookPullRequestPayloadAction = "review_requested"
+	WebhookPullRequestPayloadActionSynchronize          WebhookPullRequestPayloadAction = "synchronize"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestPayloadAction enum.
+func (e WebhookPullRequestPayloadAction) Valid() bool {
+	switch e {
+	case WebhookPullRequestPayloadActionClosed:
+		return true
+	case WebhookPullRequestPayloadActionConvertedToDraft:
+		return true
+	case WebhookPullRequestPayloadActionEdited:
+		return true
+	case WebhookPullRequestPayloadActionMerged:
+		return true
+	case WebhookPullRequestPayloadActionOpened:
+		return true
+	case WebhookPullRequestPayloadActionReadyForReview:
+		return true
+	case WebhookPullRequestPayloadActionReopened:
+		return true
+	case WebhookPullRequestPayloadActionReviewRequestRemoved:
+		return true
+	case WebhookPullRequestPayloadActionReviewRequested:
+		return true
+	case WebhookPullRequestPayloadActionSynchronize:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestPayloadEvent.
+const (
+	WebhookPullRequestPayloadEventPullRequest WebhookPullRequestPayloadEvent = "pull_request"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestPayloadEvent enum.
+func (e WebhookPullRequestPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookPullRequestPayloadEventPullRequest:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestPayloadVersion.
+const (
+	WebhookPullRequestPayloadVersionN1 WebhookPullRequestPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestPayloadVersion enum.
+func (e WebhookPullRequestPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookPullRequestPayloadVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestReviewPayloadAction.
+const (
+	Dismissed WebhookPullRequestReviewPayloadAction = "dismissed"
+	Submitted WebhookPullRequestReviewPayloadAction = "submitted"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestReviewPayloadAction enum.
+func (e WebhookPullRequestReviewPayloadAction) Valid() bool {
+	switch e {
+	case Dismissed:
+		return true
+	case Submitted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestReviewPayloadEvent.
+const (
+	WebhookPullRequestReviewPayloadEventPullRequestReview WebhookPullRequestReviewPayloadEvent = "pull_request_review"
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestReviewPayloadEvent enum.
+func (e WebhookPullRequestReviewPayloadEvent) Valid() bool {
+	switch e {
+	case WebhookPullRequestReviewPayloadEventPullRequestReview:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookPullRequestReviewPayloadVersion.
+const (
+	WebhookPullRequestReviewPayloadVersionN1 WebhookPullRequestReviewPayloadVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the WebhookPullRequestReviewPayloadVersion enum.
+func (e WebhookPullRequestReviewPayloadVersion) Valid() bool {
+	switch e {
+	case WebhookPullRequestReviewPayloadVersionN1:
 		return true
 	default:
 		return false
@@ -1068,6 +1473,24 @@ func (e WebhookScope) Valid() bool {
 	case Org:
 		return true
 	case Repo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WebhookSenderType.
+const (
+	WebhookSenderTypeAgent WebhookSenderType = "agent"
+	WebhookSenderTypeHuman WebhookSenderType = "human"
+)
+
+// Valid indicates whether the value is a known member of the WebhookSenderType enum.
+func (e WebhookSenderType) Valid() bool {
+	switch e {
+	case WebhookSenderTypeAgent:
+		return true
+	case WebhookSenderTypeHuman:
 		return true
 	default:
 		return false
@@ -1194,6 +1617,51 @@ func (e PatchFormatParam) Valid() bool {
 	case PatchFormatParamDiff:
 		return true
 	case PatchFormatParamPatch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullSortParam.
+const (
+	PullSortParamComments PullSortParam = "comments"
+	PullSortParamCreated  PullSortParam = "created"
+	PullSortParamUpdated  PullSortParam = "updated"
+)
+
+// Valid indicates whether the value is a known member of the PullSortParam enum.
+func (e PullSortParam) Valid() bool {
+	switch e {
+	case PullSortParamComments:
+		return true
+	case PullSortParamCreated:
+		return true
+	case PullSortParamUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PullStateFilter.
+const (
+	PullStateFilterAll    PullStateFilter = "all"
+	PullStateFilterClosed PullStateFilter = "closed"
+	PullStateFilterMerged PullStateFilter = "merged"
+	PullStateFilterOpen   PullStateFilter = "open"
+)
+
+// Valid indicates whether the value is a known member of the PullStateFilter enum.
+func (e PullStateFilter) Valid() bool {
+	switch e {
+	case PullStateFilterAll:
+		return true
+	case PullStateFilterClosed:
+		return true
+	case PullStateFilterMerged:
+		return true
+	case PullStateFilterOpen:
 		return true
 	default:
 		return false
@@ -1338,6 +1806,51 @@ func (e ListMilestonesParamsState) Valid() bool {
 	case ListMilestonesParamsStateClosed:
 		return true
 	case ListMilestonesParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListPullRequestsParamsState.
+const (
+	ListPullRequestsParamsStateAll    ListPullRequestsParamsState = "all"
+	ListPullRequestsParamsStateClosed ListPullRequestsParamsState = "closed"
+	ListPullRequestsParamsStateMerged ListPullRequestsParamsState = "merged"
+	ListPullRequestsParamsStateOpen   ListPullRequestsParamsState = "open"
+)
+
+// Valid indicates whether the value is a known member of the ListPullRequestsParamsState enum.
+func (e ListPullRequestsParamsState) Valid() bool {
+	switch e {
+	case ListPullRequestsParamsStateAll:
+		return true
+	case ListPullRequestsParamsStateClosed:
+		return true
+	case ListPullRequestsParamsStateMerged:
+		return true
+	case ListPullRequestsParamsStateOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListPullRequestsParamsSort.
+const (
+	ListPullRequestsParamsSortComments ListPullRequestsParamsSort = "comments"
+	ListPullRequestsParamsSortCreated  ListPullRequestsParamsSort = "created"
+	ListPullRequestsParamsSortUpdated  ListPullRequestsParamsSort = "updated"
+)
+
+// Valid indicates whether the value is a known member of the ListPullRequestsParamsSort enum.
+func (e ListPullRequestsParamsSort) Valid() bool {
+	switch e {
+	case ListPullRequestsParamsSortComments:
+		return true
+	case ListPullRequestsParamsSortCreated:
+		return true
+	case ListPullRequestsParamsSortUpdated:
 		return true
 	default:
 		return false
@@ -1640,6 +2153,33 @@ type BranchList struct {
 	Total int      `json:"total"`
 }
 
+// BranchSettings defines model for BranchSettings.
+type BranchSettings struct {
+	// AllowMergeCommit Ammette il merge commit (PR3). Default true.
+	AllowMergeCommit bool `json:"allowMergeCommit"`
+
+	// AllowSquashMerge Ammette lo squash (PR3). Default true.
+	AllowSquashMerge bool `json:"allowSquashMerge"`
+
+	// DefaultMergeMethod Metodo di merge (PR3). Il rebase non esiste.
+	DefaultMergeMethod MergeMethod `json:"defaultMergeMethod"`
+
+	// DeleteBranchOnMerge Elimina il branch di origine dopo ogni merge (PR3). Default false.
+	DeleteBranchOnMerge bool `json:"deleteBranchOnMerge"`
+
+	// DismissStaleApprovals Sempre true: nuovi commit annullano le approvazioni (PR4). Non configurabile nella v1.1.
+	DismissStaleApprovals *bool `json:"dismissStaleApprovals,omitempty"`
+
+	// RequirePullRequest «Richiedi una Pull Request» sul branch principale (PR4). Se acceso nessun push diretto, `admin` compresi. Default false.
+	RequirePullRequest bool `json:"requirePullRequest"`
+
+	// RequiredApprovals Approvazioni di persone con `write` richieste per il merge, quando `requirePullRequest` e' acceso (PR4). Default 1.
+	RequiredApprovals int `json:"requiredApprovals"`
+
+	// RequiredStatusContexts Contesti di stato (PR9) che devono essere `success` sulla punta della PR per unire.
+	RequiredStatusContexts []string `json:"requiredStatusContexts"`
+}
+
 // CloseIssueInput defines model for CloseIssueInput.
 type CloseIssueInput struct {
 	// DuplicateOf Obbligatorio con `reason=duplicate`, vietato altrimenti.
@@ -1687,6 +2227,22 @@ type CodeUser struct {
 // CodeUserKind defines model for CodeUser.Kind.
 type CodeUserKind string
 
+// CombinedCommitStatus defines model for CombinedCommitStatus.
+type CombinedCommitStatus struct {
+	RequiredContexts []RequiredStatusContext `json:"requiredContexts"`
+	Sha              string                  `json:"sha"`
+
+	// State Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+	State CombinedCommitStatusState `json:"state"`
+
+	// Statuses L'ultimo stato di ciascun contesto.
+	Statuses   []CommitStatus `json:"statuses"`
+	TotalCount int            `json:"totalCount"`
+}
+
+// CombinedCommitStatusState Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+type CombinedCommitStatusState string
+
 // CommitDetail defines model for CommitDetail.
 type CommitDetail struct {
 	Additions int           `json:"additions"`
@@ -1727,6 +2283,36 @@ type CommitPerson struct {
 	User  *CodeUser `json:"user,omitempty"`
 }
 
+// CommitStatus defines model for CommitStatus.
+type CommitStatus struct {
+	Context     string             `json:"context"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Creator     IssueUser          `json:"creator"`
+	Description *string            `json:"description,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Sha         string             `json:"sha"`
+
+	// State Stato di un commit (PR9).
+	State CommitStatusState `json:"state"`
+
+	// TargetUrl Link ai dettagli, per esempio il log della CI.
+	TargetUrl *string `json:"targetUrl,omitempty"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
+}
+
+// CommitStatusList defines model for CommitStatusList.
+type CommitStatusList struct {
+	Items   []CommitStatus `json:"items"`
+	Page    int            `json:"page"`
+	PerPage int            `json:"perPage"`
+	Total   int            `json:"total"`
+}
+
+// CommitStatusState Stato di un commit (PR9).
+type CommitStatusState string
+
 // CommitSummary defines model for CommitSummary.
 type CommitSummary struct {
 	// Author Autore o committer dichiarato nel commit. Non e' una prova d'identita': chiunque puo' scrivere un nome e un'email qualsiasi in un commit. `user` e' null se nessun utente GitStack ha quell'email (e sempre assente nelle risposte del servizio git, che non conosce gli utenti).
@@ -1742,6 +2328,18 @@ type CommitSummary struct {
 
 	// Subject Prima riga del messaggio.
 	Subject string `json:"subject"`
+}
+
+// CreateCommitStatusInput defines model for CreateCommitStatusInput.
+type CreateCommitStatusInput struct {
+	Context     *string `json:"context,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	// State Stato di un commit (PR9).
+	State CommitStatusState `json:"state"`
+
+	// TargetUrl Solo http o https (422 altrimenti).
+	TargetUrl *string `json:"targetUrl,omitempty"`
 }
 
 // CreateIssueCommentInput defines model for CreateIssueCommentInput.
@@ -1780,6 +2378,54 @@ type CreateMilestoneInput struct {
 	Description *string             `json:"description,omitempty"`
 	DueOn       *openapi_types.Date `json:"dueOn,omitempty"`
 	Title       string              `json:"title"`
+}
+
+// CreatePullRequestCommentInput defines model for CreatePullRequestCommentInput.
+type CreatePullRequestCommentInput struct {
+	Body string `json:"body"`
+
+	// CommitSha Punta della PR su cui sta la riga (409 `head_changed` se non e' piu' quella).
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// InReplyTo Id di un commento sulle righe: il nuovo entra nella sua conversazione. Esclude `path`.
+	InReplyTo *openapi_types.UUID `json:"inReplyTo,omitempty"`
+	Line      *int                `json:"line,omitempty"`
+
+	// Path File commentato; con `path` servono anche `side`, `line` e `commitSha`.
+	Path *string `json:"path,omitempty"`
+
+	// Side Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+	Side      *DiffSide `json:"side,omitempty"`
+	StartLine *int      `json:"startLine,omitempty"`
+}
+
+// CreatePullRequestInput defines model for CreatePullRequestInput.
+type CreatePullRequestInput struct {
+	// Body Markdown (D10); le parole chiave di C2 collegano le issues (PR8).
+	Body *string `json:"body,omitempty"`
+
+	// Draft Apre in bozza (PR6, PR10).
+	Draft *bool `json:"draft,omitempty"`
+
+	// Reviewers Nomi utente dei revisori richiesti (PR12); almeno `read` sul repo.
+	Reviewers    *[]Name `json:"reviewers,omitempty"`
+	SourceBranch string  `json:"sourceBranch"`
+
+	// TargetBranch Se manca, il branch principale del repo (R4).
+	TargetBranch *string `json:"targetBranch,omitempty"`
+	Title        string  `json:"title"`
+}
+
+// CreatePullRequestReviewInput defines model for CreatePullRequestReviewInput.
+type CreatePullRequestReviewInput struct {
+	Body     *string               `json:"body,omitempty"`
+	Comments *[]ReviewCommentInput `json:"comments,omitempty"`
+
+	// CommitSha Punta della PR che si e' vista; se e' cambiata, 409 `head_changed`.
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// Event Esito scelto all'invio (PR5).
+	Event ReviewEvent `json:"event"`
 }
 
 // CreateRepoMirrorInput Example: {"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-mirror"}
@@ -1872,6 +2518,9 @@ type DeletedRepository struct {
 type DeletedRepositoryList struct {
 	Items []DeletedRepository `json:"items"`
 }
+
+// DiffSide Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+type DiffSide string
 
 // EnablePullMirrorInput Example: {"intervalSeconds":600,"token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","url":"https://github.com/example/gitstack.git","username":"gitstack-backup"}
 type EnablePullMirrorInput struct {
@@ -2322,6 +2971,39 @@ type MarkedNotifications struct {
 	Marked int `json:"marked"`
 }
 
+// MergeBlocker defines model for MergeBlocker.
+type MergeBlocker struct {
+	// Code Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+	Code MergeBlockerCode `json:"code"`
+
+	// Contexts I contesti coinvolti, per `status_required` e `status_failed`.
+	Contexts *[]string `json:"contexts,omitempty"`
+	Message  string    `json:"message"`
+}
+
+// MergeBlockerCode Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+type MergeBlockerCode string
+
+// MergeMethod Metodo di merge (PR3). Il rebase non esiste.
+type MergeMethod string
+
+// MergePullRequestInput defines model for MergePullRequestInput.
+type MergePullRequestInput struct {
+	CommitMessage *string `json:"commitMessage,omitempty"`
+
+	// CommitTitle Titolo del commit di merge o di squash; se manca lo propone il server.
+	CommitTitle *string `json:"commitTitle,omitempty"`
+
+	// DeleteBranch Elimina il branch di origine dopo il merge (PR3); vale anche l'impostazione `deleteBranchOnMerge`.
+	DeleteBranch *bool `json:"deleteBranch,omitempty"`
+
+	// ExpectedHeadSha Se la punta del branch di origine e' cambiata, 409 `head_changed`.
+	ExpectedHeadSha *string `json:"expectedHeadSha,omitempty"`
+
+	// Method Metodo di merge (PR3). Il rebase non esiste.
+	Method MergeMethod `json:"method"`
+}
+
 // Meta defines model for Meta.
 type Meta struct {
 	// ApiVersion Versione del contratto API (`info.version`).
@@ -2577,6 +3259,270 @@ type PullMirrorRunRefStatus string
 // PullMirrorState Stato di un mirror in pull, con gli stessi nomi del mirror in push. `pending`: in coda (primo aggiornamento o prossimo giro); `syncing`: un worker lo sta aggiornando; `in_sync`: l'ultimo aggiornamento e' riuscito (anche con ref `diverged`: gli altri ref si aggiornano); `error`: l'ultimo tentativo e' fallito, si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora, 3 ore, poi ogni 6 ore, tranne un blocco della policy di uscita (C8) che non si ritenta; `paused`: fermato da un admin, repo in sola lettura; `stopped`: interrotto (MP6), il repo e' normale, restano registro e ref `diverged`.
 type PullMirrorState string
 
+// PullRequest defines model for PullRequest.
+type PullRequest struct {
+	Additions int `json:"additions"`
+
+	// Approvals Approvazioni valide: di persone con `write`, sull'ultimo commit, non dell'autore (PR2, PR4).
+	Approvals int       `json:"approvals"`
+	Author    IssueUser `json:"author"`
+
+	// BaseSha Merge-base fra i due branch al momento dell'ultimo calcolo.
+	BaseSha *string `json:"baseSha,omitempty"`
+
+	// Body Markdown (D10).
+	Body         string `json:"body"`
+	ChangedFiles int    `json:"changedFiles"`
+
+	// ClosedAt Chiusura senza merge; azzerato dalla riapertura.
+	ClosedAt *time.Time `json:"closedAt,omitempty"`
+
+	// ClosingIssues Numeri delle issues che le parole chiave di C2 chiudono al merge (PR8).
+	ClosingIssues []int64 `json:"closingIssues"`
+
+	// CommentCount Commenti non eliminati, generali e sulle righe.
+	CommentCount int       `json:"commentCount"`
+	CommitCount  int       `json:"commitCount"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Deletions    int       `json:"deletions"`
+
+	// Draft Bozza (PR6). Sempre false se `state` non e' `open`.
+	Draft bool `json:"draft"`
+
+	// HeadSha Punta del branch di origine; per una PR unita quella al momento del merge.
+	HeadSha string             `json:"headSha"`
+	Id      openapi_types.UUID `json:"id"`
+
+	// MergeCommitSha Commit creato dal merge; solo per una PR unita.
+	MergeCommitSha *string `json:"mergeCommitSha,omitempty"`
+
+	// MergeMethod Solo per una PR unita.
+	MergeMethod *MergeMethod `json:"mergeMethod,omitempty"`
+	MergedAt    *time.Time   `json:"mergedAt,omitempty"`
+	MergedBy    *IssueUser   `json:"mergedBy,omitempty"`
+
+	// Number `#n`, dal contatore del repo condiviso con le issues (I1); non si riusa mai.
+	Number             int64       `json:"number"`
+	RequestedReviewers []IssueUser `json:"requestedReviewers"`
+
+	// RequiredApprovals Approvazioni richieste dal branch di destinazione; 0 se «Richiedi una Pull Request» e' spenta.
+	RequiredApprovals int `json:"requiredApprovals"`
+
+	// ReviewDecision Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+	ReviewDecision ReviewDecision `json:"reviewDecision"`
+
+	// SourceBranch Branch di origine, dello stesso repo (PR1).
+	SourceBranch string `json:"sourceBranch"`
+
+	// SourceBranchExists Il branch di origine esiste ancora (condizione per riaprire, PR6).
+	SourceBranchExists bool `json:"sourceBranchExists"`
+
+	// State Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+	State PullRequestState `json:"state"`
+
+	// StatusState Stato complessivo dei commit sulla punta di `headSha` (PR9); `null` se non calcolato.
+	StatusState *CombinedCommitStatusState `json:"statusState,omitempty"`
+
+	// TargetBranch Branch di destinazione.
+	TargetBranch          string    `json:"targetBranch"`
+	Title                 string    `json:"title"`
+	UnresolvedThreadCount int       `json:"unresolvedThreadCount"`
+	UpdatedAt             time.Time `json:"updatedAt"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
+}
+
+// PullRequestComment defines model for PullRequestComment.
+type PullRequestComment struct {
+	Author IssueUser `json:"author"`
+
+	// Body Vuoto se `deleted`.
+	Body string `json:"body"`
+
+	// CommitSha Punta della PR su cui e' stato scritto il commento sulle righe.
+	CommitSha *string   `json:"commitSha,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Deleted Segnaposto di un commento eliminato che ha ancora risposte.
+	Deleted bool               `json:"deleted"`
+	Edited  bool               `json:"edited"`
+	Id      openapi_types.UUID `json:"id"`
+	Line    *int               `json:"line,omitempty"`
+
+	// Outdated Le righe commentate sono cambiate dopo il commento (PR5).
+	Outdated bool `json:"outdated"`
+
+	// Path File commentato; `null` per un commento generale.
+	Path *string `json:"path,omitempty"`
+
+	// ReviewId Review con cui e' stato inviato, se c'e'.
+	ReviewId  *openapi_types.UUID `json:"reviewId,omitempty"`
+	Side      *DiffSide           `json:"side,omitempty"`
+	StartLine *int                `json:"startLine,omitempty"`
+
+	// ThreadId Conversazione sulle righe; `null` per un commento generale.
+	ThreadId  *openapi_types.UUID `json:"threadId,omitempty"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+
+	// ViaToken Token personale con cui e' stata creata la risorsa (mockup 13, "via token").
+	ViaToken *IssueViaToken `json:"viaToken,omitempty"`
+}
+
+// PullRequestCommentList defines model for PullRequestCommentList.
+type PullRequestCommentList struct {
+	Items   []PullRequestComment `json:"items"`
+	Page    int                  `json:"page"`
+	PerPage int                  `json:"perPage"`
+	Total   int                  `json:"total"`
+}
+
+// PullRequestFiles defines model for PullRequestFiles.
+type PullRequestFiles struct {
+	Additions int `json:"additions"`
+
+	// BaseSha Merge-base da cui e' calcolato il diff.
+	BaseSha   string     `json:"baseSha"`
+	Deletions int        `json:"deletions"`
+	Files     []FileDiff `json:"files"`
+
+	// FilesChanged Numero reale di file toccati, anche oltre i 300 elencati.
+	FilesChanged     int    `json:"filesChanged"`
+	HeadSha          string `json:"headSha"`
+	IgnoreWhitespace *bool  `json:"ignoreWhitespace,omitempty"`
+
+	// ListOnly Oltre i limiti di B6 solo l'elenco dei file, senza patch.
+	ListOnly *bool `json:"listOnly,omitempty"`
+
+	// Truncated Come in `CommitDetail`.
+	Truncated bool `json:"truncated"`
+
+	// ViewedPaths File marcati Viewed da chi chiama (PR12).
+	ViewedPaths []string `json:"viewedPaths"`
+}
+
+// PullRequestList defines model for PullRequestList.
+type PullRequestList struct {
+	Items   []PullRequestSummary `json:"items"`
+	Page    int                  `json:"page"`
+	PerPage int                  `json:"perPage"`
+	Total   int                  `json:"total"`
+}
+
+// PullRequestMergeability defines model for PullRequestMergeability.
+type PullRequestMergeability struct {
+	AheadBy        int           `json:"aheadBy"`
+	AllowedMethods []MergeMethod `json:"allowedMethods"`
+	Approvals      int           `json:"approvals"`
+
+	// BehindBy Commit della destinazione non ancora nel branch di origine. Non impedisce il merge (PR7).
+	BehindBy int            `json:"behindBy"`
+	Blockers []MergeBlocker `json:"blockers"`
+
+	// ConflictFiles File in conflitto (percorsi), vuoto se non ce ne sono. Al massimo 100: oltre, `conflictFilesTruncated`.
+	ConflictFiles          []string `json:"conflictFiles"`
+	ConflictFilesTruncated *bool    `json:"conflictFilesTruncated,omitempty"`
+
+	// DefaultMethod Metodo di merge (PR3). Il rebase non esiste.
+	DefaultMethod MergeMethod `json:"defaultMethod"`
+
+	// HeadSha Punta del branch di origine su cui e' stato calcolato lo stato.
+	HeadSha string `json:"headSha"`
+
+	// Mergeable True solo con `state` uguale a `mergeable`.
+	Mergeable         bool `json:"mergeable"`
+	RequiredApprovals int  `json:"requiredApprovals"`
+
+	// State `mergeable` si puo' unire; `conflicts` il merge produce conflitti (PR7); `blocked` nessun conflitto ma c'e' un blocco in `blockers`; `unknown` calcolo non ancora pronto.
+	State PullRequestMergeabilityState `json:"state"`
+}
+
+// PullRequestMergeabilityState `mergeable` si puo' unire; `conflicts` il merge produce conflitti (PR7); `blocked` nessun conflitto ma c'e' un blocco in `blockers`; `unknown` calcolo non ancora pronto.
+type PullRequestMergeabilityState string
+
+// PullRequestReview defines model for PullRequestReview.
+type PullRequestReview struct {
+	Author IssueUser `json:"author"`
+	Body   string    `json:"body"`
+
+	// CommentCount Commenti sulle righe inviati con la review.
+	CommentCount int `json:"commentCount"`
+
+	// CommitSha Punta della PR al momento della review.
+	CommitSha string `json:"commitSha"`
+
+	// CountsAsApproval True solo per `approved` di una persona con `write`, non annullata e non dell'autore. Gli agenti possono approvare ma non contano (PR2).
+	CountsAsApproval bool               `json:"countsAsApproval"`
+	Id               openapi_types.UUID `json:"id"`
+
+	// Stale Nuovi commit hanno annullato l'approvazione (PR4); la review resta nella cronologia.
+	Stale       bool        `json:"stale"`
+	State       ReviewState `json:"state"`
+	SubmittedAt time.Time   `json:"submittedAt"`
+}
+
+// PullRequestReviewList defines model for PullRequestReviewList.
+type PullRequestReviewList struct {
+	Items   []PullRequestReview `json:"items"`
+	Page    int                 `json:"page"`
+	PerPage int                 `json:"perPage"`
+	Total   int                 `json:"total"`
+}
+
+// PullRequestState Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+type PullRequestState string
+
+// PullRequestSummary Pull Request negli elenchi: senza testo.
+type PullRequestSummary struct {
+	Author             IssueUser   `json:"author"`
+	ClosedAt           *time.Time  `json:"closedAt,omitempty"`
+	CommentCount       int         `json:"commentCount"`
+	CreatedAt          time.Time   `json:"createdAt"`
+	Draft              bool        `json:"draft"`
+	MergedAt           *time.Time  `json:"mergedAt,omitempty"`
+	Number             int64       `json:"number"`
+	RequestedReviewers []IssueUser `json:"requestedReviewers"`
+
+	// ReviewDecision Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+	ReviewDecision ReviewDecision `json:"reviewDecision"`
+	SourceBranch   string         `json:"sourceBranch"`
+
+	// State Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+	State        PullRequestState           `json:"state"`
+	StatusState  *CombinedCommitStatusState `json:"statusState,omitempty"`
+	TargetBranch string                     `json:"targetBranch"`
+	Title        string                     `json:"title"`
+	UpdatedAt    time.Time                  `json:"updatedAt"`
+}
+
+// PullRequestThread defines model for PullRequestThread.
+type PullRequestThread struct {
+	Comments []PullRequestComment `json:"comments"`
+
+	// Id Id del primo commento.
+	Id       openapi_types.UUID `json:"id"`
+	Line     int                `json:"line"`
+	Outdated bool               `json:"outdated"`
+	Path     string             `json:"path"`
+
+	// Resolved Risolta dall'autore della PR o da chi ha `write` (PR5).
+	Resolved   bool       `json:"resolved"`
+	ResolvedAt *time.Time `json:"resolvedAt,omitempty"`
+	ResolvedBy *IssueUser `json:"resolvedBy,omitempty"`
+
+	// Side Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+	Side      DiffSide `json:"side"`
+	StartLine *int     `json:"startLine,omitempty"`
+}
+
+// PullRequestThreadList defines model for PullRequestThreadList.
+type PullRequestThreadList struct {
+	Items   []PullRequestThread `json:"items"`
+	Page    int                 `json:"page"`
+	PerPage int                 `json:"perPage"`
+	Total   int                 `json:"total"`
+}
+
 // RepoCloneUrls Indirizzi di clone dell'installazione (R1, R7). L'indirizzo SSH e' sempre quello completo `ssh://git@<host>:<porta>/<owner>/<repo>.git`.
 type RepoCloneUrls struct {
 	// Https Example: https://git.example.com/alice/my-app.git
@@ -2786,6 +3732,22 @@ type RepositoryMirror struct {
 	Origin string `json:"origin"`
 }
 
+// RequestReviewersInput defines model for RequestReviewersInput.
+type RequestReviewersInput struct {
+	Reviewers []Name `json:"reviewers"`
+}
+
+// RequiredStatusContext defines model for RequiredStatusContext.
+type RequiredStatusContext struct {
+	Context string `json:"context"`
+
+	// Satisfied True solo con ultimo stato `success`.
+	Satisfied bool `json:"satisfied"`
+
+	// State Ultimo stato del contesto sul commit; `null` se non e' mai arrivato.
+	State *CommitStatusState `json:"state,omitempty"`
+}
+
 // Resource Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
 type Resource struct {
 	// Attributes Attributi specifici del tipo di risorsa, a forma libera.
@@ -2811,6 +3773,37 @@ type ResourceList struct {
 
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
+
+// ReviewCommentInput defines model for ReviewCommentInput.
+type ReviewCommentInput struct {
+	// Body Markdown (D10); un blocco `suggestion` si mostra come diff, senza «Applica» (PR5).
+	Body string `json:"body"`
+
+	// Line Ultima riga commentata.
+	Line int    `json:"line"`
+	Path string `json:"path"`
+
+	// Side Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+	Side DiffSide `json:"side"`
+
+	// StartLine Prima riga, per un gruppo di righe; deve essere minore di `line` e sullo stesso lato.
+	StartLine *int `json:"startLine,omitempty"`
+}
+
+// ReviewDecision Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+type ReviewDecision string
+
+// ReviewEvent Esito scelto all'invio (PR5).
+type ReviewEvent string
+
+// ReviewState defines model for ReviewState.
+type ReviewState string
+
+// SetFileViewedInput defines model for SetFileViewedInput.
+type SetFileViewedInput struct {
+	Path   string `json:"path"`
+	Viewed bool   `json:"viewed"`
+}
 
 // SetIssueAssigneesInput defines model for SetIssueAssigneesInput.
 type SetIssueAssigneesInput struct {
@@ -2919,6 +3912,19 @@ type TreeEntry struct {
 // TreeEntryType defines model for TreeEntry.Type.
 type TreeEntryType string
 
+// UpdateBranchSettingsInput defines model for UpdateBranchSettingsInput.
+type UpdateBranchSettingsInput struct {
+	AllowMergeCommit *bool `json:"allowMergeCommit,omitempty"`
+	AllowSquashMerge *bool `json:"allowSquashMerge,omitempty"`
+
+	// DefaultMergeMethod Metodo di merge (PR3). Il rebase non esiste.
+	DefaultMergeMethod     *MergeMethod `json:"defaultMergeMethod,omitempty"`
+	DeleteBranchOnMerge    *bool        `json:"deleteBranchOnMerge,omitempty"`
+	RequirePullRequest     *bool        `json:"requirePullRequest,omitempty"`
+	RequiredApprovals      *int         `json:"requiredApprovals,omitempty"`
+	RequiredStatusContexts *[]string    `json:"requiredStatusContexts,omitempty"`
+}
+
 // UpdateIssueCommentInput defines model for UpdateIssueCommentInput.
 type UpdateIssueCommentInput struct {
 	Body string `json:"body"`
@@ -2977,6 +3983,18 @@ type UpdatePullMirrorInput struct {
 
 	// Username Stringa vuota toglie l'utente.
 	Username *string `json:"username,omitempty"`
+}
+
+// UpdatePullRequestCommentInput defines model for UpdatePullRequestCommentInput.
+type UpdatePullRequestCommentInput struct {
+	Body string `json:"body"`
+}
+
+// UpdatePullRequestInput defines model for UpdatePullRequestInput.
+type UpdatePullRequestInput struct {
+	Body         *string `json:"body,omitempty"`
+	TargetBranch *string `json:"targetBranch,omitempty"`
+	Title        *string `json:"title,omitempty"`
 }
 
 // UpdateRepoMirrorInput defines model for UpdateRepoMirrorInput.
@@ -3077,6 +4095,34 @@ type Webhook struct {
 // WebhookDisabledReason defines model for Webhook.DisabledReason.
 type WebhookDisabledReason string
 
+// WebhookCommitStatusPayload Corpo di una consegna con `X-GitStack-Event: commit_status` (PR11).
+type WebhookCommitStatusPayload struct {
+	// Action `created`: un sistema esterno ha inviato uno stato (PR9).
+	Action WebhookCommitStatusPayloadAction `json:"action"`
+
+	// Branches Branch la cui punta e' il commit (al massimo 20).
+	Branches *[]string `json:"branches,omitempty"`
+
+	// CombinedState Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+	CombinedState *CombinedCommitStatusState        `json:"combinedState,omitempty"`
+	CommitStatus  CommitStatus                      `json:"commitStatus"`
+	Event         WebhookCommitStatusPayloadEvent   `json:"event"`
+	Organization  *WebhookOrganizationRef           `json:"organization,omitempty"`
+	Repository    WebhookRepositoryRef              `json:"repository"`
+	Sender        *WebhookSender                    `json:"sender"`
+	Time          time.Time                         `json:"time"`
+	Version       WebhookCommitStatusPayloadVersion `json:"version"`
+}
+
+// WebhookCommitStatusPayloadAction `created`: un sistema esterno ha inviato uno stato (PR9).
+type WebhookCommitStatusPayloadAction string
+
+// WebhookCommitStatusPayloadEvent defines model for WebhookCommitStatusPayload.Event.
+type WebhookCommitStatusPayloadEvent string
+
+// WebhookCommitStatusPayloadVersion defines model for WebhookCommitStatusPayload.Version.
+type WebhookCommitStatusPayloadVersion int
+
 // WebhookDelivery defines model for WebhookDelivery.
 type WebhookDelivery = WebhookDeliverySummary
 
@@ -3094,7 +4140,7 @@ type WebhookDeliveryDetail struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -3155,7 +4201,7 @@ type WebhookDeliverySummary struct {
 	// Error Errore di rete o di protezione SSRF dell'ultimo tentativo; vuoto se c'e' stata una risposta.
 	Error *string `json:"error,omitempty"`
 
-	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+	// Event Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
 	Event WebhookEvent `json:"event"`
 
 	// Id Il valore dell'intestazione `X-GitStack-Delivery`.
@@ -3170,7 +4216,7 @@ type WebhookDeliverySummary struct {
 	StatusCode *int `json:"statusCode,omitempty"`
 }
 
-// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+// WebhookEvent Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
 type WebhookEvent string
 
 // WebhookList defines model for WebhookList.
@@ -3181,8 +4227,85 @@ type WebhookList struct {
 	Total   int       `json:"total"`
 }
 
+// WebhookOrganizationRef defines model for WebhookOrganizationRef.
+type WebhookOrganizationRef struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+}
+
+// WebhookPullRequestPayload Corpo di una consegna con `X-GitStack-Event: pull_request` (PR11). Intestazioni, firma e corpo comune in docs/webhooks.md. Nessun webhook per le PR di un repo che l'evento non vede.
+type WebhookPullRequestPayload struct {
+	// Action `opened`, `edited` (titolo, testo o destinazione), `closed` (senza merge), `reopened`, `merged`, `ready_for_review`, `converted_to_draft`, `synchronize` (nuovi commit sul branch di origine, annullano le approvazioni), `review_requested` e `review_request_removed` (con `requestedReviewer`).
+	Action            WebhookPullRequestPayloadAction  `json:"action"`
+	Event             WebhookPullRequestPayloadEvent   `json:"event"`
+	Organization      *WebhookOrganizationRef          `json:"organization,omitempty"`
+	PullRequest       PullRequest                      `json:"pullRequest"`
+	Repository        WebhookRepositoryRef             `json:"repository"`
+	RequestedReviewer *IssueUser                       `json:"requestedReviewer,omitempty"`
+	Sender            *WebhookSender                   `json:"sender"`
+	Time              time.Time                        `json:"time"`
+	Version           WebhookPullRequestPayloadVersion `json:"version"`
+}
+
+// WebhookPullRequestPayloadAction `opened`, `edited` (titolo, testo o destinazione), `closed` (senza merge), `reopened`, `merged`, `ready_for_review`, `converted_to_draft`, `synchronize` (nuovi commit sul branch di origine, annullano le approvazioni), `review_requested` e `review_request_removed` (con `requestedReviewer`).
+type WebhookPullRequestPayloadAction string
+
+// WebhookPullRequestPayloadEvent defines model for WebhookPullRequestPayload.Event.
+type WebhookPullRequestPayloadEvent string
+
+// WebhookPullRequestPayloadVersion defines model for WebhookPullRequestPayload.Version.
+type WebhookPullRequestPayloadVersion int
+
+// WebhookPullRequestReviewPayload Corpo di una consegna con `X-GitStack-Event: pull_request_review` (PR11).
+type WebhookPullRequestReviewPayload struct {
+	// Action `submitted` (review inviata, con la sua `state`), `dismissed` (l'approvazione e' annullata da nuovi commit).
+	Action       WebhookPullRequestReviewPayloadAction `json:"action"`
+	Event        WebhookPullRequestReviewPayloadEvent  `json:"event"`
+	Organization *WebhookOrganizationRef               `json:"organization,omitempty"`
+
+	// PullRequest Pull Request negli elenchi: senza testo.
+	PullRequest PullRequestSummary                     `json:"pullRequest"`
+	Repository  WebhookRepositoryRef                   `json:"repository"`
+	Review      PullRequestReview                      `json:"review"`
+	Sender      *WebhookSender                         `json:"sender"`
+	Time        time.Time                              `json:"time"`
+	Version     WebhookPullRequestReviewPayloadVersion `json:"version"`
+}
+
+// WebhookPullRequestReviewPayloadAction `submitted` (review inviata, con la sua `state`), `dismissed` (l'approvazione e' annullata da nuovi commit).
+type WebhookPullRequestReviewPayloadAction string
+
+// WebhookPullRequestReviewPayloadEvent defines model for WebhookPullRequestReviewPayload.Event.
+type WebhookPullRequestReviewPayloadEvent string
+
+// WebhookPullRequestReviewPayloadVersion defines model for WebhookPullRequestReviewPayload.Version.
+type WebhookPullRequestReviewPayloadVersion int
+
+// WebhookRepositoryRef defines model for WebhookRepositoryRef.
+type WebhookRepositoryRef struct {
+	Archived      bool               `json:"archived"`
+	DefaultBranch string             `json:"defaultBranch"`
+	FullName      string             `json:"fullName"`
+	Id            openapi_types.UUID `json:"id"`
+	Name          string             `json:"name"`
+	Owner         string             `json:"owner"`
+
+	// Visibility Visibilita' (P7): `private` (solo chi ha un grant) o `internal` (tutti gli utenti dell'installazione). Nessun accesso anonimo.
+	Visibility RepoVisibility `json:"visibility"`
+}
+
 // WebhookScope defines model for WebhookScope.
 type WebhookScope string
+
+// WebhookSender defines model for WebhookSender.
+type WebhookSender struct {
+	Id       openapi_types.UUID `json:"id"`
+	Type     WebhookSenderType  `json:"type"`
+	Username string             `json:"username"`
+}
+
+// WebhookSenderType defines model for WebhookSender.Type.
+type WebhookSenderType string
 
 // ArchiveFormatParam defines model for ArchiveFormatParam.
 type ArchiveFormatParam string
@@ -3296,6 +4419,30 @@ type PathParam = string
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
 
+// PullBaseFilter defines model for PullBaseFilter.
+type PullBaseFilter = string
+
+// PullCommentIdParam defines model for PullCommentIdParam.
+type PullCommentIdParam = openapi_types.UUID
+
+// PullHeadFilter defines model for PullHeadFilter.
+type PullHeadFilter = string
+
+// PullNumberParam defines model for PullNumberParam.
+type PullNumberParam = int64
+
+// PullQueryParam defines model for PullQueryParam.
+type PullQueryParam = string
+
+// PullSortParam defines model for PullSortParam.
+type PullSortParam string
+
+// PullStateFilter defines model for PullStateFilter.
+type PullStateFilter string
+
+// PullThreadIdParam defines model for PullThreadIdParam.
+type PullThreadIdParam = openapi_types.UUID
+
 // RefAndPathParam defines model for RefAndPathParam.
 type RefAndPathParam = string
 
@@ -3333,6 +4480,9 @@ type SshKeyIdParam = openapi_types.UUID
 //
 // Example: alice
 type TeamParam = Name
+
+// ThreadResolvedFilter defines model for ThreadResolvedFilter.
+type ThreadResolvedFilter = bool
 
 // TokenIdParam defines model for TokenIdParam.
 type TokenIdParam = openapi_types.UUID
@@ -3498,6 +4648,12 @@ type GetRepositoryCommitPatchParams struct {
 // GetRepositoryCommitPatchParamsFormat defines parameters for GetRepositoryCommitPatch.
 type GetRepositoryCommitPatchParamsFormat string
 
+// ListCommitStatusesParams defines parameters for ListCommitStatuses.
+type ListCommitStatusesParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryFileParams defines parameters for GetRepositoryFile.
 type GetRepositoryFileParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -3607,6 +4763,69 @@ type ListRepoPullMirrorRunsParams struct {
 	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }
 
+// ListPullRequestsParams defines parameters for ListPullRequests.
+type ListPullRequestsParams struct {
+	// Q Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+	Q *PullQueryParam `form:"q,omitempty" json:"q,omitempty"`
+
+	// State Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
+	State *ListPullRequestsParamsState `form:"state,omitempty" json:"state,omitempty"`
+
+	// Head Filtra per branch di origine.
+	Head *PullHeadFilter `form:"head,omitempty" json:"head,omitempty"`
+
+	// Base Filtra per branch di destinazione.
+	Base *PullBaseFilter `form:"base,omitempty" json:"base,omitempty"`
+
+	// Sort Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+	Sort    *ListPullRequestsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+	Page    *PageParam                  `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam               `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestsParamsState defines parameters for ListPullRequests.
+type ListPullRequestsParamsState string
+
+// ListPullRequestsParamsSort defines parameters for ListPullRequests.
+type ListPullRequestsParamsSort string
+
+// ListPullRequestCommentsParams defines parameters for ListPullRequestComments.
+type ListPullRequestCommentsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestCommitsParams defines parameters for ListPullRequestCommits.
+type ListPullRequestCommitsParams struct {
+	Page *CommitPageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// PerPage Commit per pagina (default 30, massimo 100).
+	PerPage *CommitPerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestFilesParams defines parameters for ListPullRequestFiles.
+type ListPullRequestFilesParams struct {
+	// Path Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+	Path *DiffFilePathParam `form:"path,omitempty" json:"path,omitempty"`
+
+	// IgnoreWhitespace B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+	IgnoreWhitespace *IgnoreWhitespaceParam `form:"ignoreWhitespace,omitempty" json:"ignoreWhitespace,omitempty"`
+}
+
+// ListPullRequestReviewsParams defines parameters for ListPullRequestReviews.
+type ListPullRequestReviewsParams struct {
+	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
+// ListPullRequestThreadsParams defines parameters for ListPullRequestThreads.
+type ListPullRequestThreadsParams struct {
+	// Resolved `true` solo le conversazioni risolte, `false` solo quelle aperte; senza il parametro tutte.
+	Resolved *ThreadResolvedFilter `form:"resolved,omitempty" json:"resolved,omitempty"`
+	Page     *PageParam            `form:"page,omitempty" json:"page,omitempty"`
+	PerPage  *PerPageParam         `form:"perPage,omitempty" json:"perPage,omitempty"`
+}
+
 // GetRepositoryRawParams defines parameters for GetRepositoryRaw.
 type GetRepositoryRawParams struct {
 	// Ref Branch, tag o sha (completo o prefisso di almeno 7 caratteri). Se manca vale il branch principale del repo (R4). Un nome non valido (vuoto, con `..`, spazi, caratteri di controllo o oltre 255 caratteri) risponde 400 `invalid_ref`; uno valido ma inesistente 404 `ref_not_found`. Se un nome e' sia branch sia tag vince il branch.
@@ -3689,6 +4908,12 @@ type ImportRepositoryJSONRequestBody = ImportRepositoryInput
 // UpdateRepositoryJSONRequestBody defines body for UpdateRepository for application/json ContentType.
 type UpdateRepositoryJSONRequestBody = UpdateRepositoryInput
 
+// UpdateBranchSettingsJSONRequestBody defines body for UpdateBranchSettings for application/json ContentType.
+type UpdateBranchSettingsJSONRequestBody = UpdateBranchSettingsInput
+
+// CreateCommitStatusJSONRequestBody defines body for CreateCommitStatus for application/json ContentType.
+type CreateCommitStatusJSONRequestBody = CreateCommitStatusInput
+
 // CreateRepoWebhookJSONRequestBody defines body for CreateRepoWebhook for application/json ContentType.
 type CreateRepoWebhookJSONRequestBody = CreateWebhookInput
 
@@ -3755,6 +4980,30 @@ type EnableRepoPullMirrorJSONRequestBody = EnablePullMirrorInput
 // StopRepoPullMirrorJSONRequestBody defines body for StopRepoPullMirror for application/json ContentType.
 type StopRepoPullMirrorJSONRequestBody = StopPullMirrorInput
 
+// CreatePullRequestJSONRequestBody defines body for CreatePullRequest for application/json ContentType.
+type CreatePullRequestJSONRequestBody = CreatePullRequestInput
+
+// UpdatePullRequestJSONRequestBody defines body for UpdatePullRequest for application/json ContentType.
+type UpdatePullRequestJSONRequestBody = UpdatePullRequestInput
+
+// CreatePullRequestCommentJSONRequestBody defines body for CreatePullRequestComment for application/json ContentType.
+type CreatePullRequestCommentJSONRequestBody = CreatePullRequestCommentInput
+
+// UpdatePullRequestCommentJSONRequestBody defines body for UpdatePullRequestComment for application/json ContentType.
+type UpdatePullRequestCommentJSONRequestBody = UpdatePullRequestCommentInput
+
+// MergePullRequestJSONRequestBody defines body for MergePullRequest for application/json ContentType.
+type MergePullRequestJSONRequestBody = MergePullRequestInput
+
+// RequestPullRequestReviewersJSONRequestBody defines body for RequestPullRequestReviewers for application/json ContentType.
+type RequestPullRequestReviewersJSONRequestBody = RequestReviewersInput
+
+// CreatePullRequestReviewJSONRequestBody defines body for CreatePullRequestReview for application/json ContentType.
+type CreatePullRequestReviewJSONRequestBody = CreatePullRequestReviewInput
+
+// SetPullRequestFileViewedJSONRequestBody defines body for SetPullRequestFileViewed for application/json ContentType.
+type SetPullRequestFileViewedJSONRequestBody = SetFileViewedInput
+
 // SetRepoWatchJSONRequestBody defines body for SetRepoWatch for application/json ContentType.
 type SetRepoWatchJSONRequestBody = SetRepoWatchInput
 
@@ -3766,6 +5015,15 @@ type UpdateResourceJSONRequestBody = UpdateResourceInput
 
 // UpdateNotificationPreferencesJSONRequestBody defines body for UpdateNotificationPreferences for application/json ContentType.
 type UpdateNotificationPreferencesJSONRequestBody = UpdateNotificationPreferencesInput
+
+// CommitStatusJSONRequestBody defines body for CommitStatus for application/json ContentType.
+type CommitStatusJSONRequestBody = WebhookCommitStatusPayload
+
+// PullRequestJSONRequestBody defines body for PullRequest for application/json ContentType.
+type PullRequestJSONRequestBody = WebhookPullRequestPayload
+
+// PullRequestReviewJSONRequestBody defines body for PullRequestReview for application/json ContentType.
+type PullRequestReviewJSONRequestBody = WebhookPullRequestReviewPayload
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -3853,6 +5111,12 @@ type ServerInterface interface {
 	// GetRepositoryBlame Blame di un file
 	// (GET /repos/{owner}/{repo}/blame)
 	GetRepositoryBlame(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryBlameParams)
+	// GetBranchSettings Legge le impostazioni «Branches & merge» del repo
+	// (GET /repos/{owner}/{repo}/branch-settings)
+	GetBranchSettings(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// UpdateBranchSettings Modifica le impostazioni «Branches & merge»
+	// (PATCH /repos/{owner}/{repo}/branch-settings)
+	UpdateBranchSettings(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
 	// GetRepositoryBranches Branch del repo, con conteggi
 	// (GET /repos/{owner}/{repo}/branches)
 	GetRepositoryBranches(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
@@ -3865,6 +5129,15 @@ type ServerInterface interface {
 	// GetRepositoryCommitPatch Diff completo di un commit, scaricabile come .diff o .patch (streaming)
 	// (GET /repos/{owner}/{repo}/commits/{sha}/patch)
 	GetRepositoryCommitPatch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params GetRepositoryCommitPatchParams)
+	// GetCombinedCommitStatus Stato complessivo di un commit
+	// (GET /repos/{owner}/{repo}/commits/{sha}/status)
+	GetCombinedCommitStatus(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam)
+	// ListCommitStatuses Storico degli stati di un commit
+	// (GET /repos/{owner}/{repo}/commits/{sha}/statuses)
+	ListCommitStatuses(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam, params ListCommitStatusesParams)
+	// CreateCommitStatus Invia lo stato di un commit da un sistema esterno
+	// (POST /repos/{owner}/{repo}/commits/{sha}/statuses)
+	CreateCommitStatus(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, sha CommitShaParam)
 	// GetRepositoryFile Contenuto di un file
 	// (GET /repos/{owner}/{repo}/contents)
 	GetRepositoryFile(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryFileParams)
@@ -4051,6 +5324,81 @@ type ServerInterface interface {
 	// SyncRepoPullMirror Sincronizza ora il mirror in pull
 	// (POST /repos/{owner}/{repo}/pull-mirror/sync)
 	SyncRepoPullMirror(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// ListPullRequests Elenca e cerca le Pull Request del repo
+	// (GET /repos/{owner}/{repo}/pulls)
+	ListPullRequests(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params ListPullRequestsParams)
+	// CreatePullRequest Apre una Pull Request fra due branch del repo
+	// (POST /repos/{owner}/{repo}/pulls)
+	CreatePullRequest(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam)
+	// GetPullRequest Legge una Pull Request per numero
+	// (GET /repos/{owner}/{repo}/pulls/{number})
+	GetPullRequest(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// UpdatePullRequest Modifica titolo, testo e branch di destinazione
+	// (PATCH /repos/{owner}/{repo}/pulls/{number})
+	UpdatePullRequest(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// DeletePullRequestBranch Elimina il branch di origine di una Pull Request unita (Delete branch)
+	// (DELETE /repos/{owner}/{repo}/pulls/{number}/branch)
+	DeletePullRequestBranch(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// ClosePullRequest Chiude una Pull Request senza unirla
+	// (POST /repos/{owner}/{repo}/pulls/{number}/close)
+	ClosePullRequest(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// ListPullRequestComments Elenca i commenti di una Pull Request, generali e sulle righe
+	// (GET /repos/{owner}/{repo}/pulls/{number}/comments)
+	ListPullRequestComments(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestCommentsParams)
+	// CreatePullRequestComment Aggiunge un commento generale, sulle righe o una risposta
+	// (POST /repos/{owner}/{repo}/pulls/{number}/comments)
+	CreatePullRequestComment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// DeletePullRequestComment Elimina un commento
+	// (DELETE /repos/{owner}/{repo}/pulls/{number}/comments/{commentId})
+	DeletePullRequestComment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam)
+	// UpdatePullRequestComment Modifica il testo di un commento
+	// (PATCH /repos/{owner}/{repo}/pulls/{number}/comments/{commentId})
+	UpdatePullRequestComment(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, commentId PullCommentIdParam)
+	// ListPullRequestCommits Commit della Pull Request
+	// (GET /repos/{owner}/{repo}/pulls/{number}/commits)
+	ListPullRequestCommits(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestCommitsParams)
+	// MarkPullRequestDraft Riporta una Pull Request pronta allo stato di bozza
+	// (POST /repos/{owner}/{repo}/pulls/{number}/draft)
+	MarkPullRequestDraft(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// ListPullRequestFiles File modificati dalla Pull Request, con il diff (Files changed)
+	// (GET /repos/{owner}/{repo}/pulls/{number}/files)
+	ListPullRequestFiles(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestFilesParams)
+	// MergePullRequest Unisce la Pull Request nel branch di destinazione
+	// (POST /repos/{owner}/{repo}/pulls/{number}/merge)
+	MergePullRequest(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// GetPullRequestMergeability Dice se la Pull Request si puo' unire e perche' no
+	// (GET /repos/{owner}/{repo}/pulls/{number}/mergeability)
+	GetPullRequestMergeability(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// MarkPullRequestReady Segna una bozza come pronta per la review (Ready for review)
+	// (POST /repos/{owner}/{repo}/pulls/{number}/ready)
+	MarkPullRequestReady(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// ReopenPullRequest Riapre una Pull Request chiusa
+	// (POST /repos/{owner}/{repo}/pulls/{number}/reopen)
+	ReopenPullRequest(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// RequestPullRequestReviewers Chiede (o richiede di nuovo) la review a una o piu' persone
+	// (POST /repos/{owner}/{repo}/pulls/{number}/requested-reviewers)
+	RequestPullRequestReviewers(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// RemovePullRequestReviewer Toglie una richiesta di review
+	// (DELETE /repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username})
+	RemovePullRequestReviewer(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, username UsernameParam)
+	// ListPullRequestReviews Elenca le review di una Pull Request
+	// (GET /repos/{owner}/{repo}/pulls/{number}/reviews)
+	ListPullRequestReviews(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestReviewsParams)
+	// CreatePullRequestReview Invia una review (Comment, Approve o Request changes)
+	// (POST /repos/{owner}/{repo}/pulls/{number}/reviews)
+	CreatePullRequestReview(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
+	// ListPullRequestThreads Elenca le conversazioni sulle righe, risolte e aperte
+	// (GET /repos/{owner}/{repo}/pulls/{number}/threads)
+	ListPullRequestThreads(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, params ListPullRequestThreadsParams)
+	// ResolvePullRequestThread Segna una conversazione come risolta
+	// (POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve)
+	ResolvePullRequestThread(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam)
+	// UnresolvePullRequestThread Riapre una conversazione risolta
+	// (POST /repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve)
+	UnresolvePullRequestThread(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam, threadId PullThreadIdParam)
+	// SetPullRequestFileViewed Marca o smarca un file come Viewed
+	// (PUT /repos/{owner}/{repo}/pulls/{number}/viewed)
+	SetPullRequestFileViewed(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, number PullNumberParam)
 	// GetRepositoryRaw Contenuto grezzo di un file (streaming)
 	// (GET /repos/{owner}/{repo}/raw)
 	GetRepositoryRaw(w http.ResponseWriter, r *http.Request, owner RepoOwnerParam, repo RepoNameParam, params GetRepositoryRawParams)
@@ -5191,6 +6539,76 @@ func (siw *ServerInterfaceWrapper) GetRepositoryBlame(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// GetBranchSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetBranchSettings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetBranchSettings(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateBranchSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateBranchSettings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateBranchSettings(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetRepositoryBranches operation middleware
 func (siw *ServerInterfaceWrapper) GetRepositoryBranches(w http.ResponseWriter, r *http.Request) {
 
@@ -5466,6 +6884,167 @@ func (siw *ServerInterfaceWrapper) GetRepositoryCommitPatch(w http.ResponseWrite
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRepositoryCommitPatch(w, r, owner, repo, sha, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCombinedCommitStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetCombinedCommitStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sha" -------------
+	var sha CommitShaParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sha", r.PathValue("sha"), &sha, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sha", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCombinedCommitStatus(w, r, owner, repo, sha)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCommitStatuses operation middleware
+func (siw *ServerInterfaceWrapper) ListCommitStatuses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sha" -------------
+	var sha CommitShaParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sha", r.PathValue("sha"), &sha, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sha", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCommitStatusesParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCommitStatuses(w, r, owner, repo, sha, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCommitStatus operation middleware
+func (siw *ServerInterfaceWrapper) CreateCommitStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sha" -------------
+	var sha CommitShaParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sha", r.PathValue("sha"), &sha, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sha", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCommitStatus(w, r, owner, repo, sha)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8522,6 +10101,1385 @@ func (siw *ServerInterfaceWrapper) SyncRepoPullMirror(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// ListPullRequests operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequests(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "head" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "head", r.URL.Query(), &params.Head, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "head"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "head", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "base" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "base", r.URL.Query(), &params.Base, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "base"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "base", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequests(w, r, owner, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePullRequest operation middleware
+func (siw *ServerInterfaceWrapper) CreatePullRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePullRequest(w, r, owner, repo)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPullRequest operation middleware
+func (siw *ServerInterfaceWrapper) GetPullRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPullRequest(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePullRequest operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePullRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePullRequest(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePullRequestBranch operation middleware
+func (siw *ServerInterfaceWrapper) DeletePullRequestBranch(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePullRequestBranch(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ClosePullRequest operation middleware
+func (siw *ServerInterfaceWrapper) ClosePullRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ClosePullRequest(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPullRequestComments operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequestComments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestCommentsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequestComments(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePullRequestComment operation middleware
+func (siw *ServerInterfaceWrapper) CreatePullRequestComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePullRequestComment(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePullRequestComment operation middleware
+func (siw *ServerInterfaceWrapper) DeletePullRequestComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "commentId" -------------
+	var commentId PullCommentIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "commentId", r.PathValue("commentId"), &commentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "commentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePullRequestComment(w, r, owner, repo, number, commentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePullRequestComment operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePullRequestComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "commentId" -------------
+	var commentId PullCommentIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "commentId", r.PathValue("commentId"), &commentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "commentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePullRequestComment(w, r, owner, repo, number, commentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPullRequestCommits operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequestCommits(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestCommitsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequestCommits(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MarkPullRequestDraft operation middleware
+func (siw *ServerInterfaceWrapper) MarkPullRequestDraft(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkPullRequestDraft(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPullRequestFiles operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequestFiles(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestFilesParams
+
+	// ------------- Optional query parameter "path" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "path", r.URL.Query(), &params.Path, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "path"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "path", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ignoreWhitespace" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ignoreWhitespace", r.URL.Query(), &params.IgnoreWhitespace, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ignoreWhitespace"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ignoreWhitespace", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequestFiles(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MergePullRequest operation middleware
+func (siw *ServerInterfaceWrapper) MergePullRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MergePullRequest(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPullRequestMergeability operation middleware
+func (siw *ServerInterfaceWrapper) GetPullRequestMergeability(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPullRequestMergeability(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MarkPullRequestReady operation middleware
+func (siw *ServerInterfaceWrapper) MarkPullRequestReady(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkPullRequestReady(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReopenPullRequest operation middleware
+func (siw *ServerInterfaceWrapper) ReopenPullRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReopenPullRequest(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RequestPullRequestReviewers operation middleware
+func (siw *ServerInterfaceWrapper) RequestPullRequestReviewers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RequestPullRequestReviewers(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemovePullRequestReviewer operation middleware
+func (siw *ServerInterfaceWrapper) RemovePullRequestReviewer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemovePullRequestReviewer(w, r, owner, repo, number, username)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPullRequestReviews operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequestReviews(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestReviewsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequestReviews(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePullRequestReview operation middleware
+func (siw *ServerInterfaceWrapper) CreatePullRequestReview(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePullRequestReview(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPullRequestThreads operation middleware
+func (siw *ServerInterfaceWrapper) ListPullRequestThreads(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPullRequestThreadsParams
+
+	// ------------- Optional query parameter "resolved" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resolved", r.URL.Query(), &params.Resolved, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resolved"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resolved", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "perPage" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", r.URL.Query(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "perPage"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "perPage", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPullRequestThreads(w, r, owner, repo, number, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResolvePullRequestThread operation middleware
+func (siw *ServerInterfaceWrapper) ResolvePullRequestThread(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "threadId" -------------
+	var threadId PullThreadIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "threadId", r.PathValue("threadId"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "threadId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolvePullRequestThread(w, r, owner, repo, number, threadId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UnresolvePullRequestThread operation middleware
+func (siw *ServerInterfaceWrapper) UnresolvePullRequestThread(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "threadId" -------------
+	var threadId PullThreadIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "threadId", r.PathValue("threadId"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "threadId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnresolvePullRequestThread(w, r, owner, repo, number, threadId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetPullRequestFileViewed operation middleware
+func (siw *ServerInterfaceWrapper) SetPullRequestFileViewed(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "owner" -------------
+	var owner RepoOwnerParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "owner", r.PathValue("owner"), &owner, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "owner", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "repo" -------------
+	var repo RepoNameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", r.PathValue("repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "number" -------------
+	var number PullNumberParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "number", r.PathValue("number"), &number, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetPullRequestFileViewed(w, r, owner, repo, number)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetRepositoryRaw operation middleware
 func (siw *ServerInterfaceWrapper) GetRepositoryRaw(w http.ResponseWriter, r *http.Request) {
 
@@ -9453,6 +12411,36 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.DeleteMilestone)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.GetMilestone)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/milestones/{milestoneNumber}", wrapper.UpdateMilestone)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls", wrapper.ListPullRequests)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls", wrapper.CreatePullRequest)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}", wrapper.GetPullRequest)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}", wrapper.UpdatePullRequest)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/ready", wrapper.MarkPullRequestReady)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/draft", wrapper.MarkPullRequestDraft)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/close", wrapper.ClosePullRequest)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/reopen", wrapper.ReopenPullRequest)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/commits", wrapper.ListPullRequestCommits)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/files", wrapper.ListPullRequestFiles)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/viewed", wrapper.SetPullRequestFileViewed)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/mergeability", wrapper.GetPullRequestMergeability)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/merge", wrapper.MergePullRequest)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/branch", wrapper.DeletePullRequestBranch)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/reviews", wrapper.ListPullRequestReviews)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/reviews", wrapper.CreatePullRequestReview)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/comments", wrapper.ListPullRequestComments)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/comments", wrapper.CreatePullRequestComment)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/comments/{commentId}", wrapper.DeletePullRequestComment)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/comments/{commentId}", wrapper.UpdatePullRequestComment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/threads", wrapper.ListPullRequestThreads)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve", wrapper.ResolvePullRequestThread)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve", wrapper.UnresolvePullRequestThread)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/requested-reviewers", wrapper.RequestPullRequestReviewers)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username}", wrapper.RemovePullRequestReviewer)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/statuses", wrapper.ListCommitStatuses)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/statuses", wrapper.CreateCommitStatus)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/commits/{sha}/status", wrapper.GetCombinedCommitStatus)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/repos/{owner}/{repo}/branch-settings", wrapper.GetBranchSettings)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/repos/{owner}/{repo}/branch-settings", wrapper.UpdateBranchSettings)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/notifications", wrapper.DeleteNotifications)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/notifications", wrapper.ListNotifications)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/notifications/read-all", wrapper.MarkAllNotificationsRead)
@@ -9502,4 +12490,85 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/orgs/{org}/hooks/{hookId}/deliveries/{deliveryId}/redeliver", wrapper.RedeliverOrgWebhookDelivery)
 
 	return m
+}
+
+// CallbackReceiverInterface represents handlers for receiving inbound
+// callback requests. Each callback becomes a Handle*Callback
+// method that the implementation fills in. The caller mounts the per-
+// callback http.Handler returned by {Op}CallbackHandler at
+// whatever URL path they advertise to senders.
+type CallbackReceiverInterface interface {
+	// Consegna dell'evento commit_status (PR11)
+	// HandleCommitStatusCallback handles the POST callback for commit_status.
+	HandleCommitStatusCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento pull_request (PR11)
+	// HandlePullRequestCallback handles the POST callback for pull_request.
+	HandlePullRequestCallback(w http.ResponseWriter, r *http.Request)
+	// Consegna dell'evento pull_request_review (PR11)
+	// HandlePullRequestReviewCallback handles the POST callback for pull_request_review.
+	HandlePullRequestReviewCallback(w http.ResponseWriter, r *http.Request)
+}
+
+// CallbackReceiverMiddlewareFunc wraps an http.Handler with cross-
+// cutting behavior (signature verification, logging, rate limiting, ...).
+type CallbackReceiverMiddlewareFunc func(http.Handler) http.Handler
+
+// CommitStatusCallbackHandler returns the http.Handler for the commit_status callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func CommitStatusCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandleCommitStatusCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// PullRequestCallbackHandler returns the http.Handler for the pull_request callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func PullRequestCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandlePullRequestCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
+}
+
+// PullRequestReviewCallbackHandler returns the http.Handler for the pull_request_review callback.
+// Mount this at the URL path advertised to callback senders. errHandler
+// may be nil; if so, parameter-binding errors return 400 with the error
+// message. Middlewares are applied in the order provided -- the last
+// argument becomes the outermost wrapper.
+func PullRequestReviewCallbackHandler(si CallbackReceiverInterface, errHandler func(w http.ResponseWriter, r *http.Request, err error), middlewares ...CallbackReceiverMiddlewareFunc) http.Handler {
+	if errHandler == nil {
+		errHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		si.HandlePullRequestReviewCallback(w, r)
+	})
+	for _, mw := range middlewares {
+		h = mw(h)
+	}
+	return h
 }

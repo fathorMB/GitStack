@@ -717,6 +717,15 @@ type OidcProviderParam = Name
 // Example: alice
 type OrgParam = Name
 
+// PullCommentIdParam defines model for PullCommentIdParam.
+type PullCommentIdParam = openapi_types.UUID
+
+// PullNumberParam defines model for PullNumberParam.
+type PullNumberParam = int64
+
+// PullThreadIdParam defines model for PullThreadIdParam.
+type PullThreadIdParam = openapi_types.UUID
+
 // RefAndPathParam defines model for RefAndPathParam.
 type RefAndPathParam = string
 

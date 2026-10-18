@@ -22,6 +22,30 @@ i client, non un'estrazione a posteriori dal codice.
   esclusivo della web UI; UI, CLI `gs`, skills e in futuro server MCP usano
   tutti lo stesso contratto.
 
+## Estensione `x-mcp` (server MCP, regole M2 e M3)
+
+`gs mcp` genera gli strumenti dal contratto. Ogni operazione di un tag nuovo
+dalla v1.1 porta, accanto a `x-required-scopes`, l'estensione:
+
+```yaml
+x-mcp:
+  expose: true        # true = strumento MCP dedicato; false = solo api_request
+  name: pr_merge      # oggetto_azione, minuscolo, coerente con `gs`, unico nel contratto
+  destructive: true   # annotazione MCP «distruttiva» (M3)
+```
+
+- `expose: false` per quello che M3 non vuole come strumento dedicato (impostazioni,
+  webhook, token, amministrazione, eliminazione di repo) e per le sole azioni di
+  interfaccia (casella Viewed): restano raggiungibili con `api_request`, entro i
+  permessi del token. `name` c'è comunque, così un'operazione si può esporre dopo.
+- `destructive: true` su chiusure, merge, eliminazioni e occultamenti; mai su una lettura.
+- Con `--read-only` il server espone solo le operazioni `GET`, anche per `api_request`.
+
+Oggi l'estensione è sul tag `pulls` (Pull Request, review, stati dei commit,
+impostazioni «Branches & merge», GIT-258); `api/mcp_test.go` la fa rispettare.
+Le operazioni dei tag precedenti (repo, codice, issues, etichette, milestone,
+ricerca, notifiche) la ricevono quando si genera `gs mcp`.
+
 ## Verificare il contratto
 
 ```sh
