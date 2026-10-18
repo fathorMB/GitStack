@@ -498,15 +498,22 @@ jobs:
             case "${t}" in *":${SHA_TAG}") sha_ref="${t}" ;; esac
           done <<< "${TAGS}"
           if [ -n "${sha_ref}" ] && docker buildx imagetools inspect "${sha_ref}" >/dev/null 2>&1; then
-            args=()
+            # skopeo copia i manifest byte per byte (--preserve-digests):
+            # `docker buildx imagetools create` rigenera l'indice e cambia il
+            # digest (visto su GHCR in v0.0.0-test.6). Immagine fissata per digest.
+            want="$(docker buildx imagetools inspect "${sha_ref}" --format '{{json .Manifest}}' | jq -er '.digest')"
             while IFS= read -r t; do
               if [ -n "${t}" ] && [ "${t}" != "${sha_ref}" ]; then
-                args+=(-t "${t}")
+                docker run --rm -v "${HOME}/.docker/config.json:/auth.json:ro" \
+                  quay.io/skopeo/stable@sha256:be15097a3e99a1fe72838b3d626d1c283db38626536fff5e04ab6bbb814baeca \
+                  copy --all --preserve-digests --authfile /auth.json "docker://${sha_ref}" "docker://${t}"
+                got="$(docker buildx imagetools inspect "${t}" --format '{{json .Manifest}}' | jq -er '.digest')"
+                if [ "${got}" != "${want}" ]; then
+                  echo "ERRORE: ${t} (${got}) non ha il digest di ${sha_ref} (${want})" >&2
+                  exit 1
+                fi
               fi
             done <<< "${TAGS}"
-            if [ "${#args[@]}" -gt 0 ]; then
-              docker buildx imagetools create "${args[@]}" "${sha_ref}"
-            fi
             echo "reuse=true" >> "$GITHUB_OUTPUT"
             echo "::notice::${sha_ref} esiste già: nessuna nuova build, tag aggiunti sullo stesso digest."
           else
