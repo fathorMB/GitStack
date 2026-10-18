@@ -1,6 +1,7 @@
 ---
-{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd"],"reopen_reason":"N2 rivista il 2026-10-18 dall'operatore (Pop!_OS con avviso, non supportato nella v1.0); stato dell'installer riallineato al commit 4a946f2.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-18T00:08:00.699676900+00:00"}
+{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d","DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"],"reopen_reason":"Requisiti dell'installer e dei backup dalla v3 (H2, H3, H4, H9; scelte dell'operatore del 2026-10-18).","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-18T16:56:23.090925500+00:00"}
 ---
+
 
 
 
@@ -42,6 +43,11 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 - **N9 Proxy, mirror e CA aziendale:** `--http-proxy`, `--https-proxy`, `--no-proxy` applicati a tutto ciò che esce dal server (installazione di k3s e Helm, download di immagini, servizi di GitStack: webhook, mirror, OIDC, SMTP; dalla v2 i job della CI). `--registry-mirror` per **tutte** le immagini, comprese quelle di sistema di k3s, con credenziali facoltative; `--download-mirror` per i binari di k3s, Helm e `gitstack`; `--ca-bundle` per fidarsi della CA aziendale (ispezione TLS) in GitStack e k3s. Il preflight prova a raggiungere tutto attraverso proxy e mirror e indica cosa non risponde. Modificabile dopo l'installazione con `gitstack config set network …`. Restano valide la verifica delle firme cosign (V5, con l'eccezione esplicita per mirror interni non firmati) e il controllo delle destinazioni di webhook e mirror (C8) anche attraverso il proxy.
 - **N10 Aggiornamento di k3s:** ogni versione di GitStack dichiara la versione di k3s con cui è provata. Se cambia solo la **patch** di k3s, `gitstack upgrade` la aggiorna in automatico dopo il backup preventivo, con una breve interruzione annunciata; un cambio di **versione minore** richiede `gitstack upgrade --k3s`, una minore alla volta, sempre con backup preventivo. Il ritorno indietro di k3s è guidato da una procedura documentata, non automatico. I test in CI di aggiornamento (N2) includono il cambio di versione di k3s. Serve a mantenere le patch di sicurezza sotto GitStack (V4).
 
+**Dalla v3 (app ospitate, regole del 2026-10-18 in [[knowledge/topics/hosting-app]]):**
+- **Dominio delle app (H2):** opzione facoltativa `--apps-domain` (es. `apps.azienda.it`, con record DNS wildcard), consigliato distinto dal dominio di GitStack; senza, un default con avviso. Le app pubbliche con Let's Encrypt richiedono la porta 80 raggiungibile da internet.
+- **Backup (H3, H4, completa D19):** `gitstack backup` include i volumi delle app (escludibili per app; copia con l'app accesa) e le immagini in uso dalle app (versione attiva e precedente), così dopo `restore` le app ripartono subito con i loro dati.
+- **Proxy (N9):** dalla v3 vale anche per il traffico in uscita delle app (H9).
+
 **Windows via WSL2, di prova (W1, W2, 2026-10-05):** WSL2 con Ubuntu 22.04/24.04 preparato da uno script PowerShell; per prove, demo e piccoli team. Avvio al login; di default accesso solo dal PC (`https://localhost`, SSH 2222); con `-ShareOnNetwork` rete mirrored (Windows 11 22H2+) e porte 443/2222 aperte. In CI solo un test di installazione; nessuna garanzia di disponibilità.
 
 **Verifica dei rilasci (V5, 2026-10-05):** `install.sh` e `gitstack upgrade` verificano le firme cosign di immagini, chart e binari e si fermano se non tornano (eccezione esplicita per mirror interni non firmati). Vedi [[knowledge/topics/rilascio-v1]].
@@ -64,4 +70,5 @@ Nessuna.
 - [[knowledge/topics/architettura]]
 - [[knowledge/topics/stato-di-realizzazione]]
 - [[knowledge/topics/decisioni]]
+- [[knowledge/topics/hosting-app]]
 
