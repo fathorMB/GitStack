@@ -55,12 +55,12 @@ func TestVersione(t *testing.T) {
 	}
 }
 
-func TestHelpElenca12Gruppi(t *testing.T) {
+func TestHelpElencaGruppi(t *testing.T) {
 	r := gs(t, nil, "--help")
 	if r.code != 0 {
 		t.Fatalf("%+v", r)
 	}
-	for _, g := range []string{"auth", "repo", "issue", "label", "milestone", "search", "browse", "blame", "notification", "api", "skills", "version"} {
+	for _, g := range []string{"auth", "repo", "issue", "label", "milestone", "search", "browse", "blame", "notification", "mcp", "api", "skills", "version"} {
 		if !strings.Contains(r.out, "\n  "+g+" ") {
 			t.Errorf("gruppo %q assente da --help:\n%s", g, r.out)
 		}

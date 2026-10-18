@@ -24,8 +24,7 @@ i client, non un'estrazione a posteriori dal codice.
 
 ## Estensione `x-mcp` (server MCP, regole M2 e M3)
 
-`gs mcp` genera gli strumenti dal contratto. Ogni operazione di un tag nuovo
-dalla v1.1 porta, accanto a `x-required-scopes`, l'estensione:
+`gs mcp` genera gli strumenti dal contratto. Ogni operazione porta, accanto a `x-required-scopes`, l'estensione:
 
 ```yaml
 x-mcp:
@@ -41,10 +40,11 @@ x-mcp:
 - `destructive: true` su chiusure, merge, eliminazioni e occultamenti; mai su una lettura.
 - Con `--read-only` il server espone solo le operazioni `GET`, anche per `api_request`.
 
-Oggi l'estensione è sul tag `pulls` (Pull Request, review, stati dei commit,
-impostazioni «Branches & merge», GIT-258); `api/mcp_test.go` la fa rispettare.
-Le operazioni dei tag precedenti (repo, codice, issues, etichette, milestone,
-ricerca, notifiche) la ricevono quando si genera `gs mcp`.
+L'estensione è su **tutte** le operazioni del contratto, di ogni tag (repo, codice, issues, etichette,
+milestone, ricerca, notifiche, stati dei commit, Pull Request e anche amministrazione e interfaccia interna, con
+`expose: false`); `api/mcp_test.go` la fa rispettare su ogni operazione. Gli strumenti di `gs mcp` si generano
+dal contratto con `cd cli && go generate ./internal/mcp/...` (parte di `./scripts/generate-api.sh`): un test della
+CLI fallisce se `cli/internal/mcp/tools_gen.go` diverge da `openapi.yaml`.
 
 ## Verificare il contratto
 

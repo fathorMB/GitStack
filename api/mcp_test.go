@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Estensione `x-mcp` (M2, M3; GIT-258): ogni operazione del tag `pulls` dice se
+// Estensione `x-mcp` (M2, M3; GIT-258, GIT-271): ogni operazione del contratto, di ogni tag, dice se
 // e' esposta come strumento MCP, con quale nome `oggetto_azione` e se e'
 // distruttiva. Il test legge openapi.yaml riga per riga (il modulo api non ha
 // dipendenze), quindi si appoggia alla forma fissa del documento:
@@ -17,6 +17,7 @@ import (
 type specOp struct {
 	method, path, id string
 	pulls            bool
+	tag              string
 	mcp              bool
 	expose, destr    string
 	name             string
@@ -73,6 +74,7 @@ func readOps(t *testing.T) []*specOp {
 			inMCP = false
 		case strings.HasPrefix(line, "      tags:"):
 			cur.pulls = strings.Contains(trim, "pulls")
+			cur.tag = strings.Trim(strings.TrimSpace(strings.TrimPrefix(trim, "tags:")), "[]")
 			inMCP = false
 		case !strings.HasPrefix(line, "        "):
 			inMCP = false
@@ -84,16 +86,17 @@ func readOps(t *testing.T) []*specOp {
 	return ops
 }
 
-func TestMCPExtensionOnPullOperations(t *testing.T) {
+func TestMCPExtensionOnEveryOperation(t *testing.T) {
 	nameRe := regexp.MustCompile(`^[a-z]+(_[a-z]+)+$`)
 	names := map[string]string{}
 	count := 0
 	exposed := 0
+	perTag := map[string]int{}
 	for _, op := range readOps(t) {
-		if !op.pulls {
-			continue
+		if op.pulls {
+			count++
 		}
-		count++
+		perTag[op.tag]++
 		where := op.method + " " + op.path + " (" + op.id + ")"
 		if !op.mcp {
 			t.Errorf("%s: manca l'estensione x-mcp", where)
@@ -115,18 +118,24 @@ func TestMCPExtensionOnPullOperations(t *testing.T) {
 		if op.expose == "true" {
 			exposed++
 		}
-		// M3: chiusure, merge ed eliminazioni sono distruttive; le letture no.
-		wantDestructive := op.method == "DELETE" ||
+		// M3: chiusure, merge, eliminazioni e occultamenti sono distruttivi; le letture no.
+		wantDestructive := op.method == "DELETE" || op.id == "setIssueHidden" ||
 			strings.HasPrefix(op.id, "close") || strings.HasPrefix(op.id, "merge") || strings.HasPrefix(op.id, "delete")
 		if wantDestructive && op.destr != "true" {
-			t.Errorf("%s: chiusure, merge ed eliminazioni sono distruttive (M3)", where)
+			t.Errorf("%s: chiusure, merge, eliminazioni e occultamenti sono distruttivi (M3)", where)
 		}
 		if op.method == "GET" && op.destr != "false" {
 			t.Errorf("%s: una lettura non e' distruttiva", where)
 		}
-		// M3: nessuno strumento dedicato per le impostazioni.
-		if strings.Contains(op.id, "Settings") && op.expose != "false" {
-			t.Errorf("%s: le impostazioni non hanno uno strumento dedicato (M3)", where)
+		// M3: nessuno strumento dedicato per eliminare o archiviare repo, impostazioni,
+		// webhook, token e amministrazione (ne' per l'interfaccia interna).
+		if op.expose == "true" && mcpNeverExposed(op) {
+			t.Errorf("%s: M3 vieta uno strumento dedicato, expose deve essere false", where)
+		}
+	}
+	for _, tag := range []string{"repos", "issues", "notifications", "pulls"} {
+		if perTag[tag] == 0 {
+			t.Errorf("tag %s senza operazioni?", tag)
 		}
 	}
 	if count < 30 {
@@ -135,6 +144,20 @@ func TestMCPExtensionOnPullOperations(t *testing.T) {
 	if exposed == 0 {
 		t.Fatal("nessuna operazione esposta in MCP")
 	}
+}
+
+// mcpNeverExposed dice se M3 esclude l'operazione dagli strumenti dedicati.
+func mcpNeverExposed(op *specOp) bool {
+	switch op.tag {
+	case "webhooks", "tokens", "internal", "git-internal", "users", "organizations", "teams",
+		"permissions", "ssh-keys", "auth", "system", "resources", "mirrors":
+		return true
+	}
+	switch op.id {
+	case "deleteRepository", "updateRepository", "restoreRepository", "importRepository", "getRepositoryArchive", "deletePullRequestBranch":
+		return true
+	}
+	return strings.Contains(op.id, "Settings") || strings.Contains(op.id, "Webhook") || strings.Contains(op.id, "Token")
 }
 
 // Le operazioni di PR1-PR12 che il contratto deve descrivere (GIT-258).
