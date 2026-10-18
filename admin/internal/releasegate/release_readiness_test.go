@@ -140,8 +140,7 @@ func TestReleaseReadiness_NessunRischioNoto(t *testing.T) {
 
 // GIT-292: il dogfooding è di almeno 2 settimane dalla tappa 2, con quattro criteri.
 func TestReleaseReadiness_M6DueSettimaneDallaTappa2(t *testing.T) {
-	out, _ := run(t, registerHead+"| F1 | low | Sessioni | `a.go` | `t` |
-")
+	out, _ := run(t, registerHead+"| F1 | low | Sessioni | `a.go` | `t` |\n")
 	l := lineWith(out, "M6")
 	if l == "" {
 		t.Fatalf("manca la riga M6:\n%s", out)
