@@ -189,7 +189,7 @@ func pullReviewState(ctx context.Context, q querier, repoID uuid.UUID, p prRow, 
 	}
 	rows, err := q.Query(ctx, `SELECT state, commit_sha, by_agent, author_id FROM (
 			SELECT DISTINCT ON (author_id) state, commit_sha, by_agent, author_id
-			FROM core.pull_request_reviews WHERE pull_request_id = $1 AND state IN ('approve', 'request_changes')
+			FROM core.pull_request_reviews WHERE pull_request_id = $1 AND state IN ('approve', 'request_changes') AND NOT by_agent
 			ORDER BY author_id, created_at DESC) x`, p.ID)
 	if err != nil {
 		return
