@@ -1,9 +1,3 @@
-| V13.2.5 | Explicit Content-Type check | **ok** | Same control as V13.1.5: the media type is parsed (`mime.ParseMediaType`), parameters such as `charset` are accepted, a request without a body is not affected, and multipart upload routes are not JSON routes. `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415`. [resolved F15 GIT-238] |
-| V13.1.5 | Unexpected content types rejected | **ok** | The gateway answers 415 `unsupported_media_type` on every route whose request body is declared only as `application/json` when a body arrives with another `Content-Type` (`JSONBody` in the generated `security.Routes`, checked in `middleware.Auth`): `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415`. Core and identity are reachable only through the gateway, so the check is not repeated in each handler. [resolved F15 GIT-238] |
-| V2.4.5 | Additional KDF iteration with a secret salt | n/a | Excluded on purpose (GIT-238, F14): no pepper is applied. The pepper would have to live in the same Secret store the identity pod already reads, next to the database credentials, so an attacker able to read the hash table through the service is likely able to read it too; it adds a key to rotate (rotating it invalidates every hash unless each one carries a key id and is rehashed at login), a new way to lock everyone out, and nothing else. Hashes are salted argon2id (V2.4.1 to V2.4.4), the length and common-password rules above bound offline guessing, and the second factor (F11) covers the rest. Revisit if the hash table starts to be stored apart from the service secrets. |
-| V2.1.8 | Password strength meter | **ok** | `PasswordStrengthMeter` under the new-password field of `web/src/pages/ChangePasswordPage.tsx`: `web/src/lib/passwordStrength.test.ts`, `web/src/components/PasswordStrengthMeter.test.tsx`, `web/src/pages/ChangePasswordPage.test.tsx`. [resolved F14 GIT-238] |
-| V2.1.7 | Breached password check | **ok** | A list of common passwords is embedded in the binary (`services/identity/internal/password/common_passwords.txt`, no outbound call) and checked at user creation, bootstrap and password change, ignoring case and a trailing run of digits or symbols; a single repeated block is also refused: `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected`. It is a local filter, not a full breach corpus. [resolved F14 GIT-238] |
-| V2.1.2 | Passwords of 64+ accepted, over 128 denied | **ok** | New passwords are 12 to 128 characters (`MaxLength` in `services/identity/internal/password/password.go`, `maxLength: 128` in the contract): `services/identity/internal/password/password_test.go#TestValidatePolicy_Max128`. Login and the current password still accept up to 1024 so that an older, longer password can sign in and be replaced. [resolved F14 GIT-238] |
 # OWASP ASVS 4.0.3 level 2 checklist (internal review)
 
 Release rule V2 (M-09, GIT-219). Internal security review, no external penetration test.
@@ -21,27 +15,27 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 172 |
+| ok | 186 |
 | n/a | 44 |
-| problem | 43 |
+| problem | 29 |
 | **total** | **259** |
 
 Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low), F15 (low) and F16 (low) by GIT-238
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
-| V1 Architecture, Design and Threat Modeling | 28 | 0 | 10 |
-| V2 Authentication | 32 | 16 | 5 |
+| V1 Architecture, Design and Threat Modeling | 34 | 0 | 4 |
+| V2 Authentication | 33 | 16 | 4 |
 | V3 Session Management | 17 | 1 | 0 |
 | V4 Access Control | 8 | 1 | 0 |
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
 | V6 Stored Cryptography | 8 | 2 | 3 |
-| V7 Error Handling and Logging | 6 | 0 | 6 |
+| V7 Error Handling and Logging | 11 | 0 | 1 |
 | V8 Data Protection | 11 | 3 | 1 |
 | V9 Communication | 2 | 1 | 4 |
 | V10 Malicious Code | 3 | 2 | 0 |
-| V11 Business Logic | 6 | 1 | 1 |
-| V12 Files and Resources | 10 | 1 | 4 |
+| V11 Business Logic | 7 | 1 | 0 |
+| V12 Files and Resources | 11 | 1 | 3 |
 | V13 API and Web Service | 9 | 4 | 0 |
 | V14 Configuration | 11 | 3 | 9 |
 
@@ -93,13 +87,13 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | Id | Requirement | Outcome | Evidence or reason |
 |---|---|---|---|
 | V2.1.1 | Passwords of at least 12 characters | ok | `services/identity/internal/password/password_test.go#TestValidatePolicy`. |
-| V2.1.2 | Passwords of 64+ accepted, over 128 denied | **problem** | The limit is 1024 characters (`MaxLength` in `services/identity/internal/password/password.go`), so passwords between 129 and 1024 are accepted. [F14] |
+| V2.1.2 | Passwords of 64+ accepted, over 128 denied | **ok** | New passwords are 12 to 128 characters (`MaxLength` in `services/identity/internal/password/password.go`, `maxLength: 128` in the contract): `services/identity/internal/password/password_test.go#TestValidatePolicy_Max128`. Login and the current password still accept up to 1024 so that an older, longer password can sign in and be replaced. [resolved F14 GIT-238] |
 | V2.1.3 | No password truncation | ok | The whole string is hashed (`services/identity/internal/password/password_test.go#TestHashFormatAndVerify`). |
 | V2.1.4 | Any printable Unicode accepted | ok | Length is counted in runes and no character class is rejected (`services/identity/internal/password/password.go`). |
 | V2.1.5 | Users can change password | ok | `services/identity/internal/httpapi/httpapi_integration_test.go#TestChangePassword`. |
 | V2.1.6 | Change requires current and new password | ok | `services/identity/internal/httpapi/httpapi_integration_test.go#TestChangePassword` (wrong current password gives 403). |
-| V2.1.7 | Breached password check | **problem** | No local or remote breached-password list is consulted at registration, login or change. [F14] |
-| V2.1.8 | Password strength meter | **problem** | The web UI has no strength meter (`web/src/pages/ChangePasswordPage.tsx`). [F14] |
+| V2.1.7 | Breached password check | **ok** | A list of common passwords is embedded in the binary (`services/identity/internal/password/common_passwords.txt`, no outbound call) and checked at user creation, bootstrap and password change, ignoring case and a trailing run of digits or symbols; a single repeated block is also refused: `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected`. It is a local filter, not a full breach corpus. [resolved F14 GIT-238] |
+| V2.1.8 | Password strength meter | **ok** | `PasswordStrengthMeter` under the new-password field of `web/src/pages/ChangePasswordPage.tsx`: `web/src/lib/passwordStrength.test.ts`, `web/src/components/PasswordStrengthMeter.test.tsx`, `web/src/pages/ChangePasswordPage.test.tsx`. [resolved F14 GIT-238] |
 | V2.1.9 | No composition rules | ok | `ValidatePolicy` checks length, blank and equal-to-username only (`services/identity/internal/password/password_test.go#TestValidatePolicy`). |
 | V2.1.10 | No periodic rotation or history | ok | Not implemented; only the first-login change of the bootstrap password (`services/identity/internal/httpapi/mustchange_integration_test.go#TestMustChangePasswordEnforcement`). |
 | V2.1.11 | Paste and password managers permitted | ok | Plain password inputs without paste handlers (`web/src/components/TextField.tsx`). |
@@ -114,7 +108,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V2.4.2 | Unique salt of at least 32 bits | ok | 16 random bytes per hash: `services/identity/internal/password/password_test.go#TestHashSaltIsRandom`. |
 | V2.4.3 | PBKDF2 iteration count | n/a | PBKDF2 is not used (argon2id). |
 | V2.4.4 | bcrypt work factor | n/a | bcrypt is not used (argon2id). |
-| V2.4.5 | Additional KDF iteration with a secret salt | **problem** | No pepper is applied to password hashes. [F14] |
+| V2.4.5 | Additional KDF iteration with a secret salt | n/a | Excluded on purpose (GIT-238, F14): no pepper is applied. The pepper would have to live in the same Secret store the identity pod already reads, next to the database credentials, so an attacker able to read the hash table through the service is likely able to read it too; it adds a key to rotate (rotating it invalidates every hash unless each one carries a key id and is rehashed at login), a new way to lock everyone out, and nothing else. Hashes are salted argon2id (V2.4.1 to V2.4.4), the length and common-password rules above bound offline guessing, and the second factor (F11) covers the rest. Revisit if the hash table starts to be stored apart from the service secrets. |
 | V2.5.1 | Initial activation or recovery secret not sent in clear | n/a | The system sends no activation or recovery secret; the admin sets initial passwords and the bootstrap one is in a Kubernetes Secret. |
 | V2.5.2 | No password hints or secret questions | ok | None exist in `api/openapi.yaml`. |
 | V2.5.3 | Recovery does not reveal the password | ok | Passwords are only stored as hashes; the admin can only set a new one. |
@@ -335,11 +329,11 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V13.1.1 | Same parsers everywhere | ok | `net/url` and `net/netip` are used for every check: `services/core/internal/mirrors/mirrors_test.go#TestParseURL`, `pkg/egress/egress_test.go#TestCheckIPCategories`. |
 | V13.1.3 | No sensitive data in API URLs | ok | Credentials never travel in the path or query; request log keeps only the path (`services/gateway/internal/middleware/logging_test.go#TestLogging_UnaRigaJSONConCampiAttesi`). |
 | V13.1.4 | Authorisation at URI and resource level | ok | `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_TabellaMiddleware`, `services/core/internal/httpserver/code_reads_integration_test.go#TestCodeReads_Permessi`. |
-| V13.1.5 | Unexpected content types rejected | **problem** | JSON bodies are decoded without checking `Content-Type`; no 415 in core, identity or gateway. [F15] |
+| V13.1.5 | Unexpected content types rejected | **ok** | The gateway answers 415 `unsupported_media_type` on every route whose request body is declared only as `application/json` when a body arrives with another `Content-Type` (`JSONBody` in the generated `security.Routes`, checked in `middleware.Auth`): `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415`. Core and identity are reachable only through the gateway, so the check is not repeated in each handler. [resolved F15 GIT-238] |
 | V13.2.1 | HTTP methods match the action | ok | Only contract operations are routed: `services/gateway/internal/httpserver/auth_test.go#TestAuth_TabellaDiRotte`. |
 | V13.2.2 | Schema validation before accepting input | ok | Typed decode, unknown fields rejected, per-field validation: `services/identity/internal/apitokens/apitokens_integration_test.go#TestCreateValidation`, `services/core/internal/httpserver/issues_integration_test.go#TestIssues_CreazioneRegoleI3EValidazione`. |
 | V13.2.3 | CSRF protection for cookie-authenticated REST | **ok** | See V4.2.2, plus the 415 on non-JSON bodies (V13.1.5) that stops a `text/plain` form post. `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin`. [resolved F16 GIT-238]
-| V13.2.5 | Explicit Content-Type check | **problem** | Same gap as V13.1.5. [F15] |
+| V13.2.5 | Explicit Content-Type check | **ok** | Same control as V13.1.5: the media type is parsed (`mime.ParseMediaType`), parameters such as `charset` are accepted, a request without a body is not affected, and multipart upload routes are not JSON routes. `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415`. [resolved F15 GIT-238] |
 | V13.2.6 | Headers and payload trustworthy | ok | Identity headers are HMAC-signed with a timestamp and client copies are stripped: `services/gateway/internal/trust/trust_test.go#TestStripClientHeaders`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/header_identita_falsificati`. |
 | V13.3.1 | SOAP/XML schema validation | n/a | No SOAP or XML service. |
 | V13.3.2 | WS-Security | n/a | No SOAP service. |
