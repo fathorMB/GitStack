@@ -86,6 +86,10 @@ func (f *fakeCluster) VolumePath(_ context.Context, pvc string) (string, error) 
 func (f *fakeCluster) Secrets(context.Context) ([]backup.Secret, error) { return nil, nil }
 func (f *fakeCluster) ApplySecret(context.Context, backup.Secret) error { return nil }
 
+func (f *fakeCluster) StatefulSetExists(context.Context, string) (bool, error) { return false, nil }
+func (f *fakeCluster) RestartStatefulSet(context.Context, string) error        { return nil }
+func (f *fakeCluster) WaitStatefulSetReady(context.Context, string) error      { return nil }
+
 // fakeHelm risponde ai sottocomandi di helm e registra le chiamate.
 type fakeHelm struct {
 	mu       sync.Mutex

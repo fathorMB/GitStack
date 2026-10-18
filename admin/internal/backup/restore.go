@@ -183,6 +183,23 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 	}
 	o.logf("ripristinati %d file di configurazione (config.yaml resta quello della nuova installazione)", n)
 
+	// NATS è uno StatefulSet fuori da restoreStops e legge --user/--pass dal
+	// Secret <release>-nats-auth solo all'avvio: dopo restoreSecrets gira
+	// ancora con le credenziali vecchie, e core e git, che ripartono con le
+	// nuove, verrebbero rifiutati («Authorization Violation»). Va quindi
+	// riavviato e atteso PRIMA di riaccendere i servizi. Con NATS esterno o
+	// disattivato lo StatefulSet non esiste e non c'è niente da fare.
+	//
+	// Gli altri componenti non in restoreStops non vanno riavviati:
+	//   - Postgres (e pgclient): il Secret <release>-postgres non si ripristina
+	//     (restoreSecrets lo salta, e con il database esterno salta anche
+	//     password e CA), quindi la password resta quella del suo PGDATA;
+	//   - web: non monta né legge Secret (solo il ConfigMap della CA, per il
+	//     quale vale il restart più sotto).
+	if e := o.restartNATS(ctx); e != nil {
+		return failed(e)
+	}
+
 	// CA e certificato ripristinati su disco vanno anche nel cluster. Se
 	// fallisce, i dati sono già a posto: i servizi si riaccendono comunque e
 	// l'errore (alla fine) dice come rifare solo questo passo.
@@ -230,6 +247,29 @@ func Restore(ctx context.Context, o *Options, archive string) (err error) {
 		}
 	}
 	return tlsErr
+}
+
+// restartNATS riavvia lo StatefulSet <release>-nats se esiste e ne aspetta
+// il ready.
+func (o *Options) restartNATS(ctx context.Context) error {
+	name := o.Cfg.Release + "-nats"
+	found, err := o.Cluster.StatefulSetExists(ctx, name)
+	if err != nil {
+		return fmt.Errorf("lettura dello StatefulSet %s: %w", name, err)
+	}
+	if !found {
+		return nil
+	}
+	by := fmt.Sprintf("kubectl -n %s rollout restart statefulset/%s && kubectl -n %s rollout status statefulset/%s",
+		o.Cfg.Namespace, name, o.Cfg.Namespace, name)
+	o.logf("riavvio NATS per le credenziali ripristinate")
+	if e := o.Cluster.RestartStatefulSet(ctx, name); e != nil {
+		return fmt.Errorf("riavvio di NATS: %w (a mano: %s)", e, by)
+	}
+	if e := o.Cluster.WaitStatefulSetReady(ctx, name); e != nil {
+		return fmt.Errorf("NATS non è tornato pronto dopo il riavvio: %w (a mano: %s)", e, by)
+	}
+	return nil
 }
 
 // extractVerified estrae le voci rimanenti in stage verificando che siano

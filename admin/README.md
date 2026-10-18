@@ -284,6 +284,13 @@ sudo gitstack restore --key-file chiave /srv/backup/gitstack-backup-….tar.gz.e
    ruolo `identity_app` la riallinea l'initContainer di identity dal Secret
    ripristinato) e rimette i file di `config/` in `/etc/gitstack`, **senza**
    sovrascrivere `config.yaml` (lo ha appena scritto l'installer);
+   poi, se esiste lo StatefulSet `<release>-nats` (NATS del chart; con NATS
+   esterno non c'è), lo **riavvia e ne aspetta il ready** («riavvio NATS per le
+   credenziali ripristinate»): NATS legge utente e password del Secret
+   `<release>-nats-auth` solo all'avvio e, senza il riavvio, rifiuterebbe core e
+   git con «Authorization Violation» (il restore usciva con 70, «gateway non è
+   tornato pronto»). Non serve più il `rollout restart` a mano. Postgres non si
+   riavvia (il suo Secret non si ripristina) e il web non legge Secret;
 6. **TLS e CA** (solo con `tls: internal` o `custom`; con `insecure` e
    `letsencrypt` non si fa niente): i file di `/etc/gitstack/tls` (`ca.crt`,
    `ca.key`, `server.crt`/`server.key`, `server.sans`) tornano quelli del
