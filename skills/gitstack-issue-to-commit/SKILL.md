@@ -1,9 +1,9 @@
 ---
 name: gitstack-issue-to-commit
-description: Lavora su una issue di GitStack dall'apertura al commit che la chiude (fixes #n). Usala quando ti viene assegnata o chiesta una issue da implementare.
+description: Lavora su una issue di GitStack dall'apertura alla Pull Request (bozza, poi pronta per la review) con il commit che la chiude (fixes #n). Usala quando ti viene assegnata o chiesta una issue da implementare.
 ---
 
-# GitStack: da una issue al commit
+# GitStack: da una issue alla Pull Request
 
 ## 1. Leggi la issue
 
@@ -62,15 +62,62 @@ fixes #12
 
 Non committare `msg.txt` (`git add` solo dei file della modifica, o lascialo fuori dal repo). Usa `refs #12` se il commit non deve chiudere la issue.
 
-## 5. Chiudi il giro: commento con ramo e comando di unione
+## 5. Apri la Pull Request in bozza
 
-Sul ramo il commit resta solo collegato alla issue. Non chiudere la issue e non unire tu: la issue si chiude quando `fixes #12` arriva sul ramo predefinito, e questo lo fa la persona. Scrivi sulla issue il nome del ramo, un riassunto e il comando di unione:
+Dal tuo ramo apri una PR in bozza verso il ramo predefinito (`--head` è il ramo corrente, `--base` il branch principale). Serve il permesso write. Il testo porta `fixes #12`: la issue si chiude quando la PR viene unita, e la unisce una persona, non tu. In bozza la PR non si unisce e non chiede review.
+
+```
+gs pr create --draft --title "Correggi il crash all'avvio" --body-file pr.txt
+```
+
+Dove `pr.txt` (scritto con lo strumento di scrittura file) è, per esempio:
+
+```
+Il crash all'avvio era un puntatore non controllato in cmd/main.go.
+
+fixes #12
+```
+
+Annota il numero della PR (`#7`) che `gs` stampa: serve per i passi seguenti.
+
+## 6. Passa a «Ready for review» con gli stati verdi
+
+Prima controlla che la PR sia davvero pronta: test del repo verdi, nessun conflitto, e lo stato dei controlli obbligatori (`statusState`) non in `failure`, `error` o `pending`.
+
+```
+gs pr view 7 --json draft,statusState,approvals,requiredApprovals,reviewDecision
+gs api /repos/acme/web/pulls/7/mergeability
+```
+
+Quando è pronta, chiedi la review a chi ti ha affidato la issue (per esempio chi l'ha assegnata a te). Se non sai chi è, chiedilo con un commento sulla issue e lascia la PR in bozza: non passarla a pronta da solo.
+
+```
+gs pr ready 7 --reviewer alice
+gs pr comment 7 --body "Pronta per la review: <cosa cambia in una riga>. Test: <quali>."
+```
+
+Se la review chiede modifiche, correggi sullo stesso ramo, committa con `fixes #12` e pusha: la PR si aggiorna da sola.
+
+## 7. Se sei bloccato: `needs-human`
+
+Se non puoi andare avanti (manca un'informazione, un permesso, un ambiente per i test), non indovinare. Aggiungi l'etichetta `needs-human` alla issue e scrivi cosa manca. La PR resta in bozza.
+
+```
+gs issue edit 12 --add-label needs-human
+gs issue comment 12 --body-file blocco.txt
+```
+
+Con `blocco.txt` (con lo strumento di scrittura file) scrivi: cosa hai fatto, cosa ti manca, a chi lo chiedi.
+
+## Senza permesso di scrittura
+
+Se non puoi aprire la PR, scrivi sulla issue il nome del ramo, un riassunto e il comando per unirlo, e chiedi a una persona di aprirla:
 
 ```
 gs issue comment 12 --body-file comment.txt
 ```
 
-con `comment.txt` (scrivilo con un file, come per il commit):
+Con `comment.txt`:
 
 ```
 Fatto nel ramo agent/12-crash-avvio; test verdi.
@@ -80,24 +127,18 @@ Per unire, dal ramo predefinito:
 git fetch && git merge --ff-only origin/agent/12-crash-avvio && git push
 ```
 
-Chiudi a mano solo se non c'è un commit che la chiude (per esempio la issue non richiede codice):
+Chiudi a mano una issue solo se non c'è un commit che la chiude (per esempio la issue non richiede codice):
 
 ```
 gs issue close 12 --reason completed
 gs issue close 12 --reason "not planned" --comment "fuori dal perimetro"
 ```
 
-## 6. Apri la Pull Request (se serve il giro di review)
-
-Se il repo lavora con le Pull Request, apri una PR dal tuo ramo verso il ramo predefinito: serve il permesso write. Il testo porta `fixes #12`, così la issue si chiude quando la PR viene unita. La PR la unisce una persona, non tu.
-
-```
-gs api /repos/acme/web/pulls -f title="Correggi il crash all'avvio" -f sourceBranch=agent/12-crash-avvio -f body="fixes #12"
-```
-
 ## Regole
 
 - Mai push sul ramo predefinito: lavori su `agent/<n>-<slug>` e a unire è una persona.
-- Ogni commit e commento è firmato dal tuo account: scrivi cose vere e verificabili.
+- Non passare a pronta una PR con test rossi o senza un revisore, e non approvare mai la tua PR.
+- Non unire né chiudere una PR (`gs pr merge`, `gs pr close`) senza un'istruzione esplicita di una persona, e non usare `--yes` per farlo.
+- Ogni commit, commento e PR è firmato dal tuo account: scrivi cose vere e verificabili.
 - Non usare `--yes` su eliminazioni o archiviazioni (`gs repo delete`, `gs repo archive`) senza un'istruzione esplicita di una persona.
-- Se non puoi andare avanti, scrivi un commento sulla issue con quello che manca invece di indovinare.
+- Se non puoi andare avanti, metti `needs-human` e scrivi cosa manca invece di indovinare.

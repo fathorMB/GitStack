@@ -38,7 +38,8 @@ func newIssuesCmd(f *cmdutil.Factory) *cobra.Command {
 		Long: "Cerca le issue di tutti i repo che puoi leggere con la sintassi di ricerca I10, identica a UI e API: " +
 			"is:open|closed, reason:, label:, assignee: (`@me`, `@agents`), author:, milestone:, no:, repo:owner/nome, org:, e testo libero. " +
 			"I qualificatori ripetuti si sommano e `-` davanti li nega. Il comando non dipende dal repo corrente: per cercare in uno solo usa `repo:` o `gs issue list`.",
-		Example: "  gs search issues 'is:open label:bug assignee:@me'\n" +
+		Example: "  gs search issues 'is:pr is:open review:required'\n" +
+			"  gs search issues 'is:open label:bug assignee:@me'\n" +
 			"  gs search issues 'repo:acme/web crash' --sort updated\n" +
 			"  gs search issues 'is:closed reason:duplicate' --json repo,number,title",
 		Args: cobra.ArbitraryArgs,
