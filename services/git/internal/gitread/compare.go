@@ -57,10 +57,9 @@ func (s *Service) Compare(ctx context.Context, repoID, base, head string, ignore
 	c := &Comparison{Base: base, Head: head, BaseSHA: baseSHA, HeadSHA: headSHA, Commits: []Commit{}}
 
 	mb, err := s.run.Output(ctx, dir, nil, "merge-base", baseSHA, headSHA)
-	switch {
-	case err == nil:
+	if err == nil {
 		c.MergeBase = strings.TrimSpace(string(mb))
-	default:
+	} else {
 		var ge *gitrun.Error
 		if !errors.As(err, &ge) || ge.ExitCode != 1 {
 			return nil, err

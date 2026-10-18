@@ -155,11 +155,11 @@ func (s *Service) Mergeability(ctx context.Context, repoID, base, head string) (
 		return nil, err
 	}
 	st.MergeBase = mb
-	switch {
-	case mb == "":
+	switch mb {
+	case "":
 		st.State = StateUnrelated
 		return st, nil
-	case mb == headSHA:
+	case headSHA:
 		st.State = StateEmpty
 		return st, nil
 	}
