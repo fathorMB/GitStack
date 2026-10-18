@@ -1,6 +1,7 @@
 ---
-{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d","DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"],"reopen_reason":"Requisiti dell'installer e dei backup dalla v3 (H2, H3, H4, H9; scelte dell'operatore del 2026-10-18).","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-18T16:56:23.090925500+00:00"}
+{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd","TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d","DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"],"reopen_reason":"L'operatore indica come fatto l'avviso per Pop!_OS nel preflight (N2 rivista): tolto da «Cosa resta».","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-18T22:02:15.794621800+00:00"}
 ---
+
 
 
 
@@ -16,7 +17,7 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 **Chart Helm `deploy/gitstack`** (un solo `helm install`): gateway, identity, git, core, web, Postgres (StatefulSet) e NATS JetStream, Ingress Traefik. Segreti generati una sola volta e conservati agli upgrade. Opzioni: Postgres esterno del cliente, registry/mirror configurabile per componente, `web.enabled`, OIDC.
 
 **Installer (`deploy/install.sh`), stato al 2026-10-18 (commit `4a946f2`)** — un comando installa k3s e GitStack su una macchina Linux pulita (anche via `curl | sudo bash`):
-- Il preflight riconosce Ubuntu 22.04/24.04 e Pop!_OS 22.04/24.04 e rifiuta gli altri sistemi salvo `--force`; installazione, backup, aggiornamento e ripristino girano in CI su Ubuntu 22.04 e 24.04.
+- Il preflight riconosce Ubuntu 22.04/24.04 e Pop!_OS 22.04/24.04 (Pop!_OS con l'avviso di N2, indicato come fatto dall'operatore il 2026-10-19) e rifiuta gli altri sistemi salvo `--force`; installazione, backup, aggiornamento e ripristino girano in CI su Ubuntu 22.04 e 24.04.
 - Preflight su hardware (N1), porte 80/443/2222, nome host (N6); HTTPS (N5); opzioni S3 (N7), Postgres esterno (N8), proxy, mirror e CA aziendale (N9); verifica delle firme (V5).
 - Versioni pinnate (k3s con Traefik v3, Helm con checksum); immagini mai `latest`; idempotente.
 - Installa il comando di amministrazione `gitstack` (checksum SHA-256 verificato), scrive `/etc/gitstack/config.yaml` e attiva il timer di backup giornaliero.
@@ -52,7 +53,7 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 
 **Verifica dei rilasci (V5, 2026-10-05):** `install.sh` e `gitstack upgrade` verificano le firme cosign di immagini, chart e binari e si fermano se non tornano (eccezione esplicita per mirror interni non firmati). Vedi [[knowledge/topics/rilascio-v1]].
 
-**Cosa resta (2026-10-18):** avviso per Pop!_OS nel preflight (N2 rivista; oggi Pop!_OS è accettato come Ubuntu, senza avviso); installazione con Postgres esterno e upgrade completo con rollback provati solo a mano; script WSL2 verificati solo staticamente; N1, N3, N6 da compilare in `docs/rules-coverage.md`. Dettaglio in [[knowledge/topics/stato-di-realizzazione]].
+**Cosa resta (2026-10-19):** installazione con Postgres esterno e upgrade completo con rollback provati solo a mano; script WSL2 verificati solo staticamente; N1, N3, N6 da compilare in `docs/rules-coverage.md`. Dettaglio in [[knowledge/topics/stato-di-realizzazione]].
 
 **Immagini e rilasci:** pubblicate su ghcr.io dalla CI su `main` e sui tag; nessun rilascio ancora tagliato.
 
@@ -71,4 +72,5 @@ Nessuna.
 - [[knowledge/topics/stato-di-realizzazione]]
 - [[knowledge/topics/decisioni]]
 - [[knowledge/topics/hosting-app]]
+
 

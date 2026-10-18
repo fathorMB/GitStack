@@ -1,5 +1,5 @@
 ---
-{"area":"delivery","id":"DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","related":["TOP-7b3e077e-45ff-4aee-8aba-f41d636f7fe9","DOC-bcd6d2f7-d45a-4d19-8714-66a45a9c484b","DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d","DOC-3595cb24-e019-4230-a412-009769bae527","TOP-0b04024c-6f6b-4d35-b790-97d7591d6c08","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"],"reopen_reason":"Soglia dei problemi di sicurezza per la v1.0 scelta dall'operatore il 2026-10-18 (opzione 3: vale V1 così com'è).","schema_version":1,"sources":[],"tags":["rilascio","sicurezza","versioni","dogfooding","m-09"],"title":"Rilascio v1.0: regole di prodotto","updated":"2026-10-18T00:05:17.618400400+00:00"}
+{"area":"delivery","id":"DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","related":["TOP-7b3e077e-45ff-4aee-8aba-f41d636f7fe9","DOC-bcd6d2f7-d45a-4d19-8714-66a45a9c484b","DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d","DOC-3595cb24-e019-4230-a412-009769bae527","TOP-0b04024c-6f6b-4d35-b790-97d7591d6c08","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"],"reopen_reason":"Decisione dell'operatore del 2026-10-18: dogfooding di almeno 2 settimane con 4 condizioni esplicite; condizione 1 della tappa 2 tolta.","schema_version":1,"sources":[],"tags":["rilascio","sicurezza","versioni","dogfooding","m-09"],"title":"Rilascio v1.0: regole di prodotto","updated":"2026-10-18T21:55:41.868806100+00:00"}
 ---
 
 
@@ -14,7 +14,7 @@ Regole per M-09 confermate dall'operatore il 2026-10-05 nel tema di analisi "Ril
 
 | # | Regola |
 |---|---|
-| V1 | **Criteri di uscita, tutti obbligatori:** M-01…M-08 completate e ogni regola decisa (R, I, C, B, G, N, W, MP) coperta da almeno un test automatico; nessun bug aperto critico o alto (i medi nelle note di rilascio); revisione di sicurezza chiusa e test di fumo superati; installazione, aggiornamento dalla release candidate e ripristino verdi in CI su tutti i sistemi supportati; dogfooding di almeno 4 settimane senza perdite di dati, contate dal passaggio della casa su GitStack (tappa 2 di V7); un agente chiude una issue end-to-end solo con `gs` e skills. Prima della v1.0 una o più `v1.0.0-rc.N`. |
+| V1 | **Criteri di uscita, tutti obbligatori:** M-01…M-08 completate e ogni regola decisa (R, I, C, B, G, N, W, MP) coperta da almeno un test automatico; nessun bug aperto critico o alto (i medi nelle note di rilascio); revisione di sicurezza chiusa e test di fumo superati; installazione, aggiornamento dalla release candidate e ripristino verdi in CI su tutti i sistemi supportati; **dogfooding di almeno 2 settimane**, contate dal passaggio della casa su GitStack (tappa 2 di V7), superato quando sono vere tutte e 4 le condizioni: 0 perdite di dati, almeno 1 ripristino riuscito, almeno 1 aggiornamento di homehub da una release candidate alla successiva, nessun bug aperto critico o alto (precisato il 2026-10-18, vedi sotto); un agente chiude una issue end-to-end solo con `gs` e skills. Prima della v1.0 una o più `v1.0.0-rc.N`. |
 | V2 | **Sicurezza, revisione interna:** checklist OWASP ASVS livello 2, threat model delle aree a rischio (permessi, SSRF dei webhook e dei mirror, Markdown, raw e SVG, token degli agenti), ogni problema trovato diventa un test, scansioni in CI (dipendenze, codice, immagini) bloccanti. Nessun penetration test esterno nella v1.0. |
 | V3 | **Carico, solo test di fumo:** qualche utente e agente contemporaneo su clone, push, API e issues senza errori; nessun obiettivo numerico. Le capacità di N1 sono dichiarate **indicative, non misurate**. |
 | V4 | **Versioni e supporto:** SemVer; correzioni sull'ultima minore; patch di sicurezza anche sulla minore precedente per 6 mesi; aggiornamento diretto da una minore a qualsiasi successiva; `SECURITY.md` con segnalazione privata, risposta entro 5 giorni lavorativi e avviso pubblico. Nessuna LTS. |
@@ -36,11 +36,11 @@ Scelta dell'operatore del 2026-10-18 (opzione 3), dopo il confronto tra V1 e `do
 Scelta dell'operatore del 2026-10-12, su indicazione del CEO ("fase 3", item GalaxyLab GL-31). V7 e V8 restano l'obiettivo della v1.0; si arriva per tappe:
 
 1. **Copia di backup (ora):** l'istanza homehub tiene una copia del repo GitHub di GitStack con il **mirror in pull** (regole MP1–MP7 in [[knowledge/topics/mirror-in-pull]]), primo pezzo di M-09. GitHub resta la casa del codice; il codice su homehub è in sola lettura, le issues si possono già usare.
-2. **Casa su GitStack (prima della v1.0):** si interrompe il mirror in pull (MP6) e si attiva il mirror in push verso GitHub (V8-mirror); gli agenti fanno push su homehub con `gs` e skills; le issues di sviluppo passano gradualmente da GalaxyLab. Il periodo di almeno 4 settimane di dogfooding richiesto da V1 conta da questa tappa.
+2. **Casa su GitStack (prima della v1.0):** si interrompe il mirror in pull (MP6) e si attiva il mirror in push verso GitHub (V8-mirror); gli agenti fanno push su homehub con `gs` e skills; le issues di sviluppo passano gradualmente da GalaxyLab. Il periodo di **almeno 2 settimane** di dogfooding richiesto da V1 conta da questa tappa (erano 4 fino al 2026-10-18).
 
-**Condizioni per la tappa 2 (scelta A dell'operatore, 2026-10-12)** — nessuna data fissa; quando sono tutte vere l'operatore sceglie il giorno, fa «Interrompi» sul mirror in pull e attiva il mirror in push:
+**Condizioni per la tappa 2 (scelta A dell'operatore, 2026-10-12; precisata il 2026-10-18)** — nessuna data fissa; quando sono tutte vere le condizioni rimaste (2–5) l'operatore sceglie il giorno, fa «Interrompi» sul mirror in pull e attiva il mirror in push:
 
-1. il mirror in pull gira su homehub da almeno 2 settimane senza errori non spiegati;
+1. ~~il mirror in pull gira su homehub da almeno 2 settimane senza errori non spiegati~~ — **tolta il 2026-10-18**;
 2. su homehub i backup giornalieri sono attivi ed è riuscito un ripristino di prova su una macchina nuova;
 3. la prova reale di un agente con `gs` e skills (GIT-174) è superata su homehub;
 4. il mirror in push verso GitHub è stato provato su un repo di prova, senza `diverged`;
@@ -49,6 +49,20 @@ Scelta dell'operatore del 2026-10-12, su indicazione del CEO ("fase 3", item Gal
 Al 2026-10-18 la tappa 2 **non è ancora fatta**; stato delle condizioni in [[knowledge/topics/stato-di-realizzazione]].
 
 **CI ponte dopo la tappa 2 (scelta B dell'operatore, 2026-10-12):** finché GitStack non ha la sua CI (v2-a, dopo la v1.0), GitHub Actions gira **solo su `main` e sui tag**, ricevuti dal mirror in push. Regola di sviluppo per gli agenti che lavorano su GitStack: **eseguire i test in locale prima di unire su `main`**. Rischio accettato: un errore che sfugge ai test locali arriva su `main` e viene segnalato da GitHub Actions dopo l'unione. Nessuna modifica al prodotto. La regola va riportata nelle istruzioni di sviluppo del repo (compito dei coding agent, non di Prisma).
+
+### V1 e V7: dogfooding accorciato (2026-10-18)
+
+Scelta dell'operatore del 2026-10-18. Sostituisce, per la durata e per le condizioni, la scelta A del 2026-10-12 e la parte di V1 sul dogfooding.
+
+- **Tappa 2:** la condizione 1 (mirror in pull da almeno 2 settimane senza errori non spiegati) è **tolta**; restano le condizioni 2–5.
+- **Dogfooding dopo la tappa 2:** dura **almeno 2 settimane** (non più 4) ed è superato quando sono vere tutte e 4 le condizioni:
+  1. 0 perdite di dati;
+  2. almeno 1 ripristino riuscito;
+  3. almeno 1 aggiornamento di homehub da una release candidate alla successiva;
+  4. nessun bug aperto critico o alto.
+- **Obiettivi, non vincoli:** tappa 2 fra il 23 e il 25/10/2026; v1.0 fra l'8 e il 10/11/2026.
+- **Motivo:** accorciare i tempi della v1.0. Le garanzie che contano (ripristino, aggiornamento, nessuna perdita di dati) diventano condizioni esplicite invece di dipendere solo dalla durata.
+- Conseguenza per il repo (compito dei coding agent, non di Prisma): già allineato (GIT-292).
 
 ### V8 dettagliata: mirror in push (GIT-179)
 
@@ -62,6 +76,8 @@ Nessuna sul dogfooding né sulla soglia di sicurezza.
 
 Penetration test esterno (V2), test di carico con obiettivi numerici (V3), versioni LTS (V4), documentazione nell'istanza o tradotta (V6), visibilità pubblica dei repo in GitStack (V8), obbligo di chiudere i problemi di sicurezza medi e bassi prima della v1.0 (V1, scelta del 2026-10-18).
 
+**Superato il 2026-10-18:** il dogfooding di 4 settimane (V1) e la condizione 1 della tappa 2 (mirror in pull da almeno 2 settimane); valgono le almeno 2 settimane con le 4 condizioni esplicite.
+
 ## Related topics
 
 - [[knowledge/topics/sviluppo-e-qualita]]
@@ -70,4 +86,5 @@ Penetration test esterno (V2), test di carico con obiettivi numerici (V3), versi
 - [[knowledge/topics/mirror-in-pull]]
 - [[knowledge/topics/ci-registry-release]]
 - [[knowledge/topics/stato-di-realizzazione]]
+
 

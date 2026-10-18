@@ -1,6 +1,6 @@
 ---
 title: GitStack
-updated: 2026-10-12
+updated: 2026-10-18
 ---
 
 # Project
@@ -15,15 +15,15 @@ Team e aziende che vogliono ospitare codice e issues sui propri server, senza cl
 
 ## Stack
 
-- Piattaforma: k3s incluso nell'installer (Linux: Ubuntu Server e Pop!_OS; Windows via WSL2 di prova).
+- Piattaforma: k3s incluso nell'installer (Linux: nella v1.0 supportati ufficialmente Ubuntu Server 22.04 e 24.04, Pop!_OS solo con avviso; Windows via WSL2 di prova).
 - Backend: Go, pochi servizi (gateway, identity, git, core) + NATS JetStream.
 - Dati: PostgreSQL (incluso o esterno), uno schema per servizio; repo Git su volume persistente.
 - Frontend: React + TypeScript, usa solo l'API pubblica REST descritta in OpenAPI.
 - Licenze: AGPL-3.0 per il server, Apache-2.0 per CLI, skills e client.
 
-## Current state (2026-10-12)
+## Current state (2026-10-18)
 
-M-01…M-07 completate (main al commit `e708707`). In corso i due blocchi rimasti della v1: **M-08** (fatti installer su Ubuntu 24.04 con HTTPS, `gitstack` status/backup/restore/upgrade con rollback; restano Ubuntu 22.04 e Pop!_OS, WSL2 di prova, backup su S3, Postgres esterno, proxy e mirror aziendali, firme cosign, aggiornamento di k3s, test di installazione in CI — regole N1–N10) e **M-09** (primo pezzo: mirror in pull e import una tantum, regole MP1–MP8; poi passaggio del codice di GitStack su homehub in due tappe, copia di backup e poi casa su GitStack a cinque condizioni; poi il resto di V1–V8). La v2 (CI in stile GitHub Actions, registry, release) è analizzata (CI1–CI7, RG1–RG2, REL1) e resta dopo v1.0 e v1.1. Dettagli in [[knowledge/topics/stato-di-realizzazione]], [[knowledge/topics/rilascio-v1]], [[knowledge/topics/mirror-in-pull]], [[knowledge/topics/ci-registry-release]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n); con il dogfooding passano gradualmente a GitStack (V7).
+M-01…M-07 completate (main al commit `4a946f2`). In corso i due blocchi rimasti della v1: **M-08** quasi completa (codice per N1–N10, W1, W2 e V5 presente; restano alcune prove) e **M-09** (fatti mirror in pull e import, mirror in push, revisione di sicurezza con correzione dei problemi alti, test di fumo, lista di controllo della rc, job di rilascio provato su un tag di prova). Il passaggio del codice di GitStack su homehub è in due tappe: la copia di backup c'è; la casa su GitStack (tappa 2) arriva quando sono vere le condizioni 2–5 (la 1 è tolta il 2026-10-18) e oggi manca solo la 2, un ripristino senza passi a mano. Dopo la tappa 2 il dogfooding dura almeno 2 settimane con 4 condizioni esplicite (scelta del 2026-10-18). Obiettivi, non vincoli: tappa 2 fra il 23 e il 25/10/2026, v1.0 fra l'8 e il 10/11/2026. La v2 (CI in stile GitHub Actions, registry, release) e la v3 (hosting di app e container) sono analizzate e restano dopo v1.0 e v1.1. Dettagli in [[knowledge/topics/stato-di-realizzazione]], [[knowledge/topics/rilascio-v1]], [[knowledge/topics/mirror-in-pull]], [[knowledge/topics/ci-registry-release]], [[knowledge/topics/hosting-app]]. I task di sviluppo sono tracciati in GalaxyLab (item GIT-n); con il dogfooding passano gradualmente a GitStack (V7).
 
 ## Constraints
 
