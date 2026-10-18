@@ -2,7 +2,7 @@
 // Non e' un parser completo: spezza la stringa in token (rispettando le
 // virgolette) e legge/scrive i qualificatori; la validita' la decide l'API.
 
-export type Qualifier = 'is' | 'reason' | 'label' | 'assignee' | 'author' | 'milestone' | 'no';
+export type Qualifier = 'is' | 'reason' | 'label' | 'assignee' | 'author' | 'milestone' | 'no' | 'review';
 
 /** Spezza la ricerca in token separati da spazi, con le virgolette intatte. */
 export function tokenize(q: string): string[] {
