@@ -118,6 +118,7 @@ type emailRow struct {
 	number    *int64
 	title     *string
 	groupKey  uuid.UUID
+	data      []byte
 }
 
 // Process spedisce le email dovute ora e ritorna quante ne ha consegnate al
@@ -147,7 +148,7 @@ func (d *EmailDispatcher) Process(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	rows, err := conn.Query(ctx, `SELECT n.id, n.user_id, n.issue_id, n.reason, n.actor_id, n.event_name, n.created_at,
-			n.email_attempts, r.owner_name, r.name, i.number, i.title, COALESCE(n.issue_id, n.id)
+			n.email_attempts, r.owner_name, r.name, i.number, i.title, COALESCE(n.issue_id, n.id), n.data
 		FROM core.notifications n
 		LEFT JOIN core.repositories r ON r.resource_id = n.repo_id
 		LEFT JOIN core.issues i ON i.id = n.issue_id
@@ -161,7 +162,7 @@ func (d *EmailDispatcher) Process(ctx context.Context) (int, error) {
 	for rows.Next() {
 		var r emailRow
 		if err := rows.Scan(&r.id, &r.userID, &r.issueID, &r.reason, &r.actorID, &r.eventName, &r.createdAt,
-			&r.attempts, &r.owner, &r.repo, &r.number, &r.title, &r.groupKey); err != nil {
+			&r.attempts, &r.owner, &r.repo, &r.number, &r.title, &r.groupKey, &r.data); err != nil {
 			rows.Close()
 			return 0, err
 		}
@@ -278,6 +279,9 @@ var eventText = map[string]string{
 func (d *EmailDispatcher) compose(to string, group []emailRow, people map[uuid.UUID]identityclient.CodeUser) mailer.Message {
 	first := group[0]
 	base := strings.TrimRight(d.PublicURL, "/")
+	if first.reason == ReasonCredential {
+		return composeCredential(to, base, group)
+	}
 	var subject, link, head string
 	switch {
 	case first.owner != nil && first.repo != nil && first.number != nil:

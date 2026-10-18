@@ -722,3 +722,47 @@ func TestPull_ProxyAziendaleSoloDaAmbiente(t *testing.T) {
 		t.Errorf("senza proxy: %s", a)
 	}
 }
+
+// TestPull_SizeCap: un'origine più grande del tetto (F18, V12.1.1) non può
+// riempire il volume: il fetch fallisce, nessun ref cambia e gli oggetti
+// scaricati vengono eliminati. Sotto il tetto l'aggiornamento riesce.
+func TestPull_SizeCap(t *testing.T) {
+	r := newRig(t)
+	// ~3 MiB di dati incomprimibili nell'origine.
+	big := make([]byte, 3<<20)
+	x := uint32(2463534242)
+	for i := range big {
+		x ^= x << 13
+		x ^= x >> 17
+		x ^= x << 5
+		big[i] = byte(x)
+	}
+	if err := os.WriteFile(filepath.Join(r.work, "grande.bin"), big, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r.git(r.work, "add", ".")
+	r.git(r.work, "commit", "-m", "grande")
+	r.git(r.work, "push", r.origin, "main")
+
+	r.svc.MaxFetchBytes = 256 << 10
+	res := r.pull()
+	if res.OK || !strings.Contains(res.Error, "supera il tetto di 256 KB") {
+		t.Fatalf("il fetch oltre il tetto doveva fallire: %+v", res)
+	}
+	if out := r.git(r.local, "for-each-ref"); out != "" {
+		t.Errorf("ref dopo il tetto superato: %s", out)
+	}
+	if n := objectsSize(r.local); n > 256<<10 {
+		t.Errorf("gli oggetti scaricati dovevano essere eliminati: %d byte rimasti", n)
+	}
+	if !r.svc.acquire("repo") {
+		t.Error("lock non rilasciato")
+	}
+	r.svc.release("repo")
+
+	// Con un tetto più largo (e con 0 = nessun tetto) l'aggiornamento riesce.
+	r.svc.MaxFetchBytes = 64 << 20
+	if res := r.pull(); !res.OK {
+		t.Fatalf("sotto il tetto doveva riuscire: %+v", res)
+	}
+}

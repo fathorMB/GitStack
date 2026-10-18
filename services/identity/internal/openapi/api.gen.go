@@ -78,6 +78,33 @@ func (e CreateUserInputKind) Valid() bool {
 	}
 }
 
+// Defines values for CredentialEventKind.
+const (
+	PasswordChanged CredentialEventKind = "password_changed"
+	PasswordReset   CredentialEventKind = "password_reset"
+	SshKeyAdded     CredentialEventKind = "ssh_key_added"
+	TokenCreated    CredentialEventKind = "token_created"
+	TokenExpiring   CredentialEventKind = "token_expiring"
+)
+
+// Valid indicates whether the value is a known member of the CredentialEventKind enum.
+func (e CredentialEventKind) Valid() bool {
+	switch e {
+	case PasswordChanged:
+		return true
+	case PasswordReset:
+		return true
+	case SshKeyAdded:
+		return true
+	case TokenCreated:
+		return true
+	case TokenExpiring:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CurrentSessionAuthMethod.
 const (
 	CurrentSessionAuthMethodOidc     CurrentSessionAuthMethod = "oidc"
@@ -535,6 +562,30 @@ type CreatedToken struct {
 	Token string `json:"token"`
 }
 
+// CredentialEvent defines model for CredentialEvent.
+type CredentialEvent struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Detail Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+	Detail map[string]interface{} `json:"detail"`
+	Id     int64                  `json:"id"`
+	Kind   CredentialEventKind    `json:"kind"`
+	UserId openapi_types.UUID     `json:"userId"`
+}
+
+// CredentialEventKind defines model for CredentialEvent.Kind.
+type CredentialEventKind string
+
+// CredentialEventList defines model for CredentialEventList.
+type CredentialEventList struct {
+	Items []CredentialEvent `json:"items"`
+}
+
+// CredentialEventsAckInput defines model for CredentialEventsAckInput.
+type CredentialEventsAckInput struct {
+	Ids []int64 `json:"ids"`
+}
+
 // CurrentSession defines model for CurrentSession.
 type CurrentSession struct {
 	// AuthMethod Come e' stato autenticato il chiamante.
@@ -579,6 +630,16 @@ type Error struct {
 		// Message Messaggio leggibile da persone, non contrattuale.
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// ExportedSshKey Chiave SSH dell'utente, con la chiave pubblica.
+type ExportedSshKey struct {
+	CreatedAt   time.Time  `json:"createdAt"`
+	Fingerprint string     `json:"fingerprint"`
+	KeyType     string     `json:"keyType"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	PublicKey   string     `json:"publicKey"`
+	Title       string     `json:"title"`
 }
 
 // Grant Ruolo su una risorsa generica (D15) per un utente o un team.
@@ -740,6 +801,18 @@ type OrganizationList struct {
 	Page    int            `json:"page"`
 	PerPage int            `json:"perPage"`
 	Total   int            `json:"total"`
+}
+
+// OwnDataExport Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+type OwnDataExport struct {
+	ExportedAt  time.Time        `json:"exportedAt"`
+	Sessions    []Session        `json:"sessions"`
+	SshKeys     []ExportedSshKey `json:"sshKeys"`
+	Tokens      []Token          `json:"tokens"`
+	TotpEnabled bool             `json:"totpEnabled"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
 }
 
 // OwnerRef defines model for OwnerRef.
@@ -1269,6 +1342,11 @@ type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
 
+// ListCredentialEventsParams defines parameters for ListCredentialEvents.
+type ListCredentialEventsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // ListOrganizationsParams defines parameters for ListOrganizations.
 type ListOrganizationsParams struct {
 	Page    *PageParam    `form:"page,omitempty" json:"page,omitempty"`
@@ -1333,6 +1411,9 @@ type DisableTotpJSONRequestBody = TotpDisableInput
 
 // VerifyTotpJSONRequestBody defines body for VerifyTotp for application/json ContentType.
 type VerifyTotpJSONRequestBody = TotpCodeInput
+
+// AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.
+type AckCredentialEventsJSONRequestBody = CredentialEventsAckInput
 
 // ResolveMentionsJSONRequestBody defines body for ResolveMentions for application/json ContentType.
 type ResolveMentionsJSONRequestBody = ResolveMentionsInput
@@ -1435,6 +1516,12 @@ type ServerInterface interface {
 	// VerifyTotp Conferma l'attivazione del TOTP
 	// (POST /auth/totp/verify)
 	VerifyTotp(w http.ResponseWriter, r *http.Request)
+	// ListCredentialEvents Eventi sulle credenziali degli utenti, da consegnare
+	// (GET /internal/credential-events)
+	ListCredentialEvents(w http.ResponseWriter, r *http.Request, params ListCredentialEventsParams)
+	// AckCredentialEvents Conferma la consegna degli eventi sulle credenziali
+	// (POST /internal/credential-events/ack)
+	AckCredentialEvents(w http.ResponseWriter, r *http.Request)
 	// ResolveMentions Risolve le menzioni `@utente`, `@agente` e `@org/team`
 	// (POST /internal/mentions/resolve)
 	ResolveMentions(w http.ResponseWriter, r *http.Request)
@@ -1537,6 +1624,9 @@ type ServerInterface interface {
 	// GetMyResourcePermission Permesso effettivo del chiamante su una risorsa
 	// (GET /resources/{resourceId}/permissions)
 	GetMyResourcePermission(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// ExportOwnData Esporta i dati personali dell'utente corrente
+	// (GET /user/export)
+	ExportOwnData(w http.ResponseWriter, r *http.Request)
 	// ListOwnSessions Elenca le sessioni web attive dell'utente corrente
 	// (GET /user/sessions)
 	ListOwnSessions(w http.ResponseWriter, r *http.Request)
@@ -1805,6 +1895,53 @@ func (siw *ServerInterfaceWrapper) VerifyTotp(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.VerifyTotp(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCredentialEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListCredentialEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCredentialEventsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCredentialEvents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AckCredentialEvents operation middleware
+func (siw *ServerInterfaceWrapper) AckCredentialEvents(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AckCredentialEvents(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2846,6 +2983,20 @@ func (siw *ServerInterfaceWrapper) GetMyResourcePermission(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ExportOwnData operation middleware
+func (siw *ServerInterfaceWrapper) ExportOwnData(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportOwnData(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListOwnSessions operation middleware
 func (siw *ServerInterfaceWrapper) ListOwnSessions(w http.ResponseWriter, r *http.Request) {
 
@@ -3548,6 +3699,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/tokens/{tokenId}", wrapper.RevokeToken)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/sessions", wrapper.ListOwnSessions)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/sessions/{sessionId}", wrapper.RevokeOwnSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/export", wrapper.ExportOwnData)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys", wrapper.ListSshKeys)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)
@@ -3585,6 +3737,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/orgs/{orgId}/owners", wrapper.ListOrgOwners)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-ids", wrapper.LookupUsersByIds)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/credential-events", wrapper.ListCredentialEvents)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/credential-events/ack", wrapper.AckCredentialEvents)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/mentions/resolve", wrapper.ResolveMentions)
 
 	return m

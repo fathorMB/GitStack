@@ -1019,6 +1019,33 @@ resolve_image_tag() {
 
 # --- k3s -----------------------------------------------------------------
 
+# sha256 atteso dello script di installazione di k3s: GITSTACK_K3S_SCRIPT_SHA256
+# se impostato (per chi usa un mirror con uno script diverso), altrimenti
+# deploy/k3s-install.sha256 accanto al chart. Si aggiorna con deploy/k3s-version
+# (docs/operations.md, «Script di installazione di k3s»).
+k3s_script_expected_sha() {
+  if [ -n "${GITSTACK_K3S_SCRIPT_SHA256:-}" ]; then
+    printf '%s' "${GITSTACK_K3S_SCRIPT_SHA256}"
+    return 0
+  fi
+  local sha_file="${CHART_DIR}/../k3s-install.sha256"
+  [ -f "${sha_file}" ] || return 1
+  tr -d '[:space:]' < "${sha_file}"
+}
+
+# Confronta lo sha256 del file con quello atteso; non lancia mai lo script.
+verify_k3s_script() {
+  local file="$1" expected actual
+  command -v sha256sum >/dev/null 2>&1 || { warn "serve 'sha256sum' per verificare lo script di k3s."; return 1; }
+  expected="$(k3s_script_expected_sha)" \
+    || { warn "manca ${CHART_DIR}/../k3s-install.sha256 (sha256 dello script di k3s): impostalo con GITSTACK_K3S_SCRIPT_SHA256."; return 1; }
+  actual="$(sha256sum "${file}" | awk '{ print $1 }')"
+  if [ "${actual}" != "${expected}" ]; then
+    warn "lo script di k3s ($(k3s_script_url)) non corrisponde allo sha256 fissato: atteso ${expected}, trovato ${actual}. Non lo eseguo."
+    return 1
+  fi
+}
+
 # Imposta INSTALL_K3S_VERSION dal file deploy/k3s-version accanto al chart
 # (la cartella del chart è <radice>/deploy/gitstack), se non è già impostata.
 resolve_k3s_version() {
@@ -1060,9 +1087,17 @@ install_k3s() {
     # Lo script di k3s scarica binario e checksum da ${GITHUB_URL}/download/<versione>/.
     k3s_env+=("GITHUB_URL=${GITSTACK_DOWNLOAD_MIRROR}/k3s/releases")
   fi
-  curl -sfL "$(k3s_script_url)" \
-    | env "${k3s_env[@]}" sh - \
-    || fail "installazione di k3s fallita (script: $(k3s_script_url))."
+  # Lo script non si esegue in pipe: si scarica, si confronta lo sha256 con
+  # quello fissato in deploy/k3s-install.sha256 (F19, V14.2.2) e solo dopo si
+  # lancia.
+  local k3s_script
+  k3s_script="$(mktemp)"
+  curl -sfL -o "${k3s_script}" "$(k3s_script_url)" \
+    || { rm -f "${k3s_script}"; fail "download dello script di k3s fallito (script: $(k3s_script_url))."; }
+  verify_k3s_script "${k3s_script}" || { rm -f "${k3s_script}"; fail "installazione di k3s annullata."; }
+  env "${k3s_env[@]}" sh "${k3s_script}" \
+    || { rm -f "${k3s_script}"; fail "installazione di k3s fallita (script: $(k3s_script_url))."; }
+  rm -f "${k3s_script}"
   NETWORK_K3S_CHANGED=0
   K3S_FRESH_INSTALL=1
   strip_k3s_env_proxy

@@ -21,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/config"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/db"
 	"github.com/fathorMB/GitStack/services/identity/internal/httpapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/httpserver"
@@ -262,6 +263,7 @@ func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcS
 		httpapi.WithTrustedProxies(cfg.TrustedProxies),
 		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
 		httpapi.WithSSHKeys(userkeys.New(pool, time.Now)),
+		httpapi.WithCredentialEvents(credevents.New(pool, time.Now)),
 		httpapi.WithPermissions(permissions.New(pool, time.Now)),
 		httpapi.WithServiceSecrets(cfg.GatewaySecret, cfg.CoreSecret, cfg.GitSecret),
 		httpapi.WithOIDC(oidcSvc),

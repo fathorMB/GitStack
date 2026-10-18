@@ -27,7 +27,32 @@ type AttachmentsConfig struct {
 	Disk *attachments.Disk
 	// MaxBytes: limite per file; <= 0 = attachments.DefaultMaxBytes.
 	MaxBytes int64
+	// MaxRepoBytes: byte di allegati per repo; MaxUserBytes: byte di allegati
+	// caricati da un utente in tutti i repo (F17, V12.1.3). 0 = default
+	// (DefaultMaxRepoBytes, DefaultMaxUserBytes), < 0 = nessun limite. Gli
+	// allegati non ancora collegati contano finché la pulizia non li elimina.
+	MaxRepoBytes int64
+	MaxUserBytes int64
 }
+
+// Quote di default degli allegati (F17).
+const (
+	DefaultMaxRepoBytes = int64(1 << 30)   // 1 GiB per repo
+	DefaultMaxUserBytes = int64(512 << 20) // 512 MiB per utente
+)
+
+func quotaOf(v, def int64) int64 {
+	switch {
+	case v < 0:
+		return 0 // nessun limite
+	case v == 0:
+		return def
+	}
+	return v
+}
+
+func (c AttachmentsConfig) repoQuota() int64 { return quotaOf(c.MaxRepoBytes, DefaultMaxRepoBytes) }
+func (c AttachmentsConfig) userQuota() int64 { return quotaOf(c.MaxUserBytes, DefaultMaxUserBytes) }
 
 func (c AttachmentsConfig) max() int64 {
 	if c.MaxBytes > 0 {
@@ -97,6 +122,30 @@ func writeTooLarge(w http.ResponseWriter, max int64) {
 	writeError(w, http.StatusRequestEntityTooLarge, "attachment_too_large", "Allegato oltre il limite di "+strconv.FormatInt(max, 10)+" byte.")
 }
 
+func writeQuotaExceeded(w http.ResponseWriter, scope string) {
+	writeError(w, http.StatusRequestEntityTooLarge, "attachment_quota_exceeded", "Quota degli allegati esaurita ("+scope+"): elimina allegati non più utili o chiedi a un amministratore di alzarla.")
+}
+
+// checkAttachmentQuota confronta l'uso attuale più add con le quote del repo e
+// dell'utente. Ritorna "" se ci sta, altrimenti l'ambito superato.
+func (s *apiServer) checkAttachmentQuota(r *http.Request, repoID, userID uuid.UUID, add int64) (string, error) {
+	repoMax, userMax := s.attachments.repoQuota(), s.attachments.userQuota()
+	if repoMax == 0 && userMax == 0 {
+		return "", nil
+	}
+	repoUsed, userUsed, err := s.resources.AttachmentUsage(r.Context(), repoID, userID)
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case repoMax > 0 && repoUsed+add > repoMax:
+		return "per questo repo", nil
+	case userMax > 0 && userUsed+add > userMax:
+		return "per il tuo utente", nil
+	}
+	return "", nil
+}
+
 func (s *apiServer) UploadIssueAttachment(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam) {
 	_, userID, ok := callerIdentity(w, r)
 	if !ok {
@@ -114,6 +163,17 @@ func (s *apiServer) UploadIssueAttachment(w http.ResponseWriter, r *http.Request
 		return
 	}
 	max := s.attachments.max()
+	// Quota già esaurita: si rifiuta prima di scrivere il file.
+	scope, qerr := s.checkAttachmentQuota(r, repo.ID, userID, 1)
+	if qerr != nil {
+		slog.Default().Warn("lettura dell'uso degli allegati non riuscita", "err", qerr)
+		writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante il salvataggio dell'allegato.")
+		return
+	}
+	if scope != "" {
+		writeQuotaExceeded(w, scope)
+		return
+	}
 	mt, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mt != "multipart/form-data" || params["boundary"] == "" {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Atteso multipart/form-data con il campo file.")
@@ -168,6 +228,18 @@ func (s *apiServer) UploadIssueAttachment(w http.ResponseWriter, r *http.Request
 	}
 	if !found {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Campo file mancante.")
+		return
+	}
+	// Con il file già sul disco si conosce la dimensione vera: la quota si
+	// ricontrolla e il file eccedente si elimina.
+	if scope, qerr := s.checkAttachmentQuota(r, repo.ID, userID, size); qerr != nil || scope != "" {
+		_ = s.attachments.Disk.Remove(repo.ID, id)
+		if qerr != nil {
+			slog.Default().Warn("lettura dell'uso degli allegati non riuscita", "err", qerr)
+			writeError(w, http.StatusInternalServerError, "internal_error", "Errore interno durante il salvataggio dell'allegato.")
+			return
+		}
+		writeQuotaExceeded(w, scope)
 		return
 	}
 	att, err := s.resources.CreateAttachment(r.Context(), store.Attachment{
