@@ -56,7 +56,46 @@ describe('DownloadsPage', () => {
     expect(within(list).getAllByText(/sha256 aaaaaaaaaaaa/)).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'SHA256SUMS' })).toHaveAttribute('href', '/downloads/SHA256SUMS');
     expect(screen.getByRole('link', { name: 'Download skills (.zip)' })).toHaveAttribute('href', '/downloads/gs-skills.zip');
-    expect(screen.queryByText(/MCP/)).not.toBeInTheDocument();
+    expect(screen.getByText('Use GitStack from AI assistants (MCP)')).toBeInTheDocument();
+    expect(screen.getByText('v1.1')).toBeInTheDocument();
+    expect(screen.getByText(/review a pull request/)).toBeInTheDocument();
+  }, 15000);
+
+  it('riquadro MCP: configurazione pronta per ogni assistente, con l\'host corrente', async () => {
+    mockFetch(Promise.resolve(new Response(JSON.stringify(index()), { status: 200 })));
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    renderPage();
+    await screen.findByRole('list', { name: 'Binaries' });
+    const host = window.location.host;
+    expect(screen.getByText(/nothing else to install/)).toBeInTheDocument();
+    for (const name of ['MCP tools', 'MCP prompts', 'MCP safety']) expect(screen.getByLabelText(name)).toBeInTheDocument();
+    expect(screen.getByLabelText('MCP tools')).toHaveTextContent(/api_request/);
+    expect(screen.getByLabelText('MCP safety')).toHaveTextContent(/--read-only/);
+    const note = screen.getByRole('note');
+    expect(note).toHaveClass('alert-info');
+    expect(note).toHaveTextContent(/still starts with the tools it knows/);
+    expect(note).toHaveTextContent(/different major version it doesn't start/);
+    const block = () => screen.getByLabelText('MCP configuration');
+    expect(block()).toHaveTextContent(`claude mcp add gitstack -- gs mcp --host ${host}`);
+    await user.click(screen.getByRole('button', { name: 'Claude Desktop' }));
+    expect(JSON.parse(block().textContent ?? '')).toEqual({
+      mcpServers: { gitstack: { command: 'gs', args: ['mcp', '--host', host] } },
+    });
+    await user.click(screen.getByRole('button', { name: 'VS Code' }));
+    expect(JSON.parse(block().textContent ?? '')).toEqual({
+      servers: { gitstack: { type: 'stdio', command: 'gs', args: ['mcp', '--host', host] } },
+    });
+    await user.click(screen.getByRole('button', { name: 'Cursor' }));
+    expect(block()).toHaveTextContent('"mcpServers"');
+    await user.click(screen.getByRole('button', { name: 'Codex' }));
+    expect(block()).toHaveTextContent('[mcp_servers.gitstack]');
+    expect(block()).toHaveTextContent(`args = ["mcp","--host","${host}"]`);
+    await user.click(screen.getByRole('checkbox', { name: /Read-only/ }));
+    expect(block()).toHaveTextContent(`args = ["mcp","--host","${host}","--read-only"]`);
+    const copies = screen.getAllByRole('button', { name: 'Copy' });
+    await user.click(copies[copies.length - 1]!);
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(block().textContent));
   }, 15000);
 
   it('comandi copiabili con l\'host corrente, sh e PowerShell', async () => {

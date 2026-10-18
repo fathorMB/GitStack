@@ -28,11 +28,18 @@ const requests = `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"proto
 // run lancia `gs mcp` sulla radice vera, con un server finto come istanza.
 func run(t *testing.T, args ...string) (code int, out, errOut string, hits []string) {
 	t.Helper()
+	return runVersions(t, "dev", "", args...)
+}
+
+// runVersions è run con la versione di gs e quella che l'istanza dichiara in /meta
+// (vuota: /meta non la dà).
+func runVersions(t *testing.T, gsVersion, serverVersion string, args ...string) (code int, out, errOut string, hits []string) {
+	t.Helper()
 	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.HasSuffix(r.URL.Path, "/meta") {
-			_, _ = io.WriteString(w, `{"version":"dev"}`)
+			_, _ = io.WriteString(w, `{"server_version":"`+serverVersion+`"}`)
 			return
 		}
 		mu.Lock()
@@ -43,7 +50,7 @@ func run(t *testing.T, args ...string) (code int, out, errOut string, hits []str
 	defer srv.Close()
 	io_, in, o, e := cmdutil.Test()
 	in.WriteString(requests)
-	f := cmdutil.New("dev", io_)
+	f := cmdutil.New(gsVersion, io_)
 	cfg := t.TempDir()
 	f.Getenv = func(k string) string {
 		return map[string]string{"GS_TOKEN": "gst_x", "GS_HOST": srv.URL, config.EnvConfigDir: cfg}[k]
@@ -101,5 +108,49 @@ func TestGsMcpSenzaToken(t *testing.T) {
 	f.Git = noGit{}
 	if code := root.Run(context.Background(), f, []string{"mcp"}); code != cmdutil.ExitUnauthorized {
 		t.Errorf("exit %d (%s), atteso %d", code, errOut.String(), cmdutil.ExitUnauthorized)
+	}
+}
+
+// M5 (G6): gs più vecchio dell'istanza nella stessa maggiore → il server parte con
+// gli strumenti che conosce e avvisa su stderr; stdout resta solo protocollo.
+func TestGsMcpMinorePiuVecchiaAvvisaEParte(t *testing.T) {
+	code, out, errOut, hits := runVersions(t, "1.2.0", "1.3.0")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	if !strings.Contains(errOut, "avviso") || !strings.Contains(errOut, "1.2.0") || !strings.Contains(errOut, "1.3.0") ||
+		!strings.Contains(errOut, "/downloads") {
+		t.Errorf("manca l'avviso di aggiornamento su stderr: %q", errOut)
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 3 || len(hits) != 2 {
+		t.Fatalf("il server doveva servire le richieste: %d risposte, %d chiamate", len(lines), len(hits))
+	}
+	for _, l := range lines {
+		if !strings.HasPrefix(l, `{"jsonrpc":"2.0"`) {
+			t.Errorf("stdout deve avere solo protocollo: %q", l)
+		}
+	}
+}
+
+// M5 (G6): versione maggiore diversa → non parte, spiega come aggiornare, e non
+// scrive niente su stdout né chiama l'API.
+func TestGsMcpMaggioreDiversaNonParte(t *testing.T) {
+	code, out, errOut, hits := runVersions(t, "1.2.0", "2.0.0")
+	if code != cmdutil.ExitGeneric {
+		t.Errorf("exit %d, atteso %d", code, cmdutil.ExitGeneric)
+	}
+	if out != "" || len(hits) != 0 {
+		t.Errorf("il server non doveva partire: stdout %q, chiamate %v", out, hits)
+	}
+	if !strings.Contains(errOut, "versione maggiore") || !strings.Contains(errOut, "/downloads") {
+		t.Errorf("manca la spiegazione su come aggiornare: %q", errOut)
+	}
+}
+
+func TestGsMcpStessaVersioneNessunAvviso(t *testing.T) {
+	code, _, errOut, _ := runVersions(t, "1.2.0", "1.2.0")
+	if code != 0 || errOut != "" {
+		t.Errorf("exit %d, stderr %q", code, errOut)
 	}
 }

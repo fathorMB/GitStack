@@ -154,14 +154,28 @@ func (s *Server) dispatch(ctx context.Context, req request) (any, *rpcError) {
 		}
 		return map[string]any{
 			"protocolVersion": version,
-			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
-			"serverInfo":      map[string]any{"name": "gs", "version": s.o.Version},
-			"instructions":    s.instructions(),
+			"capabilities": map[string]any{
+				"tools":   map[string]any{"listChanged": false},
+				"prompts": map[string]any{"listChanged": false}, // M4: prompt sì, risorse no
+			},
+			"serverInfo":   map[string]any{"name": "gs", "version": s.o.Version},
+			"instructions": s.instructions(),
 		}, nil
 	case "ping":
 		return map[string]any{}, nil
 	case "tools/list":
 		return map[string]any{"tools": s.list()}, nil
+	case "prompts/list":
+		return map[string]any{"prompts": listPrompts()}, nil
+	case "prompts/get":
+		var p struct {
+			Name      string            `json:"name"`
+			Arguments map[string]string `json:"arguments"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil || p.Name == "" {
+			return nil, &rpcError{codeInvalidParams, "prompts/get vuole name e arguments (testo)"}
+		}
+		return getPrompt(p.Name, p.Arguments)
 	case "tools/call":
 		var p struct {
 			Name      string          `json:"name"`
@@ -186,6 +200,40 @@ func (s *Server) instructions() string {
 		txt += " Modalità sola lettura: le scritture sono rifiutate."
 	}
 	return txt
+}
+
+type promptInfo struct {
+	Name        string           `json:"name"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	Arguments   []PromptArgument `json:"arguments"`
+}
+
+func listPrompts() []promptInfo {
+	out := make([]promptInfo, 0, len(Prompts))
+	for _, p := range Prompts {
+		out = append(out, promptInfo{Name: p.Name, Title: p.Title, Description: p.Description, Arguments: p.Arguments})
+	}
+	return out
+}
+
+func getPrompt(name string, args map[string]string) (any, *rpcError) {
+	for _, p := range Prompts {
+		if p.Name != name {
+			continue
+		}
+		txt, err := p.render(args)
+		if err != nil {
+			return nil, &rpcError{codeInvalidParams, fmt.Sprintf("prompt %s: %v", name, err)}
+		}
+		return map[string]any{
+			"description": p.Description,
+			"messages": []map[string]any{
+				{"role": "user", "content": content{Type: "text", Text: txt}},
+			},
+		}, nil
+	}
+	return nil, &rpcError{codeInvalidParams, fmt.Sprintf("prompt sconosciuto: %s", name)}
 }
 
 type annotations struct {

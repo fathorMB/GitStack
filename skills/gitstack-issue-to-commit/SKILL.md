@@ -87,6 +87,14 @@ gs issue close 12 --reason completed
 gs issue close 12 --reason "not planned" --comment "fuori dal perimetro"
 ```
 
+## 6. Apri la Pull Request (se serve il giro di review)
+
+Se il repo lavora con le Pull Request, apri una PR dal tuo ramo verso il ramo predefinito: serve il permesso write. Il testo porta `fixes #12`, così la issue si chiude quando la PR viene unita. La PR la unisce una persona, non tu.
+
+```
+gs api /repos/acme/web/pulls -f title="Correggi il crash all'avvio" -f sourceBranch=agent/12-crash-avvio -f body="fixes #12"
+```
+
 ## Regole
 
 - Mai push sul ramo predefinito: lavori su `agent/<n>-<slug>` e a unire è una persona.
