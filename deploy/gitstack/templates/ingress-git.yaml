@@ -1,5 +1,6 @@
 {{- if and .Values.ingress.enabled .Values.git.enabled -}}
 {{- $fullname := include "gitstack.fullname" . -}}
+{{- $hsts := and .Values.ingress.tls.enabled .Values.ingress.tls.hstsSeconds -}}
 # Smart HTTP di git (GIT-70): /<owner>/<repo>.git/{info/refs,git-upload-pack,
 # git-receive-pack} va direttamente al servizio git, che autentica con Basic
 # auth (token personale) e applica i permessi. Non passa dal gateway: git vuole
@@ -22,11 +23,17 @@ spec:
       priority: 10000
       match: >-
         {{ if .Values.ingress.host }}Host(`{{ .Values.ingress.host }}`) && {{ end }}PathRegexp(`^/[^/]+/[^/]+\.git/(info/refs|git-upload-pack|git-receive-pack)$`)
+      {{- if $hsts }}
+      middlewares:
+        - name: {{ $fullname }}-hsts
+      {{- end }}
       services:
         - name: {{ $fullname }}-git
           port: {{ .Values.git.service.port }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
+    options:
+      name: {{ $fullname }}-tls
     {{- if .Values.ingress.tls.secretName }}
     secretName: {{ .Values.ingress.tls.secretName }}
     {{- end }}

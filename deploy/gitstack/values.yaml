@@ -614,6 +614,9 @@ ingress:
     # Con tls.enabled la porta 80 risponde con un redirect permanente a https
     # (Middleware + IngressRoute su "web"). "" = porta 443 standard.
     redirect: true
+    # Strict-Transport-Security sulle rotte HTTPS (Middleware Traefik, F3).
+    # Secondi di max-age; 0 = nessuna intestazione.
+    hstsSeconds: 31536000
     redirectPort: ""
     # ConfigMap con la chiave ca.crt (la CA interna): web lo serve su
     # /downloads/ca.crt, anche in HTTP, per fidarsi di HTTPS. Vuoto = nessun download.

@@ -15,12 +15,12 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 186 |
+| ok | 195 |
 | n/a | 44 |
-| problem | 29 |
+| problem | 20 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low), F15 (low) and F16 (low) by GIT-238
+Problems by severity: critical 0, high 1, medium 7, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233, F3 (medium) by GIT-229 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low), F15 (low) and F16 (low) by GIT-238
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
@@ -32,12 +32,12 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V6 Stored Cryptography | 8 | 2 | 3 |
 | V7 Error Handling and Logging | 11 | 0 | 1 |
 | V8 Data Protection | 11 | 3 | 1 |
-| V9 Communication | 2 | 1 | 4 |
+| V9 Communication | 4 | 1 | 2 |
 | V10 Malicious Code | 3 | 2 | 0 |
 | V11 Business Logic | 7 | 1 | 0 |
 | V12 Files and Resources | 11 | 1 | 3 |
 | V13 API and Web Service | 9 | 4 | 0 |
-| V14 Configuration | 11 | 3 | 9 |
+| V14 Configuration | 18 | 3 | 2 |
 
 ## V1 Architecture, Design and Threat Modeling
 
@@ -272,8 +272,8 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | Id | Requirement | Outcome | Evidence or reason |
 |---|---|---|---|
 | V9.1.1 | TLS for all client connectivity | ok | HTTPS by default with a permanent redirect from port 80; plain HTTP only with explicit `--insecure-http` and a UI warning: `deploy/gitstack/templates/ingress-redirect.yaml`, `deploy/test-vm/tests/tls.Tests.ps1`, `web/src/lib/insecureHttp.ts`; `docs/tls.md`. |
-| V9.1.2 | Only strong cipher suites | **problem** | No Traefik TLSOption pins cipher suites and no TLS test tool is run in CI. [F3] |
-| V9.1.3 | Only TLS 1.2 and 1.3 | **problem** | The chart does not pin a minimum version; it relies on Traefik defaults. [F3] |
+| V9.1.2 | Only strong cipher suites | ok | The chart pins a `TLSOption` with AEAD ECDHE cipher suites only, used by the Ingress and the git IngressRoute: `deploy/gitstack/templates/ingress.yaml`; `deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum`. [resolved F3 GIT-229] |
+| V9.1.3 | Only TLS 1.2 and 1.3 | ok | The `TLSOption` sets `minVersion: VersionTLS12`: `deploy/gitstack/templates/ingress.yaml`; `deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum`. [resolved F3 GIT-229] |
 | V9.2.1 | Trusted TLS certificates on all connections | **problem** | External peers (webhooks, mirrors, OIDC, SMTP) are verified; the in-cluster hops and the bundled Postgres are not encrypted. [F8] |
 | V9.2.2 | Encryption on all connections | **problem** | Gateway to services, services to NATS and bundled Postgres are cleartext. [F8] |
 | V9.2.3 | External encrypted connections authenticated | ok | Mirrors use a token over HTTPS (`services/git/internal/mirrorpush/mirrorpush_test.go#TestArgvSenzaToken`), SMTP uses STARTTLS and credentials (`services/core/internal/mailer/mailer_test.go#TestSend_StartTLSObbligatorioSeRichiesto`), OIDC uses a client secret. |
@@ -346,7 +346,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 |---|---|---|---|
 | V14.1.1 | Secure repeatable build and deployment | ok | `.github/workflows/ci.yml`, `deploy/install.sh`, `.github/workflows/install.yml`. |
 | V14.1.2 | Compiler hardening flags | n/a | Go and TypeScript are memory-safe; Go tests run with `-race` in CI. |
-| V14.1.3 | Server configuration hardened | **problem** | nginx exposes its version and sets no security headers; k3s kubeconfig is world-readable. [F3] |
+| V14.1.3 | Server configuration hardened | ok | nginx hides its version and sets the security headers; HSTS and TLS options in the chart: `web/deploy/nginx.conf.template`; `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`. The k3s kubeconfig part was resolved by F2 (GIT-228). [resolved F3 GIT-229] |
 | V14.1.4 | Redeployable from a runbook | ok | `docs/operations.md`, `.github/workflows/install.yml` (install, upgrade, restore). |
 | V14.2.1 | Dependencies kept up to date and checked | ok | `.github/workflows/security.yml`, `docs/security-scans.md`. |
 | V14.2.2 | Unneeded features removed | **problem** | The component showcase is routed in production at `/_components` (`web/src/App.tsx`). [F19] |
@@ -355,14 +355,14 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V14.2.5 | SBOM maintained | ok | Per-release SBOM with syft in `.github/workflows/ci.yml` (job `sign`). |
 | V14.2.6 | Sandboxing third-party libraries | n/a | Not practical for in-process Go and JS libraries; mitigated by scans and distroless images. |
 | V14.3.2 | Debug modes disabled | ok | No `pprof` or debug endpoint (`git grep net/http/pprof` is empty); production Vite build. |
-| V14.3.3 | No version information in headers | **problem** | The nginx image answers with `Server: nginx/<version>` (`web/deploy/nginx.conf.template` has no `server_tokens off`). [F3] |
+| V14.3.3 | No version information in headers | ok | `server_tokens off` in `web/deploy/nginx.conf.template` (`web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`). [resolved F3 GIT-229] |
 | V14.4.1 | Content-Type on every response | ok | JSON writers and raw/attachments set it explicitly: `services/git/internal/gitread/code_test.go#TestRaw_SafeTypes`; nginx uses `default_type`. |
 | V14.4.2 | Content-Disposition on API responses | **problem** | JSON API responses do not carry `Content-Disposition`; the F4 fix addressed Cache-Control and nosniff only. |
-| V14.4.3 | Content-Security-Policy | **problem** | Only raw/attachment responses carry `sandbox`; the SPA and API send no CSP. [F3] |
-| V14.4.4 | X-Content-Type-Options nosniff | **problem** | Set on raw, attachments and downloads only, not on SPA and API responses. [F3] |
-| V14.4.5 | Strict-Transport-Security | **problem** | No HSTS header is configured in nginx or Traefik. [F3] |
-| V14.4.6 | Referrer-Policy | **problem** | No Referrer-Policy header; only Markdown links set `no-referrer` per element. [F3] |
-| V14.4.7 | Embedding disabled by default | **problem** | No `frame-ancestors` or `X-Frame-Options`: the SPA can be framed. [F3] |
+| V14.4.3 | Content-Security-Policy | ok | The SPA, the API and `/downloads` send a Content-Security-Policy (`script-src 'self'`, `frame-ancestors 'none'`): `web/deploy/nginx.conf.template`; `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`. `style-src` keeps `'unsafe-inline'` because Radix injects a `<style>` element at run time. [resolved F3 GIT-229] |
+| V14.4.4 | X-Content-Type-Options nosniff | ok | `X-Content-Type-Options: nosniff` on SPA, API and downloads: `web/deploy/nginx.conf.template`; `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`. [resolved F3 GIT-229] |
+| V14.4.5 | Strict-Transport-Security | ok | Traefik adds `Strict-Transport-Security` on the HTTPS routes (Middleware `hsts`): `deploy/gitstack/templates/ingress.yaml`; `deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum`. [resolved F3 GIT-229] |
+| V14.4.6 | Referrer-Policy | ok | `Referrer-Policy: no-referrer` on SPA, API and downloads: `web/deploy/nginx.conf.template`; `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`. [resolved F3 GIT-229] |
+| V14.4.7 | Embedding disabled by default | ok | `frame-ancestors 'none'` and `X-Frame-Options: DENY`: `web/deploy/nginx.conf.template`; `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`. [resolved F3 GIT-229] |
 | V14.5.1 | Only the HTTP methods in use | ok | Unknown route or method gets 404 and a warning log: `services/gateway/internal/httpserver/auth_test.go#TestAuth_TabellaDiRotte`. |
 | V14.5.2 | Origin header not used for decisions | ok | No code reads the `Origin` header. |
 | V14.5.3 | CORS strict | ok | No `Access-Control-*` header is ever emitted: same-origin only (`git grep Access-Control` over Go code is empty). |
@@ -376,7 +376,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 |---|---|---|---|---|
 | F1 | high | **Resolved (GIT-227)**: personal token scope escalation (V4.1.3) | `services/identity/internal/httpapi/tokens_keys.go`<br>`services/identity/internal/httpapi/user_tokens.go`<br>`services/identity/internal/apitokens/apitokens.go`<br>`api/openapi.yaml` | `services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateToken_ScopesNotBeyondCaller`<br>`services/identity/internal/httpapi/token_scope_ceiling_integration_test.go#TestCreateAgentToken_ScopesNotBeyondCaller` |
 | F2 | high | **Resolved (GIT-228).** Host and cluster secrets exposure (V1.6.2, V6.4.1, V6.4.2, V7.3.3) | `deploy/install.sh`<br>`admin/internal/upgrade/harden.go`<br>`admin/internal/upgrade/k3s.go` | `deploy/tests/preflight_test.sh#k3s kubeconfig is not world-readable`<br>`deploy/tests/preflight_test.sh#k3s: cifratura attiva dopo l'installazione`<br>`admin/internal/upgrade/harden_test.go#TestUpgrade_HardeningInstallazioneEsistente` |
-| F3 | medium | Web tier security headers and TLS options (V9.1.2, V9.1.3, V14.1.3, V14.3.3, V14.4.3, V14.4.4, V14.4.5, V14.4.6, V14.4.7) | `web/deploy/nginx.conf.template`<br>`deploy/gitstack/templates/ingress.yaml`<br>`web/src/lib/nginxConf.test.ts` | `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version` *(new)*<br>`deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum` *(new)* |
+| F3 | medium | **Resolved (GIT-229).** Web tier security headers and TLS options (V9.1.2, V9.1.3, V14.1.3, V14.3.3, V14.4.3, V14.4.4, V14.4.5, V14.4.6, V14.4.7) | `web/deploy/nginx.conf.template`<br>`deploy/gitstack/templates/ingress.yaml`<br>`web/src/lib/nginxConf.test.ts` | `web/src/lib/nginxConf.test.ts#sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version`<br>`deploy/tests/preflight_test.sh#ingress sets HSTS and a TLS 1.2 minimum` *(new)* |
 | F4 | **ok** | Cache and content-type headers on API responses (V8.2.1, V14.4.2) | `services/gateway/internal/httpserver/router.go`<br>`services/core/internal/httpserver/repos_code.go`<br>`services/git/internal/httpserver/code.go`<br>`services/gateway/internal/middleware/headers.go` | `services/gateway/internal/middleware/headers_test.go#TestAPIResponses_NoStoreNosniff` |
 | F5 | medium | **Resolved (GIT-231).** No request body size limit (V11.1.4) | `services/gateway/internal/proxy/proxy.go`<br>`services/core/internal/httpserver/resources.go`<br>`services/core/internal/httpserver/repos.go`<br>`services/core/internal/httpserver/bodylimit.go`<br>`services/git/internal/smarthttp/smarthttp.go`<br>`services/git/internal/smarthttp/gzipbound.go` | `services/gateway/internal/httpserver/body_limit_test.go#TestBodyTooLarge_413`<br>`services/core/internal/httpserver/bodylimit_test.go#TestLimitBody`<br>`services/git/internal/smarthttp/smarthttp_test.go#TestGzipBodyIsBounded` |
 | F6 | medium | **Resolved (GIT-232).** Rate limiting and abuse detection (V8.1.4, V11.1.4, V11.1.8) | `services/gateway/internal/middleware/ratelimit.go`<br>`services/gateway/internal/httpserver/router.go`<br>`deploy/gitstack/values.yaml` | `services/gateway/internal/middleware/ratelimit_test.go#TestRateLimit_PerTokenAndPerIP` |
@@ -403,7 +403,7 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **Resolution (GIT-228).** k3s starts with `--write-kubeconfig-mode 600 --secrets-encryption` (`K3S_INSTALL_EXEC` in `deploy/install.sh`, `K3sInstallExec` in `admin/internal/upgrade/k3s.go`); the installer checks the kubeconfig mode and `k3s secrets-encrypt status` after the install. On existing installations `gitstack upgrade` (also with the same GitStack version) rewrites the k3s unit, restarts k3s, rotates the keys and re-encrypts the existing Secrets, with a preventive backup and a restore of the unit on failure: see "Hardening k3s (F2)" in `docs/operations.md`. The per-requirement rows above keep the outcome of the review of 2026-10-12; they point to F2, which is now resolved. Not covered: a vault or KMS for key material (V1.6.2, V6.4.2): the Secrets are encrypted at rest by k3s with a key on the same host.
 
-**F3 (medium) Web tier security headers and TLS options.** The SPA and the API answer without `Content-Security-Policy`, `X-Frame-Options`/`frame-ancestors`, `X-Content-Type-Options`, `Referrer-Policy` and `Strict-Transport-Security`; only raw files, attachments and `/downloads` set `nosniff`. The page can be framed (clickjacking) and a single sanitiser bug becomes a script execution because no CSP is a second layer. nginx also sends its version, and no Traefik `TLSOption` pins the minimum TLS version or the cipher suites. Fix: add the headers in nginx (and HSTS on the HTTPS router), pin a `TLSOption`, hide the version; the CSP must be tested against the built SPA.
+**F3 (medium, resolved by GIT-229) Web tier security headers and TLS options.** The SPA and the API answer without `Content-Security-Policy`, `X-Frame-Options`/`frame-ancestors`, `X-Content-Type-Options`, `Referrer-Policy` and `Strict-Transport-Security`; only raw files, attachments and `/downloads` set `nosniff`. The page can be framed (clickjacking) and a single sanitiser bug becomes a script execution because no CSP is a second layer. nginx also sends its version, and no Traefik `TLSOption` pins the minimum TLS version or the cipher suites. Fix: add the headers in nginx (and HSTS on the HTTPS router), pin a `TLSOption`, hide the version; the CSP must be tested against the built SPA.
 
 **F4 (medium) Cache and content-type headers on API responses.** JSON responses of core (issues, repositories, webhooks, notifications) and raw/archive responses carry no `Cache-Control`; only attachments (`private, no-store`) and identity responses do. Private data can stay in a browser or workstation cache after logout. API responses also lack `X-Content-Type-Options: nosniff`. Fix: a gateway middleware that adds `Cache-Control: no-store` and `nosniff` to every authenticated response.
 
