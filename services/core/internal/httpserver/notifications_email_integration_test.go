@@ -72,6 +72,24 @@ func (e *emailEnv) prefs(user string) openapi.NotificationPreferences {
 	return decodeInto[openapi.NotificationPreferences](e.t, rec)
 }
 
+// emailReasons: tutti i tipi di notifica con una preferenza email (C5). Con
+// "credential" (GIT-239 F13) sono 9; la lista è l'unica fonte nei test.
+var emailReasons = []string{"assigned", "commit_linked", "credential", "mentioned", "mirror", "participating", "state_change", "subscribed", "webhook"}
+
+// emailPrefsOK: le preferenze hanno esattamente i tipi attesi e credential
+// c'è ed è spenta di default.
+func emailPrefsOK(p openapi.NotificationPreferences) bool {
+	if len(p.Email) != len(emailReasons) {
+		return false
+	}
+	for _, r := range emailReasons {
+		if _, ok := p.Email[r]; !ok {
+			return false
+		}
+	}
+	return !p.Email["credential"]
+}
+
 func TestEmail_PerTipoRaggruppateSoloAlleLettereC5(t *testing.T) {
 	e := newEmailEnv(t)
 	repoID := e.repo("app", true)
@@ -132,7 +150,7 @@ func TestEmail_PerTipoRaggruppateSoloAlleLettereC5(t *testing.T) {
 
 	// Preferenze per tipo: bob spegne le menzioni e accende i commenti.
 	p := e.prefs("bob")
-	if !p.EmailAvailable || len(p.Email) != 8 || !p.Email["mentioned"] || !p.Email["assigned"] || p.Email["participating"] {
+	if !p.EmailAvailable || !emailPrefsOK(p) || !p.Email["mentioned"] || !p.Email["assigned"] || p.Email["participating"] {
 		t.Fatalf("preferenze di default = %+v", p)
 	}
 	e.want(e.do(http.MethodPut, "/user/notification-preferences", "bob", `{"email":{"mentioned":false,"participating":true}}`), http.StatusOK, "")
@@ -199,7 +217,7 @@ func TestEmail_MaiAgliAgentiC4C5(t *testing.T) {
 		t.Fatalf("il bot ha email in coda: %d", c)
 	}
 	// Le preferenze si leggono e si salvano, ma emailAvailable è false.
-	if p := e.prefs("bot"); p.EmailAvailable || len(p.Email) != 8 {
+	if p := e.prefs("bot"); p.EmailAvailable || !emailPrefsOK(p) {
 		t.Fatalf("preferenze del bot = %+v", p)
 	}
 	e.want(e.do(http.MethodPut, "/user/notification-preferences", "bot", `{"email":{"participating":true}}`), http.StatusOK, "")
@@ -228,7 +246,7 @@ func TestEmail_SenzaSmtpNessunTentativoNessunErrore(t *testing.T) {
 	// La UI nasconde le opzioni: emailAvailable è false, le preferenze si salvano.
 	rec := e.do(http.MethodGet, "/user/notification-preferences", "bob", "")
 	e.want(rec, http.StatusOK, "")
-	if p := decodeInto[openapi.NotificationPreferences](t, rec); p.EmailAvailable || len(p.Email) != 8 || !p.Email["mentioned"] {
+	if p := decodeInto[openapi.NotificationPreferences](t, rec); p.EmailAvailable || !emailPrefsOK(p) || !p.Email["mentioned"] {
 		t.Fatalf("preferenze senza SMTP = %+v", p)
 	}
 	e.want(e.do(http.MethodPut, "/user/notification-preferences", "bob", `{"email":{"mentioned":false}}`), http.StatusOK, "")
