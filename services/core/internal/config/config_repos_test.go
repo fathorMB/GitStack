@@ -82,3 +82,28 @@ func TestLoad_AttachmentsEnv(t *testing.T) {
 		}
 	}
 }
+
+func TestLoad_AttachmentQuotas(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{envDatabaseURL: "postgres://x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AttachmentRepoQuotaBytes != 1<<30 || cfg.AttachmentUserQuotaBytes != 512<<20 {
+		t.Fatalf("quote di default: %d, %d", cfg.AttachmentRepoQuotaBytes, cfg.AttachmentUserQuotaBytes)
+	}
+	if envAttachRepoQuota != "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES" || envAttachUserQuota != "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES" {
+		t.Fatal("nomi delle variabili cambiati: li usa il chart")
+	}
+	cfg, err = load(lookupFrom(map[string]string{envDatabaseURL: "postgres://x", envAttachRepoQuota: "2048", envAttachUserQuota: "0"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AttachmentRepoQuotaBytes != 2048 || cfg.AttachmentUserQuotaBytes != 0 {
+		t.Fatalf("quote: %d, %d", cfg.AttachmentRepoQuotaBytes, cfg.AttachmentUserQuotaBytes)
+	}
+	for _, bad := range []string{"-1", "1GB", "x"} {
+		if _, err := load(lookupFrom(map[string]string{envDatabaseURL: "postgres://x", envAttachRepoQuota: bad})); err == nil {
+			t.Errorf("quota %q accettata", bad)
+		}
+	}
+}

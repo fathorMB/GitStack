@@ -213,7 +213,8 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 	var disk *attachments.Disk
 	if cfg.AttachmentsDir != "" {
 		disk = &attachments.Disk{Dir: cfg.AttachmentsDir}
-		routerOpts = append(routerOpts, httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: disk, MaxBytes: cfg.AttachmentMaxBytes}))
+		routerOpts = append(routerOpts, httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: disk, MaxBytes: cfg.AttachmentMaxBytes,
+			MaxRepoBytes: quotaArg(cfg.AttachmentRepoQuotaBytes), MaxUserBytes: quotaArg(cfg.AttachmentUserQuotaBytes)}))
 	} else {
 		logger.Warn("GITSTACK_CORE_ATTACHMENTS_DIR non impostata: gli allegati rispondono 503")
 	}
@@ -454,4 +455,13 @@ func runPushConsumer(ctx context.Context, js jetstream.JetStream, durable string
 		case <-time.After(5 * time.Second):
 		}
 	}
+}
+
+// quotaArg traduce una quota di configurazione (0 = nessun limite) in quella
+// di httpserver.AttachmentsConfig (< 0 = nessun limite, 0 = default).
+func quotaArg(n int64) int64 {
+	if n == 0 {
+		return -1
+	}
+	return n
 }

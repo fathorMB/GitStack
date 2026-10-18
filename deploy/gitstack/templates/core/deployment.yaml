@@ -136,6 +136,10 @@ spec:
               value: {{ .Values.core.attachments.mountPath | quote }}
             - name: GITSTACK_CORE_ATTACHMENTS_MAX_BYTES
               value: {{ .Values.core.attachments.maxBytes | int64 | quote }}
+            - name: GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES
+              value: {{ .Values.core.attachments.repoQuotaBytes | int64 | quote }}
+            - name: GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES
+              value: {{ .Values.core.attachments.userQuotaBytes | int64 | quote }}
             - name: GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL
               value: {{ .Values.core.attachments.orphanTtl | quote }}
             {{- end }}

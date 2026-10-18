@@ -181,6 +181,7 @@ Core tiene i file degli allegati su un PVC dedicato `<release>-attachments-data`
 |---|---|---|
 | `core.attachments.enabled` | `true` | PVC, montaggio, `Recreate` e variabili d'ambiente degli allegati. |
 | `core.attachments.mountPath` | `/var/lib/gitstack/attachments` | `GITSTACK_CORE_ATTACHMENTS_DIR`. |
+| `core.attachments.repoQuotaBytes` / `core.attachments.userQuotaBytes` | `1073741824` / `536870912` | Quota di allegati per repo (1 GiB) e per utente su tutti i repo (512 MiB), `GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES` / `_USER_QUOTA_BYTES` (F17): oltre, 413 `attachment_quota_exceeded`. `0` = nessun limite. |
 | `core.attachments.maxBytes` | `10485760` | Limite per file (10 MiB), `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`: oltre, 413 `attachment_too_large`. Lo stesso valore è passato al gateway (`GITSTACK_GATEWAY_ATTACHMENTS_MAX_BYTES`), che lo applica al corpo dell'upload più 64 KiB di overhead multipart. |
 | `core.attachments.orphanTtl` | `24h` | Un allegato mai collegato a una issue o a un commento si elimina dopo questo tempo (`GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL`). |
 | `core.attachments.persistence.size`, `.storageClassName`, `.accessMode` | `5Gi`, vuoto, `ReadWriteOnce` | Il PVC. |

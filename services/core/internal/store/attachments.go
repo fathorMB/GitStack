@@ -47,6 +47,17 @@ func (s *Store) CreateAttachment(ctx context.Context, a Attachment, now time.Tim
 	return scanAttachment(row)
 }
 
+// AttachmentUsage sono i byte occupati dagli allegati (collegati e non) di un
+// repo e quelli caricati da un utente in tutti i repo: servono alla quota (F17,
+// V12.1.3).
+func (s *Store) AttachmentUsage(ctx context.Context, repoID, uploaderID uuid.UUID) (repoBytes, userBytes int64, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT
+		COALESCE(SUM(size_bytes) FILTER (WHERE repo_id = $1), 0)::bigint,
+		COALESCE(SUM(size_bytes) FILTER (WHERE uploader_id = $2), 0)::bigint
+		FROM core.issue_attachments WHERE repo_id = $1 OR uploader_id = $2`, repoID, uploaderID).Scan(&repoBytes, &userBytes)
+	return repoBytes, userBytes, err
+}
+
 // GetAttachment legge un allegato del repo; ErrNotFound se non c'è o è di un
 // altro repo.
 func (s *Store) GetAttachment(ctx context.Context, repoID, id uuid.UUID) (Attachment, error) {

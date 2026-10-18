@@ -39,13 +39,19 @@ type attachEnv struct {
 
 func newAttachEnv(t *testing.T) *attachEnv {
 	t.Helper()
+	return newAttachEnvQuota(t, 0, 0)
+}
+
+// newAttachEnvQuota è newAttachEnv con le quote di repo e utente (0 = default).
+func newAttachEnvQuota(t *testing.T, repoQuota, userQuota int64) *attachEnv {
+	t.Helper()
 	pool, _ := dbtest.NewPool(t)
 	dir := t.TempDir()
 	id := newFakeIdentity()
 	git := newFakeGit()
 	router := httpserver.NewRouter(pool, events.NoopPublisher{}, trustSecret,
 		httpserver.WithRepoIdentity(id), httpserver.WithReadableLister(id), httpserver.WithGit(git),
-		httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: &attachments.Disk{Dir: dir}, MaxBytes: attachMax}))
+		httpserver.WithAttachments(httpserver.AttachmentsConfig{Disk: &attachments.Disk{Dir: dir}, MaxBytes: attachMax, MaxRepoBytes: repoQuota, MaxUserBytes: userQuota}))
 	e := &reposEnv{t: t, pool: pool, router: router, id: id, git: git}
 	e.create("alice", `{"owner":"alice","name":"privato","visibility":"private"}`)
 	e.create("alice", `{"owner":"alice","name":"interno","visibility":"internal"}`)
@@ -287,4 +293,67 @@ func TestAttachments_SenzaVolume(t *testing.T) {
 	e := &attachEnv{reposEnv: &reposEnv{t: t, pool: pool, router: router, id: id, git: newFakeGit()}}
 	e.create("alice", `{"owner":"alice","name":"r","visibility":"private"}`)
 	e.want(e.upload("r", "alice", "file", "a.png", pngBytes), 503)
+}
+
+// filesOnDisk conta i file nel volume degli allegati.
+func filesOnDisk(dir string) int {
+	n := 0
+	_ = filepath.Walk(dir, func(_ string, info os.FileInfo, _ error) error {
+		if info != nil && !info.IsDir() {
+			n++
+		}
+		return nil
+	})
+	return n
+}
+
+// TestAttachments_QuotaPerRepo: quota di allegati per repo e per utente (F17,
+// V12.1.3). pngBytes pesa 56 byte; quota di repo 150 byte, di utente 120.
+func TestAttachments_QuotaPerRepo(t *testing.T) {
+	e := newAttachEnvQuota(t, 150, 120)
+	size := int64(len(pngBytes))
+	if size != 56 {
+		t.Fatalf("la prova assume pngBytes di 56 byte, sono %d", size)
+	}
+
+	// Due allegati stanno nel repo (112 <= 150) e nella quota dell'utente (112 <= 120).
+	e.uploaded("privato", "alice", "a.png", pngBytes)
+	e.uploaded("privato", "alice", "b.png", pngBytes)
+
+	// Il terzo nello stesso repo supera la quota del repo (168 > 150): 413 e
+	// il file non resta sul volume.
+	rec := e.upload("privato", "alice", "file", "c.png", pngBytes)
+	e.want(rec, http.StatusRequestEntityTooLarge)
+	if !strings.Contains(rec.Body.String(), "attachment_quota_exceeded") || !strings.Contains(rec.Body.String(), "per questo repo") {
+		t.Errorf("risposta inattesa: %s", rec.Body.String())
+	}
+	if n := filesOnDisk(e.dir); n != 2 {
+		t.Errorf("sul volume ci sono %d file, attesi 2", n)
+	}
+
+	// In un altro repo lo stesso utente è fermo dalla quota per utente (168 > 120).
+	rec = e.upload("interno", "alice", "file", "d.png", pngBytes)
+	e.want(rec, http.StatusRequestEntityTooLarge)
+	if !strings.Contains(rec.Body.String(), "attachment_quota_exceeded") || !strings.Contains(rec.Body.String(), "per il tuo utente") {
+		t.Errorf("risposta inattesa: %s", rec.Body.String())
+	}
+
+	// Un altro utente non è toccato dalla quota di alice, e il repo interno
+	// ha ancora spazio.
+	e.uploaded("interno", "bob", "e.png", pngBytes)
+
+	// Il file è già su disco quando si conosce la dimensione: un singolo file
+	// che da solo supera la quota del repo vuoto è rifiutato e rimosso.
+	small := newAttachEnvQuota(t, 40, 0)
+	rec = small.upload("privato", "alice", "file", "grande.png", pngBytes)
+	small.want(rec, http.StatusRequestEntityTooLarge)
+	if n := filesOnDisk(small.dir); n != 0 {
+		t.Errorf("il file oltre la quota è rimasto sul volume (%d file)", n)
+	}
+
+	// Quota negativa = nessun limite.
+	free := newAttachEnvQuota(t, -1, -1)
+	for i := 0; i < 5; i++ {
+		free.uploaded("privato", "alice", "x.png", pngBytes)
+	}
 }

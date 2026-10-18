@@ -6128,7 +6128,7 @@ type ClientInterface interface {
 
 	// UploadIssueAttachmentWithBody Carica un allegato
 	//
-	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -9384,7 +9384,7 @@ func (c *Client) ReactivateRepoWebhook(ctx context.Context, owner RepoOwnerParam
 
 // UploadIssueAttachmentWithBody Carica un allegato
 //
-// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type.
 //
@@ -23265,7 +23265,7 @@ type ClientWithResponsesInterface interface {
 
 	// UploadIssueAttachmentWithBodyWithResponse Carica un allegato
 	//
-	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -40783,7 +40783,7 @@ func (c *ClientWithResponses) ReactivateRepoWebhookWithResponse(ctx context.Cont
 
 // UploadIssueAttachmentWithBodyWithResponse Carica un allegato
 //
-// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
