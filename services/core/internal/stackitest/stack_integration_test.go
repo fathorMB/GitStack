@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,14 +47,33 @@ const (
 	newPassword   = "nuova password molto lunga 42"
 )
 
+var (
+	givenAddrsMu sync.Mutex
+	givenAddrs   = map[string]bool{}
+)
+
+// freeAddr restituisce un indirizzo libero su 127.0.0.1 che non ha mai dato
+// prima nello stesso processo di test: il kernel può riassegnare una porta
+// appena liberata, e i test ne chiedono più d'una prima di avviare i servizi.
 func freeAddr(t *testing.T) string {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 1000; i++ {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		addr := l.Addr().String()
+		_ = l.Close()
+		givenAddrsMu.Lock()
+		dup := givenAddrs[addr]
+		givenAddrs[addr] = true
+		givenAddrsMu.Unlock()
+		if !dup {
+			return addr
+		}
 	}
-	defer func() { _ = l.Close() }()
-	return l.Addr().String()
+	t.Fatal("freeAddr: nessuna porta nuova dopo 1000 tentativi")
+	return ""
 }
 
 func build(t *testing.T, dir, out string) string {
