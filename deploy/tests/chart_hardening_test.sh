@@ -199,7 +199,6 @@ for c in gateway core git identity; do
 done
 
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
 # N3 (nodo singolo, installazione-e-deploy.md): con il volume degli allegati
 # ReadWriteOnce il chart si ferma se core.replicaCount > 1; senza il volume più
 # repliche sono ammesse. `render` passa l'output a tr e restituisce il codice di
