@@ -52,7 +52,7 @@ func insertPR(ctx context.Context, tx pgx.Tx, repo uuid.UUID) (int64, error) {
 	}
 	_, err := tx.Exec(ctx, `INSERT INTO core.pull_requests
 		(id, repo_id, number, source_branch, target_branch, title, author_id)
-		VALUES ($1, $2, $3, 'feat-' || $3::text, 'main', 't', $4)`, uuid.New(), repo, n, uuid.New())
+		VALUES ($1, $2, $3, 'feat-' || ($5::bigint)::text, 'main', 't', $4)`, uuid.New(), repo, n, uuid.New(), n)
 	return n, err
 }
 
