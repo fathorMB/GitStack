@@ -52,7 +52,7 @@ func insertPR(ctx context.Context, tx pgx.Tx, repo uuid.UUID) (int64, error) {
 	}
 	_, err := tx.Exec(ctx, `INSERT INTO core.pull_requests
 		(id, repo_id, number, source_branch, target_branch, title, author_id)
-		VALUES ($1, $2, $3, 'feat', 'main', 't', $4)`, uuid.New(), repo, n, uuid.New())
+		VALUES ($1, $2, $3, 'feat-' || $3::text, 'main', 't', $4)`, uuid.New(), repo, n, uuid.New())
 	return n, err
 }
 
@@ -84,7 +84,7 @@ func TestMigration0004_SaleEScende(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := migrate.Down(ctx, pool, dsn, 14); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 15); err != nil {
 		t.Fatalf("down 0004: %v", err)
 	}
 	for _, tbl := range issueTables {

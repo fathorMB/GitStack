@@ -4194,6 +4194,46 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /repos/{owner}/{repo}/pulls/{number}/events:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/PullNumberParam"
+    get:
+      operationId: listPullRequestEvents
+      tags: [pulls]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: pr_events
+        destructive: false
+      summary: Cronologia degli eventi della Pull Request
+      description: >
+        Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di
+        destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge.
+        Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo'
+        leggere, eliminato o inesistente risponde 404.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di eventi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequestEventList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /repos/{owner}/{repo}/pulls/{number}/commits:
     parameters:
       - $ref: "#/components/parameters/RepoOwnerParam"
@@ -12837,6 +12877,47 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PullRequestSummary"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    PullRequestEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged]
+        actor:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+          description: Assente per gli eventi di sistema.
+        data:
+          type: object
+          additionalProperties: true
+          description: >
+            Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`;
+            `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+        createdAt:
+          type: string
+          format: date-time
+    PullRequestEventList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PullRequestEvent"
         page:
           type: integer
         perPage:
