@@ -1226,6 +1226,11 @@ jobs:
           files=(dist/gitstack-linux-amd64 dist/gitstack-linux-amd64.sha256 dist/gs_* dist/gs-skills.zip \
                  "dist/gitstack-${{ steps.ver.outputs.plain }}.tgz" dist/SHA256SUMS dist/*.sigstore.json \
                  dist/sbom/*.spdx.json dist/CHANGELOG.md "dist/CHANGELOG-${VERSION}.md")
+          # dist/gs_* include già i bundle gs_*.sigstore.json, che torna anche in
+          # dist/*.sigstore.json: un nome doppio fa fallire il caricamento con
+          # «ReleaseAsset.name already exists» (v0.0.0-test.8). Un nome una volta sola.
+          mapfile -t files < <(printf '%s\n' "${files[@]}" | sort -u)
+          printf '%s\n' "${files[@]}"
           flags=()
           if [ "${{ steps.ver.outputs.prerelease }}" = "true" ]; then
             flags+=(--prerelease)
