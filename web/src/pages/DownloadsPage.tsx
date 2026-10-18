@@ -1,4 +1,4 @@
-import { Bot, Download, Key, Plug, Terminal } from 'lucide-react';
+import { Bot, Download, Info, Key, Link2, Terminal } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyButton, ErrorAlert, Logo } from '../components';
@@ -219,6 +219,13 @@ export function DownloadsPage() {
                 <span className="p">$ </span>gs skills install{'\n'}
                 <span className="p">$ </span>gs skills install --agents-md <span className="tk-c"># agents without skills</span>
               </div>
+              <div className="small">
+                <b>Included:</b>{' '}
+                <span className="muted">
+                  install &amp; sign in · work on an issue until the commit · triage issues · manage repositories ·
+                  notifications loop · review a pull request
+                </span>
+              </div>
               {data?.skills ? (
                 <>
                   <a className="btn btn-sm" href={data.skills.url} download>
@@ -236,8 +243,11 @@ export function DownloadsPage() {
 
         <div className="card section-gap">
           <div className="card-h">
-            <Plug size={16} aria-hidden="true" />
-            MCP server
+            <Link2 size={16} aria-hidden="true" style={{ color: 'var(--accent)' }} />
+            Use GitStack from AI assistants (MCP)
+            <span className="badge badge-accent" title="Arriva con la v1.1 (M1–M5)">
+              v1.1
+            </span>
             <span className="sp" />
             <span className="seg" role="group" aria-label="Assistant">
               {MCP_ORDER.map((a) => (
@@ -249,9 +259,8 @@ export function DownloadsPage() {
           </div>
           <div className="card-b stack">
             <p className="small muted">
-              Let your coding assistant work on this GitStack through MCP. <span className="mono">gs mcp</span> runs on your
-              computer, uses the same login and token as <span className="mono">gs</span>, and talks to {host}. It needs the{' '}
-              <span className="mono">gs</span> installed above and a <span className="mono">gs auth login</span>.
+              The MCP server is built into <span className="mono">gs</span>: nothing else to install. It uses the same
+              sign-in and token as <span className="mono">gs</span> and runs on your machine, next to the assistant.
             </p>
             <p className="small muted">{mcp.where}</p>
             <div className="row nowrap">
@@ -264,12 +273,38 @@ export function DownloadsPage() {
               <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} /> Read-only: the
               assistant can read but not change anything (<span className="mono">--read-only</span>)
             </label>
-            <p className="small muted">
-              The assistant also gets prompts for the common flows — issue to Pull Request, issue triage, Pull Request
-              review — built from the agent skills. If <span className="mono">gs</span> is older than this instance
-              (same major version) the server starts and warns you to update; with a different major version it does
-              not start.
-            </p>
+            <div className="repo-grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
+              <div className="small" aria-label="MCP tools">
+                <b>Tools</b>
+                <div className="muted">
+                  About 70 tools for repositories, code, issues, pull requests, reviews, labels, milestones, search,
+                  notifications and commit statuses, plus <span className="mono">api_request</span> for the rest of the API.
+                </div>
+              </div>
+              <div className="small" aria-label="MCP prompts">
+                <b>Prompts</b>
+                <div className="muted">
+                  Work on an issue until the pull request · Triage issues · Review a pull request. Same flows as the agent
+                  skills.
+                </div>
+              </div>
+              <div className="small" aria-label="MCP safety">
+                <b>Safety</b>
+                <div className="muted">
+                  Add <span className="mono">--read-only</span> for agents that only read. Merges, closes and deletions are
+                  marked destructive, so assistants ask before using them. Deleting repositories, settings, webhooks and
+                  tokens have no dedicated tool.
+                </div>
+              </div>
+            </div>
+            <div className="alert alert-info" role="note">
+              <Info size={16} aria-hidden="true" />
+              <div>
+                If your <span className="mono">gs</span> is older than this GitStack, the MCP server still starts with the
+                tools it knows and tells you to update from this page. With a different major version it doesn&apos;t start
+                and asks you to update.
+              </div>
+            </div>
           </div>
         </div>
       </main>

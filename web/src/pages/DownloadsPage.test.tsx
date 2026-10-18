@@ -56,7 +56,9 @@ describe('DownloadsPage', () => {
     expect(within(list).getAllByText(/sha256 aaaaaaaaaaaa/)).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'SHA256SUMS' })).toHaveAttribute('href', '/downloads/SHA256SUMS');
     expect(screen.getByRole('link', { name: 'Download skills (.zip)' })).toHaveAttribute('href', '/downloads/gs-skills.zip');
-    expect(screen.getByText('MCP server')).toBeInTheDocument();
+    expect(screen.getByText('Use GitStack from AI assistants (MCP)')).toBeInTheDocument();
+    expect(screen.getByText('v1.1')).toBeInTheDocument();
+    expect(screen.getByText(/review a pull request/)).toBeInTheDocument();
   }, 15000);
 
   it('riquadro MCP: configurazione pronta per ogni assistente, con l\'host corrente', async () => {
@@ -66,6 +68,14 @@ describe('DownloadsPage', () => {
     renderPage();
     await screen.findByRole('list', { name: 'Binaries' });
     const host = window.location.host;
+    expect(screen.getByText(/nothing else to install/)).toBeInTheDocument();
+    for (const name of ['MCP tools', 'MCP prompts', 'MCP safety']) expect(screen.getByLabelText(name)).toBeInTheDocument();
+    expect(screen.getByLabelText('MCP tools')).toHaveTextContent(/api_request/);
+    expect(screen.getByLabelText('MCP safety')).toHaveTextContent(/--read-only/);
+    const note = screen.getByRole('note');
+    expect(note).toHaveClass('alert-info');
+    expect(note).toHaveTextContent(/still starts with the tools it knows/);
+    expect(note).toHaveTextContent(/different major version it doesn't start/);
     const block = () => screen.getByLabelText('MCP configuration');
     expect(block()).toHaveTextContent(`claude mcp add gitstack -- gs mcp --host ${host}`);
     await user.click(screen.getByRole('button', { name: 'Claude Desktop' }));
