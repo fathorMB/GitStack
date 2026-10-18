@@ -9,6 +9,10 @@
 #   --prepend FILE    inserisce la sezione in testa a FILE (CHANGELOG.md),
 #                     sotto il titolo; idempotente: se la sezione c'è già non
 #                     la ripete
+#   --risks FILE      registro di sicurezza (docs/security/asvs-l2.md): aggiunge
+#                     la sezione «Rischi noti» con i problemi non critici né alti
+#                     ancora aperti (soglia V2 della v1.0); senza righe aperte
+#                     scrive «Nessuno.»
 #
 # Senza il tag precedente (primo rilascio) elenca tutta la storia fino a <tag>.
 # Non serve git-cliff: l'unica dipendenza è git, quindi nessuno strumento da
@@ -16,7 +20,7 @@
 set -euo pipefail
 
 usage() {
-  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -24,11 +28,13 @@ tag=""
 prev=""
 out=""
 prepend=""
+risks=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --prev) prev="${2:?--prev vuole un tag}"; shift 2 ;;
     --out) out="${2:?--out vuole un file}"; shift 2 ;;
     --prepend) prepend="${2:?--prepend vuole un file}"; shift 2 ;;
+    --risks) risks="${2:?--risks vuole un file}"; shift 2 ;;
     -h | --help) usage ;;
     -*) echo "opzione sconosciuta: $1" >&2; usage ;;
     *)
@@ -101,6 +107,28 @@ for k in feat fix perf refactor docs test ci build chore other; do
 done
 if [ "${count}" -eq 0 ]; then
   section+="Nessun commit."$'\n\n'
+fi
+
+# Rischi noti (soglia V2 della v1.0): le righe F<n> del registro non chiuse
+# («**Resolved» o «**ok**») e non critiche né alte. Un critico o alto aperto
+# non finisce qui: blocca il rilascio (release-readiness, A2).
+if [ -n "${risks}" ]; then
+  [ -f "${risks}" ] || { echo "registro non trovato: ${risks}" >&2; exit 1; }
+  list="$(tr -d '\r' <"${risks}" | awk -F'|' '
+    /^## / { inreg = ($0 ~ /^## Findings register/) }
+    inreg && $2 ~ /^ *F[0-9]+ *$/ {
+      id = $2; sev = tolower($3); area = $4
+      gsub(/^ +| +$/, "", id); gsub(/[* ]/, "", sev); gsub(/^ +| +$/, "", area)
+      if (sev == "high" || sev == "critical") next
+      if (($3 $4) ~ /\*\*[Rr]esolved|\*\*ok\*\*/) next
+      printf "- %s (%s): %s\n", id, sev, area
+    }')"
+  section+="### Rischi noti"$'\n\n'
+  if [ -n "${list}" ]; then
+    section+="${list}"$'\n\n'
+  else
+    section+="Nessuno."$'\n\n'
+  fi
 fi
 
 if [ -n "${out}" ]; then
