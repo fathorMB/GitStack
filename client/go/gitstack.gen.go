@@ -237,6 +237,33 @@ func (e CreateUserInputKind) Valid() bool {
 	}
 }
 
+// Defines values for CredentialEventKind.
+const (
+	PasswordChanged CredentialEventKind = "password_changed"
+	PasswordReset   CredentialEventKind = "password_reset"
+	SshKeyAdded     CredentialEventKind = "ssh_key_added"
+	TokenCreated    CredentialEventKind = "token_created"
+	TokenExpiring   CredentialEventKind = "token_expiring"
+)
+
+// Valid indicates whether the value is a known member of the CredentialEventKind enum.
+func (e CredentialEventKind) Valid() bool {
+	switch e {
+	case PasswordChanged:
+		return true
+	case PasswordReset:
+		return true
+	case SshKeyAdded:
+		return true
+	case TokenCreated:
+		return true
+	case TokenExpiring:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CurrentSessionAuthMethod.
 const (
 	CurrentSessionAuthMethodOidc     CurrentSessionAuthMethod = "oidc"
@@ -739,6 +766,7 @@ func (e NotificationIssueState) Valid() bool {
 const (
 	NotificationReasonAssigned      NotificationReason = "assigned"
 	NotificationReasonCommitLinked  NotificationReason = "commit_linked"
+	NotificationReasonCredential    NotificationReason = "credential"
 	NotificationReasonMentioned     NotificationReason = "mentioned"
 	NotificationReasonMirror        NotificationReason = "mirror"
 	NotificationReasonParticipating NotificationReason = "participating"
@@ -753,6 +781,8 @@ func (e NotificationReason) Valid() bool {
 	case NotificationReasonAssigned:
 		return true
 	case NotificationReasonCommitLinked:
+		return true
+	case NotificationReasonCredential:
 		return true
 	case NotificationReasonMentioned:
 		return true
@@ -2284,6 +2314,30 @@ type CreatedToken struct {
 	Token string `json:"token"`
 }
 
+// CredentialEvent defines model for CredentialEvent.
+type CredentialEvent struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Detail Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+	Detail map[string]interface{} `json:"detail"`
+	Id     int64                  `json:"id"`
+	Kind   CredentialEventKind    `json:"kind"`
+	UserId openapi_types.UUID     `json:"userId"`
+}
+
+// CredentialEventKind defines model for CredentialEvent.Kind.
+type CredentialEventKind string
+
+// CredentialEventList defines model for CredentialEventList.
+type CredentialEventList struct {
+	Items []CredentialEvent `json:"items"`
+}
+
+// CredentialEventsAckInput defines model for CredentialEventsAckInput.
+type CredentialEventsAckInput struct {
+	Ids []int64 `json:"ids"`
+}
+
 // CurrentSession defines model for CurrentSession.
 type CurrentSession struct {
 	// AuthMethod Come e' stato autenticato il chiamante.
@@ -2369,6 +2423,16 @@ type Error struct {
 		// Message Messaggio leggibile da persone, non contrattuale.
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+// ExportedSshKey Chiave SSH dell'utente, con la chiave pubblica.
+type ExportedSshKey struct {
+	CreatedAt   time.Time  `json:"createdAt"`
+	Fingerprint string     `json:"fingerprint"`
+	KeyType     string     `json:"keyType"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	PublicKey   string     `json:"publicKey"`
+	Title       string     `json:"title"`
 }
 
 // FileContent defines model for FileContent.
@@ -2982,7 +3046,7 @@ type Notification struct {
 	Read   bool               `json:"read"`
 	ReadAt *time.Time         `json:"readAt,omitempty"`
 
-	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
+	// Reason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
 	Reason     NotificationReason `json:"reason"`
 	Repository *NotificationRepo  `json:"repository,omitempty"`
 
@@ -3023,7 +3087,7 @@ type NotificationPreferences struct {
 	EmailAvailable bool `json:"emailAvailable"`
 }
 
-// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
+// NotificationReason Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
 type NotificationReason string
 
 // NotificationRepo defines model for NotificationRepo.
@@ -3103,6 +3167,18 @@ type OrganizationList struct {
 	Page    int            `json:"page"`
 	PerPage int            `json:"perPage"`
 	Total   int            `json:"total"`
+}
+
+// OwnDataExport Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+type OwnDataExport struct {
+	ExportedAt  time.Time        `json:"exportedAt"`
+	Sessions    []Session        `json:"sessions"`
+	SshKeys     []ExportedSshKey `json:"sshKeys"`
+	Tokens      []Token          `json:"tokens"`
+	TotpEnabled bool             `json:"totpEnabled"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
 }
 
 // OwnerRef defines model for OwnerRef.
@@ -4417,6 +4493,11 @@ type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
 }
 
+// ListCredentialEventsParams defines parameters for ListCredentialEvents.
+type ListCredentialEventsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // GitGetArchiveParams defines parameters for GitGetArchive.
 type GitGetArchiveParams struct {
 	// Ref Branch, tag o sha, sempre esplicito: core sostituisce il branch principale prima di chiamare il servizio git. Stesse regole di `RefParam` per 400 `invalid_ref` e 404 `ref_not_found`.
@@ -4893,6 +4974,9 @@ type DisableTotpJSONRequestBody = TotpDisableInput
 // VerifyTotpJSONRequestBody defines body for VerifyTotp for application/json ContentType.
 type VerifyTotpJSONRequestBody = TotpCodeInput
 
+// AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.
+type AckCredentialEventsJSONRequestBody = CredentialEventsAckInput
+
 // GitCreateRepoJSONRequestBody defines body for GitCreateRepo for application/json ContentType.
 type GitCreateRepoJSONRequestBody = GitCreateRepoInput
 
@@ -5253,6 +5337,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /health (the `GetHealth` operationId).
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCredentialEvents Eventi sulle credenziali degli utenti, da consegnare
+	//
+	// Per core (F13): gli eventi non ancora confermati (cambio password, reset da amministratore, nuovo token, nuova chiave SSH, token in scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500). Prima di rispondere identity cerca i token che scadono entro 7 giorni e non sono ancora stati segnalati. La consegna e' almeno una volta: core conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai segreti: solo tipo, nome del token o della chiave e date.
+	//
+	// Corresponds with GET /internal/credential-events (the `ListCredentialEvents` operationId).
+	ListCredentialEvents(ctx context.Context, params *ListCredentialEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AckCredentialEventsWithBody Conferma la consegna degli eventi sulle credenziali
+	//
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+	AckCredentialEventsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AckCredentialEvents Conferma la consegna degli eventi sulle credenziali
+	//
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+	AckCredentialEvents(ctx context.Context, body AckCredentialEventsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GitCreateRepoWithBody Crea il repo su disco (per core)
 	//
@@ -6128,7 +6237,7 @@ type ClientInterface interface {
 
 	// UploadIssueAttachmentWithBody Carica un allegato
 	//
-	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -6875,6 +6984,13 @@ type ClientInterface interface {
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssues(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ExportOwnData Esporta i dati personali dell'utente corrente
+	//
+	// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+	//
+	// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+	ExportOwnData(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNotificationPreferences Preferenze email delle notifiche
 	//
 	// Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
@@ -7360,6 +7476,61 @@ func (c *Client) VerifyTotp(ctx context.Context, body VerifyTotpJSONRequestBody,
 // Corresponds with GET /health (the `GetHealth` operationId).
 func (c *Client) GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCredentialEvents Eventi sulle credenziali degli utenti, da consegnare
+//
+// Per core (F13): gli eventi non ancora confermati (cambio password, reset da amministratore, nuovo token, nuova chiave SSH, token in scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500). Prima di rispondere identity cerca i token che scadono entro 7 giorni e non sono ancora stati segnalati. La consegna e' almeno una volta: core conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai segreti: solo tipo, nome del token o della chiave e date.
+//
+// Corresponds with GET /internal/credential-events (the `ListCredentialEvents` operationId).
+func (c *Client) ListCredentialEvents(ctx context.Context, params *ListCredentialEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCredentialEventsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AckCredentialEventsWithBody Conferma la consegna degli eventi sulle credenziali
+//
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+func (c *Client) AckCredentialEventsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAckCredentialEventsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AckCredentialEvents Conferma la consegna degli eventi sulle credenziali
+//
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+func (c *Client) AckCredentialEvents(ctx context.Context, body AckCredentialEventsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAckCredentialEventsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9384,7 +9555,7 @@ func (c *Client) ReactivateRepoWebhook(ctx context.Context, owner RepoOwnerParam
 
 // UploadIssueAttachmentWithBody Carica un allegato
 //
-// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type.
 //
@@ -11081,6 +11252,23 @@ func (c *Client) SearchIssues(ctx context.Context, params *SearchIssuesParams, r
 	return c.Client.Do(req)
 }
 
+// ExportOwnData Esporta i dati personali dell'utente corrente
+//
+// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+//
+// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+func (c *Client) ExportOwnData(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExportOwnDataRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetNotificationPreferences Preferenze email delle notifiche
 //
 // Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
@@ -12027,6 +12215,100 @@ func NewGetHealthRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListCredentialEventsRequest constructs an http.Request for the ListCredentialEvents method
+func NewListCredentialEventsRequest(server string, params *ListCredentialEventsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/credential-events")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAckCredentialEventsRequest calls the generic AckCredentialEvents builder with application/json body
+func NewAckCredentialEventsRequest(server string, body AckCredentialEventsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAckCredentialEventsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAckCredentialEventsRequestWithBody constructs an http.Request for the AckCredentialEvents method, with any body, and a specified content type
+func NewAckCredentialEventsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/credential-events/ack")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -21088,6 +21370,33 @@ func NewSearchIssuesRequest(server string, params *SearchIssuesParams) (*http.Re
 	return req, nil
 }
 
+// NewExportOwnDataRequest constructs an http.Request for the ExportOwnData method
+func NewExportOwnDataRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user/export")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNotificationPreferencesRequest constructs an http.Request for the GetNotificationPreferences method
 func NewGetNotificationPreferencesRequest(server string) (*http.Request, error) {
 	var err error
@@ -22259,6 +22568,33 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /health (the `GetHealth` operationId).
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResponse, error)
 
+	// ListCredentialEventsWithResponse Eventi sulle credenziali degli utenti, da consegnare
+	//
+	// Per core (F13): gli eventi non ancora confermati (cambio password, reset da amministratore, nuovo token, nuova chiave SSH, token in scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500). Prima di rispondere identity cerca i token che scadono entro 7 giorni e non sono ancora stati segnalati. La consegna e' almeno una volta: core conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai segreti: solo tipo, nome del token o della chiave e date.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /internal/credential-events (the `ListCredentialEvents` operationId).
+	ListCredentialEventsWithResponse(ctx context.Context, params *ListCredentialEventsParams, reqEditors ...RequestEditorFn) (*ListCredentialEventsResponse, error)
+
+	// AckCredentialEventsWithBodyWithResponse Conferma la consegna degli eventi sulle credenziali
+	//
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+	AckCredentialEventsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AckCredentialEventsResponse, error)
+
+	// AckCredentialEventsWithResponse Conferma la consegna degli eventi sulle credenziali
+	//
+	// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+	AckCredentialEventsWithResponse(ctx context.Context, body AckCredentialEventsJSONRequestBody, reqEditors ...RequestEditorFn) (*AckCredentialEventsResponse, error)
+
 	// GitCreateRepoWithBodyWithResponse Crea il repo su disco (per core)
 	//
 	// Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
@@ -23265,7 +23601,7 @@ type ClientWithResponsesInterface interface {
 
 	// UploadIssueAttachmentWithBodyWithResponse Carica un allegato
 	//
-	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+	// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -24103,6 +24439,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /search/issues (the `SearchIssues` operationId).
 	SearchIssuesWithResponse(ctx context.Context, params *SearchIssuesParams, reqEditors ...RequestEditorFn) (*SearchIssuesResponse, error)
+
+	// ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
+	//
+	// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+	ExportOwnDataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ExportOwnDataResponse, error)
 
 	// GetNotificationPreferencesWithResponse Preferenze email delle notifiche
 	//
@@ -25127,6 +25472,123 @@ func (r GetHealthResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetHealthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListCredentialEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CredentialEventList
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCredentialEventsResponse) GetJSON200() *CredentialEventList {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListCredentialEventsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListCredentialEventsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListCredentialEventsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCredentialEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCredentialEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCredentialEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCredentialEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AckCredentialEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AckCredentialEventsResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AckCredentialEventsResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r AckCredentialEventsResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AckCredentialEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AckCredentialEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AckCredentialEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AckCredentialEventsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -37257,6 +37719,75 @@ func (r SearchIssuesResponse) ContentType() string {
 	return ""
 }
 
+// ExportOwnDataResponse200Headers the declared response headers of an HTTP 200 response for ExportOwnData
+type ExportOwnDataResponse200Headers struct {
+	ContentDisposition *string
+}
+
+type ExportOwnDataResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OwnDataExport
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *UnexpectedError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ExportOwnDataResponse200Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ExportOwnDataResponse) GetJSON200() *OwnDataExport {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ExportOwnDataResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ExportOwnDataResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ExportOwnDataResponse) GetJSONDefault() *UnexpectedError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ExportOwnDataResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ExportOwnDataResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExportOwnDataResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ExportOwnDataResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetNotificationPreferencesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -39093,6 +39624,51 @@ func (c *ClientWithResponses) GetHealthWithResponse(ctx context.Context, reqEdit
 	return ParseGetHealthResponse(rsp)
 }
 
+// ListCredentialEventsWithResponse Eventi sulle credenziali degli utenti, da consegnare
+//
+// Per core (F13): gli eventi non ancora confermati (cambio password, reset da amministratore, nuovo token, nuova chiave SSH, token in scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500). Prima di rispondere identity cerca i token che scadono entro 7 giorni e non sono ancora stati segnalati. La consegna e' almeno una volta: core conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai segreti: solo tipo, nome del token o della chiave e date.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /internal/credential-events (the `ListCredentialEvents` operationId).
+func (c *ClientWithResponses) ListCredentialEventsWithResponse(ctx context.Context, params *ListCredentialEventsParams, reqEditors ...RequestEditorFn) (*ListCredentialEventsResponse, error) {
+	rsp, err := c.ListCredentialEvents(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCredentialEventsResponse(rsp)
+}
+
+// AckCredentialEventsWithBodyWithResponse Conferma la consegna degli eventi sulle credenziali
+//
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+func (c *ClientWithResponses) AckCredentialEventsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AckCredentialEventsResponse, error) {
+	rsp, err := c.AckCredentialEventsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAckCredentialEventsResponse(rsp)
+}
+
+// AckCredentialEventsWithResponse Conferma la consegna degli eventi sulle credenziali
+//
+// Per core (F13): segna come consegnati esattamente gli eventi con gli id indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit e un evento committato dopo la lettura, con id minore, andrebbe perso. Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/credential-events/ack (the `AckCredentialEvents` operationId).
+func (c *ClientWithResponses) AckCredentialEventsWithResponse(ctx context.Context, body AckCredentialEventsJSONRequestBody, reqEditors ...RequestEditorFn) (*AckCredentialEventsResponse, error) {
+	rsp, err := c.AckCredentialEvents(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAckCredentialEventsResponse(rsp)
+}
+
 // GitCreateRepoWithBodyWithResponse Crea il repo su disco (per core)
 //
 // Implementata a mano dal servizio git (non generata). Crea il bare repo e, se richiesto (R5), il primo commit su `defaultBranch`.
@@ -40783,7 +41359,7 @@ func (c *ClientWithResponses) ReactivateRepoWebhookWithResponse(ctx context.Cont
 
 // UploadIssueAttachmentWithBodyWithResponse Carica un allegato
 //
-// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
+// `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413 `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`. L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -42192,6 +42768,21 @@ func (c *ClientWithResponses) SearchIssuesWithResponse(ctx context.Context, para
 	return ParseSearchIssuesResponse(rsp)
 }
 
+// ExportOwnDataWithResponse Esporta i dati personali dell'utente corrente
+//
+// Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con i dati che identity conserva sull'utente: profilo (nome, email, ruolo), token personali (mai il valore: solo nome, scope, suffisso e date), chiavi SSH (chiave pubblica compresa), sessioni web attive e se il TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici di recupero. I contenuti creati in core (issue, commenti, repository) non fanno parte dell'export: restano leggibili con le loro API.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user/export (the `ExportOwnData` operationId).
+func (c *ClientWithResponses) ExportOwnDataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ExportOwnDataResponse, error) {
+	rsp, err := c.ExportOwnData(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExportOwnDataResponse(rsp)
+}
+
 // GetNotificationPreferencesWithResponse Preferenze email delle notifiche
 //
 // Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e `assigned`, non per gli altri. `emailAvailable` e' `false` quando l'installazione non ha SMTP o l'utente e' un agente (C4, C5): le preferenze si leggono e si salvano lo stesso, ma non partono email.
@@ -43259,6 +43850,96 @@ func ParseGetHealthResponse(rsp *http.Response) (*GetHealthResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCredentialEventsResponse parses an HTTP response from a ListCredentialEventsWithResponse call
+func ParseListCredentialEventsResponse(rsp *http.Response) (*ListCredentialEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCredentialEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CredentialEventList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAckCredentialEventsResponse parses an HTTP response from a AckCredentialEventsWithResponse call
+func ParseAckCredentialEventsResponse(rsp *http.Response) (*AckCredentialEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AckCredentialEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
 
 	}
 
@@ -53215,6 +53896,66 @@ func ParseSearchIssuesResponse(rsp *http.Response) (*SearchIssuesResponse, error
 		}
 		response.JSONDefault = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseExportOwnDataResponse parses an HTTP response from a ExportOwnDataWithResponse call
+func ParseExportOwnDataResponse(rsp *http.Response) (*ExportOwnDataResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExportOwnDataResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OwnDataExport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest UnexpectedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ExportOwnDataResponse200Headers
+		if values := rsp.Header.Values("Content-Disposition"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Content-Disposition", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ContentDisposition = &value
+		}
+		response.Headers200 = &headers
 	}
 
 	return response, nil

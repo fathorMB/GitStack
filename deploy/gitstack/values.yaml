@@ -159,6 +159,11 @@ core:
     mountPath: /var/lib/gitstack/attachments
     # Limite per file in byte (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES), default 10 MiB.
     maxBytes: 10485760
+    # Quote di allegati (F17): byte per repo e per utente (tutti i repo), gli
+    # allegati non ancora collegati compresi. Oltre: 413 attachment_quota_exceeded.
+    # 0 = nessun limite. GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES / _USER_QUOTA_BYTES.
+    repoQuotaBytes: 1073741824
+    userQuotaBytes: 536870912
     # Un allegato mai collegato a una issue o a un commento si elimina dopo questo
     # tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL).
     orphanTtl: 24h

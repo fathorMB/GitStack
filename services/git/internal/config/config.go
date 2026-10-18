@@ -43,7 +43,14 @@ const (
 	// EnvRepoSizeWarn: oltre questa dimensione del repo il push è accettato con
 	// un avviso (R6). Stesso formato; default 5GB; 0 = nessun avviso.
 	EnvRepoSizeWarn = "GITSTACK_GIT_REPO_SIZE_WARN"
-	EnvCoreURL      = "GITSTACK_CORE_URL"
+	// EnvMirrorMaxFetch: tetto di crescita del repo in un singolo fetch di un
+	// pull mirror (F18, V12.1.1). Oltre il fetch è interrotto e l'aggiornamento
+	// fallisce. Stesso formato; default 5GB; 0 = nessun tetto.
+	EnvMirrorMaxFetch = "GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE"
+	// EnvReceiveFsck: `off` spegne receive.fsckObjects sul receive-pack (F18);
+	// vuoto o `on` lo lascia attivo (default).
+	EnvReceiveFsck = "GITSTACK_GIT_RECEIVE_FSCK"
+	EnvCoreURL     = "GITSTACK_CORE_URL"
 	// EnvNatsURL: indirizzo del bus NATS JetStream (es. nats://nats:4222) su
 	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
 	// log all'avvio); NATS non raggiungibile non ferma né i push né l'avvio.
@@ -82,6 +89,10 @@ type Config struct {
 	// MaxBlobBytes e RepoWarnBytes sono le soglie di R6 in byte (0 = disattivata).
 	MaxBlobBytes  int64
 	RepoWarnBytes int64
+	// MirrorMaxFetchBytes: vedi EnvMirrorMaxFetch (0 = nessun tetto).
+	MirrorMaxFetchBytes int64
+	// NoFsck: vedi EnvReceiveFsck.
+	NoFsck bool
 	// NatsURL: vuoto = git.push non viene pubblicato.
 	NatsURL string
 	// MirrorCAFile: vedi EnvMirrorCAFile; vuoto = CA di sistema.
@@ -93,7 +104,7 @@ func Load() (Config, error) { return load(os.LookupEnv) }
 
 func load(lookup func(string) (string, bool)) (Config, error) {
 	var errs []string
-	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30}
+	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30, MirrorMaxFetchBytes: 5 << 30}
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = strings.TrimSpace(v)
@@ -153,6 +164,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(EnvNatsURL); ok {
 		cfg.NatsURL = strings.TrimSpace(v)
 	}
+	if v, ok := lookup(EnvReceiveFsck); ok {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "on":
+		case "off":
+			cfg.NoFsck = true
+		default:
+			errs = append(errs, fmt.Sprintf("%s deve essere on oppure off: %q", EnvReceiveFsck, v))
+		}
+	}
 	if v, ok := lookup(EnvMirrorCAFile); ok {
 		cfg.MirrorCAFile = strings.TrimSpace(v)
 	}
@@ -160,7 +180,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	for _, s := range []struct {
 		env string
 		dst *int64
-	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}} {
+	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}, {EnvMirrorMaxFetch, &cfg.MirrorMaxFetchBytes}} {
 		if v, ok := lookup(s.env); ok && strings.TrimSpace(v) != "" {
 			n, err := ParseSize(v)
 			if err != nil {

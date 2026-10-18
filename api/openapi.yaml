@@ -1090,6 +1090,40 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /user/export:
+    get:
+      operationId: exportOwnData
+      tags: [auth]
+      summary: Esporta i dati personali dell'utente corrente
+      description: >
+        Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come
+        file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con
+        i dati che identity conserva sull'utente: profilo (nome, email, ruolo),
+        token personali (mai il valore: solo nome, scope, suffisso e date),
+        chiavi SSH (chiave pubblica compresa), sessioni web attive e se il
+        TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici
+        di recupero. I contenuti creati in core (issue, commenti, repository)
+        non fanno parte dell'export: restano leggibili con le loro API.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Documento di esportazione.
+          headers:
+            Content-Disposition:
+              description: "`attachment; filename=\"gitstack-<username>.json\"`."
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnDataExport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /user/ssh-keys:
     get:
       operationId: listSshKeys
@@ -3383,7 +3417,7 @@ paths:
       description: >
         `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini
         (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413
-        `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`.
+        `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`.
         L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non
         collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel
         percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -5799,6 +5833,72 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/credential-events:
+    get:
+      operationId: listCredentialEvents
+      tags: [internal]
+      summary: Eventi sulle credenziali degli utenti, da consegnare
+      description: >
+        Per core (F13): gli eventi non ancora confermati (cambio password,
+        reset da amministratore, nuovo token, nuova chiave SSH, token in
+        scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500).
+        Prima di rispondere identity cerca i token che scadono entro 7 giorni e
+        non sono ancora stati segnalati. La consegna e' almeno una volta: core
+        conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai
+        segreti: solo tipo, nome del token o della chiave e date.
+      security:
+        - serviceAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Gli eventi da consegnare.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialEventList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/credential-events/ack:
+    post:
+      operationId: ackCredentialEvents
+      tags: [internal]
+      summary: Conferma la consegna degli eventi sulle credenziali
+      description: >
+        Per core (F13): segna come consegnati esattamente gli eventi con gli id
+        indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una
+        soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit
+        e un evento committato dopo la lettura, con id minore, andrebbe perso.
+        Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialEventsAckInput"
+      responses:
+        "204":
+          description: Eventi confermati.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/mentions/resolve:
     post:
       operationId: resolveMentions
@@ -7591,6 +7691,102 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Session"
+
+    ExportedSshKey:
+      type: object
+      description: Chiave SSH dell'utente, con la chiave pubblica.
+      additionalProperties: false
+      required: [title, keyType, fingerprint, publicKey, createdAt]
+      properties:
+        title:
+          type: string
+        keyType:
+          type: string
+        fingerprint:
+          type: string
+        publicKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    OwnDataExport:
+      type: object
+      description: >
+        Dati personali che identity conserva su un utente (V8.3.2). Senza
+        password, hash, segreto TOTP e valori dei token.
+      additionalProperties: false
+      required: [exportedAt, user, tokens, sshKeys, sessions, totpEnabled]
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Token"
+        sshKeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportedSshKey"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+        totpEnabled:
+          type: boolean
+
+    CredentialEvent:
+      type: object
+      additionalProperties: false
+      required: [id, userId, kind, detail, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [password_changed, password_reset, token_created, token_expiring, ssh_key_added]
+        detail:
+          type: object
+          additionalProperties: true
+          description: Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+        createdAt:
+          type: string
+          format: date-time
+
+    CredentialEventList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CredentialEvent"
+
+    CredentialEventsAckInput:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: integer
+            format: int64
+            minimum: 1
 
     OidcProvider:
       type: object
@@ -10031,7 +10227,9 @@ components:
         `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue
         seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7);
         `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha
-        una storia diversa (V8).
+        una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio
+        password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13):
+        senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
       enum:
         - assigned
         - mentioned
@@ -10041,6 +10239,7 @@ components:
         - state_change
         - webhook
         - mirror
+        - credential
     NotificationRepo:
       type: object
       additionalProperties: false

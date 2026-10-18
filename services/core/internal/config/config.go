@@ -122,6 +122,13 @@ type Config struct {
 	// default 10 MiB).
 	AttachmentMaxBytes int64
 
+	// AttachmentRepoQuotaBytes e AttachmentUserQuotaBytes: byte di allegati per
+	// repo e per utente (GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES, _USER_QUOTA_BYTES;
+	// default 1 GiB e 512 MiB; 0 = nessun limite, F17). Valori negativi di
+	// httpserver.AttachmentsConfig: qui 0 diventa -1.
+	AttachmentRepoQuotaBytes int64
+	AttachmentUserQuotaBytes int64
+
 	// AttachmentOrphanTTL: un allegato mai collegato si elimina dopo questo
 	// tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL, default 24h).
 	AttachmentOrphanTTL time.Duration
@@ -170,6 +177,8 @@ const (
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
+	envAttachRepoQuota  = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
+	envAttachUserQuota  = "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES"
 	envAttachmentOrphan = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
 
 	defaultAttachmentMaxBytes  = int64(10 << 20)
@@ -205,8 +214,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		MigrationsTimeout: defaultMigrationsTimeout,
 		LogLevel:          defaultLogLevel,
 
-		AttachmentMaxBytes:  defaultAttachmentMaxBytes,
-		AttachmentOrphanTTL: defaultAttachmentOrphanTTL,
+		AttachmentMaxBytes:       defaultAttachmentMaxBytes,
+		AttachmentRepoQuotaBytes: 1 << 30,
+		AttachmentUserQuotaBytes: 512 << 20,
+		AttachmentOrphanTTL:      defaultAttachmentOrphanTTL,
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
@@ -310,6 +321,19 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è un intero positivo di byte: %q", envAttachmentMax, v))
 		} else {
 			cfg.AttachmentMaxBytes = n
+		}
+	}
+	for _, q := range []struct {
+		env string
+		dst *int64
+	}{{envAttachRepoQuota, &cfg.AttachmentRepoQuotaBytes}, {envAttachUserQuota, &cfg.AttachmentUserQuotaBytes}} {
+		if v, ok := lookup(q.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+			if err != nil || n < 0 {
+				errs = append(errs, fmt.Sprintf("%s non è un intero di byte (0 = nessun limite): %q", q.env, v))
+			} else {
+				*q.dst = n
+			}
 		}
 	}
 	if v, ok := lookup(envAttachmentOrphan); ok && strings.TrimSpace(v) != "" {

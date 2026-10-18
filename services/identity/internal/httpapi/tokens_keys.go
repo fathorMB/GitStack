@@ -9,6 +9,7 @@ import (
 	"github.com/fathorMB/GitStack/pkg/scopes"
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/tokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/trust"
@@ -215,6 +216,7 @@ func (s *server) CreateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.secInfo(r, "security.token.created", &cur, "created_token_id", t.ID.String(), "token_name", in.Name, "scopes", scopes)
+	s.credEvent(r, cur.User.ID, credevents.TokenCreated, map[string]any{"name": in.Name, "hint": t.Hint, "scopes": scopes, "expiresAt": t.ExpiresAt})
 	base := toToken(t)
 	w.Header().Set("Location", "/v1/user/tokens/"+t.ID.String())
 	writeJSON(w, http.StatusCreated, openapi.CreatedToken{
@@ -313,6 +315,7 @@ func (s *server) AddSshKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.secInfo(r, "security.ssh_key.added", &cur, "key_id", k.ID.String(), "fingerprint", k.Fingerprint)
+	s.credEvent(r, cur.User.ID, credevents.SSHKeyAdded, map[string]any{"title": k.Title, "fingerprint": k.Fingerprint})
 	w.Header().Set("Location", "/v1/user/ssh-keys/"+k.ID.String())
 	writeJSON(w, http.StatusCreated, toSSHKey(k))
 }

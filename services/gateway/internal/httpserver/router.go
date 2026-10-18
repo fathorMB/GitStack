@@ -124,6 +124,7 @@ var identityPatterns = []string{
 	"/v1/users/{rest...}",
 	"/v1/user/tokens",
 	"/v1/user/tokens/{rest...}",
+	"/v1/user/export",
 	"/v1/user/sessions",
 	"/v1/user/sessions/{rest...}",
 	"/v1/user/ssh-keys",

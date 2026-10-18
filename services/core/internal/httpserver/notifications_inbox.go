@@ -28,7 +28,7 @@ import (
 
 var notificationReasons = map[string]bool{
 	"assigned": true, "mentioned": true, "participating": true, "subscribed": true,
-	"commit_linked": true, "state_change": true, "webhook": true, "mirror": true,
+	"commit_linked": true, "state_change": true, "webhook": true, "mirror": true, "credential": true,
 }
 
 type inboxFilter struct {
@@ -370,6 +370,8 @@ func notificationSummary(reason, event, actor, repo string, number *int64, title
 		return "Un commit cita " + where
 	case "webhook":
 		return "Un webhook che gestisci è stato disattivato dai fallimenti"
+	case "credential":
+		return credentialSummary(event, data)
 	case "mirror":
 		switch event {
 		case "pull_mirror.diverged":
@@ -544,4 +546,29 @@ func (s *apiServer) MarkAllNotificationsRead(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	writeJSON(w, http.StatusOK, openapi.MarkedNotifications{Marked: int(tag.RowsAffected())})
+}
+
+// credentialSummary è il testo breve di un avviso sulle credenziali (F13).
+func credentialSummary(event string, data map[string]any) string {
+	name, _ := data["name"].(string)
+	if name == "" {
+		name, _ = data["title"].(string)
+	}
+	switch event {
+	case "credential.password_changed":
+		return "La password del tuo account è stata cambiata"
+	case "credential.password_reset":
+		by, _ := data["by"].(string)
+		if by != "" {
+			return "La password del tuo account è stata reimpostata da " + by
+		}
+		return "La password del tuo account è stata reimpostata da un amministratore"
+	case "credential.token_created":
+		return "È stato creato il token personale «" + name + "»"
+	case "credential.token_expiring":
+		return "Il token personale «" + name + "» sta per scadere"
+	case "credential.ssh_key_added":
+		return "È stata aggiunta la chiave SSH «" + name + "»"
+	}
+	return "Avviso di sicurezza sul tuo account"
 }
