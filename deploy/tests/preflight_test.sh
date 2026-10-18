@@ -489,5 +489,25 @@ run verify_k3s_hardening
 expect_fail "k3s: kubeconfig 644 ferma l'installer"
 expect_has "k3s: kubeconfig 644" "leggibile da altri account"
 
+# --- F3 (GIT-229): HSTS e TLS minimo 1.2 sull'ingress -------------------------
+# Senza helm in questo test si legge il sorgente dei template: l'HSTS è un
+# Middleware headers sulle rotte HTTPS, il TLS minimo una TLSOption richiamata
+# da Ingress e IngressRoute git.
+ING="${HERE}/../gitstack/templates/ingress.yaml"
+ING_GIT="${HERE}/../gitstack/templates/ingress-git.yaml"
+VALS="${HERE}/../gitstack/values.yaml"
+OUT="$(cat "${ING}" "${ING_GIT}" "${VALS}")"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: Middleware headers" "kind: Middleware"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: stsSeconds" "stsSeconds: {{ .Values.ingress.tls.hstsSeconds }}"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: HSTS anche su http" "forceSTSHeader: true"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: valore" "hstsSeconds: 31536000"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: TLSOption" "kind: TLSOption"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: minVersion" "minVersion: VersionTLS12"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: cipher AEAD" "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: annotazione options" "router.tls.options"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: IngressRoute git" "name: {{ \$fullname }}-tls"
+# Nessuna suite CBC, RC4 o 3DES, né TLS < 1.2.
+if grep -E 'CBC|RC4|3DES|VersionTLS1[01]' "${ING}" | grep -v '^#' >/dev/null; then RC=0; OUT="suite o versione debole in ingress.yaml"; bad "ingress sets HSTS and a TLS 1.2 minimum: niente suite deboli"; else ok; fi
+
 printf '\npreflight_test: %s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]
