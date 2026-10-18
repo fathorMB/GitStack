@@ -1,0 +1,13 @@
+--- securityContext del pod (da kubectl get)
+gitstack-ci-job
+{"fsGroup":10001,"runAsGroup":10001,"runAsNonRoot":true,"runAsUser":10001,"seccompProfile":{"type":"RuntimeDefault"}}
+{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"privileged":false,"readOnlyRootFilesystem":true}
+--- NetworkPolicy
+{"egress":[{"to":[{"ipBlock":{"cidr":"0.0.0.0/0","except":["10.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16"]}}]}],"podSelector":{"matchLabels":{"gitstack.io/ci-job":"true"}},"policyTypes":["Ingress","Egress"]}
+--- PriorityClass
+NAME                VALUE     PREEMPT
+gitstack-services   1000000   PreemptLowerPriority
+gitstack-apps       100000    PreemptLowerPriority
+gitstack-ci-job     1000      Never
+--- pod privilegiato nel namespace dei job (atteso: rifiutato da Pod Security restricted)
+Error from server (Forbidden): pods "priv" is forbidden: violates PodSecurity "restricted:latest": privileged (container "priv" must not set securityContext.privileged=true), allowPrivilegeEscalation != false (container "priv" must set securityContext.allowPrivilegeEscalation=false), unrestricted capabilities (container "priv" must set securityContext.capabilities.drop=["ALL"]), runAsNonRoot != true (pod or container "priv" must set securityContext.runAsNonRoot=true), seccompProfile (pod or container "priv" must set securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")

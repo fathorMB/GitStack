@@ -1,0 +1,32 @@
+time="2026-10-18T22:26:20Z" level=warning msg="Couldn't get a valid docker connection: no DOCKER_HOST and an invalid container socket ''"
+Stage  Job ID             Job name                                                   Workflow name                              Workflow file     Events                                               
+0      workspace-sync     Workspace Go sincronizzato                                 api-contract                               api-contract.yml  push,pull_request                                    
+0      check-generated    Codice generato allineato al contratto OpenAPI             api-contract                               api-contract.yml  push,pull_request                                    
+0      security           Sicurezza — scansioni bloccanti (release)                  CI                                         ci.yml            push,pull_request                                    
+0      go                 Go — build, lint, test                                     CI                                         ci.yml            push,pull_request                                    
+0      ts                 Web — lint, typecheck, test                                CI                                         ci.yml            push,pull_request                                    
+0      identity-oidc      Identity — login OIDC (Keycloak, Postgres)                 CI                                         ci.yml            push,pull_request                                    
+0      shellcheck         Shellcheck — script di shell                               CI                                         ci.yml            push,pull_request                                    
+0      pwsh               PowerShell — install-wsl.ps1 (W1/W2)                       CI                                         ci.yml            pull_request,push                                    
+0      build              Sito — build e controllo dei link                          docs                                       docs.yml          pull_request,push,workflow_dispatch                  
+0      release            Artefatti del commit (firmati o costruiti qui)             Installazione, aggiornamento e ripristino  install.yml       push,schedule,workflow_dispatch                      
+0      gosec              Codice Go — gosec                                          security                                   security.yml      pull_request,schedule,workflow_dispatch,workflow_call
+0      eslint-security    Codice TypeScript — eslint-plugin-security                 security                                   security.yml      workflow_call,pull_request,schedule,workflow_dispatch
+0      images             Immagini — Trivy (${{ matrix.service }})                   security                                   security.yml      pull_request,schedule,workflow_dispatch,workflow_call
+0      gate-selftest      Gate — test e file delle eccezioni                         security                                   security.yml      pull_request,schedule,workflow_dispatch,workflow_call
+0      govulncheck        Dipendenze Go — govulncheck                                security                                   security.yml      workflow_dispatch,workflow_call,pull_request,schedule
+0      pnpm-audit         Dipendenze web — pnpm audit                                security                                   security.yml      pull_request,schedule,workflow_dispatch,workflow_call
+0      load-smoke         Fumo V3 — utenti e agenti contemporanei                    smoke                                      smoke.yml         push,schedule,workflow_dispatch                      
+1      registry           Registry — build & push immagini                           CI                                         ci.yml            pull_request,push                                    
+1      gs-binaries        gs — build e pubblicazione dei binari                      CI                                         ci.yml            push,pull_request                                    
+1      admin-binary       Admin — build e pubblicazione di gitstack                  CI                                         ci.yml            push,pull_request                                    
+1      chart              Chart — helm lint & installazione di prova (k3d)           CI                                         ci.yml            push,pull_request                                    
+1      deploy             Sito — pubblicazione su GitHub Pages                       docs                                       docs.yml          pull_request,push,workflow_dispatch                  
+1      images             Immagine ${{ matrix.service }} del commit                  Installazione, aggiornamento e ripristino  install.yml       push,schedule,workflow_dispatch                      
+1      admin-binary       Binario gitstack del commit                                Installazione, aggiornamento e ripristino  install.yml       push,schedule,workflow_dispatch                      
+2      sign               Sign — cosign (immagini, chart, binari) + SBOM (syft)      CI                                         ci.yml            push,pull_request                                    
+2      e2e                ${{ matrix.scenario }} su ${{ matrix.os }}                 Installazione, aggiornamento e ripristino  install.yml       push,schedule,workflow_dispatch                      
+3      install-ubuntu-22  Installazione reale su Ubuntu 22.04 (GIT-202, criterio 2)  CI                                         ci.yml            pull_request,push                                    
+3      release            Release — GitHub Release firmata della versione            CI                                         ci.yml            push,pull_request                                    
+
+Detected multiple jobs with the same job name, use `-W` to specify the path to the specific workflow.
