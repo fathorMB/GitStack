@@ -3,6 +3,15 @@
 # da GIT-9. Sovrascrivi solo quello che ti serve davvero.
 
 global:
+  # Arresto dei pod dietro l'Ingress (GIT-248): preStop attende che Traefik tolga
+  # l'endpoint prima di fermare il processo (azione `sleep` nativa, senza binari
+  # nell'immagine). terminationGracePeriodSeconds deve superare preStopSeconds
+  # più il tempo di arresto del processo (gateway: 10 s).
+  shutdown:
+    preStopSeconds: 10
+    terminationGracePeriodSeconds: 40
+    # git: un push lungo in corso deve potersi chiudere.
+    gitTerminationGracePeriodSeconds: 70
   image:
     # Registry di default per le immagini di GitStack (gateway, core, web:
     # pubblicate su ghcr.io dal job "registry" del workflow CI; idem identity). postgres e
