@@ -199,10 +199,12 @@ for c in gateway core git identity; do
 done
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # N3 (nodo singolo, installazione-e-deploy.md): con il volume degli allegati
 # ReadWriteOnce il chart si ferma se core.replicaCount > 1; senza il volume più
 # repliche sono ammesse. `render` passa l'output a tr e restituisce il codice di
 # tr, quindi il codice di helm lo legge helm_rc.
+echo "== N3: nodo singolo"
 helm_rc() { helm template gitstack "${CHART}" "$@" >/dev/null 2>&1; }
 if helm_rc --set core.replicaCount=2; then
   bad "nodo singolo: helm template non si ferma con core.replicaCount=2"
