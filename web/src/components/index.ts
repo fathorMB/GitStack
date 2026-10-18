@@ -21,3 +21,5 @@ export { DiffView } from './DiffView';
 export type { DiffViewMode, DiffViewProps } from './DiffView';
 export { InsecureHttpBanner } from './InsecureHttpBanner';
 export { PullMirrorBadge, PullMirrorInfoBanner } from './PullMirrorBanner';
+export { CommitStatusBadge } from './CommitStatusBadge';
+export type { CommitState } from './CommitStatusBadge';

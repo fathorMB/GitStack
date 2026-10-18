@@ -167,6 +167,10 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
       <section aria-label="Branch settings">
         <div className="sec-h">
           <h2>Default branch</h2>
+          <span className="sp" />
+          <Link className="small" to={`/${repo.owner.name}/${repo.name}/settings/branches`}>
+            Branches &amp; merge
+          </Link>
         </div>
         <form className="card card-b stack form-stack" onSubmit={submitBranch}>
           <p className="muted">
