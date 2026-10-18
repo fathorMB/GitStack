@@ -35,27 +35,7 @@ func (s *apiServer) CreateCommitStatus(w http.ResponseWriter, r *http.Request, _
 	pullsNotImplemented(w)
 }
 
-func (s *apiServer) ListPullRequests(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.ListPullRequestsParams) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) CreatePullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) GetPullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) UpdatePullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
 func (s *apiServer) DeletePullRequestBranch(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) ClosePullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
 	pullsNotImplemented(w)
 }
 
@@ -75,31 +55,11 @@ func (s *apiServer) UpdatePullRequestComment(w http.ResponseWriter, r *http.Requ
 	pullsNotImplemented(w)
 }
 
-func (s *apiServer) ListPullRequestCommits(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.ListPullRequestCommitsParams) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) MarkPullRequestDraft(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) ListPullRequestFiles(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam, _ openapi.ListPullRequestFilesParams) {
-	pullsNotImplemented(w)
-}
-
 func (s *apiServer) MergePullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
 	pullsNotImplemented(w)
 }
 
 func (s *apiServer) GetPullRequestMergeability(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) MarkPullRequestReady(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
-	pullsNotImplemented(w)
-}
-
-func (s *apiServer) ReopenPullRequest(w http.ResponseWriter, r *http.Request, _ openapi.RepoOwnerParam, _ openapi.RepoNameParam, _ openapi.PullNumberParam) {
 	pullsNotImplemented(w)
 }
 

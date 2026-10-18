@@ -39,4 +39,7 @@ echo "==> Generazione interfaccia server di core (services/core)"
 echo "==> Generazione interfaccia server di identity (services/identity)"
 (cd services/identity && go generate ./...)
 
+echo "==> Generazione degli strumenti MCP di gs (cli/internal/mcp)"
+(cd cli/internal/mcp && go generate ./...)
+
 echo "==> Fatto. Verifica con: git status client/go client/ts/src/generated services/gateway/internal/openapi services/core/internal/openapi services/identity/internal/openapi"

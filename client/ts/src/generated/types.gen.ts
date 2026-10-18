@@ -2553,6 +2553,30 @@ export type PullRequestList = {
     total: number;
 };
 
+export type PullRequestEvent = {
+    id: string;
+    type: 'opened' | 'renamed' | 'edited' | 'retargeted' | 'ready_for_review' | 'converted_to_draft' | 'closed' | 'reopened' | 'merged';
+    /**
+     * Assente per gli eventi di sistema.
+     */
+    actor?: IssueUser | null;
+    /**
+     * Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`; `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+     *
+     */
+    data?: {
+        [key: string]: unknown;
+    };
+    createdAt: string;
+};
+
+export type PullRequestEventList = {
+    items: Array<PullRequestEvent>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
 export type CreatePullRequestInput = {
     title: string;
     /**
@@ -10146,6 +10170,64 @@ export type ReopenPullRequestResponses = {
 };
 
 export type ReopenPullRequestResponse = ReopenPullRequestResponses[keyof ReopenPullRequestResponses];
+
+export type ListPullRequestEventsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/pulls/{number}/events';
+};
+
+export type ListPullRequestEventsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestEventsError = ListPullRequestEventsErrors[keyof ListPullRequestEventsErrors];
+
+export type ListPullRequestEventsResponses = {
+    /**
+     * Pagina di eventi.
+     */
+    200: PullRequestEventList;
+};
+
+export type ListPullRequestEventsResponse = ListPullRequestEventsResponses[keyof ListPullRequestEventsResponses];
 
 export type ListPullRequestCommitsData = {
     body?: never;

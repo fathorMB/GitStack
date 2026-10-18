@@ -111,6 +111,10 @@ paths:
     get:
       operationId: getHealth
       tags: [system]
+      x-mcp:
+        expose: false
+        name: health_get
+        destructive: false
       summary: Stato del servizio
       description: >
         Controllo di salute, senza autenticazione: usato da orchestratore
@@ -131,6 +135,10 @@ paths:
     get:
       operationId: getMeta
       tags: [system]
+      x-mcp:
+        expose: false
+        name: meta_get
+        destructive: false
       summary: Versione del server
       description: >
         Versione dell'installazione e del contratto API, senza
@@ -153,6 +161,10 @@ paths:
       operationId: getAdminSystem
       tags: [system]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: admin_system_get
+        destructive: false
       summary: Stato dell'installazione (Admin · System)
       description: >
         Database (interno o esterno, N8), backup locale e S3 con l'esito
@@ -184,6 +196,10 @@ paths:
       operationId: listResources
       tags: [resources]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: resources_list
+        destructive: false
       summary: Elenca le risorse
       description: >
         Elenco paginato delle risorse, con filtro opzionale per tipo (es.
@@ -210,6 +226,10 @@ paths:
       operationId: createResource
       tags: [resources]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: resource_create
+        destructive: false
       summary: Crea una risorsa
       requestBody:
         required: true
@@ -246,6 +266,10 @@ paths:
       operationId: getResource
       tags: [resources]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: resource_get
+        destructive: false
       x-required-permission: read
       summary: Legge una risorsa
       responses:
@@ -267,6 +291,10 @@ paths:
       operationId: updateResource
       tags: [resources]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: resource_update
+        destructive: false
       x-required-permission: write
       summary: Aggiorna una risorsa
       description: "Aggiornamento parziale: solo i campi presenti nel corpo cambiano."
@@ -297,6 +325,10 @@ paths:
       operationId: deleteResource
       tags: [resources]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: resource_delete
+        destructive: true
       x-required-permission: admin
       summary: Elimina una risorsa
       responses:
@@ -320,6 +352,10 @@ paths:
     post:
       operationId: login
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: auth_login
+        destructive: false
       summary: Accede con username e password
       description: >
         Crea una sessione. La risposta imposta il cookie `gst_session` (con
@@ -374,6 +410,10 @@ paths:
     post:
       operationId: logout
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: auth_logout
+        destructive: false
       x-password-change-exempt: always
       x-totp-enroll-exempt: always
       summary: Termina la sessione corrente
@@ -392,6 +432,10 @@ paths:
     get:
       operationId: getCurrentSession
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: current_session_get
+        destructive: false
       x-password-change-exempt: always
       x-totp-enroll-exempt: always
       summary: Sessione corrente
@@ -415,6 +459,10 @@ paths:
     get:
       operationId: getTotpStatus
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: totp_status_get
+        destructive: false
       x-totp-enroll-exempt: always
       summary: Stato del secondo fattore TOTP dell'utente corrente
       description: >
@@ -437,6 +485,10 @@ paths:
     post:
       operationId: enrollTotp
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: totp_enroll
+        destructive: false
       x-totp-enroll-exempt: always
       summary: Inizia l'attivazione del TOTP
       description: >
@@ -467,6 +519,10 @@ paths:
     post:
       operationId: verifyTotp
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: totp_verify
+        destructive: false
       x-totp-enroll-exempt: always
       summary: Conferma l'attivazione del TOTP
       description: >
@@ -506,6 +562,10 @@ paths:
     post:
       operationId: disableTotp
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: totp_disable
+        destructive: true
       summary: Disattiva il TOTP
       description: >
         Chiede la password e un codice TOTP (o un codice di recupero). Se
@@ -540,6 +600,10 @@ paths:
     get:
       operationId: listOidcProviders
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: oidc_providers_list
+        destructive: false
       summary: Provider OIDC abilitati
       description: Elenco pubblico per la pagina di login. Nessun segreto.
       security: []
@@ -559,6 +623,10 @@ paths:
     get:
       operationId: startOidcLogin
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: oidc_login_start
+        destructive: false
       summary: Avvia il login OIDC
       description: >
         Redirect (302) all'authorization endpoint del provider (authorization
@@ -592,6 +660,10 @@ paths:
     get:
       operationId: finishOidcLogin
       tags: [auth]
+      x-mcp:
+        expose: false
+        name: oidc_login_finish
+        destructive: false
       summary: Completa il login OIDC
       description: >
         Callback del provider. Se l'identita' (provider, subject) e' gia'
@@ -644,6 +716,10 @@ paths:
       summary: Elenca gli utenti
       description: Richiede lo scope `read:user`. Il profilo pubblico non include l'email.
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: users_list
+        destructive: false
       parameters:
         - name: q
           in: query
@@ -676,6 +752,10 @@ paths:
         Solo amministratori, scope `write:user`. Serve a creare utenti umani
         e agenti; non c'e' auto-registrazione.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_create
+        destructive: false
       requestBody:
         required: true
         content:
@@ -718,6 +798,10 @@ paths:
         Scope `read:user`. L'email e i campi amministrativi compaiono solo
         per l'utente stesso e per gli amministratori.
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: user_get
+        destructive: false
       responses:
         "200":
           description: Utente trovato.
@@ -741,6 +825,10 @@ paths:
         Scope `write:user`. Solo l'utente stesso (profilo) o un
         amministratore (anche `isAdmin`, `isActive`).
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_update
+        destructive: false
       requestBody:
         required: true
         content:
@@ -777,6 +865,10 @@ paths:
         token, chiavi SSH e membership. Non si puo' eliminare l'ultimo
         amministratore (409 `last_admin`).
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_delete
+        destructive: true
       responses:
         "204":
           description: Utente eliminato.
@@ -803,6 +895,10 @@ paths:
         di tipo `agent`: sui token di una persona decide solo lei (409
         `not_an_agent`). Mai il valore del token, solo `hint`.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_tokens_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -839,6 +935,10 @@ paths:
         `insufficient_scope` altrimenti); le sessioni mantengono gli scope
         pieni.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_token_create
+        destructive: false
       requestBody:
         required: true
         content:
@@ -884,6 +984,10 @@ paths:
         Solo amministratori, scope `write:user` (regola P5). Un token che non
         appartiene a quell'agent e' 404. Utente umano: 409 `not_an_agent`.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_token_revoke
+        destructive: true
       responses:
         "204":
           description: Token revocato.
@@ -914,6 +1018,10 @@ paths:
         un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza
         TOTP attivo risponde comunque 204.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: user_totp_reset
+        destructive: true
       responses:
         "204":
           description: TOTP azzerato.
@@ -940,6 +1048,10 @@ paths:
         `forbidden` (il chiamante e' gia' autenticato: un 401 farebbe uscire
         il client). Revoca le altre sessioni dell'utente.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: password_change
+        destructive: false
       requestBody:
         required: true
         content:
@@ -969,6 +1081,10 @@ paths:
       summary: Elenca i token personali dell'utente corrente
       description: Scope `read:user`. Mai il valore del token, solo `hint`.
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: tokens_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -998,6 +1114,10 @@ paths:
         403 `insufficient_scope`. Le sessioni del browser non hanno scope e
         mantengono quelli pieni.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: token_create
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1038,6 +1158,10 @@ paths:
       summary: Revoca un token personale
       description: Scope `write:user`. La revoca e' immediata per identity; il gateway la vede entro il TTL della cache di verifica.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: token_revoke
+        destructive: true
       responses:
         "204":
           description: Token revocato.
@@ -1060,6 +1184,10 @@ paths:
         inattive (vedi l'idle timeout di identity). `current` e' vero per la
         sessione del cookie della richiesta.
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: own_sessions_list
+        destructive: false
       responses:
         "200":
           description: Sessioni attive.
@@ -1085,6 +1213,10 @@ paths:
         Scope `write:user`. Revoca la sessione indicata (anche quella
         corrente). Una sessione di un altro utente risponde 404.
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: own_session_revoke
+        destructive: true
       responses:
         "204":
           description: Sessione terminata.
@@ -1112,6 +1244,10 @@ paths:
         di recupero. I contenuti creati in core (issue, commenti, repository)
         non fanno parte dell'export: restano leggibili con le loro API.
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: own_data_export
+        destructive: false
       responses:
         "200":
           description: Documento di esportazione.
@@ -1137,6 +1273,10 @@ paths:
       tags: [ssh-keys]
       summary: Elenca le chiavi SSH dell'utente corrente
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: ssh_keys_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -1162,6 +1302,10 @@ paths:
         fingerprint SHA256 e lo tiene unico: la stessa chiave non puo'
         appartenere a due utenti (409 `ssh_key_in_use`).
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: ssh_key_add
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1201,6 +1345,10 @@ paths:
       tags: [ssh-keys]
       summary: Legge una chiave SSH
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: ssh_key_get
+        destructive: false
       responses:
         "200":
           description: Chiave trovata.
@@ -1221,6 +1369,10 @@ paths:
       tags: [ssh-keys]
       summary: Elimina una chiave SSH
       x-required-scopes: ["write:user"]
+      x-mcp:
+        expose: false
+        name: ssh_key_delete
+        destructive: true
       responses:
         "204":
           description: Chiave eliminata.
@@ -1240,6 +1392,10 @@ paths:
       summary: Elenca le organizzazioni
       description: Le organizzazioni di cui il chiamante e' membro (tutte, per un amministratore). Scope `read:org`.
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: organizations_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -1262,6 +1418,10 @@ paths:
       summary: Crea un'organizzazione
       description: Scope `write:org`. Il creatore ne diventa `owner`.
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: organization_create
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1301,6 +1461,10 @@ paths:
       tags: [organizations]
       summary: Legge un'organizzazione
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: organization_get
+        destructive: false
       responses:
         "200":
           description: Organizzazione trovata.
@@ -1322,6 +1486,10 @@ paths:
       summary: Aggiorna un'organizzazione
       description: Scope `write:org`, ruolo `owner`.
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: organization_update
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1353,6 +1521,10 @@ paths:
       summary: Elimina un'organizzazione
       description: Scope `admin:org`, ruolo `owner`. Elimina a cascata team e membership.
       x-required-scopes: ["admin:org"]
+      x-mcp:
+        expose: false
+        name: organization_delete
+        destructive: true
       responses:
         "204":
           description: Organizzazione eliminata.
@@ -1373,6 +1545,10 @@ paths:
       tags: [organizations]
       summary: Elenca i membri di un'organizzazione
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: org_members_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -1402,6 +1578,10 @@ paths:
       summary: Aggiunge un membro o ne cambia il ruolo
       description: Scope `write:org`, ruolo `owner`. Idempotente.
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_member_set
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1437,6 +1617,10 @@ paths:
         Scope `write:org`, ruolo `owner` (o l'utente stesso). Lo toglie anche
         da tutti i team. Non si rimuove l'ultimo `owner` (409 `last_owner`).
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_member_remove
+        destructive: true
       responses:
         "204":
           description: Membro rimosso.
@@ -1459,6 +1643,10 @@ paths:
       tags: [teams]
       summary: Elenca i team di un'organizzazione
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: teams_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -1483,6 +1671,10 @@ paths:
       summary: Crea un team
       description: Scope `write:org`, ruolo `owner`.
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: team_create
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1525,6 +1717,10 @@ paths:
       tags: [teams]
       summary: Legge un team
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: team_get
+        destructive: false
       responses:
         "200":
           description: Team trovato.
@@ -1545,6 +1741,10 @@ paths:
       tags: [teams]
       summary: Aggiorna un team
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: team_update
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1578,6 +1778,10 @@ paths:
       summary: Elimina un team
       description: Elimina anche i grant assegnati al team.
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: team_delete
+        destructive: true
       responses:
         "204":
           description: Team eliminato.
@@ -1599,6 +1803,10 @@ paths:
       tags: [teams]
       summary: Elenca i membri di un team
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: team_members_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -1631,6 +1839,10 @@ paths:
         Scope `write:org`. L'utente deve essere gia' membro
         dell'organizzazione (altrimenti 422 `not_org_member`). Idempotente.
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: team_member_set
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1661,6 +1873,10 @@ paths:
       tags: [teams]
       summary: Rimuove un membro dal team
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: team_member_remove
+        destructive: true
       responses:
         "204":
           description: Membro rimosso dal team.
@@ -1682,6 +1898,10 @@ paths:
       summary: Elenca i grant di una risorsa
       description: Scope `read:resource`; serve almeno il ruolo `admin` sulla risorsa.
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: resource_grants_list
+        destructive: false
       parameters:
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PerPageParam"
@@ -1708,6 +1928,10 @@ paths:
         Scope `write:resource`; serve il ruolo `admin` sulla risorsa. Un solo
         grant per (risorsa, soggetto): il secondo risponde 409.
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: resource_grant_create
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1745,6 +1969,10 @@ paths:
       tags: [permissions]
       summary: Cambia il ruolo di un grant
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: resource_grant_update
+        destructive: false
       requestBody:
         required: true
         content:
@@ -1775,6 +2003,10 @@ paths:
       tags: [permissions]
       summary: Revoca un grant
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: resource_grant_delete
+        destructive: true
       responses:
         "204":
           description: Grant revocato.
@@ -1798,6 +2030,10 @@ paths:
         Ruolo effettivo (grant diretto, via team, amministratore) tenendo
         conto degli scope del token. Scope `read:resource`.
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: my_resource_permission_get
+        destructive: false
       responses:
         "200":
           description: Permesso effettivo.
@@ -1823,6 +2059,10 @@ paths:
       operationId: listRepositories
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: repo_list
+        destructive: false
       summary: Elenca i repo leggibili dall'utente
       description: >
         Repo che l'utente corrente puo' leggere (P1, P3, P6), esclusi quelli
@@ -1855,6 +2095,10 @@ paths:
       operationId: createRepository
       tags: [repos]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: repo_create
+        destructive: false
       summary: Crea un repo
       description: >
         `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi
@@ -1901,6 +2145,10 @@ paths:
       operationId: importRepository
       tags: [repos]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_import
+        destructive: false
       summary: Crea un repo importandolo da un URL
       description: >
         «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git
@@ -1954,6 +2202,10 @@ paths:
       operationId: getUserAccess
       tags: [repos]
       x-required-scopes: ["read:user"]
+      x-mcp:
+        expose: false
+        name: user_access_get
+        destructive: false
       summary: Accesso effettivo di un utente ai repository
       description: >
         Solo l'amministratore dell'installazione (403 agli altri, anche per
@@ -1991,6 +2243,10 @@ paths:
       operationId: listDeletedRepositories
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: deleted_repositories_list
+        destructive: false
       summary: Elenca i repo eliminati e ancora ripristinabili
       description: >
         Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo
@@ -2031,6 +2287,10 @@ paths:
       operationId: restoreRepository
       tags: [repos]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_restore
+        destructive: false
       summary: Ripristina un repo eliminato
       description: >
         Serve il ruolo `admin` sul repo (R12). Risponde 404 se il repo non
@@ -2063,6 +2323,10 @@ paths:
       operationId: getRepository
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: repo_view
+        destructive: false
       summary: Legge un repo per owner/nome
       description: >
         Un repo che l'utente non puo' leggere risponde 404, non 403, per non
@@ -2090,6 +2354,10 @@ paths:
       operationId: updateRepository
       tags: [repos]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_update
+        destructive: false
       summary: Modifica le impostazioni di un repo
       description: >
         Serve il ruolo `admin` (403 se l'utente legge ma non ha il ruolo).
@@ -2126,6 +2394,10 @@ paths:
       operationId: deleteRepository
       tags: [repos]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repository_delete
+        destructive: true
       summary: Elimina un repo (recuperabile per 7 giorni)
       description: >
         Serve il ruolo `admin` (R12). Il repo sparisce subito per tutti e
@@ -2154,6 +2426,10 @@ paths:
       operationId: getRepositoryTree
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_tree
+        destructive: false
       summary: Albero di una cartella con l'ultimo commit per voce
       description: >
         Voci della cartella `path` (radice se assente) a `ref`, con l'ultimo commit che ha toccato ciascuna (mockup 07). Al massimo 1 000 voci: oltre, `truncated` e' true. Ordine: cartelle, poi file, per nome. 404 se `path` non esiste o non e' una cartella. Come per `getRepository`: un repo che l'utente non puo'
@@ -2189,6 +2465,10 @@ paths:
       operationId: getRepositoryFile
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_file
+        destructive: false
       summary: Contenuto di un file
       description: >
         Contenuto di `path` a `ref` con dimensione, tipo e ultimo commit (mockup 08). Regola B1: la risposta dice sempre in `display` come mostrarlo. Testo fino a 1 MB (1 048 576 byte): `highlight`, `content` intero. Testo da 1 MB a 5 MB (5 242 880 byte): `plain`, `content` intero da mostrare senza evidenziazione. Testo oltre 5 MB: `download`, nessun `content` e `truncated` true (solo scaricamento con `raw`). Immagini comuni (PNG, JPEG, GIF, WebP, SVG; `kind` `image`) fino a 1 MB: `display` `image`, `content` in base64 (`encoding` `base64`) e `mimeType`, cosi' la UI le mostra come immagine anche se `raw` le serve come allegato; oltre 1 MB `download`. Altri binari: `kind` `binary`, `download`, nessun `content`. `size` e' sempre la dimensione reale. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
@@ -2224,6 +2504,10 @@ paths:
       operationId: getRepositoryRaw
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repository_raw_get
+        destructive: false
       summary: Contenuto grezzo di un file (streaming)
       description: >
         Byte del file `path` a `ref`, senza limite di dimensione, in streaming (nessun buffer in memoria), `Content-Length` quando noto. Regola B3, mai servito come pagina eseguibile: un file di testo (non SVG, non binario) esce come `text/plain; charset=utf-8` in linea; qualunque altro (binari, immagini, SVG compreso) come `application/octet-stream` con `Content-Disposition: attachment`. In ogni caso `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`. Servono sessione o token con `read` (nessun link anonimo). Forma con query, per la SPA e i client; l'indirizzo pubblico per i link e' `getRepositoryRawByPath`. 404 se `path` non esiste o non e' un file. Come per `getRepository`: un repo che l'utente non puo'
@@ -2255,6 +2539,10 @@ paths:
       operationId: getRepositoryBranches
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_branches
+        destructive: false
       summary: Branch del repo, con conteggi
       description: >
         Tutti i branch, con il branch principale (R4) per primo; `total` e' il conteggio (mockup 07: "4 branches").
@@ -2286,6 +2574,10 @@ paths:
       operationId: getRepositoryTags
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_tags
+        destructive: false
       summary: Tag del repo, con conteggi
       description: >
         Tutti i tag, dal piu' recente; `total` e' il conteggio (mockup 07: "7 tags").
@@ -2317,6 +2609,10 @@ paths:
       operationId: getRepositoryCommits
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: commit_list
+        destructive: false
       summary: Storico dei commit, paginato
       description: >
         Commit raggiungibili da `ref`, dal piu' recente (mockup 09). Filtri `author` (nome o email, senza distinguere maiuscole) e `path` (solo i commit che toccano quel percorso). Pagina di default 30, massimo 100. Ogni autore porta `user` se la sua email corrisponde a un utente GitStack, altrimenti null. Come per `getRepository`: un repo che l'utente non puo'
@@ -2355,6 +2651,10 @@ paths:
       operationId: getRepositoryCommit
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: commit_view
+        destructive: false
       summary: Dettaglio di un commit con diff per file
       description: >
         Messaggio, autore e diff per file (mockup 10), con i limiti progressivi della regola B6 (costanti in `x-code-read-limits`; le righe sono quelle cambiate, aggiunte piu' tolte). Un file e' `collapsed` (chiuso di default) con `collapseReason` `large` se ha oltre 500 righe cambiate, `lock` o `generated` per un file di lock o generato (elenco in docs/repos.md); il patch c'e' comunque, se non e' stato omesso per i limiti. Oltre 300 file o 20 000 righe cambiate in totale `listOnly` e' true: solo l'elenco dei file con righe aggiunte e tolte, senza patch (il diff intero si scarica con `getRepositoryCommitPatch`). Resta il limite di 1 MB di patch per file (`truncated`). `ignoreWhitespace` calcola il diff con `git diff -w` (`ignoreWhitespace` e' riportato nella risposta). `path` restringe `files` a quel file. `sha` e' lo sha completo o un prefisso univoco di almeno 7 caratteri; 400 se non e' esadecimale, 404 se non esiste. Come per `getRepository`: un repo che l'utente non puo'
@@ -2391,6 +2691,10 @@ paths:
       operationId: getRepositoryBlame
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_blame
+        destructive: false
       summary: Blame di un file
       description: >
         Per ogni intervallo di righe di `path` a `ref`, il commit che l'ha scritto per ultimo (mockup 08, scheda Blame). Un file binario o oltre 1 MB risponde 400 `blame_unavailable`. Come per `getRepository`: un repo che l'utente non puo'
@@ -2426,6 +2730,10 @@ paths:
       operationId: getRepositoryArchive
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repository_archive_get
+        destructive: false
       summary: Archivio ZIP o tar.gz di un ref (streaming)
       description: >
         Archivio dell'albero a `ref` (branch, tag o commit, regola B3), in ZIP (default) o tar.gz secondo `format`, prodotto e inviato in streaming (nessun buffer in memoria). `Content-Disposition: attachment` con nome `<repo>-<ref>.zip` o `<repo>-<ref>.tar.gz` (un `/` nel ref diventa `-`); stesse intestazioni di sicurezza di `getRepositoryRaw`. Sono questi gli indirizzi di scaricamento dei tag (`Tag.zipUrl`, `Tag.tarGzUrl`, regola B7). Servono sessione o token con `read`. Come per `getRepository`: un repo che l'utente non puo'
@@ -2457,6 +2765,10 @@ paths:
       operationId: getRepositoryLanguages
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_languages
+        destructive: false
       summary: Lingue del repo
       description: >
         Byte per linguaggio al branch principale o a `ref`, con la percentuale sul totale, in ordine decrescente (pannello About, mockup 07). Un repo vuoto risponde lista vuota. Come per `getRepository`: un repo che l'utente non puo'
@@ -2491,6 +2803,10 @@ paths:
       operationId: getRepositoryReadme
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_readme
+        destructive: false
       summary: README di una cartella
       description: >
         Il README della cartella `path` (radice se assente), cercato come `README.md`, `README`, `README.txt` (senza distinguere maiuscole), con le stesse regole B1 di `contents` (`kind`, `display`, limiti 1 MB e 5 MB). 404 se non c'e'. Come per `getRepository`: un repo che l'utente non puo'
@@ -2527,6 +2843,10 @@ paths:
       operationId: getRepositoryRawByPath
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repository_raw_by_path_get
+        destructive: false
       x-path-tail: refAndPath
       summary: Contenuto grezzo di un file, per indirizzo (streaming)
       description: >
@@ -2564,6 +2884,10 @@ paths:
       operationId: listRepositoryFiles
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_files
+        destructive: false
       summary: Percorsi di tutti i file di un ref ("Go to file")
       description: >
         Regola B5: i percorsi di tutti i file (non le cartelle) di `ref`, per
@@ -2601,6 +2925,10 @@ paths:
       operationId: searchRepositoryCode
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: code_search
+        destructive: false
       summary: Cerca un testo nel codice di un ref ("Search code")
       description: >
         Regola B5: cerca `q` (sottostringa letterale, senza distinguere
@@ -2641,6 +2969,10 @@ paths:
       operationId: getRepositoryCommitPatch
       tags: [repos]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repository_commit_patch_get
+        destructive: false
       summary: Diff completo di un commit, scaricabile come .diff o .patch (streaming)
       description: >
         Regola B6: il diff intero del commit, senza i limiti di
@@ -2675,6 +3007,10 @@ paths:
       operationId: searchIssues
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: issue_search
+        destructive: false
       summary: Cerca issues su tutta l'installazione
       description: >
         Ricerca con la sintassi di I10 (`is:`, `reason:`, `label:`, `assignee:` con
@@ -2713,6 +3049,10 @@ paths:
       operationId: listIssues
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: issue_list
+        destructive: false
       summary: Elenca e cerca le issues del repo
       description: >
         Issues del repo con filtri (stato, etichette, assegnatario, autore, milestone) e ricerca nel testo.
@@ -2752,6 +3092,10 @@ paths:
       operationId: createIssue
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_create
+        destructive: false
       summary: Apre una issue
       description: >
         Chi vede il repo (anche per visibilita' interna) apre issues (I3, P7). Il numero `#n` viene dal
@@ -2803,6 +3147,10 @@ paths:
       operationId: getIssue
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: issue_view
+        destructive: false
       summary: Legge una issue per numero
       description: >
         Una issue che non esiste nel repo risponde 404. Se e' nascosta (I4) chi non ha `admin` riceve
@@ -2829,6 +3177,10 @@ paths:
       operationId: updateIssue
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_edit
+        destructive: false
       summary: Modifica titolo e testo
       description: >
         Solo l'autore modifica il proprio testo (I4); chiunque altro riceve 403. Ogni modifica del testo
@@ -2874,6 +3226,10 @@ paths:
       operationId: closeIssue
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_close
+        destructive: true
       summary: Chiude una issue con un motivo
       description: >
         Motivo `completed`, `not_planned` o `duplicate` (I2); con `duplicate` serve `duplicateOf`,
@@ -2917,6 +3273,10 @@ paths:
       operationId: reopenIssue
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_reopen
+        destructive: false
       summary: Riapre una issue
       description: >
         Come `closeIssue`: chi ha `write` o l'autore (I3). Riaprire azzera motivo e duplicato (I2).
@@ -2950,6 +3310,10 @@ paths:
       operationId: setIssueHidden
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_hide
+        destructive: true
       summary: Nasconde o mostra una issue
       description: >
         Serve `admin` (I4). Una issue nascosta conserva il numero ma il suo contenuto e' visibile solo a
@@ -2991,6 +3355,10 @@ paths:
       operationId: lockIssue
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: issue_lock
+        destructive: false
       summary: Blocca la discussione
       description: >
         Serve `admin` (I11). Con la discussione bloccata commenta solo chi ha `write` (gli altri 403
@@ -3026,6 +3394,10 @@ paths:
       operationId: unlockIssue
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: issue_unlock
+        destructive: true
       summary: Sblocca la discussione
       description: >
         Serve `admin` (I11). Sbloccare una issue non bloccata e' idempotente. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -3058,6 +3430,10 @@ paths:
       operationId: setIssueAssignees
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_assignees_set
+        destructive: false
       summary: Imposta gli assegnatari
       description: >
         Sostituisce l'elenco con quello indicato (vuoto = nessuno). Serve `write` (I3); chi ha `write`
@@ -3100,6 +3476,10 @@ paths:
       operationId: setIssueLabels
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_labels_set
+        destructive: false
       summary: Imposta le etichette
       description: >
         Sostituisce l'elenco con quello indicato (I5), per nome. Serve `write`. Una etichetta che non
@@ -3141,6 +3521,10 @@ paths:
       operationId: setIssueMilestone
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_milestone_set
+        destructive: false
       summary: Imposta o toglie la milestone
       description: >
         Al massimo una milestone per issue (I7); `milestone: null` la toglie. Serve `write`. Una milestone
@@ -3182,6 +3566,10 @@ paths:
       operationId: listIssueEvents
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: issue_events_list
+        destructive: false
       summary: Cronologia degli eventi
       description: >
         Eventi in ordine cronologico crescente: apertura, chiusura (con motivo), riapertura, etichette,
@@ -3217,6 +3605,10 @@ paths:
       operationId: listIssueVersions
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: issue_versions_list
+        destructive: false
       summary: Versioni precedenti del testo della issue
       description: >
         Solo con `admin` (I4): 403 per chi legge soltanto. Dalla piu' recente alla piu' vecchia; la versione
@@ -3248,6 +3640,10 @@ paths:
       operationId: listIssueComments
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: issue_comment_list
+        destructive: false
       summary: Commenti della issue
       description: >
         Dal piu' vecchio al piu' recente. Un commento eliminato resta con `deleted: true` e testo vuoto
@@ -3276,6 +3672,10 @@ paths:
       operationId: createIssueComment
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_comment_create
+        destructive: false
       summary: Commenta la issue
       description: >
         Chi vede il repo commenta (I3), anche issues chiuse. Con la discussione bloccata (I11) solo chi ha
@@ -3326,6 +3726,10 @@ paths:
       operationId: updateIssueComment
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_comment_edit
+        destructive: false
       summary: Modifica un commento
       description: >
         Solo l'autore (I4). Salva la versione precedente e imposta `edited`. Un commento eliminato risponde
@@ -3363,6 +3767,10 @@ paths:
       operationId: deleteIssueComment
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: issue_comment_delete
+        destructive: true
       summary: Elimina un commento
       description: >
         L'autore o chi ha `admin` (I4). Il testo viene svuotato e si registra l'evento `comment_deleted`
@@ -3393,6 +3801,10 @@ paths:
       operationId: listIssueCommentVersions
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: issue_comment_versions_list
+        destructive: false
       summary: Versioni precedenti del testo di un commento
       description: >
         Solo con `admin` (I4), come `listIssueVersions`. Anche per i commenti eliminati.
@@ -3422,6 +3834,10 @@ paths:
       operationId: uploadIssueAttachment
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: issue_attachment_upload
+        destructive: false
       summary: Carica un allegato
       description: >
         `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini
@@ -3474,6 +3890,10 @@ paths:
       operationId: getIssueAttachment
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: issue_attachment_get
+        destructive: false
       summary: Scarica un allegato
       description: >
         Solo chi vede il repo (I9): nessun URL pubblico, la richiesta e' sempre autenticata. Sempre
@@ -3513,6 +3933,10 @@ paths:
       operationId: listIssueTemplates
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: issue_templates_list
+        destructive: false
       summary: Modelli di issue del repo
       description: >
         Modelli Markdown in `.gitstack/ISSUE_TEMPLATE/` sul branch principale (I11), letti da core tramite il
@@ -3545,6 +3969,10 @@ paths:
       operationId: listLabels
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: label_list
+        destructive: false
       summary: Etichette del repo
       description: >
         Con il numero di issues aperte che le usano. Ordinate per nome. Paginazione come `GET /repos`.
@@ -3572,6 +4000,10 @@ paths:
       operationId: createLabel
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: label_create
+        destructive: false
       summary: Crea un'etichetta
       description: >
         Serve `write` (I3, I5). Il nome e' unico nel repo senza distinguere maiuscole/minuscole (409
@@ -3619,6 +4051,10 @@ paths:
       operationId: getLabel
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: label_get
+        destructive: false
       summary: Legge un'etichetta
       description: >
         Per nome, senza distinguere maiuscole/minuscole.
@@ -3643,6 +4079,10 @@ paths:
       operationId: updateLabel
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: label_edit
+        destructive: false
       summary: Modifica un'etichetta
       description: >
         Serve `write`. Rinominare (o cambiare colore) aggiorna tutte le issues che la usano (il legame e' per id).
@@ -3678,6 +4118,10 @@ paths:
       operationId: deleteLabel
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: label_delete
+        destructive: true
       summary: Elimina un'etichetta
       description: >
         Serve `write`. Toglie l'etichetta da tutte le issues (evento `unlabeled` nella cronologia). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -3705,6 +4149,10 @@ paths:
       operationId: listMilestones
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: milestone_list
+        destructive: false
       summary: Milestone del repo
       description: >
         Con l'avanzamento: `closedIssues` conta solo le chiuse come `completed`; le `not_planned` e `duplicate`
@@ -3734,6 +4182,10 @@ paths:
       operationId: createMilestone
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: milestone_create
+        destructive: false
       summary: Crea una milestone
       description: >
         Serve `write` (I7). Titolo unico nel repo senza distinguere maiuscole/minuscole (409 `already_exists`),
@@ -3780,6 +4232,10 @@ paths:
       operationId: getMilestone
       tags: [issues]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: milestone_view
+        destructive: false
       summary: Legge una milestone
       description: >
         Per numero della milestone nel repo.
@@ -3804,6 +4260,10 @@ paths:
       operationId: updateMilestone
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: milestone_edit
+        destructive: false
       summary: Modifica o chiude una milestone
       description: >
         Serve `write`. `state` la chiude o la riapre. `dueOn: null` toglie la data. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -3838,6 +4298,10 @@ paths:
       operationId: deleteMilestone
       tags: [issues]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: milestone_delete
+        destructive: true
       summary: Elimina una milestone
       description: >
         Serve `write`. Le issues collegate restano, senza milestone (evento `demilestoned`). Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -4191,6 +4655,46 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /repos/{owner}/{repo}/pulls/{number}/events:
+    parameters:
+      - $ref: "#/components/parameters/RepoOwnerParam"
+      - $ref: "#/components/parameters/RepoNameParam"
+      - $ref: "#/components/parameters/PullNumberParam"
+    get:
+      operationId: listPullRequestEvents
+      tags: [pulls]
+      x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: pr_events
+        destructive: false
+      summary: Cronologia degli eventi della Pull Request
+      description: >
+        Eventi in ordine cronologico crescente: apertura, modifica del titolo o del testo, cambio del branch di
+        destinazione, bozza e «Ready for review», chiusura e riapertura (PR6); l'unione arriva con il merge.
+        Chi puo' leggere il repo legge la cronologia. Paginazione come `GET /repos`. Un repo che l'utente non puo'
+        leggere, eliminato o inesistente risponde 404.
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PerPageParam"
+      responses:
+        "200":
+          description: Pagina di eventi.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequestEventList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -5099,6 +5603,10 @@ paths:
       operationId: listNotifications
       tags: [notifications]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: notification_list
+        destructive: false
       summary: Casella delle notifiche
       description: >
         Notifiche dell'utente corrente, dalla piu' recente (`createdAt` decrescente, poi `id`). Filtri: `reason`
@@ -5132,6 +5640,10 @@ paths:
       operationId: deleteNotifications
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: notifications_delete
+        destructive: true
       summary: Elimina in blocco le notifiche
       description: >
         Elimina le notifiche dell'utente corrente nello stato indicato (`read` o `archived`; le non lette non si
@@ -5167,6 +5679,10 @@ paths:
       operationId: markAllNotificationsRead
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: notification_read_all
+        destructive: false
       summary: Segna come lette tutte le notifiche
       description: >
         Segna come lette le notifiche non lette dell'utente corrente, con gli stessi filtri facoltativi
@@ -5197,6 +5713,10 @@ paths:
       operationId: getNotification
       tags: [notifications]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: true
+        name: notification_view
+        destructive: false
       summary: Legge una notifica
       description: Una notifica di un'altra persona risponde 404, come una inesistente.
       responses:
@@ -5218,6 +5738,10 @@ paths:
       operationId: updateNotification
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: true
+        name: notification_read
+        destructive: false
       summary: Segna come letta/non letta o archivia
       description: >
         Imposta `read` (segna come letta o di nuovo non letta) e/o `archived` (archivia o ripristina). Almeno un
@@ -5249,6 +5773,10 @@ paths:
       operationId: deleteNotification
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: notification_delete
+        destructive: true
       summary: Elimina una notifica
       description: Eliminazione manuale (C9), anche di una non letta.
       responses:
@@ -5268,6 +5796,10 @@ paths:
       operationId: getNotificationPreferences
       tags: [notifications]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: notification_preferences_get
+        destructive: false
       summary: Preferenze email delle notifiche
       description: >
         Per ogni tipo (= motivo della notifica) se arriva anche una email (C5). Default: email per `mentioned` e
@@ -5290,6 +5822,10 @@ paths:
       operationId: updateNotificationPreferences
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: notification_preferences_update
+        destructive: false
       summary: Imposta le preferenze email
       description: >
         Imposta i tipi indicati in `email`; quelli omessi restano come sono. Un tipo sconosciuto: 422
@@ -5326,6 +5862,10 @@ paths:
       operationId: getRepoWatch
       tags: [notifications]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_watch_get
+        destructive: false
       summary: Watch del repo
       description: >
         Come l'utente corrente segue il repo (C3): `participating` (default), `all` o `ignore`. Serve `read` sul
@@ -5349,6 +5889,10 @@ paths:
       operationId: setRepoWatch
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_watch_set
+        destructive: false
       summary: Imposta il Watch del repo
       description: >
         `participating`: notifiche solo per le issues che si seguono (autore, assegnatario, commentatore,
@@ -5383,6 +5927,10 @@ paths:
       operationId: resetRepoWatch
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_watch_reset
+        destructive: true
       summary: Riporta il Watch al default
       description: Torna a `participating`. Idempotente.
       responses:
@@ -5406,6 +5954,10 @@ paths:
       operationId: getIssueSubscription
       tags: [notifications]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: issue_subscription_get
+        destructive: false
       summary: Iscrizione alla issue
       description: >
         Se l'utente corrente segue la issue (C3) e perche'. Autore, assegnatari, commentatori e menzionati
@@ -5429,6 +5981,10 @@ paths:
       operationId: subscribeIssue
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: issue_subscribe
+        destructive: false
       summary: Segue la issue (Subscribe)
       description: >
         Iscrive l'utente corrente (`reason` `manual`), anche se si era disiscritto. Idempotente. Serve poter
@@ -5452,6 +6008,10 @@ paths:
       operationId: unsubscribeIssue
       tags: [notifications]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: issue_unsubscribe
+        destructive: true
       summary: Smette di seguire la issue (Unsubscribe)
       description: >
         Disiscrive l'utente corrente: da qui l'iscrizione automatica non lo riguarda piu' per questa issue, finche'
@@ -5480,6 +6040,10 @@ paths:
       operationId: listRepoMirrors
       tags: [mirrors]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirrors_list
+        destructive: false
       summary: Elenca i mirror in push di un repo
       description: >
         Serve `admin` sul repo (V8); un repo che non si legge risponde 404, uno senza `admin` 403. Il token non
@@ -5509,6 +6073,10 @@ paths:
       operationId: createRepoMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirror_create
+        destructive: false
       summary: Crea un mirror in push di un repo
       description: >
         Serve `admin` sul repo (V8). Il mirror spinge il branch principale e i tag del repo su un altro server Git
@@ -5558,6 +6126,10 @@ paths:
       operationId: getRepoMirror
       tags: [mirrors]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirror_get
+        destructive: false
       summary: Legge un mirror in push (con il suo stato)
       description: >
         Serve `admin` sul repo (V8). E' l'operazione di stato: `state`, `lastAttemptAt`, `lastSuccessAt`,
@@ -5582,6 +6154,10 @@ paths:
       operationId: updateRepoMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirror_update
+        destructive: false
       summary: Modifica un mirror in push
       description: >
         Serve `admin` sul repo (V8). Cambia solo i campi indicati. `token`: una stringa sostituisce il token (non
@@ -5619,6 +6195,10 @@ paths:
       operationId: deleteRepoMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirror_delete
+        destructive: true
       summary: Elimina un mirror in push
       description: >
         Serve `admin` sul repo (V8). Elimina anche il log delle esecuzioni. Non tocca la destinazione. Un repo
@@ -5646,6 +6226,10 @@ paths:
       operationId: syncRepoMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirror_sync
+        destructive: false
       summary: Sincronizza ora un mirror in push
       description: >
         Serve `admin` sul repo (V8). Mette il mirror in coda subito («Sincronizza ora»): risponde 202 e il push lo
@@ -5680,6 +6264,10 @@ paths:
       operationId: listRepoMirrorRuns
       tags: [mirrors]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_mirror_runs_list
+        destructive: false
       summary: Log delle ultime esecuzioni di un mirror in push
       description: >
         Serve `admin` sul repo (V8). Le ultime esecuzioni (al massimo 50 per mirror, 30 giorni), dalla piu'
@@ -5714,6 +6302,10 @@ paths:
       operationId: getRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_get
+        destructive: false
       summary: Legge il mirror in pull di un repo (con il suo stato)
       description: >
         Serve `admin` sul repo o l'amministratore dell'installazione (MP3); un repo che non si legge risponde
@@ -5741,6 +6333,10 @@ paths:
       operationId: enableRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_enable
+        destructive: false
       summary: Attiva il mirror in pull su un repo esistente
       description: >
         «Attiva mirror in pull» (MP3). Serve `admin` sul repo o l'amministratore dell'installazione. Da quel
@@ -5784,6 +6380,10 @@ paths:
       operationId: updateRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_update
+        destructive: false
       summary: Modifica intervallo e credenziali del mirror in pull
       description: >
         Serve `admin` sul repo o l'amministratore dell'installazione. Cambia solo i campi indicati:
@@ -5826,6 +6426,10 @@ paths:
       operationId: syncRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_sync
+        destructive: false
       summary: Sincronizza ora il mirror in pull
       description: >
         «Sincronizza ora» (MP4). Serve `admin` sul repo o l'amministratore dell'installazione. Mette
@@ -5859,6 +6463,10 @@ paths:
       operationId: pauseRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_pause
+        destructive: false
       summary: Mette in pausa il mirror in pull
       description: >
         Pausa (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Ferma gli aggiornamenti
@@ -5890,6 +6498,10 @@ paths:
       operationId: resumeRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_resume
+        destructive: false
       summary: Riprende il mirror in pull
       description: >
         Riprendi (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Il mirror torna `pending`
@@ -5921,6 +6533,10 @@ paths:
       operationId: stopRepoPullMirror
       tags: [mirrors]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_stop
+        destructive: true
       summary: Interrompe il mirror in pull
       description: >
         Interrompi (MP6). Serve `admin` sul repo o l'amministratore dell'installazione. Il corpo porta il nome
@@ -5964,6 +6580,10 @@ paths:
       operationId: listRepoPullMirrorRuns
       tags: [mirrors]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_pull_mirror_runs_list
+        destructive: false
       summary: Registro delle ultime esecuzioni del mirror in pull
       description: >
         Serve `admin` sul repo o l'amministratore dell'installazione. Le ultime esecuzioni (al massimo 50, 30
@@ -5998,6 +6618,10 @@ paths:
       operationId: listRepoWebhooks
       tags: [webhooks]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhooks_list
+        destructive: false
       summary: Elenca i webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
@@ -6025,6 +6649,10 @@ paths:
       operationId: createRepoWebhook
       tags: [webhooks]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_create
+        destructive: false
       summary: Crea un webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo
@@ -6123,6 +6751,10 @@ paths:
       operationId: getRepoWebhook
       tags: [webhooks]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_get
+        destructive: false
       summary: Legge un webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Un webhook di un altro repo o organizzazione risponde 404.
@@ -6145,6 +6777,10 @@ paths:
       operationId: updateRepoWebhook
       tags: [webhooks]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_update
+        destructive: false
       summary: Modifica un webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo
@@ -6181,6 +6817,10 @@ paths:
       operationId: deleteRepoWebhook
       tags: [webhooks]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_delete
+        destructive: true
       summary: Elimina un webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
@@ -6205,6 +6845,10 @@ paths:
       operationId: reactivateRepoWebhook
       tags: [webhooks]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_reactivate
+        destructive: false
       summary: Riattiva un webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active`
@@ -6236,6 +6880,10 @@ paths:
       operationId: listRepoWebhookDeliveries
       tags: [webhooks]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_deliveries_list
+        destructive: false
       summary: Log delle consegne di un webhook di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
@@ -6275,6 +6923,10 @@ paths:
       operationId: getRepoWebhookDelivery
       tags: [webhooks]
       x-required-scopes: ["read:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_delivery_get
+        destructive: false
       summary: Dettaglio di una consegna di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
@@ -6304,6 +6956,10 @@ paths:
       operationId: redeliverRepoWebhookDelivery
       tags: [webhooks]
       x-required-scopes: ["write:resource"]
+      x-mcp:
+        expose: false
+        name: repo_webhook_delivery_redeliver
+        destructive: false
       summary: Rinvia una consegna (Redeliver) di un repo
       description: >
         Serve `admin` sul repo (C6); un repo che non si legge risponde 404, uno senza `admin` 403. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf`
@@ -6333,6 +6989,10 @@ paths:
       operationId: listOrgWebhooks
       tags: [webhooks]
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: org_webhooks_list
+        destructive: false
       summary: Elenca i webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Il segreto non torna mai: `hasSecret` dice se c'e'. Paginazione come `GET /repos`.
@@ -6360,6 +7020,10 @@ paths:
       operationId: createOrgWebhook
       tags: [webhooks]
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_create
+        destructive: false
       summary: Crea un webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. `url` http o https; sempre bloccati loopback, indirizzi interni del cluster e link-local, anche dopo
@@ -6403,6 +7067,10 @@ paths:
       operationId: getOrgWebhook
       tags: [webhooks]
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_get
+        destructive: false
       summary: Legge un webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Un webhook di un altro repo o organizzazione risponde 404.
@@ -6425,6 +7093,10 @@ paths:
       operationId: updateOrgWebhook
       tags: [webhooks]
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_update
+        destructive: false
       summary: Modifica un webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Cambia solo i campi indicati. `secret`: una stringa sostituisce il segreto, la stringa vuota lo
@@ -6461,6 +7133,10 @@ paths:
       operationId: deleteOrgWebhook
       tags: [webhooks]
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_delete
+        destructive: true
       summary: Elimina un webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Elimina anche il log delle consegne e le notifiche di disattivazione collegate.
@@ -6484,6 +7160,10 @@ paths:
       operationId: reactivateOrgWebhook
       tags: [webhooks]
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_reactivate
+        destructive: false
       summary: Riattiva un webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Riattiva un webhook (disattivato a mano o dopo 3 giorni di fallimenti consecutivi, C7): `active`
@@ -6514,6 +7194,10 @@ paths:
       operationId: listOrgWebhookDeliveries
       tags: [webhooks]
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_deliveries_list
+        destructive: false
       summary: Log delle consegne di un webhook di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Dalla piu' recente. Le consegne si conservano 30 giorni (C7). Filtro per `status`.
@@ -6552,6 +7236,10 @@ paths:
       operationId: getOrgWebhookDelivery
       tags: [webhooks]
       x-required-scopes: ["read:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_delivery_get
+        destructive: false
       summary: Dettaglio di una consegna di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Con la richiesta inviata (intestazioni e payload) e la risposta ricevuta, troncata a 4 KB (C8).
@@ -6580,6 +7268,10 @@ paths:
       operationId: redeliverOrgWebhookDelivery
       tags: [webhooks]
       x-required-scopes: ["write:org"]
+      x-mcp:
+        expose: false
+        name: org_webhook_delivery_redeliver
+        destructive: false
       summary: Rinvia una consegna (Redeliver) di un'organizzazione
       description: >
         Serve il ruolo `owner` dell'organizzazione (C6); chi non la vede ha 404, un membro non owner 403. Il webhook riceve gli eventi di tutti i repo dell'organizzazione. Crea una consegna nuova con lo stesso payload e un nuovo `X-GitStack-Delivery` (`redeliveryOf`
@@ -6606,6 +7298,10 @@ paths:
     post:
       operationId: verifyCredential
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: credential_verify
+        destructive: false
       summary: Verifica una credenziale (per il gateway)
       description: >
         Il gateway invia il valore grezzo della credenziale (cookie di
@@ -6638,6 +7334,10 @@ paths:
     post:
       operationId: checkPermission
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: permission_check
+        destructive: false
       summary: Verifica un permesso su una risorsa
       description: >
         Usata da core e git per applicare i permessi: `allowed` e' vero se
@@ -6673,6 +7373,10 @@ paths:
     post:
       operationId: getUserAccessSources
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: user_access_sources_get
+        destructive: false
       summary: Risorse raggiungibili da un utente, con ruolo e fonti
       description: >
         Per core (`getUserAccess`): per ogni risorsa con un grant o un
@@ -6708,6 +7412,10 @@ paths:
     post:
       operationId: listReadableResources
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: readable_resources_list
+        destructive: false
       summary: Risorse leggibili da un utente
       description: >
         Usata da core per filtrare l'elenco delle risorse: `resourceIds` sono
@@ -6750,6 +7458,10 @@ paths:
     post:
       operationId: grantResourceCreator
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: resource_creator_grant
+        destructive: false
       summary: Assegna il ruolo admin al creatore di una risorsa
       description: >
         Usata da core dopo la creazione di una risorsa: l'utente indicato
@@ -6798,6 +7510,10 @@ paths:
     get:
       operationId: lookupSshKey
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: ssh_key_lookup
+        destructive: false
       summary: Risolve un utente dal fingerprint di una chiave SSH
       description: Usata dal servizio git all'accesso SSH. Aggiorna `lastUsedAt`.
       security:
@@ -6827,6 +7543,10 @@ paths:
     put:
       operationId: setResourceAttributes
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: resource_attributes_set
+        destructive: false
       summary: Imposta owner e visibilita' di una risorsa (per core)
       description: >
         Servita da identity (D-C, M-03). Core la chiama alla creazione di un
@@ -6870,6 +7590,10 @@ paths:
     delete:
       operationId: purgeResourceAccess
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: resource_access_purge
+        destructive: true
       summary: Toglie grant e attributi di una risorsa cancellata (per core)
       description: >
         Per core (M-03/F): dopo la cancellazione definitiva di un repo (R2)
@@ -6900,6 +7624,10 @@ paths:
     get:
       operationId: resolveOwner
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: owner_resolve
+        destructive: false
       summary: Risolve il nome di un utente o di un'organizzazione
       description: >
         Spazio di nomi unico (R1): restituisce tipo e id di chi si chiama
@@ -6931,6 +7659,10 @@ paths:
     get:
       operationId: listOrgOwners
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: org_owners_list
+        destructive: false
       summary: Elenca gli owner di un'organizzazione
       description: >
         Per core (M-06/G, webhook di organizzazione, C6): chi puo' gestire un
@@ -6957,6 +7689,10 @@ paths:
     post:
       operationId: gitCreateRepo
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: create_repo_git
+        destructive: false
       summary: Crea il repo su disco (per core)
       description: >
         Implementata a mano dal servizio git (non generata). Crea il bare
@@ -6991,6 +7727,10 @@ paths:
     get:
       operationId: gitGetRepo
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_repo_git
+        destructive: false
       summary: Stato di un repo su disco
       security:
         - serviceAuth: []
@@ -7010,6 +7750,10 @@ paths:
     delete:
       operationId: gitDeleteRepo
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: delete_repo_git
+        destructive: true
       summary: Cancella definitivamente un repo (solo dal cestino)
       description: Risponde 409 se il repo non e' nel cestino.
       security:
@@ -7032,6 +7776,10 @@ paths:
     post:
       operationId: gitTrashRepo
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: trash_repo_git
+        destructive: false
       summary: Sposta un repo nel cestino (R2)
       security:
         - serviceAuth: []
@@ -7051,6 +7799,10 @@ paths:
     post:
       operationId: gitRestoreRepo
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: restore_repo_git
+        destructive: false
       summary: Ripristina un repo dal cestino (R2)
       security:
         - serviceAuth: []
@@ -7068,6 +7820,10 @@ paths:
     post:
       operationId: lookupUsersByEmail
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: users_by_email_lookup
+        destructive: false
       summary: Trova gli utenti GitStack dalle email dei commit
       description: >
         Per core (M-04): confronta le email, senza distinguere maiuscole, con
@@ -7100,6 +7856,10 @@ paths:
     post:
       operationId: lookupUsersByIds
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: users_by_ids_lookup
+        destructive: false
       summary: Risolve gli id utente in nome e tipo
       description: >
         Per core (M-05): le issues conservano solo gli id degli utenti e la
@@ -7132,6 +7892,10 @@ paths:
     get:
       operationId: listCredentialEvents
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: credential_events_list
+        destructive: false
       summary: Eventi sulle credenziali degli utenti, da consegnare
       description: >
         Per core (F13): gli eventi non ancora confermati (cambio password,
@@ -7169,6 +7933,10 @@ paths:
     post:
       operationId: ackCredentialEvents
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: credential_events_ack
+        destructive: true
       summary: Conferma la consegna degli eventi sulle credenziali
       description: >
         Per core (F13): segna come consegnati esattamente gli eventi con gli id
@@ -7198,6 +7966,10 @@ paths:
     post:
       operationId: resolveMentions
       tags: [internal]
+      x-mcp:
+        expose: false
+        name: mentions_resolve
+        destructive: false
       summary: Risolve le menzioni `@utente`, `@agente` e `@org/team`
       description: >
         Per core (M-06, I8): il motore delle notifiche trasforma i nomi citati
@@ -7235,6 +8007,10 @@ paths:
     get:
       operationId: gitGetTree
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_tree_git
+        destructive: false
       summary: "Albero di una cartella con l'ultimo commit per voce (per core)"
       description: >
         Corrispondente interno di `getRepositoryTree`: parla solo per
@@ -7268,6 +8044,10 @@ paths:
     get:
       operationId: gitGetFile
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_file_git
+        destructive: false
       summary: "Contenuto di un file (per core)"
       description: >
         Corrispondente interno di `getRepositoryFile`: parla solo per
@@ -7301,6 +8081,10 @@ paths:
     get:
       operationId: gitGetRaw
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_raw_git
+        destructive: false
       summary: "Contenuto grezzo di un file (streaming) (per core)"
       description: >
         Corrispondente interno di `getRepositoryRaw`: parla solo per
@@ -7330,6 +8114,10 @@ paths:
     get:
       operationId: gitGetBranches
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_branches_git
+        destructive: false
       summary: "Branch del repo, con conteggi (per core)"
       description: >
         Corrispondente interno di `getRepositoryBranches`: parla solo per
@@ -7359,6 +8147,10 @@ paths:
     get:
       operationId: gitGetTags
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_tags_git
+        destructive: false
       summary: "Tag del repo, con conteggi (per core)"
       description: >
         Corrispondente interno di `getRepositoryTags`: parla solo per
@@ -7388,6 +8180,10 @@ paths:
     get:
       operationId: gitGetCommits
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_commits_git
+        destructive: false
       summary: "Storico dei commit, paginato (per core)"
       description: >
         Corrispondente interno di `getRepositoryCommits`: parla solo per
@@ -7424,6 +8220,10 @@ paths:
     get:
       operationId: gitGetCommit
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_commit_git
+        destructive: false
       summary: "Dettaglio di un commit con diff per file (per core)"
       description: >
         Corrispondente interno di `getRepositoryCommit`: parla solo per
@@ -7457,6 +8257,10 @@ paths:
     get:
       operationId: gitGetCommitDiff
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_commit_diff_git
+        destructive: false
       summary: "Diff completo di un commit come .diff, in streaming (per core)"
       description: >
         B6: `git diff --binary` del commit contro il primo genitore (contro
@@ -7492,6 +8296,10 @@ paths:
     get:
       operationId: gitGetCommitPatch
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_commit_patch_git
+        destructive: false
       summary: "Patch di un commit in formato git format-patch, in streaming (per core)"
       description: >
         B6: come `gitGetCommitDiff`, ma con messaggio e autore in forma di
@@ -7525,6 +8333,10 @@ paths:
     get:
       operationId: gitGetBlame
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_blame_git
+        destructive: false
       summary: "Blame di un file (per core)"
       description: >
         Corrispondente interno di `getRepositoryBlame`: parla solo per
@@ -7558,6 +8370,10 @@ paths:
     get:
       operationId: gitGetArchive
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_archive_git
+        destructive: false
       summary: "Archivio ZIP o tar.gz di un ref (streaming) (per core)"
       description: >
         Corrispondente interno di `getRepositoryArchive`: parla solo per
@@ -7593,6 +8409,10 @@ paths:
     get:
       operationId: gitGetLanguages
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_languages_git
+        destructive: false
       summary: "Lingue del repo (per core)"
       description: >
         Corrispondente interno di `getRepositoryLanguages`: parla solo per
@@ -7625,6 +8445,10 @@ paths:
     get:
       operationId: gitGetReadme
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: get_readme_git
+        destructive: false
       summary: "README di una cartella (per core)"
       description: >
         Corrispondente interno di `getRepositoryReadme`: parla solo per
@@ -7658,6 +8482,10 @@ paths:
     get:
       operationId: gitListFiles
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: list_files_git
+        destructive: false
       summary: "Percorsi di tutti i file di un ref (per core)"
       description: >
         Corrispondente interno di `listRepositoryFiles`: parla solo per
@@ -7689,6 +8517,10 @@ paths:
     get:
       operationId: gitSearchCode
       tags: [git-internal]
+      x-mcp:
+        expose: false
+        name: search_code_git
+        destructive: false
       summary: "Cerca un testo nel codice di un ref (per core)"
       description: >
         Corrispondente interno di `searchRepositoryCode`: parla solo per
@@ -12837,6 +13669,47 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PullRequestSummary"
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+    PullRequestEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [opened, renamed, edited, retargeted, ready_for_review, converted_to_draft, closed, reopened, merged]
+        actor:
+          allOf:
+            - $ref: "#/components/schemas/IssueUser"
+          nullable: true
+          type: object
+          description: Assente per gli eventi di sistema.
+        data:
+          type: object
+          additionalProperties: true
+          description: >
+            Dettagli per tipo: `opened` ha `draft`, `sourceBranch` e `targetBranch`; `renamed` ha `from` e `to`;
+            `retargeted` ha `from` e `to` (branch di destinazione); `merged` ha `method` e `sha`.
+        createdAt:
+          type: string
+          format: date-time
+    PullRequestEventList:
+      type: object
+      additionalProperties: false
+      required: [items, page, perPage, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PullRequestEvent"
         page:
           type: integer
         perPage:
