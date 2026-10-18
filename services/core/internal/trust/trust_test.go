@@ -198,3 +198,101 @@ func TestVerify_RoundTripHTTP(t *testing.T) {
 		})
 	}
 }
+
+// F9: ogni chiamante ha il suo segreto. Un'identità firmata con la chiave di
+// un altro servizio (o con una chiave sconosciuta) non vale.
+func TestVerify_SegretoDiUnAltroServizioRifiutato(t *testing.T) {
+	ring := NewKeyring(map[string]string{CallerGateway: "chiave-gateway"})
+	id := Identity{UserID: "u1", Username: "admin"}
+
+	h := http.Header{}
+	Sign(h, "chiave-git", id, t0) // git firma con la propria chiave: core non la accetta come gateway
+	if _, _, ok := VerifyRing(h, ring, t0); ok {
+		t.Fatal("la firma con la chiave di git è stata accettata dove vale solo il gateway")
+	}
+	if _, ok := Verify(h, "chiave-gateway", t0); ok {
+		t.Fatal("Verify con la chiave del gateway ha accettato la firma di git")
+	}
+
+	h = http.Header{}
+	Sign(h, "chiave-gateway", id, t0)
+	_, caller, ok := VerifyRing(h, ring, t0)
+	if !ok || caller != CallerGateway {
+		t.Fatalf("firma del gateway: caller=%q ok=%v", caller, ok)
+	}
+}
+
+func TestVerifyRing_RiconosceIlChiamante(t *testing.T) {
+	ring := NewKeyring(map[string]string{CallerGateway: "kg", CallerGit: "kgit"})
+	for _, tc := range []struct{ key, want string }{{"kg", CallerGateway}, {"kgit", CallerGit}} {
+		h := http.Header{}
+		Sign(h, tc.key, Identity{UserID: "u1", Username: "a"}, t0)
+		_, caller, ok := VerifyRing(h, ring, t0)
+		if !ok || caller != tc.want {
+			t.Errorf("chiave %s: caller=%q ok=%v, voluto %q", tc.key, caller, ok, tc.want)
+		}
+	}
+	if _, ok := ring.MatchBearer("kgit"); !ok {
+		t.Error("MatchBearer: la chiave di git non è riconosciuta")
+	}
+	if _, ok := ring.MatchBearer("altra"); ok {
+		t.Error("MatchBearer: chiave sconosciuta accettata")
+	}
+	if _, ok := ring.MatchBearer(""); ok {
+		t.Error("MatchBearer: Bearer vuoto accettato")
+	}
+}
+
+// Rotazione con doppia chiave (docs/operations.md): nella finestra valgono
+// la vecchia e la nuova, finita la finestra solo la nuova.
+func TestRotazione_DoppiaChiaveNellaFinestra(t *testing.T) {
+	id := Identity{UserID: "u1", Username: "alice"}
+	signWith := func(secret string) http.Header {
+		h := http.Header{}
+		Sign(h, secret, id, t0)
+		return h
+	}
+	// Fase 0: solo la vecchia.
+	if _, ok := Verify(signWith("vecchia"), "vecchia", t0); !ok {
+		t.Fatal("fase 0: la vecchia non vale")
+	}
+	// Fase 1: chi verifica accetta "vecchia,nuova"; chi firma usa ancora la
+	// prima (la vecchia). Un firmatario già passato alla nuova ("nuova,vecchia")
+	// firma con la nuova: vale lo stesso.
+	window := "vecchia,nuova"
+	if _, ok := Verify(signWith("vecchia"), window, t0); !ok {
+		t.Fatal("finestra: la firma con la vecchia non vale")
+	}
+	if _, ok := Verify(signWith("nuova"), window, t0); !ok {
+		t.Fatal("finestra: la firma con la nuova non vale")
+	}
+	if _, ok := Verify(signWith("nuova,vecchia"), window, t0); !ok {
+		t.Fatal("finestra: chi firma con l'elenco «nuova,vecchia» deve firmare con la nuova")
+	}
+	// Firmare con un elenco usa solo la prima chiave.
+	h := signWith("nuova,vecchia")
+	if _, ok := Verify(h, "nuova", t0); !ok {
+		t.Fatal("una firma di «nuova,vecchia» deve valere con la sola nuova")
+	}
+	if _, ok := Verify(h, "vecchia", t0); ok {
+		t.Fatal("una firma di «nuova,vecchia» non deve valere con la sola vecchia")
+	}
+	// Fine della finestra: resta solo la nuova.
+	if _, ok := Verify(signWith("vecchia"), "nuova", t0); ok {
+		t.Fatal("dopo la finestra la vecchia vale ancora")
+	}
+	if _, ok := Verify(signWith("nuova"), "nuova", t0); !ok {
+		t.Fatal("dopo la finestra la nuova non vale")
+	}
+	// Anche per il Bearer.
+	ring := NewKeyring(map[string]string{CallerGit: "nuova,vecchia"})
+	for _, k := range []string{"nuova", "vecchia"} {
+		if c, ok := ring.MatchBearer(k); !ok || c != CallerGit {
+			t.Errorf("Bearer %s nella finestra: %q %v", k, c, ok)
+		}
+	}
+	ring = NewKeyring(map[string]string{CallerGit: "nuova"})
+	if _, ok := ring.MatchBearer("vecchia"); ok {
+		t.Error("Bearer: la vecchia vale dopo la finestra")
+	}
+}

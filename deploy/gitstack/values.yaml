@@ -3,6 +3,15 @@
 # da GIT-9. Sovrascrivi solo quello che ti serve davvero.
 
 global:
+  # Arresto dei pod dietro l'Ingress (GIT-248): preStop attende che Traefik tolga
+  # l'endpoint prima di fermare il processo (azione `sleep` nativa, senza binari
+  # nell'immagine). terminationGracePeriodSeconds deve superare preStopSeconds
+  # più il tempo di arresto del processo (gateway: 10 s).
+  shutdown:
+    preStopSeconds: 10
+    terminationGracePeriodSeconds: 40
+    # git: un push lungo in corso deve potersi chiudere.
+    gitTerminationGracePeriodSeconds: 70
   image:
     # Registry di default per le immagini di GitStack (gateway, core, web:
     # pubblicate su ghcr.io dal job "registry" del workflow CI; idem identity). postgres e
@@ -150,6 +159,11 @@ core:
     mountPath: /var/lib/gitstack/attachments
     # Limite per file in byte (GITSTACK_CORE_ATTACHMENTS_MAX_BYTES), default 10 MiB.
     maxBytes: 10485760
+    # Quote di allegati (F17): byte per repo e per utente (tutti i repo), gli
+    # allegati non ancora collegati compresi. Oltre: 413 attachment_quota_exceeded.
+    # 0 = nessun limite. GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES / _USER_QUOTA_BYTES.
+    repoQuotaBytes: 1073741824
+    userQuotaBytes: 536870912
     # Un allegato mai collegato a una issue o a un commento si elimina dopo questo
     # tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL).
     orphanTtl: 24h
@@ -184,6 +198,21 @@ smtp:
   password: ""
   # Mittente, es. "GitStack <noreply@example.com>". Obbligatorio con host.
   from: ""
+  existingSecret: ""
+
+# --- segreti di servizio ----------------------------------------------------
+# Un segreto per chiamante (F9, ASVS V1.6.1 e V2.10.1): gateway, core e git
+# hanno ciascuno il proprio, usato come Bearer verso /internal/* di identity e
+# come chiave HMAC dell'identità firmata. Chi riceve verifica la chiave del
+# chiamante: git, che analizza repository non fidati, non può firmare
+# l'identità di un utente verso identity e verso core può solo risolvere
+# owner/repo. Il chart genera una sola volta il Secret
+# <release>-service-secrets (chiavi `gateway`, `core`, `git`,
+# helm.sh/resource-policy: keep); non si scrivono nei values. Ogni valore può
+# essere un elenco «nuova,vecchia»: la procedura di rotazione con doppia chiave
+# è in docs/operations.md («Ciclo di vita delle chiavi»).
+serviceSecrets:
+  # Alternativa: nome di un Secret esistente con le chiavi gateway, core, git.
   existingSecret: ""
 
 # --- identity ---------------------------------------------------------------
@@ -222,13 +251,6 @@ identity:
     # Alternativa: nome di un Secret esistente con le chiavi `username` e
     # `password`.
     existingSecret: ""
-  serviceSecret:
-    # Segreto condiviso con il gateway per /internal/*
-    # (GITSTACK_IDENTITY_SERVICE_SECRET). Il chart lo genera una sola volta in
-    # un Secret <release>-identity-service (chiave `secret`,
-    # helm.sh/resource-policy: keep); non si scrive nei values.
-    # Alternativa: nome di un Secret esistente con la chiave `secret`.
-    existingSecret: ""
   # GITSTACK_IDENTITY_DB_URL e calcolato dal Service di postgres (o da
   # postgres.external): non serve qui.
   env:
@@ -237,6 +259,9 @@ identity:
     migrationsTimeout: 30s
     # Durata assoluta della sessione web (GITSTACK_IDENTITY_SESSION_TTL).
     sessionTTL: 168h
+    # Inattivita' massima della sessione web (GITSTACK_IDENTITY_SESSION_IDLE_TIMEOUT,
+    # F12). "0" la disattiva.
+    sessionIdleTimeout: 24h
     # Durata massima dei token personali (GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME,
     # es. 8760h). Vuoto = variabile non impostata, vale il default di identity.
     tokenMaxLifetime: ""
@@ -273,6 +298,20 @@ identity:
       existingSecret: ""
       # Identificativo della chiave (GITSTACK_IDENTITY_OIDC_ENC_KEY_ID): va
       # cambiato insieme alla chiave (rotazione) per riscrivere i segreti.
+      keyId: k1
+  # Secondo fattore TOTP per gli account locali (F11, GIT-237). Ogni utente lo
+  # attiva da Settings → Security; qui si decide solo se è obbligatorio per gli
+  # amministratori (GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS).
+  totp:
+    requiredForAdmins: false
+    # Keyring che cifra i segreti TOTP nel database (GITSTACK_IDENTITY_TOTP_KEYS,
+    # "<id>:<base64 di 32 byte>[,<id>:<base64>...]": la prima cifra, le altre
+    # solo decifrano). Il chart lo genera una sola volta in un Secret
+    # <release>-identity-totp-key (chiave `keys`, resource-policy keep).
+    # Alternativa: nome di un Secret esistente con la chiave `keys`.
+    keys:
+      existingSecret: ""
+      # Id della chiave generata dal chart.
       keyId: k1
   resources:
     requests:
@@ -580,6 +619,9 @@ ingress:
     # Con tls.enabled la porta 80 risponde con un redirect permanente a https
     # (Middleware + IngressRoute su "web"). "" = porta 443 standard.
     redirect: true
+    # Strict-Transport-Security sulle rotte HTTPS (Middleware Traefik, F3).
+    # Secondi di max-age; 0 = nessuna intestazione.
+    hstsSeconds: 31536000
     redirectPort: ""
     # ConfigMap con la chiave ca.crt (la CA interna): web lo serve su
     # /downloads/ca.crt, anche in HTTP, per fidarsi di HTTPS. Vuoto = nessun download.

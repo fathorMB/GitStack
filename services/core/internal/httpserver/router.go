@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fathorMB/GitStack/services/core/internal/events"
@@ -67,7 +68,10 @@ func NewRouter(pool *pgxpool.Pool, publisher events.Publisher, serviceSecret str
 	mux.HandleFunc("GET /repos/{owner}/{repo}/raw/{refAndPath...}", func(w http.ResponseWriter, r *http.Request) {
 		server.GetRepositoryRawByPath(w, r, r.PathValue("owner"), r.PathValue("repo"), r.PathValue("refAndPath"))
 	})
-	return trust.Require(serviceSecret, publicPath, o.now)(limitBody(mux))
+	// Un segreto per chiamante (F9): il gateway può fare tutto, il servizio git
+	// solo risolvere owner/repo. Il Keyring del solo gateway è il caso senza git.
+	ring := trust.NewKeyring(map[string]string{trust.CallerGateway: serviceSecret, trust.CallerGit: o.gitSecret})
+	return trust.RequireRing(ring, callerAllowed, publicPath, o.now)(limitBody(mux))
 }
 
 // publicPath sono le rotte raggiungibili senza identità: probe k8s e
@@ -83,7 +87,27 @@ func publicPath(r *http.Request) bool {
 // Option personalizza NewRouter (usata dai test).
 type Option func(*routerOptions)
 
+// WithGitSecret imposta il segreto del servizio git (GITSTACK_SERVICE_SECRET_GIT):
+// un'identità firmata con quella chiave è accettata solo per la risoluzione
+// di owner/repo (callerAllowed). Un elenco "nuova,vecchia" accetta entrambe.
+func WithGitSecret(secret string) Option { return func(o *routerOptions) { o.gitSecret = secret } }
+
+// callerAllowed limita ciò che un servizio diverso dal gateway può fare con
+// un'identità firmata: git risolve owner/repo di un utente già autenticato
+// (GET /repos/{owner}/{repo}) e nient'altro (F9, ASVS V2.10.1).
+func callerAllowed(caller string, r *http.Request) bool {
+	if caller != trust.CallerGit {
+		return true
+	}
+	if r.Method != http.MethodGet {
+		return false
+	}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	return len(parts) == 3 && parts[0] == "repos" && parts[1] != "" && parts[2] != ""
+}
+
 type routerOptions struct {
+	gitSecret    string
 	now          func() time.Time
 	grants       identityclient.CreatorGranter
 	readable     identityclient.ReadableLister

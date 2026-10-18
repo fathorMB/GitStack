@@ -21,6 +21,22 @@ vi.mock('../../lib/mirrorsApi', () => ({
   removeMirror: vi.fn(),
   syncMirror: vi.fn(),
 }));
+vi.mock('../../lib/pullMirrorsApi', () => ({
+  fetchPullMirror: vi.fn().mockResolvedValue({
+    id: 'pm1',
+    origin: 'https://github.com/acme/external.git',
+    state: 'in_sync',
+    intervalSeconds: 3600,
+    lastSyncedAt: new Date().toISOString(),
+    nextSyncAt: null,
+    pausedAt: null,
+    stoppedAt: null,
+    stopped: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    divergedRefs: [],
+  }),
+}));
 vi.mock('../../lib/webhooksApi', async (orig) => ({
   ...(await orig<typeof import('../../lib/webhooksApi')>()),
   fetchRepoWebhooks: vi.fn().mockResolvedValue({ items: [], page: 1, perPage: 50, total: 0 }),
@@ -36,6 +52,7 @@ vi.mock('./RepoWatchSelect', () => ({ RepoWatchSelect: () => <span>watch</span> 
 import { fetchSession } from '../../lib/authApi';
 import { fetchOrgMembers } from '../../lib/orgsApi';
 import { fetchRepo } from '../../lib/reposApi';
+import { fetchPullMirror } from '../../lib/pullMirrorsApi';
 
 function repo(): Repository {
   return {
@@ -67,6 +84,7 @@ function tab(name: string) {
 
 beforeEach(() => {
   vi.mocked(fetchRepo).mockReset().mockResolvedValue(repo());
+  vi.mocked(fetchPullMirror).mockReset().mockResolvedValue(null);
 });
 
 describe('RepoHeader: schede', () => {
@@ -150,7 +168,8 @@ describe('Schede del repo nelle pagine', () => {
     asRole('owner');
     renderAt('/acme/api-gateway/settings');
     expect(await screen.findByRole('region', { name: 'General' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /mirror/i })).toBeInTheDocument();
+    const mirrors = await screen.findAllByRole('region', { name: /mirror/i });
+    expect(mirrors.length).toBeGreaterThanOrEqual(2);
     expect(tab('Settings')).toHaveClass('active');
     expect(tab('Code')).not.toHaveClass('active');
     expect(tab('Issues')).not.toHaveClass('active');

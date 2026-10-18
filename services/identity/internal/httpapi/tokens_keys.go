@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	"crypto/sha256"
-	"crypto/subtle"
 	"errors"
 	"net"
 	"net/http"
@@ -11,8 +9,10 @@ import (
 	"github.com/fathorMB/GitStack/pkg/scopes"
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/tokens"
+	"github.com/fathorMB/GitStack/services/identity/internal/trust"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -37,10 +37,50 @@ func WithTrustedProxies(nets []*net.IPNet) Option {
 	return func(s *server) { s.trustedProxies = nets }
 }
 
-// WithServiceSecret imposta il segreto condiviso di servizio (schema
-// serviceAuth) che protegge /internal/*. Vuoto = ogni chiamata interna è
-// rifiutata con 401. La lettura dell'ambiente è di chi monta il server.
-func WithServiceSecret(secret string) Option { return func(s *server) { s.serviceSecret = secret } }
+// callerShared è il «chiamante» del segreto condiviso storico: nessuna
+// restrizione per operazione (comportamento precedente a F9).
+const callerShared = "shared"
+
+// WithServiceSecret imposta un segreto condiviso di servizio (schema
+// serviceAuth) che protegge /internal/*, senza distinguere i chiamanti: per i
+// test e per le installazioni non gestite dal chart. Vuoto = ogni chiamata
+// interna è rifiutata con 401. La lettura dell'ambiente è di chi monta il
+// server. Un elenco "nuova,vecchia" accetta entrambe le chiavi.
+func WithServiceSecret(secret string) Option {
+	return func(s *server) {
+		s.keys2 = trust.NewKeyring(map[string]string{callerShared: secret})
+	}
+}
+
+// WithServiceSecrets imposta un segreto per chiamante (F9, ASVS V2.10.1):
+// /internal/* accetta il Bearer di ciascuno e l'identità firmata inoltrata
+// dal gateway vale solo con la chiave del gateway. Ogni valore può essere un
+// elenco "nuova,vecchia" (rotazione con doppia chiave). I chiamanti senza
+// chiave sono rifiutati; gateway e git possono usare solo le operazioni che
+// il loro codice chiama (internalAllowed).
+func WithServiceSecrets(gateway, core, git string) Option {
+	return func(s *server) {
+		s.keys2 = trust.NewKeyring(map[string]string{
+			trust.CallerGateway: gateway,
+			trust.CallerCore:    core,
+			trust.CallerGit:     git,
+		})
+	}
+}
+
+// internalAllowed dice se il chiamante può usare quell'operazione interna.
+// Il gateway usa solo la verifica delle credenziali e il controllo dei
+// permessi; git anche la ricerca di una chiave SSH. Core usa il resto.
+func internalAllowed(caller, path string) bool {
+	switch caller {
+	case trust.CallerGateway:
+		return path == "/internal/verify" || path == "/internal/permissions/check"
+	case trust.CallerGit:
+		return path == "/internal/verify" || path == "/internal/permissions/check" ||
+			strings.HasPrefix(path, "/internal/ssh-keys/")
+	}
+	return true
+}
 
 // Durata della cache che il gateway può tenere: esito positivo 30 s, negativo
 // 5 s (README del servizio).
@@ -59,13 +99,17 @@ func (s *server) serviceAuth(next http.Handler) http.Handler {
 			return
 		}
 		got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if s.serviceSecret == "" || !ok || got == "" {
+		if !ok || got == "" {
 			unauthenticated(w)
 			return
 		}
-		a, b := sha256.Sum256([]byte(got)), sha256.Sum256([]byte(s.serviceSecret))
-		if subtle.ConstantTimeCompare(a[:], b[:]) != 1 {
+		caller, ok := s.keys2.MatchBearer(got)
+		if !ok {
 			unauthenticated(w)
+			return
+		}
+		if !internalAllowed(caller, r.URL.Path) {
+			writeError(w, http.StatusForbidden, "forbidden", "Il servizio chiamante non può fare questa operazione.")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -171,6 +215,8 @@ func (s *server) CreateToken(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.token.created", &cur, "created_token_id", t.ID.String(), "token_name", in.Name, "scopes", scopes)
+	s.credEvent(r, cur.User.ID, credevents.TokenCreated, map[string]any{"name": in.Name, "hint": t.Hint, "scopes": scopes, "expiresAt": t.ExpiresAt})
 	base := toToken(t)
 	w.Header().Set("Location", "/v1/user/tokens/"+t.ID.String())
 	writeJSON(w, http.StatusCreated, openapi.CreatedToken{
@@ -198,6 +244,7 @@ func (s *server) RevokeToken(w http.ResponseWriter, r *http.Request, tokenId ope
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.token.revoked", &cur, "revoked_token_id", tokenId.String())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -267,6 +314,8 @@ func (s *server) AddSshKey(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.ssh_key.added", &cur, "key_id", k.ID.String(), "fingerprint", k.Fingerprint)
+	s.credEvent(r, cur.User.ID, credevents.SSHKeyAdded, map[string]any{"title": k.Title, "fingerprint": k.Fingerprint})
 	w.Header().Set("Location", "/v1/user/ssh-keys/"+k.ID.String())
 	writeJSON(w, http.StatusCreated, toSSHKey(k))
 }
@@ -310,6 +359,7 @@ func (s *server) DeleteSshKey(w http.ResponseWriter, r *http.Request, keyId open
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.ssh_key.deleted", &cur, "key_id", keyId.String())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -375,7 +425,7 @@ func (s *server) VerifyCredential(w http.ResponseWriter, r *http.Request) {
 		// Password iniziale da cambiare: la sessione e' valida, ma il gateway
 		// risponde 403 password_change_required a ogni rotta tranne le tre
 		// eccezioni del contratto (x-password-change-exempt).
-		MustChangePassword: &cur.MustChange,
+		MustChangePassword: &cur.MustChange, MustEnrollTotp: &cur.MustEnrollTotp,
 	}})
 }
 

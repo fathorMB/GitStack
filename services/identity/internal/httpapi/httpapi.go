@@ -31,10 +31,12 @@ import (
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
 	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
+	"github.com/fathorMB/GitStack/services/identity/internal/secondfactor"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/trust"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
@@ -65,15 +67,17 @@ func New(a *auth.Service, logger *slog.Logger, opts ...Option) http.Handler {
 }
 
 type server struct {
-	auth          *auth.Service
-	users         *users.Service
-	log           *slog.Logger
-	tokens        *apitokens.Service
-	keys          *userkeys.Service
-	oidc          *oidc.Service
-	permissions   *permissions.Service
-	serviceSecret string
-	orgs          *orgs.Service
+	auth        *auth.Service
+	users       *users.Service
+	log         *slog.Logger
+	tokens      *apitokens.Service
+	keys        *userkeys.Service
+	oidc        *oidc.Service
+	permissions *permissions.Service
+	keys2       trust.Keyring // chiavi di servizio accettate, per chiamante (F9)
+	orgs        *orgs.Service
+	mfa         *secondfactor.Service // secondo fattore TOTP (F11); nil = spento
+	cred        *credevents.Service   // avvisi sulle credenziali (F13); nil = spenti
 
 	trustedProxies []*net.IPNet
 }
@@ -188,6 +192,14 @@ func (s *server) isSecure(r *http.Request) bool {
 	return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
 }
 
+// setSessionCookies imposta il cookie di sessione (con prefisso __Host- se
+// la richiesta è HTTPS) e toglie quello storico.
+func (s *server) setSessionCookies(w http.ResponseWriter, r *http.Request, value string, expires time.Time) {
+	for _, c := range auth.SessionCookies(value, expires, s.isSecure(r)) {
+		http.SetCookie(w, c)
+	}
+}
+
 func (s *server) trusted(ip net.IP) bool {
 	for _, n := range s.trustedProxies {
 		if n.Contains(ip) {
@@ -210,6 +222,10 @@ func (s *server) current(w http.ResponseWriter, r *http.Request) (auth.Current, 
 		passwordChangeRequired(w)
 		return auth.Current{}, false
 	}
+	if cur.MustEnrollTotp {
+		totpEnrollmentRequired(w)
+		return auth.Current{}, false
+	}
 	return cur, true
 }
 
@@ -224,11 +240,11 @@ const CodePasswordChangeRequired = "password_change_required"
 
 // currentPending come current, ma accetta anche chi deve cambiare la password.
 func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
-	c, err := r.Cookie(auth.CookieName)
-	if err != nil {
+	value, ok := auth.SessionValue(r)
+	if !ok {
 		return s.currentSigned(w, r)
 	}
-	cur, err := s.auth.Session(r.Context(), c.Value)
+	cur, err := s.auth.Session(r.Context(), value)
 	if errors.Is(err, auth.ErrUnauthenticated) {
 		unauthenticated(w)
 		return auth.Current{}, false
@@ -246,7 +262,9 @@ func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Cu
 // firma non valida o scaduta, utente inesistente o disattivato: 401. Il
 // Current restituito non ha sessione (Session.ID è uuid.Nil).
 func (s *server) currentSigned(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
-	id, ok := trust.Verify(r.Header, s.serviceSecret, time.Now())
+	// Solo il gateway inoltra l'identità dei client: la firma di core o di
+	// git non vale per autenticare una richiesta pubblica (F9).
+	id, _, ok := trust.VerifyRing(r.Header, s.keys2.Only(trust.CallerGateway, callerShared), time.Now())
 	if !ok {
 		unauthenticated(w)
 		return auth.Current{}, false
@@ -306,7 +324,20 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 	if _, ok := decode(w, r, &in); !ok {
 		return
 	}
+	var totpCode, recoveryCode string
+	if in.TotpCode != nil {
+		totpCode = *in.TotpCode
+	}
+	if in.RecoveryCode != nil {
+		recoveryCode = *in.RecoveryCode
+	}
 	f := map[string]string{}
+	if totpCode != "" && !totpCodeRe.MatchString(totpCode) {
+		f["totpCode"] = "6 cifre"
+	}
+	if utf8.RuneCountInString(recoveryCode) > 64 {
+		f["recoveryCode"] = "al massimo 64 caratteri"
+	}
 	if n := utf8.RuneCountInString(in.Username); n < 1 || n > 254 {
 		f["username"] = "da 1 a 254 caratteri"
 	}
@@ -318,35 +349,49 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := s.auth.Login(r.Context(), auth.LoginInput{
-		Login: in.Username, Password: *in.Password, IP: s.clientIP(r), UserAgent: r.UserAgent(),
+		Login: in.Username, Password: *in.Password, TOTPCode: totpCode, RecoveryCode: recoveryCode,
+		IP: s.clientIP(r), UserAgent: r.UserAgent(),
 	})
 	var rl *auth.RateLimitedError
 	switch {
 	case errors.As(err, &rl):
+		s.secWarn(r, "security.login.rate_limited", nil, "username", in.Username)
 		s.tooMany(w, rl.RetryAfter)
 		return
+	case errors.Is(err, auth.ErrSecondFactorRequired):
+		// Nessuna sessione e nessun cookie: il client ripete il login con il codice.
+		writeError(w, http.StatusUnauthorized, "second_factor_required", "Serve il codice del secondo fattore.")
+		return
 	case errors.Is(err, auth.ErrInvalidCredentials):
+		s.secWarn(r, "security.login.failure", nil, "username", in.Username, "reason", "invalid_credentials")
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "Credenziali non valide.")
 		return
 	case err != nil:
 		s.internal(w, r, err)
 		return
 	}
-	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
+	s.setSessionCookies(w, r, res.SessionValue, res.Session.ExpiresAt)
+	s.secInfo(r, "security.login.success", &auth.Current{User: res.User, Session: res.Session}, "method", "password", "session_id", res.Session.ID.String())
 	exp := res.Session.ExpiresAt
-	writeJSON(w, http.StatusOK, openapi.CurrentSession{
+	out := openapi.CurrentSession{
 		User: toUser(res.User, true), AuthMethod: openapi.CurrentSessionAuthMethod("password"), ExpiresAt: &exp,
 		MustChangePassword: res.MustChange,
-	})
+	}
+	if res.MustEnrollTotp {
+		t := true
+		out.MustEnrollTotp = &t
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie(auth.CookieName)
-	if err != nil {
+	value, ok := auth.SessionValue(r)
+	if !ok {
 		unauthenticated(w)
 		return
 	}
-	err = s.auth.Logout(r.Context(), c.Value)
+	prev, prevErr := s.auth.Session(r.Context(), value)
+	err := s.auth.Logout(r.Context(), value)
 	if errors.Is(err, auth.ErrUnauthenticated) {
 		unauthenticated(w)
 		return
@@ -355,7 +400,12 @@ func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	http.SetCookie(w, auth.ClearCookie(s.isSecure(r)))
+	if prevErr == nil {
+		s.secInfo(r, "security.logout", &prev, "session_id", prev.Session.ID.String())
+	}
+	for _, c := range auth.ClearCookies(s.isSecure(r)) {
+		http.SetCookie(w, c)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -367,6 +417,10 @@ func (s *server) GetCurrentSession(w http.ResponseWriter, r *http.Request) {
 	out := openapi.CurrentSession{
 		User: toUser(cur.User, true), AuthMethod: openapi.CurrentSessionAuthMethod(cur.Session.AuthMethod),
 		MustChangePassword: cur.MustChange,
+	}
+	if cur.MustEnrollTotp {
+		t := true
+		out.MustEnrollTotp = &t
 	}
 	if !cur.Session.ExpiresAt.IsZero() {
 		exp := cur.Session.ExpiresAt
@@ -459,6 +513,7 @@ func (s *server) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if !s.userError(w, r, err) {
 		return
 	}
+	s.secInfo(r, "security.user.created", &cur, "target_id", u.ID.String(), "target", u.Username, "target_admin", u.IsAdmin)
 	w.Header().Set("Location", "/v1/users/"+u.Username)
 	writeJSON(w, http.StatusCreated, toUser(u, true))
 }
@@ -513,6 +568,16 @@ func (s *server) UpdateUser(w http.ResponseWriter, r *http.Request, username ope
 	if !s.userError(w, r, err) {
 		return
 	}
+	if in.IsActive != nil {
+		ev := "security.user.activated"
+		if !*in.IsActive {
+			ev = "security.user.deactivated"
+		}
+		s.secInfo(r, ev, &cur, "target_id", u.ID.String(), "target", u.Username)
+	}
+	if in.IsAdmin != nil {
+		s.secInfo(r, "security.user.admin_changed", &cur, "target_id", u.ID.String(), "target", u.Username, "is_admin", *in.IsAdmin)
+	}
 	writeJSON(w, http.StatusOK, toUser(u, true))
 }
 
@@ -528,6 +593,7 @@ func (s *server) DeleteUser(w http.ResponseWriter, r *http.Request, username ope
 	if !s.userError(w, r, s.users.Delete(r.Context(), username)) {
 		return
 	}
+	s.secInfo(r, "security.user.deleted", &cur, "target", username)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -540,6 +606,10 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	if cur.MustChange && !self {
 		// Con la password da cambiare si può cambiare solo la propria.
 		passwordChangeRequired(w)
+		return
+	}
+	if cur.MustEnrollTotp {
+		totpEnrollmentRequired(w)
 		return
 	}
 	if !self && !cur.User.IsAdmin {
@@ -568,6 +638,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	ip := s.clientIP(r)
 	if !ci.Admin {
 		if ok, retry := s.auth.Limiter.Check(username, ip); !ok {
+			s.secWarn(r, "security.password.change_rate_limited", &cur, "target", username)
 			s.tooMany(w, retry)
 			return
 		}
@@ -579,6 +650,7 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	err := s.users.ChangePassword(r.Context(), ci)
 	if errors.Is(err, users.ErrInvalidCredentials) {
 		// 403 e non 401: il chiamante è già autenticato (decisione del CTO).
+		s.secWarn(r, "security.password.change_failed", &cur, "target", username, "reason", "wrong_current_password")
 		s.auth.Limiter.Fail(username, ip)
 		writeError(w, http.StatusForbidden, "forbidden", "Password attuale errata.")
 		return
@@ -588,6 +660,16 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 	}
 	if !ci.Admin {
 		s.auth.Limiter.Success(username)
+	}
+	s.secInfo(r, "security.password.changed", &cur, "target", username)
+	// F13 (V2.2.3, V2.5.5): l'utente interessato viene avvisato; se è un
+	// amministratore a reimpostarla, l'avviso lo dice.
+	if target, err := s.users.Get(r.Context(), username); err == nil {
+		kind := credevents.PasswordChanged
+		if ci.Admin {
+			kind = credevents.PasswordReset
+		}
+		s.credEvent(r, target.ID, kind, map[string]any{"by": cur.User.Username})
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

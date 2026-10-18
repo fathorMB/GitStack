@@ -30,7 +30,7 @@ How to read it:
 | B1 Internet or LAN to Traefik | Browser, `gs`, git clients | TLS at Traefik (`docs/tls.md`); then session cookie or `gst_` token |
 | B2 Traefik to web and gateway | `/api/v1/*`, raw files | Gateway authenticates every route from the contract: `services/gateway/internal/middleware/auth.go` |
 | B3 Gateway to core, identity | Identity of the user | HMAC-signed `X-Gitstack-*` headers with timestamp; client copies are stripped: `services/gateway/internal/trust/trust_test.go#TestStripClientHeaders`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/header_identita_falsificati` |
-| B4 Services to identity `/internal/*` | Credential and permission checks | Shared service secret, constant-time compare: `services/identity/internal/httpapi/tokens_keys_integration_test.go#TestEmptyServiceSecretRejectsAll` |
+| B4 Services to identity `/internal/*` | Credential and permission checks | One service secret per caller, constant-time compare, per-caller allow list: `services/identity/internal/httpapi/tokens_keys_integration_test.go#TestEmptyServiceSecretRejectsAll`, `services/identity/router_test.go#TestBuildRouter_SegretiPerChiamante` |
 | B5 git clients to the git service | Smart HTTP and SSH, not through the gateway | Token as Basic password or registered SSH key, checked by `services/git/internal/access/access.go` |
 | B6 Services to Postgres and NATS | Data and events | Database roles per service; NATS without credentials (F8) |
 | B7 Core and git to the outside | Webhooks, mirrors, SMTP, OIDC discovery | `pkg/egress` policy and, for git, a pinned address (sections 3 to 5) |
@@ -40,7 +40,7 @@ How to read it:
 | Passwords | `identity.credentials` | argon2id: `services/identity/internal/password/password_test.go#TestHashFormatAndVerify` |
 | Session values, personal tokens | `identity.sessions`, `identity.api_tokens` | Only SHA-256 stored: `services/identity/internal/apitokens/apitokens_integration_test.go#TestCreateStoresOnlyHash` |
 | Webhook secrets, mirror credentials, OIDC client secret | core database, identity OIDC configuration | AES-256-GCM: `services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`, `services/identity/internal/oidc/crypto_test.go` |
-| Service secret, database password, keys | Kubernetes Secrets | Not encrypted at rest, kubeconfig world-readable (F2); one secret for four services (F9) |
+| Service secret, database password, keys | Kubernetes Secrets | Not encrypted at rest, kubeconfig world-readable (F2); one secret per calling service, rotation in `docs/operations.md` (F9) |
 | Repository content | git volume | Role checks in git and core; archived and deleted states: `services/git/internal/smarthttp/smarthttp_test.go#TestRepoArchiviatoSiLeggeMaNonSiScrive` |
 | Issues, comments, hidden issues, notifications | `core.*` | Role and hidden-issue rules (section 2) |
 | Attachments | core volume | Content-typed, served as download: `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadEDownload` |
@@ -57,7 +57,7 @@ Attackers considered: an anonymous network client; an authenticated user with no
 | Threat | Mitigation | Proof | Residual |
 |---|---|---|---|
 | Access without credentials (P2) | Every route needs a declaration of security from the contract; undeclared routes are 404 | `services/gateway/internal/httpserver/auth_test.go#TestSicurezza_OgniRottaHaLaSuaDichiarazione`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/nessuna_credenziale` | None known |
-| IDOR on a resource of another organisation | Permission checked per `{resourceId}` by identity; denied looks like missing | `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_NegatoUgualeSeLaRisorsaNonEsiste`, `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_OgniRottaDiCoreSuRisorsaDichiaraIlPermesso`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/risorsa_di_altra_organizzazione` | Core trusts the gateway signature: see F9 |
+| IDOR on a resource of another organisation | Permission checked per `{resourceId}` by identity; denied looks like missing | `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_NegatoUgualeSeLaRisorsaNonEsiste`, `services/gateway/internal/httpserver/permissions_test.go#TestPermessi_OgniRottaDiCoreSuRisorsaDichiaraIlPermesso`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/risorsa_di_altra_organizzazione` | Core trusts the gateway signature; git cannot sign for core beyond `GET /repos/{owner}/{repo}` (F9 resolved, GIT-235) |
 | Role escalation through organisation owners, teams or visibility | Effective role computed in one place; visibility private or internal only | `services/identity/internal/permissions/permissions_integration_test.go#TestEffectiveRole`, `services/identity/internal/httpapi/owner_visibility_integration_test.go#TestOwnerAndVisibilityRules`, `services/identity/internal/httpapi/orgs_integration_test.go#TestOrgNonOwnerForbidden` | None known |
 | Disclosure through derived views (search, notifications, events, commit links) | Hidden issues and unreadable repos are filtered in SQL | `services/core/internal/httpserver/issues_search_integration_test.go#TestIssuesSearch_VisibilitaEPermessi`, `services/core/internal/httpserver/notifications_integration_test.go#TestNotifiche_IssueNascostaSoloAdminI4`, `services/core/internal/httpserver/issues_commit_links_integration_test.go#TestIssueEvents_CommitDiAltroRepoVisibileSoloAChiVedeEntrambi` | New derived views need the same test |
 | Writing with `read`, closing others' issues (I3) | Role checks in handlers | `services/core/internal/httpserver/issues_integration_test.go#TestIssues_StatoConMotivoI2ePermessiI3` | None known |
@@ -83,7 +83,7 @@ Attackers considered: an anonymous network client; an authenticated user with no
 | URL with credentials, `localhost`, non-HTTP scheme | Validated at creation | `services/core/internal/webhooks/unit_test.go#TestCheckURL`, `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_ConfigurazioneEValidazione` | `http://` is allowed |
 | End to end block | A blocked destination is marked failed without retry and recorded in the delivery log | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/destinazioni_ssrf_bloccate` | None known |
 | Corporate proxy bypasses policy | Policy applied to the real destination before contacting the proxy | `pkg/egress/proxy_test.go#TestProxy_DestinazioneVietataNonContattaIlProxy`, `pkg/egress/proxy_test.go#TestProxy_RedirectVersoDestinazioneInternaRifiutato` | The proxy address is trusted |
-| Forged or leaked signature secret | HMAC-SHA256 signature, secret encrypted at rest, never returned | `services/core/internal/webhooks/unit_test.go#TestSign_EsempioDellaDocumentazione`, `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_SenzaSegretoEventiSelezionatiENascoste` | Key rotation is not documented (F9) |
+| Forged or leaked signature secret | HMAC-SHA256 signature, secret encrypted at rest, never returned | `services/core/internal/webhooks/unit_test.go#TestSign_EsempioDellaDocumentazione`, `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_SenzaSegretoEventiSelezionatiENascoste` | Rotation documented in `docs/operations.md` ("Key lifecycle and rotation", F9 resolved, GIT-235) |
 | Reading internal answers through the log | Answer clipped to 4 KB | `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_RispostaTroncataA4KB` | The excerpt is visible to the repository admin |
 | Webhook for a repo the user cannot administer | Role check | `services/core/internal/httpserver/webhooks_integration_test.go#TestWebhooks_Permessi` | None known |
 
@@ -169,7 +169,7 @@ Attackers considered: an anonymous network client; an authenticated user with no
 |---|---|
 | Local access to the server gives the whole cluster | F2 |
 | Internal network, NATS and database transport | F8 |
-| One service secret, no rotation procedure | F9 |
+| One service secret, no rotation procedure | F9 (resolved, GIT-235) |
 | No audit, abuse detection or rate limiting | F10, F6 |
 | Browser hardening headers and cache | F3, F4 |
 | Body size limits | F5 |

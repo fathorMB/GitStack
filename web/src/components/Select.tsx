@@ -19,10 +19,20 @@ export interface SelectProps {
 }
 
 // Select Radix: tastiera (frecce, type-ahead, Esc), ruolo combobox/listbox.
-export function Select({ options, placeholder, onValueChange, value, disabled, id, ...aria }: SelectProps) {
+export function Select({
+  options,
+  placeholder,
+  onValueChange,
+  value,
+  disabled,
+  id,
+  'aria-label': ariaLabel,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
+}: SelectProps) {
   return (
     <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
-      <RadixSelect.Trigger id={id} className="select" {...aria}>
+      <RadixSelect.Trigger id={id} className="select" aria-label={ariaLabel} aria-invalid={ariaInvalid} aria-describedby={ariaDescribedby}>
         <RadixSelect.Value placeholder={placeholder} />
         <RadixSelect.Icon>
           <ChevronDown size={16} aria-hidden="true" />

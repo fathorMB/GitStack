@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fathorMB/GitStack/services/core/internal/trust"
 	"github.com/google/uuid"
 )
 
@@ -49,7 +50,7 @@ type Client struct {
 func New(base *url.URL, secret string, timeout time.Duration) *Client {
 	return &Client{
 		base:   strings.TrimRight(base.String(), "/"),
-		secret: secret,
+		secret: trust.SigningKey(secret),
 		http:   &http.Client{Timeout: timeout},
 	}
 }

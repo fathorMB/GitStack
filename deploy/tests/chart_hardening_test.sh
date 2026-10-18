@@ -143,6 +143,93 @@ expect_eq "nessun Secret generato con existingSecret" "$(doc Secret gitstack-nat
 expect_has "client con il Secret dato" "$(doc Deployment gitstack-core)" "name: mio-nats"
 expect_has "server con il Secret dato" "$(doc StatefulSet gitstack-nats)" "name: mio-nats"
 
+# ---------------------------------------------------------------------------
+echo "== One service secret per caller (F9)"
+OUT="$(render)" || { bad "helm template di default fallito"; exit 1; }
+
+d="$(doc Secret gitstack-service-secrets)"
+if [ -n "${d}" ]; then ok; else bad "Secret gitstack-service-secrets non renderizzato"; fi
+expect_has "service secrets keep" "${d}" "helm.sh/resource-policy: keep"
+for k in gateway core git; do
+  v="$(printf '%s\n' "${d}" | sed -n "s/^  ${k}: \"\(.*\)\"\$/\1/p")"
+  if [ "${#v}" -ge 32 ]; then ok; else bad "segreto ${k} generato troppo corto (${#v})"; fi
+done
+# Il Secret condiviso storico non esiste più.
+expect_eq "nessun Secret identity-service" "$(doc Secret gitstack-identity-service)" ""
+expect_lacks "nessuna variabile condivisa storica" "${OUT}" "GITSTACK_IDENTITY_SERVICE_SECRET"
+
+# Ogni servizio riceve solo le chiavi che gli servono: git non conosce quella
+# del gateway (con cui si firma l'identità di un utente).
+chk() {
+  # chk SERVIZIO DEPLOYMENT CHIAVE yes|no
+  if printf '%s\n' "$2" | grep -q "name: GITSTACK_SERVICE_SECRET_$3\$"; then
+    if [ "$4" = yes ]; then ok; else bad "$1: $3 non doveva esserci"; fi
+  else
+    if [ "$4" = yes ]; then bad "$1: manca $3"; else ok; fi
+  fi
+}
+for c in gateway core git identity; do
+  d="$(doc Deployment "gitstack-${c}")"
+  case "${c}" in
+    gateway)  g=yes; o=no;  t=no ;;
+    core)     g=yes; o=yes; t=yes ;;
+    git)      g=no;  o=yes; t=yes ;;
+    identity) g=yes; o=yes; t=yes ;;
+  esac
+  chk "${c}" "${d}" GATEWAY "${g}"
+  chk "${c}" "${d}" CORE "${o}"
+  chk "${c}" "${d}" GIT "${t}"
+done
+# gateway: solo la propria chiave (non conosce quelle di core e git)
+d="$(doc Deployment gitstack-gateway)"
+expect_has "gateway: chiave gateway dal Secret" "${d}" "name: gitstack-service-secrets"
+
+# Il vecchio valore identity.serviceSecret.existingSecret (chart precedente a
+# F9) non è più letto: nessun Deployment lo usa e NOTES.txt lo segnala. Il
+# chart non si ferma, così un `gitstack upgrade` precedente a F9 funziona.
+OUT="$(render --set identity.serviceSecret.existingSecret=vecchio)" || bad "il vecchio valore ferma helm template"
+expect_lacks "il Secret vecchio non è usato" "${OUT}" "name: vecchio"
+expect_has "Secret per chiamante generato lo stesso" "$(doc Secret gitstack-service-secrets)" "core: "
+
+# Secret esistente: il chart non ne genera uno e i servizi usano quello.
+OUT="$(render --set serviceSecrets.existingSecret=miei-segreti)"
+expect_eq "nessun Secret generato con existingSecret" "$(doc Secret gitstack-service-secrets)" ""
+for c in gateway core git identity; do
+  expect_has "${c}: Secret dato" "$(doc Deployment "gitstack-${c}")" "name: miei-segreti"
+done
+
+# ---------------------------------------------------------------------------
+# N3 (nodo singolo, installazione-e-deploy.md): con il volume degli allegati
+# ReadWriteOnce il chart si ferma se core.replicaCount > 1; senza il volume più
+# repliche sono ammesse. `render` passa l'output a tr e restituisce il codice di
+# tr, quindi il codice di helm lo legge helm_rc.
+echo "== N3: nodo singolo"
+helm_rc() { helm template gitstack "${CHART}" "$@" >/dev/null 2>&1; }
+if helm_rc --set core.replicaCount=2; then
+  bad "nodo singolo: helm template non si ferma con core.replicaCount=2"
+else
+  ok
+  expect_has "nodo singolo: messaggio del guard" "$(render --set core.replicaCount=2 2>&1)" \
+    "core.attachments.enabled=true richiede core.replicaCount=1"
+fi
+OUT="$(render --set core.attachments.enabled=false --set core.replicaCount=3)" ||
+  bad "nodo singolo: rendering con 3 repliche senza il volume degli allegati fallito"
+expect_has "nodo singolo: più repliche senza il volume RWO" "$(doc Deployment gitstack-core)" "replicas: 3"
+
+# Il PVC degli allegati è ReadWriteOnce e core gira con strategia Recreate.
+OUT="$(render)"
+expect_has "nodo singolo: PVC degli allegati ReadWriteOnce" \
+  "$(doc PersistentVolumeClaim gitstack-attachments-data)" "- ReadWriteOnce"
+d="$(doc Deployment gitstack-core)"
+expect_has "nodo singolo: core con strategia Recreate" "${d}" "type: Recreate"
+expect_has "nodo singolo: una sola replica di default" "${d}" "replicas: 1"
+# Postgres e NATS sono a una sola replica: il chart non fa alta disponibilità
+# (N3, dopo la v1).
+expect_has "nodo singolo: Postgres con una sola replica" \
+  "$(doc StatefulSet gitstack-postgres)" "replicas: 1"
+expect_has "nodo singolo: NATS con una sola replica" \
+  "$(doc StatefulSet gitstack-nats)" "replicas: 1"
+
 echo
 echo "Passati: ${PASS}  Falliti: ${FAILN}"
 [ "${FAILN}" -eq 0 ]

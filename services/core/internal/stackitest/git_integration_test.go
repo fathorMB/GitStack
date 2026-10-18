@@ -106,11 +106,14 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 	var port int
 	_, _ = fmt.Sscanf(sshPort, "%d", &port)
 
-	idc := identityclient.New(mustURL(t, "http://"+identityAddr), serviceSecret, 5*time.Second)
-	gitc := gitclient.New(mustURL(t, "http://"+gitAddr), serviceSecret, 30*time.Second)
+	// F9: un segreto per servizio. Il gateway usa serviceSecret; core e git
+	// ne hanno uno proprio e nessuno conosce quello degli altri.
+	idc := identityclient.New(mustURL(t, "http://"+identityAddr), coreSecret, 5*time.Second)
+	gitc := gitclient.New(mustURL(t, "http://"+gitAddr), coreSecret, 30*time.Second)
 	routerOpts := append([]httpserver.Option{
 		httpserver.WithRepoIdentity(idc),
 		httpserver.WithGit(gitc),
+		httpserver.WithGitSecret(gitSecret),
 		httpserver.WithCloneConfig(httpserver.CloneConfig{PublicURL: "http://" + gitAddr, SSHHost: "127.0.0.1", SSHPort: port}),
 	}, opts...)
 	coreSrv := httptest.NewServer(httpserver.NewRouter(pool, events.NoopPublisher{}, serviceSecret, routerOpts...))
@@ -119,7 +122,9 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 	start(t, "identity", identityBin, identityAddr,
 		"GITSTACK_IDENTITY_ADDR="+identityAddr,
 		"GITSTACK_IDENTITY_DB_URL="+dsn,
-		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
+		"GITSTACK_SERVICE_SECRET_GATEWAY="+serviceSecret,
+		"GITSTACK_SERVICE_SECRET_CORE="+coreSecret,
+		"GITSTACK_SERVICE_SECRET_GIT="+gitSecret,
 		"GITSTACK_IDENTITY_ADMIN_USERNAME=admin",
 		"GITSTACK_IDENTITY_ADMIN_PASSWORD="+adminPassword,
 	)
@@ -127,7 +132,7 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 		"GITSTACK_GATEWAY_ADDR="+gatewayAddr,
 		"GITSTACK_CORE_URL="+coreSrv.URL,
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
-		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
+		"GITSTACK_SERVICE_SECRET_GATEWAY="+serviceSecret,
 		"GITSTACK_GATEWAY_AUTH_CACHE_TTL=1s",
 		"GITSTACK_GATEWAY_AUTH_CACHE_NEGATIVE_TTL=1s",
 	)
@@ -138,7 +143,8 @@ func newGitEnv(t *testing.T, opts ...httpserver.Option) *gitEnv {
 		"GITSTACK_GIT_NATS_URL="+natsSrv.ClientURL(),
 		"GITSTACK_IDENTITY_URL=http://"+identityAddr,
 		"GITSTACK_CORE_URL="+coreSrv.URL,
-		"GITSTACK_IDENTITY_SERVICE_SECRET="+serviceSecret,
+		"GITSTACK_SERVICE_SECRET_GIT="+gitSecret,
+		"GITSTACK_SERVICE_SECRET_CORE="+coreSecret,
 	)
 	waitTCP(t, sshAddr)
 

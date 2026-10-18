@@ -49,7 +49,7 @@ vi.mock('../../lib/pullMirrorsApi', () => ({
   importRepo: vi.fn(),
   fetchPullMirror: vi.fn(),
   enablePullMirror: vi.fn(),
-  editPullMirror: vi.fn(),
+  updatePullMirror: vi.fn(),
   syncPullMirror: vi.fn(),
   pausePullMirror: vi.fn(),
   resumePullMirror: vi.fn(),

@@ -18,8 +18,15 @@ const (
 	EnvDataDir = "GITSTACK_GIT_DATA_DIR"
 	// EnvLogLevel: debug|info|warn|error (default info).
 	EnvLogLevel = "GITSTACK_GIT_LOG_LEVEL"
-	// EnvServiceSecret: segreto di servizio, lo stesso di core e identity.
+	// EnvServiceSecret: segreto condiviso storico (F9), vale solo per i
+	// segreti per chiamante che mancano.
 	EnvServiceSecret = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	// EnvSecretGit: segreto di servizio del servizio git (chiave `git`),
+	// con cui firma verso identity (Bearer) e core (identità).
+	EnvSecretGit = "GITSTACK_SERVICE_SECRET_GIT"
+	// EnvSecretCore: segreto di servizio di core, con cui verifica le
+	// chiamate a /internal/*.
+	EnvSecretCore = "GITSTACK_SERVICE_SECRET_CORE"
 	// EnvSSHAddr: indirizzo del server SSH integrato (default ":2222", R7);
 	// "off" lo disattiva. Mai la 22: l'installer non tocca l'SSH dell'host.
 	EnvSSHAddr = "GITSTACK_GIT_SSH_ADDR"
@@ -36,7 +43,14 @@ const (
 	// EnvRepoSizeWarn: oltre questa dimensione del repo il push è accettato con
 	// un avviso (R6). Stesso formato; default 5GB; 0 = nessun avviso.
 	EnvRepoSizeWarn = "GITSTACK_GIT_REPO_SIZE_WARN"
-	EnvCoreURL      = "GITSTACK_CORE_URL"
+	// EnvMirrorMaxFetch: tetto di crescita del repo in un singolo fetch di un
+	// pull mirror (F18, V12.1.1). Oltre il fetch è interrotto e l'aggiornamento
+	// fallisce. Stesso formato; default 5GB; 0 = nessun tetto.
+	EnvMirrorMaxFetch = "GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE"
+	// EnvReceiveFsck: `off` spegne receive.fsckObjects sul receive-pack (F18);
+	// vuoto o `on` lo lascia attivo (default).
+	EnvReceiveFsck = "GITSTACK_GIT_RECEIVE_FSCK"
+	EnvCoreURL     = "GITSTACK_CORE_URL"
 	// EnvNatsURL: indirizzo del bus NATS JetStream (es. nats://nats:4222) su
 	// cui pubblicare git.push. Vuoto = nessun evento (il servizio lo dice nel
 	// log all'avvio); NATS non raggiungibile non ferma né i push né l'avvio.
@@ -57,9 +71,13 @@ type Config struct {
 	Addr     string
 	DataDir  string
 	LogLevel string
-	// ServiceSecret firma gli header d'identità; vuoto = ogni chiamata
-	// interna è rifiutata con 401. Non va mai nei log né negli errori.
+	// ServiceSecret è il segreto proprio del servizio git: firma le
+	// chiamate verso identity e core. Non va mai nei log né negli errori.
+	// Un elenco "nuova,vecchia" è accettato (rotazione): firma con la prima.
 	ServiceSecret string
+	// CoreSecret è il segreto di core: verifica le chiamate a /internal/*;
+	// vuoto = ogni chiamata interna è rifiutata con 401.
+	CoreSecret string
 	// SSHAddr è l'indirizzo di ascolto SSH; vuoto = SSH disattivato. Il server
 	// SSH parte solo se ci sono anche IdentityURL, CoreURL e ServiceSecret.
 	SSHAddr string
@@ -71,6 +89,10 @@ type Config struct {
 	// MaxBlobBytes e RepoWarnBytes sono le soglie di R6 in byte (0 = disattivata).
 	MaxBlobBytes  int64
 	RepoWarnBytes int64
+	// MirrorMaxFetchBytes: vedi EnvMirrorMaxFetch (0 = nessun tetto).
+	MirrorMaxFetchBytes int64
+	// NoFsck: vedi EnvReceiveFsck.
+	NoFsck bool
 	// NatsURL: vuoto = git.push non viene pubblicato.
 	NatsURL string
 	// MirrorCAFile: vedi EnvMirrorCAFile; vuoto = CA di sistema.
@@ -82,7 +104,7 @@ func Load() (Config, error) { return load(os.LookupEnv) }
 
 func load(lookup func(string) (string, bool)) (Config, error) {
 	var errs []string
-	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30}
+	cfg := Config{Addr: ":8080", LogLevel: "info", SSHAddr: DefaultSSHAddr, MaxBlobBytes: 100 << 20, RepoWarnBytes: 5 << 30, MirrorMaxFetchBytes: 5 << 30}
 
 	if v, ok := lookup(EnvAddr); ok && strings.TrimSpace(v) != "" {
 		cfg.Addr = strings.TrimSpace(v)
@@ -107,9 +129,18 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 	// Il valore del segreto non entra mai in un messaggio d'errore.
+	legacy := ""
 	if v, ok := lookup(EnvServiceSecret); ok {
-		cfg.ServiceSecret = strings.TrimSpace(v)
+		legacy = strings.TrimSpace(v)
 	}
+	pick := func(env string) string {
+		if v, ok := lookup(env); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+		return legacy
+	}
+	cfg.ServiceSecret = pick(EnvSecretGit)
+	cfg.CoreSecret = pick(EnvSecretCore)
 
 	if v, ok := lookup(EnvSSHAddr); ok && strings.TrimSpace(v) != "" {
 		v = strings.TrimSpace(v)
@@ -133,6 +164,15 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	if v, ok := lookup(EnvNatsURL); ok {
 		cfg.NatsURL = strings.TrimSpace(v)
 	}
+	if v, ok := lookup(EnvReceiveFsck); ok {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "on":
+		case "off":
+			cfg.NoFsck = true
+		default:
+			errs = append(errs, fmt.Sprintf("%s deve essere on oppure off: %q", EnvReceiveFsck, v))
+		}
+	}
 	if v, ok := lookup(EnvMirrorCAFile); ok {
 		cfg.MirrorCAFile = strings.TrimSpace(v)
 	}
@@ -140,7 +180,7 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 	for _, s := range []struct {
 		env string
 		dst *int64
-	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}} {
+	}{{EnvMaxBlobSize, &cfg.MaxBlobBytes}, {EnvRepoSizeWarn, &cfg.RepoWarnBytes}, {EnvMirrorMaxFetch, &cfg.MirrorMaxFetchBytes}} {
 		if v, ok := lookup(s.env); ok && strings.TrimSpace(v) != "" {
 			n, err := ParseSize(v)
 			if err != nil {

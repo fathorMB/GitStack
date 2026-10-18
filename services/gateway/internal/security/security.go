@@ -75,6 +75,13 @@ type Route struct {
 	// gateway lo verifica con identity dopo l'autenticazione.
 	Permission           Permission
 	PasswordChangeExempt Exemption
+	// TotpEnrollExempt: la rotta passa anche con una sessione di
+	// amministratore che deve ancora attivare il TOTP (F11); le altre
+	// rispondono 403 totp_enrollment_required.
+	TotpEnrollExempt bool
+	// JSONBody: il corpo dichiarato è solo application/json; una richiesta
+	// con un corpo di altro tipo è rifiutata con 415 (F15).
+	JSONBody bool
 }
 
 // Accepts dice se la rotta ammette il tipo di credenziale.

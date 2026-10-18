@@ -159,3 +159,67 @@ func TestBranchPrincipaleSenzaProtezione(t *testing.T) {
 		t.Fatalf("main doveva essere eliminato: %s", out)
 	}
 }
+
+// TestPushFsckRejectsMalformedObjects: receive.fsckObjects (F18, V12.1.1). Il
+// client crea con hash-object --literally un commit con l'autore malformato
+// (manca «>»), lo pubblica con transfer.fsckObjects spento e il server lo
+// rifiuta; un commit regolare passa.
+func TestPushFsckRejectsMalformedObjects(t *testing.T) {
+	e := setup(t)
+	w := cloneAlice(t, e)
+	head := strings.TrimSpace(mustGit(t, w, "rev-parse", "HEAD"))
+	tree := strings.TrimSpace(mustGit(t, w, "rev-parse", "HEAD^{tree}"))
+	raw := "tree " + tree + "\nparent " + head + "\n" +
+		"author Mallory <broken 1700000000 +0000\n" +
+		"committer Mallory <m@example.com> 1700000000 +0000\n\nmalformato\n"
+	rawFile := filepath.Join(t.TempDir(), "commit.txt")
+	if err := os.WriteFile(rawFile, []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bad := strings.TrimSpace(mustGit(t, w, "hash-object", "-t", "commit", "-w", "--literally", rawFile))
+
+	out, err := git(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", bad+":refs/heads/malformato")
+	if err == nil {
+		t.Fatalf("il push di un oggetto malformato doveva fallire:\n%s", out)
+	}
+	if !strings.Contains(out, "fsck") && !strings.Contains(out, "badEmail") {
+		t.Errorf("il rifiuto non cita fsck:\n%s", out)
+	}
+	dir, _ := e.store.RepoPath(repoPriv)
+	if o, err := git(t, dir, "rev-parse", "--verify", "refs/heads/malformato"); err == nil {
+		t.Fatalf("il ref malformato non doveva esistere: %s", o)
+	}
+
+	// Un push regolare passa.
+	mustGit(t, w, "commit", "--allow-empty", "-m", "regolare")
+	mustGit(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", "HEAD")
+}
+
+// Le anomalie innocue delle storie importate (fuso orario non valido) non
+// fanno rifiutare il push, e con GITSTACK_GIT_RECEIVE_FSCK=off passa anche un
+// oggetto malformato.
+func TestPushFsckLegacyWarningsAndOff(t *testing.T) {
+	mk := func(t *testing.T, w, author string) string {
+		head := strings.TrimSpace(mustGit(t, w, "rev-parse", "HEAD"))
+		tree := strings.TrimSpace(mustGit(t, w, "rev-parse", "HEAD^{tree}"))
+		raw := "tree " + tree + "\nparent " + head + "\nauthor " + author + "\ncommitter Old <old@example.com> 1700000000 +0000\n\nstoria vecchia\n"
+		f := filepath.Join(t.TempDir(), "c.txt")
+		if err := os.WriteFile(f, []byte(raw), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(mustGit(t, w, "hash-object", "-t", "commit", "-w", "--literally", f))
+	}
+	e := setup(t)
+	w := cloneAlice(t, e)
+	tz := mk(t, w, "Old <old@example.com> 1700000000 +051800")
+	if out, err := git(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", tz+":refs/heads/vecchia"); err != nil {
+		t.Fatalf("un fuso orario non valido doveva passare con un avviso: %v\n%s", err, out)
+	}
+
+	e = setupWith(t, receiverules.Limits{NoFsck: true}, nil)
+	w = cloneAlice(t, e)
+	bad := mk(t, w, "Mallory <broken 1700000000 +0000")
+	if out, err := git(t, w, "-c", "transfer.fsckObjects=false", "push", "origin", bad+":refs/heads/malformato"); err != nil {
+		t.Fatalf("con fsck spento il push doveva passare: %v\n%s", err, out)
+	}
+}

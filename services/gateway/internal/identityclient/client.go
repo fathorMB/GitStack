@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/fathorMB/GitStack/services/gateway/internal/trust"
 )
 
 // Kind è il tipo di credenziale, se il gateway lo sa dal modo in cui è
@@ -49,7 +51,10 @@ type Caller struct {
 	AuthMethod         string
 	Scopes             []string
 	MustChangePassword bool
-	ExpiresAt          *time.Time
+	// MustEnrollTotp: amministratore con sessione a password che deve
+	// ancora attivare il TOTP (F11).
+	MustEnrollTotp bool
+	ExpiresAt      *time.Time
 	// IsToken: la credenziale è un token personale (ha scope); false per le
 	// sessioni web, che non hanno scope.
 	IsToken bool
@@ -74,7 +79,7 @@ func NewClient(base *url.URL, secret string, timeout time.Duration) *Client {
 	return &Client{
 		endpoint:            strings.TrimRight(base.String(), "/") + "/internal/verify",
 		permissionsEndpoint: strings.TrimRight(base.String(), "/") + "/internal/permissions/check",
-		secret:              secret,
+		secret:              trust.SigningKey(secret),
 		http:                &http.Client{Timeout: timeout},
 	}
 }
@@ -144,6 +149,9 @@ func (c *Client) Verify(ctx context.Context, credential string, kind Kind) (Resu
 	}
 	if p.MustChangePassword != nil {
 		res.Principal.MustChangePassword = *p.MustChangePassword
+	}
+	if p.MustEnrollTotp != nil {
+		res.Principal.MustEnrollTotp = *p.MustEnrollTotp
 	}
 	if p.Scopes != nil {
 		for _, s := range *p.Scopes {

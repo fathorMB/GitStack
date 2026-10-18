@@ -36,6 +36,33 @@ func (e AccessSourceKind) Valid() bool {
 	}
 }
 
+// Defines values for CredentialEventKind.
+const (
+	PasswordChanged CredentialEventKind = "password_changed"
+	PasswordReset   CredentialEventKind = "password_reset"
+	SshKeyAdded     CredentialEventKind = "ssh_key_added"
+	TokenCreated    CredentialEventKind = "token_created"
+	TokenExpiring   CredentialEventKind = "token_expiring"
+)
+
+// Valid indicates whether the value is a known member of the CredentialEventKind enum.
+func (e CredentialEventKind) Valid() bool {
+	switch e {
+	case PasswordChanged:
+		return true
+	case PasswordReset:
+		return true
+	case SshKeyAdded:
+		return true
+	case TokenCreated:
+		return true
+	case TokenExpiring:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GrantSubjectType.
 const (
 	GrantSubjectTypeTeam GrantSubjectType = "team"
@@ -323,6 +350,30 @@ type CheckPermissionResult struct {
 	EffectiveRole *ResourceRole `json:"effectiveRole,omitempty"`
 }
 
+// CredentialEvent defines model for CredentialEvent.
+type CredentialEvent struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Detail Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+	Detail map[string]interface{} `json:"detail"`
+	Id     int64                  `json:"id"`
+	Kind   CredentialEventKind    `json:"kind"`
+	UserId openapi_types.UUID     `json:"userId"`
+}
+
+// CredentialEventKind defines model for CredentialEvent.Kind.
+type CredentialEventKind string
+
+// CredentialEventList defines model for CredentialEventList.
+type CredentialEventList struct {
+	Items []CredentialEvent `json:"items"`
+}
+
+// CredentialEventsAckInput defines model for CredentialEventsAckInput.
+type CredentialEventsAckInput struct {
+	Ids []int64 `json:"ids"`
+}
+
 // Error Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type Error struct {
 	Error struct {
@@ -445,6 +496,9 @@ type Principal struct {
 
 	// MustChangePassword Vero per una sessione la cui password iniziale non e' ancora stata cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify` risponde comunque `active` true: il gateway risponde 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza. Assente equivale a falso.
 	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
+
+	// MustEnrollTotp Vero per una sessione a password di un amministratore che deve ancora attivare il TOTP (installazione che lo impone). Il gateway risponde 403 `totp_enrollment_required` a ogni rotta senza `x-totp-enroll-exempt`. Assente equivale a falso.
+	MustEnrollTotp *bool `json:"mustEnrollTotp,omitempty"`
 
 	// Scopes Solo per i token; assenti per le sessioni.
 	Scopes *[]TokenScope `json:"scopes,omitempty"`
@@ -679,6 +733,9 @@ type RepoOwnerParam = Name
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
 
+// SessionIdParam defines model for SessionIdParam.
+type SessionIdParam = openapi_types.UUID
+
 // SshKeyIdParam defines model for SshKeyIdParam.
 type SshKeyIdParam = openapi_types.UUID
 
@@ -715,6 +772,14 @@ type Unauthorized = Error
 
 // UnexpectedError Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type UnexpectedError = Error
+
+// ListCredentialEventsParams defines parameters for ListCredentialEvents.
+type ListCredentialEventsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.
+type AckCredentialEventsJSONRequestBody = CredentialEventsAckInput
 
 // ResolveMentionsJSONRequestBody defines body for ResolveMentions for application/json ContentType.
 type ResolveMentionsJSONRequestBody = ResolveMentionsInput

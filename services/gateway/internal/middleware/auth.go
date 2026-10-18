@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"mime"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,8 +16,13 @@ import (
 	"github.com/fathorMB/GitStack/services/gateway/internal/trust"
 )
 
-// SessionCookie è il nome del cookie di sessione web.
+// SessionCookie è il nome storico del cookie di sessione web (HTTP).
 const SessionCookie = "gst_session"
+
+// HostSessionCookie è il nome con prefisso __Host- che identity usa quando
+// serve in HTTPS (F16, V3.4.4); le sessioni aperte con il nome storico restano
+// valide, quindi il gateway legge entrambi.
+const HostSessionCookie = "__Host-gst_session"
 
 // tokenPrefix è il prefisso dei token personali.
 const tokenPrefix = "gst_"
@@ -72,10 +78,17 @@ func Auth(cfg AuthConfig) Middleware {
 			if !ok {
 				cfg.logger().Warn("rotta senza dichiarazione di sicurezza",
 					"request_id", RequestIDFromContext(r.Context()), "method", r.Method, "path", r.URL.Path)
+				setLogReason(r.Context(), "not_found")
 				writeAuthError(w, http.StatusNotFound, "not_found", "Risorsa non trovata.", nil)
 				return
 			}
 			route := m.Route
+			if route.JSONBody && !jsonContentType(r) {
+				setLogReason(r.Context(), "unsupported_media_type")
+				writeAuthError(w, http.StatusUnsupportedMediaType, "unsupported_media_type",
+					"Il corpo della richiesta deve essere application/json.", nil)
+				return
+			}
 			if route.Public {
 				next.ServeHTTP(w, r)
 				return
@@ -85,14 +98,23 @@ func Auth(cfg AuthConfig) Middleware {
 			if len(cred) > maxCredentialLen {
 				// identity risponderebbe 400 e il client lo tradurrebbe in 503:
 				// una credenziale troppo lunga è solo non valida.
+				setLogReason(r.Context(), "credential_too_long")
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Credenziale non valida o scaduta.", nil)
 				return
 			}
 			if cred == "" || !route.Accepts(securityKind(kind)) {
+				setLogReason(r.Context(), reasonMissingCredential(cred))
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Autenticazione richiesta.", nil)
 				return
 			}
+			if kind == identityclient.KindSession && crossSiteUnsafe(r) {
+				setLogReason(r.Context(), "cross_site_request")
+				writeAuthError(w, http.StatusForbidden, "cross_site_request",
+					"Richiesta rifiutata: origine diversa da quella di GitStack.", nil)
+				return
+			}
 			if cfg.Verifier == nil {
+				setLogReason(r.Context(), "identity_unavailable")
 				writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non è configurato.", nil)
 				return
 			}
@@ -100,14 +122,21 @@ func Auth(cfg AuthConfig) Middleware {
 			if err != nil {
 				cfg.logger().Error("verifica della credenziale non riuscita",
 					"request_id", RequestIDFromContext(r.Context()), "err", unavailableReason(err))
+				setLogReason(r.Context(), "identity_unavailable")
 				writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non ha risposto.", nil)
 				return
 			}
 			if !res.Active {
+				setLogReason(r.Context(), "credential_inactive")
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Credenziale non valida o scaduta.", nil)
 				return
 			}
 			p := res.Principal
+			tokenID := ""
+			if p.IsToken {
+				tokenID = p.CredentialID
+			}
+			setLogActor(r.Context(), p.UserID, p.Username, tokenID)
 
 			// Il logout revoca la sessione: la voce in cache non deve restare valida
 			// fino al TTL, neanche se identity risponde 204.
@@ -119,6 +148,7 @@ func Auth(cfg AuthConfig) Middleware {
 				exempt := route.PasswordChangeExempt == security.ExemptAlways ||
 					(route.PasswordChangeExempt == security.ExemptSelf && m.Params["username"] == p.Username)
 				if !exempt {
+					setLogReason(r.Context(), "password_change_required")
 					writeAuthError(w, http.StatusForbidden, "password_change_required", "La password iniziale va cambiata prima di continuare.", nil)
 					return
 				}
@@ -129,8 +159,19 @@ func Auth(cfg AuthConfig) Middleware {
 				}
 			}
 
+			if p.MustEnrollTotp && !route.TotpEnrollExempt {
+				setLogReason(r.Context(), "totp_enrollment_required")
+				writeAuthError(w, http.StatusForbidden, "totp_enrollment_required", "L'installazione richiede il secondo fattore: attiva il TOTP prima di continuare.", nil)
+				return
+			}
+			if p.MustEnrollTotp && cfg.Forgetter != nil {
+				// Una richiesta esente può attivare il TOTP: la voce in cache non vale più.
+				defer cfg.Forgetter.Forget(cred)
+			}
+
 			if p.IsToken {
 				if missing := security.Missing(p.Scopes, route.Scopes); len(missing) > 0 {
+					setLogReason(r.Context(), "insufficient_scope")
 					writeAuthError(w, http.StatusForbidden, "insufficient_scope", "Il token non ha gli scope richiesti.",
 						map[string]any{"required": route.Scopes})
 					return
@@ -155,6 +196,18 @@ func Auth(cfg AuthConfig) Middleware {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// jsonContentType dice se una richiesta può proseguire su una rotta con corpo
+// JSON: senza corpo sempre sì; con un corpo il Content-Type deve essere
+// application/json (con o senza parametri come charset). Difesa in
+// profondità (F15): un form text/plain cross-site non arriva agli handler.
+func jsonContentType(r *http.Request) bool {
+	if r.ContentLength == 0 {
+		return true
+	}
+	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && mt == "application/json"
 }
 
 // headerSafe toglie i caratteri di controllo (un a capo in un header non
@@ -186,10 +239,12 @@ func (c AuthConfig) checkPermission(w http.ResponseWriter, r *http.Request, user
 	if err != nil {
 		c.logger().Error("verifica del permesso non riuscita",
 			"request_id", RequestIDFromContext(r.Context()), "err", unavailableReason(err))
+		setLogReason(r.Context(), "identity_unavailable")
 		writeAuthError(w, http.StatusServiceUnavailable, "identity_unavailable", "Il servizio identity non ha risposto.", nil)
 		return false
 	}
 	if !allowed {
+		setLogReason(r.Context(), "permission_denied")
 		writeAuthError(w, http.StatusForbidden, "forbidden", "Permesso negato.", nil)
 		return false
 	}
@@ -217,8 +272,10 @@ func credentialFrom(r *http.Request) (string, identityclient.Kind) {
 		// Un header Authorization che non è un token gst_ non è una
 		// credenziale per il gateway: si guarda il cookie.
 	}
-	if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
-		return c.Value, identityclient.KindSession
+	for _, name := range []string{HostSessionCookie, SessionCookie} {
+		if c, err := r.Cookie(name); err == nil && c.Value != "" {
+			return c.Value, identityclient.KindSession
+		}
 	}
 	return "", ""
 }
@@ -228,6 +285,15 @@ func securityKind(k identityclient.Kind) security.CredentialKind {
 		return security.CredentialToken
 	}
 	return security.CredentialSession
+}
+
+// reasonMissingCredential distingue nel log «nessuna credenziale» da «tipo
+// di credenziale non ammesso dalla rotta».
+func reasonMissingCredential(cred string) string {
+	if cred == "" {
+		return "missing_credential"
+	}
+	return "credential_kind_not_allowed"
 }
 
 func unavailableReason(err error) string {

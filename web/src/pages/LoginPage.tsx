@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, ErrorAlert, FormField, Logo, PasswordInput, TextInput } from '../components';
-import { fetchOidcProviders, loginWithPassword, oidcStartUrl } from '../lib/authApi';
+import { SECOND_FACTOR_REQUIRED, fetchOidcProviders, loginWithPassword, oidcStartUrl } from '../lib/authApi';
 import type { OidcProvider } from '../lib/authApi';
-import { describeError } from '../lib/http';
+import { ApiError, describeError } from '../lib/http';
 import { useAuth } from '../routes/auth';
 
 // Login (mockup 01, design/mockups-v1 data-screen="login"): pannello di
@@ -14,7 +14,7 @@ import { useAuth } from '../routes/auth';
 // Il cookie di sessione e' HttpOnly: la UI non lo legge, dopo il 200 si va
 // dove si voleva andare (stato di rotta `from`).
 export function LoginPage() {
-  const { clearUnauthorized, setMustChangePassword } = useAuth();
+  const { clearUnauthorized, setMustChangePassword, setMustEnrollTotp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
@@ -24,6 +24,10 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Secondo passo (F11): la password era giusta e l'utente ha il TOTP attivo.
+  const [secondStep, setSecondStep] = useState(false);
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [code, setCode] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -41,12 +45,25 @@ export function LoginPage() {
       setError('Enter your username or email and your password.');
       return;
     }
+    if (secondStep && !code.trim()) {
+      setError(useRecovery ? 'Enter one of your recovery codes.' : 'Enter the 6-digit code from your authenticator app.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      const session = await loginWithPassword(username.trim(), password);
+      const session = secondStep
+        ? await loginWithPassword(
+            username.trim(),
+            password,
+            useRecovery ? { recoveryCode: code.trim() } : { totpCode: code.replace(/\s+/g, '') },
+          )
+        : await loginWithPassword(username.trim(), password);
       clearUnauthorized();
-      if (session?.mustChangePassword) {
+      setMustEnrollTotp(session?.mustEnrollTotp === true);
+      if (session?.mustEnrollTotp) {
+        navigate('/settings/security', { replace: true });
+      } else if (session?.mustChangePassword) {
         setMustChangePassword(true);
         navigate('/change-password', { replace: true, state: { from } });
       } else {
@@ -54,9 +71,29 @@ export function LoginPage() {
         navigate(from, { replace: true });
       }
     } catch (err) {
-      setError(describeError(err));
+      if (err instanceof ApiError && err.code === SECOND_FACTOR_REQUIRED) {
+        setSecondStep(true);
+        setCode('');
+        setError(null);
+      } else if (secondStep && err instanceof ApiError && err.code === 'invalid_credentials') {
+        setError(
+          useRecovery
+            ? 'That recovery code is not valid or was already used.'
+            : 'That code is not valid. Check the time on your device and try again.',
+        );
+      } else {
+        setError(describeError(err));
+      }
       setSubmitting(false);
     }
+  }
+
+  function backToPassword() {
+    setSecondStep(false);
+    setUseRecovery(false);
+    setCode('');
+    setError(null);
+    setPassword('');
   }
 
   return (
@@ -86,20 +123,64 @@ export function LoginPage() {
           {providers.length > 0 ? <div className="or">or</div> : null}
           <form className="stack login-form" onSubmit={(e) => void handleSubmit(e)} noValidate>
             {error ? <ErrorAlert message={error} /> : null}
-            <FormField label="Username or email">
-              <TextInput
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                autoFocus
-              />
-            </FormField>
-            <FormField label="Password">
-              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-            </FormField>
-            <Button type="submit" variant="primary" className="btn-block" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
-            </Button>
+            {secondStep ? (
+              <>
+                <p className="muted">
+                  {useRecovery
+                    ? 'Enter one of your single-use recovery codes.'
+                    : 'Enter the 6-digit code from your authenticator app.'}
+                </p>
+                <FormField label={useRecovery ? 'Recovery code' : 'Authentication code'}>
+                  <TextInput
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    autoComplete="one-time-code"
+                    inputMode={useRecovery ? 'text' : 'numeric'}
+                    autoFocus
+                  />
+                </FormField>
+                <Button type="submit" variant="primary" className="btn-block" disabled={submitting}>
+                  {submitting ? 'Verifying…' : 'Verify'}
+                </Button>
+                <div className="row">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setUseRecovery(!useRecovery);
+                      setCode('');
+                      setError(null);
+                    }}
+                  >
+                    {useRecovery ? 'Use an authenticator code' : 'Use a recovery code'}
+                  </Button>
+                  <span className="sp" />
+                  <Button type="button" onClick={backToPassword}>
+                    Back
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <FormField label="Username or email">
+                  <TextInput
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </FormField>
+                <FormField label="Password">
+                  <PasswordInput
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                </FormField>
+                <Button type="submit" variant="primary" className="btn-block" disabled={submitting}>
+                  {submitting ? 'Signing in…' : 'Sign in'}
+                </Button>
+              </>
+            )}
           </form>
           <p className="small muted login-foot">
             Coding agent or CLI? Create an <Link to="/settings/tokens">access token</Link> and run{' '}

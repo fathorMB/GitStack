@@ -33,7 +33,7 @@ func TestBuildRouter_RotteMontate(t *testing.T) {
 		{"ssh-keys interno senza segreto", secret, "GET", "/internal/ssh-keys/SHA256:abc", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := config.Config{ServiceSecret: tc.secret}
+			cfg := config.Config{GatewaySecret: tc.secret, CoreSecret: tc.secret, GitSecret: tc.secret}
 			router := buildRouter(cfg, nil, &auth.Service{}, nil, logger)
 			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader("{}"))
 			if tc.auth != "" {
@@ -55,7 +55,7 @@ func TestBuildRouter_RotteMontate(t *testing.T) {
 // Con il segreto giusto /internal/verify passa serviceAuth e arriva al
 // gestore: un corpo non valido dà 400, non 401/501.
 func TestBuildRouter_InternalVerifyConSegreto(t *testing.T) {
-	cfg := config.Config{ServiceSecret: "s3gr3to"}
+	cfg := config.Config{GatewaySecret: "s3gr3to", CoreSecret: "s3gr3to", GitSecret: "s3gr3to"}
 	router := buildRouter(cfg, nil, &auth.Service{}, nil, slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil)))
 	req := httptest.NewRequest("POST", "/internal/verify", strings.NewReader("non json"))
 	req.Header.Set("Authorization", "Bearer s3gr3to")
@@ -63,5 +63,38 @@ func TestBuildRouter_InternalVerifyConSegreto(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code == http.StatusNotImplemented || rec.Code == http.StatusUnauthorized || rec.Code == http.StatusNotFound {
 		t.Errorf("POST /internal/verify = %d", rec.Code)
+	}
+}
+
+// F9: ogni servizio ha il suo segreto e /internal/* lo riconosce. Una chiave
+// sconosciuta è 401; la chiave di git o del gateway non apre le operazioni
+// che il loro codice non chiama (403, prima di toccare il database).
+func TestBuildRouter_SegretiPerChiamante(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
+	cfg := config.Config{GatewaySecret: "kg-nuova,kg-vecchia", CoreSecret: "kc", GitSecret: "kgit"}
+	router := buildRouter(cfg, nil, &auth.Service{}, nil, logger)
+
+	for _, tc := range []struct {
+		name, key, method, path string
+		want                    int
+	}{
+		{"git: lookup utenti", "kgit", "POST", "/internal/users/lookup-ids", http.StatusForbidden},
+		{"git: grant del creatore", "kgit", "POST", "/internal/resources/00000000-0000-0000-0000-000000000000/grants/creator", http.StatusForbidden},
+		{"gateway: lookup utenti", "kg-nuova", "POST", "/internal/users/lookup-ids", http.StatusForbidden},
+		{"gateway, vecchia chiave: lookup utenti", "kg-vecchia", "POST", "/internal/users/lookup-ids", http.StatusForbidden},
+		{"chiave sconosciuta", "altra", "POST", "/internal/verify", http.StatusUnauthorized},
+		{"nessuna chiave", "", "POST", "/internal/verify", http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader("{}"))
+			if tc.key != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.key)
+			}
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Errorf("%s %s = %d, voluto %d", tc.method, tc.path, rec.Code, tc.want)
+			}
+		})
 	}
 }

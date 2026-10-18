@@ -26,12 +26,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fathorMB/GitStack/pkg/events/gitpush"
@@ -125,6 +129,10 @@ type Service struct {
 	Events *pushevent.Notifier
 	// Timeout del fetch; zero = DefaultTimeout.
 	Timeout time.Duration
+	// MaxFetchBytes: tetto di crescita della cartella degli oggetti del repo in
+	// un fetch (F18, V12.1.1: un'origine non può riempire il volume git). Oltre,
+	// il fetch è interrotto e gli oggetti scaricati sono eliminati. 0 = nessun tetto.
+	MaxFetchBytes int64
 	// CheckIP è l'ultima difesa sull'IP fissato da core (che applica la policy
 	// completa di pkg/egress, con le liste e i CIDR del cluster): nil = DefaultCheckIP,
 	// che rifiuta loopback, link-local, non specificato e multicast.
@@ -286,7 +294,13 @@ func (s *Service) Pull(ctx context.Context, repoID string, in Input) (Result, er
 	}()
 
 	deadline := time.Now().Add(s.timeout())
-	out, runErr := s.Run.RunEnv(ctx, dir, s.timeout(), env, fetchArgsProxy(u, ip, in.URL, proxy != nil)...)
+	fetchCtx, stopFetch := context.WithCancel(ctx)
+	capped := s.watchGrowth(fetchCtx, stopFetch, dir)
+	out, runErr := s.Run.RunEnv(fetchCtx, dir, s.timeout(), env, fetchArgsProxy(u, ip, in.URL, proxy != nil)...)
+	stopFetch()
+	if capped() {
+		return s.capExceeded(ctx, dir, start, res), nil
+	}
 	if runErr != nil {
 		res.Error = redact(runErr.Error())
 		if errors.Is(runErr, context.DeadlineExceeded) {
@@ -333,6 +347,91 @@ func (s *Service) Pull(ctx context.Context, repoID string, in Input) (Result, er
 	}
 	res.DurationMs = time.Since(start).Milliseconds()
 	return res, nil
+}
+
+// objectsSize è la dimensione dei file sotto <dir>/objects (compresi i
+// tmp_pack in scrittura).
+func objectsSize(dir string) int64 {
+	var total int64
+	_ = filepath.WalkDir(filepath.Join(dir, "objects"), func(_ string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if info, ierr := d.Info(); ierr == nil {
+			total += info.Size()
+		}
+		return nil
+	})
+	return total
+}
+
+// capPollInterval è ogni quanto si misura la crescita durante il fetch.
+const capPollInterval = 100 * time.Millisecond
+
+// watchGrowth misura la crescita degli oggetti del repo mentre il fetch gira e
+// lo interrompe (stop) quando supera MaxFetchBytes. Ritorna una funzione che
+// ferma il controllo e dice se il tetto è stato superato, anche con una
+// misura finale (un fetch più veloce di un intervallo di controllo). Con tetto
+// 0 non fa niente.
+func (s *Service) watchGrowth(ctx context.Context, stop context.CancelFunc, dir string) func() bool {
+	limit := s.MaxFetchBytes
+	if limit <= 0 {
+		return func() bool { return false }
+	}
+	base := objectsSize(dir)
+	var exceeded atomic.Bool
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		t := time.NewTicker(capPollInterval)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-done:
+				return
+			case <-t.C:
+				if objectsSize(dir)-base > limit {
+					exceeded.Store(true)
+					stop()
+					return
+				}
+			}
+		}
+	}()
+	return func() bool {
+		close(done)
+		<-finished
+		return exceeded.Load() || objectsSize(dir)-base > limit
+	}
+}
+
+// capExceeded chiude un aggiornamento fermato dal tetto: nessun ref cambia, gli
+// oggetti scaricati (ora senza ref) e i pacchetti incompleti si eliminano.
+func (s *Service) capExceeded(ctx context.Context, dir string, start time.Time, res Result) Result {
+	_ = s.clearIncoming(ctx, dir)
+	tmp, _ := filepath.Glob(filepath.Join(dir, "objects", "pack", "tmp_pack_*"))
+	for _, f := range tmp {
+		_ = os.Remove(f)
+	}
+	_, _ = s.Run.Output(ctx, dir, nil, "gc", "--prune=now", "--quiet")
+	res.Error = fmt.Sprintf("il fetch supera il tetto di %s per aggiornamento (GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE): interrotto, nessun ref aggiornato", humanBytes(s.MaxFetchBytes))
+	res.DurationMs = time.Since(start).Milliseconds()
+	return res
+}
+
+func humanBytes(n int64) string {
+	switch {
+	case n >= 1<<30 && n%(1<<30) == 0:
+		return fmt.Sprintf("%d GB", n>>30)
+	case n >= 1<<20 && n%(1<<20) == 0:
+		return fmt.Sprintf("%d MB", n>>20)
+	case n >= 1<<10 && n%(1<<10) == 0:
+		return fmt.Sprintf("%d KB", n>>10)
+	}
+	return fmt.Sprintf("%d byte", n)
 }
 
 // apply decide ref per ref e scrive solo creazioni e fast-forward.

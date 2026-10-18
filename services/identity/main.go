@@ -21,6 +21,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
 	"github.com/fathorMB/GitStack/services/identity/internal/config"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/db"
 	"github.com/fathorMB/GitStack/services/identity/internal/httpapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/httpserver"
@@ -29,6 +30,7 @@ import (
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
 	"github.com/fathorMB/GitStack/services/identity/internal/permissions"
+	"github.com/fathorMB/GitStack/services/identity/internal/secondfactor"
 	"github.com/fathorMB/GitStack/services/identity/internal/sessions"
 	"github.com/fathorMB/GitStack/services/identity/internal/userkeys"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
@@ -188,10 +190,25 @@ func bootstrapAdmin(ctx context.Context, cfg config.Config, svc adminBootstrappe
 func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg loginlimit.Config, logger *slog.Logger) int {
 	// Assembla il servizio di autenticazione composto da users, sessions
 	// e loginlimit; httpapi.New lo monta su un handler http.Handler.
+	sessionStore := sessions.New(pool, time.Now, cfg.SessionTTL)
+	sessionStore.SetIdleTimeout(cfg.SessionIdleTimeout)
 	svc := &auth.Service{
 		Users:    users.New(pool, time.Now),
-		Sessions: sessions.New(pool, time.Now, cfg.SessionTTL),
+		Sessions: sessionStore,
 		Limiter:  loginlimit.New(lcfg, time.Now),
+	}
+	// Secondo fattore TOTP (F11): sempre montato, così un utente che lo ha già
+	// attivo non entra con la sola password anche se le chiavi sparissero (in
+	// quel caso il login fallisce con un errore interno, non fail open).
+	keys := make([]secondfactor.Key, 0, len(cfg.TOTPKeys))
+	for _, k := range cfg.TOTPKeys {
+		keys = append(keys, secondfactor.Key{ID: k.ID, Key: k.Key})
+	}
+	mfa := secondfactor.New(pool, time.Now, keys, "GitStack")
+	svc.Second = mfa
+	svc.RequireAdminTOTP = cfg.TOTPRequiredForAdmins
+	if cfg.TOTPRequiredForAdmins {
+		logger.Info("TOTP obbligatorio per gli amministratori", "env", config.EnvTOTPRequiredForAdmins)
 	}
 	oidcSvc, err := buildOIDC(ctx, cfg, pool, svc, logger)
 	if err != nil {
@@ -236,18 +253,22 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, lcfg logi
 // personali, chiavi SSH e /internal/* (protetto dal segreto di servizio). Il
 // segreto non viene mai loggato: si segnala solo se manca.
 func buildRouter(cfg config.Config, pool *pgxpool.Pool, svc *auth.Service, oidcSvc *oidc.Service, logger *slog.Logger) http.Handler {
-	if cfg.ServiceSecret == "" {
-		logger.Warn("segreto di servizio non configurato: /internal/* risponde sempre 401",
-			"env", config.EnvServiceSecret)
+	if cfg.GatewaySecret == "" && cfg.CoreSecret == "" && cfg.GitSecret == "" {
+		logger.Warn("segreti di servizio non configurati: /internal/* risponde sempre 401",
+			"env", []string{config.EnvSecretGateway, config.EnvSecretCore, config.EnvSecretGit})
 	}
+	// Il secondo fattore è quello montato su svc (nil nei test del router).
+	mfa, _ := svc.Second.(*secondfactor.Service)
 	api := httpapi.New(svc, logger,
 		httpapi.WithTrustedProxies(cfg.TrustedProxies),
 		httpapi.WithTokens(apitokens.New(pool, time.Now, cfg.TokenMaxLifetime)),
 		httpapi.WithSSHKeys(userkeys.New(pool, time.Now)),
+		httpapi.WithCredentialEvents(credevents.New(pool, time.Now)),
 		httpapi.WithPermissions(permissions.New(pool, time.Now)),
-		httpapi.WithServiceSecret(cfg.ServiceSecret),
+		httpapi.WithServiceSecrets(cfg.GatewaySecret, cfg.CoreSecret, cfg.GitSecret),
 		httpapi.WithOIDC(oidcSvc),
 		httpapi.WithOrgs(orgs.New(pool, time.Now)),
+		httpapi.WithSecondFactor(mfa),
 	)
 	return httpserver.NewRouter(pool, api)
 }

@@ -52,3 +52,41 @@ describe('nginx.conf.template: raw dei file (GIT-81, regola B3)', () => {
     expect(out).toBe('/v1/auth/session');
   });
 });
+
+describe('nginx.conf.template: intestazioni di sicurezza (GIT-229, F3)', () => {
+  const headers = ['Content-Security-Policy', 'X-Frame-Options', 'X-Content-Type-Options', 'Referrer-Policy'];
+
+  it('sets CSP, frame-ancestors, nosniff and Referrer-Policy on the SPA and hides the nginx version', () => {
+    expect(conf).toMatch(/^\s*server_tokens off;/m);
+    for (const sel of ['/', '^~ /api/']) {
+      const loc = location(sel);
+      for (const h of headers) {
+        expect(loc, `${sel}: ${h}`).toMatch(new RegExp(`add_header ${h} ".+" always;`));
+      }
+    }
+    const spa = location('/');
+    const csp = /add_header Content-Security-Policy "([^"]+)"/.exec(spa)![1];
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'"); // <style> iniettato da Radix a runtime (dist/assets/*.js)
+    // Niente scappatoie per gli script.
+    expect(csp).not.toMatch(/script-src[^;]*('unsafe-inline'|'unsafe-eval'|\*)/);
+    expect(spa).toContain('X-Frame-Options "DENY"');
+    expect(spa).toContain('X-Content-Type-Options "nosniff"');
+    expect(spa).toContain('Referrer-Policy "no-referrer"');
+  });
+
+  it('ripete le intestazioni nelle location di /downloads, che hanno add_header propri', () => {
+    for (const sel of ['^~ /downloads/', '= /downloads/index.json', '= /downloads/ca.crt']) {
+      expect(location(sel)).toContain('Content-Security-Policy');
+    }
+  });
+
+  it('la build di Vite non ha script inline: index.html carica solo script esterni', async () => {
+    const html = (await import('../../index.html?raw')).default;
+    expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/i);
+    expect(html).not.toMatch(/<style[\s>]|\sstyle=|\sonclick=/i);
+  });
+});

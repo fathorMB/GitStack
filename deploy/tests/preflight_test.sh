@@ -150,15 +150,25 @@ run preflight_os
 expect_ok "ubuntu 22.04"
 expect_lacks "ubuntu 22.04" "non supportato"
 
+# Pop!_OS (N2 rivista il 2026-10-18): non ufficialmente supportato nella v1.0,
+# si installa senza --force ma con avviso, in italiano e in inglese.
 os_file pop 24.04
 run preflight_os
 expect_ok "pop 24.04"
-expect_lacks "pop 24.04" "non supportato"
+expect_has "pop 24.04: avviso in italiano" "non è supportato ufficialmente nella v1.0"
+expect_has "pop 24.04: avviso in inglese" "Not officially supported in v1.0"
 
 os_file pop 22.04
 run preflight_os
 expect_ok "pop 22.04"
-expect_lacks "pop 22.04" "non supportato"
+expect_has "pop 22.04: avviso in italiano" "non è supportato ufficialmente nella v1.0"
+expect_has "pop 22.04: avviso in inglese" "Not officially supported in v1.0"
+
+# Ubuntu: nessun avviso, solo il log del preflight.
+os_file ubuntu 24.04
+run preflight_os
+expect_ok "ubuntu senza avviso"
+expect_lacks "ubuntu senza avviso" "ATTENZIONE"
 
 os_file debian 12
 run preflight_os
@@ -478,6 +488,26 @@ k3s_secrets_encryption_enabled() { return 0; }
 run verify_k3s_hardening
 expect_fail "k3s: kubeconfig 644 ferma l'installer"
 expect_has "k3s: kubeconfig 644" "leggibile da altri account"
+
+# --- F3 (GIT-229): HSTS e TLS minimo 1.2 sull'ingress -------------------------
+# Senza helm in questo test si legge il sorgente dei template: l'HSTS è un
+# Middleware headers sulle rotte HTTPS, il TLS minimo una TLSOption richiamata
+# da Ingress e IngressRoute git.
+ING="${HERE}/../gitstack/templates/ingress.yaml"
+ING_GIT="${HERE}/../gitstack/templates/ingress-git.yaml"
+VALS="${HERE}/../gitstack/values.yaml"
+OUT="$(cat "${ING}" "${ING_GIT}" "${VALS}")"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: Middleware headers" "kind: Middleware"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: stsSeconds" "stsSeconds: {{ .Values.ingress.tls.hstsSeconds }}"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: HSTS anche su http" "forceSTSHeader: true"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: valore" "hstsSeconds: 31536000"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: TLSOption" "kind: TLSOption"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: minVersion" "minVersion: VersionTLS12"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: cipher AEAD" "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: annotazione options" "router.tls.options"
+expect_has "ingress sets HSTS and a TLS 1.2 minimum: IngressRoute git" "name: {{ \$fullname }}-tls"
+# Nessuna suite CBC, RC4 o 3DES, né TLS < 1.2.
+if grep -E 'CBC|RC4|3DES|VersionTLS1[01]' "${ING}" | grep -v '^#' >/dev/null; then RC=0; OUT="suite o versione debole in ingress.yaml"; bad "ingress sets HSTS and a TLS 1.2 minimum: niente suite deboli"; else ok; fi
 
 printf '\npreflight_test: %s ok, %s falliti\n' "${PASS}" "${FAILN}"
 [ "${FAILN}" -eq 0 ]

@@ -6,6 +6,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -100,6 +101,8 @@ func (s *server) CreateUserToken(w http.ResponseWriter, r *http.Request, usernam
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.token.created", &cur, "created_token_id", t.ID.String(), "token_name", in.Name, "scopes", scopes, "target", agent.Username)
+	s.credEvent(r, agent.ID, credevents.TokenCreated, map[string]any{"name": in.Name, "hint": t.Hint, "scopes": scopes, "expiresAt": t.ExpiresAt, "by": cur.User.Username})
 	base := toToken(t)
 	w.Header().Set("Location", "/v1/users/"+agent.Username+"/tokens/"+t.ID.String())
 	writeJSON(w, http.StatusCreated, openapi.CreatedToken{
@@ -110,7 +113,7 @@ func (s *server) CreateUserToken(w http.ResponseWriter, r *http.Request, usernam
 }
 
 func (s *server) RevokeUserToken(w http.ResponseWriter, r *http.Request, username openapi.UsernameParam, tokenId openapi.TokenIdParam) {
-	agent, ok := s.agentTarget(w, r, username)
+	agent, cur, ok := s.agentTargetCurrent(w, r, username)
 	if !ok {
 		return
 	}
@@ -124,5 +127,6 @@ func (s *server) RevokeUserToken(w http.ResponseWriter, r *http.Request, usernam
 		s.internal(w, r, err)
 		return
 	}
+	s.secInfo(r, "security.token.revoked", &cur, "revoked_token_id", tokenId.String(), "target", agent.Username)
 	w.WriteHeader(http.StatusNoContent)
 }

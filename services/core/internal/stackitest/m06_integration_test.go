@@ -12,8 +12,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
+	"mime/quotedprintable"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
 	"net/url"
 	"os"
 	"os/exec"
@@ -1250,6 +1253,130 @@ func TestM06E2E(t *testing.T) {
 			}
 		}
 		e.m06Deny("bob", "GET", issuePath(m06Vault, vaultN1, ""), nil, 404)
+	})
+
+	// --- F13: avvisi sulle credenziali (GIT-239) --------------------------------
+	// Va per ultimo: il primo giro consegna anche gli eventi di preparazione
+	// dello stack (password dell'admin, token e chiavi di tutti) e aggiungerebbe
+	// notifiche e email alle prove precedenti.
+	t.Run("credential_change_notifies_user", func(t *testing.T) {
+		cn := &notify.CredentialNotifier{Pool: e.pool, Source: e.idc, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), EmailEnabled: true}
+		if _, err := cn.Process(context.Background()); err != nil {
+			t.Fatalf("primo giro: %v", err)
+		}
+		e.flushMail()
+		credItems := func(user string) []m06Item {
+			var out []m06Item
+			items, _ := e.inbox(user)
+			for _, it := range items {
+				if it.Reason == "credential" {
+					out = append(out, it)
+				}
+			}
+			return out
+		}
+		aliceBefore := len(credItems("alice"))
+		bobBefore := len(credItems("bob"))
+		mailBase := len(e.smtp.Messages())
+
+		const userPassword = "password-di-prova-molto-lunga-1"
+		const newBobPassword = "nuova-password-di-bob-ancora-piu-lunga-2"
+		exp := time.Now().Add(72 * time.Hour).UTC().Format(time.RFC3339) // entro 7 giorni: anche l'avviso di scadenza
+		want(t, e.gw("PUT", "/users/bob/password", map[string]any{"currentPassword": userPassword, "newPassword": newBobPassword}, nil, e.cookies["bob"]), 204, "")
+		tok := e.gw("POST", "/user/tokens", map[string]any{"name": "deploy-f13", "scopes": []string{"read:resource"}, "expiresAt": exp}, nil, e.cookies["bob"])
+		want(t, tok, 201, "")
+		secretToken, _ := tok.json()["token"].(string)
+		pub, err := os.ReadFile(e.gitEnv.keys["carol"] + ".pub") // la chiave di carol non è registrata: la aggiunge bob
+		if err != nil {
+			t.Fatal(err)
+		}
+		want(t, e.gw("POST", "/user/ssh-keys", map[string]any{"title": "portatile-f13", "publicKey": strings.TrimSpace(string(pub))}, nil, e.cookies["bob"]), 201, "")
+		// Reset della password di dave da parte dell'amministratore.
+		adminLogin := e.gw("POST", "/auth/login", map[string]any{"username": "admin", "password": newPassword}, nil, nil)
+		want(t, adminLogin, 200, "")
+		want(t, e.gw("PUT", "/users/dave/password", map[string]any{"newPassword": "password-reimpostata-di-dave-3"}, nil, e.session(adminLogin)), 204, "")
+
+		n, err := cn.Process(context.Background())
+		if err != nil {
+			t.Fatalf("giro: %v", err)
+		}
+		if n != 5 { // bob: password, token, chiave, scadenza del token; dave: reset
+			t.Fatalf("avvisi consegnati = %d, attesi 5", n)
+		}
+
+		// In-app: bob ha i suoi quattro avvisi, alice nessuno in più.
+		bobItems := credItems("bob")
+		if len(bobItems) != bobBefore+4 {
+			t.Fatalf("avvisi di bob: %d, attesi %d: %+v", len(bobItems), bobBefore+4, bobItems)
+		}
+		var summaries []string
+		for _, it := range bobItems[:4] {
+			summaries = append(summaries, it.Summary)
+		}
+		joined := strings.Join(summaries, "\n")
+		for _, w := range []string{"password", "deploy-f13", "portatile-f13", "sta per scadere"} {
+			if !strings.Contains(joined, w) {
+				t.Errorf("manca %q negli avvisi di bob:\n%s", w, joined)
+			}
+		}
+		if got := len(credItems("alice")); got != aliceBefore {
+			t.Errorf("alice ha %d avvisi, erano %d: non è sua la credenziale", got, aliceBefore)
+		}
+		if dave := credItems("dave"); len(dave) == 0 || !strings.Contains(dave[0].Summary, "reimpostata") {
+			t.Errorf("dave dovrebbe avere l'avviso di reset: %+v", dave)
+		}
+
+		// Email: una per avviso, con i dettagli e mai il valore del token.
+		e.flushMail()
+		msgs := e.smtp.Messages()[mailBase:]
+		var toBob, toDave []string
+		for _, m := range msgs {
+			msg, err := mail.ReadMessage(strings.NewReader(m.Data))
+			if err != nil {
+				t.Fatalf("messaggio non leggibile: %v\n%s", err, m.Data)
+			}
+			subject, _ := new(mime.WordDecoder).DecodeHeader(msg.Header.Get("Subject"))
+			raw, _ := io.ReadAll(msg.Body)
+			body := string(raw)
+			if strings.EqualFold(msg.Header.Get("Content-Transfer-Encoding"), "quoted-printable") {
+				dec, _ := io.ReadAll(quotedprintable.NewReader(strings.NewReader(body)))
+				body = string(dec)
+			}
+			if strings.Contains(body, secretToken) || strings.Contains(m.Data, secretToken) {
+				t.Errorf("il valore del token è nell'email: %s", subject)
+			}
+			if strings.Contains(body, newBobPassword) {
+				t.Errorf("la password è nell'email: %s", subject)
+			}
+			switch m.To[0] {
+			case "bob@example.com":
+				toBob = append(toBob, subject+"\n"+body)
+			case "dave@example.com":
+				toDave = append(toDave, subject+"\n"+body)
+			default:
+				t.Errorf("email inattesa a %v: %s", m.To, subject)
+			}
+		}
+		if len(toBob) != 4 || len(toDave) != 1 {
+			t.Fatalf("email: %d a bob (4) e %d a dave (1)", len(toBob), len(toDave))
+		}
+		all := strings.Join(toBob, "\n====\n")
+		for _, w := range []string{"password del tuo account è stata cambiata", "«deploy-f13»", "«portatile-f13»", "scade il", "Se non sei stato tu"} {
+			if !strings.Contains(all, w) {
+				t.Errorf("manca %q nelle email di bob:\n%s", w, all)
+			}
+		}
+		if !strings.Contains(toDave[0], "reimpostata da admin") {
+			t.Errorf("email di dave: %s", toDave[0])
+		}
+
+		// Niente doppioni: un secondo giro non consegna e non spedisce altro.
+		if n, err := cn.Process(context.Background()); err != nil || n != 0 {
+			t.Fatalf("secondo giro: %d avvisi (%v)", n, err)
+		}
+		if got := e.flushMail(); got != 0 {
+			t.Errorf("secondo giro: %d email", got)
+		}
 	})
 }
 

@@ -78,6 +78,33 @@ func (e CreateUserInputKind) Valid() bool {
 	}
 }
 
+// Defines values for CredentialEventKind.
+const (
+	PasswordChanged CredentialEventKind = "password_changed"
+	PasswordReset   CredentialEventKind = "password_reset"
+	SshKeyAdded     CredentialEventKind = "ssh_key_added"
+	TokenCreated    CredentialEventKind = "token_created"
+	TokenExpiring   CredentialEventKind = "token_expiring"
+)
+
+// Valid indicates whether the value is a known member of the CredentialEventKind enum.
+func (e CredentialEventKind) Valid() bool {
+	switch e {
+	case PasswordChanged:
+		return true
+	case PasswordReset:
+		return true
+	case SshKeyAdded:
+		return true
+	case TokenCreated:
+		return true
+	case TokenExpiring:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CurrentSessionAuthMethod.
 const (
 	CurrentSessionAuthMethodOidc     CurrentSessionAuthMethod = "oidc"
@@ -303,6 +330,24 @@ func (e ResourceRole) Valid() bool {
 	}
 }
 
+// Defines values for SessionAuthMethod.
+const (
+	SessionAuthMethodOidc     SessionAuthMethod = "oidc"
+	SessionAuthMethodPassword SessionAuthMethod = "password"
+)
+
+// Valid indicates whether the value is a known member of the SessionAuthMethod enum.
+func (e SessionAuthMethod) Valid() bool {
+	switch e {
+	case SessionAuthMethodOidc:
+		return true
+	case SessionAuthMethodPassword:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TeamRole.
 const (
 	TeamRoleMaintainer TeamRole = "maintainer"
@@ -419,7 +464,9 @@ type AddSshKeyInput struct {
 // ChangePasswordInput defines model for ChangePasswordInput.
 type ChangePasswordInput struct {
 	CurrentPassword *string `json:"currentPassword,omitempty"`
-	NewPassword     *string `json:"newPassword,omitempty"`
+
+	// NewPassword Da 12 a 128 caratteri e non presente nell'elenco di password comuni incorporato (422 `newPassword`). La password attuale e il login accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga puo' ancora entrare e sostituirla.
+	NewPassword *string `json:"newPassword,omitempty"`
 }
 
 // CheckPermissionInput defines model for CheckPermissionInput.
@@ -486,7 +533,7 @@ type CreateUserInput struct {
 	IsAdmin     *bool                `json:"isAdmin,omitempty"`
 	Kind        *CreateUserInputKind `json:"kind,omitempty"`
 
-	// Password Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+	// Password Da 12 a 128 caratteri e non presente nell'elenco di password comuni (422 `password`). Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
 	Password *string `json:"password,omitempty"`
 
 	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
@@ -515,6 +562,30 @@ type CreatedToken struct {
 	Token string `json:"token"`
 }
 
+// CredentialEvent defines model for CredentialEvent.
+type CredentialEvent struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Detail Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+	Detail map[string]interface{} `json:"detail"`
+	Id     int64                  `json:"id"`
+	Kind   CredentialEventKind    `json:"kind"`
+	UserId openapi_types.UUID     `json:"userId"`
+}
+
+// CredentialEventKind defines model for CredentialEvent.Kind.
+type CredentialEventKind string
+
+// CredentialEventList defines model for CredentialEventList.
+type CredentialEventList struct {
+	Items []CredentialEvent `json:"items"`
+}
+
+// CredentialEventsAckInput defines model for CredentialEventsAckInput.
+type CredentialEventsAckInput struct {
+	Ids []int64 `json:"ids"`
+}
+
 // CurrentSession defines model for CurrentSession.
 type CurrentSession struct {
 	// AuthMethod Come e' stato autenticato il chiamante.
@@ -523,6 +594,9 @@ type CurrentSession struct {
 
 	// MustChangePassword Vero per l'amministratore creato al primo avvio finche' non cambia la password iniziale. Finche' e' vero ogni chiamata autenticata risponde 403 `password_change_required`, tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` (solo sulla propria utenza).
 	MustChangePassword bool `json:"mustChangePassword"`
+
+	// MustEnrollTotp Vero per un amministratore con sessione a password quando l'installazione impone il TOTP e lui non l'ha ancora attivato. Finche' e' vero ogni chiamata autenticata risponde 403 `totp_enrollment_required`, tranne `GET /auth/session`, `POST /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
+	MustEnrollTotp *bool `json:"mustEnrollTotp,omitempty"`
 
 	// Scopes Solo per `authMethod` = `token`.
 	Scopes *[]TokenScope `json:"scopes,omitempty"`
@@ -558,6 +632,16 @@ type Error struct {
 	} `json:"error"`
 }
 
+// ExportedSshKey Chiave SSH dell'utente, con la chiave pubblica.
+type ExportedSshKey struct {
+	CreatedAt   time.Time  `json:"createdAt"`
+	Fingerprint string     `json:"fingerprint"`
+	KeyType     string     `json:"keyType"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	PublicKey   string     `json:"publicKey"`
+	Title       string     `json:"title"`
+}
+
 // Grant Ruolo su una risorsa generica (D15) per un utente o un team.
 type Grant struct {
 	CreatedAt  *time.Time          `json:"createdAt,omitempty"`
@@ -589,6 +673,12 @@ type GrantResourceCreatorInput struct {
 // LoginInput defines model for LoginInput.
 type LoginInput struct {
 	Password *string `json:"password,omitempty"`
+
+	// RecoveryCode Codice di recupero monouso, in alternativa a `totpCode`. Maiuscole, minuscole e trattini non contano.
+	RecoveryCode *string `json:"recoveryCode,omitempty"`
+
+	// TotpCode Codice TOTP a 6 cifre (secondo passo del login).
+	TotpCode *string `json:"totpCode,omitempty"`
 
 	// Username Username oppure email.
 	Username string `json:"username"`
@@ -713,6 +803,18 @@ type OrganizationList struct {
 	Total   int            `json:"total"`
 }
 
+// OwnDataExport Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+type OwnDataExport struct {
+	ExportedAt  time.Time        `json:"exportedAt"`
+	Sessions    []Session        `json:"sessions"`
+	SshKeys     []ExportedSshKey `json:"sshKeys"`
+	Tokens      []Token          `json:"tokens"`
+	TotpEnabled bool             `json:"totpEnabled"`
+
+	// User Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
+	User User `json:"user"`
+}
+
 // OwnerRef defines model for OwnerRef.
 type OwnerRef struct {
 	Id openapi_types.UUID `json:"id"`
@@ -740,6 +842,9 @@ type Principal struct {
 
 	// MustChangePassword Vero per una sessione la cui password iniziale non e' ancora stata cambiata (vedi `CurrentSession.mustChangePassword`). `/internal/verify` risponde comunque `active` true: il gateway risponde 403 `password_change_required` a ogni rotta tranne `GET /auth/session`, `POST /auth/logout` e `PUT /users/{username}/password` sulla propria utenza. Assente equivale a falso.
 	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
+
+	// MustEnrollTotp Vero per una sessione a password di un amministratore che deve ancora attivare il TOTP (installazione che lo impone). Il gateway risponde 403 `totp_enrollment_required` a ogni rotta senza `x-totp-enroll-exempt`. Assente equivale a falso.
+	MustEnrollTotp *bool `json:"mustEnrollTotp,omitempty"`
 
 	// Scopes Solo per i token; assenti per le sessioni.
 	Scopes *[]TokenScope `json:"scopes,omitempty"`
@@ -834,6 +939,28 @@ type ResourceAttributesInput struct {
 
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
+
+// Session Sessione web attiva, senza il valore del cookie.
+type Session struct {
+	AuthMethod SessionAuthMethod `json:"authMethod"`
+	CreatedAt  time.Time         `json:"createdAt"`
+
+	// Current Vero per la sessione con cui e' fatta la richiesta.
+	Current    bool               `json:"current"`
+	ExpiresAt  time.Time          `json:"expiresAt"`
+	Id         openapi_types.UUID `json:"id"`
+	IpAddress  *string            `json:"ipAddress,omitempty"`
+	LastSeenAt time.Time          `json:"lastSeenAt"`
+	UserAgent  *string            `json:"userAgent,omitempty"`
+}
+
+// SessionAuthMethod defines model for Session.AuthMethod.
+type SessionAuthMethod string
+
+// SessionList defines model for SessionList.
+type SessionList struct {
+	Items []Session `json:"items"`
+}
 
 // SetOrgMemberInput defines model for SetOrgMemberInput.
 type SetOrgMemberInput struct {
@@ -942,6 +1069,51 @@ type TokenList struct {
 
 // TokenScope Catalogo degli scope dei token personali (unico, condiviso da tutti i servizi). Le sessioni web non hanno scope: valgono i permessi dell'utente. `write:*` include `read:*` dello stesso ambito; `admin:org` include `write:org`.
 type TokenScope string
+
+// TotpCodeInput defines model for TotpCodeInput.
+type TotpCodeInput struct {
+	// Code Codice TOTP a 6 cifre.
+	Code string `json:"code"`
+}
+
+// TotpDisableInput defines model for TotpDisableInput.
+type TotpDisableInput struct {
+	// Code Codice TOTP attuale (o in alternativa `recoveryCode`).
+	Code         *string `json:"code,omitempty"`
+	Password     *string `json:"password,omitempty"`
+	RecoveryCode *string `json:"recoveryCode,omitempty"`
+}
+
+// TotpEnrollment defines model for TotpEnrollment.
+type TotpEnrollment struct {
+	// OtpauthUri URI `otpauth://totp/...` da trasformare in QR code.
+	OtpauthUri string `json:"otpauthUri"`
+
+	// Secret Segreto in base32, per l'inserimento manuale. Compare solo qui.
+	Secret string `json:"secret"`
+}
+
+// TotpRecoveryCodes defines model for TotpRecoveryCodes.
+type TotpRecoveryCodes struct {
+	// RecoveryCodes Codici di recupero monouso, mostrati una sola volta (nel database ci sono solo gli hash).
+	RecoveryCodes []string `json:"recoveryCodes"`
+}
+
+// TotpStatus defines model for TotpStatus.
+type TotpStatus struct {
+	// Available Falso se l'installazione non ha chiavi di cifratura configurate (`GITSTACK_IDENTITY_TOTP_KEYS`): l'attivazione risponde 503.
+	Available bool `json:"available"`
+
+	// Enabled Vero se l'utente ha confermato il TOTP.
+	Enabled bool `json:"enabled"`
+
+	// Pending Vero se c'e' un'attivazione iniziata e non ancora confermata.
+	Pending                *bool `json:"pending,omitempty"`
+	RecoveryCodesRemaining int   `json:"recoveryCodesRemaining"`
+
+	// RequiredForAdmins Vero se l'installazione impone il TOTP agli amministratori.
+	RequiredForAdmins bool `json:"requiredForAdmins"`
+}
 
 // UpdateGrantInput defines model for UpdateGrantInput.
 type UpdateGrantInput struct {
@@ -1110,6 +1282,9 @@ type RepoOwnerParam = Name
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
 
+// SessionIdParam defines model for SessionIdParam.
+type SessionIdParam = openapi_types.UUID
+
 // SshKeyIdParam defines model for SshKeyIdParam.
 type SshKeyIdParam = openapi_types.UUID
 
@@ -1165,6 +1340,11 @@ type FinishOidcLoginParams struct {
 // StartOidcLoginParams defines parameters for StartOidcLogin.
 type StartOidcLoginParams struct {
 	RedirectTo *string `form:"redirectTo,omitempty" json:"redirectTo,omitempty"`
+}
+
+// ListCredentialEventsParams defines parameters for ListCredentialEvents.
+type ListCredentialEventsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // ListOrganizationsParams defines parameters for ListOrganizations.
@@ -1225,6 +1405,15 @@ type ListUserTokensParams struct {
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginInput
+
+// DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
+type DisableTotpJSONRequestBody = TotpDisableInput
+
+// VerifyTotpJSONRequestBody defines body for VerifyTotp for application/json ContentType.
+type VerifyTotpJSONRequestBody = TotpCodeInput
+
+// AckCredentialEventsJSONRequestBody defines body for AckCredentialEvents for application/json ContentType.
+type AckCredentialEventsJSONRequestBody = CredentialEventsAckInput
 
 // ResolveMentionsJSONRequestBody defines body for ResolveMentions for application/json ContentType.
 type ResolveMentionsJSONRequestBody = ResolveMentionsInput
@@ -1315,6 +1504,24 @@ type ServerInterface interface {
 	// GetCurrentSession Sessione corrente
 	// (GET /auth/session)
 	GetCurrentSession(w http.ResponseWriter, r *http.Request)
+	// GetTotpStatus Stato del secondo fattore TOTP dell'utente corrente
+	// (GET /auth/totp)
+	GetTotpStatus(w http.ResponseWriter, r *http.Request)
+	// DisableTotp Disattiva il TOTP
+	// (POST /auth/totp/disable)
+	DisableTotp(w http.ResponseWriter, r *http.Request)
+	// EnrollTotp Inizia l'attivazione del TOTP
+	// (POST /auth/totp/enroll)
+	EnrollTotp(w http.ResponseWriter, r *http.Request)
+	// VerifyTotp Conferma l'attivazione del TOTP
+	// (POST /auth/totp/verify)
+	VerifyTotp(w http.ResponseWriter, r *http.Request)
+	// ListCredentialEvents Eventi sulle credenziali degli utenti, da consegnare
+	// (GET /internal/credential-events)
+	ListCredentialEvents(w http.ResponseWriter, r *http.Request, params ListCredentialEventsParams)
+	// AckCredentialEvents Conferma la consegna degli eventi sulle credenziali
+	// (POST /internal/credential-events/ack)
+	AckCredentialEvents(w http.ResponseWriter, r *http.Request)
 	// ResolveMentions Risolve le menzioni `@utente`, `@agente` e `@org/team`
 	// (POST /internal/mentions/resolve)
 	ResolveMentions(w http.ResponseWriter, r *http.Request)
@@ -1417,6 +1624,15 @@ type ServerInterface interface {
 	// GetMyResourcePermission Permesso effettivo del chiamante su una risorsa
 	// (GET /resources/{resourceId}/permissions)
 	GetMyResourcePermission(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// ExportOwnData Esporta i dati personali dell'utente corrente
+	// (GET /user/export)
+	ExportOwnData(w http.ResponseWriter, r *http.Request)
+	// ListOwnSessions Elenca le sessioni web attive dell'utente corrente
+	// (GET /user/sessions)
+	ListOwnSessions(w http.ResponseWriter, r *http.Request)
+	// RevokeOwnSession Termina una sessione web dell'utente corrente
+	// (DELETE /user/sessions/{sessionId})
+	RevokeOwnSession(w http.ResponseWriter, r *http.Request, sessionId SessionIdParam)
 	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
 	// (GET /user/ssh-keys)
 	ListSshKeys(w http.ResponseWriter, r *http.Request, params ListSshKeysParams)
@@ -1465,6 +1681,9 @@ type ServerInterface interface {
 	// RevokeUserToken Revoca un token di un utente agent
 	// (DELETE /users/{username}/tokens/{tokenId})
 	RevokeUserToken(w http.ResponseWriter, r *http.Request, username UsernameParam, tokenId TokenIdParam)
+	// ResetUserTotp Azzera il TOTP di un utente (amministratore)
+	// (DELETE /users/{username}/totp)
+	ResetUserTotp(w http.ResponseWriter, r *http.Request, username UsernameParam)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -1620,6 +1839,109 @@ func (siw *ServerInterfaceWrapper) GetCurrentSession(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCurrentSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetTotpStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetTotpStatus(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTotpStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DisableTotp operation middleware
+func (siw *ServerInterfaceWrapper) DisableTotp(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DisableTotp(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EnrollTotp operation middleware
+func (siw *ServerInterfaceWrapper) EnrollTotp(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EnrollTotp(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// VerifyTotp operation middleware
+func (siw *ServerInterfaceWrapper) VerifyTotp(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.VerifyTotp(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCredentialEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListCredentialEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCredentialEventsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCredentialEvents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AckCredentialEvents operation middleware
+func (siw *ServerInterfaceWrapper) AckCredentialEvents(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AckCredentialEvents(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2661,6 +2983,60 @@ func (siw *ServerInterfaceWrapper) GetMyResourcePermission(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ExportOwnData operation middleware
+func (siw *ServerInterfaceWrapper) ExportOwnData(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportOwnData(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOwnSessions operation middleware
+func (siw *ServerInterfaceWrapper) ListOwnSessions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOwnSessions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeOwnSession operation middleware
+func (siw *ServerInterfaceWrapper) RevokeOwnSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId SessionIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeOwnSession(w, r, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListSshKeys operation middleware
 func (siw *ServerInterfaceWrapper) ListSshKeys(w http.ResponseWriter, r *http.Request) {
 
@@ -3152,6 +3528,32 @@ func (siw *ServerInterfaceWrapper) RevokeUserToken(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// ResetUserTotp operation middleware
+func (siw *ServerInterfaceWrapper) ResetUserTotp(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "username" -------------
+	var username UsernameParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResetUserTotp(w, r, username)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -3275,6 +3677,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/login", wrapper.Login)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/logout", wrapper.Logout)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/session", wrapper.GetCurrentSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/totp", wrapper.GetTotpStatus)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/totp/enroll", wrapper.EnrollTotp)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/totp/verify", wrapper.VerifyTotp)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/totp/disable", wrapper.DisableTotp)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/oidc/providers", wrapper.ListOidcProviders)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/oidc/{provider}/start", wrapper.StartOidcLogin)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/oidc/{provider}/callback", wrapper.FinishOidcLogin)
@@ -3286,10 +3692,14 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/tokens", wrapper.ListUserTokens)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users/{username}/tokens", wrapper.CreateUserToken)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{username}/tokens/{tokenId}", wrapper.RevokeUserToken)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{username}/totp", wrapper.ResetUserTotp)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/users/{username}/password", wrapper.ChangePassword)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/tokens", wrapper.ListTokens)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/tokens", wrapper.CreateToken)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/tokens/{tokenId}", wrapper.RevokeToken)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/sessions", wrapper.ListOwnSessions)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/sessions/{sessionId}", wrapper.RevokeOwnSession)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/export", wrapper.ExportOwnData)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys", wrapper.ListSshKeys)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)
@@ -3327,6 +3737,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/orgs/{orgId}/owners", wrapper.ListOrgOwners)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-emails", wrapper.LookupUsersByEmail)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/users/lookup-ids", wrapper.LookupUsersByIds)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/internal/credential-events", wrapper.ListCredentialEvents)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/credential-events/ack", wrapper.AckCredentialEvents)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/internal/mentions/resolve", wrapper.ResolveMentions)
 
 	return m

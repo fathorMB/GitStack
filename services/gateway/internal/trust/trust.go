@@ -73,7 +73,28 @@ func Sign(h http.Header, secret string, id Identity, now time.Time) {
 	h.Set(HeaderTokenID, id.TokenID)
 	h.Set(HeaderTokenName, id.TokenName)
 	h.Set(HeaderTimestamp, ts)
-	h.Set(HeaderSignature, mac(secret, ts, id.UserID, id.Username, scopes, id.TokenID, id.TokenName))
+	h.Set(HeaderSignature, mac(SigningKey(secret), ts, id.UserID, id.Username, scopes, id.TokenID, id.TokenName))
+}
+
+// ParseKeys legge un segreto di servizio come elenco "nuova,vecchia" (chiavi
+// separate da virgola, spazi ignorati): la prima è quella con cui si firma
+// (rotazione con doppia chiave, docs/operations.md).
+func ParseKeys(s string) []string {
+	var keys []string
+	for _, k := range strings.Split(s, ",") {
+		if k = strings.TrimSpace(k); k != "" {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
+// SigningKey è la chiave con cui si firma: la prima dell'elenco.
+func SigningKey(secret string) string {
+	if k := ParseKeys(secret); len(k) > 0 {
+		return k[0]
+	}
+	return ""
 }
 
 // StripClientHeaders elimina da h ogni header con il prefisso riservato.

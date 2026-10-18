@@ -1,4 +1,4 @@
-import { Bell, Key, Trash2, Terminal, User as UserIcon } from 'lucide-react';
+import { Bell, Key, Monitor, ShieldCheck, Trash2, Terminal, User as UserIcon } from 'lucide-react';
 import { NavLink, Outlet, useOutletContext } from 'react-router-dom';
 import { ErrorAlert } from '../../components';
 import { fetchSession } from '../../lib/authApi';
@@ -45,6 +45,14 @@ export function SettingsLayout() {
         <NavLink to="/settings/tokens">
           <Key size={16} aria-hidden="true" />
           Access tokens
+        </NavLink>
+        <NavLink to="/settings/security">
+          <ShieldCheck size={16} aria-hidden="true" />
+          Security
+        </NavLink>
+        <NavLink to="/settings/sessions">
+          <Monitor size={16} aria-hidden="true" />
+          Sessions
         </NavLink>
         <NavLink to="/settings/ssh-keys">
           <Terminal size={16} aria-hidden="true" />

@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { client } from '@gitstack/api-client/src/generated/client.gen';
 import { AppRoutes } from './App';
 import { ToastProvider } from './components';
@@ -48,5 +48,26 @@ describe('routing protetto', () => {
     await user.type(screen.getByLabelText('Password'), 'secret');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('heading', { name: 'Components' })).toBeInTheDocument();
+  });
+});
+
+describe('rotte di sviluppo (F19, V14.2.2)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('_components is not routed in production', async () => {
+    vi.stubEnv('DEV', false);
+    render(
+      <MemoryRouter initialEntries={['/_components']}>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    // Nessuna rotta corrisponde: la pagina di revisione non viene mostrata.
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Components' })).not.toBeInTheDocument());
   });
 });

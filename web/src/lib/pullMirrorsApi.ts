@@ -1,5 +1,5 @@
 // Mirror in pull (MP1-MP8, GIT-196) via client generato (client di default:
-// niente `client:` nelle options, cosi l'interceptor 401 vede le risposte).
+// niente `client:` nelle options, quindi l'interceptor 401 vede le risposte).
 import {
   enableRepoPullMirror,
   getRepoPullMirror,
@@ -14,13 +14,15 @@ import {
 import type {
   EnablePullMirrorInput,
   ImportRepositoryInput,
+  PullMirror,
   PullMirrorRun,
-  PullMirrorRunList,
-  UpdatePullMirrorInput,
+  UpdatePullMirrorInputWritable,
 } from '@gitstack/api-client';
 import { API_BASE_URL, unwrap, unwrapEmpty } from './http';
 
-export type { EnablePullMirrorInput, ImportRepositoryInput, PullMirrorRun, UpdatePullMirrorInput };
+export type { EnablePullMirrorInput, ImportRepositoryInput, PullMirror, PullMirrorRun, UpdatePullMirrorInputWritable };
+
+const RUNS = 50;
 
 /** Crea un repo nuovo importandolo da un'origine remota (MP3, MP8). */
 export async function importRepo(input: ImportRepositoryInput): Promise<void> {
@@ -28,52 +30,61 @@ export async function importRepo(input: ImportRepositoryInput): Promise<void> {
 }
 
 /** Attiva il mirror in pull su un repo gia' esistente. */
-export async function enablePullMirror(owner: string, repo: string, input: EnablePullMirrorInput): Promise<void> {
-  unwrapEmpty(
+export async function enablePullMirror(owner: string, repo: string, input: EnablePullMirrorInput): Promise<PullMirror> {
+  return unwrap(
     await enableRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }),
   );
 }
 
 /** Legge i dettagli completi del mirror in pull. */
-export async function fetchPullMirror(owner: string, repo: string) {
-  return unwrap(await getRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+export async function fetchPullMirror(owner: string, repo: string): Promise<PullMirror | null> {
+  try {
+    return await unwrap(await getRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+  } catch {
+    return null;
+  }
 }
 
-/** Aggiorna le opzioni del mirror (intervallo, username). */
-export async function editPullMirror(
+/** Aggiorna le opzioni del mirror (intervallo, credenziali). */
+export async function updatePullMirror(
   owner: string,
   repo: string,
-  input: UpdatePullMirrorInput,
-): Promise<void> {
-  unwrapEmpty(await updateRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }));
+  input: UpdatePullMirrorInputWritable,
+): Promise<PullMirror> {
+  return unwrap(
+    await updateRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: input }),
+  );
 }
 
 /** Sincronizza subito il mirror. */
-export async function syncPullMirror(owner: string, repo: string): Promise<void> {
-  unwrapEmpty(await syncRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+export async function syncPullMirror(owner: string, repo: string): Promise<PullMirror> {
+  return unwrap(
+    await syncRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }),
+  );
 }
 
 /** Mette in pausa il mirror. */
-export async function pausePullMirror(owner: string, repo: string): Promise<void> {
-  unwrapEmpty(await pauseRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+export async function pausePullMirror(owner: string, repo: string): Promise<PullMirror> {
+  return unwrap(
+    await pauseRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }),
+  );
 }
 
 /** Riprende il mirror dalla pausa. */
-export async function resumePullMirror(owner: string, repo: string): Promise<void> {
-  unwrapEmpty(await resumeRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }));
+export async function resumePullMirror(owner: string, repo: string): Promise<PullMirror> {
+  return unwrap(
+    await resumeRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo } }),
+  );
 }
 
 /** Interrompe definitivamente il mirror (richiede conferma col nome del repo). */
-export async function stopPullMirror(owner: string, repo: string, name: string): Promise<void> {
-  unwrapEmpty(
-    await stopRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: { confirm: name } }),
+export async function stopPullMirror(owner: string, repo: string, confirm: string): Promise<PullMirror> {
+  return unwrap(
+    await stopRepoPullMirror({ baseUrl: API_BASE_URL, path: { owner, repo }, body: { confirm } }),
   );
 }
 
-/** Elenco delle esecuzioni del mirror, ultime 10. */
+/** Elenco delle esecuzioni del mirror, ultime 50. */
 export async function fetchPullMirrorRuns(owner: string, repo: string): Promise<PullMirrorRun[]> {
-  return (
-    (unwrap(await listRepoPullMirrorRuns({ baseUrl: API_BASE_URL, path: { owner, repo } })) as PullMirrorRunList)
-      .items
-  );
+  return unwrap(await listRepoPullMirrorRuns({ baseUrl: API_BASE_URL, path: { owner, repo }, query: { perPage: RUNS } })).items;
 }

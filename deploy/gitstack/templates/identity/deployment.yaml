@@ -25,12 +25,12 @@
 {{- if not .Values.postgres.enabled -}}
 {{- $pgClientImage = include "gitstack.image" (dict "root" $ "component" .Values.postgres.external.client) -}}
 {{- end -}}
-{{- $svcSecret := include "gitstack.serviceSecret.name" . -}}
 {{- $dbSecret := .Values.identity.db.existingSecret | default (printf "%s-identity-db" (include "gitstack.fullname" .)) -}}
 {{- $adminSecret := .Values.identity.admin.existingSecret | default (printf "%s-identity-admin" (include "gitstack.fullname" .)) -}}
 {{- $oidc := and .Values.identity.oidc.enabled -}}
 {{- $oidcSecret := .Values.identity.oidc.existingSecret | default (printf "%s-identity-oidc" (include "gitstack.fullname" .)) -}}
 {{- $oidcKeySecret := .Values.identity.oidc.encKey.existingSecret | default (printf "%s-identity-oidc-key" (include "gitstack.fullname" .)) -}}
+{{- $totpKeySecret := .Values.identity.totp.keys.existingSecret | default (printf "%s-identity-totp-key" (include "gitstack.fullname" .)) -}}
 {{- if and $oidc (not .Values.identity.oidc.publicUrl) -}}
 {{- fail "identity.oidc.enabled=true: compila identity.oidc.publicUrl (URL pubblico di GitStack, es. https://git.example.com)." -}}
 {{- end -}}
@@ -146,12 +146,13 @@ spec:
               value: {{ .Values.identity.env.logLevel | quote }}
             - name: GITSTACK_IDENTITY_SESSION_TTL
               value: {{ .Values.identity.env.sessionTTL | quote }}
-            # Segreto di servizio per /internal/*: solo da Secret, mai in chiaro.
-            - name: GITSTACK_IDENTITY_SERVICE_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $svcSecret }}
-                  key: secret
+            - name: GITSTACK_IDENTITY_SESSION_IDLE_TIMEOUT
+              value: {{ .Values.identity.env.sessionIdleTimeout | quote }}
+            # Segreti di servizio per /internal/* (F9): uno per chiamante, solo
+            # da Secret, mai in chiaro. Identity li verifica, non firma.
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "gateway") | nindent 12 }}
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "core") | nindent 12 }}
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "git") | nindent 12 }}
             # Admin del primo avvio: la password iniziale arriva solo dal Secret
             # (mai da values, mai nei log). identity crea l'admin solo se il
             # database non ne ha nessuno.
@@ -178,6 +179,16 @@ spec:
               value: {{ .Values.identity.oidc.encKey.keyId | quote }}
             - name: GITSTACK_IDENTITY_PUBLIC_URL
               value: {{ .Values.identity.oidc.publicUrl | quote }}
+            {{- end }}
+            # Secondo fattore TOTP (F11): keyring dei segreti da Secret.
+            - name: GITSTACK_IDENTITY_TOTP_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $totpKeySecret }}
+                  key: keys
+            {{- if .Values.identity.totp.requiredForAdmins }}
+            - name: GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS
+              value: "true"
             {{- end }}
             {{- if .Values.identity.env.tokenMaxLifetime }}
             - name: GITSTACK_IDENTITY_TOKEN_MAX_LIFETIME

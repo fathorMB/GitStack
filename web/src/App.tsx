@@ -21,13 +21,16 @@ import { OrgWebhooksPage } from './pages/orgs/OrgWebhooksPage';
 import { RepoWebhooksPage } from './pages/repos/RepoWebhooksPage';
 import { ProfilePage } from './pages/settings/ProfilePage';
 import { SettingsLayout } from './pages/settings/SettingsLayout';
+import { SecurityPage } from './pages/settings/SecurityPage';
+import { SessionsPage } from './pages/settings/SessionsPage';
 import { SshKeysPage } from './pages/settings/SshKeysPage';
 import { TokensPage } from './pages/settings/TokensPage';
 import { AuthProvider, RequireAuth } from './routes/auth';
 
 // Rotte: /login e le pagine protette (risorse, impostazioni personali), che
 // dopo un 401 dal client generato rimandano a /login. /_components e' la
-// pagina interna di revisione del design system: fuori dalla sidebar.
+// pagina interna di revisione del design system: fuori dalla sidebar e solo
+// nelle build di sviluppo.
 export function AppRoutes() {
   return (
     <>
@@ -47,16 +50,19 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
-      <Route
-        path="/_components"
-        element={
-          <RequireAuth>
-            <AppShell crumb="Components">
-              <ComponentsPage />
-            </AppShell>
-          </RequireAuth>
-        }
-      />
+      {/* Solo nelle build di sviluppo (F19, V14.2.2): in produzione la rotta non esiste. */}
+      {import.meta.env.DEV && (
+        <Route
+          path="/_components"
+          element={
+            <RequireAuth>
+              <AppShell crumb="Components">
+                <ComponentsPage />
+              </AppShell>
+            </RequireAuth>
+          }
+        />
+      )}
       <Route
         path="/notifications"
         element={
@@ -132,6 +138,8 @@ export function AppRoutes() {
         <Route path="notifications" element={<NotificationSettingsPage />} />
         <Route path="tokens" element={<TokensPage />} />
         <Route path="tokens/new" element={<TokensPage startCreating />} />
+        <Route path="security" element={<SecurityPage />} />
+        <Route path="sessions" element={<SessionsPage />} />
         <Route path="ssh-keys" element={<SshKeysPage />} />
         <Route path="deleted-repos" element={<DeletedReposPage />} />
       </Route>

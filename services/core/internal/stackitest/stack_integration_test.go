@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -37,18 +38,42 @@ import (
 
 const (
 	serviceSecret = "segreto-di-servizio-di-integrazione"
+	// coreSecret e gitSecret sono i segreti per servizio di core e git (F9);
+	// serviceSecret è quello del gateway e resta il default dei test che non
+	// distinguono i chiamanti.
+	coreSecret    = "segreto-di-servizio-di-core-integrazione"
+	gitSecret     = "segreto-di-servizio-di-git-integrazione"
 	adminPassword = "password-iniziale-dell-admin-1234"
 	newPassword   = "nuova password molto lunga 42"
 )
 
+var (
+	givenAddrsMu sync.Mutex
+	givenAddrs   = map[string]bool{}
+)
+
+// freeAddr restituisce un indirizzo libero su 127.0.0.1 che non ha mai dato
+// prima nello stesso processo di test: il kernel può riassegnare una porta
+// appena liberata, e i test ne chiedono più d'una prima di avviare i servizi.
 func freeAddr(t *testing.T) string {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 1000; i++ {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		addr := l.Addr().String()
+		_ = l.Close()
+		givenAddrsMu.Lock()
+		dup := givenAddrs[addr]
+		givenAddrs[addr] = true
+		givenAddrsMu.Unlock()
+		if !dup {
+			return addr
+		}
 	}
-	defer func() { _ = l.Close() }()
-	return l.Addr().String()
+	t.Fatal("freeAddr: nessuna porta nuova dopo 1000 tentativi")
+	return ""
 }
 
 func build(t *testing.T, dir, out string) string {
@@ -81,7 +106,7 @@ func start(t *testing.T, name, bin, addr string, env ...string) {
 		if t.Failed() {
 			t.Logf("log di %s:\n%s", name, logs.String())
 		}
-		for _, secret := range []string{serviceSecret, adminPassword, newPassword} {
+		for _, secret := range []string{serviceSecret, coreSecret, gitSecret, adminPassword, newPassword} {
 			if strings.Contains(logs.String(), secret) {
 				t.Errorf("un segreto compare nei log di %s", name)
 			}

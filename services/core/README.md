@@ -41,7 +41,10 @@ All'avvio del server (non per `core migrate up|down`, che non tocca NATS), `main
 | `GITSTACK_CORE_DB_MAX_CONNS` | no | `10` | Numero massimo di connessioni nel pool |
 | `GITSTACK_CORE_MIGRATIONS_TIMEOUT` | no | `30s` | Timeout per l'applicazione delle migrazioni (formato `time.Duration` di Go) |
 | `GITSTACK_CORE_NATS_URL` | sì, per `serve` | — | Indirizzo del bus NATS JetStream (es. `nats://nats:4222`); non serve a `migrate up\|down` |
-| `GITSTACK_IDENTITY_SERVICE_SECRET` | sì, per `serve` | — | Segreto di servizio (Secret `<release>-identity-service`, chiave `secret`): con questo core verifica la firma dell'identità inoltrata dal gateway; non serve a `migrate up\|down`. Mai nei log |
+| `GITSTACK_SERVICE_SECRET_CORE` | sì, per `serve` | — | Segreto di servizio di core (Secret `<release>-service-secrets`, chiave `core`, F9): Bearer verso identity e firma delle chiamate al servizio git. Può essere un elenco `nuova,vecchia` (rotazione, `docs/operations.md`): la prima firma, tutte verificano. Non serve a `migrate up\|down`. Mai nei log |
+| `GITSTACK_SERVICE_SECRET_GATEWAY` | sì, per `serve` | — | Segreto del gateway (chiave `gateway`): con questo core verifica la firma dell'identità inoltrata dal gateway. Può essere un elenco `nuova,vecchia`. Mai nei log |
+| `GITSTACK_SERVICE_SECRET_GIT` | no | — | Segreto del servizio git (chiave `git`): un'identità firmata con questa chiave è accettata solo per `GET /repos/{owner}/{repo}` (risoluzione di owner/repo), ogni altra rotta risponde 403. Vuoto: nessuna chiamata da git. Mai nei log |
+| `GITSTACK_IDENTITY_SERVICE_SECRET` | no | — | Segreto condiviso storico: vale solo per i tre segreti sopra che mancano (installazioni fuori dal chart). Il chart non lo imposta |
 | `GITSTACK_CORE_LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` o `error` |
 | `GITSTACK_GIT_URL`, `GITSTACK_CORE_PUBLIC_URL`, `GITSTACK_CORE_SSH_HOST`, `GITSTACK_CORE_SSH_PORT` | vedi sotto | — | Repo (M-03/E): servizio git, base HTTPS, host e porta SSH; vedi "Variabili d'ambiente dei repo" |
 
@@ -138,7 +141,7 @@ Operazioni del tag `repos`: `POST /repos`, `GET /repos`, `GET|PATCH /repos/{owne
 | `GITSTACK_CORE_SSH_HOST` | no | host di `PUBLIC_URL` (o della richiesta) | Host dell'indirizzo SSH |
 | `GITSTACK_CORE_SSH_PORT` | no | `2222` | Porta SSH dell'installazione (R7); `off` = SSH spento: `cloneUrls` senza `ssh` né `sshShort` |
 
-Il segreto di servizio è `GITSTACK_IDENTITY_SERVICE_SECRET` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).
+Il segreto di servizio è `GITSTACK_SERVICE_SECRET_CORE` e `GITSTACK_IDENTITY_URL` serve a tutte le operazioni sui repo (senza, rispondono 503).
 
 ### Test
 
@@ -184,7 +187,7 @@ Test: `internal/migrate/issues_integration_test.go` (60 transazioni in parallelo
 ### Allegati (I9, decisione del CTO)
 
 - I file vivono su un PVC dedicato `attachments-data`, montato da core in `/var/lib/gitstack/attachments` (configurabile con `GITSTACK_CORE_ATTACHMENTS_DIR`), con percorso `<repo_id>/<attachment_id>` **senza il nome originale**, che sta solo nei metadati in DB (`core.issue_attachments`: `filename`, `content_type`, `size_bytes`; nessun file nel database).
-- Limite `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`, default `10485760` (10 MB, I9): oltre, 413 `attachment_too_large`. Tipi ammessi: immagini, PDF, testo/log, ZIP (il tipo si verifica sui byte, 422 se non ammesso). Si scaricano solo con `getIssueAttachment`, autenticati e con `read` sul repo, sempre come allegato (`nosniff`, `Content-Security-Policy: sandbox`): nessun URL pubblico.
+- Limite `GITSTACK_CORE_ATTACHMENTS_MAX_BYTES`, default `10485760` (10 MB, I9): oltre, 413 `attachment_too_large`. Quote (F17): `GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES` (default 1 GiB per repo) e `GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES` (default 512 MiB per utente, su tutti i repo), allegati non collegati compresi; oltre, 413 `attachment_quota_exceeded`; `0` = nessun limite. La quota è morbida: due upload simultanei possono superarla di un file. Antivirus: nessuna scansione, decisione in `docs/security/asvs-l2.md` (F17). Tipi ammessi: immagini, PDF, testo/log, ZIP (il tipo si verifica sui byte, 422 se non ammesso). Si scaricano solo con `getIssueAttachment`, autenticati e con `read` sul repo, sempre come allegato (`nosniff`, `Content-Security-Policy: sandbox`): nessun URL pubblico.
 - L'upload crea un allegato non collegato (`issue_id` NULL), che si collega con `attachmentIds` alla creazione di una issue o di un commento; i non collegati da più di 24 ore (`GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL`, default `24h`) li elimina il job `internal/attachments.Cleaner` (file e riga, ogni 15 minuti, `FOR UPDATE SKIP LOCKED`: sicuro con più repliche; orologio iniettabile, provato in `internal/attachments/cleanup_integration_test.go`). Un allegato non ancora collegato lo scarica solo chi l'ha caricato. `store.LinkAttachments(ctx, tx, repoID, uploaderID, issueID, commentID, ids)` collega gli allegati non collegati dello stesso repo e dello stesso utente dentro la transazione del chiamante (tutto o niente, `ErrAttachmentNotLinkable` altrimenti): la usa GIT-104 per `attachmentIds` di issue e commenti.
 - Il volume fa parte del set di backup di D19 insieme a Postgres e `git-data` (lo realizza M-08; qui è solo scritto).
 - Con il volume RWO, core con gli allegati attivi richiede `replicaCount: 1` e `strategy: Recreate`: lo applica il chart in GIT-107, non questo item. 

@@ -131,3 +131,27 @@ func TestLoad_IdentityURL(t *testing.T) {
 		t.Errorf("senza URL: err=%v url=%q", err, cfg.IdentityURL)
 	}
 }
+
+// F9: un segreto per chiamante; il condiviso storico vale solo per i mancanti.
+func TestLoad_SegretiPerChiamante(t *testing.T) {
+	cfg, err := load(lookupFrom(map[string]string{
+		envDatabaseURL:   "postgres://x",
+		envSecretCore:    "kc1,kc0",
+		envSecretGateway: "kg",
+		envSecretGit:     "kgit",
+		envServiceSecret: "storico",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ServiceSecret != "kc1,kc0" || cfg.GatewaySecret != "kg" || cfg.GitSecret != "kgit" {
+		t.Errorf("segreti = %q %q %q", cfg.ServiceSecret, cfg.GatewaySecret, cfg.GitSecret)
+	}
+	cfg, err = load(lookupFrom(map[string]string{envDatabaseURL: "postgres://x", envSecretGateway: "kg", envServiceSecret: "storico"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GatewaySecret != "kg" || cfg.ServiceSecret != "storico" || cfg.GitSecret != "storico" {
+		t.Errorf("fallback = %q %q %q", cfg.ServiceSecret, cfg.GatewaySecret, cfg.GitSecret)
+	}
+}

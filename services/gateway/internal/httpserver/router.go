@@ -54,7 +54,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, opts ...Option) http.Hand
 
 	mux := http.NewServeMux()
 
-	base := middleware.Chain(middleware.RequestID, middleware.Logging(logger))
+	base := middleware.Chain(middleware.RequestID, middleware.Logging(logger, middleware.WithClientIP(func(r *http.Request) string { return proxy.ClientIP(r, cfg.TrustedProxies) })), middleware.Recover(logger))
 
 	mux.Handle("GET /healthz", base(http.HandlerFunc(healthz)))
 
@@ -124,6 +124,9 @@ var identityPatterns = []string{
 	"/v1/users/{rest...}",
 	"/v1/user/tokens",
 	"/v1/user/tokens/{rest...}",
+	"/v1/user/export",
+	"/v1/user/sessions",
+	"/v1/user/sessions/{rest...}",
 	"/v1/user/ssh-keys",
 	"/v1/user/ssh-keys/{rest...}",
 	"/v1/orgs",

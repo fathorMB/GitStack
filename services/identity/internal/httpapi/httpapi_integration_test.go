@@ -521,7 +521,8 @@ func TestCookieSecureDaProxyFidato(t *testing.T) {
 	if _, err := us.Create(context.Background(), users.CreateInput{Username: "alice", Email: "alice@example.com", DisplayName: "alice", Password: pw}); err != nil {
 		t.Fatal(err)
 	}
-	login := func(remote, proto string) *http.Cookie {
+	// login ritorna i cookie impostati dalla risposta, per nome.
+	login := func(remote, proto string) map[string]*http.Cookie {
 		req := httptest.NewRequest("POST", "/auth/login", strings.NewReader(`{"username":"alice","password":"`+pw+`"}`))
 		req.RemoteAddr = remote
 		if proto != "" {
@@ -529,21 +530,240 @@ func TestCookieSecureDaProxyFidato(t *testing.T) {
 		}
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
+		out := map[string]*http.Cookie{}
 		for _, ck := range rec.Result().Cookies() {
-			if ck.Name == "gst_session" {
-				return ck
-			}
+			out[ck.Name] = ck
 		}
-		t.Fatalf("nessun cookie: %d %s", rec.Code, rec.Body.String())
-		return nil
+		if len(out) == 0 {
+			t.Fatalf("nessun cookie: %d %s", rec.Code, rec.Body.String())
+		}
+		return out
 	}
-	if ck := login("192.0.2.10:1", "https"); !ck.Secure || !ck.HttpOnly || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" {
-		t.Errorf("proxy fidato con https: atteso Secure: %+v", ck)
+
+	// HTTPS (F16, V3.4.4): cookie con prefisso __Host- (Secure, Path=/, senza
+	// Domain) e cancellazione di quello storico.
+	cks := login("192.0.2.10:1", "https")
+	ck := cks["__Host-gst_session"]
+	if ck == nil || !ck.Secure || !ck.HttpOnly || ck.SameSite != http.SameSiteLaxMode || ck.Path != "/" || ck.Domain != "" || ck.Value == "" {
+		t.Fatalf("proxy fidato con https: atteso __Host- Secure: %+v", cks)
 	}
-	if ck := login("192.0.2.10:1", "http"); ck.Secure {
-		t.Errorf("proxy fidato con http: Secure inatteso: %+v", ck)
+	if old := cks["gst_session"]; old == nil || old.MaxAge >= 0 || old.Value != "" {
+		t.Errorf("il cookie storico va cancellato in HTTPS: %+v", old)
 	}
-	if ck := login("198.51.100.5:1", "https"); ck.Secure {
-		t.Errorf("peer non fidato con https: Secure inatteso: %+v", ck)
+	// Il cookie col prefisso apre la sessione...
+	e := &env{t: t, h: h, clock: c, users: us}
+	if r := e.do("GET", "/auth/session", nil, ck); r.StatusCode != 200 {
+		t.Fatalf("sessione col cookie __Host-: %d %s", r.StatusCode, r.body)
+	}
+	// ...e una sessione aperta col nome storico (prima del cambio) resta valida.
+	plain := login("192.0.2.10:1", "http")["gst_session"]
+	if plain == nil || plain.Secure {
+		t.Fatalf("proxy fidato con http: atteso gst_session non Secure: %+v", plain)
+	}
+	if r := e.do("GET", "/auth/session", nil, plain); r.StatusCode != 200 {
+		t.Fatalf("sessione col cookie storico: %d %s", r.StatusCode, r.body)
+	}
+	// Il logout in HTTPS cancella entrambi i nomi.
+	req := httptest.NewRequest("POST", "/auth/logout", nil)
+	req.RemoteAddr = "192.0.2.10:1"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.AddCookie(ck)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	cleared := map[string]bool{}
+	for _, c := range rec.Result().Cookies() {
+		if c.MaxAge < 0 {
+			cleared[c.Name] = true
+		}
+	}
+	if rec.Code != 204 || !cleared["__Host-gst_session"] || !cleared["gst_session"] {
+		t.Errorf("logout HTTPS: status %d, cookie cancellati %v", rec.Code, cleared)
+	}
+	if peer := login("198.51.100.5:1", "https"); peer["gst_session"] == nil || peer["gst_session"].Secure || peer["__Host-gst_session"] != nil {
+		t.Errorf("peer non fidato con https: nessun Secure/__Host-: %+v", peer)
+	}
+}
+
+func TestAuthEventsAreLogged(t *testing.T) {
+	var logs bytes.Buffer
+	e := newFullEnv(t, &logs, secret)
+	e.mk("alice", false)
+	e.mk("root", true)
+	const wrongPw = "password sbagliata ma lunga"
+	const newPw = "una nuova password lunga e buona"
+
+	// Login fallito: evento con username, IP e request id, mai la password.
+	r := e.do("POST", "/auth/login", map[string]string{"username": "alice", "password": wrongPw}, nil, "X-Request-Id", "req-fail-1")
+	errCode(t, r, 401, "invalid_credentials")
+	out := logs.String()
+	for _, want := range []string{"event=security.login.failure", "username=alice", "client_ip=192.0.2.10", "request_id=req-fail-1"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("manca %q nel log:\n%s", want, out)
+		}
+	}
+
+	// Login riuscito.
+	ck := e.mustLogin("alice")
+	if !strings.Contains(logs.String(), "event=security.login.success") || !strings.Contains(logs.String(), "actor=alice") {
+		t.Fatalf("manca il login riuscito:\n%s", logs.String())
+	}
+
+	// Token creato e revocato.
+	r = e.do("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"read:user"}, "expiresAt": e.clock.now().Add(48 * time.Hour).Format(time.RFC3339)}, ck)
+	status(t, r, 201)
+	plain, _ := r.json()["token"].(string)
+	tokenID, _ := r.json()["id"].(string)
+	status(t, e.do("DELETE", "/user/tokens/"+tokenID, nil, ck), 204)
+
+	// Chiave SSH aggiunta ed eliminata.
+	r = e.do("POST", "/user/ssh-keys", map[string]any{"title": "laptop", "publicKey": pubKey(t, "ed25519")}, ck)
+	status(t, r, 201)
+	keyID, _ := r.json()["id"].(string)
+	status(t, e.do("DELETE", "/user/ssh-keys/"+keyID, nil, ck), 204)
+
+	// Cambio password: prima con quella attuale sbagliata, poi giusta.
+	errCode(t, e.do("PUT", "/users/alice/password", map[string]any{"currentPassword": wrongPw, "newPassword": newPw}, ck), 403, "forbidden")
+	status(t, e.do("PUT", "/users/alice/password", map[string]any{"currentPassword": pw, "newPassword": newPw}, ck), 204)
+
+	// Logout.
+	status(t, e.do("POST", "/auth/logout", nil, ck), 204)
+
+	// Un amministratore disattiva l'utente.
+	rootCk := e.mustLogin("root")
+	status(t, e.do("PATCH", "/users/alice", map[string]any{"isActive": false}, rootCk), 200)
+
+	out = logs.String()
+	for _, want := range []string{
+		"event=security.token.created", "event=security.token.revoked", "revoked_token_id=" + tokenID,
+		"event=security.ssh_key.added", "event=security.ssh_key.deleted", "key_id=" + keyID,
+		"event=security.password.change_failed", "event=security.password.changed",
+		"event=security.logout", "event=security.user.deactivated", "target=alice", "actor=root",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("manca %q nel log", want)
+		}
+	}
+
+	// Nessun segreto nei log: password (vecchia, nuova, sbagliata), token in
+	// chiaro, valore del cookie di sessione.
+	secrets := []string{pw, newPw, wrongPw, plain, ck.Value, rootCk.Value, pubKey(t, "ed25519")}
+	for _, sec := range secrets {
+		if sec != "" && strings.Contains(out, sec) {
+			t.Errorf("il log contiene un segreto (%.6s…)", sec)
+		}
+	}
+	if t.Failed() {
+		t.Logf("log:\n%s", out)
+	}
+}
+
+// F12 (V3.3.4): l'utente elenca le sue sessioni e ne termina una singola.
+func TestListAndRevokeOwnSessions(t *testing.T) {
+	e := newEnv(t, cfg)
+	e.mk("alice", false)
+	e.mk("bob", false)
+	errCode(t, e.do("GET", "/user/sessions", nil, nil), 401, "unauthenticated")
+
+	first := e.mustLogin("alice")
+	second := e.mustLogin("alice")
+	bob := e.mustLogin("bob")
+
+	r := e.do("GET", "/user/sessions", nil, first, "User-Agent", "test-agent")
+	status(t, r, 200)
+	items, _ := r.json()["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("sessioni di alice: %s", r.body)
+	}
+	var other string
+	currents := 0
+	for _, it := range items {
+		m := it.(map[string]any)
+		if m["authMethod"] != "password" || m["expiresAt"] == nil || m["lastSeenAt"] == nil {
+			t.Fatalf("sessione incompleta: %v", m)
+		}
+		if _, leak := m["tokenHash"]; leak {
+			t.Fatalf("hash esposto: %v", m)
+		}
+		if m["current"] == true {
+			currents++
+		} else {
+			other = m["id"].(string)
+		}
+	}
+	if currents != 1 || other == "" {
+		t.Fatalf("una sola sessione corrente attesa: %s", r.body)
+	}
+
+	// La sessione di bob non si vede e non si revoca (404, come inesistente).
+	rb := e.do("GET", "/user/sessions", nil, bob)
+	bobItems, _ := rb.json()["items"].([]any)
+	bobID := bobItems[0].(map[string]any)["id"].(string)
+	errCode(t, e.do("DELETE", "/user/sessions/"+bobID, nil, first), 404, "not_found")
+	status(t, e.do("GET", "/auth/session", nil, bob), 200)
+
+	// Revoca di un'altra sessione propria: la corrente resta valida.
+	status(t, e.do("DELETE", "/user/sessions/"+other, nil, first), 204)
+	errCode(t, e.do("GET", "/auth/session", nil, second), 401, "unauthenticated")
+	status(t, e.do("GET", "/auth/session", nil, first), 200)
+	errCode(t, e.do("DELETE", "/user/sessions/"+other, nil, first), 404, "not_found")
+	r = e.do("GET", "/user/sessions", nil, first)
+	if items, _ := r.json()["items"].([]any); len(items) != 1 {
+		t.Fatalf("dopo la revoca: %s", r.body)
+	}
+}
+
+// TestExportOwnData: l'utente scarica i propri dati (F20, V8.3.2). Ci sono
+// profilo, token (senza valore), chiave SSH con la chiave pubblica e sessioni;
+// non ci sono password, hash né dati di altri utenti.
+func TestExportOwnData(t *testing.T) {
+	var logs bytes.Buffer
+	e := newFullEnv(t, &logs, secret)
+	e.mk("alice", false)
+	e.mk("bob", false)
+	a, b := e.mustLogin("alice"), e.mustLogin("bob")
+
+	errCode(t, e.do("GET", "/user/export", nil, nil), 401, "unauthenticated")
+
+	exp := e.clock.now().Add(48 * time.Hour).Format(time.RFC3339)
+	r := e.do("POST", "/user/tokens", map[string]any{"name": "ci", "scopes": []string{"read:user"}, "expiresAt": exp}, a)
+	status(t, r, 201)
+	plain, _ := r.json()["token"].(string)
+	pub := pubKey(t, "ed25519")
+	status(t, e.do("POST", "/user/ssh-keys", map[string]any{"title": "laptop", "publicKey": pub}, a), 201)
+	// Dati di bob: non devono comparire nell'export di alice.
+	status(t, e.do("POST", "/user/tokens", map[string]any{"name": "di-bob", "scopes": []string{"read:user"}, "expiresAt": exp}, b), 201)
+
+	r = e.do("GET", "/user/export", nil, a)
+	status(t, r, 200)
+	if cd := r.Header.Get("Content-Disposition"); cd != `attachment; filename="gitstack-alice.json"` {
+		t.Errorf("Content-Disposition %q", cd)
+	}
+	if cc := r.Header.Get("Cache-Control"); !strings.Contains(cc, "no-store") {
+		t.Errorf("Cache-Control %q", cc)
+	}
+	doc := r.json()
+	user, _ := doc["user"].(map[string]any)
+	if user["username"] != "alice" || user["email"] != "alice@example.com" || user["displayName"] != "alice" {
+		t.Errorf("profilo: %v", user)
+	}
+	tokens, _ := doc["tokens"].([]any)
+	if len(tokens) != 1 || tokens[0].(map[string]any)["name"] != "ci" {
+		t.Errorf("token: %v", doc["tokens"])
+	}
+	keys, _ := doc["sshKeys"].([]any)
+	if len(keys) != 1 || keys[0].(map[string]any)["title"] != "laptop" || keys[0].(map[string]any)["publicKey"] != pub {
+		t.Errorf("chiavi: %v", doc["sshKeys"])
+	}
+	if sess, _ := doc["sessions"].([]any); len(sess) != 1 {
+		t.Errorf("sessioni: %v", doc["sessions"])
+	}
+	if doc["totpEnabled"] != false || doc["exportedAt"] == nil {
+		t.Errorf("totpEnabled/exportedAt: %v %v", doc["totpEnabled"], doc["exportedAt"])
+	}
+	// Mai segreti né dati altrui.
+	for _, forbidden := range []string{plain, "di-bob", "bob@example.com", pw, "passwordHash", "password_hash", "$argon2", "$2a$"} {
+		if forbidden != "" && bytes.Contains(r.body, []byte(forbidden)) {
+			t.Errorf("l'export contiene %q", forbidden)
+		}
 	}
 }

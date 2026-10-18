@@ -1,6 +1,6 @@
 # deploy/
 
-Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno dei servizi (`gateway`, `identity`, `git`, `core`, `web`, `postgres`, `nats`), lo script di installazione a comando singolo e la VM di test riproducibile. Architettura: `.lmbrain-lite/knowledge/architecture.md`.
+Tutto ciò che serve a far girare GitStack su k3s: manifest/Helm chart interno dei servizi (`gateway`, `identity`, `git`, `core`, `web`, `postgres`, `nats`), lo script di installazione a comando singolo e la VM di test riproducibile. Architettura: `docs/operations.md` e la knowledge base interna in `.prisma/knowledge/`.
 
 - `postgres-prepare.sql` — script per il DBA: database e utente per un Postgres esterno (N8).
 - `gitstack/` — chart Helm interno (M-01/T-08): installa `gateway`, `identity`, `core`, `web`, `postgres` e `nats` (JetStream) con un solo `helm install`, Traefik come ingresso. Dettagli, valori di default e opzioni (mirror, Postgres esterno) in `gitstack/README.md`. `identity` (GIT-36) è nel chart, con ruolo e schema Postgres dedicati e le sue rotte instradate dal gateway; `git` non ha ancora un'immagine: non è nel chart.
@@ -24,7 +24,11 @@ curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/insta
 
 ### Distribuzioni supportate
 
-**Ubuntu Server 22.04 e 24.04 LTS**, **Pop!_OS 22.04 e 24.04**, tutti amd64 (N2 [c_d345922b89557a3f]). Su un altro sistema il preflight stampa «non supportato» e si ferma: si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware.
+Nella v1.0 sono ufficialmente supportati solo **Ubuntu Server 22.04 e 24.04 LTS**, amd64: su questi il preflight passa senza avvisi e l'installazione gira in CI (N2 rivista il 2026-10-18, [c_d345922b89557a3f]).
+
+**Pop!_OS 22.04 e 24.04** (amd64) si installa senza `--force`: il preflight stampa un avviso («non è supportato ufficialmente nella v1.0», in italiano e in inglese) e prosegue, senza garanzia e senza test in CI.
+
+Gli altri sistemi restano bloccati: il preflight stampa «non supportato» e si ferma, si procede solo con `--force`, a proprio rischio. `--force` non salta i requisiti hardware.
 
 ### Differenze fra i sistemi supportati
 
@@ -58,7 +62,7 @@ Lo script li verifica in preflight prima di installare qualunque cosa (N1, confe
 | CPU | 4 vCPU | 8 vCPU |
 | RAM | 8 GB | 16 GB |
 | Disco | filesystem di almeno 60 GB **e** almeno 20 GB liberi, sul filesystem che ospita `/var/lib/rancher` (se non esiste ancora, `/`) | 200 GB su SSD (fino a circa 100 utenti) |
-| Sistema | Ubuntu Server 22.04/24.04, Pop!_OS 22.04/24.04, x86_64 | |
+| Sistema | Ubuntu Server 22.04/24.04 amd64 (supportato nella v1.0); Pop!_OS 22.04/24.04 amd64 con avviso nel preflight; altri sistemi solo con `--force` | |
 | Accesso | root o sudo | |
 | Rete | uscita verso `get.k3s.io`, `get.helm.sh` e il registry delle immagini (`ghcr.io` di default, configurabile; l'air-gapped arriva con M-08) | |
 | Porte libere | 80, 443, 6443 e la porta SSH di git (già occupate da un'installazione GitStack esistente non sono un errore: vedi Idempotenza) | |

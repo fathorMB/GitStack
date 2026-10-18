@@ -44,12 +44,24 @@ type Config struct {
 	// di GIT-8 la imposta esplicitamente.
 	NatsURL string
 
-	// ServiceSecret è il segreto di servizio (Secret
-	// `<release>-identity-service`, chiave `secret`) con cui il gateway firma
-	// l'identità inoltrata a core. Come NatsURL serve solo al comando
-	// "serve" (che lo richiede, vedi main.go), non a "migrate up|down". Mai
-	// loggato.
+	// ServiceSecret è il segreto di servizio di core
+	// (GITSTACK_SERVICE_SECRET_CORE, Secret `<release>-service-secrets`,
+	// chiave `core`): core lo usa come Bearer verso identity e per firmare le
+	// chiamate al servizio git. Come NatsURL serve solo al comando "serve"
+	// (che lo richiede, vedi main.go), non a "migrate up|down". Mai loggato.
+	// Un elenco "nuova,vecchia" è accettato (rotazione): firma con la prima.
 	ServiceSecret string
+
+	// GatewaySecret è il segreto con cui il gateway firma l'identità
+	// inoltrata a core (GITSTACK_SERVICE_SECRET_GATEWAY, chiave `gateway`).
+	// Obbligatorio per "serve".
+	GatewaySecret string
+
+	// GitSecret è il segreto del servizio git (GITSTACK_SERVICE_SECRET_GIT,
+	// chiave `git`): core accetta un'identità firmata da git solo per
+	// risolvere owner/repo (GET /repos/{owner}/{repo}). Vuoto: nessuna
+	// chiamata da git è accettata.
+	GitSecret string
 
 	// IdentityURL è la base URL di identity (GITSTACK_IDENTITY_URL, stesso
 	// nome del gateway): core la usa per assegnare il grant admin a chi crea
@@ -110,6 +122,13 @@ type Config struct {
 	// default 10 MiB).
 	AttachmentMaxBytes int64
 
+	// AttachmentRepoQuotaBytes e AttachmentUserQuotaBytes: byte di allegati per
+	// repo e per utente (GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES, _USER_QUOTA_BYTES;
+	// default 1 GiB e 512 MiB; 0 = nessun limite, F17). Valori negativi di
+	// httpserver.AttachmentsConfig: qui 0 diventa -1.
+	AttachmentRepoQuotaBytes int64
+	AttachmentUserQuotaBytes int64
+
 	// AttachmentOrphanTTL: un allegato mai collegato si elimina dopo questo
 	// tempo (GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL, default 24h).
 	AttachmentOrphanTTL time.Duration
@@ -132,6 +151,9 @@ const (
 	envNatsURL              = "GITSTACK_CORE_NATS_URL"
 	envLogLevel             = "GITSTACK_CORE_LOG_LEVEL"
 	envServiceSecret        = "GITSTACK_IDENTITY_SERVICE_SECRET"
+	envSecretCore           = "GITSTACK_SERVICE_SECRET_CORE"
+	envSecretGateway        = "GITSTACK_SERVICE_SECRET_GATEWAY"
+	envSecretGit            = "GITSTACK_SERVICE_SECRET_GIT"
 	envIdentityURL          = "GITSTACK_IDENTITY_URL"
 	envGitURL               = "GITSTACK_GIT_URL"
 	envPublicURL            = "GITSTACK_CORE_PUBLIC_URL"
@@ -155,6 +177,8 @@ const (
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
 	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
+	envAttachRepoQuota  = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
+	envAttachUserQuota  = "GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES"
 	envAttachmentOrphan = "GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL"
 
 	defaultAttachmentMaxBytes  = int64(10 << 20)
@@ -190,8 +214,10 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		MigrationsTimeout: defaultMigrationsTimeout,
 		LogLevel:          defaultLogLevel,
 
-		AttachmentMaxBytes:  defaultAttachmentMaxBytes,
-		AttachmentOrphanTTL: defaultAttachmentOrphanTTL,
+		AttachmentMaxBytes:       defaultAttachmentMaxBytes,
+		AttachmentRepoQuotaBytes: 1 << 30,
+		AttachmentUserQuotaBytes: 512 << 20,
+		AttachmentOrphanTTL:      defaultAttachmentOrphanTTL,
 	}
 
 	if v, ok := lookup(envAddr); ok && strings.TrimSpace(v) != "" {
@@ -227,9 +253,21 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		cfg.NatsURL = v
 	}
 
+	// F9: un segreto per chiamante. Il segreto condiviso storico vale solo
+	// per quelli che mancano (installazioni non gestite dal chart).
+	legacy := ""
 	if v, ok := lookup(envServiceSecret); ok {
-		cfg.ServiceSecret = strings.TrimSpace(v)
+		legacy = strings.TrimSpace(v)
 	}
+	pick := func(env string) string {
+		if v, ok := lookup(env); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+		return legacy
+	}
+	cfg.ServiceSecret = pick(envSecretCore)
+	cfg.GatewaySecret = pick(envSecretGateway)
+	cfg.GitSecret = pick(envSecretGit)
 
 	if v, ok := lookup(envIdentityURL); ok {
 		cfg.IdentityURL = strings.TrimSpace(v)
@@ -283,6 +321,19 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 			errs = append(errs, fmt.Sprintf("%s non è un intero positivo di byte: %q", envAttachmentMax, v))
 		} else {
 			cfg.AttachmentMaxBytes = n
+		}
+	}
+	for _, q := range []struct {
+		env string
+		dst *int64
+	}{{envAttachRepoQuota, &cfg.AttachmentRepoQuotaBytes}, {envAttachUserQuota, &cfg.AttachmentUserQuotaBytes}} {
+		if v, ok := lookup(q.env); ok && strings.TrimSpace(v) != "" {
+			n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+			if err != nil || n < 0 {
+				errs = append(errs, fmt.Sprintf("%s non è un intero di byte (0 = nessun limite): %q", q.env, v))
+			} else {
+				*q.dst = n
+			}
 		}
 	}
 	if v, ok := lookup(envAttachmentOrphan); ok && strings.TrimSpace(v) != "" {

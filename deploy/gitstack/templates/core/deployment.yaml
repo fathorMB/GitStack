@@ -103,13 +103,13 @@ spec:
               value: {{ .Values.core.env.migrationsTimeout | quote }}
             - name: GITSTACK_CORE_NATS_URL
               value: {{ include "gitstack.nats.url" . | quote }}
-            # Segreto di servizio: core accetta l'identità solo se firmata dal
-            # gateway con questo segreto. Solo da Secret.
-            - name: GITSTACK_IDENTITY_SERVICE_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "gitstack.serviceSecret.name" . }}
-                  key: secret
+            # Segreti di servizio (F9, un segreto per chiamante): core firma con
+            # il proprio (Bearer verso identity, identità verso git), accetta
+            # l'identità firmata dal gateway e da git solo la risoluzione di
+            # owner/repo. Solo da Secret.
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "core") | nindent 12 }}
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "gateway") | nindent 12 }}
+            {{- include "gitstack.serviceSecret.env" (dict "root" . "caller" "git") | nindent 12 }}
             {{- if .Values.identity.enabled }}
             # identity: core vi assegna il grant admin a chi crea una risorsa
             # (POST /internal/resources/{id}/grants/creator). Senza identity,
@@ -136,6 +136,10 @@ spec:
               value: {{ .Values.core.attachments.mountPath | quote }}
             - name: GITSTACK_CORE_ATTACHMENTS_MAX_BYTES
               value: {{ .Values.core.attachments.maxBytes | int64 | quote }}
+            - name: GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES
+              value: {{ .Values.core.attachments.repoQuotaBytes | int64 | quote }}
+            - name: GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES
+              value: {{ .Values.core.attachments.userQuotaBytes | int64 | quote }}
             - name: GITSTACK_CORE_ATTACHMENTS_ORPHAN_TTL
               value: {{ .Values.core.attachments.orphanTtl | quote }}
             {{- end }}

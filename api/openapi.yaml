@@ -315,12 +315,24 @@ paths:
       tags: [auth]
       summary: Accede con username e password
       description: >
-        Crea una sessione. La risposta imposta il cookie `gst_session`
-        (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le
+        Crea una sessione. La risposta imposta il cookie `gst_session` (con
+        prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in
+        HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure,
+        SameSite=Lax); il valore non e' nel corpo. Le
         credenziali sbagliate e l'utente disattivato rispondono entrambi 401
         con `invalid_credentials`, senza distinguere i casi. Dopo troppi
         tentativi falliti (per utente o per indirizzo IP) risponde 429
         `too_many_attempts` con l'header `Retry-After` in secondi.
+
+        Secondo fattore (F11): se l'utente ha attivato il TOTP, la sola
+        password non basta. Il login e' a due passi: il primo invio con la
+        sola password giusta risponde 401 `second_factor_required` (nessuna
+        sessione, nessun cookie); il secondo ripete username e password con
+        `totpCode` (codice a 6 cifre, finestra +-1 passo da 30 secondi,
+        ogni codice vale una volta sola) oppure `recoveryCode` (codice di
+        recupero monouso). Un codice sbagliato risponde 401
+        `invalid_credentials` e conta come tentativo fallito. Gli utenti che
+        entrano con OIDC prendono l'MFA dal loro provider.
       security: []
       requestBody:
         required: true
@@ -356,6 +368,7 @@ paths:
       operationId: logout
       tags: [auth]
       x-password-change-exempt: always
+      x-totp-enroll-exempt: always
       summary: Termina la sessione corrente
       description: Revoca la sessione del cookie `gst_session` e lo cancella.
       security:
@@ -373,6 +386,7 @@ paths:
       operationId: getCurrentSession
       tags: [auth]
       x-password-change-exempt: always
+      x-totp-enroll-exempt: always
       summary: Sessione corrente
       description: >
         Chi e' il chiamante e con quale credenziale (sessione o token
@@ -387,6 +401,131 @@ paths:
                 $ref: "#/components/schemas/CurrentSession"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp:
+    get:
+      operationId: getTotpStatus
+      tags: [auth]
+      x-totp-enroll-exempt: always
+      summary: Stato del secondo fattore TOTP dell'utente corrente
+      description: >
+        Solo sessione (i token personali non hanno secondo fattore).
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Stato del TOTP.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp/enroll:
+    post:
+      operationId: enrollTotp
+      tags: [auth]
+      x-totp-enroll-exempt: always
+      summary: Inizia l'attivazione del TOTP
+      description: >
+        Genera un segreto nuovo (cifrato nel database) e lo restituisce una
+        sola volta, con l'URI `otpauth://` per il QR code. Il TOTP non e'
+        attivo finche' `POST /auth/totp/verify` non conferma un codice;
+        ripetere `enroll` prima della conferma sostituisce il segreto. Se il
+        TOTP e' gia' attivo: 409 `already_enabled`. Account senza password
+        (agent, solo OIDC): 409 `not_local`. Installazione senza chiavi
+        TOTP: 503 `totp_unavailable`.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Segreto e URI di provisioning.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpEnrollment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp/verify:
+    post:
+      operationId: verifyTotp
+      tags: [auth]
+      x-totp-enroll-exempt: always
+      summary: Conferma l'attivazione del TOTP
+      description: >
+        Verifica un codice del segreto in attesa, attiva il TOTP e restituisce
+        una sola volta i codici di recupero monouso. Codice sbagliato: 422
+        `validation_failed`; nessuna attivazione in corso: 409 `not_pending`.
+        I tentativi sbagliati passano dal limitatore del login.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpCodeInput"
+      responses:
+        "200":
+          description: TOTP attivo; codici di recupero.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpRecoveryCodes"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /auth/totp/disable:
+    post:
+      operationId: disableTotp
+      tags: [auth]
+      summary: Disattiva il TOTP
+      description: >
+        Chiede la password e un codice TOTP (o un codice di recupero). Se
+        l'installazione impone il TOTP agli amministratori, un amministratore
+        non puo' disattivarlo: 409 `totp_required`. Dati errati: 403
+        `forbidden`. Revoca le altre sessioni.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpDisableInput"
+      responses:
+        "204":
+          description: TOTP disattivato.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -754,6 +893,32 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /users/{username}/totp:
+    parameters:
+      - $ref: "#/components/parameters/UsernameParam"
+    delete:
+      operationId: resetUserTotp
+      tags: [users]
+      summary: Azzera il TOTP di un utente (amministratore)
+      description: >
+        Solo amministratori, scope `write:user`: per chi ha perso sia il
+        dispositivo sia i codici di recupero. Toglie segreto e codici e revoca
+        le sessioni dell'utente; al prossimo accesso basta la password (e, per
+        un amministratore con TOTP obbligatorio, dovra' riattivarlo). Senza
+        TOTP attivo risponde comunque 204.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: TOTP azzerato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /users/{username}/password:
     parameters:
       - $ref: "#/components/parameters/UsernameParam"
@@ -875,6 +1040,87 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/sessions:
+    get:
+      operationId: listOwnSessions
+      tags: [auth]
+      summary: Elenca le sessioni web attive dell'utente corrente
+      description: >
+        Scope `read:user`. Le sessioni non scadute, non revocate e non
+        inattive (vedi l'idle timeout di identity). `current` e' vero per la
+        sessione del cookie della richiesta.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Sessioni attive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionIdParam"
+    delete:
+      operationId: revokeOwnSession
+      tags: [auth]
+      summary: Termina una sessione web dell'utente corrente
+      description: >
+        Scope `write:user`. Revoca la sessione indicata (anche quella
+        corrente). Una sessione di un altro utente risponde 404.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Sessione terminata.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/export:
+    get:
+      operationId: exportOwnData
+      tags: [auth]
+      summary: Esporta i dati personali dell'utente corrente
+      description: >
+        Scope `read:user` (V8.3.2). Un unico documento JSON, scaricabile come
+        file (`Content-Disposition: attachment`, `Cache-Control: no-store`), con
+        i dati che identity conserva sull'utente: profilo (nome, email, ruolo),
+        token personali (mai il valore: solo nome, scope, suffisso e date),
+        chiavi SSH (chiave pubblica compresa), sessioni web attive e se il
+        TOTP e' attivo. Non contiene mai password, hash, segreto TOTP o codici
+        di recupero. I contenuti creati in core (issue, commenti, repository)
+        non fanno parte dell'export: restano leggibili con le loro API.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Documento di esportazione.
+          headers:
+            Content-Disposition:
+              description: "`attachment; filename=\"gitstack-<username>.json\"`."
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnDataExport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -3171,7 +3417,7 @@ paths:
       description: >
         `multipart/form-data` con un solo campo `file`. Chi vede il repo (I3, I9). Tipi ammessi: immagini
         (PNG, JPEG, GIF, WebP), PDF, testo/log, ZIP; limite configurabile (default 10 MB): oltre, 413
-        `attachment_too_large`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`.
+        `attachment_too_large`; quota di allegati del repo o dell'utente esaurita: 413 `attachment_quota_exceeded`; tipo non ammesso (verificato sui byte, non sul nome): 422 `unsupported_media_type`.
         L'allegato nasce non collegato e va indicato in `attachmentIds` di una issue o di un commento; uno non
         collegato entro 24 ore e' eliminato. Si salvano solo i metadati in DB; il nome originale non entra mai nel
         percorso su disco. Un repo archiviato rifiuta ogni modifica con 409 `archived` (R10).
@@ -5587,6 +5833,72 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/credential-events:
+    get:
+      operationId: listCredentialEvents
+      tags: [internal]
+      summary: Eventi sulle credenziali degli utenti, da consegnare
+      description: >
+        Per core (F13): gli eventi non ancora confermati (cambio password,
+        reset da amministratore, nuovo token, nuova chiave SSH, token in
+        scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500).
+        Prima di rispondere identity cerca i token che scadono entro 7 giorni e
+        non sono ancora stati segnalati. La consegna e' almeno una volta: core
+        conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai
+        segreti: solo tipo, nome del token o della chiave e date.
+      security:
+        - serviceAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Gli eventi da consegnare.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialEventList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/credential-events/ack:
+    post:
+      operationId: ackCredentialEvents
+      tags: [internal]
+      summary: Conferma la consegna degli eventi sulle credenziali
+      description: >
+        Per core (F13): segna come consegnati esattamente gli eventi con gli id
+        indicati in `ids`, quelli che core ha ricevuto e scritto. Non c'e' una
+        soglia (`id <= N`): gli id di una sequence non arrivano in ordine di commit
+        e un evento committato dopo la lettura, con id minore, andrebbe perso.
+        Ripetere la conferma, o indicare id gia' confermati o inesistenti, e' innocuo.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialEventsAckInput"
+      responses:
+        "204":
+          description: Eventi confermati.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/mentions/resolve:
     post:
       operationId: resolveMentions
@@ -6125,7 +6437,12 @@ components:
       name: gst_session
       description: >
         Sessione web creata da `POST /auth/login` o dal login OIDC. Valore
-        opaco; identity ne conserva solo l'hash.
+        opaco; identity ne conserva solo l'hash. In HTTPS il cookie si chiama
+        `__Host-gst_session` (V3.4.4); il nome senza prefisso resta valido per
+        le sessioni gia' aperte e su HTTP. Una richiesta con metodo non sicuro
+        autenticata dal cookie e con `Origin` o `Sec-Fetch-Site` estranei
+        risponde 403 `cross_site_request` (V4.2.2); con un token Bearer
+        non si applica.
     serviceAuth:
       type: http
       scheme: bearer
@@ -6218,6 +6535,13 @@ components:
         $ref: "#/components/schemas/Name"
     TokenIdParam:
       name: tokenId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionIdParam:
+      name: sessionId
       in: path
       required: true
       schema:
@@ -7063,6 +7387,97 @@ components:
           maxLength: 1024
           format: password
           writeOnly: true
+        totpCode:
+          type: string
+          pattern: '^[0-9]{6}$'
+          writeOnly: true
+          description: Codice TOTP a 6 cifre (secondo passo del login).
+        recoveryCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          writeOnly: true
+          description: >
+            Codice di recupero monouso, in alternativa a `totpCode`. Maiuscole,
+            minuscole e trattini non contano.
+
+    TotpStatus:
+      type: object
+      additionalProperties: false
+      required: [enabled, available, requiredForAdmins, recoveryCodesRemaining]
+      properties:
+        enabled:
+          type: boolean
+          description: Vero se l'utente ha confermato il TOTP.
+        pending:
+          type: boolean
+          description: Vero se c'e' un'attivazione iniziata e non ancora confermata.
+        available:
+          type: boolean
+          description: >
+            Falso se l'installazione non ha chiavi di cifratura configurate
+            (`GITSTACK_IDENTITY_TOTP_KEYS`): l'attivazione risponde 503.
+        requiredForAdmins:
+          type: boolean
+          description: Vero se l'installazione impone il TOTP agli amministratori.
+        recoveryCodesRemaining:
+          type: integer
+          minimum: 0
+
+    TotpEnrollment:
+      type: object
+      additionalProperties: false
+      required: [secret, otpauthUri]
+      properties:
+        secret:
+          type: string
+          description: Segreto in base32, per l'inserimento manuale. Compare solo qui.
+        otpauthUri:
+          type: string
+          description: URI `otpauth://totp/...` da trasformare in QR code.
+
+    TotpCodeInput:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Codice TOTP a 6 cifre.
+
+    TotpRecoveryCodes:
+      type: object
+      additionalProperties: false
+      required: [recoveryCodes]
+      properties:
+        recoveryCodes:
+          type: array
+          description: >
+            Codici di recupero monouso, mostrati una sola volta (nel database
+            ci sono solo gli hash).
+          items:
+            type: string
+
+    TotpDisableInput:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          format: password
+          writeOnly: true
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Codice TOTP attuale (o in alternativa `recoveryCode`).
+        recoveryCode:
+          type: string
+          minLength: 1
+          maxLength: 64
 
     User:
       type: object
@@ -7124,10 +7539,13 @@ components:
         password:
           type: string
           minLength: 12
-          maxLength: 1024
+          maxLength: 128
           format: password
           writeOnly: true
-          description: Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+          description: >
+            Da 12 a 128 caratteri e non presente nell'elenco di password comuni
+            (422 `password`). Assente per gli agenti (accedono solo con token)
+            e per chi entra solo via OIDC.
         isAdmin:
           type: boolean
           default: false
@@ -7189,9 +7607,14 @@ components:
         newPassword:
           type: string
           minLength: 12
-          maxLength: 1024
+          maxLength: 128
           format: password
           writeOnly: true
+          description: >
+            Da 12 a 128 caratteri e non presente nell'elenco di password comuni
+            incorporato (422 `newPassword`). La password attuale e il login
+            accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga
+            puo' ancora entrare e sostituirla.
 
     CurrentSession:
       type: object
@@ -7212,6 +7635,14 @@ components:
             risponde 403 `password_change_required`, tranne `GET
             /auth/session`, `POST /auth/logout` e `PUT
             /users/{username}/password` (solo sulla propria utenza).
+        mustEnrollTotp:
+          type: boolean
+          description: >
+            Vero per un amministratore con sessione a password quando
+            l'installazione impone il TOTP e lui non l'ha ancora attivato.
+            Finche' e' vero ogni chiamata autenticata risponde 403
+            `totp_enrollment_required`, tranne `GET /auth/session`, `POST
+            /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
         scopes:
           type: array
           description: Solo per `authMethod` = `token`.
@@ -7221,6 +7652,141 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    Session:
+      type: object
+      description: Sessione web attiva, senza il valore del cookie.
+      additionalProperties: false
+      required: [id, authMethod, createdAt, lastSeenAt, expiresAt, current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        authMethod:
+          type: string
+          enum: [password, oidc]
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: Vero per la sessione con cui e' fatta la richiesta.
+
+    SessionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+
+    ExportedSshKey:
+      type: object
+      description: Chiave SSH dell'utente, con la chiave pubblica.
+      additionalProperties: false
+      required: [title, keyType, fingerprint, publicKey, createdAt]
+      properties:
+        title:
+          type: string
+        keyType:
+          type: string
+        fingerprint:
+          type: string
+        publicKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    OwnDataExport:
+      type: object
+      description: >
+        Dati personali che identity conserva su un utente (V8.3.2). Senza
+        password, hash, segreto TOTP e valori dei token.
+      additionalProperties: false
+      required: [exportedAt, user, tokens, sshKeys, sessions, totpEnabled]
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Token"
+        sshKeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportedSshKey"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+        totpEnabled:
+          type: boolean
+
+    CredentialEvent:
+      type: object
+      additionalProperties: false
+      required: [id, userId, kind, detail, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [password_changed, password_reset, token_created, token_expiring, ssh_key_added]
+        detail:
+          type: object
+          additionalProperties: true
+          description: Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+        createdAt:
+          type: string
+          format: date-time
+
+    CredentialEventList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CredentialEvent"
+
+    CredentialEventsAckInput:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: integer
+            format: int64
+            minimum: 1
 
     OidcProvider:
       type: object
@@ -7752,6 +8318,13 @@ components:
             `password_change_required` a ogni rotta tranne `GET /auth/session`,
             `POST /auth/logout` e `PUT /users/{username}/password` sulla propria
             utenza. Assente equivale a falso.
+        mustEnrollTotp:
+          type: boolean
+          description: >
+            Vero per una sessione a password di un amministratore che deve
+            ancora attivare il TOTP (installazione che lo impone). Il gateway
+            risponde 403 `totp_enrollment_required` a ogni rotta senza
+            `x-totp-enroll-exempt`. Assente equivale a falso.
         credentialId:
           type: string
           format: uuid
@@ -9654,7 +10227,9 @@ components:
         `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue
         seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7);
         `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha
-        una storia diversa (V8).
+        una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio
+        password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13):
+        senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
       enum:
         - assigned
         - mentioned
@@ -9664,6 +10239,7 @@ components:
         - state_change
         - webhook
         - mirror
+        - credential
     NotificationRepo:
       type: object
       additionalProperties: false

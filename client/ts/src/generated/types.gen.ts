@@ -362,6 +362,61 @@ export type LoginInput = {
     username: string;
 };
 
+export type TotpStatus = {
+    /**
+     * Vero se l'utente ha confermato il TOTP.
+     */
+    enabled: boolean;
+    /**
+     * Vero se c'e' un'attivazione iniziata e non ancora confermata.
+     */
+    pending?: boolean;
+    /**
+     * Falso se l'installazione non ha chiavi di cifratura configurate (`GITSTACK_IDENTITY_TOTP_KEYS`): l'attivazione risponde 503.
+     *
+     */
+    available: boolean;
+    /**
+     * Vero se l'installazione impone il TOTP agli amministratori.
+     */
+    requiredForAdmins: boolean;
+    recoveryCodesRemaining: number;
+};
+
+export type TotpEnrollment = {
+    /**
+     * Segreto in base32, per l'inserimento manuale. Compare solo qui.
+     */
+    secret: string;
+    /**
+     * URI `otpauth://totp/...` da trasformare in QR code.
+     */
+    otpauthUri: string;
+};
+
+export type TotpCodeInput = {
+    /**
+     * Codice TOTP a 6 cifre.
+     */
+    code: string;
+};
+
+export type TotpRecoveryCodes = {
+    /**
+     * Codici di recupero monouso, mostrati una sola volta (nel database ci sono solo gli hash).
+     *
+     */
+    recoveryCodes: Array<string>;
+};
+
+export type TotpDisableInput = {
+    /**
+     * Codice TOTP attuale (o in alternativa `recoveryCode`).
+     */
+    code?: string;
+    recoveryCode?: string;
+};
+
 /**
  * Profilo utente. `email`, `isAdmin`, `isActive`, `createdAt` sono presenti solo per l'utente stesso e per gli amministratori.
  *
@@ -411,6 +466,10 @@ export type UserList = {
 
 export type ChangePasswordInput = {
     currentPassword?: string;
+    /**
+     * Da 12 a 128 caratteri e non presente nell'elenco di password comuni incorporato (422 `newPassword`). La password attuale e il login accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga puo' ancora entrare e sostituirla.
+     *
+     */
     newPassword: string;
 };
 
@@ -426,10 +485,82 @@ export type CurrentSession = {
      */
     mustChangePassword: boolean;
     /**
+     * Vero per un amministratore con sessione a password quando l'installazione impone il TOTP e lui non l'ha ancora attivato. Finche' e' vero ogni chiamata autenticata risponde 403 `totp_enrollment_required`, tranne `GET /auth/session`, `POST /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
+     *
+     */
+    mustEnrollTotp?: boolean;
+    /**
      * Solo per `authMethod` = `token`.
      */
     scopes?: Array<TokenScope>;
     expiresAt?: string | null;
+};
+
+/**
+ * Sessione web attiva, senza il valore del cookie.
+ */
+export type Session = {
+    id: string;
+    authMethod: 'password' | 'oidc';
+    userAgent?: string;
+    ipAddress?: string;
+    createdAt: string;
+    lastSeenAt: string;
+    expiresAt: string;
+    /**
+     * Vero per la sessione con cui e' fatta la richiesta.
+     */
+    current: boolean;
+};
+
+export type SessionList = {
+    items: Array<Session>;
+};
+
+/**
+ * Chiave SSH dell'utente, con la chiave pubblica.
+ */
+export type ExportedSshKey = {
+    title: string;
+    keyType: string;
+    fingerprint: string;
+    publicKey: string;
+    createdAt: string;
+    lastUsedAt?: string | null;
+};
+
+/**
+ * Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+ *
+ */
+export type OwnDataExport = {
+    exportedAt: string;
+    user: User;
+    tokens: Array<Token>;
+    sshKeys: Array<ExportedSshKey>;
+    sessions: Array<Session>;
+    totpEnabled: boolean;
+};
+
+export type CredentialEvent = {
+    id: number;
+    userId: string;
+    kind: 'password_changed' | 'password_reset' | 'token_created' | 'token_expiring' | 'ssh_key_added';
+    /**
+     * Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+     */
+    detail: {
+        [key: string]: unknown;
+    };
+    createdAt: string;
+};
+
+export type CredentialEventList = {
+    items: Array<CredentialEvent>;
+};
+
+export type CredentialEventsAckInput = {
+    ids: Array<number>;
 };
 
 export type OidcProvider = {
@@ -670,6 +801,11 @@ export type Principal = {
      *
      */
     mustChangePassword?: boolean;
+    /**
+     * Vero per una sessione a password di un amministratore che deve ancora attivare il TOTP (installazione che lo impone). Il gateway risponde 403 `totp_enrollment_required` a ogni rotta senza `x-totp-enroll-exempt`. Assente equivale a falso.
+     *
+     */
+    mustEnrollTotp?: boolean;
     /**
      * Id della sessione o del token (per audit).
      */
@@ -1687,10 +1823,10 @@ export type UpdateMilestoneInput = {
 };
 
 /**
- * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
+ * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
  *
  */
-export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook' | 'mirror';
+export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook' | 'mirror' | 'credential';
 
 export type NotificationRepo = {
     id: string;
@@ -2281,6 +2417,24 @@ export type LoginInputWritable = {
      */
     username: string;
     password: string;
+    /**
+     * Codice TOTP a 6 cifre (secondo passo del login).
+     */
+    totpCode?: string;
+    /**
+     * Codice di recupero monouso, in alternativa a `totpCode`. Maiuscole, minuscole e trattini non contano.
+     *
+     */
+    recoveryCode?: string;
+};
+
+export type TotpDisableInputWritable = {
+    password: string;
+    /**
+     * Codice TOTP attuale (o in alternativa `recoveryCode`).
+     */
+    code?: string;
+    recoveryCode?: string;
 };
 
 /**
@@ -2304,7 +2458,8 @@ export type CreateUserInputWritable = {
     email?: string;
     displayName?: string;
     /**
-     * Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     * Da 12 a 128 caratteri e non presente nell'elenco di password comuni (422 `password`). Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     *
      */
     password?: string;
     isAdmin?: boolean;
@@ -2329,10 +2484,28 @@ export type CurrentSessionWritable = {
      */
     mustChangePassword: boolean;
     /**
+     * Vero per un amministratore con sessione a password quando l'installazione impone il TOTP e lui non l'ha ancora attivato. Finche' e' vero ogni chiamata autenticata risponde 403 `totp_enrollment_required`, tranne `GET /auth/session`, `POST /auth/logout` e gli endpoint `/auth/totp*`. Assente equivale a falso.
+     *
+     */
+    mustEnrollTotp?: boolean;
+    /**
      * Solo per `authMethod` = `token`.
      */
     scopes?: Array<TokenScope>;
     expiresAt?: string | null;
+};
+
+/**
+ * Dati personali che identity conserva su un utente (V8.3.2). Senza password, hash, segreto TOTP e valori dei token.
+ *
+ */
+export type OwnDataExportWritable = {
+    exportedAt: string;
+    user: UserWritable;
+    tokens: Array<TokenWritable>;
+    sshKeys: Array<ExportedSshKey>;
+    sessions: Array<Session>;
+    totpEnabled: boolean;
 };
 
 /**
@@ -2653,6 +2826,8 @@ export type OrgParam = Name;
 export type TeamParam = Name;
 
 export type TokenIdParam = string;
+
+export type SessionIdParam = string;
 
 export type SshKeyIdParam = string;
 
@@ -3199,6 +3374,162 @@ export type GetCurrentSessionResponses = {
 
 export type GetCurrentSessionResponse = GetCurrentSessionResponses[keyof GetCurrentSessionResponses];
 
+export type GetTotpStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/totp';
+};
+
+export type GetTotpStatusErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetTotpStatusError = GetTotpStatusErrors[keyof GetTotpStatusErrors];
+
+export type GetTotpStatusResponses = {
+    /**
+     * Stato del TOTP.
+     */
+    200: TotpStatus;
+};
+
+export type GetTotpStatusResponse = GetTotpStatusResponses[keyof GetTotpStatusResponses];
+
+export type EnrollTotpData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/totp/enroll';
+};
+
+export type EnrollTotpErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type EnrollTotpError = EnrollTotpErrors[keyof EnrollTotpErrors];
+
+export type EnrollTotpResponses = {
+    /**
+     * Segreto e URI di provisioning.
+     */
+    200: TotpEnrollment;
+};
+
+export type EnrollTotpResponse = EnrollTotpResponses[keyof EnrollTotpResponses];
+
+export type VerifyTotpData = {
+    body: TotpCodeInput;
+    path?: never;
+    query?: never;
+    url: '/auth/totp/verify';
+};
+
+export type VerifyTotpErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di secondi indicato in `Retry-After`.
+     *
+     */
+    429: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type VerifyTotpError = VerifyTotpErrors[keyof VerifyTotpErrors];
+
+export type VerifyTotpResponses = {
+    /**
+     * TOTP attivo; codici di recupero.
+     */
+    200: TotpRecoveryCodes;
+};
+
+export type VerifyTotpResponse = VerifyTotpResponses[keyof VerifyTotpResponses];
+
+export type DisableTotpData = {
+    body: TotpDisableInputWritable;
+    path?: never;
+    query?: never;
+    url: '/auth/totp/disable';
+};
+
+export type DisableTotpErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Troppi tentativi (`too_many_attempts`): riprovare dopo il numero di secondi indicato in `Retry-After`.
+     *
+     */
+    429: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DisableTotpError = DisableTotpErrors[keyof DisableTotpErrors];
+
+export type DisableTotpResponses = {
+    /**
+     * TOTP disattivato.
+     */
+    204: void;
+};
+
+export type DisableTotpResponse = DisableTotpResponses[keyof DisableTotpResponses];
+
 export type ListOidcProvidersData = {
     body?: never;
     path?: never;
@@ -3687,6 +4018,46 @@ export type RevokeUserTokenResponses = {
 
 export type RevokeUserTokenResponse = RevokeUserTokenResponses[keyof RevokeUserTokenResponses];
 
+export type ResetUserTotpData = {
+    body?: never;
+    path: {
+        username: Name;
+    };
+    query?: never;
+    url: '/users/{username}/totp';
+};
+
+export type ResetUserTotpErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ResetUserTotpError = ResetUserTotpErrors[keyof ResetUserTotpErrors];
+
+export type ResetUserTotpResponses = {
+    /**
+     * TOTP azzerato.
+     */
+    204: void;
+};
+
+export type ResetUserTotpResponse = ResetUserTotpResponses[keyof ResetUserTotpResponses];
+
 export type ChangePasswordData = {
     body: ChangePasswordInput;
     path: {
@@ -3859,6 +4230,114 @@ export type RevokeTokenResponses = {
 };
 
 export type RevokeTokenResponse = RevokeTokenResponses[keyof RevokeTokenResponses];
+
+export type ListOwnSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/sessions';
+};
+
+export type ListOwnSessionsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOwnSessionsError = ListOwnSessionsErrors[keyof ListOwnSessionsErrors];
+
+export type ListOwnSessionsResponses = {
+    /**
+     * Sessioni attive.
+     */
+    200: SessionList;
+};
+
+export type ListOwnSessionsResponse = ListOwnSessionsResponses[keyof ListOwnSessionsResponses];
+
+export type RevokeOwnSessionData = {
+    body?: never;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/user/sessions/{sessionId}';
+};
+
+export type RevokeOwnSessionErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RevokeOwnSessionError = RevokeOwnSessionErrors[keyof RevokeOwnSessionErrors];
+
+export type RevokeOwnSessionResponses = {
+    /**
+     * Sessione terminata.
+     */
+    204: void;
+};
+
+export type RevokeOwnSessionResponse = RevokeOwnSessionResponses[keyof RevokeOwnSessionResponses];
+
+export type ExportOwnDataData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/export';
+};
+
+export type ExportOwnDataErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ExportOwnDataError = ExportOwnDataErrors[keyof ExportOwnDataErrors];
+
+export type ExportOwnDataResponses = {
+    /**
+     * Documento di esportazione.
+     */
+    200: OwnDataExport;
+};
+
+export type ExportOwnDataResponse = ExportOwnDataResponses[keyof ExportOwnDataResponses];
 
 export type ListSshKeysData = {
     body?: never;
@@ -11453,6 +11932,74 @@ export type LookupUsersByIdsResponses = {
 };
 
 export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
+
+export type ListCredentialEventsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        limit?: number;
+    };
+    url: '/internal/credential-events';
+};
+
+export type ListCredentialEventsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListCredentialEventsError = ListCredentialEventsErrors[keyof ListCredentialEventsErrors];
+
+export type ListCredentialEventsResponses = {
+    /**
+     * Gli eventi da consegnare.
+     */
+    200: CredentialEventList;
+};
+
+export type ListCredentialEventsResponse = ListCredentialEventsResponses[keyof ListCredentialEventsResponses];
+
+export type AckCredentialEventsData = {
+    body: CredentialEventsAckInput;
+    path?: never;
+    query?: never;
+    url: '/internal/credential-events/ack';
+};
+
+export type AckCredentialEventsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type AckCredentialEventsError = AckCredentialEventsErrors[keyof AckCredentialEventsErrors];
+
+export type AckCredentialEventsResponses = {
+    /**
+     * Eventi confermati.
+     */
+    204: void;
+};
+
+export type AckCredentialEventsResponse = AckCredentialEventsResponses[keyof AckCredentialEventsResponses];
 
 export type ResolveMentionsData = {
     body: ResolveMentionsInput;

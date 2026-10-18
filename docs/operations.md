@@ -5,20 +5,24 @@
 > It is written for operators who manage the machine directly (for example the
 > `homehub` appliance described in M-08 [c_8458909a21d9035f]).
 >
-> **Supported systems:** Ubuntu Server 22.04 and 24.04 LTS, Pop!_OS 22.04 and 24.04 (all amd64). Other systems require `--force`.
+> **Supported systems (N2, revised 2026-10-18):** officially only Ubuntu Server
+> 22.04 and 24.04 LTS (amd64), tested in CI. Pop!_OS 22.04 and 24.04 installs
+> without `--force`, but with a warning in the preflight: not officially
+> supported in v1.0, no guarantee and no CI test. Other systems require
+> `--force`.
 
 ## Installation
 
 ### Prerequisites
 
-GitStack runs on a clean machine with one of the following supported systems (all amd64):
+GitStack runs on a clean machine with one of the following systems (all amd64):
 
-- Ubuntu Server 22.04 LTS
-- Ubuntu Server 24.04 LTS
-- Pop!_OS 22.04
-- Pop!_OS 24.04
+- Ubuntu Server 22.04 LTS — officially supported in v1.0, tested in CI
+- Ubuntu Server 24.04 LTS — officially supported in v1.0, tested in CI
+- Pop!_OS 22.04 — installs without `--force`, with a warning in the preflight (not officially supported in v1.0)
+- Pop!_OS 24.04 — installs without `--force`, with a warning in the preflight (not officially supported in v1.0)
 
-Other distributions and WSL2 are not yet supported.
+Other distributions and WSL2 are not supported: the preflight stops there, and only `--force` proceeds, at your own risk.
 
 | Profile | CPU | RAM | Disk |
 |---|---|---|---|
@@ -421,6 +425,212 @@ Residual limits:
 - The **Git endpoints** (clone, fetch and push over HTTPS on the Git ingress, and SSH) are served by the git service outside the gateway and are **not** covered by this limiter. Only the `/v1/*` API is. Throttling of Git traffic must come from the ingress (Traefik middleware) or the network; the login limiter of identity (`LOGIN_MAX_ATTEMPTS_*`) is separate and unchanged.
 - Credential guessing is not what the limiter is for (tokens have 256 bits): it bounds scraping and denial of service by a single credential or address.
 
+### Security logging (F10)
+
+Identity and the gateway write security events as one JSON line each on stdout, with the field `event` (`security.*`) so they can be selected without parsing messages. Passwords, tokens, cookies and the `Authorization` header are never logged: events carry only identifiers (user id, username, token id, key fingerprint). The `service` field says which service wrote the line.
+
+| `event` | Service | When | Useful fields |
+|---|---|---|---|
+| `security.login.success` | identity | password or OIDC login accepted | `actor`, `actor_id`, `method`, `session_id`, `client_ip`, `request_id` |
+| `security.login.failure` | identity | wrong credentials or failed OIDC login (`warn`) | `username`, `reason`, `client_ip`, `request_id` |
+| `security.login.rate_limited` | identity | login throttled after repeated failures (`warn`) | `username`, `client_ip` |
+| `security.logout` | identity | session revoked by the user | `actor`, `session_id` |
+| `security.password.changed`, `security.password.change_failed`, `security.password.change_rate_limited` | identity | password change, wrong current password (`warn`), throttled (`warn`) | `actor`, `target` |
+| `security.token.created`, `security.token.revoked` | identity | personal or agent token created/revoked | `created_token_id` / `revoked_token_id`, `token_name`, `scopes`, `target` |
+| `security.ssh_key.added`, `security.ssh_key.deleted` | identity | SSH key changes | `key_id`, `fingerprint` |
+| `security.grant.created`, `security.grant.updated`, `security.grant.deleted` | identity | resource grants | `resource_id`, `grant_id`, `subject_type`, `subject_id`, `role` |
+| `security.user.created`, `security.user.deactivated`, `security.user.activated`, `security.user.admin_changed`, `security.user.deleted` | identity | account lifecycle by an administrator | `actor`, `target`, `target_id` |
+| `security.panic` | gateway | a handler panicked: the client got a generic `500`, the line has `panic` and `stack` (`error`) | `request_id`, `method`, `path` |
+
+The gateway request line (message `richiesta gestita`) has `client_ip` (the real client: `X-Forwarded-For` counts only from `gateway.env.trustedProxies`, `remote_addr` stays the peer), `user_id`, `username` and `token_id` when the request was authenticated, and a `reason` for `401`, `403`, `429` and `500` (`missing_credential`, `credential_kind_not_allowed`, `credential_inactive`, `credential_too_long`, `insufficient_scope`, `password_change_required`, `permission_denied`, `identity_unavailable`, `rate_limited`, `panic`). The `request_id` is the same in the gateway line and in the identity events of that request.
+
+**Shipping the logs.** Logs stay on the node (`kubectl logs`, container runtime files under `/var/log/pods`). To keep them off the machine, run a collector on the node and send the JSON lines to your log store. Example with promtail (Loki), reading the pod files and selecting only the GitStack namespace:
+
+```yaml
+scrape_configs:
+  - job_name: gitstack
+    kubernetes_sd_configs: [{role: pod}]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace]
+        regex: gitstack
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        target_label: app
+    pipeline_stages:
+      - cri: {}
+      - json: {expressions: {event: event, service: service, level: level}}
+      - labels: {event: , service: , level: }
+```
+
+With vector the equivalent is a `kubernetes_logs` source, a `remap` that does `. = merge!(., parse_json!(.message))`, and your sink. Use the namespace you installed into.
+
+**What to alert on** (suggested thresholds, tune to your size):
+
+- `event="security.login.failure"` more than 10 per 5 minutes from one `client_ip`, or any `security.login.rate_limited`: password guessing.
+- A `security.login.success` for a user right after several failures from the same `client_ip`.
+- `security.token.created`, `security.grant.created`, `security.user.admin_changed` or `security.password.changed` outside working hours, or by an unexpected `actor`.
+- Any `security.panic`: a bug reachable from the network; the `stack` is in the line.
+- Gateway lines with `status` 403 and `reason="insufficient_scope"` or `permission_denied` repeated from one `user_id` or `token_id`: a credential probing what it may do.
+- The gateway `rate limit exceeded` warning (see "API rate limiting") and a sustained `status` 5xx rate.
+
+There is no separate audit table: the log stream is the audit trail, so keep it for as long as your policy requires. Timestamps are UTC, RFC 3339.
+
+### Key lifecycle and rotation (F9, GIT-235)
+
+GitStack has four long-lived keys. This section says who owns each one, where it lives, how it is rotated and what a rotation costs. All of them are Kubernetes Secrets with `helm.sh/resource-policy: keep`: `helm upgrade` and `helm uninstall` never regenerate them, and a backup (`gitstack backup`) contains them (`secrets.json`).
+
+| Key | Secret and key | Held by | Used for | Rotation |
+|---|---|---|---|---|
+| Service secret of the gateway | `<release>-service-secrets`, `gateway` | gateway; verified by identity and core | Bearer to identity `/internal/*`; HMAC of the user identity forwarded to core | three phases below, no downtime |
+| Service secret of core | `<release>-service-secrets`, `core` | core; verified by identity and git | Bearer to identity `/internal/*`; HMAC of the identity core sends to git | three phases below, no downtime |
+| Service secret of git | `<release>-service-secrets`, `git` | git; verified by identity and core | Bearer to identity (`/internal/verify`, `permissions/check`, `ssh-keys`); HMAC of the identity git sends to core | three phases below, no downtime |
+| OIDC key | `<release>-identity-oidc-key`, `key` (+ `identity.oidc.encKey.keyId`) | identity | AES-256-GCM of the OIDC client secrets in the database and of the login state cookie | new key and new `keyId`, one restart of identity |
+| TOTP keyring | `<release>-identity-totp-key`, `keys` (+ `identity.totp.keys.keyId`) | identity | AES-256-GCM of the users' TOTP secrets (second factor, F11) | new key first in the list, old key after it, one restart of identity |
+| Webhook keyring | `<release>-core-webhook-key`, `key` and `oldKeys` (+ `core.webhookSecret.keyId`) | core | AES-256-GCM of webhook and mirror secrets | new key, new `keyId`, old key in `oldKeys`, one restart of core |
+
+Owner of all of them is the installation administrator (the operator who runs `gitstack`). Rotate a key when someone who could read the Secret leaves, when a pod or a backup may have leaked it, and at least once a year. After a suspected compromise of a single service, rotate that service's key first (see "Emergency").
+
+#### Service secrets: one per caller
+
+Gateway, core and git each have their own secret and the receiving service checks which one signed the request (`services/core/internal/trust/trust_test.go#TestVerify_SegretoDiUnAltroServizioRifiutato`):
+
+- **identity** knows the three keys and uses them as Bearer on `/internal/*`. The gateway may call only `/internal/verify` and `/internal/permissions/check`; git also `/internal/ssh-keys/{fingerprint}`; core the rest. Anything else answers `403 forbidden` (`services/identity/router_test.go#TestBuildRouter_SegretiPerChiamante`). The identity header (`X-Gitstack-*`) is accepted from the gateway key only.
+- **core** accepts the identity signed with the gateway key for every route, and the one signed with the git key only for `GET /repos/{owner}/{repo}`, which is what git needs to resolve `owner/repo` of a user it has already authenticated; every other call signed by git answers `403 forbidden` (`services/core/internal/httpserver/router_trust_test.go#TestRouter_GitPuoSoloRisolvereOwnerERepo`). Git, which parses untrusted repositories, cannot mint an identity for identity or for the rest of core.
+- **git** knows its own key and the core key (to verify `/internal/*`); it never receives the gateway key.
+
+Each Deployment receives only the variables it needs: `GITSTACK_SERVICE_SECRET_GATEWAY`, `GITSTACK_SERVICE_SECRET_CORE`, `GITSTACK_SERVICE_SECRET_GIT` (chart test `deploy/tests/chart_hardening_test.sh`, section "One service secret per caller"). The variable may hold a list `new,old`: the first key signs, every key verifies. That is the double key valid during a rotation (`services/core/internal/trust/trust_test.go#TestRotazione_DoppiaChiaveNellaFinestra`). A single key is the normal state.
+
+The old shared variable `GITSTACK_IDENTITY_SERVICE_SECRET` is still read by the services as a fallback for a caller that has no key of its own (installations that do not use the chart); the chart never sets it. Do not use it in production: it brings back the shared secret.
+
+#### Rotating a service secret (no downtime)
+
+A rotation needs three phases because pods restart one at a time: a signer that already uses the new key must be verified by receivers that already know it. `$R` is the release name (default `gitstack`) and `$NS` its namespace.
+
+```bash
+R=gitstack; NS=default
+K="sudo env KUBECONFIG=/etc/rancher/k3s/k3s.yaml k3s kubectl -n $NS"
+KEY=git                                   # gateway | core | git
+OLD=$($K get secret $R-service-secrets -o jsonpath="{.data.$KEY}" | base64 -d)
+NEW=$(openssl rand -hex 20)               # 40 characters
+
+set_key() { $K patch secret $R-service-secrets --type merge -p '{"stringData":{"'"$KEY"'":"'"$1"'"}}'; }
+roll() {
+  for d in identity core git gateway; do $K rollout restart deployment/$R-$d; done
+  for d in identity core git gateway; do $K rollout status deployment/$R-$d --timeout=300s; done
+}
+
+set_key "$OLD,$NEW"; roll    # 1. every service accepts both; the signer still signs with the old one
+set_key "$NEW,$OLD"; roll    # 2. the signer signs with the new one; both still accepted
+set_key "$NEW";      roll    # 3. only the new key: the old one stops working
+```
+
+Notes:
+
+- The pods read the Secret at start, so every phase needs the restart. `helm upgrade` never reverts a value you set: the chart reads the current Secret with `lookup`.
+- Between phases wait for `rollout status`; phase 2 and phase 3 may follow immediately after the previous finishes. Do not skip phase 1, or a pod that signs with the new key is rejected by a receiver that still runs with the old one.
+- Check after every phase with `sudo gitstack status` and a `git ls-remote` of a repository; a `401` or `403` in the logs of identity or core during a phase means a receiver does not know the key yet.
+- With `serviceSecrets.existingSecret` the Secret is yours: use its name in place of `$R-service-secrets`; it must have the three keys `gateway`, `core`, `git`.
+- Rotate the three keys one after the other, not at the same time.
+
+**Emergency (key of one service leaked).** Replace that key at once in a single step (`set_key "$NEW"; roll`) accepting a short window of `401` while the pods restart: there is no point in keeping the old key valid. The other two keys stay as they are: a key never signs for another caller.
+
+#### Upgrade from a version before F9
+
+`sudo gitstack upgrade` migrates an installation that still has the shared Secret `<release>-identity-service`:
+
+1. it removes `identity.serviceSecret` from the values of the release (the new chart ignores `identity.serviceSecret.existingSecret`; use `serviceSecrets.existingSecret` with the keys `gateway`, `core`, `git` for your own Secret);
+2. `helm upgrade` creates `<release>-service-secrets` with three random keys and restarts every service with its own key; for the duration of the rolling update requests between old and new pods can answer `401`, which is why the upgrade waits for all services to be healthy;
+3. when everything is healthy it deletes the shared Secret `<release>-identity-service` and says so in the summary. If the deletion is refused it prints the `kubectl delete secret` command to run by hand. The same cleanup runs when `gitstack upgrade` finds GitStack already at the requested version, so a second run is enough after an upgrade done by an older binary.
+
+A rollback (`helm rollback`) puts the previous chart back, which generates a new shared Secret by itself; nothing to do by hand. Proof in the tests: `admin/internal/upgrade/upgrade_test.go#TestUpgrade_MigraISegretiDiServizio`, `#TestUpgrade_SecretCondivisoNonCancellatoSenzaQuelloNuovo`, `#TestUpgrade_CancellazioneDelSecretNonFatale`.
+
+#### OIDC key
+
+The key encrypts the client secrets saved in `identity.oidc_providers` and the state cookie of a login in progress. Identity writes the providers of its configuration again at every start, so a rotation is: new key in `<release>-identity-oidc-key` (`key`, 32 bytes in base64: `openssl rand -base64 32`), a different `identity.oidc.encKey.keyId` in the values (e.g. `k2`), `helm upgrade`. At the restart identity re-encrypts every client secret with the new key. Logins in progress at that moment fail once. The old key is not kept: a provider whose row still has the old `keyId` answers an error until identity has restarted with the new pair. Keep a backup of the Secret before changing it.
+
+#### TOTP keyring (second factor, F11, GIT-237)
+
+Local accounts can turn on a second step at sign-in from Settings → Security: a time-based code (TOTP, RFC 6238) from an authenticator app, plus ten single-use recovery codes. Identity encrypts each user's TOTP secret with AES-256-GCM under a key of the ring in `GITSTACK_IDENTITY_TOTP_KEYS` (`<id>:<base64 of 32 bytes>[,<id>:<base64>...]`, the first key encrypts, all keys decrypt) and stores only the key id with the secret. The chart generates the first key once (Secret `<release>-identity-totp-key`, `keys`, `helm.sh/resource-policy: keep`) or reads `identity.totp.keys.existingSecret`. Without keys nobody can turn TOTP on (Settings → Security says so).
+
+Make it mandatory for administrators with `identity.totp.requiredForAdmins=true` (`GITSTACK_IDENTITY_TOTP_REQUIRED_FOR_ADMINS=true`): an administrator who signed in with a password and has no TOTP gets 403 `totp_enrollment_required` on every call except `GET /auth/session`, `POST /auth/logout` and `/auth/totp*` until the second factor is on, and cannot turn it off. Sessions that come from OIDC are never prompted (the second factor of OIDC users is their provider's), and personal tokens never have one (they are the credential).
+
+Rotation: generate a new key (`openssl rand -base64 32`), put `new-id:<base64>,old-id:<base64>` in the Secret and restart identity: new secrets use the new key, existing ones still decrypt with the old one, which must stay in the list while any row names it (`identity.totp_credentials.enc_key_id`). Losing every key a row names makes that user's second factor unverifiable and the login fails with an internal error until an administrator clears it.
+
+A user who lost the device and the recovery codes is unlocked by an administrator with `DELETE /v1/users/<username>/totp` (this also revokes the user's sessions); the user can then sign in with the password and set TOTP up again. If the only administrator is locked out and no other administrator exists, clear the rows by hand: `DELETE FROM identity.totp_recovery_codes WHERE user_id = ...; DELETE FROM identity.totp_credentials WHERE user_id = ...;` in the identity database.
+
+#### Webhook keyring
+
+Core encrypts webhook and mirror secrets with the primary key and decrypts each row with the key named by its `secret_key_id`, so old rows stay readable after a rotation. Rotation: put the current key in `oldKeys` as `<keyId>:<key>` (comma separated for more than one), put a new 32-byte key (`openssl rand -hex 32`) in `key`, set a new `core.webhookSecret.keyId`, `helm upgrade`. New and edited secrets use the new key; old rows are decrypted with the entry of `oldKeys` (`services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`). Do not remove an old key from `oldKeys` while rows still use it: the secret would be unreadable and the webhook has to be configured again. A lost key has the same effect.
+
+**Pushing an imported history (F18).** The git service runs `receive-pack` with `receive.fsckObjects=true`: a push that carries a malformed object is rejected with the fsck message. Two harmless oddities common in imported repositories, zero-padded file modes (`zeroPaddedFilemode`) and an invalid timezone (`badTimezone`), are accepted as warnings. If a push of an old history is still rejected for another fsck message (for example `missingEmail`), an administrator can relax the check for the import by setting `GITSTACK_GIT_RECEIVE_FSCK=off` on the `git` service (chart: an extra env of the git deployment), pushing the history, and then removing the variable so the check is back on. Pull mirrors are not affected: a fetch is not checked with `fsckObjects`.
+
+### Notices on credential changes (F13, GIT-239)
+
+When a password is changed or reset, a personal token or an SSH key is added,
+or a token is about to expire (7 days before), the account owner gets an
+in-app notification (reason `credential`, "Security" in the inbox) and, with
+the SMTP configured, an e-mail. These notices are security alerts: the e-mail
+preferences do not switch them off. They never contain a secret: the token
+value is not in them, only its name and last four characters.
+
+Identity records the event and core delivers it (one pass every 30 seconds);
+nothing to configure. If an e-mail is not expected, check that the SMTP of core
+is on (`smtp.*` in the chart values) and that the user has an address.
+Delivery is at least once: after an identity outage a notice can arrive twice.
+
+### Personal data at rest and data export (F20, GIT-239)
+
+GitStack stores user names, e-mail addresses and display names in clear in
+Postgres (`identity.users`, and the names inside `core`). There is no
+application-level encryption of these fields: for an on-prem tool the
+protection of that data at rest is the encryption of the disks that hold it.
+This is a requirement of the installation, not an option of GitStack
+(ASVS V6.1.1).
+
+**What to encrypt**
+
+| What | Where | How |
+|---|---|---|
+| Data disk | the volume mounted at `/var/lib/rancher`: k3s, the bundled Postgres volume, the Git repositories and the attachments | full-disk or volume encryption done before the install: LUKS (`cryptsetup luksFormat`, then `luksOpen`, `mkfs`, mount at `/var/lib/rancher` and an entry in `/etc/crypttab`), or the encryption of the cloud/hypervisor disk |
+| Local backup copy | `backup.destination` (default `/var/backups/gitstack`) | put it on an encrypted volume as well, and create the archives with `gitstack backup --key-file` (AES-256-GCM), which protects them when the file is copied elsewhere |
+| External PostgreSQL | managed by whoever runs the database server | encrypted storage and encrypted backups on that server; `sslmode=verify-full` for the connection (see [External PostgreSQL](#external-postgresql)) |
+| Off-host copies | S3 and every copy you take | always encrypted (S3 uploads are encrypted by GitStack, [Backup to S3](#backup-to-s3-n7)); keep the key file (`0600`) away from the archives |
+
+A minimal LUKS setup for a dedicated data disk (adapt the device name; this
+destroys what is on it):
+
+```sh
+sudo cryptsetup luksFormat /dev/sdb
+sudo cryptsetup luksOpen /dev/sdb gitstack-data
+sudo mkfs.ext4 /dev/mapper/gitstack-data
+echo 'gitstack-data /dev/sdb none luks' | sudo tee -a /etc/crypttab
+echo '/dev/mapper/gitstack-data /var/lib/rancher ext4 defaults 0 2' | sudo tee -a /etc/fstab
+sudo mkdir -p /var/lib/rancher && sudo mount /var/lib/rancher
+```
+
+Check it after the install: `lsblk -f` must show `crypto_LUKS` under the disk
+that backs `/var/lib/rancher`, and the same for the backup destination.
+Losing the LUKS passphrase means losing the data: keep it in your password
+manager together with the backup key.
+
+**Export of your own data (V8.3.2).** Every user can download the personal data
+that the identity service keeps about them: `GET /v1/user/export` (scope
+`read:user`; in the web UI session or with a personal token).
+
+```sh
+curl -fsS -H "Authorization: Bearer $GITSTACK_TOKEN" \
+  https://git.example.com/api/v1/user/export -o gitstack-me.json
+```
+
+The JSON has the profile (username, e-mail, display name, role), the personal
+tokens (name, scopes, last four characters, dates; never the value), the SSH
+keys (with the public key), the active web sessions and whether TOTP is on.
+It never contains passwords, hashes, TOTP secrets or recovery codes. Issues,
+comments and repositories live in `core` and are read with their own APIs.
+Each export is logged as `security.data.exported`. To remove an account an
+administrator deletes the user (`DELETE /v1/users/{username}`); there is no
+self-service removal.
+
 ## Backup
 
 GitStack provides a coherent backup command that takes a short read-only
@@ -820,6 +1030,25 @@ sudo gitstack upgrade --k3s             # k3s minor + GitStack
 If the k3s step fails, GitStack is **not** upgraded (the chart stays as it
 was), the command exits `70` and prints the path of the preventive backup.
 There is no automatic rollback of k3s: follow the procedure below.
+
+### The k3s install script is pinned by checksum (F19, GIT-239)
+
+`install.sh` does not pipe `https://get.k3s.io` into `sh`: it downloads the
+script, compares its SHA-256 with the one pinned in `deploy/k3s-install.sha256`
+and runs it only if they match. A different script (changed upstream, or
+tampered with on the way or on a mirror) stops the install with
+`lo script di k3s ... non corrisponde allo sha256 fissato` before anything is
+executed.
+
+- When the pin is stale because k3s changed its script, update it with the
+  version bump: `curl -sfL https://get.k3s.io | sha256sum`, review the script,
+  and put the hash in `deploy/k3s-install.sha256`.
+- With `--download-mirror` the mirror's `k3s/install.sh` must be the same
+  script; if it is a deliberately different one, set
+  `GITSTACK_K3S_SCRIPT_SHA256=<sha256 of your script>` for the install.
+- `gitstack upgrade --k3s` is not covered by this pin (it uses its own
+  download path, `admin/internal/upgrade/k3s.go`).
+- The test is `deploy/tests/k3s_script_test.sh`, run in CI.
 
 ### Hardening k3s: private kubeconfig and encrypted Secrets (F2, GIT-228)
 
@@ -1228,6 +1457,10 @@ Runners start with about 14 GB free: the installer is called with
 `deploy/tests/preflight_test.sh`).
 
 #### Pop!_OS 22.04 and 24.04
+
+Not officially supported in v1.0 (decision of 2026-10-18): the installer accepts
+Pop!_OS without `--force` but prints a warning in the preflight, with no
+guarantee and no CI test.
 
 Not covered in CI: GitHub hosts no Pop!_OS runner, and System76 does not
 publish a cloud image or a container with systemd that stands for the real
