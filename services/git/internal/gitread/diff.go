@@ -135,6 +135,39 @@ func (s *Service) Commit(ctx context.Context, repoID, sha string, ignoreWhitespa
 		return nil, err
 	}
 
+	rd, err := s.diffRange(ctx, dir, base, full, ignoreWhitespace)
+	if err != nil {
+		return nil, err
+	}
+	d := &CommitDetail{Commit: c, FilesChanged: rd.FilesChanged, Additions: rd.Additions, Deletions: rd.Deletions,
+		Truncated: rd.Truncated, ListOnly: rd.ListOnly, IgnoreWhitespace: ignoreWhitespace, Files: rd.Files}
+
+	tags, err := s.run.Output(ctx, dir, nil, "for-each-ref", "--points-at="+full, "--sort=refname", "--format=%(refname:lstrip=2)", "refs/tags")
+	if err != nil {
+		return nil, err
+	}
+	d.Tags = []string{}
+	for _, l := range strings.Split(string(tags), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			d.Tags = append(d.Tags, l)
+		}
+	}
+	return d, nil
+}
+
+// rangeDiff è il diff fra due oggetti con i limiti di B6.
+type rangeDiff struct {
+	Files        []FileDiff
+	FilesChanged int
+	Additions    int
+	Deletions    int
+	Truncated    bool
+	ListOnly     bool
+}
+
+// diffRange calcola il diff base..target (due sha o alberi già risolti) con i
+// limiti di B6: usato dal dettaglio del commit e dal confronto fra branch.
+func (s *Service) diffRange(ctx context.Context, dir, base, full string, ignoreWhitespace bool) (*rangeDiff, error) {
 	diffArgs := func(extra ...string) []string {
 		a := []string{"diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M"}
 		if ignoreWhitespace {
@@ -156,7 +189,7 @@ func (s *Service) Commit(ctx context.Context, repoID, sha string, ignoreWhitespa
 		return nil, err
 	}
 
-	d := &CommitDetail{Commit: c, FilesChanged: len(files), IgnoreWhitespace: ignoreWhitespace, Files: []FileDiff{}}
+	d := &rangeDiff{FilesChanged: len(files)}
 	for _, f := range files {
 		d.Additions += f.Additions
 		d.Deletions += f.Deletions
@@ -199,16 +232,6 @@ func (s *Service) Commit(ctx context.Context, repoID, sha string, ignoreWhitespa
 	}
 	d.Files = files
 
-	tags, err := s.run.Output(ctx, dir, nil, "for-each-ref", "--points-at="+full, "--sort=refname", "--format=%(refname:lstrip=2)", "refs/tags")
-	if err != nil {
-		return nil, err
-	}
-	d.Tags = []string{}
-	for _, l := range strings.Split(string(tags), "\n") {
-		if l = strings.TrimSpace(l); l != "" {
-			d.Tags = append(d.Tags, l)
-		}
-	}
 	return d, nil
 }
 
