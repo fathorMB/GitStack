@@ -25,6 +25,8 @@ import type { CreateRepositoryInput, RepoVisibility } from '../../lib/reposApi';
 import { importRepo } from '../../lib/pullMirrorsApi';
 import type { ImportRepositoryInput } from '../../lib/pullMirrorsApi';
 import { useLoad } from '../../lib/useLoad';
+import { NameInTrashNotice, nameInTrashInfo } from './NameInTrashNotice';
+import type { NameInTrashInfo } from './NameInTrashNotice';
 import { repoPath } from './ReposPage';
 
 async function loadOwners(): Promise<string[]> {
@@ -86,6 +88,7 @@ export function NewRepoPage() {
   const [fields, setFields] = useState<Record<string, string>>({});
   const [serverErrorCode, setServerErrorCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [inTrash, setInTrash] = useState<NameInTrashInfo | null>(null);
 
   const ownerList = owners.data ?? [];
   const owner = ownerChoice ?? ownerList[0] ?? '';
@@ -105,6 +108,7 @@ export function NewRepoPage() {
     setFormError(null);
     setFields({});
     setServerErrorCode(null);
+    setInTrash(null);
 
     if (mode === 'empty') {
       if (validateRepoName(name) !== '' || owner === '') return;
@@ -120,6 +124,11 @@ export function NewRepoPage() {
         toast(`Repository "${repo.fullName}" created.`, 'success');
         void navigate(repoPath(repo));
       } catch (err) {
+        const trashed = nameInTrashInfo(err);
+        if (trashed) {
+          setInTrash(trashed);
+          return;
+        }
         const perField = fieldErrors(err);
         setFields(perField);
         setFormError(Object.keys(perField).length > 0 ? null : describeError(err));
@@ -143,6 +152,11 @@ export function NewRepoPage() {
       toast(`Repository "${owner}/${name}" importing.`, 'success');
       void navigate(`/${owner}/${name}`);
     } catch (err) {
+      const trashed = nameInTrashInfo(err);
+      if (trashed) {
+        setInTrash(trashed);
+        return;
+      }
       const perField = fieldErrors(err);
       setFields(perField);
       if (err instanceof ApiError) {
@@ -164,6 +178,7 @@ export function NewRepoPage() {
 
       <form className="card card-b stack form-stack section-gap" onSubmit={(e) => void handleSubmit(e)} noValidate aria-label="New repository">
         {formError ? <ErrorAlert message={formError} /> : null}
+        {inTrash ? <NameInTrashNotice info={inTrash} name={name} currentUser={ownerList[0] ?? ''} /> : null}
 
         <div className="seg" style={{ marginBottom: 0 }}>
           <button type="button" className={mode === 'empty' ? 'active' : undefined} onClick={() => setMode('empty')}>Empty repository</button>

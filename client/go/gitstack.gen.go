@@ -3027,6 +3027,18 @@ type MilestoneList struct {
 // Example: alice
 type Name = string
 
+// NameInTrashDetails `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
+type NameInTrashDetails struct {
+	// Owner Nome dell'owner del repo nel cestino, per il link al cestino giusto.
+	Owner string `json:"owner"`
+
+	// PurgeAt Istante dopo il quale il repo nel cestino e' cancellato definitivamente e il nome si libera.
+	PurgeAt time.Time `json:"purgeAt"`
+
+	// RepoId Id del repo nel cestino, presente solo se il chiamante e' admin su di esso (per ripristinarlo).
+	RepoId *openapi_types.UUID `json:"repoId,omitempty"`
+}
+
 // Notification defines model for Notification.
 type Notification struct {
 	// Actor Chi ha causato la notifica; assente per gli eventi di sistema (es. chiusura da commit).
@@ -3474,6 +3486,20 @@ type RepoMirrorState string
 //
 // Example: my-app
 type RepoName = string
+
+// RepoNameConflictError Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
+type RepoNameConflictError struct {
+	Error struct {
+		// Code `conflict` o `name_in_trash`.
+		//
+		// Example: name_in_trash
+		Code string `json:"code"`
+
+		// Details `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
+		Details *NameInTrashDetails `json:"details,omitempty"`
+		Message string              `json:"message"`
+	} `json:"error"`
+}
 
 // RepoOwner defines model for RepoOwner.
 type RepoOwner struct {
@@ -4469,6 +4495,9 @@ type NotFound = Error
 
 // PayloadTooLarge Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type PayloadTooLarge = Error
+
+// RepoNameConflict Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con `code: name_in_trash`.
+type RepoNameConflict = RepoNameConflictError
 
 // TooManyRequests Formato unico degli errori per tutta l'API pubblica. Codici comuni per stato: 400 `bad_request`; 401 `unauthenticated`, `invalid_credentials`; 403 `forbidden`, `insufficient_scope`, `password_change_required`; 429 `too_many_attempts`; 404 `not_found`; 409 `conflict` e varianti specifiche (`already_exists`, `last_admin`, `last_owner`, `ssh_key_in_use`, `oidc_identity_unlinked`); 422 `validation_failed` (`details.fields`). Le risposte 401 non distinguono mai "utente inesistente" da "password errata".
 type TooManyRequests = Error
@@ -6014,7 +6043,7 @@ type ClientInterface interface {
 
 	// CreateRepositoryWithBody Crea un repo
 	//
-	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -6023,7 +6052,7 @@ type ClientInterface interface {
 
 	// CreateRepository Crea un repo
 	//
-	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -6032,7 +6061,7 @@ type ClientInterface interface {
 
 	// ListDeletedRepositories Elenca i repo eliminati e ancora ripristinabili
 	//
-	// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+	// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12), anche di organizzazioni. Senza `owner` sono tutti quelli dell'utente; con `owner` solo quelli di quell'owner.
 	//
 	// Corresponds with GET /repos/deleted (the `ListDeletedRepositories` operationId).
 	ListDeletedRepositories(ctx context.Context, params *ListDeletedRepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6046,7 +6075,7 @@ type ClientInterface interface {
 
 	// ImportRepositoryWithBody Crea un repo importandolo da un URL
 	//
-	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -6055,7 +6084,7 @@ type ClientInterface interface {
 
 	// ImportRepository Crea un repo importandolo da un URL
 	//
-	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -9042,7 +9071,7 @@ func (c *Client) ListRepositories(ctx context.Context, params *ListRepositoriesP
 
 // CreateRepositoryWithBody Crea un repo
 //
-// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 //
 // Takes any type of body and a specified content type.
 //
@@ -9061,7 +9090,7 @@ func (c *Client) CreateRepositoryWithBody(ctx context.Context, contentType strin
 
 // CreateRepository Crea un repo
 //
-// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -9080,7 +9109,7 @@ func (c *Client) CreateRepository(ctx context.Context, body CreateRepositoryJSON
 
 // ListDeletedRepositories Elenca i repo eliminati e ancora ripristinabili
 //
-// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12), anche di organizzazioni. Senza `owner` sono tutti quelli dell'utente; con `owner` solo quelli di quell'owner.
 //
 // Corresponds with GET /repos/deleted (the `ListDeletedRepositories` operationId).
 func (c *Client) ListDeletedRepositories(ctx context.Context, params *ListDeletedRepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9114,7 +9143,7 @@ func (c *Client) RestoreRepository(ctx context.Context, repoId openapi_types.UUI
 
 // ImportRepositoryWithBody Crea un repo importandolo da un URL
 //
-// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -9133,7 +9162,7 @@ func (c *Client) ImportRepositoryWithBody(ctx context.Context, contentType strin
 
 // ImportRepository Crea un repo importandolo da un URL
 //
-// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -23340,7 +23369,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateRepositoryWithBodyWithResponse Crea un repo
 	//
-	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23349,7 +23378,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateRepositoryWithResponse Crea un repo
 	//
-	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+	// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23358,7 +23387,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListDeletedRepositoriesWithResponse Elenca i repo eliminati e ancora ripristinabili
 	//
-	// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+	// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12), anche di organizzazioni. Senza `owner` sono tutti quelli dell'utente; con `owner` solo quelli di quell'owner.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -23376,7 +23405,7 @@ type ClientWithResponsesInterface interface {
 
 	// ImportRepositoryWithBodyWithResponse Crea un repo importandolo da un URL
 	//
-	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -23385,7 +23414,7 @@ type ClientWithResponsesInterface interface {
 
 	// ImportRepositoryWithResponse Crea un repo importandolo da un URL
 	//
-	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+	// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -30186,7 +30215,7 @@ type CreateRepositoryResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *RepoNameConflict
 	// JSONDefault the response for an HTTP default `application/json` response
 	JSONDefault *UnexpectedError
 	// Headers201 the parsed response headers for an HTTP 201 response
@@ -30219,7 +30248,7 @@ func (r CreateRepositoryResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r CreateRepositoryResponse) GetJSON409() *Conflict {
+func (r CreateRepositoryResponse) GetJSON409() *RepoNameConflict {
 	return r.JSON409
 }
 
@@ -30442,7 +30471,7 @@ type ImportRepositoryResponse struct {
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *NotFound
 	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	JSON409 *RepoNameConflict
 	// JSON422 the response for an HTTP 422 `application/json` response
 	JSON422 *UnprocessableEntity
 	// JSONDefault the response for an HTTP default `application/json` response
@@ -30477,7 +30506,7 @@ func (r ImportRepositoryResponse) GetJSON404() *NotFound {
 }
 
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r ImportRepositoryResponse) GetJSON409() *Conflict {
+func (r ImportRepositoryResponse) GetJSON409() *RepoNameConflict {
 	return r.JSON409
 }
 
@@ -40924,7 +40953,7 @@ func (c *ClientWithResponses) ListRepositoriesWithResponse(ctx context.Context, 
 
 // CreateRepositoryWithBodyWithResponse Crea un repo
 //
-// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -40939,7 +40968,7 @@ func (c *ClientWithResponses) CreateRepositoryWithBodyWithResponse(ctx context.C
 
 // CreateRepositoryWithResponse Crea un repo
 //
-// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+// `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -40954,7 +40983,7 @@ func (c *ClientWithResponses) CreateRepositoryWithResponse(ctx context.Context, 
 
 // ListDeletedRepositoriesWithResponse Elenca i repo eliminati e ancora ripristinabili
 //
-// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+// Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12), anche di organizzazioni. Senza `owner` sono tutti quelli dell'utente; con `owner` solo quelli di quell'owner.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -40984,7 +41013,7 @@ func (c *ClientWithResponses) RestoreRepositoryWithResponse(ctx context.Context,
 
 // ImportRepositoryWithBodyWithResponse Crea un repo importandolo da un URL
 //
-// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -40999,7 +41028,7 @@ func (c *ClientWithResponses) ImportRepositoryWithBodyWithResponse(ctx context.C
 
 // ImportRepositoryWithResponse Crea un repo importandolo da un URL
 //
-// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+// «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -47659,7 +47688,7 @@ func ParseCreateRepositoryResponse(rsp *http.Response) (*CreateRepositoryRespons
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest RepoNameConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -47876,7 +47905,7 @@ func ParseImportRepositoryResponse(rsp *http.Response) (*ImportRepositoryRespons
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+		var dest RepoNameConflict
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
