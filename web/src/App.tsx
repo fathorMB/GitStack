@@ -305,6 +305,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/:owner/:repo/pulls/:number/files"
+        element={
+          <RequireAuth>
+            <AppShell crumb="Repository">
+              <RepoPage mode="pullfiles" />
+            </AppShell>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/:owner/:repo/tags"
         element={
           <RequireAuth>

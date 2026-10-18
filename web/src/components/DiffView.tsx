@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { FileDiff } from '@gitstack/api-client';
+import { diffstat, REASON_LABEL, STATUS_LABEL } from '../lib/diffMeta';
 import { parsePatch, toSplitRows } from '../lib/diffParse';
 import type { DiffLine } from '../lib/diffParse';
 import { Button } from './Button';
@@ -15,31 +16,6 @@ export interface DiffViewProps {
   listOnly?: boolean;
   /** Indirizzo di «View file» per un file; null/assente: nessun link. */
   fileHref?: (file: FileDiff) => string | null;
-}
-
-const REASON_LABEL: Record<NonNullable<FileDiff['collapseReason']>, { badge: string; text: string }> = {
-  large: { badge: 'Large diff', text: 'Large diffs (over 500 changed lines) are collapsed by default.' },
-  lock: { badge: 'Lock file', text: 'Lock and generated files are collapsed by default.' },
-  generated: { badge: 'Generated', text: 'Lock and generated files are collapsed by default.' },
-};
-
-const STATUS_LABEL: Record<FileDiff['status'], string> = {
-  added: 'Added',
-  modified: 'Modified',
-  deleted: 'Deleted',
-  renamed: 'Renamed',
-  copied: 'Copied',
-};
-
-/** Cinque quadratini proporzionali alle righe aggiunte e tolte, come nel mockup 10. */
-function diffstat(additions: number, deletions: number): ('a' | 'd' | '')[] {
-  const total = additions + deletions;
-  if (total === 0) return ['', '', '', '', ''];
-  let a = Math.round((additions / total) * 5);
-  if (additions > 0 && a === 0) a = 1;
-  if (deletions > 0 && a === 5) a = 4;
-  const d = Math.min(5 - a, deletions > 0 ? Math.max(1, 5 - a) : 0);
-  return Array.from({ length: 5 }, (_, i) => (i < a ? 'a' : i < a + d ? 'd' : ''));
 }
 
 /**
