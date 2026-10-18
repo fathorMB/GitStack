@@ -15,36 +15,36 @@ Reviewed commit: `main` at the time of item GIT-219 (2026-10-12). Companion docu
 
 | Outcome | Requirements |
 |---|---|
-| ok | 186 |
+| ok | 196 |
 | n/a | 44 |
-| problem | 29 |
+| problem | 19 |
 | **total** | **259** |
 
-Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low), F15 (low) and F16 (low) by GIT-238
+Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem was found. F1 (high) was resolved by GIT-227, F5 (medium) by GIT-231, F6 (medium) by GIT-232, F7 (medium) by GIT-233 and F8 (medium) by GIT-234 (except the residual in-cluster TLS), F9 (medium) by GIT-235, F10 (medium) by GIT-236 F11 (medium) by GIT-237, F12 (low), F14 (low), F15 (low) and F16 (low) by GIT-238, F13 (low, except the TOTP notification of V2.8.5), F17, F18, F19 and F20 (low) by GIT-239
 
 | Chapter | ok | n/a | problem |
 |---|---|---|---|
-| V1 Architecture, Design and Threat Modeling | 34 | 0 | 4 |
-| V2 Authentication | 33 | 16 | 4 |
+| V1 Architecture, Design and Threat Modeling | 35 | 0 | 3 |
+| V2 Authentication | 36 | 16 | 1 |
 | V3 Session Management | 17 | 1 | 0 |
 | V4 Access Control | 8 | 1 | 0 |
 | V5 Validation, Sanitization and Encoding | 21 | 9 | 0 |
-| V6 Stored Cryptography | 8 | 2 | 3 |
+| V6 Stored Cryptography | 9 | 2 | 2 |
 | V7 Error Handling and Logging | 11 | 0 | 1 |
-| V8 Data Protection | 11 | 3 | 1 |
+| V8 Data Protection | 12 | 3 | 0 |
 | V9 Communication | 2 | 1 | 4 |
 | V10 Malicious Code | 3 | 2 | 0 |
 | V11 Business Logic | 7 | 1 | 0 |
-| V12 Files and Resources | 11 | 1 | 3 |
+| V12 Files and Resources | 14 | 1 | 0 |
 | V13 API and Web Service | 9 | 4 | 0 |
-| V14 Configuration | 11 | 3 | 9 |
+| V14 Configuration | 12 | 3 | 8 |
 
 ## V1 Architecture, Design and Threat Modeling
 
 | Id | Requirement | Outcome | Evidence or reason |
 |---|---|---|---|
 | V1.1.1 | Secure SDLC | ok | Every change is a tracked work item with review by the CTO and gated by CI (build, tests, lint, scans): `.github/workflows/ci.yml`, `.github/workflows/security.yml`. |
-| V1.1.2 | Threat modeling per design change | **problem** | The first threat model is `docs/security/threat-model.md`, but nothing makes it part of each design change. [F19] |
+| V1.1.2 | Threat modeling per design change | **ok** | Threat model: `docs/security/threat-model.md`. The feature request template has a mandatory threat-model checkbox (`.github/ISSUE_TEMPLATE/feature.md`), so every design change states whether the model was updated. [resolved F19 GIT-239] |
 | V1.1.3 | Security constraints in user stories | ok | Security constraints are product rules with tests (permission rules P1-P7, B3, C8, MP5 in `docs/rules-coverage.md`). |
 | V1.1.4 | Trust boundaries and data flows documented | ok | `docs/security/threat-model.md` (section Trust boundaries) and the signed-identity scheme in `services/gateway/internal/trust/trust.go`. |
 | V1.1.5 | Architecture and remote services analysed | ok | Architecture in `.prisma/knowledge/topics/architettura.md`; analysis in `docs/security/threat-model.md`. |
@@ -100,10 +100,10 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V2.1.12 | Temporarily view the password | ok | Show/Hide toggle in `web/src/components/TextField.tsx` (no dedicated test). |
 | V2.2.1 | Anti-automation on authentication | ok | Per-user and per-IP limit with 429: `services/identity/internal/httpapi/httpapi_integration_test.go#TestLoginRateLimit429AndUnblock`, `services/identity/internal/httpapi/httpapi_integration_test.go#TestRateLimitPerIPIgnoresXForwardedFor`, `services/core/internal/stackitest/security_integration_test.go#TestSecurity/brute_force_login`. Limiter is per process. |
 | V2.2.2 | Weak authenticators not used as the main factor | ok | SMS and email are not authentication factors; there is no email-based recovery. |
-| V2.2.3 | Notification after credential changes | **problem** | No email or notification is sent on password change, token creation or SSH key addition. [F13] |
+| V2.2.3 | Notification after credential changes | **ok** | Password change, admin reset, new personal token and new SSH key write an event in identity (`services/identity/internal/credevents/credevents.go`); core turns it into an in-app notification (reason `credential`) and an e-mail with the SMTP on: `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user`. [resolved F13 GIT-239] |
 | V2.3.1 | Generated initial passwords | ok | Bootstrap password is 24 random alphanumerics from the chart and must be changed at first login (`services/identity/internal/users/bootstrap_integration_test.go#TestBootstrapThenChangePasswordClearsMustChange`). |
 | V2.3.2 | Support for FIDO/U2F authenticators | **ok** | TOTP (RFC 6238) is the second factor for local accounts, user-enabled with QR enrolment (`services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`, `services/identity/internal/httpapi/totp_integration_test.go#TestTotpLoginTwoStepsOverHTTP`, `web/src/pages/settings/SecurityPage.test.tsx#attiva il TOTP`). FIDO/U2F/WebAuthn is not supported: TOTP is the authenticator. OIDC users get MFA from their provider (`docs/rules-coverage.md`, row A2). [resolved F11 GIT-237] |
-| V2.3.3 | Renewal reminders for time-bound authenticators | **problem** | Personal tokens have a mandatory expiry (`services/identity/internal/apitokens/apitokens_integration_test.go#TestCreateValidation`) but nobody is warned before they expire. [F13] |
+| V2.3.3 | Renewal reminders for time-bound authenticators | **ok** | A token that expires within 7 days produces one warning (in-app and e-mail), once per token: `services/identity/internal/credevents/credevents_integration_test.go#TestEventsLifecycle`, `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user`. [resolved F13 GIT-239] |
 | V2.4.1 | Passwords salted and hashed with an approved KDF | ok | argon2id m=19 MiB t=2 p=1: `services/identity/internal/password/password_test.go#TestHashFormatAndVerify`, `services/identity/internal/auth/auth_integration_test.go#TestRehashOnLogin`. |
 | V2.4.2 | Unique salt of at least 32 bits | ok | 16 random bytes per hash: `services/identity/internal/password/password_test.go#TestHashSaltIsRandom`. |
 | V2.4.3 | PBKDF2 iteration count | n/a | PBKDF2 is not used (argon2id). |
@@ -113,7 +113,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V2.5.2 | No password hints or secret questions | ok | None exist in `api/openapi.yaml`. |
 | V2.5.3 | Recovery does not reveal the password | ok | Passwords are only stored as hashes; the admin can only set a new one. |
 | V2.5.4 | No shared or default accounts | ok | The default username `admin` has a per-installation random password with forced change (`deploy/gitstack/templates/identity/admin-secret.yaml`, `services/identity/internal/users/bootstrap_integration_test.go#TestBootstrapThenChangePasswordClearsMustChange`). |
-| V2.5.5 | User notified when an authentication factor changes | **problem** | Same gap as V2.2.3: an admin password reset or a changed password raises no notification. [F13] |
+| V2.5.5 | User notified when an authentication factor changes | **ok** | Same notification as V2.2.3, with a distinct text when an administrator resets the password: `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user`. [resolved F13 GIT-239] |
 | V2.5.6 | Secure recovery mechanism | n/a | There is no self-service forgotten-password flow; recovery is an admin password reset (P5). |
 | V2.5.7 | Identity proofing when OTP/MFA is lost | **ok** | A lost authenticator is recovered with a single-use recovery code (`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`) or, if those are lost too, by an administrator with `DELETE /users/{username}/totp` (`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRecoveryCodeOverHTTPAndAdminReset`). [resolved F11 GIT-237] |
 | V2.6.1 | Lookup secrets single use | **ok** | Recovery codes are single use: the second use is rejected (`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`). [resolved F11 GIT-237] |
@@ -129,7 +129,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V2.8.2 | OTP keys protected | **ok** | The TOTP secret is stored encrypted with AES-256-GCM under a keyring key (`GITSTACK_IDENTITY_TOTP_KEYS`, rotation "new,old"), with the user id as AAD (`services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`, `services/identity/internal/auth/auth_integration_test.go#TestSecondFactor_KeyringRotationAndAAD`). [resolved F11 GIT-237] |
 | V2.8.3 | OTP algorithms | **ok** | HMAC-SHA1, 6 digits, 30 s as in RFC 6238, verified against the RFC vectors (`services/identity/internal/totp/totp_test.go#TestCode_RFC6238`); codes are compared in constant time. [resolved F11 GIT-237] |
 | V2.8.4 | TOTP single use | **ok** | A step that was already accepted is rejected, also under concurrency (`services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`). [resolved F11 GIT-237] |
-| V2.8.5 | TOTP reuse logged | **problem** | A re-used code is rejected and logged as `security.login.failure`, but the holder is not notified. [F13] |
+| V2.8.5 | TOTP reuse logged | **problem** | A re-used code is rejected and logged as `security.login.failure`, but the holder is not notified: the F13 notifications cover password, token and SSH key changes, not TOTP events. [F13 residual] |
 | V2.8.6 | Physical OTP generator revocable | n/a | No OTP exists. |
 | V2.8.7 | Biometrics only as secondary factor | n/a | No biometric authenticator exists. |
 | V2.9.1 | Cryptographic verification keys protected | n/a | No cryptographic device authenticators exist (SSH public keys are stored as public data and only grant Git access). |
@@ -216,7 +216,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 
 | Id | Requirement | Outcome | Evidence or reason |
 |---|---|---|---|
-| V6.1.1 | Regulated private data encrypted at rest | **problem** | User names and emails are personal data stored in clear in Postgres; neither application-level encryption nor guidance on disk and backup encryption exists. [F20] |
+| V6.1.1 | Regulated private data encrypted at rest | **ok** | Names and e-mail addresses stay in clear in Postgres; the protection at rest is the encryption of the data disk, of the local backup copy and of off-host copies, with the steps in `docs/operations.md` ("Personal data at rest and data export"); `gitstack backup --key-file` encrypts the archives. Residual: no application-level encryption (accepted for an on-prem tool). [resolved F20 GIT-239] |
 | V6.1.2 | Health data | n/a | GitStack does not process health data. |
 | V6.1.3 | Financial data | n/a | GitStack does not process financial data. |
 | V6.2.1 | Cryptographic modules fail securely | ok | AES-GCM authenticated decryption returns an error and no partial plaintext: `services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`, `services/identity/internal/oidc/crypto_test.go`. |
@@ -259,7 +259,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V8.2.2 | No sensitive data in browser storage | ok | Only the theme is kept in `localStorage` (`web/src/pages/ComponentsPage.tsx`). |
 | V8.2.3 | Data cleared at session end | ok | Logout navigates to the login route and unmounts page state; nothing is persisted (`web/src/pages/ChangePasswordPage.tsx#handleLogout`). |
 | V8.3.1 | Sensitive data not in query strings | ok | Tokens use the `Authorization` header and passwords the JSON body; the OIDC callback carries a single-use code and state only (`services/identity/internal/oidc/service_test.go#TestFinish_StateChecks`). |
-| V8.3.2 | Users can remove or export their data | **problem** | An admin can delete a user (`services/identity/internal/httpapi/httpapi_integration_test.go#TestDeleteUser`), but no export and no self-service removal exist. [F20] |
+| V8.3.2 | Users can remove or export their data | **ok** | A user downloads the personal data held by identity with `GET /user/export`: `services/identity/internal/httpapi/httpapi_integration_test.go#TestExportOwnData`. An administrator deletes a user (`services/identity/internal/httpapi/httpapi_integration_test.go#TestDeleteUser`); there is no self-service removal. [resolved F20 GIT-239] |
 | V8.3.3 | Privacy notice and consent | n/a | Accounts are created by the instance admin for its own members; the product collects no data for third-party use and has no telemetry. |
 | V8.3.4 | Sensitive data identified and policy defined | ok | `docs/security/threat-model.md` asset tables and the rules in `docs/rules-coverage.md`. |
 | V8.3.5 | Audit of access to regulated data | n/a | No regulated data classification applies; general auditing is F10. |
@@ -306,9 +306,9 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 
 | Id | Requirement | Outcome | Evidence or reason |
 |---|---|---|---|
-| V12.1.1 | Large files cannot fill the storage | **problem** | Attachments are capped (`services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadRifiuti`) but pushes have only a per-file limit (R6) and mirror pull has no size cap. [F18] |
+| V12.1.1 | Large files cannot fill the storage | **ok** | Attachments are capped per file (`services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadRifiuti`) and per repository and user (`#TestAttachments_QuotaPerRepo`); pushes have the per-file limit (R6), `receive.fsckObjects` (`services/git/internal/smarthttp/receive_test.go#TestPushFsckRejectsMalformedObjects`), a per-repository size warning (`#TestPushRepoGrandeAvvisaMaAccetta`) and a mirror fetch stops past `GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE` (`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_SizeCap`). [resolved F18 GIT-239] |
 | V12.1.2 | Compressed file expansion limits | n/a | ZIP attachments are stored as opaque files and never expanded on the server. |
-| V12.1.3 | Per-user file quota | **problem** | No quota or count limit on attachments per user or repo. [F17] |
+| V12.1.3 | Per-user file quota | **ok** | Quota of attachment bytes per repository (default 1 GiB) and per user (default 512 MiB), unlinked uploads included: 413 `attachment_quota_exceeded`, `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_QuotaPerRepo`. [resolved F17 GIT-239] |
 | V12.2.1 | Type validated from content | ok | `services/core/internal/attachments/attachments_test.go#TestDetect`. |
 | V12.3.1 | Filenames not used in paths | ok | Attachments are stored as `<repo_id>/<id>` (`services/core/internal/attachments/attachments_test.go#TestDisk_SaveLimiteERimozione`). |
 | V12.3.2 | Filenames cannot disclose local files | ok | Same, and repo paths pass `ValidatePath` (`services/git/internal/gitref/gitref_test.go#TestValidatePath`). |
@@ -317,7 +317,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V12.3.5 | Filenames not passed to OS commands | ok | Paths are validated and follow `--`: `services/git/internal/gitref/gitref_test.go#TestValidatePath`. |
 | V12.3.6 | No code from untrusted sources | ok | No CDN or runtime plugin loading; lockfiles and checksums (`web/pnpm-lock.yaml`, `go.work.sum`). |
 | V12.4.1 | Uploaded files outside the web root | ok | Dedicated volume mounted only into core (`deploy/gitstack/templates/core/attachments-pvc.yaml`). |
-| V12.4.2 | Antivirus scanning of uploads | **problem** | No scan of attachments or repository content. [F17] |
+| V12.4.2 | Antivirus scanning of uploads | **ok** | Decision: no antivirus scanning is built in (accepted risk). Attachments are never executed or rendered: the type is checked on the bytes, HTML, XML and SVG are refused, downloads are always `attachment` with `nosniff` and `Content-Security-Policy: sandbox` (`services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadRifiuti`), ZIP files are never expanded on the server; whoever needs scanning does it on the backup or on the volume with their own tool. [resolved F17 GIT-239] |
 | V12.5.1 | Only specific files served by the web tier | ok | nginx serves the SPA build and explicit download locations: `web/src/lib/nginxConf.test.ts#sta prima del fallback SPA`. |
 | V12.5.2 | Uploaded files never executed | ok | `services/git/internal/gitread/code_test.go#TestRaw_SafeTypes`, `services/core/internal/stackitest/code_reads_integration_test.go#TestCodeReads/raw_header_di_sicurezza`, `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_UploadEDownload`. |
 | V12.6.1 | Allow list of destinations for server requests | ok | The node's own addresses and the Kubernetes ports (6443, 10250, 10255, 2379-2380 on private addresses) are always blocked; the LAN ranges webhooks may reach are listed explicitly with `egress.allow` (`install.sh --egress-allow`): `pkg/egress/egress_test.go#TestNodeAddressesAreBlockedByDefault`, `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/webhook_to_node_address_blocked` (resolved F7, GIT-233). |
@@ -349,7 +349,7 @@ Problems by severity: critical 0, high 1, medium 8, low 9. No critical problem w
 | V14.1.3 | Server configuration hardened | **problem** | nginx exposes its version and sets no security headers; k3s kubeconfig is world-readable. [F3] |
 | V14.1.4 | Redeployable from a runbook | ok | `docs/operations.md`, `.github/workflows/install.yml` (install, upgrade, restore). |
 | V14.2.1 | Dependencies kept up to date and checked | ok | `.github/workflows/security.yml`, `docs/security-scans.md`. |
-| V14.2.2 | Unneeded features removed | **problem** | The component showcase is routed in production at `/_components` (`web/src/App.tsx`). [F19] |
+| V14.2.2 | Unneeded features removed | **ok** | The component showcase is routed only in development builds (`import.meta.env.DEV`): `web/src/App.test.tsx#_components is not routed in production`. [resolved F19 GIT-239] |
 | V14.2.3 | External assets with SRI | n/a | No asset is hosted externally. |
 | V14.2.4 | Components from trusted repositories | ok | Go modules with `go.work.sum` and npm with `web/pnpm-lock.yaml`; pinned base images in each Dockerfile. |
 | V14.2.5 | SBOM maintained | ok | Per-release SBOM with syft in `.github/workflows/ci.yml` (job `sign`). |
@@ -386,14 +386,14 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 | F10 | medium | **Resolved (GIT-236).** Security logging and audit trail (V1.2.3, V1.7.2, V7.1.3, V7.1.4, V7.2.1, V7.2.2, V7.4.3, V11.1.7) | `services/gateway/internal/middleware/logging.go`<br>`services/gateway/internal/middleware/recover.go`<br>`services/identity/internal/httpapi/securitylog.go`<br>`services/identity/internal/httpapi/httpapi.go`<br>`services/identity/internal/auth/auth.go`<br>`services/gateway/internal/httpserver/server.go` | `services/identity/internal/httpapi/httpapi_integration_test.go#TestAuthEventsAreLogged`<br>`services/gateway/internal/middleware/logging_test.go#TestLogging_UserAndClientIP`<br>`services/gateway/internal/middleware/recover_test.go#TestRecover_Generic500` |
 | F11 | medium | **Resolved (GIT-237).** No multi-factor authentication (V2.3.2, V4.3.1) | `services/identity/internal/auth/auth.go`<br>`services/identity/internal/secondfactor/secondfactor.go`<br>`services/identity/internal/totp/totp.go`<br>`services/identity/internal/migrate/sql/0004_totp.up.sql`<br>`services/identity/internal/httpapi/totp.go`<br>`services/gateway/internal/middleware/auth.go`<br>`api/openapi.yaml`<br>`web/src/pages/settings/SecurityPage.tsx` | `services/identity/internal/auth/auth_integration_test.go#TestLogin_SecondFactorRequired`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_TOTPReplayAndWindow`<br>`services/identity/internal/auth/auth_integration_test.go#TestLogin_RecoveryCodes`<br>`services/identity/internal/httpapi/totp_integration_test.go#TestTotpRequiredForAdminsOverHTTP`<br>`services/gateway/internal/httpserver/auth_test.go#TestAuth_TotpDaAttivare`<br>`web/src/pages/settings/SecurityPage.test.tsx#attiva il TOTP` |
 | F12 | low | **Resolved (GIT-238).** Session lifetime and management (V3.3.2, V3.3.4) | `services/identity/internal/sessions/sessions.go`<br>`api/openapi.yaml` | `services/identity/internal/auth/auth_integration_test.go#TestSessionIdleTimeout` *(new)*<br>`services/identity/internal/httpapi/httpapi_integration_test.go#TestListAndRevokeOwnSessions` *(new)* |
-| F13 | low | No notification on credential changes (V2.2.3, V2.3.3, V2.5.5, V2.8.5) | `services/identity/internal/users/users.go`<br>`services/core/internal/mailer/mailer.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user` *(new)* |
+| F13 | low | **Resolved (GIT-239), residual: TOTP events (V2.8.5).** No notification on credential changes (V2.2.3, V2.3.3, V2.5.5) | `services/identity/internal/credevents/credevents.go`<br>`services/identity/internal/httpapi/credential_events.go`<br>`services/core/internal/notify/credentials.go`<br>`services/core/internal/notify/credentials_email.go` | `services/core/internal/stackitest/m06_integration_test.go#TestM06E2E/credential_change_notifies_user`<br>`services/identity/internal/credevents/credevents_integration_test.go#TestEventsLifecycle` |
 | F14 | low | **Resolved (GIT-238).** Password policy gaps (V2.1.2, V2.1.7, V2.1.8, V2.4.5) | `services/identity/internal/password/password.go`<br>`api/openapi.yaml`<br>`web/src/pages/ChangePasswordPage.tsx` | `services/identity/internal/password/password_test.go#TestValidatePolicy_CommonPasswordsRejected` *(new)*<br>`services/identity/internal/password/password_test.go#TestValidatePolicy_Max128` *(new)* |
 | F15 | low | **Resolved (GIT-238).** Content-Type not enforced on JSON bodies (V13.1.5, V13.2.5) | `services/gateway/internal/middleware/auth.go`<br>`services/gateway/internal/security/gen/main.go`<br>`services/gateway/internal/security/security.go` | `services/gateway/internal/httpserver/content_type_test.go#TestJSONBodyNeedsContentType_415` *(new)* |
 | F16 | low | **Resolved (GIT-238).** CSRF relies on SameSite=Lax only (V3.4.4, V4.2.2, V13.2.3) | `services/gateway/internal/middleware/csrf.go`<br>`services/gateway/internal/middleware/auth.go`<br>`services/identity/internal/auth/auth.go`<br>`services/identity/internal/httpapi/httpapi.go` | `services/gateway/internal/middleware/csrf_test.go#TestCookieAuthRejectsForeignOrigin` |
-| F17 | low | Attachments: quota and malware scanning (V12.1.3, V12.4.2) | `services/core/internal/httpserver/attachments.go`<br>`services/core/internal/attachments/attachments.go` | `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_QuotaPerRepo` *(new)* |
-| F18 | low | Git ingest limits and object checks (V12.1.1) | `services/git/internal/receiverules/receiverules.go`<br>`services/git/internal/mirrorpull/mirrorpull.go`<br>`services/git/internal/smarthttp/smarthttp.go` | `services/git/internal/smarthttp/receive_test.go#TestPushFsckRejectsMalformedObjects` *(new)*<br>`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_SizeCap` *(new)* |
-| F19 | low | Process and release hygiene (V1.1.2, V14.2.2) | `.github/workflows/ci.yml`<br>`.github/workflows/security.yml`<br>`web/src/App.tsx`<br>`deploy/install.sh` | `scripts/check-actions-pinned.mjs#every uses: is pinned to a commit` *(new)*<br>`web/src/App.test.tsx#_components is not routed in production` *(new)* |
-| F20 | low | Personal data handling (V6.1.1, V8.3.2) | `services/identity/internal/users/users.go`<br>`docs/operations.md` | `services/identity/internal/httpapi/httpapi_integration_test.go#TestExportOwnData` *(new)* |
+| F17 | low | **Resolved (GIT-239).** Attachments: quota and malware scanning (V12.1.3, V12.4.2) | `services/core/internal/httpserver/attachments.go`<br>`services/core/internal/store/attachments.go` | `services/core/internal/httpserver/attachments_integration_test.go#TestAttachments_QuotaPerRepo` |
+| F18 | low | **Resolved (GIT-239).** Git ingest limits and object checks (V12.1.1) | `services/git/internal/receiverules/receiverules.go`<br>`services/git/internal/mirrorpull/mirrorpull.go` | `services/git/internal/smarthttp/receive_test.go#TestPushFsckRejectsMalformedObjects`<br>`services/git/internal/mirrorpull/mirrorpull_test.go#TestPull_SizeCap` |
+| F19 | low | **Resolved (GIT-239).** Process and release hygiene (V1.1.2, V14.2.2) | `.github/workflows/*.yml`<br>`scripts/check-actions-pinned.mjs`<br>`web/src/App.tsx`<br>`deploy/install.sh`<br>`.github/ISSUE_TEMPLATE/feature.md` | `scripts/check-actions-pinned.mjs#every uses: is pinned to a commit`<br>`web/src/App.test.tsx#_components is not routed in production`<br>`deploy/tests/k3s_script_test.sh` |
+| F20 | low | **Resolved (GIT-239).** Personal data handling (V6.1.1, V8.3.2) | `services/identity/internal/httpapi/export.go`<br>`docs/operations.md` | `services/identity/internal/httpapi/httpapi_integration_test.go#TestExportOwnData` |
 
 ### Details
 
@@ -435,7 +435,9 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **Resolution (GIT-238).** `sessions.Store` rejects a session whose `last_seen_at` is older than the idle timeout (`GITSTACK_IDENTITY_SESSION_IDLE_TIMEOUT`, chart value `identity.env.sessionIdleTimeout`, default 24 h, `0` disables); `last_seen_at` is refreshed at most once a minute by every valid use. `GET /user/sessions` lists the caller's active sessions (user agent, IP, times, `current`) and `DELETE /user/sessions/{sessionId}` ends one (404 for another user's); both emit no secret, and the list is in Settings → Sessions.
 
-**F13 (low) No notification on credential changes.** Password changes, admin password resets, new personal tokens, new SSH keys and token expiry produce no email or in-app notification, so a compromise goes unnoticed. Fix: a notification event for each, plus an expiry warning for tokens (also V2.3.3).
+**F13 (low, resolved by GIT-239) No notification on credential changes.** Password changes, admin password resets, new personal tokens, new SSH keys and token expiry produce no email or in-app notification, so a compromise goes unnoticed. Fix: a notification event for each, plus an expiry warning for tokens (also V2.3.3).
+
+**Resolution (GIT-239).** Identity writes a row in `identity.credential_events` for a password change, an administrator reset, a new personal token, a new SSH key and, once per token, an expiry within 7 days (migration 0005; the row carries the kind and the token or key name, never a secret). Core reads them from `GET /internal/credential-events`, writes a notification with reason `credential` (migration 0017: no repository, no issue) and, with the SMTP on, queues an e-mail that does not depend on the e-mail preferences (a security notice), then confirms with `POST /internal/credential-events/ack` (`notify.CredentialNotifier`, one pass every 30 s; delivery is at least once, so a failed confirmation can repeat a notice). No new network path: core already calls identity. Not covered: a notification when a TOTP code is re-used or the second factor changes (V2.8.5 stays a problem).
 
 **F14 (low, resolved by GIT-238) Password policy gaps.** No breached or common password list is checked (V2.1.7), the web UI has no strength meter (V2.1.8), the maximum length is 1024 instead of 128 (V2.1.2) and no pepper is applied (V2.4.5). Hashing is argon2id and the minimum is 12, so exposure is limited. Fix: embed a list of common passwords, a meter in the UI and align the length limit.
 
@@ -449,15 +451,23 @@ One row per correction item. Severity: critical (exploitable by an unauthenticat
 
 **Resolution (GIT-238).** `middleware.Auth` rejects (403 `cross_site_request`) an unsafe method authenticated by the session cookie when `Sec-Fetch-Site` is `same-site` or `cross-site`, or when `Origin` is `null` or a different host from `Host`/`X-Forwarded-Host` (the chart's nginx passes `$host` without the port, so a request Host without port is compared by name only). Requests with neither header and Bearer-token requests are untouched. Identity names the cookie `__Host-gst_session` when the request is HTTPS and keeps reading `gst_session`, so existing sessions and the HTTP e2e keep working; `web/vite.config.ts` no longer rewrites `Host` in the dev proxy.
 
-**F17 (low) Attachments: quota and malware scanning.** Each upload is limited to 10 MiB, but there is no count or total quota per user or repository and no antivirus hook; unlinked uploads are only purged after the orphan TTL. Fix: per-repo and per-user quota; document the antivirus decision (accept or hook).
+**F17 (low, resolved by GIT-239) Attachments: quota and malware scanning.** Each upload is limited to 10 MiB, but there is no count or total quota per user or repository and no antivirus hook; unlinked uploads are only purged after the orphan TTL. Fix: per-repo and per-user quota; document the antivirus decision (accept or hook).
 
-**F18 (low) Git ingest limits and object checks.** `receive-pack` runs without `receive.fsckObjects`, pushes have a per-file limit (R6) but no total or per-repository ceiling, and a pull mirror fetch has only a timeout: an origin can fill the git volume. Fix: enable fsck, a size ceiling for mirror fetch and a per-repository quota alert.
+**Resolution (GIT-239).** Quota of attachment bytes per repository (`GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES`, default 1 GiB) and per user across repositories (`GITSTACK_CORE_ATTACHMENTS_USER_QUOTA_BYTES`, default 512 MiB), `0` = no limit, unlinked uploads included; checked before the write and again with the real size (the surplus file is removed): 413 `attachment_quota_exceeded`. The quota is soft: two simultaneous uploads can exceed it by one file. Antivirus decision: **accepted, no hook**. Attachments are never executed or rendered by the server (type checked on the bytes, no HTML, XML or SVG, always `attachment` + `nosniff` + `sandbox`, ZIP never expanded), the instance is on-prem with authenticated users only, and a built-in scanner would add a daemon to the chart; an operator who needs scanning scans the volume or the backup with their own tool.
 
-**F19 (low) Process and release hygiene.** GitHub Actions are referenced by tag (`actions/checkout@v5`) and not by commit sha; `SECURITY.md` and the private reporting procedure (rule V4) do not exist; the component showcase `/_components` is routed in production; k3s is installed with `curl | sh` (pinned version, but script not pinned by checksum); the threat model has no trigger in the change process (V1.1.2). Fix: pin by sha, add SECURITY.md, gate the showcase to development builds, verify the k3s script checksum, add a threat-model checkbox to the item template.
+**F18 (low, resolved by GIT-239) Git ingest limits and object checks.** `receive-pack` runs without `receive.fsckObjects`, pushes have a per-file limit (R6) but no total or per-repository ceiling, and a pull mirror fetch has only a timeout: an origin can fill the git volume. Fix: enable fsck, a size ceiling for mirror fetch and a per-repository quota alert.
 
-**F20 (low) Personal data handling.** Names and emails are stored in clear in Postgres with no application-level encryption and no guidance on encrypting the Postgres volume and the local backup copy (S3 backups are encrypted, N7); there is no way for a user to export their data and no self-service removal (V6.1.1, V8.3.2). Impact is limited for an on-prem tool. Fix: operations guidance on disk encryption and a user data export.
+**Resolution (GIT-239).** `receive-pack` runs with `receive.fsckObjects=true` over HTTP and SSH (`receiverules.GitArgs`): a malformed object rejects the push. A mirror fetch is watched while it runs and stopped when the object directory grows past `GITSTACK_GIT_MIRROR_MAX_FETCH_SIZE` (default 5 GB, `0` = no cap): the downloaded objects are deleted and no ref is updated. The per-repository size alert is the existing warning at `GITSTACK_GIT_REPO_SIZE_WARN` (5 GB). There is still no total or per-repository ceiling on pushes: the warning is the control.
+
+**F19 (low, resolved by GIT-239) Process and release hygiene.** GitHub Actions are referenced by tag (`actions/checkout@v5`) and not by commit sha; `SECURITY.md` and the private reporting procedure (rule V4) do not exist; the component showcase `/_components` is routed in production; k3s is installed with `curl | sh` (pinned version, but script not pinned by checksum); the threat model has no trigger in the change process (V1.1.2). Fix: pin by sha, add SECURITY.md, gate the showcase to development builds, verify the k3s script checksum, add a threat-model checkbox to the item template.
+
+**Resolution (GIT-239).** Every `uses:` of the workflows is pinned to a commit sha with the tag in a comment, and `node --test scripts/check-actions-pinned.mjs` (a CI step) fails on a tag or branch. `/_components` is routed only when `import.meta.env.DEV`. `install.sh` downloads the k3s script, compares its SHA-256 with `deploy/k3s-install.sha256` (or `GITSTACK_K3S_SCRIPT_SHA256`) and runs it only on a match (`deploy/tests/k3s_script_test.sh`); `gitstack upgrade --k3s` has its own download path, not covered. The feature template has a threat-model checkbox. `SECURITY.md` came with GIT-221 and `./pkg/scopes/...` is now in the go-build and go-test checks.
+
+**F20 (low, resolved by GIT-239) Personal data handling.** Names and emails are stored in clear in Postgres with no application-level encryption and no guidance on encrypting the Postgres volume and the local backup copy (S3 backups are encrypted, N7); there is no way for a user to export their data and no self-service removal (V6.1.1, V8.3.2). Impact is limited for an on-prem tool. Fix: operations guidance on disk encryption and a user data export.
+
+**Resolution (GIT-239).** `docs/operations.md` ("Personal data at rest and data export") makes the encryption of the data disk, of the local backup copy and of the off-host copies an installation requirement, with a LUKS example and a check. `GET /user/export` returns the profile, personal tokens (no values), SSH keys, active sessions and TOTP status of the caller, without any secret (`TestExportOwnData`); the export is logged as `security.data.exported`. No application-level encryption of names and e-mails and no self-service removal: an administrator deletes the user.
 
 ## Out of the checklist
 
-Things noticed that are not ASVS requirements: the go-test check of the work-item engine (`.galaxylab/checks.toml`) does not list `./pkg/scopes/...`, so the scope rule tests run in CI (`scripts/go-each.sh`) but not in that check; `SECURITY.md` does not exist yet (rule V4/V8).
+Things noticed that are not ASVS requirements: the go-test check of the work-item engine (`.galaxylab/checks.toml`) did not list `./pkg/scopes/...` (added by GIT-239); `SECURITY.md` came with GIT-221.
 

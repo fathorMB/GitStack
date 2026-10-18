@@ -254,6 +254,12 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		} else {
 			logger.Info("SMTP non configurato: solo notifiche in-app")
 		}
+		// Avvisi sulle credenziali (F13): identity scrive un evento a ogni cambio
+		// di password, token o chiave SSH e per i token in scadenza; qui diventano
+		// notifiche in-app e, con l'SMTP attivo, email.
+		if src, cok := repoLookup.(notify.CredentialSource); cok {
+			go (&notify.CredentialNotifier{Pool: pool, Source: src, Log: logger, EmailEnabled: eng.EmailWindow > 0}).Run(ctx)
+		}
 		go eng.Run(ctx)
 	} else {
 		logger.Warn("identity non configurata: il motore delle notifiche non parte")

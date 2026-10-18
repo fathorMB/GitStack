@@ -562,6 +562,20 @@ A user who lost the device and the recovery codes is unlocked by an administrato
 
 Core encrypts webhook and mirror secrets with the primary key and decrypts each row with the key named by its `secret_key_id`, so old rows stay readable after a rotation. Rotation: put the current key in `oldKeys` as `<keyId>:<key>` (comma separated for more than one), put a new 32-byte key (`openssl rand -hex 32`) in `key`, set a new `core.webhookSecret.keyId`, `helm upgrade`. New and edited secrets use the new key; old rows are decrypted with the entry of `oldKeys` (`services/core/internal/webhooks/unit_test.go#TestKeyring_CifraDecifraERotazione`). Do not remove an old key from `oldKeys` while rows still use it: the secret would be unreadable and the webhook has to be configured again. A lost key has the same effect.
 
+### Notices on credential changes (F13, GIT-239)
+
+When a password is changed or reset, a personal token or an SSH key is added,
+or a token is about to expire (7 days before), the account owner gets an
+in-app notification (reason `credential`, "Security" in the inbox) and, with
+the SMTP configured, an e-mail. These notices are security alerts: the e-mail
+preferences do not switch them off. They never contain a secret: the token
+value is not in them, only its name and last four characters.
+
+Identity records the event and core delivers it (one pass every 30 seconds);
+nothing to configure. If an e-mail is not expected, check that the SMTP of core
+is on (`smtp.*` in the chart values) and that the user has an address.
+Delivery is at least once: after an identity outage a notice can arrive twice.
+
 ### Personal data at rest and data export (F20, GIT-239)
 
 GitStack stores user names, e-mail addresses and display names in clear in

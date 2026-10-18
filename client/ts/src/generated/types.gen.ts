@@ -542,6 +542,27 @@ export type OwnDataExport = {
     totpEnabled: boolean;
 };
 
+export type CredentialEvent = {
+    id: number;
+    userId: string;
+    kind: 'password_changed' | 'password_reset' | 'token_created' | 'token_expiring' | 'ssh_key_added';
+    /**
+     * Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+     */
+    detail: {
+        [key: string]: unknown;
+    };
+    createdAt: string;
+};
+
+export type CredentialEventList = {
+    items: Array<CredentialEvent>;
+};
+
+export type CredentialEventsAckInput = {
+    upTo: number;
+};
+
 export type OidcProvider = {
     slug: Name;
     displayName: string;
@@ -1802,10 +1823,10 @@ export type UpdateMilestoneInput = {
 };
 
 /**
- * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8).
+ * Motivo (= tipo) di una notifica, usato dal filtro della casella e dalle preferenze email (C3, C5). `assigned`: la issue e' stata assegnata all'utente; `mentioned`: `@utente` in una issue o in un commento; `participating`: attivita' su una issue in cui l'utente e' autore o commentatore, o che gli e' assegnata; `subscribed`: attivita' su una issue seguita con Subscribe o su un repo in Watch `all`; `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7); `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13): senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
  *
  */
-export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook' | 'mirror';
+export type NotificationReason = 'assigned' | 'mentioned' | 'participating' | 'subscribed' | 'commit_linked' | 'state_change' | 'webhook' | 'mirror' | 'credential';
 
 export type NotificationRepo = {
     id: string;
@@ -11911,6 +11932,74 @@ export type LookupUsersByIdsResponses = {
 };
 
 export type LookupUsersByIdsResponse = LookupUsersByIdsResponses[keyof LookupUsersByIdsResponses];
+
+export type ListCredentialEventsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        limit?: number;
+    };
+    url: '/internal/credential-events';
+};
+
+export type ListCredentialEventsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListCredentialEventsError = ListCredentialEventsErrors[keyof ListCredentialEventsErrors];
+
+export type ListCredentialEventsResponses = {
+    /**
+     * Gli eventi da consegnare.
+     */
+    200: CredentialEventList;
+};
+
+export type ListCredentialEventsResponse = ListCredentialEventsResponses[keyof ListCredentialEventsResponses];
+
+export type AckCredentialEventsData = {
+    body: CredentialEventsAckInput;
+    path?: never;
+    query?: never;
+    url: '/internal/credential-events/ack';
+};
+
+export type AckCredentialEventsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type AckCredentialEventsError = AckCredentialEventsErrors[keyof AckCredentialEventsErrors];
+
+export type AckCredentialEventsResponses = {
+    /**
+     * Eventi confermati.
+     */
+    204: void;
+};
+
+export type AckCredentialEventsResponse = AckCredentialEventsResponses[keyof AckCredentialEventsResponses];
 
 export type ResolveMentionsData = {
     body: ResolveMentionsInput;

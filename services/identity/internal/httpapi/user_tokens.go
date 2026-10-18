@@ -6,6 +6,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/users"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -101,6 +102,7 @@ func (s *server) CreateUserToken(w http.ResponseWriter, r *http.Request, usernam
 		return
 	}
 	s.secInfo(r, "security.token.created", &cur, "created_token_id", t.ID.String(), "token_name", in.Name, "scopes", scopes, "target", agent.Username)
+	s.credEvent(r, agent.ID, credevents.TokenCreated, map[string]any{"name": in.Name, "hint": t.Hint, "scopes": scopes, "expiresAt": t.ExpiresAt, "by": cur.User.Username})
 	base := toToken(t)
 	w.Header().Set("Location", "/v1/users/"+agent.Username+"/tokens/"+t.ID.String())
 	writeJSON(w, http.StatusCreated, openapi.CreatedToken{

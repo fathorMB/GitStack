@@ -5833,6 +5833,69 @@ paths:
         default:
           $ref: "#/components/responses/UnexpectedError"
 
+  /internal/credential-events:
+    get:
+      operationId: listCredentialEvents
+      tags: [internal]
+      summary: Eventi sulle credenziali degli utenti, da consegnare
+      description: >
+        Per core (F13): gli eventi non ancora confermati (cambio password,
+        reset da amministratore, nuovo token, nuova chiave SSH, token in
+        scadenza), dal piu' vecchio, fino a `limit` (default 100, massimo 500).
+        Prima di rispondere identity cerca i token che scadono entro 7 giorni e
+        non sono ancora stati segnalati. La consegna e' almeno una volta: core
+        conferma con `ackCredentialEvents` dopo aver scritto le notifiche. Mai
+        segreti: solo tipo, nome del token o della chiave e date.
+      security:
+        - serviceAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Gli eventi da consegnare.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialEventList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /internal/credential-events/ack:
+    post:
+      operationId: ackCredentialEvents
+      tags: [internal]
+      summary: Conferma la consegna degli eventi sulle credenziali
+      description: >
+        Per core (F13): segna come consegnati gli eventi con id fino a `upTo`
+        compreso. Ripetere la conferma e' innocuo.
+      security:
+        - serviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialEventsAckInput"
+      responses:
+        "204":
+          description: Eventi confermati.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
   /internal/mentions/resolve:
     post:
       operationId: resolveMentions
@@ -7675,6 +7738,48 @@ components:
             $ref: "#/components/schemas/Session"
         totpEnabled:
           type: boolean
+
+    CredentialEvent:
+      type: object
+      additionalProperties: false
+      required: [id, userId, kind, detail, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [password_changed, password_reset, token_created, token_expiring, ssh_key_added]
+        detail:
+          type: object
+          additionalProperties: true
+          description: Nome del token o della chiave, suffisso del token, scadenza. Mai segreti.
+        createdAt:
+          type: string
+          format: date-time
+
+    CredentialEventList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CredentialEvent"
+
+    CredentialEventsAckInput:
+      type: object
+      additionalProperties: false
+      required: [upTo]
+      properties:
+        upTo:
+          type: integer
+          format: int64
+          minimum: 0
 
     OidcProvider:
       type: object
@@ -10115,7 +10220,9 @@ components:
         `commit_linked`: un commit cita una issue seguita; `state_change`: chiusura o riapertura di una issue
         seguita (anche da commit); `webhook`: un webhook gestito dall'utente e' stato disattivato dai fallimenti (C7);
         `mirror`: un mirror in push di un repo di cui l'utente e' admin si e' fermato perche' la destinazione ha
-        una storia diversa (V8).
+        una storia diversa (V8); `credential`: avviso di sicurezza sulle credenziali dell'utente (cambio
+        password, reset da un amministratore, nuovo token personale, nuova chiave SSH, token in scadenza, F13):
+        senza repo ne' issue, `event` e' `credential.<tipo>`, sempre anche per email se l'SMTP e' attivo.
       enum:
         - assigned
         - mentioned
@@ -10125,6 +10232,7 @@ components:
         - state_change
         - webhook
         - mirror
+        - credential
     NotificationRepo:
       type: object
       additionalProperties: false

@@ -31,6 +31,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/identity/internal/apitokens"
 	"github.com/fathorMB/GitStack/services/identity/internal/auth"
+	"github.com/fathorMB/GitStack/services/identity/internal/credevents"
 	"github.com/fathorMB/GitStack/services/identity/internal/oidc"
 	"github.com/fathorMB/GitStack/services/identity/internal/openapi"
 	"github.com/fathorMB/GitStack/services/identity/internal/orgs"
@@ -76,6 +77,7 @@ type server struct {
 	keys2       trust.Keyring // chiavi di servizio accettate, per chiamante (F9)
 	orgs        *orgs.Service
 	mfa         *secondfactor.Service // secondo fattore TOTP (F11); nil = spento
+	cred        *credevents.Service   // avvisi sulle credenziali (F13); nil = spenti
 
 	trustedProxies []*net.IPNet
 }
@@ -660,6 +662,15 @@ func (s *server) ChangePassword(w http.ResponseWriter, r *http.Request, username
 		s.auth.Limiter.Success(username)
 	}
 	s.secInfo(r, "security.password.changed", &cur, "target", username)
+	// F13 (V2.2.3, V2.5.5): l'utente interessato viene avvisato; se è un
+	// amministratore a reimpostarla, l'avviso lo dice.
+	if target, err := s.users.Get(r.Context(), username); err == nil {
+		kind := credevents.PasswordChanged
+		if ci.Admin {
+			kind = credevents.PasswordReset
+		}
+		s.credEvent(r, target.ID, kind, map[string]any{"by": cur.User.Username})
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
