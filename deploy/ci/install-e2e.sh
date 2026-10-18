@@ -140,8 +140,7 @@ wait_healthy() {
   while [ "${SECONDS}" -lt "${deadline}" ]; do
     terminating="$(terminating_pods)"
     if [ -n "${terminating}" ]; then
-      log "pod in terminazione: $(printf '%s' "${terminating}" | tr '
-' ' ')"
+      log "pod in terminazione: $(printf '%s' "${terminating}" | tr '[:space:]' ' ')"
       ok=0
       sleep 5
       continue
