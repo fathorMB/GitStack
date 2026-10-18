@@ -2044,6 +2044,14 @@ rm -rf /tmp/gh-prova
 
 Poi su GitHub: cancella il repo di prova e **revoca** il token. Il mirror del repo vero di GitStack si crea solo nel giorno scelto per la tappa 2, con le regole di [Mirroring to GitHub](#mirroring-to-github).
 
+### Condizione 3: prova reale di un agente con `gs` e skills (GIT-254)
+
+**Esito, 2026-10-18: superata su homehub** (`gs version` = `sha-e984353074aeab42560042a2f79079417537819d`, GIT-249 incluso). Si è seguito [`agent-trial.md`](agent-trial.md) con `gs` scaricato da `/downloads` (CA interna verificata per impronta), `setup.sh` con un token admin, repo di prova `admin/agent-trial-homehub` e `check.sh` con 11 `PASS` su 11, `ESITO: prova superata`, exit 0.
+
+Limiti dichiarati: la parte dell'agente l'ha eseguita un agente GalaxyLab (DevOps) via ssh con i comandi delle skills (`gs notification list`, `gs issue view/comment`, `git switch -c agent/1-wordcount-spazi`, `git commit -F` con `fixes #1`, `git push -u`, `gs notification read`), non una sessione interattiva di Claude Code: la scelta autonoma dei comandi da parte di Claude Code resta non provata. L'unione `--ff-only` l'ha fatta la persona (admin) e la issue si è chiusa da sola come `completed`.
+
+Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva già `admin/agent-trial` con la issue #1 chiusa da una prova precedente (11/10), quindi la prova è stata rifatta con `TRIAL_REPO=agent-trial-homehub`; `gs auth status` ora stampa anche gli scope (la guida lo diceva senza, corretto in `agent-trial.md`). Il token admin di prova `agent-trial-admin` va revocato a fine prova (vedi la nota di revisione di GIT-254).
+
 ## Registro della tappa 1 di V7 (homehub)
 
 Registro del dogfooding: cosa è stato fatto su homehub (GIT-249, 18/10/2026, orari UTC). Ogni riga è un fatto verificato in quel giorno.

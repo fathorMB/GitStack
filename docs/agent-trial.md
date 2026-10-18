@@ -178,7 +178,7 @@ export GS_TOKEN=$(cat ./agent-trial.token)      # token dell'agente, non dell'ad
 export GS_NO_KEYRING=1                           # niente portachiavi: il token resta nell'ambiente
 export GIT_SSL_CAINFO="$GS_CA_FILE"              # git: la CA interna (impostata nel passo 2)
 
-gs auth status                                   # una riga: host, trial-agent, GS_TOKEN, scadenza «mai»
+gs auth status                                   # una riga: host, trial-agent, GS_TOKEN, scope, scadenza
 gs auth setup-git                                # git usa il token di gs per questo host (config globale, voce per host)
 gs repo clone <admin>/agent-trial ~/agent-trial-work
 cd ~/agent-trial-work
@@ -194,7 +194,7 @@ L'email deve essere quella dell'utente `trial-agent` in GitStack (la mette `setu
 
 Prima di cominciare `GS_CA_FILE` (e su Linux `SSL_CERT_FILE`) deve essere esportato nella stessa shell: è la riga del passo 2 («Fidarsi della CA interna»). Senza, `gs` risponde `x509: certificate signed by unknown authority`. Se hai aperto una shell nuova, ripeti quella riga; su macOS e Windows `gs` usa lo store di sistema e non serve altro.
 
-`gs auth status` stampa una sola riga, per esempio `172.29.132.37 trial-agent GS_TOKEN - mai`: host, utente, origine del token (`GS_TOKEN` = variabile d'ambiente), scadenza (`mai`: con `GS_TOKEN` `gs` non la conosce, non vuol dire che il token non scada; il setup gli dà 7 giorni). **Non mostra gli scope.** Che il token abbia solo `read:resource` e `write:resource` lo verifica `check.sh` per effetto (un `GET /users` con quel token deve dare exit 5, passo 7).
+`gs auth status` stampa una sola riga, per esempio `homehub.local trial-agent GS_TOKEN read:resource,write:resource 2026-10-25 17:20 ok`: host, utente, origine del token (`GS_TOKEN` = variabile d'ambiente), scope, scadenza e stato (visto su homehub, GIT-254; le versioni più vecchie stampavano `- mai` al posto di scope e scadenza). Che il token abbia solo `read:resource` e `write:resource` lo verifica `check.sh` per effetto (un `GET /users` con quel token deve dare exit 5, passo 7).
 
 Installa le skills nel progetto per Claude Code e tienile fuori dai commit dell'agente:
 
