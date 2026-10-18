@@ -1994,10 +1994,10 @@ export type IssueSubscription = {
 export type WebhookScope = 'repo' | 'org';
 
 /**
- * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'). Payload in docs/webhooks.md.
+ * Evento selezionabile (C6): `push`, `issues` (apertura, chiusura, riapertura, modifica, etichette, assegnatari, milestone, blocco), `issue_comment` (creato, modificato, eliminato), `repository` (creato, eliminato, archiviato, ripristinato, rinominato, visibilita'), `pull_request` (aperta, modificata, chiusa, riaperta, unita, pronta, bozza, nuovi commit, richieste di review), `pull_request_review` (review inviata, approvazione annullata) e `commit_status` (stato di un commit, PR11). Payload in docs/webhooks.md e negli schemi `WebhookPullRequestPayload`, `WebhookPullRequestReviewPayload` e `WebhookCommitStatusPayload`.
  *
  */
-export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository';
+export type WebhookEvent = 'push' | 'issues' | 'issue_comment' | 'repository' | 'pull_request' | 'pull_request_review' | 'commit_status';
 
 /**
  * Stato di un mirror in push. `pending`: in coda (mai spinto, o un push nuovo da fare); `syncing`: un worker lo sta spingendo; `in_sync`: la destinazione ha lo stato dell'ultimo push riuscito; `error`: l'ultimo tentativo e' fallito (rete, credenziale, destinazione non ammessa...), si ritenta con attesa crescente 30 s, 2 min, 10 min, 1 ora fino a 6 ore, tranne un blocco egress (C8) che non si ritenta; `diverged`: la destinazione ha una storia diversa (non fast-forward, o un tag gia' presente con un altro commit): fermo, nessun tentativo automatico e nessuna sovrascrittura, gli admin del repo ricevono una notifica `mirror`; riparte solo con `syncRepoMirror`.
@@ -2421,6 +2421,618 @@ export type WebhookDeliveryDetail = WebhookDeliverySummary & {
 };
 
 /**
+ * Stato (PR6): `open` (aperta, in bozza o pronta, vedi `draft`), `closed` (chiusa senza merge, si riapre se i branch esistono) o `merged` (unita, definitiva).
+ *
+ */
+export type PullRequestState = 'open' | 'closed' | 'merged';
+
+/**
+ * Metodo di merge (PR3). Il rebase non esiste.
+ */
+export type MergeMethod = 'merge' | 'squash';
+
+/**
+ * Esito delle review (PR12): `none` nessuna review richiesta ne' inviata, `required` servono ancora approvazioni, `approved` approvazioni sufficienti, `changes_requested` c'e' una richiesta di modifiche non superata.
+ *
+ */
+export type ReviewDecision = 'none' | 'required' | 'approved' | 'changes_requested';
+
+/**
+ * Stato di un commit (PR9).
+ */
+export type CommitStatusState = 'pending' | 'success' | 'failure' | 'error';
+
+export type PullRequest = {
+    id: string;
+    /**
+     * `#n`, dal contatore del repo condiviso con le issues (I1); non si riusa mai.
+     */
+    number: number;
+    title: string;
+    /**
+     * Markdown (D10).
+     */
+    body: string;
+    state: PullRequestState;
+    /**
+     * Bozza (PR6). Sempre false se `state` non e' `open`.
+     */
+    draft: boolean;
+    author: IssueUser;
+    viaToken?: IssueViaToken;
+    /**
+     * Branch di origine, dello stesso repo (PR1).
+     */
+    sourceBranch: string;
+    /**
+     * Branch di destinazione.
+     */
+    targetBranch: string;
+    /**
+     * Punta del branch di origine; per una PR unita quella al momento del merge.
+     */
+    headSha: string;
+    /**
+     * Merge-base fra i due branch al momento dell'ultimo calcolo.
+     */
+    baseSha?: string;
+    /**
+     * Il branch di origine esiste ancora (condizione per riaprire, PR6).
+     */
+    sourceBranchExists: boolean;
+    requestedReviewers: Array<IssueUser>;
+    reviewDecision: ReviewDecision;
+    /**
+     * Approvazioni valide: di persone con `write`, sull'ultimo commit, non dell'autore (PR2, PR4).
+     */
+    approvals: number;
+    /**
+     * Approvazioni richieste dal branch di destinazione; 0 se «Richiedi una Pull Request» e' spenta.
+     */
+    requiredApprovals: number;
+    /**
+     * Stato complessivo dei commit sulla punta di `headSha` (PR9); `null` se non calcolato.
+     */
+    statusState?: CombinedCommitStatusState | null;
+    /**
+     * Commenti non eliminati, generali e sulle righe.
+     */
+    commentCount: number;
+    unresolvedThreadCount: number;
+    /**
+     * Numeri delle issues che le parole chiave di C2 chiudono al merge (PR8).
+     */
+    closingIssues: Array<number>;
+    commitCount: number;
+    changedFiles: number;
+    additions: number;
+    deletions: number;
+    /**
+     * Solo per una PR unita.
+     */
+    mergeMethod?: MergeMethod | null;
+    /**
+     * Commit creato dal merge; solo per una PR unita.
+     */
+    mergeCommitSha?: string | null;
+    mergedBy?: IssueUser | null;
+    mergedAt?: string | null;
+    /**
+     * Chiusura senza merge; azzerato dalla riapertura.
+     */
+    closedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+/**
+ * Pull Request negli elenchi: senza testo.
+ */
+export type PullRequestSummary = {
+    number: number;
+    title: string;
+    state: PullRequestState;
+    draft: boolean;
+    author: IssueUser;
+    sourceBranch: string;
+    targetBranch: string;
+    reviewDecision: ReviewDecision;
+    statusState?: CombinedCommitStatusState | null;
+    requestedReviewers: Array<IssueUser>;
+    commentCount: number;
+    mergedAt?: string | null;
+    closedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type PullRequestList = {
+    items: Array<PullRequestSummary>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreatePullRequestInput = {
+    title: string;
+    /**
+     * Markdown (D10); le parole chiave di C2 collegano le issues (PR8).
+     */
+    body?: string;
+    sourceBranch: string;
+    /**
+     * Se manca, il branch principale del repo (R4).
+     */
+    targetBranch?: string;
+    /**
+     * Apre in bozza (PR6, PR10).
+     */
+    draft?: boolean;
+    /**
+     * Nomi utente dei revisori richiesti (PR12); almeno `read` sul repo.
+     */
+    reviewers?: Array<Name>;
+};
+
+export type UpdatePullRequestInput = {
+    title?: string;
+    body?: string;
+    targetBranch?: string;
+};
+
+export type MergePullRequestInput = {
+    method: MergeMethod;
+    /**
+     * Titolo del commit di merge o di squash; se manca lo propone il server.
+     */
+    commitTitle?: string;
+    commitMessage?: string;
+    /**
+     * Se la punta del branch di origine e' cambiata, 409 `head_changed`.
+     */
+    expectedHeadSha?: string;
+    /**
+     * Elimina il branch di origine dopo il merge (PR3); vale anche l'impostazione `deleteBranchOnMerge`.
+     */
+    deleteBranch?: boolean;
+};
+
+export type MergeBlocker = {
+    /**
+     * Perche' non si puo' unire: `draft` (PR6), `not_open`, `conflicts` (PR7), `approvals_required` e `changes_requested` (PR4), `status_required` (contesto obbligatorio mai arrivato o `pending`) e `status_failed` (contesto obbligatorio `failure` o `error`, PR9).
+     *
+     */
+    code: 'draft' | 'not_open' | 'conflicts' | 'approvals_required' | 'changes_requested' | 'status_required' | 'status_failed';
+    message: string;
+    /**
+     * I contesti coinvolti, per `status_required` e `status_failed`.
+     */
+    contexts?: Array<string>;
+};
+
+export type PullRequestMergeability = {
+    /**
+     * `mergeable` si puo' unire; `conflicts` il merge produce conflitti (PR7); `blocked` nessun conflitto ma c'e' un blocco in `blockers`; `unknown` calcolo non ancora pronto.
+     *
+     */
+    state: 'mergeable' | 'conflicts' | 'blocked' | 'unknown';
+    /**
+     * True solo con `state` uguale a `mergeable`.
+     */
+    mergeable: boolean;
+    /**
+     * File in conflitto (percorsi), vuoto se non ce ne sono. Al massimo 100: oltre, `conflictFilesTruncated`.
+     *
+     */
+    conflictFiles: Array<string>;
+    conflictFilesTruncated?: boolean;
+    /**
+     * Commit della destinazione non ancora nel branch di origine. Non impedisce il merge (PR7).
+     */
+    behindBy: number;
+    aheadBy: number;
+    blockers: Array<MergeBlocker>;
+    allowedMethods: Array<MergeMethod>;
+    defaultMethod: MergeMethod;
+    approvals: number;
+    requiredApprovals: number;
+    /**
+     * Punta del branch di origine su cui e' stato calcolato lo stato.
+     */
+    headSha: string;
+};
+
+export type PullRequestFiles = {
+    files: Array<FileDiff>;
+    /**
+     * Numero reale di file toccati, anche oltre i 300 elencati.
+     */
+    filesChanged: number;
+    additions: number;
+    deletions: number;
+    /**
+     * Come in `CommitDetail`.
+     */
+    truncated: boolean;
+    /**
+     * Oltre i limiti di B6 solo l'elenco dei file, senza patch.
+     */
+    listOnly?: boolean;
+    ignoreWhitespace?: boolean;
+    /**
+     * File marcati Viewed da chi chiama (PR12).
+     */
+    viewedPaths: Array<string>;
+    headSha: string;
+    /**
+     * Merge-base da cui e' calcolato il diff.
+     */
+    baseSha: string;
+};
+
+export type SetFileViewedInput = {
+    path: string;
+    viewed: boolean;
+};
+
+/**
+ * Esito scelto all'invio (PR5).
+ */
+export type ReviewEvent = 'comment' | 'approve' | 'request_changes';
+
+export type ReviewState = 'commented' | 'approved' | 'changes_requested';
+
+/**
+ * Lato del diff su cui sta la riga (PR5), `old` e' il file prima, `new` dopo.
+ */
+export type DiffSide = 'old' | 'new';
+
+export type ReviewCommentInput = {
+    path: string;
+    side: DiffSide;
+    /**
+     * Ultima riga commentata.
+     */
+    line: number;
+    /**
+     * Prima riga, per un gruppo di righe; deve essere minore di `line` e sullo stesso lato.
+     */
+    startLine?: number;
+    /**
+     * Markdown (D10); un blocco `suggestion` si mostra come diff, senza «Applica» (PR5).
+     */
+    body: string;
+};
+
+export type CreatePullRequestReviewInput = {
+    event: ReviewEvent;
+    body?: string;
+    /**
+     * Punta della PR che si e' vista; se e' cambiata, 409 `head_changed`.
+     */
+    commitSha?: string;
+    comments?: Array<ReviewCommentInput>;
+};
+
+export type PullRequestReview = {
+    id: string;
+    author: IssueUser;
+    state: ReviewState;
+    body: string;
+    /**
+     * Punta della PR al momento della review.
+     */
+    commitSha: string;
+    /**
+     * Nuovi commit hanno annullato l'approvazione (PR4); la review resta nella cronologia.
+     */
+    stale: boolean;
+    /**
+     * True solo per `approved` di una persona con `write`, non annullata e non dell'autore. Gli agenti possono approvare ma non contano (PR2).
+     *
+     */
+    countsAsApproval: boolean;
+    /**
+     * Commenti sulle righe inviati con la review.
+     */
+    commentCount: number;
+    submittedAt: string;
+};
+
+export type PullRequestReviewList = {
+    items: Array<PullRequestReview>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type CreatePullRequestCommentInput = {
+    body: string;
+    /**
+     * File commentato; con `path` servono anche `side`, `line` e `commitSha`.
+     */
+    path?: string;
+    side?: DiffSide;
+    line?: number;
+    startLine?: number;
+    /**
+     * Punta della PR su cui sta la riga (409 `head_changed` se non e' piu' quella).
+     */
+    commitSha?: string;
+    /**
+     * Id di un commento sulle righe: il nuovo entra nella sua conversazione. Esclude `path`.
+     */
+    inReplyTo?: string;
+};
+
+export type UpdatePullRequestCommentInput = {
+    body: string;
+};
+
+export type PullRequestComment = {
+    id: string;
+    author: IssueUser;
+    viaToken?: IssueViaToken;
+    /**
+     * Vuoto se `deleted`.
+     */
+    body: string;
+    /**
+     * Review con cui e' stato inviato, se c'e'.
+     */
+    reviewId?: string | null;
+    /**
+     * Conversazione sulle righe; `null` per un commento generale.
+     */
+    threadId?: string | null;
+    /**
+     * File commentato; `null` per un commento generale.
+     */
+    path?: string | null;
+    side?: DiffSide | null;
+    line?: number | null;
+    startLine?: number | null;
+    /**
+     * Punta della PR su cui e' stato scritto il commento sulle righe.
+     */
+    commitSha?: string | null;
+    /**
+     * Le righe commentate sono cambiate dopo il commento (PR5).
+     */
+    outdated: boolean;
+    edited: boolean;
+    /**
+     * Segnaposto di un commento eliminato che ha ancora risposte.
+     */
+    deleted: boolean;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type PullRequestCommentList = {
+    items: Array<PullRequestComment>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type PullRequestThread = {
+    /**
+     * Id del primo commento.
+     */
+    id: string;
+    path: string;
+    side: DiffSide;
+    line: number;
+    startLine?: number | null;
+    /**
+     * Risolta dall'autore della PR o da chi ha `write` (PR5).
+     */
+    resolved: boolean;
+    resolvedBy?: IssueUser | null;
+    resolvedAt?: string | null;
+    outdated: boolean;
+    comments: Array<PullRequestComment>;
+};
+
+export type PullRequestThreadList = {
+    items: Array<PullRequestThread>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+export type RequestReviewersInput = {
+    reviewers: Array<Name>;
+};
+
+export type CommitStatus = {
+    id: string;
+    sha: string;
+    state: CommitStatusState;
+    context: string;
+    description?: string;
+    /**
+     * Link ai dettagli, per esempio il log della CI.
+     */
+    targetUrl?: string;
+    creator: IssueUser;
+    viaToken?: IssueViaToken;
+    createdAt: string;
+};
+
+export type CreateCommitStatusInput = {
+    state: CommitStatusState;
+    context?: string;
+    description?: string;
+    /**
+     * Solo http o https (422 altrimenti).
+     */
+    targetUrl?: string;
+};
+
+export type CommitStatusList = {
+    items: Array<CommitStatus>;
+    page: number;
+    perPage: number;
+    total: number;
+};
+
+/**
+ * Sintesi degli ultimi stati dei contesti (PR9): `failure` o `error` se uno lo e', altrimenti `pending` se uno e' in corso, altrimenti `success`; `none` se non ce ne sono.
+ *
+ */
+export type CombinedCommitStatusState = 'none' | 'pending' | 'success' | 'failure' | 'error';
+
+export type RequiredStatusContext = {
+    context: string;
+    /**
+     * Ultimo stato del contesto sul commit; `null` se non e' mai arrivato.
+     */
+    state?: CommitStatusState | null;
+    /**
+     * True solo con ultimo stato `success`.
+     */
+    satisfied: boolean;
+};
+
+export type CombinedCommitStatus = {
+    sha: string;
+    state: CombinedCommitStatusState;
+    /**
+     * L'ultimo stato di ciascun contesto.
+     */
+    statuses: Array<CommitStatus>;
+    totalCount: number;
+    requiredContexts: Array<RequiredStatusContext>;
+};
+
+export type BranchSettings = {
+    /**
+     * Ammette il merge commit (PR3). Default true.
+     */
+    allowMergeCommit: boolean;
+    /**
+     * Ammette lo squash (PR3). Default true.
+     */
+    allowSquashMerge: boolean;
+    defaultMergeMethod: MergeMethod;
+    /**
+     * Elimina il branch di origine dopo ogni merge (PR3). Default false.
+     */
+    deleteBranchOnMerge: boolean;
+    /**
+     * «Richiedi una Pull Request» sul branch principale (PR4). Se acceso nessun push diretto, `admin` compresi. Default false.
+     *
+     */
+    requirePullRequest: boolean;
+    /**
+     * Approvazioni di persone con `write` richieste per il merge, quando `requirePullRequest` e' acceso (PR4). Default 1.
+     */
+    requiredApprovals: number;
+    /**
+     * Contesti di stato (PR9) che devono essere `success` sulla punta della PR per unire.
+     */
+    requiredStatusContexts: Array<string>;
+    /**
+     * Sempre true: nuovi commit annullano le approvazioni (PR4). Non configurabile nella v1.1.
+     */
+    readonly dismissStaleApprovals: boolean;
+};
+
+export type UpdateBranchSettingsInput = {
+    allowMergeCommit?: boolean;
+    allowSquashMerge?: boolean;
+    defaultMergeMethod?: MergeMethod;
+    deleteBranchOnMerge?: boolean;
+    requirePullRequest?: boolean;
+    requiredApprovals?: number;
+    requiredStatusContexts?: Array<string>;
+};
+
+export type WebhookRepositoryRef = {
+    id: string;
+    fullName: string;
+    owner: string;
+    name: string;
+    defaultBranch: string;
+    visibility: RepoVisibility;
+    archived: boolean;
+};
+
+export type WebhookOrganizationRef = {
+    id: string;
+    name: string;
+};
+
+export type WebhookSender = {
+    id: string;
+    username: string;
+    type: 'human' | 'agent';
+};
+
+/**
+ * Corpo di una consegna con `X-GitStack-Event: pull_request` (PR11). Intestazioni, firma e corpo comune in docs/webhooks.md. Nessun webhook per le PR di un repo che l'evento non vede.
+ *
+ */
+export type WebhookPullRequestPayload = {
+    version: 1;
+    event: 'pull_request';
+    /**
+     * `opened`, `edited` (titolo, testo o destinazione), `closed` (senza merge), `reopened`, `merged`, `ready_for_review`, `converted_to_draft`, `synchronize` (nuovi commit sul branch di origine, annullano le approvazioni), `review_requested` e `review_request_removed` (con `requestedReviewer`).
+     *
+     */
+    action: 'opened' | 'edited' | 'closed' | 'reopened' | 'merged' | 'ready_for_review' | 'converted_to_draft' | 'synchronize' | 'review_requested' | 'review_request_removed';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    pullRequest: PullRequest;
+    requestedReviewer?: IssueUser;
+};
+
+/**
+ * Corpo di una consegna con `X-GitStack-Event: pull_request_review` (PR11).
+ */
+export type WebhookPullRequestReviewPayload = {
+    version: 1;
+    event: 'pull_request_review';
+    /**
+     * `submitted` (review inviata, con la sua `state`), `dismissed` (l'approvazione e' annullata da nuovi commit).
+     *
+     */
+    action: 'submitted' | 'dismissed';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    pullRequest: PullRequestSummary;
+    review: PullRequestReview;
+};
+
+/**
+ * Corpo di una consegna con `X-GitStack-Event: commit_status` (PR11).
+ */
+export type WebhookCommitStatusPayload = {
+    version: 1;
+    event: 'commit_status';
+    /**
+     * `created`: un sistema esterno ha inviato uno stato (PR9).
+     */
+    action: 'created';
+    time: string;
+    repository: WebhookRepositoryRef;
+    organization?: WebhookOrganizationRef;
+    sender: WebhookSender | null;
+    commitStatus: CommitStatus;
+    combinedState?: CombinedCommitStatusState;
+    /**
+     * Branch la cui punta e' il commit (al massimo 20).
+     */
+    branches?: Array<string>;
+};
+
+/**
  * Risorsa generica (D15): oggi usata dalla prova end-to-end, in futuro anche per repository, applicazioni e database, senza cambiare forma.
  *
  */
@@ -2813,6 +3425,35 @@ export type UpdateWebhookInputWritable = {
     active?: boolean;
 };
 
+export type BranchSettingsWritable = {
+    /**
+     * Ammette il merge commit (PR3). Default true.
+     */
+    allowMergeCommit: boolean;
+    /**
+     * Ammette lo squash (PR3). Default true.
+     */
+    allowSquashMerge: boolean;
+    defaultMergeMethod: MergeMethod;
+    /**
+     * Elimina il branch di origine dopo ogni merge (PR3). Default false.
+     */
+    deleteBranchOnMerge: boolean;
+    /**
+     * «Richiedi una Pull Request» sul branch principale (PR4). Se acceso nessun push diretto, `admin` compresi. Default false.
+     *
+     */
+    requirePullRequest: boolean;
+    /**
+     * Approvazioni di persone con `write` richieste per il merge, quando `requirePullRequest` e' acceso (PR4). Default 1.
+     */
+    requiredApprovals: number;
+    /**
+     * Contesti di stato (PR9) che devono essere `success` sulla punta della PR per unire.
+     */
+    requiredStatusContexts: Array<string>;
+};
+
 /**
  * Identificatore della risorsa.
  */
@@ -3026,6 +3667,52 @@ export type MirrorIdParam = string;
 export type WebhookIdParam = string;
 
 export type WebhookDeliveryIdParam = string;
+
+/**
+ * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+ */
+export type PullNumberParam = number;
+
+/**
+ * Id del commento della Pull Request.
+ */
+export type PullCommentIdParam = string;
+
+/**
+ * Id della conversazione sulle righe (e' l'id del suo primo commento).
+ */
+export type PullThreadIdParam = string;
+
+/**
+ * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+ *
+ */
+export type PullQueryParam = string;
+
+/**
+ * Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
+ */
+export type PullStateFilter = 'open' | 'closed' | 'merged' | 'all';
+
+/**
+ * Filtra per branch di origine.
+ */
+export type PullHeadFilter = string;
+
+/**
+ * Filtra per branch di destinazione.
+ */
+export type PullBaseFilter = string;
+
+/**
+ * Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+ */
+export type PullSortParam = 'created' | 'updated' | 'comments';
+
+/**
+ * `true` solo le conversazioni risolte, `false` solo quelle aperte; senza il parametro tutte.
+ */
+export type ThreadResolvedFilter = boolean;
 
 export type GetHealthData = {
     body?: never;
@@ -8954,6 +9641,1869 @@ export type UpdateMilestoneResponses = {
 };
 
 export type UpdateMilestoneResponse = UpdateMilestoneResponses[keyof UpdateMilestoneResponses];
+
+export type ListPullRequestsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: {
+        /**
+         * Ricerca con la sintassi di I10 estesa da PR12: `is:open|closed|merged`, `is:draft`, `review:required|approved|changes-requested`, `author:utente|@me|@agents`, `label:"nome"`, `no:label`, piu' testo libero (titolo e testo).
+         *
+         */
+        q?: string;
+        /**
+         * Stato (PR6). `closed` sono le PR chiuse senza merge, `merged` le unite.
+         */
+        state?: 'open' | 'closed' | 'merged' | 'all';
+        /**
+         * Filtra per branch di origine.
+         */
+        head?: string;
+        /**
+         * Filtra per branch di destinazione.
+         */
+        base?: string;
+        /**
+         * Ordine decrescente per data di apertura, ultimo aggiornamento o numero di commenti.
+         */
+        sort?: 'created' | 'updated' | 'comments';
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/pulls';
+};
+
+export type ListPullRequestsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestsError = ListPullRequestsErrors[keyof ListPullRequestsErrors];
+
+export type ListPullRequestsResponses = {
+    /**
+     * Pagina di Pull Request.
+     */
+    200: PullRequestList;
+};
+
+export type ListPullRequestsResponse = ListPullRequestsResponses[keyof ListPullRequestsResponses];
+
+export type CreatePullRequestData = {
+    body: CreatePullRequestInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls';
+};
+
+export type CreatePullRequestErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreatePullRequestError = CreatePullRequestErrors[keyof CreatePullRequestErrors];
+
+export type CreatePullRequestResponses = {
+    /**
+     * Pull Request creata.
+     */
+    201: PullRequest;
+};
+
+export type CreatePullRequestResponse = CreatePullRequestResponses[keyof CreatePullRequestResponses];
+
+export type GetPullRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}';
+};
+
+export type GetPullRequestErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetPullRequestError = GetPullRequestErrors[keyof GetPullRequestErrors];
+
+export type GetPullRequestResponses = {
+    /**
+     * La Pull Request.
+     */
+    200: PullRequest;
+};
+
+export type GetPullRequestResponse = GetPullRequestResponses[keyof GetPullRequestResponses];
+
+export type UpdatePullRequestData = {
+    body: UpdatePullRequestInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}';
+};
+
+export type UpdatePullRequestErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdatePullRequestError = UpdatePullRequestErrors[keyof UpdatePullRequestErrors];
+
+export type UpdatePullRequestResponses = {
+    /**
+     * Pull Request aggiornata.
+     */
+    200: PullRequest;
+};
+
+export type UpdatePullRequestResponse = UpdatePullRequestResponses[keyof UpdatePullRequestResponses];
+
+export type MarkPullRequestReadyData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/ready';
+};
+
+export type MarkPullRequestReadyErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type MarkPullRequestReadyError = MarkPullRequestReadyErrors[keyof MarkPullRequestReadyErrors];
+
+export type MarkPullRequestReadyResponses = {
+    /**
+     * Pull Request pronta.
+     */
+    200: PullRequest;
+};
+
+export type MarkPullRequestReadyResponse = MarkPullRequestReadyResponses[keyof MarkPullRequestReadyResponses];
+
+export type MarkPullRequestDraftData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/draft';
+};
+
+export type MarkPullRequestDraftErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type MarkPullRequestDraftError = MarkPullRequestDraftErrors[keyof MarkPullRequestDraftErrors];
+
+export type MarkPullRequestDraftResponses = {
+    /**
+     * Pull Request in bozza.
+     */
+    200: PullRequest;
+};
+
+export type MarkPullRequestDraftResponse = MarkPullRequestDraftResponses[keyof MarkPullRequestDraftResponses];
+
+export type ClosePullRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/close';
+};
+
+export type ClosePullRequestErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ClosePullRequestError = ClosePullRequestErrors[keyof ClosePullRequestErrors];
+
+export type ClosePullRequestResponses = {
+    /**
+     * Pull Request chiusa.
+     */
+    200: PullRequest;
+};
+
+export type ClosePullRequestResponse = ClosePullRequestResponses[keyof ClosePullRequestResponses];
+
+export type ReopenPullRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/reopen';
+};
+
+export type ReopenPullRequestErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ReopenPullRequestError = ReopenPullRequestErrors[keyof ReopenPullRequestErrors];
+
+export type ReopenPullRequestResponses = {
+    /**
+     * Pull Request riaperta.
+     */
+    200: PullRequest;
+};
+
+export type ReopenPullRequestResponse = ReopenPullRequestResponses[keyof ReopenPullRequestResponses];
+
+export type ListPullRequestCommitsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: {
+        page?: number;
+        /**
+         * Commit per pagina (default 30, massimo 100).
+         */
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/pulls/{number}/commits';
+};
+
+export type ListPullRequestCommitsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestCommitsError = ListPullRequestCommitsErrors[keyof ListPullRequestCommitsErrors];
+
+export type ListPullRequestCommitsResponses = {
+    /**
+     * Pagina di commit.
+     */
+    200: CommitList;
+};
+
+export type ListPullRequestCommitsResponse = ListPullRequestCommitsResponses[keyof ListPullRequestCommitsResponses];
+
+export type ListPullRequestFilesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: {
+        /**
+         * Se presente, `files` porta solo questo file (core filtra la risposta del servizio git). Con `listOnly` il patch non c'e': per il diff intero si usa `getRepositoryCommitPatch`. 404 se il file non e' nel commit.
+         *
+         */
+        path?: string;
+        /**
+         * B6, «ignora spazi»: diff calcolato con `git diff -w`. Default false.
+         */
+        ignoreWhitespace?: boolean;
+    };
+    url: '/repos/{owner}/{repo}/pulls/{number}/files';
+};
+
+export type ListPullRequestFilesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestFilesError = ListPullRequestFilesErrors[keyof ListPullRequestFilesErrors];
+
+export type ListPullRequestFilesResponses = {
+    /**
+     * I file della PR.
+     */
+    200: PullRequestFiles;
+};
+
+export type ListPullRequestFilesResponse = ListPullRequestFilesResponses[keyof ListPullRequestFilesResponses];
+
+export type SetPullRequestFileViewedData = {
+    body: SetFileViewedInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/viewed';
+};
+
+export type SetPullRequestFileViewedErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type SetPullRequestFileViewedError = SetPullRequestFileViewedErrors[keyof SetPullRequestFileViewedErrors];
+
+export type SetPullRequestFileViewedResponses = {
+    /**
+     * Stato della casella.
+     */
+    200: SetFileViewedInput;
+};
+
+export type SetPullRequestFileViewedResponse = SetPullRequestFileViewedResponses[keyof SetPullRequestFileViewedResponses];
+
+export type GetPullRequestMergeabilityData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/mergeability';
+};
+
+export type GetPullRequestMergeabilityErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetPullRequestMergeabilityError = GetPullRequestMergeabilityErrors[keyof GetPullRequestMergeabilityErrors];
+
+export type GetPullRequestMergeabilityResponses = {
+    /**
+     * Stato di merge.
+     */
+    200: PullRequestMergeability;
+};
+
+export type GetPullRequestMergeabilityResponse = GetPullRequestMergeabilityResponses[keyof GetPullRequestMergeabilityResponses];
+
+export type MergePullRequestData = {
+    body: MergePullRequestInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/merge';
+};
+
+export type MergePullRequestErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type MergePullRequestError = MergePullRequestErrors[keyof MergePullRequestErrors];
+
+export type MergePullRequestResponses = {
+    /**
+     * Pull Request unita.
+     */
+    200: PullRequest;
+};
+
+export type MergePullRequestResponse = MergePullRequestResponses[keyof MergePullRequestResponses];
+
+export type DeletePullRequestBranchData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/branch';
+};
+
+export type DeletePullRequestBranchErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeletePullRequestBranchError = DeletePullRequestBranchErrors[keyof DeletePullRequestBranchErrors];
+
+export type DeletePullRequestBranchResponses = {
+    /**
+     * Branch eliminato.
+     */
+    204: void;
+};
+
+export type DeletePullRequestBranchResponse = DeletePullRequestBranchResponses[keyof DeletePullRequestBranchResponses];
+
+export type ListPullRequestReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/pulls/{number}/reviews';
+};
+
+export type ListPullRequestReviewsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestReviewsError = ListPullRequestReviewsErrors[keyof ListPullRequestReviewsErrors];
+
+export type ListPullRequestReviewsResponses = {
+    /**
+     * Pagina di review.
+     */
+    200: PullRequestReviewList;
+};
+
+export type ListPullRequestReviewsResponse = ListPullRequestReviewsResponses[keyof ListPullRequestReviewsResponses];
+
+export type CreatePullRequestReviewData = {
+    body: CreatePullRequestReviewInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/reviews';
+};
+
+export type CreatePullRequestReviewErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreatePullRequestReviewError = CreatePullRequestReviewErrors[keyof CreatePullRequestReviewErrors];
+
+export type CreatePullRequestReviewResponses = {
+    /**
+     * Review inviata.
+     */
+    201: PullRequestReview;
+};
+
+export type CreatePullRequestReviewResponse = CreatePullRequestReviewResponses[keyof CreatePullRequestReviewResponses];
+
+export type ListPullRequestCommentsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments';
+};
+
+export type ListPullRequestCommentsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestCommentsError = ListPullRequestCommentsErrors[keyof ListPullRequestCommentsErrors];
+
+export type ListPullRequestCommentsResponses = {
+    /**
+     * Pagina di commenti.
+     */
+    200: PullRequestCommentList;
+};
+
+export type ListPullRequestCommentsResponse = ListPullRequestCommentsResponses[keyof ListPullRequestCommentsResponses];
+
+export type CreatePullRequestCommentData = {
+    body: CreatePullRequestCommentInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments';
+};
+
+export type CreatePullRequestCommentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreatePullRequestCommentError = CreatePullRequestCommentErrors[keyof CreatePullRequestCommentErrors];
+
+export type CreatePullRequestCommentResponses = {
+    /**
+     * Commento creato.
+     */
+    201: PullRequestComment;
+};
+
+export type CreatePullRequestCommentResponse = CreatePullRequestCommentResponses[keyof CreatePullRequestCommentResponses];
+
+export type DeletePullRequestCommentData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+        /**
+         * Id del commento della Pull Request.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments/{commentId}';
+};
+
+export type DeletePullRequestCommentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type DeletePullRequestCommentError = DeletePullRequestCommentErrors[keyof DeletePullRequestCommentErrors];
+
+export type DeletePullRequestCommentResponses = {
+    /**
+     * Commento eliminato.
+     */
+    204: void;
+};
+
+export type DeletePullRequestCommentResponse = DeletePullRequestCommentResponses[keyof DeletePullRequestCommentResponses];
+
+export type UpdatePullRequestCommentData = {
+    body: UpdatePullRequestCommentInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+        /**
+         * Id del commento della Pull Request.
+         */
+        commentId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/comments/{commentId}';
+};
+
+export type UpdatePullRequestCommentErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Corpo o file oltre il limite (`body_too_large`, `attachment_too_large`).
+     *
+     */
+    413: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdatePullRequestCommentError = UpdatePullRequestCommentErrors[keyof UpdatePullRequestCommentErrors];
+
+export type UpdatePullRequestCommentResponses = {
+    /**
+     * Commento aggiornato.
+     */
+    200: PullRequestComment;
+};
+
+export type UpdatePullRequestCommentResponse = UpdatePullRequestCommentResponses[keyof UpdatePullRequestCommentResponses];
+
+export type ListPullRequestThreadsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: {
+        /**
+         * `true` solo le conversazioni risolte, `false` solo quelle aperte; senza il parametro tutte.
+         */
+        resolved?: boolean;
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/pulls/{number}/threads';
+};
+
+export type ListPullRequestThreadsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListPullRequestThreadsError = ListPullRequestThreadsErrors[keyof ListPullRequestThreadsErrors];
+
+export type ListPullRequestThreadsResponses = {
+    /**
+     * Pagina di conversazioni.
+     */
+    200: PullRequestThreadList;
+};
+
+export type ListPullRequestThreadsResponse = ListPullRequestThreadsResponses[keyof ListPullRequestThreadsResponses];
+
+export type ResolvePullRequestThreadData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+        /**
+         * Id della conversazione sulle righe (e' l'id del suo primo commento).
+         */
+        threadId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/resolve';
+};
+
+export type ResolvePullRequestThreadErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ResolvePullRequestThreadError = ResolvePullRequestThreadErrors[keyof ResolvePullRequestThreadErrors];
+
+export type ResolvePullRequestThreadResponses = {
+    /**
+     * Conversazione risolta.
+     */
+    200: PullRequestThread;
+};
+
+export type ResolvePullRequestThreadResponse = ResolvePullRequestThreadResponses[keyof ResolvePullRequestThreadResponses];
+
+export type UnresolvePullRequestThreadData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+        /**
+         * Id della conversazione sulle righe (e' l'id del suo primo commento).
+         */
+        threadId: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/threads/{threadId}/unresolve';
+};
+
+export type UnresolvePullRequestThreadErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UnresolvePullRequestThreadError = UnresolvePullRequestThreadErrors[keyof UnresolvePullRequestThreadErrors];
+
+export type UnresolvePullRequestThreadResponses = {
+    /**
+     * Conversazione riaperta.
+     */
+    200: PullRequestThread;
+};
+
+export type UnresolvePullRequestThreadResponse = UnresolvePullRequestThreadResponses[keyof UnresolvePullRequestThreadResponses];
+
+export type RequestPullRequestReviewersData = {
+    body: RequestReviewersInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/requested-reviewers';
+};
+
+export type RequestPullRequestReviewersErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RequestPullRequestReviewersError = RequestPullRequestReviewersErrors[keyof RequestPullRequestReviewersErrors];
+
+export type RequestPullRequestReviewersResponses = {
+    /**
+     * Pull Request con i revisori richiesti aggiornati.
+     */
+    200: PullRequest;
+};
+
+export type RequestPullRequestReviewersResponse = RequestPullRequestReviewersResponses[keyof RequestPullRequestReviewersResponses];
+
+export type RemovePullRequestReviewerData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Numero `#n` della Pull Request nel repo, condiviso con le issues (I1).
+         */
+        number: number;
+        username: Name;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/pulls/{number}/requested-reviewers/{username}';
+};
+
+export type RemovePullRequestReviewerErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RemovePullRequestReviewerError = RemovePullRequestReviewerErrors[keyof RemovePullRequestReviewerErrors];
+
+export type RemovePullRequestReviewerResponses = {
+    /**
+     * Pull Request con i revisori richiesti aggiornati.
+     */
+    200: PullRequest;
+};
+
+export type RemovePullRequestReviewerResponse = RemovePullRequestReviewerResponses[keyof RemovePullRequestReviewerResponses];
+
+export type ListCommitStatusesData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: {
+        page?: number;
+        perPage?: number;
+    };
+    url: '/repos/{owner}/{repo}/commits/{sha}/statuses';
+};
+
+export type ListCommitStatusesErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListCommitStatusesError = ListCommitStatusesErrors[keyof ListCommitStatusesErrors];
+
+export type ListCommitStatusesResponses = {
+    /**
+     * Pagina di stati.
+     */
+    200: CommitStatusList;
+};
+
+export type ListCommitStatusesResponse = ListCommitStatusesResponses[keyof ListCommitStatusesResponses];
+
+export type CreateCommitStatusData = {
+    body: CreateCommitStatusInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/commits/{sha}/statuses';
+};
+
+export type CreateCommitStatusErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type CreateCommitStatusError = CreateCommitStatusErrors[keyof CreateCommitStatusErrors];
+
+export type CreateCommitStatusResponses = {
+    /**
+     * Stato registrato.
+     */
+    201: CommitStatus;
+};
+
+export type CreateCommitStatusResponse = CreateCommitStatusResponses[keyof CreateCommitStatusResponses];
+
+export type GetCombinedCommitStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+        /**
+         * Sha del commit, completo o prefisso univoco di almeno 7 caratteri esadecimali.
+         */
+        sha: string;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/commits/{sha}/status';
+};
+
+export type GetCombinedCommitStatusErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetCombinedCommitStatusError = GetCombinedCommitStatusErrors[keyof GetCombinedCommitStatusErrors];
+
+export type GetCombinedCommitStatusResponses = {
+    /**
+     * Stato complessivo.
+     */
+    200: CombinedCommitStatus;
+};
+
+export type GetCombinedCommitStatusResponse = GetCombinedCommitStatusResponses[keyof GetCombinedCommitStatusResponses];
+
+export type GetBranchSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/branch-settings';
+};
+
+export type GetBranchSettingsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type GetBranchSettingsError = GetBranchSettingsErrors[keyof GetBranchSettingsErrors];
+
+export type GetBranchSettingsResponses = {
+    /**
+     * Impostazioni.
+     */
+    200: BranchSettings;
+};
+
+export type GetBranchSettingsResponse = GetBranchSettingsResponses[keyof GetBranchSettingsResponses];
+
+export type UpdateBranchSettingsData = {
+    body: UpdateBranchSettingsInput;
+    path: {
+        /**
+         * Nome dell'utente o dell'organizzazione proprietaria (R1).
+         */
+        owner: Name;
+        /**
+         * Nome del repo.
+         */
+        repo: RepoName;
+    };
+    query?: never;
+    url: '/repos/{owner}/{repo}/branch-settings';
+};
+
+export type UpdateBranchSettingsErrors = {
+    /**
+     * Richiesta non valida.
+     */
+    400: Error;
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Conflitto con lo stato attuale della risorsa.
+     */
+    409: Error;
+    /**
+     * Richiesta ben formata ma non valida semanticamente (`validation_failed`, con `details.fields` = mappa campo -> motivo).
+     *
+     */
+    422: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type UpdateBranchSettingsError = UpdateBranchSettingsErrors[keyof UpdateBranchSettingsErrors];
+
+export type UpdateBranchSettingsResponses = {
+    /**
+     * Impostazioni aggiornate.
+     */
+    200: BranchSettings;
+};
+
+export type UpdateBranchSettingsResponse = UpdateBranchSettingsResponses[keyof UpdateBranchSettingsResponses];
 
 export type DeleteNotificationsData = {
     body?: never;

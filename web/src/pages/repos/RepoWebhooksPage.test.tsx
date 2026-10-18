@@ -230,7 +230,7 @@ describe('RepoWebhooksPage', () => {
       expect(callArgs[2].secret!.length).toBeGreaterThan(0);
     }, { timeout: 5000 });
     expect(await screen.findByText('Webhook created')).toBeInTheDocument();
-  }, { timeout: 15000 });
+  }, 15000);
 
   it('mostra consegne recenti con Redeliver', async () => {
     mockedFetch.mockResolvedValue({ items: [
@@ -266,7 +266,7 @@ describe('RepoWebhooksPage', () => {
     expect(mockedDeliveries).toHaveBeenCalledWith('acme', 'api-gateway', 'wh-1');
     const redeliverButtons = screen.getAllByRole('button', { name: 'Redeliver' });
     expect(redeliverButtons.length).toBe(3);
-  }, { timeout: 15000 });
+  }, 15000);
 
   it('non mostra la sezione Webhooks senza permessi admin', async () => {
     renderPage(undefined, false);
@@ -313,7 +313,7 @@ describe('RepoWebhooksPage', () => {
       expect(mockedRedeliver).toHaveBeenCalledWith('acme', 'api-gateway', 'wh-1', 'd-1');
     }, { timeout: 5000 });
     expect(await screen.findByText('Redelivery queued.')).toBeInTheDocument();
-  }, { timeout: 15000 });
+  }, 15000);
 
   it('apre il dettaglio di una consegna con la risposta troncata', async () => {
     mockedFetch.mockResolvedValue({ items: [
@@ -348,7 +348,7 @@ describe('RepoWebhooksPage', () => {
     expect(screen.getByText(/truncated to 2 KB/)).toBeInTheDocument();
     const body = screen.getByText(/^x{100,}/);
     expect(body.textContent!.length).toBeLessThan(2100);
-  }, { timeout: 15000 });
+  }, 15000);
 
   it('mostra il dialog del segreto dopo la creazione', async () => {
     mockedCreate.mockResolvedValue({
@@ -383,5 +383,5 @@ describe('RepoWebhooksPage', () => {
       expect(screen.queryByText('Webhook created')).not.toBeInTheDocument();
     });
     expect(screen.queryByDisplayValue(sent)).not.toBeInTheDocument();
-  }, { timeout: 15000 });
+  }, 15000);
 });

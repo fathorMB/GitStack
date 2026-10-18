@@ -1797,6 +1797,40 @@ sorgente in `<mirror>/gitstack/source/vX.Y.Z.sha`.
 `v0.0.0-test.N` su un fork o un repository di prova (`git tag v0.0.0-test.1 &&
 git push <fork> v0.0.0-test.1`). Il tag `v1.0.0-rc.1` lo decide il board.
 
+**Prove fatte** (repo di prova `fathorMB/gitstack-release-test`, pubblico, con
+Actions e permessi di scrittura al `GITHUB_TOKEN`; i push li fa il board):
+
+| Tag | Data | Esito |
+|---|---|---|
+| `v0.0.0-test.1` | 2026-10-13 | Run [38400176636](https://github.com/fathorMB/gitstack-release-test/actions/runs/38400176636): il job `security` (bloccante sui tag) è rosso, quindi `registry`, `gs-binaries`, `admin-binary`, `sign` e `release` sono *skipped*. Il blocco è corretto: erano i finding già elencati in `docs/security-scans.md` (Go 1.26.2, pgx 5.7.6, immagine nginx 1.27, vitest 3 con tinypool, regex e gosec da motivare). Nessun difetto nella logica del job `release`, che però **non è stato ancora eseguito**. |
+| `v0.0.0-test.2` | 2026-10-13 | Run [38419075310](https://github.com/fathorMB/gitstack-release-test/actions/runs/38419075310): tutti i gate di `security` verdi (govulncheck, Trivy x5, pnpm audit, eslint, gosec), poi `registry` rosso con `denied: permission_denied: write_package`. Causa: le immagini vanno in `ghcr.io/<owner>/gitstack-<servizio>` e un repo di prova dello **stesso owner** (`fathorMB`) punta ai package veri di GitStack, che il `GITHUB_TOKEN` di un altro repo non può scrivere (ed è giusto così: la prova non deve toccarli). Correzione: variabile di repository `IMAGE_NAMESPACE` (vedi sotto). |
+| `v0.0.0-test.3` | 2026-10-13 | Run [38423177002](https://github.com/fathorMB/gitstack-release-test/actions/runs/38423177002): `security` verde, ma `registry` rosso con `permission_denied: The requested installation does not exist`: la variabile `IMAGE_NAMESPACE=release-test` **sostituiva** l'owner (immagine `ghcr.io/release-test/gitstack-core`, un owner inesistente). In più `admin-binary` rosso con `ReleaseAsset.name already exists`: il push di `main` e quello del tag sullo stesso commit avviano due run che creano e caricano nella stessa release `sha-<commit>` in parallelo. Correzioni: `IMAGE_NAMESPACE` si imposta al percorso completo (`fathormb/release-test`), e i job `registry`, `admin-binary`, `gs-binaries` e `sign` hanno un gruppo `concurrency` per commit (si mettono in fila, senza cancellare). |
+| `v0.0.0-test.4` | 2026-10-13 | Run [38430369701](https://github.com/fathorMB/gitstack-release-test/actions/runs/38430369701): gate, `registry`, `admin-binary`, `gs-binaries` e `sign` verdi; `release` rosso al primo passo: `gitstack-gateway:v0.0.0-test.4` non ha lo stesso digest di `sha-<commit>`. Causa: i run di `main` e del tag, sullo stesso commit, ricostruivano entrambi l'immagine; la seconda build (label con l'ora) ha digest diverso e sovrascrive `sha-<commit>`, mentre i tag di versione restano sulla prima. Correzione: il job `registry` non ricostruisce se `sha-<commit>` esiste già e aggiunge solo i tag mancanti sullo stesso digest (`docker buildx imagetools create`). Il job «Installazione reale» (Ubuntu 22.04) installa dai package veri `fathormb/gitstack-*` e salta se `IMAGE_NAMESPACE` è impostata. |
+| `v0.0.0-test.5` | 2026-10-18 | Run [39109148757](https://github.com/fathorMB/gitstack-release-test/actions/runs/39109148757): il gate Trivy dell'immagine web è rosso per un HIGH nuovo uscito dopo test.4 (`libexpat` 2.8.5-r0, corretto in 2.9.0-r0), quindi tutto il resto è *skipped*. Non è un difetto del workflow ma un invecchiamento dell'immagine di base: i database delle vulnerabilità cambiano ogni giorno e il gate lo mostra. Correzione: `web/Dockerfile` esegue `apk upgrade --no-cache` come root e torna all'utente 101 (verificato: libexpat 2.9.0-r0, uid 101). Da ripetere subito prima di ogni tag vero. |
+| `v0.0.0-test.6` | 2026-10-18 | Run [39136356659](https://github.com/fathorMB/gitstack-release-test/actions/runs/39136356659): tutti i gate, `registry`, `admin-binary`, `gs-binaries` e `sign` verdi (le correzioni dei giri precedenti funzionano, compreso il riuso di `sha-<commit>`), `release` rosso al primo passo: il tag di versione non ha il digest di `sha-<commit>`. Causa: `docker buildx imagetools create` (usato per aggiungere i tag) **rigenera l'indice** e ne cambia il digest (visto su GHCR; in locale su un registry di prova no). Correzione: i tag si aggiungono con `skopeo copy --all --preserve-digests` (immagine fissata per digest), con controllo del digest subito dopo. |
+| `v0.0.0-test.7` | 2026-10-18 | Run [39144485283](https://github.com/fathorMB/gitstack-release-test/actions/runs/39144485283) su `main` allineato (codice nuovo di GIT-237/GIT-239): fermo prima di `registry` da due rossi che non riguardano il workflow di rilascio. (1) `go`: tre test email di core (`TestEmail_*`) contavano 8 tipi di preferenza invece di 9 con `credential`: bug di `main`, già corretto da GIT-256 (merge). (2) gosec: `G115` in `totp.go` (contatore HOTP da `Step()`, mai negativo) e `G101` sul nome `token_expiring` (costante di tipo evento, anche nei file generati): falsi positivi, aggiunti come eccezioni motivate. |
+| `v0.0.0-test.8` | 2026-10-18 | Run [39147209296](https://github.com/fathorMB/gitstack-release-test/actions/runs/39147209296): per la prima volta tutta la catena è verde (gate, `go`, `registry` con riuso dell'immagine, `admin-binary`, `gs-binaries`, `sign`) e `release` esegue 14 passi su 15: digest dei tag di versione uguali a `sha-<commit>` con firma verificata, binari, chart `0.0.0-test.8`, SBOM, `SHA256SUMS`, firma keyless di 11 artefatti, changelog e verifica finale (`OK: 11 firme e SHA256SUMS verificati`). Rosso solo «Pubblica la GitHub Release»: `ReleaseAsset.name already exists` su `gs_linux_arm64.sigstore.json`. Causa: il glob `dist/gs_*` include già i bundle dei binari `gs`, che tornano anche in `dist/*.sigstore.json`: l'elenco dei file aveva nomi doppi. Correzione: l'elenco si deduplica (`sort -u`) prima di `gh release create`. |
+| `v0.0.0-test.9` | 2026-10-18 | **Verde.** Run [39149236388](https://github.com/fathorMB/gitstack-release-test/actions/runs/39149236388): tutti i job fino a `release` riusciti (il job «Installazione reale» salta di proposito con `IMAGE_NAMESPACE`). Release [v0.0.0-test.9](https://github.com/fathorMB/gitstack-release-test/releases/tag/v0.0.0-test.9): pre-release, non *latest* (il repo non ha nessuna latest), 32 asset (binari, 6 `gs_*`, chart `0.0.0-test.9`, `.sigstore.json` di ognuno, 8 SBOM, `SHA256SUMS` firmato, `CHANGELOG-v0.0.0-test.9.md`, `CHANGELOG.md`); PR `changelog/v0.0.0-test.9` aperta contro `main` con il solo `CHANGELOG.md`. `cosign verify-blob` (v2.4.0, identità `ci.yml@refs/tags/v.*` del repo di prova) riuscito per `gitstack-linux-amd64`, `gs_linux_amd64`, il chart e `SHA256SUMS`, e `sha256sum -c` torna OK; `cosign verify` riuscito per tutte e 5 le immagini, con `0.0.0-test.9`, `v0.0.0-test.9` e `sha-<commit>` sullo stesso digest. |
+
+Difetti trovati e corretti in 9 giri (GIT-247): finding di sicurezza aperti (test.1), nome dei package uguale a quello di produzione (test.2–3), run di `main` e del tag in parallelo sulla stessa release (test.3), digest dei tag di versione (test.4 e test.6: `imagetools create` rigenera l'indice, ora `skopeo --preserve-digests`), invecchiamento dell'immagine di base (test.5), rossi del codice nuovo di `main` (test.7) e nomi doppi nell'elenco degli asset (test.8).
+
+**Repo di prova dello stesso owner.** Le immagini si chiamano
+`<registry>/<owner>/gitstack-<servizio>`: su `fathorMB/gitstack-release-test`
+coinciderebbero con i package veri. Sul repo di prova si imposta la variabile di
+repository `IMAGE_NAMESPACE`, il **percorso completo** al posto di `<owner>` (per
+esempio `fathormb/release-test`, minuscolo): i job `registry`,
+`sign` e `release` usano `${{ vars.IMAGE_NAMESPACE || github.repository_owner }}`
+e le immagini finiscono in `ghcr.io/fathormb/release-test/gitstack-<servizio>`,
+cancellabili senza toccare i package di produzione. Sul repo vero la variabile
+non esiste e non cambia nulla. Il job `install` (`sha-<commit>`) non la usa e
+sul repo di prova non è significativo.
+
+**Prima di ogni prova**: il tag parte da un commit che ha il gate di sicurezza
+verde (`workflow_dispatch` di `security.yml` con `release: true` sul repo di
+prova), altrimenti il run si ferma ai gate e non arriva a `release`. Un
+`main` fermo a un commit vecchio non basta: i database di govulncheck, Trivy e
+pnpm audit cambiano ogni giorno.
+
 ### Verifica automatica in `install.sh` e `gitstack upgrade` (GIT-209)
 
 Binario, chart e immagini si verificano da soli, a ogni installazione e a ogni
@@ -1859,7 +1893,7 @@ sudo gitstack upgrade --allow-unsigned-mirrors        # aggiornamento, solo per 
 
 ## Prove della tappa 2 di V7 (condizioni 2 e 4)
 
-Le due prove che seguono le lancia il **board**, non un agente. Servono a sbloccare il passaggio della casa su GitStack (V7, tappa 2; `rilascio-v1.md`). Ogni passo ha il comando e l'esito atteso: se l'esito è diverso, ci si ferma e si annota il comando, l'output e l'ora. Gli esiti attesi vengono dalle sezioni Backup, Restore, Mirror e Diagnostics di questo documento e dal codice di `admin/internal/cli/backup.go`; nessuna di queste prove è ancora stata eseguita su homehub.
+Le due prove che seguono le lancia il **board**, non un agente. Servono a sbloccare il passaggio della casa su GitStack (V7, tappa 2; `rilascio-v1.md`). Dal 18/10/2026 la tappa 2 si fa appena sono vere le condizioni 2 (ripristino di prova), 3 (prova dell'agente, GIT-254), 4 (mirror in push su un repo di prova) e 5 (istruzioni, già fatta): la condizione 1 (mirror in pull per 2 settimane) non c'è più. Ogni passo ha il comando e l'esito atteso: se l'esito è diverso, ci si ferma e si annota il comando, l'output e l'ora. Gli esiti attesi vengono dalle sezioni Backup, Restore, Mirror e Diagnostics di questo documento e dal codice di `admin/internal/cli/backup.go`; nessuna di queste prove è ancora stata eseguita su homehub.
 
 ### Condizione 2: ripristino di prova su una macchina nuova
 
@@ -2101,7 +2135,22 @@ Registro del dogfooding: cosa è stato fatto su homehub (GIT-249, 18/10/2026, or
 | F2 (GIT-228) | `gitstack upgrade` col binario nuovo **ha fallito due volte** (exit 70, unità k3s rimessa com'era, servizi sani) con `secret-encrypt error ID …: missing annotation on node homehub`: `k3s secrets-encrypt status` girava prima che k3s scrivesse le annotazioni del nodo. Difetto corretto sul ramo (`admin/internal/upgrade/harden.go`: `status` si riprova fino a 2 minuti; test `TestUpgrade_HardeningStatusRiprovato`, `TestUpgrade_HardeningStatusSempreInErrore_RipristinaUnita`). Su homehub la procedura è stata applicata a mano: unità `k3s.service` con `--secrets-encryption` e `600` (copia in `/root/k3s.service.pre-hardening-GIT249`), `daemon-reload`, `restart`, attesa di `status`, `k3s secrets-encrypt rotate-keys`. Esito: `Encryption Status: Enabled`, `Current Rotation Stage: reencrypt_finished` |
 | F1 (GIT-227) | `/etc/rancher/k3s/k3s.yaml` a `600` dopo il riavvio; `~/.kube/config` di moreno rinnovato (copia di k3s.yaml, `600`; il vecchio è `config.scaduto-20261018`) e `kubectl get nodes` risponde |
 | Segreti per chiamante (GIT-235) | Il secondo `gitstack upgrade` ha cancellato `gitstack-identity-service` e lasciato `gitstack-service-secrets` (gateway, core, git). Servizi sani |
-| Mirror in pull di `fathorMB/GitStack` | Creato dal board dalla UI (Importa da URL, «Mantieni sincronizzato») il 18/10 alle 14:39 UTC come `gitstack/gitstack-mirror` (non `GitStack`: il vecchio repo è nel cestino dell'organizzazione fino al 25/10 e il nome è occupato, GIT-257). Origine `https://github.com/fathorMB/GitStack.git`, senza credenziali, `intervalSeconds: 3600`. Primo sync riuscito alle 14:39:52 UTC: stato `in_sync`, nessun errore, prossimo giro 15:39:52. Verifica dei ref sul disco del servizio git: 67 ref (branch e tag) identici a `git ls-remote` di GitHub, `main` a `1c78ff42e8c2552799ea2197d08ad3694c34a5e0`. Il login dal browser in HTTPS è da confermare dal board (l'agente non ha un browser). Il conteggio delle 2 settimane della condizione 1 parte da questo sync |
+| Mirror in pull di `fathorMB/GitStack` | Creato dal board dalla UI (Importa da URL, «Mantieni sincronizzato») il 18/10 alle 14:39 UTC come `gitstack/gitstack-mirror` (non `GitStack`: il vecchio repo è nel cestino dell'organizzazione fino al 25/10 e il nome è occupato, GIT-257). Origine `https://github.com/fathorMB/GitStack.git`, senza credenziali, `intervalSeconds: 3600`. Primo sync riuscito alle 14:39:52 UTC: stato `in_sync`, nessun errore, prossimo giro 15:39:52. Verifica dei ref sul disco del servizio git: 67 ref (branch e tag) identici a `git ls-remote` di GitHub, `main` a `1c78ff42e8c2552799ea2197d08ad3694c34a5e0`. Il login dal browser in HTTPS è da confermare dal board (l'agente non ha un browser). La condizione 1 della tappa 2 (2 settimane di mirror senza errori) è stata tolta dal board il 18/10: questo sync non fa partire nessun conteggio |
+
+## Registro del dogfooding (dalla tappa 2 di V7)
+
+Il dogfooding della v1.0 dura almeno **2 settimane dalla tappa 2** (decisione del board del 18/10/2026). Lo compila il board: la data di inizio è il giorno della tappa 2; i fatti si scrivono quando succedono, con data e orari UTC.
+
+| Voce | Valore |
+|---|---|
+| Data di inizio (tappa 2) | da compilare |
+| Data di fine prevista (inizio + 14 giorni) | da compilare |
+| Perdite di dati | da compilare (nessuna / descrizione) |
+| Restore eseguito su homehub o su una VM da un backup di homehub (data, archivio, esito) | da compilare |
+| Aggiornamento rc.N → rc.N+1 su homehub con `gitstack upgrade` (data, versioni, esito) | da compilare |
+| Bug critici o alti aperti (controllo a fine periodo) | da compilare |
+
+Il periodo è valido solo se tutti i quattro criteri valgono: nessuna perdita di dati, almeno un restore, almeno un upgrade rc.N → rc.N+1, nessun bug critico o alto aperto.
 
 ---
 

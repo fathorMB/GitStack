@@ -18,6 +18,7 @@ import (
 
 	"github.com/fathorMB/GitStack/services/git/internal/access"
 	"github.com/fathorMB/GitStack/services/git/internal/config"
+	"github.com/fathorMB/GitStack/services/git/internal/gitmerge"
 	"github.com/fathorMB/GitStack/services/git/internal/gitread"
 	"github.com/fathorMB/GitStack/services/git/internal/gitrun"
 	"github.com/fathorMB/GitStack/services/git/internal/httpserver"
@@ -113,6 +114,7 @@ func run(out io.Writer) int {
 		Handler: httpserver.NewRouter(httpserver.Deps{
 			Store:   store,
 			Reads:   gitread.New(runner, store.Dir),
+			Merge:   &gitmerge.Service{Run: runner, Dir: store.Dir, Events: events},
 			Mirror:  mirrorService(runner, store, cfg),
 			Pull:    pullService(runner, store, cfg, events),
 			Content: newContent(),

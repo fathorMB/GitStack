@@ -190,3 +190,28 @@ CVE-2026-33815/33816 di pgx) come *non chiamate*, mentre Trivy le segna
 `CRITICAL` perché guarda solo la versione del modulo nel binario. La
 correzione vera è l'aggiornamento di pgx a ≥ 5.9.2 (che copre anche
 `GO-2026-5004`), non un'eccezione.
+
+## Secondo giro (2026-10-13, prova del tag `v0.0.0-test.1`, GIT-247)
+
+Il job `security` bloccante sul tag di prova ha fermato la pipeline come
+previsto. Correzioni, tutte nel ramo di GIT-247:
+
+- **Go 1.26.9** in `go.work`, in tutti i `go.mod` e in `api-contract.yml`
+  (le correzioni della stdlib arrivano fino alla 1.26.9, più alta delle 1.26.6
+  indicate sopra); `govulncheck v1.1.4` in locale non trova più nulla in nessun
+  modulo.
+- **pgx v5.9.2** in admin, core e identity (chiude `GO-2026-5004` e le due
+  CVE segnalate da Trivy).
+- **web**: base `nginxinc/nginx-unprivileged:1.30-alpine` (openssl 3.5.9,
+  libexpat 2.8.5, libxml2 2.13.9-r2, libpng 1.6.59, musl 1.2.6-r2), vitest
+  4.1.11 (porta con sé tinypool ≥ 2.1.2 e @vitest/mocker corretto) e
+  source-map-js 1.2.2; `pnpm audit` pulito. I test con la firma
+  `it(nome, fn, { timeout })` passano al terzo argomento numerico.
+- `parsePositiveInt32` di core e identity rifiuta i valori oltre MaxInt32
+  (prima la conversione a int32 poteva troncare in silenzio).
+- **Eccezioni motivate** (scadenza 2027-01-31) per i falsi positivi di gosec
+  (G101 nomi di variabili e header, G115 conversioni già limitate, G402 sonda
+  del certificato, G407 nonce a contatore sotto chiave per archivio) e di
+  `security/detect-unsafe-regex` (tempo lineare misurato su input da 200.000
+  caratteri).
+
