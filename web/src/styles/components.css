@@ -415,3 +415,10 @@ ul.list{margin:0;padding:0;list-style:none}
 .os-name{width:120px;flex:none}
 .tk-c{color:var(--text-subtle)}
 .scope-warn{margin-bottom:12px}
+
+/* Misuratore di robustezza della password (V2.1.8) */
+.pw-meter{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.pw-meter-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden}
+.pw-meter-bar>span{display:block;height:100%;background:var(--danger);transition:width .15s}
+.pw-meter[data-score="2"] .pw-meter-bar>span{background:var(--warning)}
+.pw-meter[data-score="3"] .pw-meter-bar>span,.pw-meter[data-score="4"] .pw-meter-bar>span{background:var(--success)}

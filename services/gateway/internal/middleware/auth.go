@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"mime"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,8 +16,13 @@ import (
 	"github.com/fathorMB/GitStack/services/gateway/internal/trust"
 )
 
-// SessionCookie è il nome del cookie di sessione web.
+// SessionCookie è il nome storico del cookie di sessione web (HTTP).
 const SessionCookie = "gst_session"
+
+// HostSessionCookie è il nome con prefisso __Host- che identity usa quando
+// serve in HTTPS (F16, V3.4.4); le sessioni aperte con il nome storico restano
+// valide, quindi il gateway legge entrambi.
+const HostSessionCookie = "__Host-gst_session"
 
 // tokenPrefix è il prefisso dei token personali.
 const tokenPrefix = "gst_"
@@ -77,6 +83,12 @@ func Auth(cfg AuthConfig) Middleware {
 				return
 			}
 			route := m.Route
+			if route.JSONBody && !jsonContentType(r) {
+				setLogReason(r.Context(), "unsupported_media_type")
+				writeAuthError(w, http.StatusUnsupportedMediaType, "unsupported_media_type",
+					"Il corpo della richiesta deve essere application/json.", nil)
+				return
+			}
 			if route.Public {
 				next.ServeHTTP(w, r)
 				return
@@ -93,6 +105,12 @@ func Auth(cfg AuthConfig) Middleware {
 			if cred == "" || !route.Accepts(securityKind(kind)) {
 				setLogReason(r.Context(), reasonMissingCredential(cred))
 				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "Autenticazione richiesta.", nil)
+				return
+			}
+			if kind == identityclient.KindSession && crossSiteUnsafe(r) {
+				setLogReason(r.Context(), "cross_site_request")
+				writeAuthError(w, http.StatusForbidden, "cross_site_request",
+					"Richiesta rifiutata: origine diversa da quella di GitStack.", nil)
 				return
 			}
 			if cfg.Verifier == nil {
@@ -180,6 +198,18 @@ func Auth(cfg AuthConfig) Middleware {
 	}
 }
 
+// jsonContentType dice se una richiesta può proseguire su una rotta con corpo
+// JSON: senza corpo sempre sì; con un corpo il Content-Type deve essere
+// application/json (con o senza parametri come charset). Difesa in
+// profondità (F15): un form text/plain cross-site non arriva agli handler.
+func jsonContentType(r *http.Request) bool {
+	if r.ContentLength == 0 {
+		return true
+	}
+	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && mt == "application/json"
+}
+
 // headerSafe toglie i caratteri di controllo (un a capo in un header non
 // passerebbe) e gli spazi iniziali e finali dal nome del token prima di
 // firmarlo: il server HTTP di Go toglie gli spazi ai bordi dei valori degli
@@ -242,8 +272,10 @@ func credentialFrom(r *http.Request) (string, identityclient.Kind) {
 		// Un header Authorization che non è un token gst_ non è una
 		// credenziale per il gateway: si guarda il cookie.
 	}
-	if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
-		return c.Value, identityclient.KindSession
+	for _, name := range []string{HostSessionCookie, SessionCookie} {
+		if c, err := r.Cookie(name); err == nil && c.Value != "" {
+			return c.Value, identityclient.KindSession
+		}
 	}
 	return "", ""
 }

@@ -94,7 +94,7 @@ func (s *server) FinishOidcLogin(w http.ResponseWriter, r *http.Request, provide
 		return
 	}
 	s.secInfo(r, "security.login.success", &auth.Current{User: res.User, Session: res.Session}, "method", "oidc", "provider", provider, "session_id", res.Session.ID.String())
-	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
+	s.setSessionCookies(w, r, res.SessionValue, res.Session.ExpiresAt)
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, res.RedirectTo, http.StatusFound)
 }

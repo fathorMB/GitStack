@@ -466,6 +466,10 @@ export type UserList = {
 
 export type ChangePasswordInput = {
     currentPassword?: string;
+    /**
+     * Da 12 a 128 caratteri e non presente nell'elenco di password comuni incorporato (422 `newPassword`). La password attuale e il login accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga puo' ancora entrare e sostituirla.
+     *
+     */
     newPassword: string;
 };
 
@@ -490,6 +494,27 @@ export type CurrentSession = {
      */
     scopes?: Array<TokenScope>;
     expiresAt?: string | null;
+};
+
+/**
+ * Sessione web attiva, senza il valore del cookie.
+ */
+export type Session = {
+    id: string;
+    authMethod: 'password' | 'oidc';
+    userAgent?: string;
+    ipAddress?: string;
+    createdAt: string;
+    lastSeenAt: string;
+    expiresAt: string;
+    /**
+     * Vero per la sessione con cui e' fatta la richiesta.
+     */
+    current: boolean;
+};
+
+export type SessionList = {
+    items: Array<Session>;
 };
 
 export type OidcProvider = {
@@ -2387,7 +2412,8 @@ export type CreateUserInputWritable = {
     email?: string;
     displayName?: string;
     /**
-     * Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     * Da 12 a 128 caratteri e non presente nell'elenco di password comuni (422 `password`). Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+     *
      */
     password?: string;
     isAdmin?: boolean;
@@ -2741,6 +2767,8 @@ export type OrgParam = Name;
 export type TeamParam = Name;
 
 export type TokenIdParam = string;
+
+export type SessionIdParam = string;
 
 export type SshKeyIdParam = string;
 
@@ -4143,6 +4171,80 @@ export type RevokeTokenResponses = {
 };
 
 export type RevokeTokenResponse = RevokeTokenResponses[keyof RevokeTokenResponses];
+
+export type ListOwnSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/sessions';
+};
+
+export type ListOwnSessionsErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type ListOwnSessionsError = ListOwnSessionsErrors[keyof ListOwnSessionsErrors];
+
+export type ListOwnSessionsResponses = {
+    /**
+     * Sessioni attive.
+     */
+    200: SessionList;
+};
+
+export type ListOwnSessionsResponse = ListOwnSessionsResponses[keyof ListOwnSessionsResponses];
+
+export type RevokeOwnSessionData = {
+    body?: never;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/user/sessions/{sessionId}';
+};
+
+export type RevokeOwnSessionErrors = {
+    /**
+     * Token mancante o non valido.
+     */
+    401: Error;
+    /**
+     * Autenticato ma non autorizzato: scope del token insufficiente (`insufficient_scope`, con `details.required`) o permesso mancante (`forbidden`), oppure password iniziale ancora da cambiare (`password_change_required`).
+     *
+     */
+    403: Error;
+    /**
+     * Risorsa non trovata.
+     */
+    404: Error;
+    /**
+     * Errore imprevisto.
+     */
+    default: Error;
+};
+
+export type RevokeOwnSessionError = RevokeOwnSessionErrors[keyof RevokeOwnSessionErrors];
+
+export type RevokeOwnSessionResponses = {
+    /**
+     * Sessione terminata.
+     */
+    204: void;
+};
+
+export type RevokeOwnSessionResponse = RevokeOwnSessionResponses[keyof RevokeOwnSessionResponses];
 
 export type ListSshKeysData = {
     body?: never;

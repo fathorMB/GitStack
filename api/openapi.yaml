@@ -315,8 +315,10 @@ paths:
       tags: [auth]
       summary: Accede con username e password
       description: >
-        Crea una sessione. La risposta imposta il cookie `gst_session`
-        (HttpOnly, Secure, SameSite=Lax); il valore non e' nel corpo. Le
+        Crea una sessione. La risposta imposta il cookie `gst_session` (con
+        prefisso `__Host-`, quindi `__Host-gst_session`, quando e' servita in
+        HTTPS; i due nomi sono equivalenti per i client) (HttpOnly, Secure,
+        SameSite=Lax); il valore non e' nel corpo. Le
         credenziali sbagliate e l'utente disattivato rispondono entrambi 401
         con `invalid_credentials`, senza distinguere i casi. Dopo troppi
         tentativi falliti (per utente o per indirizzo IP) risponde 429
@@ -1032,6 +1034,53 @@ paths:
       responses:
         "204":
           description: Token revocato.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/sessions:
+    get:
+      operationId: listOwnSessions
+      tags: [auth]
+      summary: Elenca le sessioni web attive dell'utente corrente
+      description: >
+        Scope `read:user`. Le sessioni non scadute, non revocate e non
+        inattive (vedi l'idle timeout di identity). `current` e' vero per la
+        sessione del cookie della richiesta.
+      x-required-scopes: ["read:user"]
+      responses:
+        "200":
+          description: Sessioni attive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /user/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionIdParam"
+    delete:
+      operationId: revokeOwnSession
+      tags: [auth]
+      summary: Termina una sessione web dell'utente corrente
+      description: >
+        Scope `write:user`. Revoca la sessione indicata (anche quella
+        corrente). Una sessione di un altro utente risponde 404.
+      x-required-scopes: ["write:user"]
+      responses:
+        "204":
+          description: Sessione terminata.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -6288,7 +6337,12 @@ components:
       name: gst_session
       description: >
         Sessione web creata da `POST /auth/login` o dal login OIDC. Valore
-        opaco; identity ne conserva solo l'hash.
+        opaco; identity ne conserva solo l'hash. In HTTPS il cookie si chiama
+        `__Host-gst_session` (V3.4.4); il nome senza prefisso resta valido per
+        le sessioni gia' aperte e su HTTP. Una richiesta con metodo non sicuro
+        autenticata dal cookie e con `Origin` o `Sec-Fetch-Site` estranei
+        risponde 403 `cross_site_request` (V4.2.2); con un token Bearer
+        non si applica.
     serviceAuth:
       type: http
       scheme: bearer
@@ -6381,6 +6435,13 @@ components:
         $ref: "#/components/schemas/Name"
     TokenIdParam:
       name: tokenId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionIdParam:
+      name: sessionId
       in: path
       required: true
       schema:
@@ -7378,10 +7439,13 @@ components:
         password:
           type: string
           minLength: 12
-          maxLength: 1024
+          maxLength: 128
           format: password
           writeOnly: true
-          description: Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+          description: >
+            Da 12 a 128 caratteri e non presente nell'elenco di password comuni
+            (422 `password`). Assente per gli agenti (accedono solo con token)
+            e per chi entra solo via OIDC.
         isAdmin:
           type: boolean
           default: false
@@ -7443,9 +7507,14 @@ components:
         newPassword:
           type: string
           minLength: 12
-          maxLength: 1024
+          maxLength: 128
           format: password
           writeOnly: true
+          description: >
+            Da 12 a 128 caratteri e non presente nell'elenco di password comuni
+            incorporato (422 `newPassword`). La password attuale e il login
+            accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga
+            puo' ancora entrare e sostituirla.
 
     CurrentSession:
       type: object
@@ -7483,6 +7552,45 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    Session:
+      type: object
+      description: Sessione web attiva, senza il valore del cookie.
+      additionalProperties: false
+      required: [id, authMethod, createdAt, lastSeenAt, expiresAt, current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        authMethod:
+          type: string
+          enum: [password, oidc]
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: Vero per la sessione con cui e' fatta la richiesta.
+
+    SessionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
 
     OidcProvider:
       type: object

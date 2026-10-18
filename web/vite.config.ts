@@ -9,6 +9,9 @@ import { defineConfig } from 'vite';
 //   gateway, D7): qui si simula quel che fa l'Ingress in produzione (e il
 //   nginx di `web/Dockerfile`): si toglie solo `/api`, il gateway locale
 //   su :8080 riceve `/v1/...`.
+//   Niente `changeOrigin`: l'header Host resta quello del dev server, come
+//   l'`Origin` del browser; il gateway rifiuta (403 cross_site_request) un POST
+//   con cookie la cui `Origin` non coincide con l'host (F16).
 // - `test`: Vitest con ambiente DOM (jsdom), per i test di componente React.
 export default defineConfig({
   plugins: [react()],
@@ -16,7 +19,6 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
-        changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
