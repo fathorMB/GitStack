@@ -601,19 +601,19 @@ func TestPulls_ElencoDettaglioCommitEFile(t *testing.T) {
 
 	t.Run("filtri", func(t *testing.T) {
 		for q, want := range map[string][]int64{
-			"":                                    {2, 1},
-			"?state=closed":                       {3},
-			"?state=all":                          {3, 2, 1},
-			"?state=merged":                       nil,
-			"?q=is:closed":                        {3},
-			"?q=is:draft":                         {2},
-			"?q=author:bob":                       {1},
-			"?q=author:@me":                       nil,
-			"?q=100%25":                           {2},
-			"?q=cerco":                            {2},
-			"?head=one":                           {1},
-			"?base=main&sort=updated":             {2, 1},
-			"?sort=comments":                      {2, 1},
+			"":                        {2, 1},
+			"?state=closed":           {3},
+			"?state=all":              {3, 2, 1},
+			"?state=merged":           nil,
+			"?q=is:closed":            {3},
+			"?q=is:draft":             {2},
+			"?q=author:bob":           {1},
+			"?q=author:@me":           nil,
+			"?q=100%25":               {2},
+			"?q=cerco":                {2},
+			"?head=one":               {1},
+			"?base=main&sort=updated": {2, 1},
+			"?sort=comments":          {2, 1},
 			"?q=" + url.QueryEscape("is:open is:pr cerco"): {2},
 		} {
 			if got := numbers(list(q)); !slices.Equal(got, want) {

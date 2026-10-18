@@ -53,7 +53,7 @@ func (s *apiServer) parsePullQuery(r *http.Request, ia issueAccess, q string) (p
 	for _, tok := range strings.Fields(q) {
 		key, val, found := strings.Cut(tok, ":")
 		key = strings.ToLower(key)
-		if !found || val == "" || !(key == "is" || key == "author" || key == "review" || key == "label" || key == "no") {
+		if !found || val == "" || (key != "is" && key != "author" && key != "review" && key != "label" && key != "no") {
 			pq.text = append(pq.text, tok)
 			continue
 		}

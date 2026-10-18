@@ -129,19 +129,19 @@ func (g pullGit) branches(ctx context.Context) (map[string]string, error) {
 
 // pullCompare è la risposta del confronto del servizio git.
 type pullCompare struct {
-	BaseSha          string                 `json:"baseSha"`
-	HeadSha          string                 `json:"headSha"`
-	MergeBase        string                 `json:"mergeBase"`
-	AheadBy          int                    `json:"aheadBy"`
-	BehindBy         int                    `json:"behindBy"`
+	BaseSha          string                  `json:"baseSha"`
+	HeadSha          string                  `json:"headSha"`
+	MergeBase        string                  `json:"mergeBase"`
+	AheadBy          int                     `json:"aheadBy"`
+	BehindBy         int                     `json:"behindBy"`
 	Commits          []openapi.CommitSummary `json:"commits"`
-	CommitsTruncated bool                   `json:"commitsTruncated"`
-	Files            []openapi.FileDiff     `json:"files"`
-	FilesChanged     int                    `json:"filesChanged"`
-	Additions        int                    `json:"additions"`
-	Deletions        int                    `json:"deletions"`
-	Truncated        bool                   `json:"truncated"`
-	ListOnly         bool                   `json:"listOnly"`
+	CommitsTruncated bool                    `json:"commitsTruncated"`
+	Files            []openapi.FileDiff      `json:"files"`
+	FilesChanged     int                     `json:"filesChanged"`
+	Additions        int                     `json:"additions"`
+	Deletions        int                     `json:"deletions"`
+	Truncated        bool                    `json:"truncated"`
+	ListOnly         bool                    `json:"listOnly"`
 }
 
 func (g pullGit) compare(ctx context.Context, base, head string, ignoreWS bool) (pullCompare, error) {
