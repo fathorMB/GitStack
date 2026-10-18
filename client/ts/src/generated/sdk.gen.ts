@@ -1150,7 +1150,7 @@ export const listRepositories = <ThrowOnError extends boolean = false>(options?:
 /**
  * Crea un repo
  *
- * `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2); 404 se `owner` non esiste.
+ * `owner` e' il nome dell'utente o dell'organizzazione (spazio di nomi unico, R1). Serve poter creare repo per quell'owner: se stesso, o un owner dell'organizzazione. Il creatore riceve il ruolo `admin`. Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto. Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner` non esiste.
  *
  */
 export const createRepository = <ThrowOnError extends boolean = false>(options: Options<CreateRepositoryData, ThrowOnError>): RequestResult<CreateRepositoryResponses, CreateRepositoryErrors, ThrowOnError> => (options.client ?? client).post<CreateRepositoryResponses, CreateRepositoryErrors, ThrowOnError>({
@@ -1174,7 +1174,7 @@ export const createRepository = <ThrowOnError extends boolean = false>(options: 
 /**
  * Crea un repo importandolo da un URL
  *
- * «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
+ * «Importa da URL» (MP3, MP8). Crea un repo nuovo copiando tutti i branch e i tag di un repo Git raggiungibile in `https://` (MP5: senza credenziali nell'indirizzo, controllata con la policy di uscita C8, 422 `url_not_allowed` con `details.fields.url`). `mode: mirror` («mantieni sincronizzato») tiene il repo in sola lettura e lo aggiorna ogni `intervalSeconds` (MP1, MP2, MP4); `mode: once` («copia una volta sola», MP8) copia una volta e poi cancella le credenziali: il repo e' normale e scrivibile, senza legami con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e' `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
  *
  */
 export const importRepository = <ThrowOnError extends boolean = false>(options: Options<ImportRepositoryData, ThrowOnError>): RequestResult<ImportRepositoryResponses, ImportRepositoryErrors, ThrowOnError> => (options.client ?? client).post<ImportRepositoryResponses, ImportRepositoryErrors, ThrowOnError>({
@@ -1218,7 +1218,7 @@ export const getUserAccess = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Elenca i repo eliminati e ancora ripristinabili
  *
- * Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12). Con `owner` solo quelli di quell'owner.
+ * Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo `admin` (R12), anche di organizzazioni. Senza `owner` sono tutti quelli dell'utente; con `owner` solo quelli di quell'owner.
  *
  */
 export const listDeletedRepositories = <ThrowOnError extends boolean = false>(options?: Options<ListDeletedRepositoriesData, ThrowOnError>): RequestResult<ListDeletedRepositoriesResponses, ListDeletedRepositoriesErrors, ThrowOnError> => (options?.client ?? client).get<ListDeletedRepositoriesResponses, ListDeletedRepositoriesErrors, ThrowOnError>({

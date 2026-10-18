@@ -13,6 +13,8 @@ Schermate della v2 (regole CI1–CI7, RG1–RG2, REL1 in `knowledge/topics/ci-re
 | B7 | Releases: Latest, pre-release, bozza, note generate, file allegati con SHA-256 | v2-c | REL1 |
 | B8 | Terminale: `gs run watch`, `--log-failed`, `gs workflow run`, `gs release` | v2-a, v2-c | CI6, REL1 |
 
+Aggiornamento 2026-10-18 (regole v3 H4, H10): B4, B5 e B6 mostrano che le immagini in uso dalle app entrano sempre nei backup e che la CI firma le immagini che pubblica (quelle caricate a mano risultano «non verificate»).
+
 La pagina Releases sostituisce la schermata 23 (Tags) dei mockup v1 quando arriva la v2-c.
 
 Dati finti: organizzazione "Acme", repo `acme/GitStack`, istanza `homehub.local`, agente `build-agent`.

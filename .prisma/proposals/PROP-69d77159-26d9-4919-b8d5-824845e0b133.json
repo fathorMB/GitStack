@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "id": "PROP-69d77159-26d9-4919-b8d5-824845e0b133",
+  "state": "applied",
+  "created": "2026-10-18T17:00:57.651818900+00:00",
+  "input": {
+    "kind": "analysis_consolidation",
+    "summary": "Aggiorna il tema consolidato «v3 — Hosting»: la regola su eliminazione del repo e app, prima da confermare, è stata confermata dall'operatore (scelta A, 2026-10-18); il tema non ha più punti aperti.",
+    "operations": [
+      {
+        "collection": "analysis",
+        "metadata": {
+          "depends_on": [
+            "TOP-0b04024c-6f6b-4d35-b790-97d7591d6c08"
+          ],
+          "id": "TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6",
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-6878277b-230e-448b-a761-215e9d233c54",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+            "DOC-b18abc32-db2c-4b14-8800-d37f5443dbad",
+            "DOC-84811cef-6f8e-4028-97d6-d47381172907"
+          ],
+          "reopen_reason": "Regola su eliminazione del repo e app confermata dall'operatore il 2026-10-18.",
+          "schema_version": 1,
+          "state": "consolidated",
+          "title": "v3 — Hosting di app e container: regole di prodotto",
+          "updated": "2026-10-18T17:02:07.470805800+00:00"
+        },
+        "body": "\n# v3 — Hosting di app e container: regole di prodotto\n\n## Expected learning\n\nRegole di prodotto per la v3 «Hosting» abbastanza precise da scomporla in sotto-tappe come la v2, analizzate in anticipo il 2026-10-18 a partire dalle otto domande del CEO; realizzazione «later», dopo v1.0, v1.1 e v2. Serviva anche a chiudere le regole della v2 che aspettavano la v3.\n\n## Scelte confermate dall'operatore (2026-10-18)\n\nTesto completo in [[knowledge/topics/hosting-app]].\n\n- **H1** interne di default, pubbliche con doppio consenso (istanza + `admin` dell'app).\n- **H2** indirizzo automatico sotto il dominio delle app più domini propri; CA interna o Let's Encrypt automatico.\n- **H3** volumi persistenti inclusi nei backup; database gestiti esclusi.\n- **H4** immagini in uso dalle app sempre nei backup (modifica RG2).\n- **H5** l'app appartiene a un repo, con i permessi del repo; archiviazione del repo ferma le app; eliminazione del repo le ferma subito, le ripristina con il repo entro 7 giorni, poi le elimina con i volumi.\n- **H6** login GitStack davanti alle app interne per chi ha `read` sul repo.\n- **H7** deploy a mano e automatico da branch; anteprime PR dopo la v3.\n- **H8** configurazione in GitStack con versioni; segreti come CI4 ma separati.\n- **H9** barriere fisse, root permesso di default, «restricted» attivabile.\n- **H10** la CI firma le immagini; deploy automatico solo con firme, a mano con etichetta «non verificata».\n- **H11** parte garantita più tetto; priorità GitStack > app > CI; quote per owner.\n- **H12** log, metriche, salute, rollback; scala solo a mano.\n- **H13** agenti con la stessa API e i permessi del repo, deploy autonomo con `write`.\n- **Ordine:** v3-a App interne, v3-b Dati, v3-c App pubbliche.\n\n## Open questions\n\nNessuna.\n\n## Consolidation summary\n\nConsolidato il 2026-10-18 con conferma dell'operatore. La v3 si realizza in tre passi utilizzabili da soli: app interne senza disco, dati persistenti, app pubbliche con domini propri. Riallineate RG2 e CI7 in [[knowledge/topics/ci-registry-release]], i backup e il dominio delle app in [[knowledge/topics/installazione-e-deploy]], archiviazione ed eliminazione in [[knowledge/topics/repository-git]]. Idee rimandate nel Dream Journal: anteprime per PR, definizione dell'app in un file del repo, scala automatica.\n",
+        "expected_digest": "1cbdb9163be6c955df5ee6a1ee9dddb1c61a91c227a7fb79dc0a85efdc88de71",
+        "slug": null,
+        "reason": "Regola su eliminazione del repo e app confermata dall'operatore il 2026-10-18."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha scritto «vai procedi» il 2026-10-18 in risposta alla richiesta di approvare la proposta di aggiornamento del tema v3 (regola su eliminazione del repo)."
+  }
+}

@@ -1854,8 +1854,9 @@ paths:
         unico, R1). Serve poter creare repo per quell'owner: se stesso, o un
         owner dell'organizzazione. Il creatore riceve il ruolo `admin`.
         Senza opzioni di contenuto iniziale (R5) il repo nasce vuoto.
-        Risponde 409 se il nome e' occupato, anche da un repo eliminato (R2);
-        404 se `owner` non esiste.
+        Risponde 409 se il nome e' occupato: `conflict` se lo tiene un repo attivo, `name_in_trash` (con
+        `details`: `NameInTrashDetails`) se lo tiene un repo eliminato ancora nel cestino (R2); 404 se `owner`
+        non esiste.
       requestBody:
         required: true
         content:
@@ -1884,7 +1885,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          $ref: "#/components/responses/Conflict"
+          $ref: "#/components/responses/RepoNameConflict"
         default:
           $ref: "#/components/responses/UnexpectedError"
 
@@ -1903,7 +1904,7 @@ paths:
         con l'origine. In entrambi i casi la copia parte in background: la risposta e' 201 col repo (che nasce
         `empty` finche' la prima copia non e' finita) e si segue con `getRepoPullMirror` e
         `listRepoPullMirrorRuns`. `owner`, nome, visibilita' e permessi come `createRepository` (il creatore e'
-        `admin`); 409 se il nome e' occupato (R2). `username` e `token` sono facoltativi e il token non torna
+        `admin`); 409 se il nome e' occupato (`conflict` o `name_in_trash`, come `createRepository`). `username` e `token` sono facoltativi e il token non torna
         mai. Senza chiave dei segreti sul server: 503 `mirror_secrets_unavailable`.
       requestBody:
         required: true
@@ -1933,7 +1934,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          $ref: "#/components/responses/Conflict"
+          $ref: "#/components/responses/RepoNameConflict"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
         default:
@@ -1986,7 +1987,8 @@ paths:
       summary: Elenca i repo eliminati e ancora ripristinabili
       description: >
         Repo eliminati da meno di 7 giorni (R2) su cui l'utente ha il ruolo
-        `admin` (R12). Con `owner` solo quelli di quell'owner.
+        `admin` (R12), anche di organizzazioni. Senza `owner` sono tutti quelli
+        dell'utente; con `owner` solo quelli di quell'owner.
       parameters:
         - $ref: "#/components/parameters/RepoOwnerFilter"
       responses:
@@ -8768,6 +8770,49 @@ components:
           items:
             $ref: "#/components/schemas/DeletedRepository"
 
+    RepoNameConflictError:
+      type: object
+      description: >
+        Come `Error`, per il 409 di creazione e import di un repo: `details` e' presente solo con
+        `code: name_in_trash`.
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: "`conflict` o `name_in_trash`."
+              example: name_in_trash
+            message:
+              type: string
+            details:
+              $ref: "#/components/schemas/NameInTrashDetails"
+
+    NameInTrashDetails:
+      type: object
+      description: >
+        `error.details` del 409 `name_in_trash` di `createRepository` e `importRepository`: il nome e' tenuto da
+        un repo eliminato (R2). Il nome si libera solo alla cancellazione definitiva (`purgeAt`); un admin del
+        repo puo' ripristinarlo prima. Un repo attivo con quel nome resta il 409 `conflict`.
+      additionalProperties: false
+      required: [purgeAt, owner]
+      properties:
+        purgeAt:
+          type: string
+          format: date-time
+          description: Istante dopo il quale il repo nel cestino e' cancellato definitivamente e il nome si libera.
+        owner:
+          type: string
+          description: Nome dell'owner del repo nel cestino, per il link al cestino giusto.
+        repoId:
+          type: string
+          format: uuid
+          description: Id del repo nel cestino, presente solo se il chiamante e' admin su di esso (per ripristinarlo).
+
     ResourceAttributesInput:
       type: object
       additionalProperties: false
@@ -11297,6 +11342,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    RepoNameConflict:
+      description: >
+        Il nome e' occupato per l'owner. Codice `conflict` se lo tiene un repo attivo; `name_in_trash`, con
+        `details` di tipo `NameInTrashDetails`, se lo tiene un repo eliminato ancora nel cestino (R2).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RepoNameConflictError"
     Conflict:
       description: Conflitto con lo stato attuale della risorsa.
       content:

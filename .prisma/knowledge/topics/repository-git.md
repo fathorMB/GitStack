@@ -1,6 +1,7 @@
 ---
-{"area":"requirements","id":"DOC-6878277b-230e-448b-a761-215e9d233c54","related":["TOP-74180f5f-ae9e-4bbf-b220-4b52950e5038","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","DOC-d1718775-770d-4065-8b27-3dc7a400dad6","OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38"],"schema_version":1,"sources":[],"tags":["git","repository","ssh","m-03"],"title":"Repository Git: regole di prodotto","updated":"2026-10-05T07:52:00+00:00"}
+{"area":"requirements","id":"DOC-6878277b-230e-448b-a761-215e9d233c54","related":["TOP-74180f5f-ae9e-4bbf-b220-4b52950e5038","TOP-4a11694d-e261-4934-bafb-f17ccc6d1726","DOC-d1718775-770d-4065-8b27-3dc7a400dad6","OBJ-bcb9bb89-a13a-4c0c-8a2f-e56f6dd76c38","TOP-de29e79d-90cb-4163-a1fe-2978bed63f8d","DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363"],"reopen_reason":"Regola su eliminazione del repo e app confermata dall'operatore il 2026-10-18 (scelta A).","schema_version":1,"sources":[],"tags":["git","repository","ssh","m-03"],"title":"Repository Git: regole di prodotto","updated":"2026-10-18T17:00:34.316863500+00:00"}
 ---
+
 
 # Repository Git: regole di prodotto
 
@@ -36,6 +37,10 @@ Regole per l'hosting dei repo (M-03) confermate dall'operatore il 2026-10-05 nel
 - **Porta 2222 (R7)** tra i requisiti di rete dell'installer: vedi [[knowledge/topics/installazione-e-deploy]].
 - R6, R9 e R10 si applicano nello stesso punto: il controllo lato server alla ricezione del push.
 
+## Dalla v3 (app ospitate)
+
+Le app appartengono a un repo (H5 in [[knowledge/topics/hosting-app]], confermata il 2026-10-18). **Archiviazione (R10):** le app del repo si fermano e tornano avviabili alla riattivazione. **Eliminazione (R2):** le app si fermano subito, tornano se il repo è ripristinato entro 7 giorni, poi sono eliminate insieme ai volumi. Le quote per owner delle app (H11) non cambiano R6 per il codice.
+
 ## Fuori dalla v1
 
 Rinomina e trasferimento (R3), Git LFS (R8), quote per organizzazione (R6), regole di protezione complete (R9).
@@ -46,3 +51,5 @@ Rinomina e trasferimento (R3), Git LFS (R8), quote per organizzazione (R6), rego
 - [[knowledge/topics/decisioni]]
 - [[knowledge/topics/architettura]]
 - [[knowledge/topics/installazione-e-deploy]]
+- [[knowledge/topics/hosting-app]]
+

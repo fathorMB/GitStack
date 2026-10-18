@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitStack Mockups · v3 Hosting (apps)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN TOKENS · palette "Aurora" (identici a mockups-v1, mockups-v2-build e styleguide) ============ */
+:root{
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r:6px;--r-lg:10px;
+  --aurora:linear-gradient(135deg,#7c5cff 0%,#e0469b 55%,#ff8a3d 100%);
+  --sidebar-bg:#0e0b16;--sidebar-border:#1f1930;--sidebar-fg:#a39db8;--sidebar-fg-strong:#f3f0fa;
+  --sidebar-hover:#18132a;--sidebar-active:#221a3b;--sidebar-accent:#a28bff;
+  --bg:#f5f4fa;--surface:#ffffff;--surface-2:#f1eff8;--surface-3:#e7e4f1;
+  --border:#e0dcec;--border-strong:#cbc5dc;
+  --text:#16121f;--text-muted:#5f5873;--text-subtle:#8e87a3;
+  --accent:#6a47f5;--accent-hover:#5835e0;--accent-fg:#ffffff;--accent-soft:#efebff;--accent-text:#5b3be0;
+  --success:#1f8f52;--success-soft:#e4f5eb;--danger:#d93645;--danger-soft:#fdeaec;
+  --warning:#b7741a;--warning-soft:#fcf1de;--info:#2f6fe0;--info-soft:#e8effd;
+  --agent:#cf5510;--agent-soft:#fff0e5;
+  --shadow-1:0 1px 2px rgba(22,18,31,.06);--shadow-2:0 10px 28px rgba(22,18,31,.14);
+  --code-bg:#f8f7fc;--log-bg:#0f0c18;--log-fg:#d9d4ea;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0912;--surface:#13101d;--surface-2:#1a1626;--surface-3:#231e33;
+  --border:#2a2440;--border-strong:#3a3354;
+  --text:#ece9f5;--text-muted:#9d96b3;--text-subtle:#6c6584;
+  --accent:#7c5cff;--accent-hover:#9479ff;--accent-soft:rgba(124,92,255,.16);--accent-text:#b3a3ff;
+  --success:#3fcf7f;--success-soft:rgba(63,207,127,.13);--danger:#ff6b76;--danger-soft:rgba(255,107,118,.14);
+  --warning:#f0b04a;--warning-soft:rgba(240,176,74,.14);--info:#7aa7ff;--info-soft:rgba(122,167,255,.14);
+  --agent:#ffa066;--agent-soft:rgba(255,138,61,.15);
+  --shadow-1:0 1px 2px rgba(0,0,0,.45);--shadow-2:0 12px 32px rgba(0,0,0,.55);
+  --code-bg:#0f0c18;--log-bg:#08060d;
+}}
+:root[data-theme="dark"]{
+  --bg:#0b0912;--surface:#13101d;--surface-2:#1a1626;--surface-3:#231e33;
+  --border:#2a2440;--border-strong:#3a3354;
+  --text:#ece9f5;--text-muted:#9d96b3;--text-subtle:#6c6584;
+  --accent:#7c5cff;--accent-hover:#9479ff;--accent-soft:rgba(124,92,255,.16);--accent-text:#b3a3ff;
+  --success:#3fcf7f;--success-soft:rgba(63,207,127,.13);--danger:#ff6b76;--danger-soft:rgba(255,107,118,.14);
+  --warning:#f0b04a;--warning-soft:rgba(240,176,74,.14);--info:#7aa7ff;--info-soft:rgba(122,167,255,.14);
+  --agent:#ffa066;--agent-soft:rgba(255,138,61,.15);
+  --shadow-1:0 1px 2px rgba(0,0,0,.45);--shadow-2:0 12px 32px rgba(0,0,0,.55);
+  --code-bg:#0f0c18;--log-bg:#08060d;
+}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.5 var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent-text);text-decoration:none;cursor:pointer}a:hover{text-decoration:underline}
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
+.mono{font-family:var(--font-mono);font-size:.92em}
+.icon{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.icon-lg{width:18px;height:18px}
+.muted{color:var(--text-muted)}.subtle{color:var(--text-subtle)}.small{font-size:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sp{flex:1}.stack{display:flex;flex-direction:column}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:500 13px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2);text-decoration:none}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}.btn-primary:hover{background:var(--accent-hover)}
+.btn-danger{color:var(--danger)}.btn-ghost{border-color:transparent;background:transparent;color:var(--text-muted)}
+.btn-sm{height:26px;padding:0 8px;font-size:12px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-group{display:inline-flex}.btn-group .btn{border-radius:0}.btn-group .btn:first-child{border-radius:var(--r) 0 0 var(--r)}.btn-group .btn:last-child{border-radius:0 var(--r) var(--r) 0}.btn-group .btn+.btn{margin-left:-1px}
+.field{display:flex;flex-direction:column;gap:6px}.field>label{font-weight:600;font-size:13px}.hint{font-size:12px;color:var(--text-muted)}
+.input{height:32px;padding:0 10px;border-radius:var(--r);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:14px var(--font-sans);width:100%}
+.input-icon{position:relative}.input-icon>.icon{position:absolute;left:9px;top:8px;color:var(--text-subtle)}.input-icon .input{padding-left:32px}
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--text-muted);background:var(--surface);white-space:nowrap}
+.badge-ok{background:var(--success-soft);border-color:transparent;color:var(--success)}
+.badge-err{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.badge-run{background:var(--warning-soft);border-color:transparent;color:var(--warning)}
+.badge-accent{background:var(--accent-soft);border-color:transparent;color:var(--accent-text)}
+.badge-info{background:var(--info-soft);border-color:transparent;color:var(--info)}
+.badge-agent{background:var(--agent-soft);border-color:transparent;color:var(--agent);font-family:var(--font-mono);font-size:11px;height:18px;padding:0 6px}
+.badge-soon{height:16px;padding:0 5px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;background:transparent;border-color:var(--sidebar-border);color:var(--sidebar-fg)}
+.badge-new{height:16px;padding:0 5px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;background:var(--aurora);border:0;color:#fff}
+.counter{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--surface-3);color:var(--text-muted);font-size:11px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.tab{display:flex;align-items:center;gap:6px;padding:10px 12px;color:var(--text-muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab:hover{color:var(--text);text-decoration:none}.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.seg{display:inline-flex;padding:2px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border)}
+.seg span{padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer}
+.seg span.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-1)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600}
+.card-b{padding:16px}
+.list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.list-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--border)}
+.list-row:first-child{border-top:0}.list-row.hover:hover{background:var(--surface-2)}
+.list-head{background:var(--surface-2);font-size:13px;color:var(--text-muted);padding:8px 16px}
+.alert{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r);border:1px solid;font-size:13px}
+.alert-info{background:var(--info-soft);border-color:color-mix(in srgb,var(--info) 30%,transparent)}.alert-info>.icon{color:var(--info)}
+.alert-warning{background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 30%,transparent)}.alert-warning>.icon{color:var(--warning)}
+.alert-danger{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}.alert-danger>.icon{color:var(--danger)}
+.alert-ok{background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 30%,transparent)}.alert-ok>.icon{color:var(--success)}
+.avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex:none}
+.avatar .icon{width:14px;height:14px;color:#fff}.avatar-sq{border-radius:6px}
+.av-a{background:#6a47f5}.av-b{background:#2563eb}.av-bot{background:linear-gradient(135deg,#ff8a3d,#e0469b)}.av-org{background:#334155}
+.cmdblock{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font:13px/1.7 var(--font-mono);white-space:pre;overflow:auto}
+.cmdblock .p{color:var(--text-subtle);user-select:none}.cmdblock .e{color:var(--danger)}.cmdblock .o{color:var(--success)}.cmdblock .w{color:var(--warning)}
+.sha{font-family:var(--font-mono);font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:var(--r);color:var(--text-muted);background:var(--surface)}
+.st{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.st .icon{width:12px;height:12px;stroke-width:2.6}
+.st.ok{background:var(--success);color:#fff}.st.err{background:var(--danger);color:#fff}.st.run{border:2px solid var(--warning);border-right-color:transparent}.st.skip{background:var(--surface-3);color:var(--text-subtle)}.st.wait{border:2px dashed var(--border-strong)}
+.log{background:var(--log-bg);color:var(--log-fg);font:12.5px/1.65 var(--font-mono);border-radius:0 0 var(--r-lg) var(--r-lg);padding:8px 0;overflow:auto;max-height:520px}
+.log div{padding:0 14px;white-space:pre}.log .n{color:#6c6584;display:inline-block;width:92px;margin-right:12px;user-select:none}
+.log .er{background:rgba(255,107,118,.14);color:#ff8f98}.log .gr{color:#9479ff}.log .ok{color:#7ee2a0}.log .wr{color:#f0b04a}
+.jobs a{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);color:var(--text);font-size:13px}
+.jobs a.active{background:var(--surface);border:1px solid var(--border);box-shadow:inset 3px 0 0 var(--accent)}
+.jobs a:hover{background:var(--surface-2);text-decoration:none}
+.meter{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin-top:6px;position:relative}.meter i{display:block;height:100%;background:var(--accent)}
+.meter.warn i{background:var(--warning)}.meter.err i{background:var(--danger)}
+.meter b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text);opacity:.55}
+.stat{padding:14px 16px}.stat b{display:block;font-size:22px;font-weight:600}.stat span{font-size:12px;color:var(--text-muted)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kv{display:grid;grid-template-columns:200px 1fr;gap:10px 16px;font-size:13px;align-items:center}.kv dt{color:var(--text-muted)}.kv dd{margin:0}
+.modal-back{position:absolute;inset:0;background:rgba(14,11,22,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:70px;z-index:10}
+.modal{width:540px;max-width:92%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2)}
+.modal-h{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600}.modal-b{padding:18px}
+.modal-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.opt{display:flex;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-size:13px}
+.opt.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.opt.off{opacity:.55;cursor:not-allowed}
+.opt input{margin-top:3px}
+.sw{width:32px;height:18px;border-radius:9px;background:var(--surface-3);position:relative;flex:none;border:1px solid var(--border-strong)}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:var(--shadow-1)}
+.sw.on{background:var(--accent);border-color:var(--accent)}.sw.on::after{left:16px}
+.spark{display:flex;align-items:flex-end;gap:2px;height:40px;margin-top:8px}.spark i{flex:1;background:var(--accent-soft);border-top:2px solid var(--accent);border-radius:2px 2px 0 0}
+.spark.err i{background:var(--danger-soft);border-top-color:var(--danger)}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--border-strong);border-radius:var(--r);overflow:hidden}
+.stepper button{width:28px;height:30px;border:0;background:var(--surface-2);color:var(--text);cursor:pointer;font-size:15px}.stepper span{min-width:36px;text-align:center;font-weight:600}
+/* mockup bar */
+.mbar{position:fixed;top:0;left:0;right:0;height:40px;z-index:50;display:flex;align-items:center;gap:10px;padding:0 12px;background:#262626;color:#f5f5f5;font-size:12px;border-bottom:1px solid #3a3a3a}
+.mbar b{font-weight:600}.mbar select{height:26px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#fff;font:12px var(--font-sans);padding:0 6px;max-width:300px}
+.mbar button{height:26px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#fff;font:12px var(--font-sans);padding:0 10px;cursor:pointer}
+.mbar .desc{color:#bdbdbd;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0}
+.mvar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 12px;background:#262626;color:#f5f5f5;font-size:12px;border-bottom:1px solid #3a3a3a}
+.mvar-note{color:#a3a3a3;margin-right:6px}
+.mvar button{height:24px;padding:0 9px;border-radius:5px;border:1px solid #4a4a4a;background:#333;color:#e5e5e5;font:12px var(--font-sans);cursor:pointer}
+.mvar button.on{background:#7c5cff;border-color:#7c5cff;color:#fff}
+/* shell */
+.app{position:fixed;top:40px;left:0;right:0;bottom:0;display:grid;grid-template-columns:232px 1fr}
+.sidebar{background:var(--sidebar-bg);color:var(--sidebar-fg);display:flex;flex-direction:column;border-right:1px solid var(--sidebar-border);overflow:auto}
+.sb-brand{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;color:var(--sidebar-fg-strong);font-weight:700;font-size:15px}
+.sb-org{margin:4px 10px 8px;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);border:1px solid var(--sidebar-border);color:var(--sidebar-fg-strong);font-weight:500}
+.sb-grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:#5f717c;padding:14px 18px 6px}
+.sb-item{position:relative;display:flex;align-items:center;gap:10px;margin:1px 10px;padding:7px 8px;border-radius:var(--r);color:var(--sidebar-fg);font-weight:500;cursor:pointer}
+.sb-item:hover{background:var(--sidebar-hover);color:var(--sidebar-fg-strong);text-decoration:none}
+.sb-item.active{background:var(--sidebar-active);color:var(--sidebar-fg-strong)}
+.sb-item.active::before{content:"";position:absolute;left:-10px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--aurora)}
+.sb-item.active .icon{color:var(--sidebar-accent)}.sb-item.disabled{opacity:.5;cursor:default}
+.sb-item .badge-soon,.sb-item .badge-new{margin-left:auto}
+.sb-foot{margin-top:auto;border-top:1px solid var(--sidebar-border);padding:10px;display:flex;align-items:center;gap:10px;color:var(--sidebar-fg-strong)}
+.sb-foot small{display:block;color:var(--sidebar-fg);font-size:11px}
+.main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{height:52px;flex:none;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.crumb{font-size:15px;display:flex;align-items:center;gap:6px}.crumb a{color:var(--text-muted)}.crumb b{font-weight:600}.crumb .sep{color:var(--text-subtle)}
+.content{flex:1;overflow:auto;position:relative}
+.page{max-width:1280px;margin:0 auto;padding:24px 28px 64px}.page-narrow{max-width:820px}
+.screen{display:none}.screen.on{display:block}
+.repo-h{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 28px 0}.repo-h .inner{max-width:1280px;margin:0 auto}
+.repo-title{display:flex;align-items:center;gap:10px;margin-bottom:6px}.repo-title h1{font-size:20px;font-weight:600}.repo-title h1 a{color:var(--text-muted);font-weight:400}
+.repo-h .tabs{border-bottom:0;margin-top:6px}
+.two{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start}
+.settings-grid{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:start}
+.subnav a{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);color:var(--text-muted);font-weight:500}
+.subnav a:hover{background:var(--surface-2);color:var(--text);text-decoration:none}
+.subnav a.active{background:var(--surface);color:var(--text);box-shadow:inset 3px 0 0 var(--accent);border:1px solid var(--border)}
+.subnav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-subtle);font-weight:600;padding:14px 10px 4px}
+.sec-h{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:16px}.sec-h h2{font-size:18px;font-weight:600}
+.app-h{display:flex;align-items:center;gap:12px;margin-bottom:4px}.app-h h1{font-size:20px;font-weight:600}
+@media (max-width:1100px){.grid4,.grid3{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
+@media (max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.settings-grid{grid-template-columns:1fr}.page{padding:16px}.mbar .desc{display:none}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="aur" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="29" y2="29"><stop offset="0" stop-color="#7c5cff"/><stop offset=".55" stop-color="#e0469b"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
+  <symbol id="logo" viewBox="0 0 32 32"><path d="M16 3.5 28.5 10 16 16.5 3.5 10Z" fill="url(#aur)"/><path d="M3.5 16 16 22.5 28.5 16" fill="none" stroke="url(#aur)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/><path d="M3.5 22 16 28.5 28.5 22" fill="none" stroke="url(#aur)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></symbol>
+  <symbol id="i-repo" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/></symbol>
+  <symbol id="i-issue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 7.5 12 3 3 7.5v9L12 21l9-4.5z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-6 4-11 8.5"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="1.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l2.5 2.5M18.5 4.5 21 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="m7 9 3 3-3 3M12.5 15H17"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9 17h6"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
+  <symbol id="i-actions" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5 3.5-5 3.5z"/></symbol>
+  <symbol id="i-pkg" viewBox="0 0 24 24"><path d="M21 7.5 12 3 3 7.5v9L12 21l9-4.5z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9M7.5 5.2l9 4.6"/></symbol>
+  <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M12 15l-3-3c1-4 4-8 10-9-1 6-5 9-9 10z"/><path d="M9 12l-4 1 2-4M12 15l-1 4 4-2M5 19l2-2"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
+  <symbol id="i-disk" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+</svg>
+
+<div class="mbar">
+  <b><span style="background:#facc15;color:#1a1a1a;border-radius:3px;padding:1px 5px;margin-right:6px;font-size:10px">MOCKUP</span>v3 Hosting</b>
+  <select id="pick">
+    <optgroup label="v3-a App interne">
+      <option value="apps">H1 · Apps del repo</option>
+      <option value="new">H2 · New app / Deploy</option>
+      <option value="overview">H3 · App · Overview (salute, metriche, copie)</option>
+      <option value="logs">H4 · App · Logs</option>
+      <option value="versions">H5 · App · Versions &amp; rollback</option>
+      <option value="config">H6 · App · Settings · Variables &amp; secrets</option>
+      <option value="access">H7 · App · Settings · Access &amp; domains</option>
+      <option value="admin">H9 · Admin · Apps &amp; resources</option>
+      <option value="cli">H10 · Terminale e MCP: gs app</option>
+    </optgroup>
+    <optgroup label="v3-b Dati"><option value="volumes">H8 · App · Settings · Volumes &amp; resources</option></optgroup>
+    <optgroup label="v3-c App pubbliche"><option value="access-public" data-alias="access">H7 · Access &amp; domains (variante pubblica)</option></optgroup>
+  </select>
+  <button id="prev">←</button><button id="next">→</button>
+  <span class="desc" id="desc"></span>
+  <button id="themeBtn">Tema: <span>auto</span></button>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sb-brand"><svg width="24" height="24"><use href="#logo"/></svg>GitStack</div>
+    <div class="sb-org"><span class="avatar avatar-sq av-org" style="width:22px;height:22px">AC</span>Acme<span class="sp"></span></div>
+    <div class="sb-grp">Workspace</div>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-home"/></svg>Home</a>
+    <a class="sb-item" data-nav="repo" data-go="apps"><svg class="icon icon-lg"><use href="#i-repo"/></svg>Repositories</a>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-issue"/></svg>Issues</a>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-bell"/></svg>Notifications</a>
+    <a class="sb-item" data-nav="cli" data-go="cli"><svg class="icon icon-lg"><use href="#i-terminal"/></svg>CLI &amp; skills</a>
+    <div class="sb-grp">Platform</div>
+    <a class="sb-item" data-nav="repo" data-go="apps"><svg class="icon icon-lg"><use href="#i-apps"/></svg>Apps<span class="badge badge-new">v3</span></a>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-box"/></svg>Registry</a>
+    <div class="sb-grp">Administration</div>
+    <a class="sb-item"><svg class="icon icon-lg"><use href="#i-users"/></svg>Organization</a>
+    <a class="sb-item" data-nav="admin" data-go="admin"><svg class="icon icon-lg"><use href="#i-server"/></svg>System</a>
+    <div class="sb-foot"><span class="avatar av-a">MR</span><div style="flex:1"><div style="font-weight:600;font-size:13px">mrossi</div><small>Owner · Acme</small></div></div>
+  </aside>
+  <div class="main">
+    <header class="topbar"><div class="crumb" id="crumb"></div><span class="sp"></span><span class="avatar av-a">MR</span></header>
+    <div class="content" id="content">
+
+<!-- ============ H1 APPS LIST ============ -->
+<section class="screen" data-screen="apps" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><b>Apps</b>" data-desc="H5, H1, H2, H6, H10: scheda Apps del repo. Più app per repo; per ognuna stato, indirizzo automatico, accesso (login GitStack, senza login, pubblica), versione attiva, branch seguito, copie, immagine verificata o no. Variante vuota per il primo uso.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="list">Con app</button><button data-var="empty">Repo senza app</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / handbook</h1><span class="badge"><svg class="icon"><use href="#i-users"/></svg>Internal</span></div>
+    <div class="tabs"><a class="tab"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab"><svg class="icon"><use href="#i-issue"/></svg>Issues</a><a class="tab"><svg class="icon"><use href="#i-branch"/></svg>Pull requests</a><a class="tab"><svg class="icon"><use href="#i-actions"/></svg>Actions</a><a class="tab"><svg class="icon"><use href="#i-pkg"/></svg>Packages</a><a class="tab active"><svg class="icon"><use href="#i-apps"/></svg>Apps <span class="counter">3</span></a><a class="tab"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div data-v="list">
+      <div class="row" style="margin-bottom:14px"><div class="input-icon" style="flex:1;max-width:360px"><svg class="icon"><use href="#i-apps"/></svg><input class="input" placeholder="Filter apps"></div><span class="sp"></span><button class="btn btn-primary" data-go="new"><svg class="icon"><use href="#i-plus"/></svg>New app</button></div>
+      <div class="list">
+        <div class="list-row list-head"><b style="color:var(--text)">3 apps</b><span class="sp"></span><span class="small">Quota Acme: 2.1 / 6 vCPU guaranteed · 3.5 / 12 GB RAM guaranteed</span></div>
+        <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><a data-go="overview" style="font-weight:600;color:var(--text)">web</a> <span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span><div class="small muted"><a class="mono">web-handbook-acme.apps.acme.it</a> · follows <span class="mono">main</span> · v42 <span class="sha">sha-7f3a91c</span> · 2 copies · deployed 18 min ago by <b>build-agent</b> <span class="badge badge-agent">agent</span></div></div><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>verified</span><span class="badge badge-ok">Running</span></div>
+        <div class="list-row hover"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><a data-go="overview" style="font-weight:600;color:var(--text)">search-worker</a> <span class="badge">No address</span><div class="small muted">Talks only to apps of this repo · follows <span class="mono">main</span> · v19 · 1 copy</div></div><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>verified</span><span class="badge badge-ok">Running</span></div>
+        <div class="list-row hover"><span class="st err"><svg class="icon"><use href="#i-x"/></svg></span><div style="flex:1"><a data-go="overview" style="font-weight:600;color:var(--text)">wiki</a> <span class="badge"><svg class="icon"><use href="#i-users"/></svg>Internal · no login</span> <span class="badge"><svg class="icon"><use href="#i-disk"/></svg>1 volume</span><div class="small muted"><a class="mono">wiki-handbook-acme.apps.acme.it</a> · manual deploys · <span class="mono">docker.io/requarks/wiki:2.5</span> · runs as root</div></div><span class="badge badge-run"><svg class="icon"><use href="#i-alert"/></svg>not verified</span><span class="badge badge-err">Restarting</span></div>
+      </div>
+      <p class="hint" style="margin-top:10px">Apps follow the repository: archiving stops them; deleting stops them and removes them with their volumes after 7 days unless the repository is restored.</p>
+    </div>
+    <div data-v="empty">
+      <div class="card card-b" style="text-align:center;padding:48px 24px">
+        <svg class="icon" style="width:40px;height:40px;color:var(--accent)"><use href="#i-rocket"/></svg>
+        <h2 style="font-size:18px;margin:12px 0 6px">Run this repository as an app</h2>
+        <p class="muted" style="max-width:520px;margin:0 auto 18px">Deploy an image from this repository's packages or any registry. Apps start internal: only people who can reach GitStack, and by default only those with read access, can open them.</p>
+        <div class="row" style="justify-content:center"><button class="btn btn-primary" data-go="new"><svg class="icon"><use href="#i-plus"/></svg>New app</button><button class="btn" data-go="cli"><svg class="icon"><use href="#i-terminal"/></svg>gs app create</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H2 NEW APP / DEPLOY ============ -->
+<section class="screen" data-screen="new" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a>Apps</a><span class='sep'>/</span><b>New app</b>" data-desc="H7, H10, H11, H2: nuova app. Sorgente: immagine del repo (firmata dalla CI) o esterna (etichetta «non verificata», bloccata se l'istanza accetta solo immagini firmate); deploy a mano o seguendo un branch; parte garantita e tetto; rifiuto chiaro se le parti garantite non ci stanno.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="repo">Immagine del repo</button><button data-var="ext">Immagine esterna</button><button data-var="full">Server pieno</button></div>
+  <div class="page page-narrow">
+    <h1 style="font-size:22px;font-weight:600;margin-bottom:4px">New app</h1>
+    <p class="muted" style="margin-bottom:20px">in <b>acme/handbook</b> · requires admin on the repository</p>
+    <div class="stack" style="gap:18px">
+      <div class="field"><label>Name</label><input class="input" value="web" data-v="repo full"><input class="input" value="wiki" data-v="ext"><span class="hint">Address: <span class="mono" data-v="repo full">web-handbook-acme.apps.acme.it</span><span class="mono" data-v="ext">wiki-handbook-acme.apps.acme.it</span> · internal, certificate from the GitStack CA</span></div>
+      <div class="field"><label>Image</label>
+        <div class="seg" style="align-self:flex-start"><span data-var="repo" class="active">From this repository</span><span data-var="ext">External registry</span></div>
+        <div data-v="repo full" class="stack" style="gap:8px">
+          <button class="btn" style="justify-content:space-between"><span><svg class="icon"><use href="#i-pkg"/></svg> <span class="mono">homehub.local/acme/handbook/web</span></span><svg class="icon"><use href="#i-chev"/></svg></button>
+          <div class="alert alert-ok"><svg class="icon"><use href="#i-shield"/></svg><div><b>Signed by the CI of acme/handbook</b> · <span class="mono">sha-7f3a91c</span> · built from <span class="mono">main</span> 22 min ago. Required for automatic deploys.</div></div>
+        </div>
+        <div data-v="ext" class="stack" style="gap:8px">
+          <input class="input mono" value="docker.io/requarks/wiki:2.5">
+          <div class="alert alert-warning"><svg class="icon"><use href="#i-alert"/></svg><div><b>Not verified.</b> This image has no signature from a trusted key. Manual deploys are allowed and the app will show a <i>not verified</i> label. Automatic deploys are only possible with images signed by this repository's CI.</div></div>
+          <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>The image runs as <b>root</b> inside the container. Allowed on this instance (baseline); it stays isolated from the server and from other apps.</div></div>
+        </div>
+      </div>
+      <div class="field"><label>Deploys</label>
+        <label class="opt on" data-v="repo full"><input type="radio" name="dm" checked><div><b>Follow branch <span class="mono">main</span></b><div class="hint">Each image the CI publishes for <span class="mono">main</span> goes live. If the new version fails its health check, the previous one keeps running.</div></div></label>
+        <label class="opt" data-v="repo full"><input type="radio" name="dm"><div><b>Manual only</b><div class="hint">Deploy from here, <span class="mono">gs app deploy</span> or a workflow step.</div></div></label>
+        <label class="opt off" data-v="ext"><input type="radio" disabled><div><b>Follow branch</b><div class="hint">Not available for external images.</div></div></label>
+        <label class="opt on" data-v="ext"><input type="radio" checked><div><b>Manual only</b></div></label>
+      </div>
+      <div class="field"><label>Port</label><input class="input" value="8080" style="max-width:140px"></div>
+      <div class="field"><label>Resources</label>
+        <div class="grid3">
+          <div class="card card-b small"><b>Guaranteed</b><div class="muted">0.5 vCPU · 512 MB</div><span class="hint">Always reserved</span></div>
+          <div class="card card-b small"><b>Limit</b><div class="muted">1 vCPU · 1 GB</div><span class="hint">Used when the server has room</span></div>
+          <div class="card card-b small"><b>Copies</b><div class="stepper" style="margin-top:4px"><button>−</button><span>2</span><button>+</button></div></div>
+        </div>
+      </div>
+      <div class="alert alert-danger" data-v="full"><svg class="icon"><use href="#i-x"/></svg><div><b>Not enough room on the server.</b> 2 copies need 1 vCPU guaranteed; the space reserved for apps has 0.4 vCPU left (GitStack services always come first). Lower the guaranteed share or copies, stop another app, or ask an administrator to enlarge the apps share.</div></div>
+      <div class="row"><span class="sp"></span><button class="btn" data-go="apps">Cancel</button><button class="btn btn-primary" data-v="repo ext" data-go="overview"><svg class="icon"><use href="#i-rocket"/></svg>Create and deploy</button><button class="btn btn-primary" data-v="full" disabled><svg class="icon"><use href="#i-rocket"/></svg>Create and deploy</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- shared app header pieces are repeated per screen for simplicity -->
+
+<!-- ============ H3 OVERVIEW ============ -->
+<section class="screen" data-screen="overview" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><b>web</b>" data-desc="H12, H11, H7: panoramica dell'app. Stato e controllo di salute, versione attiva, uso rispetto a parte garantita e tetto, richieste ed errori, copie a mano (una sola per app con volume), riavvio; variante deploy fallito con ritorno automatico alla versione precedente e notifica.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="ok">In esecuzione</button><button data-var="fail">Deploy fallito</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok" data-v="ok">Running</span><span class="badge badge-run" data-v="fail">Running previous version</span><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span><span class="sp"></span><a class="btn"><svg class="icon"><use href="#i-link"/></svg>Open</a><button class="btn"><svg class="icon"><use href="#i-sync"/></svg>Restart</button><button class="btn btn-primary"><svg class="icon"><use href="#i-rocket"/></svg>Deploy</button></div>
+    <div class="small muted" style="margin-bottom:6px"><span class="mono">https://web-handbook-acme.apps.acme.it</span></div>
+    <div class="tabs"><a class="tab active">Overview</a><a class="tab" data-go="logs">Logs</a><a class="tab" data-go="versions">Versions</a><a class="tab" data-go="config">Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="alert alert-danger" data-v="fail" style="margin-bottom:16px"><svg class="icon"><use href="#i-x"/></svg><div><b>Deploy of v43 failed its health check</b> (<span class="mono">GET /healthz</span> returned 500 for 2 min). v42 is still serving traffic. Pushed by <b>build-agent</b> <span class="badge badge-agent">agent</span>; build-agent and repository admins were notified. <a data-go="logs">See logs</a> · <a data-go="versions">Versions</a></div></div>
+    <div class="grid4" style="margin-bottom:16px">
+      <div class="card stat"><b data-v="ok">v42</b><b data-v="fail">v42 <span class="small muted" style="font-weight:400">(v43 failed)</span></b><span>Active version · <span class="mono">sha-7f3a91c</span></span></div>
+      <div class="card stat"><b>2 / 2</b><span>Copies healthy</span></div>
+      <div class="card stat"><b data-v="ok">38 req/s</b><b data-v="fail">35 req/s</b><span>Requests · last hour</span></div>
+      <div class="card stat"><b data-v="ok">0.1%</b><b data-v="fail" style="color:var(--danger)">2.4%</b><span>Errors (5xx)</span></div>
+    </div>
+    <div class="settings-grid" style="grid-template-columns:1fr 1fr">
+      <div class="card"><div class="card-h"><svg class="icon"><use href="#i-cpu"/></svg>Resources<span class="sp"></span><span class="small muted" style="font-weight:400">bar = use · line = guaranteed · end = limit</span></div><div class="card-b stack" style="gap:14px">
+        <div><div class="row small"><b>CPU</b><span class="muted">guaranteed 0.5 · limit 1 vCPU per copy</span><span class="sp"></span>0.62 vCPU</div><div class="meter"><i style="width:62%"></i><b style="left:50%"></b></div><span class="hint">Above the guaranteed share: slowed first if the server gets busy.</span></div>
+        <div><div class="row small"><b>Memory</b><span class="muted">guaranteed 512 MB · limit 1 GB</span><span class="sp"></span>410 MB</div><div class="meter"><i style="width:40%"></i><b style="left:50%"></b></div></div>
+        <div class="row small"><b>Copies</b><span class="stepper"><button>−</button><span>2</span><button>+</button></span><span class="hint">Manual. With 2+ copies updates have no downtime.</span></div>
+      </div></div>
+      <div class="card"><div class="card-h"><svg class="icon"><use href="#i-activity"/></svg>Requests · last 6 h</div><div class="card-b">
+        <div class="spark" data-v="ok"><i style="height:40%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:80%"></i><i style="height:66%"></i><i style="height:58%"></i><i style="height:72%"></i><i style="height:90%"></i><i style="height:76%"></i><i style="height:60%"></i></div>
+        <div class="spark err" data-v="fail"><i style="height:4%"></i><i style="height:5%"></i><i style="height:4%"></i><i style="height:6%"></i><i style="height:4%"></i><i style="height:5%"></i><i style="height:4%"></i><i style="height:60%"></i><i style="height:85%"></i><i style="height:20%"></i><i style="height:6%"></i><i style="height:5%"></i></div>
+        <div class="row small muted" style="margin-top:8px"><span>12:00</span><span class="sp"></span><span data-v="fail" style="color:var(--danger)">errors during v43 attempt</span><span class="sp"></span><span>18:00</span></div>
+        <dl class="kv" style="margin-top:14px;grid-template-columns:140px 1fr">
+          <dt>Health check</dt><dd><span class="mono">GET /healthz</span> · every 10 s</dd>
+          <dt>Restarts (24 h)</dt><dd>0</dd>
+          <dt>Deploys</dt><dd>follow <span class="mono">main</span> · only images signed by this repo's CI</dd>
+        </dl>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H4 LOGS ============ -->
+<section class="screen" data-screen="logs" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Logs</b>" data-desc="H12, H8: log in diretta di tutte le copie o di una sola, con cronologia (7 giorni o 1 GB per app); segreti mascherati; eventi della piattaforma (deploy, salute, riavvii) mescolati ai log dell'app. Leggibili da chi ha write.">
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok">Running</span></div>
+    <div class="tabs"><a class="tab" data-go="overview">Overview</a><a class="tab active">Logs</a><a class="tab" data-go="versions">Versions</a><a class="tab" data-go="config">Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="row" style="margin-bottom:12px"><span class="seg"><span class="active">All copies</span><span>web-1</span><span>web-2</span></span><span class="seg"><span class="active">Live</span><span>Last hour</span><span>Last 7 days</span></span><div class="input-icon" style="flex:1;max-width:320px"><svg class="icon"><use href="#i-eye"/></svg><input class="input" placeholder="Search logs"></div><span class="sp"></span><label class="row small muted"><span class="sw on"></span>Platform events</label></div>
+    <div class="card">
+      <div class="card-h small"><span class="dot" style="background:var(--success)"></span>Streaming · kept 7 days or 1 GB<span class="sp"></span><span class="muted" style="font-weight:400">Readable with write access</span></div>
+      <div class="log">
+<div><span class="n">18:02:11 sys</span><span class="gr">deploy v43 started by build-agent (image sha-91be20d, signed by acme/handbook CI)</span></div>
+<div><span class="n">18:02:19 web-3</span>listening on :8080  DATABASE_URL=***</div>
+<div class="er"><span class="n">18:02:24 web-3</span>panic: search index "handbook-v2" not found</div>
+<div><span class="n">18:02:34 sys</span><span class="wr">health check failed (500) · attempt 1/12</span></div>
+<div><span class="n">18:04:30 sys</span><span class="er">health check failed for 2 min · deploy v43 rolled back · v42 keeps serving</span></div>
+<div><span class="n">18:04:31 sys</span>notified build-agent, repository admins · webhook deployment.failed sent</div>
+<div><span class="n">18:05:02 web-1</span>GET /docs/onboarding 200 12ms user=lbianchi</div>
+<div><span class="n">18:05:03 web-2</span>GET /search?q=vpn 200 41ms user=gverdi</div>
+<div><span class="n">18:05:07 web-1</span>GET /docs/expenses 200 9ms user=fneri</div>
+<div><span class="n">18:05:09 web-2</span><span class="ok">GET /healthz 200 1ms</span></div>
+<div><span class="n"></span>▍</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H5 VERSIONS ============ -->
+<section class="screen" data-screen="versions" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Versions</b>" data-desc="H8, H12, H4, H13: ogni deploy o modifica di configurazione crea una versione (immagine + configurazione). Storico con chi l'ha fatta (anche agenti), rollback a una versione recente; la precedente è sempre nel backup, le più vecchie solo se l'immagine è ancora nel registry.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="list">Storico</button><button data-var="rb">Conferma rollback</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok">Running</span></div>
+    <div class="tabs"><a class="tab" data-go="overview">Overview</a><a class="tab" data-go="logs">Logs</a><a class="tab active">Versions</a><a class="tab" data-go="config">Settings</a></div>
+  </div></div>
+  <div class="page">
+    <div class="list">
+      <div class="list-row list-head"><b style="color:var(--text)">Versions</b><span class="sp"></span><span class="small">Active and previous image are always in backups</span></div>
+      <div class="list-row"><span class="st err"><svg class="icon"><use href="#i-x"/></svg></span><div style="flex:1"><b>v43</b> <span class="sha">sha-91be20d</span> <span class="badge badge-err">failed health check · rolled back</span><div class="small muted">push to <span class="mono">main</span> by <b>build-agent</b> <span class="badge badge-agent">agent</span> · 18:02</div></div></div>
+      <div class="list-row"><span class="st ok"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>v42</b> <span class="sha">sha-7f3a91c</span> <span class="badge badge-ok">active</span> <span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>verified</span><div class="small muted">push to <span class="mono">main</span> by <b>build-agent</b> <span class="badge badge-agent">agent</span> · 17:44</div></div></div>
+      <div class="list-row"><span class="st skip"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>v41</b> <span class="sha">sha-7f3a91c</span> <span class="badge">config</span><div class="small muted">variable <span class="mono">SEARCH_TIMEOUT</span> 2s → 5s by <b>mrossi</b> · yesterday</div></div><span class="badge badge-info">in backup</span><button class="btn btn-sm" data-var="rb"><svg class="icon"><use href="#i-undo"/></svg>Roll back</button></div>
+      <div class="list-row"><span class="st skip"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>v40</b> <span class="sha">sha-c2d4e18</span><div class="small muted">manual deploy by <b>lbianchi</b> · 3 days ago</div></div><button class="btn btn-sm"><svg class="icon"><use href="#i-undo"/></svg>Roll back</button></div>
+      <div class="list-row"><span class="st skip"><svg class="icon"><use href="#i-check"/></svg></span><div style="flex:1"><b>v39</b> <span class="sha">sha-0a9e771</span><div class="small muted">push to <span class="mono">main</span> by <b>gverdi</b> · 2 weeks ago</div></div><span class="small subtle">image removed by registry cleanup</span><button class="btn btn-sm" disabled>Roll back</button></div>
+    </div>
+  </div>
+  <div class="modal-back" data-v="rb">
+    <div class="modal">
+      <div class="modal-h">Roll back web to v41?</div>
+      <div class="modal-b stack" style="gap:12px;font-size:13px">
+        <p>GitStack will run image <span class="sha">sha-7f3a91c</span> with the configuration of v41 as a new version <b>v44</b>. Secrets keep their current values.</p>
+        <p class="muted">Automatic deploys from <span class="mono">main</span> stay on: the next CI image will replace v44. <a>Pause automatic deploys</a></p>
+      </div>
+      <div class="modal-f"><button class="btn" data-var="list">Cancel</button><button class="btn btn-primary" data-var="list"><svg class="icon"><use href="#i-undo"/></svg>Roll back</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H6 CONFIG ============ -->
+<section class="screen" data-screen="config" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Settings</b>" data-desc="H8: variabili (lette da chi ha write) e segreti dell'app (gestiti da admin, mai riletti, mascherati nei log), separati dai segreti della CI. Ogni salvataggio crea una nuova versione e riavvia le copie senza interruzione.">
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok">Running</span></div>
+    <div class="tabs"><a class="tab" data-go="overview">Overview</a><a class="tab" data-go="logs">Logs</a><a class="tab" data-go="versions">Versions</a><a class="tab active">Settings</a></div>
+  </div></div>
+  <div class="page"><div class="settings-grid">
+    <nav class="subnav"><a><svg class="icon"><use href="#i-settings"/></svg>General</a><a class="active"><svg class="icon"><use href="#i-key"/></svg>Variables &amp; secrets</a><a data-go="access"><svg class="icon"><use href="#i-globe"/></svg>Access &amp; domains</a><a data-go="volumes"><svg class="icon"><use href="#i-disk"/></svg>Volumes &amp; resources</a><div class="grp">Danger zone</div><a class="btn-danger"><svg class="icon"><use href="#i-x"/></svg>Delete app</a></nav>
+    <div class="stack" style="gap:24px">
+      <div><div class="sec-h"><h2>Variables</h2><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-plus"/></svg>New variable</button></div>
+        <div class="list">
+          <div class="list-row"><span class="mono" style="width:220px">SEARCH_URL</span><span class="mono muted" style="flex:1">http://search-worker:9200</span><button class="btn btn-sm btn-ghost">Edit</button></div>
+          <div class="list-row"><span class="mono" style="width:220px">SEARCH_TIMEOUT</span><span class="mono muted" style="flex:1">5s</span><button class="btn btn-sm btn-ghost">Edit</button></div>
+          <div class="list-row"><span class="mono" style="width:220px">GITSTACK_USER_HEADER</span><span class="mono muted" style="flex:1">X-GitStack-User</span><span class="badge">set by GitStack</span></div>
+        </div></div>
+      <div><div class="sec-h"><h2>Secrets</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>New secret</button></div>
+        <div class="list">
+          <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">DATABASE_URL</span><span class="small muted">updated 5 days ago by mrossi</span><button class="btn btn-sm">Update</button><button class="btn btn-sm btn-ghost">Delete</button></div>
+          <div class="list-row"><svg class="icon muted"><use href="#i-lock"/></svg><span class="mono" style="flex:1">SMTP_PASSWORD</span><span class="small muted">updated 2 weeks ago by mrossi</span><button class="btn btn-sm">Update</button><button class="btn btn-sm btn-ghost">Delete</button></div>
+        </div>
+        <p class="hint" style="margin-top:8px">Values can't be read back and are masked as <span class="mono">***</span> in logs. App secrets are separate from the repository's Actions secrets.</p></div>
+      <div class="alert alert-info"><svg class="icon"><use href="#i-history"/></svg><div>Saving creates a new version (image + configuration). Copies restart one at a time; you can roll back from <a data-go="versions">Versions</a>.</div></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============ H7 ACCESS & DOMAINS ============ -->
+<section class="screen" data-screen="access" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a data-go='overview'>web</a><span class='sep'>/</span><b>Access &amp; domains</b>" data-desc="H1, H2, H6: modo di accesso (login GitStack per chi ha read sul repo, senza login, pubblica) e domini. «Public» solo se l'amministratore ha abilitato le app pubbliche (doppio consenso). Domini propri attivi dopo il controllo DNS; certificato dalla CA interna, Let's Encrypt automatico per le pubbliche o caricato.">
+  <div class="mvar"><span class="mvar-note">Variante:</span><button data-var="int">Interna (pubbliche non abilitate)</button><button data-var="pub">Pubblica con dominio proprio (v3-c)</button></div>
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> web</h1><span class="badge badge-ok">Running</span><span class="badge" data-v="int"><svg class="icon"><use href="#i-lock"/></svg>Internal · GitStack login</span><span class="badge badge-accent" data-v="pub"><svg class="icon"><use href="#i-globe"/></svg>Public</span></div>
+    <div class="tabs"><a class="tab" data-go="overview">Overview</a><a class="tab" data-go="logs">Logs</a><a class="tab" data-go="versions">Versions</a><a class="tab active">Settings</a></div>
+  </div></div>
+  <div class="page"><div class="settings-grid">
+    <nav class="subnav"><a><svg class="icon"><use href="#i-settings"/></svg>General</a><a data-go="config"><svg class="icon"><use href="#i-key"/></svg>Variables &amp; secrets</a><a class="active"><svg class="icon"><use href="#i-globe"/></svg>Access &amp; domains</a><a data-go="volumes"><svg class="icon"><use href="#i-disk"/></svg>Volumes &amp; resources</a></nav>
+    <div class="stack" style="gap:24px">
+      <div><div class="sec-h"><h2>Who can open this app</h2><span class="badge">admin only</span></div>
+        <div class="stack" style="gap:8px">
+          <label class="opt" data-v="int" style="border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)"><input type="radio" name="acc" checked><div><b>Internal · GitStack login</b> <span class="badge">default</span><div class="hint">People with read access to <b>acme/handbook</b> sign in with GitStack (or your company SSO). The repository is <b>internal</b>, so every GitStack user can open it. The app receives the user's name, email and teams in signed headers. Agents use a token with read access.</div></div></label>
+          <label class="opt" data-v="pub"><input type="radio" name="acc2"><div><b>Internal · GitStack login</b> <span class="badge">default</span></div></label>
+          <label class="opt"><input type="radio" name="acc"><div><b>Internal · no login</b><div class="hint">Anyone who can reach the GitStack network opens it. Use only for apps with their own login.</div></div></label>
+          <label class="opt off" data-v="int"><input type="radio" disabled><div><b>Public on the internet</b> <span class="badge">disabled by the administrator</span><div class="hint">An installation administrator must first allow public apps in <a data-go="admin">System · Apps</a>.</div></div></label>
+          <label class="opt on" data-v="pub"><input type="radio" name="acc2" checked><div><b>Public on the internet</b><div class="hint">Anyone on the internet can open it; GitStack login does not apply. Allowed on this instance by <b>admin</b>; chosen by <b>mrossi</b> on 12 Mar.</div></div></label>
+        </div></div>
+      <div><div class="sec-h"><h2>Domains</h2><span class="sp"></span><button class="btn" data-v="pub"><svg class="icon"><use href="#i-plus"/></svg>Add domain</button></div>
+        <div class="list">
+          <div class="list-row"><svg class="icon muted"><use href="#i-link"/></svg><span class="mono" style="flex:1">web-handbook-acme.apps.acme.it</span><span class="badge">automatic</span><span class="badge badge-ok" data-v="int"><svg class="icon"><use href="#i-shield"/></svg>GitStack CA</span><span class="badge badge-ok" data-v="pub"><svg class="icon"><use href="#i-shield"/></svg>Let's Encrypt · renews in 61 days</span></div>
+          <div class="list-row" data-v="pub"><svg class="icon muted"><use href="#i-globe"/></svg><span class="mono" style="flex:1">handbook.acme.it</span><span class="badge badge-ok"><svg class="icon"><use href="#i-check"/></svg>DNS points here</span><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>Let's Encrypt</span><button class="btn btn-sm btn-ghost">Remove</button></div>
+          <div class="list-row" data-v="pub"><svg class="icon muted"><use href="#i-globe"/></svg><div style="flex:1"><span class="mono">docs.acme.com</span><div class="small muted">Create <span class="mono">CNAME docs.acme.com → apps.acme.it</span>. Checked every 5 min.</div></div><span class="badge badge-run">Waiting for DNS</span><button class="btn btn-sm">Check now</button></div>
+        </div>
+        <p class="hint" style="margin-top:8px" data-v="int">Custom domains are available for public apps, or with a certificate you upload.</p>
+        <p class="hint" style="margin-top:8px" data-v="pub">Automatic certificates need port 80 of this server reachable from the internet. You can upload your own certificate instead.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============ H8 VOLUMES & RESOURCES ============ -->
+<section class="screen" data-screen="volumes" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>handbook</a><span class='sep'>/</span><a data-go='apps'>Apps</a><span class='sep'>/</span><a>wiki</a><span class='sep'>/</span><b>Volumes &amp; resources</b>" data-desc="H3, H9, H11 (v3-b): volumi di dimensione fissa nella quota dell'owner, inclusi di default nei backup ed escludibili; avviso per i database nel container; un'app con volume resta a una copia. Parte garantita e tetto; root permesso con avviso o regola «restricted».">
+  <div class="repo-h"><div class="inner">
+    <div class="app-h"><svg class="icon icon-lg muted"><use href="#i-apps"/></svg><h1><a class="muted" style="font-weight:400" data-go="apps">acme / handbook /</a> wiki</h1><span class="badge badge-ok">Running</span><span class="badge badge-run"><svg class="icon"><use href="#i-alert"/></svg>not verified</span></div>
+    <div class="tabs"><a class="tab">Overview</a><a class="tab">Logs</a><a class="tab">Versions</a><a class="tab active">Settings</a></div>
+  </div></div>
+  <div class="page"><div class="settings-grid">
+    <nav class="subnav"><a><svg class="icon"><use href="#i-settings"/></svg>General</a><a data-go="config"><svg class="icon"><use href="#i-key"/></svg>Variables &amp; secrets</a><a data-go="access"><svg class="icon"><use href="#i-globe"/></svg>Access &amp; domains</a><a class="active"><svg class="icon"><use href="#i-disk"/></svg>Volumes &amp; resources</a></nav>
+    <div class="stack" style="gap:24px">
+      <div><div class="sec-h"><h2>Volumes</h2><span class="badge">admin only</span><span class="sp"></span><button class="btn"><svg class="icon"><use href="#i-plus"/></svg>Add volume</button></div>
+        <div class="list">
+          <div class="list-row"><svg class="icon muted"><use href="#i-disk"/></svg><div style="flex:1"><span class="mono" style="font-weight:600">data</span> → <span class="mono">/wiki/data</span><div class="meter" style="max-width:320px"><i style="width:34%"></i></div><div class="small muted">3.4 of 10 GB · counts toward the Acme disk quota</div></div><label class="row small"><span class="sw on"></span>In backups</label></div>
+          <div class="list-row"><svg class="icon muted"><use href="#i-disk"/></svg><div style="flex:1"><span class="mono" style="font-weight:600">db</span> → <span class="mono">/var/lib/postgresql/data</span><div class="meter" style="max-width:320px"><i style="width:18%"></i></div><div class="small muted">0.9 of 5 GB</div></div><label class="row small"><span class="sw on"></span>In backups</label></div>
+        </div>
+        <div class="alert alert-warning" style="margin-top:10px"><svg class="icon"><use href="#i-alert"/></svg><div><b>Looks like a database.</b> Backups copy files while the app runs, so a database copy may not be consistent. Schedule a dump into the <span class="mono">data</span> volume. <a>How to</a></div></div>
+        <p class="hint" style="margin-top:8px">Apps with volumes run as a single copy. Managed databases are not part of GitStack v3.</p></div>
+      <div><div class="sec-h"><h2>Resources</h2></div>
+        <dl class="kv">
+          <dt>Guaranteed</dt><dd class="row"><input class="input" value="0.5 vCPU" style="max-width:120px"><input class="input" value="768 MB" style="max-width:120px"><span class="hint">Always reserved for this app</span></dd>
+          <dt>Limit</dt><dd class="row"><input class="input" value="1 vCPU" style="max-width:120px"><input class="input" value="1.5 GB" style="max-width:120px"><span class="hint">Max per app on this instance: 4 vCPU · 8 GB</span></dd>
+          <dt>Copies</dt><dd class="row"><span class="stepper"><button disabled>−</button><span>1</span><button disabled>+</button></span><span class="hint">Fixed at 1 because the app has volumes</span></dd>
+        </dl></div>
+      <div><div class="sec-h"><h2>Security</h2></div>
+        <div class="card card-b stack" style="gap:10px;font-size:13px">
+          <div class="row"><span class="sw"></span><b>Restricted mode</b><span class="muted">— refuse images that run as root</span></div>
+          <div class="alert alert-info"><svg class="icon"><use href="#i-shield"/></svg><div>This image runs as <b>root</b> inside its container. It still can't use privileges, the server's disks or network, GitStack's internal services, or apps of other repositories. Turn on restricted mode, or ask an administrator to require it for the whole instance.</div></div>
+        </div></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============ H9 ADMIN ============ -->
+<section class="screen" data-screen="admin" data-nav="admin" data-crumb="<a>Administration</a><span class='sep'>/</span><b>Apps &amp; resources</b>" data-desc="H11, H1, H2, H9, H10: console dell'amministratore. Spazio del server riservato alle app (dopo i servizi di GitStack, prima della CI), quote per owner con avviso all'80%, per app garantito/uso/tetto; impostazioni d'istanza: dominio delle app, app pubbliche sì/no, solo immagini firmate e chiavi fidate, regola restricted.">
+  <div class="page">
+    <div class="row" style="margin-bottom:18px"><h1 style="font-size:22px;font-weight:600">Apps &amp; resources</h1><span class="sp"></span><span class="small muted">Server: 8 vCPU · 16 GB · recommended profile</span></div>
+    <div class="card" style="margin-bottom:16px"><div class="card-h"><svg class="icon"><use href="#i-cpu"/></svg>Server capacity · priority GitStack services › apps › CI jobs</div><div class="card-b stack" style="gap:12px">
+      <div class="row small"><span style="width:150px"><span class="dot" style="background:#334155"></span> GitStack services</span><div class="meter" style="flex:1;margin:0"><i style="width:100%;background:#334155"></i></div><span style="width:150px;text-align:right">2 vCPU · 5 GB reserved</span></div>
+      <div class="row small"><span style="width:150px"><span class="dot" style="background:var(--accent)"></span> Apps</span><div class="meter warn" style="flex:1;margin:0"><i style="width:83%"></i></div><span style="width:150px;text-align:right">3.3 / 4 vCPU guaranteed</span></div>
+      <div class="row small"><span style="width:150px"><span class="dot" style="background:var(--text-subtle)"></span> CI jobs</span><div class="meter" style="flex:1;margin:0"><i style="width:50%;background:var(--text-subtle)"></i></div><span style="width:150px;text-align:right">1 / 2 vCPU · 3 slots</span></div>
+      <div class="row small muted"><svg class="icon"><use href="#i-alert"/></svg> Apps share above 80%: new deploys may be refused. <a>Edit apps share</a></div>
+    </div></div>
+    <div class="settings-grid" style="grid-template-columns:1fr 1fr">
+      <div class="card"><div class="card-h"><svg class="icon"><use href="#i-users"/></svg>Quotas by owner</div>
+        <div class="list" style="border:0;border-radius:0">
+          <div class="list-row"><span class="avatar avatar-sq av-org">AC</span><div style="flex:1"><b>acme</b><div class="meter warn"><i style="width:84%"></i></div><div class="small muted">2.5 / 3 vCPU · 4 / 6 GB · disk 18 / 50 GB</div></div><a class="small">Edit</a></div>
+          <div class="list-row"><span class="avatar avatar-sq" style="background:#0f766e">LB</span><div style="flex:1"><b>lab</b><div class="meter"><i style="width:40%"></i></div><div class="small muted">0.8 / 2 vCPU · 1 / 4 GB · disk 2 / 20 GB</div></div><a class="small">Edit</a></div>
+        </div></div>
+      <div class="card"><div class="card-h"><svg class="icon"><use href="#i-settings"/></svg>Instance settings</div><div class="card-b">
+        <dl class="kv" style="grid-template-columns:170px 1fr">
+          <dt>Apps domain</dt><dd><span class="mono">apps.acme.it</span> <span class="hint">· separate from git.acme.it</span></dd>
+          <dt>Public apps</dt><dd class="row"><span class="sw"></span><span class="hint">Off · repository admins can't publish apps</span></dd>
+          <dt>Only signed images</dt><dd class="row"><span class="sw"></span><span class="hint">Off · manual deploys of unsigned images show "not verified"</span></dd>
+          <dt>Trusted keys</dt><dd>Instance CI key <a class="small">+ Add key</a></dd>
+          <dt>Restricted mode</dt><dd class="row"><span class="sw"></span><span class="hint">Off · images may run as root (baseline)</span></dd>
+          <dt>Max per app</dt><dd>4 vCPU · 8 GB · logs 7 days / 1 GB</dd>
+        </dl></div></div>
+      <div class="card" style="grid-column:1/-1"><div class="card-h">Apps</div>
+        <div class="list" style="border:0;border-radius:0">
+          <div class="list-row list-head"><span style="flex:1">App</span><span style="width:170px">Guaranteed</span><span style="width:170px">Using</span><span style="width:170px">Limit</span><span style="width:90px">Copies</span></div>
+          <div class="list-row"><span style="flex:1"><b class="mono">acme/handbook/web</b></span><span style="width:170px">1 vCPU · 1 GB</span><span style="width:170px">1.24 vCPU · 820 MB <span class="badge badge-run">above</span></span><span style="width:170px">2 vCPU · 2 GB</span><span style="width:90px">2</span></div>
+          <div class="list-row"><span style="flex:1"><b class="mono">acme/handbook/search-worker</b></span><span style="width:170px">1 vCPU · 2 GB</span><span style="width:170px">0.4 vCPU · 1.6 GB</span><span style="width:170px">2 vCPU · 3 GB</span><span style="width:90px">1</span></div>
+          <div class="list-row"><span style="flex:1"><b class="mono">acme/handbook/wiki</b> <span class="badge badge-run">not verified</span> <span class="badge">root</span></span><span style="width:170px">0.5 vCPU · 768 MB</span><span style="width:170px">0.2 vCPU · 600 MB</span><span style="width:170px">1 vCPU · 1.5 GB</span><span style="width:90px">1</span></div>
+          <div class="list-row"><span style="flex:1"><b class="mono">lab/dashboards/grafana</b></span><span style="width:170px">0.8 vCPU · 1 GB</span><span style="width:170px">0.3 vCPU · 700 MB</span><span style="width:170px">1 vCPU · 2 GB</span><span style="width:90px">1</span></div>
+        </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H10 CLI & MCP ============ -->
+<section class="screen" data-screen="cli" data-nav="cli" data-crumb="<a>CLI &amp; skills</a><span class='sep'>/</span><b>gs app</b>" data-desc="H13, H7, H12: gli agenti usano la stessa API. Giro della skill: deploy, attesa del controllo di salute, log, rollback; output JSON; strumenti MCP con annotazione distruttiva per le operazioni da admin.">
+  <div class="page page-narrow stack" style="gap:20px">
+    <div><h3 style="margin-bottom:8px">Agent loop: deploy, wait for health, read logs, roll back</h3>
+<div class="cmdblock"><span class="p">$ </span>gs app deploy web --repo acme/handbook --image sha-91be20d --wait
+deploying v43 to web (2 copies) · image signed by acme/handbook CI
+<span class="e">✗ health check failed for 2m · rolled back to v42</span>
+
+<span class="p">$ </span>gs app logs web --since 5m --grep panic
+18:02:24 web-3  <span class="e">panic: search index "handbook-v2" not found</span>
+
+<span class="p">$ </span>gs app vars set web SEARCH_INDEX=handbook-v2 &amp;&amp; gs workflow run reindex
+<span class="p">$ </span>gs app deploy web --image sha-91be20d --wait
+<span class="o">✓ v45 healthy · 2/2 copies</span></div></div>
+    <div><h3 style="margin-bottom:8px">Status as JSON</h3>
+<div class="cmdblock"><span class="p">$ </span>gs app list --repo acme/handbook --json name,status,version,verified
+[{"name":"web","status":"running","version":45,"verified":true},
+ {"name":"search-worker","status":"running","version":19,"verified":true},
+ {"name":"wiki","status":"running","version":7,"verified":false}]
+
+<span class="p">$ </span>gs app rollback web --to 42
+<span class="p">$ </span>gs app scale web --copies 3
+<span class="w">! acme quota: 2.5 of 3 vCPU guaranteed in use · scale needs 0.5 more</span></div></div>
+    <div><h3 style="margin-bottom:8px">MCP tools</h3>
+      <div class="list">
+        <div class="list-row"><span class="mono" style="width:180px">app_list</span><span class="small muted" style="flex:1">read</span></div>
+        <div class="list-row"><span class="mono" style="width:180px">app_logs</span><span class="small muted" style="flex:1">write (logs need write)</span></div>
+        <div class="list-row"><span class="mono" style="width:180px">app_deploy</span><span class="small muted" style="flex:1">write</span></div>
+        <div class="list-row"><span class="mono" style="width:180px">app_rollback · app_restart · app_scale</span><span class="small muted" style="flex:1">write</span></div>
+        <div class="list-row"><span class="mono" style="width:180px">app_set_access · app_delete</span><span class="small muted" style="flex:1">admin</span><span class="badge badge-err">destructive</span></div>
+      </div>
+      <p class="hint" style="margin-top:8px">An agent deploys on its own with write access, under its own name. To require a human, turn on "Require a pull request" for <span class="mono">main</span>: automatic deploys then start only after an approved merge.</p></div>
+  </div>
+</section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var screens=[].slice.call(document.querySelectorAll('.screen'));
+  var ids=screens.map(function(s){return s.dataset.screen});
+  var pick=document.getElementById('pick'),crumb=document.getElementById('crumb'),desc=document.getElementById('desc'),content=document.getElementById('content');
+  var aliases={'access-public':['access','pub']};
+  function show(id){
+    var variant=null;
+    if(aliases[id]){variant=aliases[id][1];id=aliases[id][0]}
+    if(ids.indexOf(id)<0)id=ids[0];
+    screens.forEach(function(s){s.classList.toggle('on',s.dataset.screen===id)});
+    var s=screens[ids.indexOf(id)];
+    crumb.innerHTML=s.dataset.crumb||'';desc.textContent=s.dataset.desc||'';pick.value=variant?'access-public':id;
+    document.querySelectorAll('.sb-item[data-nav]').forEach(function(a){a.classList.toggle('active',a.dataset.nav===s.dataset.nav)});
+    if(variant&&s._setv)s._setv(variant);
+    content.scrollTop=0;
+    var h=variant?'access-public':id;
+    if(location.hash.slice(1)!==h)history.replaceState(null,'','#'+h);
+  }
+  document.addEventListener('click',function(e){var t=e.target.closest('[data-go]');if(t){e.preventDefault();show(t.dataset.go)}});
+  pick.addEventListener('change',function(){show(pick.value)});
+  var order=['apps','new','overview','logs','versions','config','access','access-public','volumes','admin','cli'];
+  function cur(){return pick.value}
+  document.getElementById('prev').onclick=function(){var i=order.indexOf(cur());show(order[(i-1+order.length)%order.length])};
+  document.getElementById('next').onclick=function(){var i=order.indexOf(cur());show(order[(i+1)%order.length])};
+  window.addEventListener('hashchange',function(){show(location.hash.slice(1))});
+  screens.forEach(function(sec){
+    var bar=sec.querySelector('.mvar');if(!bar)return;
+    function setv(v){
+      sec.querySelectorAll('[data-v]').forEach(function(el){el.style.display=el.dataset.v.split(' ').indexOf(v)<0?'none':''});
+      sec.querySelectorAll('[data-var]').forEach(function(b){b.classList.toggle(b.closest('.mvar')?'on':'active',b.dataset.var===v)})}
+    sec._setv=setv;
+    sec.addEventListener('click',function(e){var b=e.target.closest('[data-var]');if(b)setv(b.dataset.var)});
+    setv(bar.querySelector('[data-var]').dataset.var);
+  });
+  var root=document.documentElement,tb=document.getElementById('themeBtn');
+  function theme(){return root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
+  try{var st=localStorage.getItem('gs-theme');if(st)root.setAttribute('data-theme',st)}catch(e){}
+  function paint(){tb.querySelector('span').textContent=theme()==='dark'?'scuro':'chiaro'}
+  tb.onclick=function(){var n=theme()==='dark'?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem('gs-theme',n)}catch(e){}paint()};
+  paint();show(location.hash.slice(1)||ids[0]);
+})();
+</script>
+</body>
+</html>

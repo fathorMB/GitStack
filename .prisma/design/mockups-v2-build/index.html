@@ -392,7 +392,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
         <div><div class="row small"><b>Logs</b><span class="muted">kept 90 days · in backups</span><span class="sp"></span>6.2 GB</div><div class="meter"><i style="width:12%"></i></div></div>
         <div><div class="row small"><b>Artifacts</b><span class="muted">kept 30 days · not in backups</span><span class="sp"></span>18.4 GB</div><div class="meter"><i style="width:34%"></i></div></div>
         <div><div class="row small"><b>Caches</b><span class="muted">10 GB per repo · not in backups</span><span class="sp"></span>27.0 GB</div><div class="meter"><i style="width:50%"></i></div></div>
-        <div><div class="row small"><b>Registry</b><span class="muted">not in backups by default</span><span class="sp"></span>96.5 GB</div><div class="meter warn"><i style="width:81%"></i></div></div>
+        <div><div class="row small"><b>Registry</b><span class="muted">not in backups by default · images used by apps always included (v3)</span><span class="sp"></span>96.5 GB</div><div class="meter warn"><i style="width:81%"></i></div></div>
         <div class="row small muted"><svg class="icon"><use href="#i-alert"/></svg> Disk above 80%. Storage target: <b>local disk</b> · <a>Move to S3</a></div>
       </div></div>
     </div>
@@ -400,7 +400,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 </section>
 
 <!-- ============ B5 PACKAGES ============ -->
-<section class="screen" data-screen="packages" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Packages</b>" data-desc="RG1, RG2: immagini OCI del repo, con permessi e visibilità del repo. Comando di pull, tag (protetti in evidenza), firme cosign e SBOM conservate, chi ha pubblicato (anche il token del job).">
+<section class="screen" data-screen="packages" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Packages</b>" data-desc="RG1, RG2: immagini OCI del repo, con permessi e visibilità del repo. Comando di pull, tag (protetti in evidenza), firme cosign apposte dalla CI e SBOM conservate, immagini caricate a mano «non verificate», chi ha pubblicato (anche il token del job), immagini in uso dalle app sempre nei backup.">
   <div class="repo-h"><div class="inner">
     <div class="repo-title"><svg class="icon icon-lg muted"><use href="#i-repo"/></svg><h1><a>acme</a> / GitStack</h1><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>Private</span></div>
     <div class="tabs"><a class="tab"><svg class="icon"><use href="#i-file"/></svg>Code</a><a class="tab" data-go="actions"><svg class="icon"><use href="#i-actions"/></svg>Actions</a><a class="tab active"><svg class="icon"><use href="#i-pkg"/></svg>Packages <span class="counter">5</span></a><a class="tab" data-go="releases"><svg class="icon"><use href="#i-tag"/></svg>Releases</a><a class="tab" data-go="secrets"><svg class="icon"><use href="#i-settings"/></svg>Settings</a></div>
@@ -416,8 +416,9 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
       </div>
       <div class="card"><div class="card-h"><span class="mono">acme/gitstack/core</span><span class="sp"></span><button class="btn btn-sm" data-go="pkg-settings">Cleanup rules</button></div>
         <div class="list" style="border:0;border-radius:0">
-          <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">v1.0.0-rc.3</span><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>protected</span><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>signed</span><span class="badge">SBOM</span><span class="sp"></span><span class="small muted">sha256:4be0…d7 · 412 MB</span></div>
-          <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">v1.0.0-rc.2</span><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>protected</span><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>signed</span><span class="badge">SBOM</span><span class="sp"></span><span class="small muted">sha256:9a1c…02 · 409 MB</span></div>
+          <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">v1.0.0-rc.3</span><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>protected</span><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>signed by CI</span><span class="badge">SBOM</span><span class="badge">used by app · in backups</span><span class="sp"></span><span class="small muted">sha256:4be0…d7 · 412 MB</span></div>
+          <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">v1.0.0-rc.2</span><span class="badge"><svg class="icon"><use href="#i-lock"/></svg>protected</span><span class="badge badge-ok"><svg class="icon"><use href="#i-shield"/></svg>signed by CI</span><span class="badge">SBOM</span><span class="sp"></span><span class="small muted">sha256:9a1c…02 · 409 MB</span></div>
+          <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">debug-mrossi</span><span class="badge badge-run"><svg class="icon"><use href="#i-alert"/></svg>not verified</span><span class="sp"></span><span class="small muted">pushed by hand with docker push · no signature</span></div>
           <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">sha-a91c3e2</span><span class="sp"></span><span class="small muted">removed after 14 days by rule</span></div>
           <div class="list-row"><svg class="icon"><use href="#i-tag"/></svg><span class="mono" style="width:160px">main</span><span class="sp"></span><span class="small muted">moving tag · sha256:77de…a1</span></div>
         </div></div>
@@ -427,13 +428,14 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
 <div class="cmdblock"><span class="p">$ </span>docker login homehub.local
 <span class="p">$ </span>docker pull homehub.local/acme/gitstack/core:v1.0.0-rc.3</div>
         <p class="hint">Log in with a personal or agent token with the <span class="mono">registry</span> scope. Inside workflows the job token works.</p></div>
-      <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>Images are <b>not in backups</b> by default: they can be rebuilt by CI from tags. An admin can include them in Settings · Packages.</div></div>
+      <div class="alert alert-info"><svg class="icon"><use href="#i-shield"/></svg><div>The CI <b>signs every image it publishes</b> with this instance's key. Images pushed by hand have no signature and show <i>not verified</i>.</div></div>
+      <div class="alert alert-info"><svg class="icon"><use href="#i-info"/></svg><div>Images are <b>not in backups</b> by default: they can be rebuilt by CI from tags. Images used by apps (active and previous version) are <b>always</b> included. An admin can include all images in Settings · Packages.</div></div>
     </div>
   </div></div>
 </section>
 
 <!-- ============ B6 PACKAGE SETTINGS ============ -->
-<section class="screen" data-screen="pkg-settings" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="RG2: regole di pulizia del repo (solo admin), tag protetti, inclusione nei backup. Le immagini senza tag spariscono dopo 7 giorni; quelle con tag mai da sole.">
+<section class="screen" data-screen="pkg-settings" data-nav="repo" data-crumb="<a>acme</a><span class='sep'>/</span><a>GitStack</a><span class='sep'>/</span><b>Settings</b>" data-desc="RG2: regole di pulizia del repo (solo admin), tag protetti, inclusione nei backup. Le immagini senza tag spariscono dopo 7 giorni; quelle con tag mai da sole. Le immagini in uso dalle app v3 sono sempre nei backup (H4).">
   <div class="page page-narrow">
     <div class="sec-h"><h2>Packages</h2></div>
     <div class="card card-b stack" style="gap:16px;font-size:13px">
@@ -447,7 +449,7 @@ h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}p{margin:0}
       <div class="stack" style="gap:8px"><b>Protected tags</b>
         <div class="row"><input class="input" style="max-width:220px;font-family:var(--font-mono)" value="v*"><span class="hint">Can't be overwritten or deleted except by repository admins.</span></div></div>
       <div style="height:1px;background:var(--border)"></div>
-      <label class="row"><input type="checkbox"> <span><b>Include this repository's images in backups</b><br><span class="muted">Off by default: images can be rebuilt by CI from tags.</span></span></label>
+      <label class="row"><input type="checkbox"> <span><b>Include all of this repository's images in backups</b><br><span class="muted">Off by default: images can be rebuilt by CI from tags. Images used by apps (active and previous version) are always included, so apps restart right after a restore.</span></span></label>
       <div class="row"><span class="sp"></span><button class="btn btn-primary">Save</button></div>
     </div>
   </div>

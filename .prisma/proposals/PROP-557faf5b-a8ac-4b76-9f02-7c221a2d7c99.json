@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "id": "PROP-557faf5b-a8ac-4b76-9f02-7c221a2d7c99",
+  "state": "applied",
+  "created": "2026-10-18T16:57:10.280999900+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Dettaglia l'obiettivo v3 — Hosting (scope dalle regole H1–H13) e lo divide in tre obiettivi «later», in ordine: v3-a App interne, v3-b Dati, v3-c App pubbliche. Nessun cambio di priorità: M-09 resta la priorità attuale.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-ece89711-7a10-4f38-9aad-9106ddeeeeb1",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e"
+          ],
+          "reopen_reason": "Scope della v3 definito dalle regole H1–H13 e divisione in tre passi (operatore, 2026-10-18).",
+          "schema_version": 1,
+          "title": "v3 — Hosting di app e container",
+          "updated": "2026-10-18T16:59:03.707141400+00:00"
+        },
+        "body": "\n# v3 — Hosting di app e container\n\n## Outcome\n\nDeploy di app e container su k3s da web UI, API, `gs` e MCP: app interne o pubbliche, domini e certificati automatici, variabili e segreti, volumi persistenti, log, metriche, rollback e scala a mano, tutto con i permessi del repo e utilizzabile da persone e agenti.\n\n## Rationale\n\nCompleta la visione \"piccolo Azure\" sfruttando k3s già incluso (D2) e chiude ciò che la v2 rimandava: verifica delle firme al deploy e ripartenza delle app dopo un ripristino.\n\n## Scope\n\nRegole H1–H13 in [[knowledge/topics/hosting-app]] (analisi del 2026-10-18). Realizzazione dopo la v2, in tre passi in ordine, ciascuno utilizzabile da solo:\n\n1. **v3-a App interne** (H2 indirizzo automatico, H4–H13);\n2. **v3-b Dati** (H3);\n3. **v3-c App pubbliche** (H1, H2 domini propri e Let's Encrypt).\n\nFuori dalla v3: database gestiti e multi-nodo («Oltre»), anteprime per ogni PR, definizione dell'app in un file del repo, scala automatica.\n\n## Source references\n\n- `.lmbrain-lite/knowledge/vision.md`\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H1–H13)\n",
+        "expected_digest": "6c43102e863b7b3c7cba0ea0c7fd46c171b44d698cb52c6789e048889dfa715b",
+        "slug": null,
+        "reason": "Scope della v3 definito dalle regole H1–H13 e divisione in tre passi (operatore, 2026-10-18)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-a9f00bcc-bbe6-4a91-bc24-963bae228761",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-258621ff-aafe-4a28-8a49-b7e1c152530e",
+            "DOC-d1718775-770d-4065-8b27-3dc7a400dad6"
+          ],
+          "reopen_reason": "Primo passo della v3 (operatore, 2026-10-18).",
+          "schema_version": 1,
+          "title": "v3-a — App interne",
+          "updated": "2026-10-18T16:59:03.708309500+00:00"
+        },
+        "body": "\n# v3-a — App interne\n\n## Outcome\n\nChi ha `write` su un repo mette in esecuzione un'app senza disco, raggiungibile in rete aziendale con il login GitStack, la aggiorna a mano o a ogni push sul branch scelto, ne legge log e metriche e torna indietro con un clic; un agente fa lo stesso con `gs app` o MCP.\n\n## Rationale\n\nH5–H13: è il nucleo della v3 e il passo più sicuro da rilasciare per primo, senza esposizione su internet mentre si collaudano isolamento e risorse.\n\n## Scope\n\nScheda **Apps** nel repo (H5); indirizzo automatico sotto il dominio delle app con CA interna (parte di H2); login GitStack davanti all'app (H6); deploy a mano e da branch (H7); configurazione con versioni e segreti (H8); isolamento (H9); firme al deploy e firma automatica dalla CI (H10); parte garantita, tetto e quote (H11); log, metriche, salute, rollback e scala a mano (H12); agenti, MCP e skills (H13); immagini in uso nei backup (H4). Solo app senza volumi.\n\nPrimo dei tre passi della v3; dipende da v2-a (CI) e v2-b (registry).\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H2, H4–H13)\n",
+        "expected_digest": null,
+        "slug": "v3-a-app-interne",
+        "reason": "Primo passo della v3 (operatore, 2026-10-18)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-990d3f4a-a762-48d5-a0a1-4147fca8b7d1",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+          ],
+          "reopen_reason": "Secondo passo della v3 (operatore, 2026-10-18).",
+          "schema_version": 1,
+          "title": "v3-b — Dati persistenti delle app",
+          "updated": "2026-10-18T16:59:03.708891400+00:00"
+        },
+        "body": "\n# v3-b — Dati persistenti delle app\n\n## Outcome\n\nUn'app può conservare dati su volumi persistenti che entrano nei backup di GitStack e tornano con il ripristino, così wiki, CMS e piccoli strumenti interni girano su GitStack.\n\n## Rationale\n\nH3: alla maggior parte delle aziende on-prem i dati servono prima dell'esposizione su internet; i database gestiti restano in «Oltre».\n\n## Scope\n\nVolumi di dimensione fissa nella quota dell'owner; app con volume a una sola copia; volumi inclusi di default nei backup ed escludibili per app; avviso e guida al dump per i database dentro un container (H3, D19).\n\nSecondo dei tre passi della v3, dopo v3-a.\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H3)\n",
+        "expected_digest": null,
+        "slug": "v3-b-dati",
+        "reason": "Secondo passo della v3 (operatore, 2026-10-18)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "later",
+          "id": "OBJ-a9706e40-6490-451b-a667-475fd17886f5",
+          "knowledge": [
+            "DOC-3e900450-a39c-42b0-a7e1-d6108b0f4363",
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e"
+          ],
+          "reopen_reason": "Terzo passo della v3 (operatore, 2026-10-18).",
+          "schema_version": 1,
+          "title": "v3-c — App pubbliche e domini propri",
+          "updated": "2026-10-18T16:59:03.709470+00:00"
+        },
+        "body": "\n# v3-c — App pubbliche e domini propri\n\n## Outcome\n\nUn'app può essere pubblicata su internet con il proprio dominio e un certificato automatico, solo con il doppio consenso dell'amministratore dell'installazione e di chi ha `admin` sull'app.\n\n## Rationale\n\nH1 e H2: completa la promessa «cloud hosting» per siti e API rivolti all'esterno, mantenendo «interno di default» come per i repo.\n\n## Scope\n\nInterruttore di istanza per le app pubbliche e scelta per app (H1); domini propri con controllo del DNS; Let's Encrypt automatico via Traefik (porta 80 raggiungibile) o certificato del cliente (H2).\n\nTerzo dei tre passi della v3, dopo v3-b.\n\n## Source references\n\n- Tema di analisi \"v3 — Hosting di app e container: regole di prodotto\" (H1, H2)\n",
+        "expected_digest": null,
+        "slug": "v3-c-app-pubbliche",
+        "reason": "Terzo passo della v3 (operatore, 2026-10-18)."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "L'operatore ha scritto «approvo» il 2026-10-18 dopo aver visto la proposta di roadmap v3 (scope e sotto-tappe v3-a, v3-b, v3-c)."
+  }
+}

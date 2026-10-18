@@ -4,7 +4,8 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, Checkbox, ConfirmDialog, ErrorAlert, FormField, TextInput, useToast } from '../../components';
 import { ApiError, describeError, fieldErrors } from '../../lib/http';
-import { deleteRepo, fetchRepo, updateRepo } from '../../lib/reposApi';
+import { deleteRepo, fetchDeletedRepos, fetchRepo, updateRepo } from '../../lib/reposApi';
+import { purgeDate, trashPath } from './nameInTrash';
 import type { RepoVisibility, Repository, UpdateRepositoryInput } from '../../lib/reposApi';
 import { RepoMirrorsSection } from './RepoMirrorsSection';
 import { PullMirrorSection } from './PullMirrorSection';
@@ -94,8 +95,17 @@ function SettingsSections({ repo, onChange }: { repo: Repository; onChange: (r: 
   async function remove() {
     try {
       await deleteRepo(repo.owner.name, repo.name);
-      toast('Repository deleted. You can restore it for 7 days.', 'success');
-      navigate('/repos');
+      // La data di cancellazione definitiva la dice il server (il DELETE e' 204
+      // senza corpo): la si rilegge dal cestino, mai dall'orologio del browser.
+      let when = '';
+      try {
+        const trashed = (await fetchDeletedRepos(repo.owner.name)).find((r) => r.id === repo.id);
+        if (trashed) when = ` until ${purgeDate(trashed.purgeAt)}, then it is removed permanently`;
+      } catch {
+        // il repo e' eliminato comunque: il toast resta senza data.
+      }
+      toast(`${repo.fullName} was deleted. Find it in Deleted repositories${when || ' for 7 days'}; its name stays reserved until then.`, 'success');
+      navigate(trashPath(repo.owner.name, repo.owner.type));
     } catch (err) {
       setDangerError(describeError(err));
     }

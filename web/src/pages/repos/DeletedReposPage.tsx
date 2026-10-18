@@ -1,23 +1,21 @@
 import { Info, Folder } from 'lucide-react';
 import { useState } from 'react';
-import { useOutletContext, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Button, EmptyState, ErrorAlert, useToast } from '../../components';
 import { describeError } from '../../lib/http';
 import { fetchDeletedRepos, restoreRepo } from '../../lib/reposApi';
 import type { DeletedRepository } from '../../lib/reposApi';
 import { daysLeft } from '../../lib/format';
 import { useLoad } from '../../lib/useLoad';
-import type { SettingsContext } from '../settings/SettingsLayout';
 
-// Repo eliminati dell'owner (mockup 19): per l'utente (/settings/deleted-repos)
-// e per l'organizzazione (/orgs/:org/deleted-repos). Il backend
-// elenca solo quelli su cui l'utente ha admin (R12).
+// Repo eliminati (mockup 19). /orgs/:org/deleted-repos elenca quelli
+// dell'organizzazione; /settings/deleted-repos li elenca TUTTI, senza filtro
+// owner: i personali e quelli delle organizzazioni su cui l'utente e' admin
+// (con l'owner in vista). Il backend elenca solo quelli su cui l'utente ha
+// admin (R12).
 export function DeletedReposPage() {
   const { org } = useParams<{ org?: string }>();
-  // Nelle impostazioni personali l'owner e' l'utente della sessione.
-  const ctx = useOutletContext<SettingsContext | undefined>();
-  const owner = org ?? ctx?.user.username;
-  return <DeletedReposView key={owner ?? ''} owner={owner} />;
+  return <DeletedReposView key={org ?? ''} owner={org} />;
 }
 
 function DeletedReposView({ owner }: { owner?: string }) {
@@ -64,10 +62,16 @@ function DeletedReposView({ owner }: { owner?: string }) {
                 <div style={{ flex: 1 }}>
                   <div className="mono">
                     {r.owner.name}/{r.name}
+                    {r.owner.type === 'organization' ? (
+                      <span className="small muted" style={{ marginLeft: 8, fontFamily: 'inherit' }}>
+                        organization
+                      </span>
+                    ) : null}
                   </div>
                   <div className="small muted">
                     Deleted {new Date(r.deletedAt).toLocaleDateString()} · removed permanently in{' '}
-                    <b style={{ color: days <= 1 ? 'var(--danger)' : 'var(--text)' }}>{days === 1 ? '1 day' : `${days} days`}</b>
+                    <b style={{ color: days <= 1 ? 'var(--danger)' : 'var(--text)' }}>{days === 1 ? '1 day' : `${days} days`}</b>{' '}
+                    (on {new Date(r.purgeAt).toLocaleDateString()})
                   </div>
                 </div>
                 <Button disabled={busyId === r.id} aria-label={`Restore ${r.owner.name}/${r.name}`} onClick={() => void restore(r)}>
