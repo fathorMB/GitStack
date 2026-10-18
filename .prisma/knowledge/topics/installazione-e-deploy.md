@@ -1,26 +1,26 @@
 ---
-{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e"],"reopen_reason":"Nuova regola N10: aggiornamento di k3s dentro gitstack upgrade (patch automatiche, minori con --k3s), scelta dell'operatore del 2026-10-12.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-11T23:04:41.624325700+00:00"}
+{"area":"requirements","id":"DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e","related":["DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d","DOC-6878277b-230e-448b-a761-215e9d233c54","DOC-6db23bbe-fbf2-4913-a207-711865af66f6","DOC-84811cef-6f8e-4028-97d6-d47381172907","TOP-9b160889-2953-4eaf-b316-1fb22dc8f061","TOP-e3e42f34-b1db-4b54-8b6d-3a4f1a2845a5","DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5","DOC-258621ff-aafe-4a28-8a49-b7e1c152530e","DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd"],"reopen_reason":"N2 rivista il 2026-10-18 dall'operatore (Pop!_OS con avviso, non supportato nella v1.0); stato dell'installer riallineato al commit 4a946f2.","schema_version":1,"sources":[{"origin_path":".lmbrain-lite/milestones/M-08.md","source_id":"SRC-78fe8c86-bc59-436a-adbd-4a78dcebaab7"},{"origin_path":".lmbrain-lite/knowledge/decisions.md","source_id":"SRC-bfac41b1-d1b2-48e7-9691-90df6c7dcdc5"}],"tags":["installer","helm","k3s","upgrade","backup"],"title":"Installazione, deploy e operazioni","updated":"2026-10-18T00:08:00.699676900+00:00"}
 ---
+
 
 
 # Installazione, deploy e operazioni
 
 ## Context
 
-Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `deploy/README.md`, `deploy/gitstack/README.md`, `docs/operations.md`, `docs/tls.md`.
+Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `deploy/README.md`, `deploy/gitstack/README.md`, `docs/operations.md`, `docs/tls.md`, `docs/rules-coverage.md`.
 
 ## Confirmed decisions
 
 **Chart Helm `deploy/gitstack`** (un solo `helm install`): gateway, identity, git, core, web, Postgres (StatefulSet) e NATS JetStream, Ingress Traefik. Segreti generati una sola volta e conservati agli upgrade. Opzioni: Postgres esterno del cliente, registry/mirror configurabile per componente, `web.enabled`, OIDC.
 
-**Installer (`deploy/install.sh`), stato al 2026-10-12** — un comando installa k3s e GitStack su una macchina Linux pulita (anche via `curl | sudo bash`):
-- Supporto ancora solo **Ubuntu Server 24.04 LTS x86_64**; altri sistemi solo con `--force`.
-- Preflight su hardware (N1), porte 80/443/2222, nome host (N6).
-- HTTPS di default con CA interna; `--tls letsencrypt`, `--tls-cert`/`--tls-key`, `--insecure-http` con avviso nella UI (N5).
+**Installer (`deploy/install.sh`), stato al 2026-10-18 (commit `4a946f2`)** — un comando installa k3s e GitStack su una macchina Linux pulita (anche via `curl | sudo bash`):
+- Il preflight riconosce Ubuntu 22.04/24.04 e Pop!_OS 22.04/24.04 e rifiuta gli altri sistemi salvo `--force`; installazione, backup, aggiornamento e ripristino girano in CI su Ubuntu 22.04 e 24.04.
+- Preflight su hardware (N1), porte 80/443/2222, nome host (N6); HTTPS (N5); opzioni S3 (N7), Postgres esterno (N8), proxy, mirror e CA aziendale (N9); verifica delle firme (V5).
 - Versioni pinnate (k3s con Traefik v3, Helm con checksum); immagini mai `latest`; idempotente.
 - Installa il comando di amministrazione `gitstack` (checksum SHA-256 verificato), scrive `/etc/gitstack/config.yaml` e attiva il timer di backup giornaliero.
 
-**Comando `gitstack` (D18, D19, realizzati):** `status`, `version`, `config set host`; `backup` coerente (breve finestra di sola lettura; database, repo, allegati, Secret e configurazione; cifratura AES-256-GCM facoltativa; conservazione degli ultimi N); `restore` sulla stessa versione; `upgrade` con prova a secco, backup preventivo, migrazioni, controllo di salute e rollback automatico (anche del database). Guida in `docs/operations.md`.
+**Comando `gitstack` (D18, D19, realizzati):** `status`, `version`, `config set host`; `backup` coerente (breve finestra di sola lettura; database, repo, allegati, Secret e configurazione; cifratura AES-256-GCM facoltativa; conservazione degli ultimi N); `restore` sulla stessa versione; `upgrade` con prova a secco, backup preventivo, migrazioni, controllo di salute e rollback automatico (anche del database), aggiornamento di k3s (N10). Guida in `docs/operations.md`.
 
 **Porta SSH di Git (R7, 2026-10-05):** porta **2222** di default, configurabile; l'installer non modifica mai l'SSH dell'host. Vedi [[knowledge/topics/repository-git]].
 
@@ -28,9 +28,9 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 
 **Download di `gs` e skills (G6, 2026-10-05):** ogni istanza serve su `https://<host>/downloads` i binari di `gs` e le skills della propria versione. Vedi [[knowledge/topics/cli-gs-skills]].
 
-**Requisiti dell'installer definitivo (N1–N6, confermati il 2026-10-05):**
+**Requisiti dell'installer definitivo (N1–N6, confermati il 2026-10-05; N2 rivista il 2026-10-18):**
 - **N1 Hardware:** profilo *minimo* 4 vCPU, 8 GB RAM, 60 GB di disco con 20 GB liberi (sotto, il preflight blocca); profilo *consigliato* 8 vCPU, 16 GB RAM, 200 GB SSD fino a ~100 utenti (sotto, avviso). Capacità **indicative, non misurate** (V3).
-- **N2 Sistemi:** Ubuntu Server 22.04 e 24.04 LTS, Pop!_OS 22.04 e 24.04, solo amd64, ciascuno con test in CI di installazione, aggiornamento e ripristino; altri sistemi solo con `--force`. Debian, RHEL e arm64 dopo la v1.
+- **N2 Sistemi (rivista il 2026-10-18):** nella v1.0 sono **supportati ufficialmente solo Ubuntu Server 22.04 e 24.04 LTS**, solo amd64, ciascuno con test in CI di installazione, aggiornamento e ripristino. **Pop!_OS 22.04 e 24.04** si installa **senza `--force` ma con un avviso** chiaro ("Pop!_OS non è supportato ufficialmente nella v1.0"), senza garanzia e senza test in CI; torna candidato al supporto ufficiale dopo la v1.0. Altri sistemi solo con `--force`. Debian, RHEL e arm64 dopo la v1.
 - **N3 Nodi:** un solo nodo; protezione dai guasti con backup e ripristino (obiettivo di ripristino su macchina nuova da fissare, indicativamente meno di un'ora); alta disponibilità dopo la v1.
 - **N4 Rete:** internet oppure mirror o proxy aziendale configurabile (dettaglio in N9); air-gapped dopo la v1.
 - **N5 TLS:** HTTPS sempre; CA interna di default con certificato della CA su `/downloads`; `--tls letsencrypt` o `--tls-cert`/`--tls-key`; HTTP solo con `--insecure-http` e avviso nella UI.
@@ -46,9 +46,13 @@ Requisiti D1, D2, D6, D14, D18, D19 e stato dell'installer. Fonti nel repo: `dep
 
 **Verifica dei rilasci (V5, 2026-10-05):** `install.sh` e `gitstack upgrade` verificano le firme cosign di immagini, chart e binari e si fermano se non tornano (eccezione esplicita per mirror interni non firmati). Vedi [[knowledge/topics/rilascio-v1]].
 
-**Requisiti ancora da realizzare (resto di M-08, indicazioni del CEO del 2026-10-12 più N10):** Ubuntu 22.04 e Pop!_OS (N2); Windows via WSL2 di prova (W1, W2); proxy, mirror e CA aziendale (N4, N9); Postgres esterno (N8); backup su S3 (N7); verifica delle firme cosign (V5); aggiornamento di k3s (N10); test in CI di installazione, aggiornamento e ripristino su tutti i sistemi supportati (oggi le prove reali girano sulla VM lanciata dal board).
+**Cosa resta (2026-10-18):** avviso per Pop!_OS nel preflight (N2 rivista; oggi Pop!_OS è accettato come Ubuntu, senza avviso); installazione con Postgres esterno e upgrade completo con rollback provati solo a mano; script WSL2 verificati solo staticamente; N1, N3, N6 da compilare in `docs/rules-coverage.md`. Dettaglio in [[knowledge/topics/stato-di-realizzazione]].
 
 **Immagini e rilasci:** pubblicate su ghcr.io dalla CI su `main` e sui tag; nessun rilascio ancora tagliato.
+
+## Superseded
+
+- N2, versione del 2026-10-05: "Ubuntu Server 22.04 e 24.04 LTS, Pop!_OS 22.04 e 24.04, ciascuno con test in CI": **sostituita** il 2026-10-18 per scelta dell'operatore (GitHub non ha un runner Pop!_OS, quindi il criterio V1 non era verificabile); Pop!_OS passa a installabile con avviso.
 
 ## Open questions
 
@@ -59,4 +63,5 @@ Nessuna.
 - [[knowledge/topics/sviluppo-e-qualita]]
 - [[knowledge/topics/architettura]]
 - [[knowledge/topics/stato-di-realizzazione]]
+- [[knowledge/topics/decisioni]]
 

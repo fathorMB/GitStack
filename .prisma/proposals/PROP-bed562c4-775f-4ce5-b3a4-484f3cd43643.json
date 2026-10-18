@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "id": "PROP-bed562c4-775f-4ce5-b3a4-484f3cd43643",
+  "state": "applied",
+  "created": "2026-10-18T00:03:26.713637500+00:00",
+  "input": {
+    "kind": "product_roadmap",
+    "summary": "Avanzamento di M-08 e M-09 riallineato al commit 4a946f2 di main (2026-10-18): M-08 quasi completa; M-09 avanzata; tappa 2 di V7 non ancora fatta, dogfooding non partito.",
+    "operations": [
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-184e52c5-3841-4a77-9cea-fad781f5a813",
+          "knowledge": [
+            "DOC-4a4d6270-cd1a-4748-a1ad-9488cee4ad9e",
+            "DOC-f8d2e48c-74fd-4b35-8551-80a2f345eacd",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5"
+          ],
+          "reopen_reason": "Avanzamento riallineato al commit 4a946f2 (2026-10-18).",
+          "schema_version": 1,
+          "title": "Installazione, aggiornamenti e backup",
+          "updated": "2026-10-18T00:04:16.490230300+00:00"
+        },
+        "body": "\n# Installazione, aggiornamenti e backup\n\n## Outcome\n\nUn cliente installa GitStack su Linux con un comando (o su Windows via WSL2 per prove), anche in una rete aziendale chiusa e con il proprio Postgres, lo aggiorna in sicurezza con rollback (k3s compreso) e fa backup e ripristino coerenti, anche su S3.\n\n## Rationale\n\nD1, D14, D18, D19: per un prodotto on-prem installazione, aggiornamenti e backup sono requisiti dal giorno uno; un aggiornamento fallito è un cliente perso. N10 tiene le patch di sicurezza di k3s sotto GitStack (V4).\n\n## Scope\n\nRequisiti N1–N10, W1, W2 e V5 in [[knowledge/topics/installazione-e-deploy]].\n\nAvanzamento al commit `4a946f2` (2026-10-18), **quasi completa**:\n- **fatto:** installer con preflight per Ubuntu 22.04/24.04 e Pop!_OS 22.04/24.04 (N1, N2, N6); HTTPS (N5); `gitstack` status/backup/restore/upgrade con rollback e timer giornaliero; backup su S3 cifrato con `restore --from s3` (N7); Postgres esterno 15–17 (N8); proxy, mirror di registry e download, CA aziendale (N4, N9); aggiornamento di k3s (N10); verifica delle firme cosign (V5); script WSL2 di prova (W1, W2); installazione, aggiornamento e ripristino in CI su Ubuntu 22.04 e 24.04;\n- **resta:** Pop!_OS provato solo a mano (nessun runner in CI); installazione con Postgres esterno e upgrade completo con rollback provati solo a mano; WSL2 verificato solo staticamente; compilare N1, N3, N6 in `rules-coverage.md`.\n\nFuori dalla v1: Debian, RHEL e derivate, arm64, più nodi, air-gapped, supporto di produzione su Windows, alta disponibilità del Postgres esterno (responsabilità del cliente).\n\nPriorità 8 di 9 nella v1. Mockup 16.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-08.md`\n- `deploy/README.md`, `docs/operations.md`, `docs/rules-coverage.md` (famiglie N, W, V5)\n- Temi di analisi \"Requisiti minimi e distribuzioni dell'installer definitivo\" (N1–N6) e \"Supporto Windows via WSL2 in produzione\" (W1, W2)\n- Scelte dell'operatore del 2026-10-12 (N7–N10)\n",
+        "expected_digest": "b3a7e3362e0a9778bcf6564d8b07540adfc824f8cb08430f7d039f325f250855",
+        "slug": null,
+        "reason": "Avanzamento riallineato al commit 4a946f2 (2026-10-18)."
+      },
+      {
+        "collection": "product",
+        "metadata": {
+          "horizon": "now",
+          "id": "OBJ-6c5776a1-ec92-4ed8-8bd8-def6ae041f9d",
+          "knowledge": [
+            "DOC-7de1b0e3-a859-4ec8-90eb-f05cdec30ab7",
+            "DOC-a5cf81fd-1f8e-4080-9c73-24511fb29cf5",
+            "DOC-2bb044bc-b64d-4f66-a782-0d25a2866c5d",
+            "DOC-3595cb24-e019-4230-a412-009769bae527"
+          ],
+          "reopen_reason": "Avanzamento riallineato al commit 4a946f2 (2026-10-18); tappa 2 non ancora fatta.",
+          "schema_version": 1,
+          "title": "Rilascio v1.0",
+          "updated": "2026-10-18T00:04:16.491133500+00:00"
+        },
+        "body": "\n# Rilascio v1.0\n\n## Outcome\n\nGitStack v1.0 è pubblicato open source, sicuro e documentato, e ospita il proprio codice (dogfooding).\n\n## Rationale\n\nChiude la tappa v1 della visione; il dogfooding sostituisce GitHub come casa del codice. Il mirror in pull serve a tenere su homehub una copia di backup del repo GitHub e, a tendere, ai clienti che migrano da GitHub; l'import una tantum rende evidente il percorso di migrazione.\n\n## Scope\n\nRegole V1–V8 in [[knowledge/topics/rilascio-v1]] e MP1–MP8 in [[knowledge/topics/mirror-in-pull]].\n\n**Passaggio su homehub in due tappe (V7):** tappa 1 copia di backup con il mirror in pull; tappa 2, prima della v1.0 e quando sono vere le cinque condizioni di [[knowledge/topics/rilascio-v1]], casa su GitStack. Le 4 settimane di dogfooding di V1 contano dalla tappa 2, **non ancora fatta** al 2026-10-18 (stato delle condizioni in [[knowledge/topics/stato-di-realizzazione]]).\n\nAvanzamento al commit `4a946f2` (2026-10-18):\n- **fatto:** tabella regole→test (V1, GIT-115); scansioni di sicurezza in CI (V2, GIT-114); mirror in push (V8-mirror, GIT-179); mirror in pull e import una tantum (MP1–MP6, MP8); revisione di sicurezza ASVS L2 e threat model (GIT-219) con correzione di F1, F2, F4–F11; test di fumo (V3); lista di controllo della rc e script `release-readiness` (GIT-226); job di rilascio firmato con SBOM e changelog, scritto; sito di documentazione che si costruisce (V6); istruzioni per gli agenti dopo la tappa 2 (condizione 5);\n- **resta:** F3 e i bassi F12–F20; scheda Pull mirror nella UI (MP7) e «Sincronizza ora» con stato del mirror in push (GIT-180); prova del rilascio su un tag di prova; pubblicazione del sito; politica di supporto (V4); condizioni 1–4 e tappa 2; dogfooding di almeno 4 settimane (V7); release candidate e criteri di uscita (V1).\n\nFuori dalla v1: penetration test esterno, test di carico con obiettivi numerici, versioni LTS, documentazione nell'istanza o tradotta, visibilità pubblica dei repo, mirror in pull via SSH o con LFS, importazione di issues da GitHub.\n\nPriorità 9 di 9 nella v1.\n\n## Source references\n\n- `.lmbrain-lite/milestones/M-09.md`\n- `docs/rules-coverage.md` (famiglie V e MP), `docs/release-checklist.md`, `docs/security/asvs-l2.md`\n- Tema di analisi \"Rilascio v1.0: regole di prodotto\" (V1–V8)\n- Tema di analisi \"Mirror in pull\" (MP1–MP7) e scelta MP8 del 2026-10-12\n",
+        "expected_digest": "1068f4399ef029d12956159ef31a3366d1248094b85fa88b0c15a4c8e8b5fdc2",
+        "slug": null,
+        "reason": "Avanzamento riallineato al commit 4a946f2 (2026-10-18); tappa 2 non ancora fatta."
+      }
+    ],
+    "note_id": null,
+    "note_digest": null
+  },
+  "confirmation": {
+    "approved": true,
+    "statement": "applica tutto"
+  }
+}
