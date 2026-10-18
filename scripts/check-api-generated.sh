@@ -31,6 +31,7 @@ generated_paths=(
   'services/gateway/internal/security/routes.gen.go'
   'services/core/internal/openapi/api.gen.go'
   'services/identity/internal/openapi/api.gen.go'
+  'cli/internal/mcp/tools_gen.go'
 )
 
 status="$(git status --porcelain -- "${generated_paths[@]}")"

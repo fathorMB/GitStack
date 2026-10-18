@@ -372,3 +372,13 @@ irm https://<host>/install-gs.ps1 | iex             # Windows
 Agenti e CI: `GS_HOST` e `GS_TOKEN` bastano, senza login né file; con `gs auth setup-git` anche git in HTTPS usa il token. Il token non va mai su stdout/stderr né nei log. Il controllo di versione contro `/meta` (G6, `internal/compat`) è collegato alla radice (`PersistentPreRunE`) e salta `version`, `help`, `completion` e `auth login|logout|setup-git|git-credential`.
 
 Test: `internal/cmd/auth` con portachiavi finto (`keyring.MockInit`, `MockInitWithError` per il ripiego su file); `setupgit_integration_test.go` (tag `integration`, serve `git`) compila il binario gs e clona in HTTPS con git vero da un `git http-backend` che pretende il token in Basic auth.
+
+## `gs mcp` (GIT-271, M1-M3)
+
+`gs mcp` è un server MCP (Model Context Protocol) su stdio dentro `gs`: usa il login, il token e le istanze di `gs` (`gs auth login`, `GS_TOKEN`, `GS_HOST`); `--host` sceglie l'istanza. Stdout è riservato al protocollo, gli avvisi di versione (M5, G6) vanno su stderr.
+
+- **Strumenti dedicati**: sono le operazioni di `api/openapi.yaml` con `x-mcp.expose: true`, con nome `oggetto_azione` (`pr_list`, `issue_create`, `code_file`, ...). Il sorgente `internal/mcp/tools_gen.go` è generato (`cd cli && go generate ./internal/mcp/...`, parte di `scripts/generate-api.sh`); un test fallisce se contratto e strumenti divergono. L'input di ogni strumento è fatto dai parametri dell'operazione più, se c'è un corpo JSON, l'argomento `body`.
+- **`api_request`**: qualsiasi altra operazione (`method`, `path` relativo a `/api/v1`, `query`, `body`), entro i permessi del token.
+- **`--read-only`**: elenca solo le letture e rifiuta ogni scrittura, `api_request` compreso (solo GET).
+- **Annotazioni**: `readOnlyHint` sulle letture, `destructiveHint` su chiusure, merge, eliminazioni e occultamenti (`x-mcp.destructive`). Il server non chiede conferme: le chiede l'assistente.
+- **Esclusi (M3)**: nessuno strumento dedicato per eliminare o archiviare repo, impostazioni, webhook, token e amministrazione (`x-mcp.expose: false`): restano raggiungibili con `api_request`, se il token lo permette.
