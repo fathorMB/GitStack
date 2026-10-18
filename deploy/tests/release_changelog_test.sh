@@ -78,6 +78,34 @@ has "prepend: la vecchia resta" "${chlog}" "## v0.1.0 - "
 n="$(grep -c '^## v0.2.0-rc.1 - ' "${WORK}/CHANGELOG.md")"
 if [ "${n}" = "1" ]; then ok; else bad "prepend idempotente: ${n} sezioni"; fi
 
+# --risks: solo i problemi aperti non critici né alti, dal registro di sicurezza.
+cat >"${WORK}/reg.md" <<'REG'
+## Findings register
+
+| Id | Severity | Area and requirements | Files | Test |
+|---|---|---|---|---|
+| F1 | high | **Resolved (GIT-1)**: scalata | `a.go` | `t` |
+| F2 | medium | Intestazioni web (V9.1.2) | `b.go` | `t` |
+| F3 | **ok** | Cache | `c.go` | `t` |
+| F4 | low | **Resolved (GIT-4).** Sessioni | `d.go` | `t` |
+| F5 | low | Quota allegati | `e.go` | `t` |
+
+### Details
+REG
+out="$("${SCRIPT}" v0.2.0-rc.1 --prev v0.1.0 --risks "${WORK}/reg.md")"
+has "rischi: titolo" "${out}" "### Rischi noti"
+has "rischi: medio aperto" "${out}" "- F2 (medium): Intestazioni web (V9.1.2)"
+has "rischi: basso aperto" "${out}" "- F5 (low): Quota allegati"
+lacks "rischi: alto risolto" "${out}" "scalata"
+lacks "rischi: ok" "${out}" "- F3"
+lacks "rischi: low risolto" "${out}" "Sessioni"
+sed -i 's/^| F2 | medium |/| F2 | medium | **Resolved (GIT-2).** /; s/^| F5 | low |/| F5 | low | **Resolved (GIT-5).** /' "${WORK}/reg.md"
+out="$("${SCRIPT}" v0.2.0-rc.1 --prev v0.1.0 --risks "${WORK}/reg.md")"
+has "rischi: nessuno" "${out}" "Nessuno."
+out="$("${SCRIPT}" v0.2.0-rc.1 --prev v0.1.0)"
+lacks "senza --risks nessuna sezione" "${out}" "Rischi noti"
+if "${SCRIPT}" v0.2.0-rc.1 --risks "${WORK}/manca.md" >/dev/null 2>&1; then bad "registro mancante accettato"; else ok; fi
+
 # Errori: tag non SemVer, tag inesistente.
 if "${SCRIPT}" main >/dev/null 2>&1; then bad "tag non SemVer accettato"; else ok; fi
 if "${SCRIPT}" v9.9.9 >/dev/null 2>&1; then bad "tag inesistente accettato"; else ok; fi

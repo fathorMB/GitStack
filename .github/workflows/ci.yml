@@ -1127,11 +1127,11 @@ jobs:
       - name: Changelog
         run: |
           set -euo pipefail
-          ./scripts/release-changelog.sh "${VERSION}" --out dist/CHANGELOG-"${VERSION}".md
+          ./scripts/release-changelog.sh "${VERSION}" --risks docs/security/asvs-l2.md --out dist/CHANGELOG-"${VERSION}".md
           cp dist/CHANGELOG-"${VERSION}".md release-notes.md
           # CHANGELOG.md aggiornato: dal ramo principale (se c'è già) più la sezione.
           git show origin/main:CHANGELOG.md > CHANGELOG.md 2>/dev/null || rm -f CHANGELOG.md
-          ./scripts/release-changelog.sh "${VERSION}" --prepend CHANGELOG.md
+          ./scripts/release-changelog.sh "${VERSION}" --risks docs/security/asvs-l2.md --prepend CHANGELOG.md
           cp CHANGELOG.md dist/CHANGELOG.md
           cat dist/CHANGELOG-"${VERSION}".md
 

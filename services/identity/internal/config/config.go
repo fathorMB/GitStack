@@ -40,6 +40,10 @@ type Config struct {
 	// SessionTTL è la durata assoluta di una sessione web.
 	SessionTTL time.Duration
 
+	// SessionIdleTimeout è l'inattività dopo cui una sessione web non vale
+	// più (F12). Zero: nessun idle timeout, vale solo SessionTTL.
+	SessionIdleTimeout time.Duration
+
 	// TrustedProxies sono le reti (CIDR) da cui identity si fida
 	// dell'header X-Gitstack-Client-Ip impostato dal gateway. Vuoto (default):
 	// l'IP del client è sempre r.RemoteAddr.
@@ -123,6 +127,10 @@ const (
 	// EnvSessionTTL: durata delle sessioni web (default 168h, 7 giorni).
 	EnvSessionTTL = "GITSTACK_IDENTITY_SESSION_TTL"
 
+	// EnvSessionIdleTimeout: inattività massima di una sessione web (default
+	// 24h). "0" la disattiva.
+	EnvSessionIdleTimeout = "GITSTACK_IDENTITY_SESSION_IDLE_TIMEOUT"
+
 	// EnvTrustedProxies: elenco CIDR separati da virgola dei proxy fidati
 	// (es. "10.42.0.0/16"). Default vuoto.
 	EnvTrustedProxies = "GITSTACK_IDENTITY_TRUSTED_PROXIES"
@@ -173,7 +181,8 @@ const (
 	// DefaultAdminUsername è il nome dell'admin iniziale.
 	DefaultAdminUsername = "admin"
 
-	defaultSessionTTL = 7 * 24 * time.Hour
+	defaultSessionTTL         = 7 * 24 * time.Hour
+	defaultSessionIdleTimeout = 24 * time.Hour
 
 	defaultAddr              = ":8080"
 	defaultDBMaxConns        = int32(10)
@@ -203,6 +212,17 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		MigrationsTimeout: defaultMigrationsTimeout,
 		LogLevel:          defaultLogLevel,
 		SessionTTL:        defaultSessionTTL,
+
+		SessionIdleTimeout: defaultSessionIdleTimeout,
+	}
+
+	if v, ok := lookup(EnvSessionIdleTimeout); ok && strings.TrimSpace(v) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil || d < 0 {
+			errs = append(errs, fmt.Sprintf("%s non è una durata valida: %q", EnvSessionIdleTimeout, v))
+		} else {
+			cfg.SessionIdleTimeout = d
+		}
 	}
 
 	if v, ok := lookup(EnvSessionTTL); ok && strings.TrimSpace(v) != "" {

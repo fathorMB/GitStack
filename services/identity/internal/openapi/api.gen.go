@@ -303,6 +303,24 @@ func (e ResourceRole) Valid() bool {
 	}
 }
 
+// Defines values for SessionAuthMethod.
+const (
+	SessionAuthMethodOidc     SessionAuthMethod = "oidc"
+	SessionAuthMethodPassword SessionAuthMethod = "password"
+)
+
+// Valid indicates whether the value is a known member of the SessionAuthMethod enum.
+func (e SessionAuthMethod) Valid() bool {
+	switch e {
+	case SessionAuthMethodOidc:
+		return true
+	case SessionAuthMethodPassword:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TeamRole.
 const (
 	TeamRoleMaintainer TeamRole = "maintainer"
@@ -419,7 +437,9 @@ type AddSshKeyInput struct {
 // ChangePasswordInput defines model for ChangePasswordInput.
 type ChangePasswordInput struct {
 	CurrentPassword *string `json:"currentPassword,omitempty"`
-	NewPassword     *string `json:"newPassword,omitempty"`
+
+	// NewPassword Da 12 a 128 caratteri e non presente nell'elenco di password comuni incorporato (422 `newPassword`). La password attuale e il login accettano fino a 1024 caratteri, cosi' chi ne ha una piu' lunga puo' ancora entrare e sostituirla.
+	NewPassword *string `json:"newPassword,omitempty"`
 }
 
 // CheckPermissionInput defines model for CheckPermissionInput.
@@ -486,7 +506,7 @@ type CreateUserInput struct {
 	IsAdmin     *bool                `json:"isAdmin,omitempty"`
 	Kind        *CreateUserInputKind `json:"kind,omitempty"`
 
-	// Password Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
+	// Password Da 12 a 128 caratteri e non presente nell'elenco di password comuni (422 `password`). Assente per gli agenti (accedono solo con token) e per chi entra solo via OIDC.
 	Password *string `json:"password,omitempty"`
 
 	// Username Nome breve in minuscolo (username, organizzazione, team, provider): lettere minuscole, cifre e trattini, 1-39 caratteri, inizia e finisce con un carattere alfanumerico.
@@ -847,6 +867,28 @@ type ResourceAttributesInput struct {
 // ResourceRole Ruolo su una risorsa, in ordine crescente di potere.
 type ResourceRole string
 
+// Session Sessione web attiva, senza il valore del cookie.
+type Session struct {
+	AuthMethod SessionAuthMethod `json:"authMethod"`
+	CreatedAt  time.Time         `json:"createdAt"`
+
+	// Current Vero per la sessione con cui e' fatta la richiesta.
+	Current    bool               `json:"current"`
+	ExpiresAt  time.Time          `json:"expiresAt"`
+	Id         openapi_types.UUID `json:"id"`
+	IpAddress  *string            `json:"ipAddress,omitempty"`
+	LastSeenAt time.Time          `json:"lastSeenAt"`
+	UserAgent  *string            `json:"userAgent,omitempty"`
+}
+
+// SessionAuthMethod defines model for Session.AuthMethod.
+type SessionAuthMethod string
+
+// SessionList defines model for SessionList.
+type SessionList struct {
+	Items []Session `json:"items"`
+}
+
 // SetOrgMemberInput defines model for SetOrgMemberInput.
 type SetOrgMemberInput struct {
 	// Role `owner` gestisce organizzazione, team e membri; `member` no.
@@ -1166,6 +1208,9 @@ type RepoOwnerParam = Name
 
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
+
+// SessionIdParam defines model for SessionIdParam.
+type SessionIdParam = openapi_types.UUID
 
 // SshKeyIdParam defines model for SshKeyIdParam.
 type SshKeyIdParam = openapi_types.UUID
@@ -1492,6 +1537,12 @@ type ServerInterface interface {
 	// GetMyResourcePermission Permesso effettivo del chiamante su una risorsa
 	// (GET /resources/{resourceId}/permissions)
 	GetMyResourcePermission(w http.ResponseWriter, r *http.Request, resourceId ResourceIdParam)
+	// ListOwnSessions Elenca le sessioni web attive dell'utente corrente
+	// (GET /user/sessions)
+	ListOwnSessions(w http.ResponseWriter, r *http.Request)
+	// RevokeOwnSession Termina una sessione web dell'utente corrente
+	// (DELETE /user/sessions/{sessionId})
+	RevokeOwnSession(w http.ResponseWriter, r *http.Request, sessionId SessionIdParam)
 	// ListSshKeys Elenca le chiavi SSH dell'utente corrente
 	// (GET /user/ssh-keys)
 	ListSshKeys(w http.ResponseWriter, r *http.Request, params ListSshKeysParams)
@@ -2795,6 +2846,46 @@ func (siw *ServerInterfaceWrapper) GetMyResourcePermission(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ListOwnSessions operation middleware
+func (siw *ServerInterfaceWrapper) ListOwnSessions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOwnSessions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeOwnSession operation middleware
+func (siw *ServerInterfaceWrapper) RevokeOwnSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId SessionIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeOwnSession(w, r, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListSshKeys operation middleware
 func (siw *ServerInterfaceWrapper) ListSshKeys(w http.ResponseWriter, r *http.Request) {
 
@@ -3455,6 +3546,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/tokens", wrapper.ListTokens)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/tokens", wrapper.CreateToken)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/tokens/{tokenId}", wrapper.RevokeToken)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/sessions", wrapper.ListOwnSessions)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/sessions/{sessionId}", wrapper.RevokeOwnSession)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/user/ssh-keys", wrapper.ListSshKeys)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/user/ssh-keys", wrapper.AddSshKey)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/user/ssh-keys/{keyId}", wrapper.DeleteSshKey)

@@ -73,8 +73,11 @@ func main() {
 	}
 
 	add(checkRulesCoverage())
-	add(checkSecurityRegister("A2", "Revisione di sicurezza chiusa: nessun problema aperto nel registro di docs/security/asvs-l2.md", false))
-	add(checkSecurityRegister("A3", "Nessun problema critico o alto aperto nel registro di sicurezza", true))
+	// A2 assorbe l'ex A3: soglia del board del 18/10 per la v1.0, nessun
+	// problema critico o alto aperto. I medi e i bassi aperti non bloccano e
+	// finiscono nei rischi noti (sotto).
+	secRes, risks, secErr := checkSecurityRegister()
+	add(secRes, secErr)
 	add(checkFiles("A4", "Test di fumo V3 presente e in CI (smoke.yml, TestCaricoFumo)", []fileNeed{
 		{".github/workflows/smoke.yml", "workflow_dispatch"},
 		{"services/core/internal/stackitest/smoke_load_integration_test.go", "func TestCaricoFumo("},
@@ -126,11 +129,24 @@ func main() {
 	}
 
 	fmt.Println()
+	fmt.Println("Rischi noti da mettere nelle note di rilascio (non bloccano la v1.0)")
+	fmt.Println("====================================================================")
+	if len(risks) == 0 {
+		fmt.Println("  nessuno: nel registro di sicurezza non resta aperto niente")
+	}
+	for _, k := range risks {
+		fmt.Println("  - " + k)
+	}
+	if len(risks) > 0 {
+		fmt.Println("  Il job release li include da solo: release-changelog.sh --risks docs/security/asvs-l2.md")
+	}
+
+	fmt.Println()
 	fmt.Println("Criteri manuali (docs/release-checklist.md)")
 	fmt.Println("===========================================")
 	manual := []string{
 		"M1  M-01…M-08 completate (board: milestone chiuse)",
-		"M2  Nessuna issue critica o alta aperta nel tracker (le medie nelle note di rilascio)",
+		"M2  Nessuna issue critica o alta aperta nel tracker (le medie e le basse nelle note di rilascio)",
 		"M3  Smoke, install, upgrade e restore verdi in CI sull'ultimo commit di main (rilancia con --ci o guarda Actions)",
 		"M4  Prova del rilascio su un tag di prova v0.0.0-test.N su un fork, prima di v1.0.0-rc.1 (V4)",
 		"M5  Prova reale dell'agente: chiude una issue end-to-end solo con gs e skills (docs/agent-trial.md)",
@@ -223,19 +239,25 @@ func checkRulesCoverage() (result, error) {
 var resolvedRe = regexp.MustCompile(`(?i)\*\*resolved|\*\*ok\*\*`)
 
 // checkSecurityRegister legge il registro dei problemi di asvs-l2.md: una
-// riga F<n> è chiusa se la sua area inizia con «**Resolved» o è «**ok**».
-func checkSecurityRegister(id, title string, onlyHigh bool) (result, error) {
-	r := result{id: id, title: title}
+// riga F<n> è chiusa se la sua severità o la sua area inizia con «**Resolved»
+// o è «**ok**». Soglia della v1.0 (board, 18/10): il criterio è soddisfatto
+// quando non resta aperto nessun problema critico o alto; i medi e i bassi
+// aperti non bloccano e si restituiscono come rischi noti per le note di
+// rilascio. Una severità che non è critical/high/medium/low blocca, per
+// prudenza.
+func checkSecurityRegister() (result, []string, error) {
+	r := result{id: "A2", title: "Revisione di sicurezza chiusa per la v1.0: nessun problema critico o alto aperto nel registro di docs/security/asvs-l2.md"}
 	src, err := readLF("docs/security/asvs-l2.md")
 	if err != nil {
-		return r, err
+		return r, nil, err
 	}
 	idx := strings.Index(src, "## Findings register")
 	if idx < 0 {
-		return r, fmt.Errorf("sezione «Findings register» non trovata in docs/security/asvs-l2.md")
+		return r, nil, fmt.Errorf("sezione «Findings register» non trovata in docs/security/asvs-l2.md")
 	}
 	fRe := regexp.MustCompile(`^F\d+$`)
 	rows := 0
+	var risks []string
 	for _, line := range strings.Split(src[idx:], "\n") {
 		if strings.HasPrefix(line, "### ") || (rows > 0 && strings.HasPrefix(line, "## ")) {
 			break
@@ -245,24 +267,29 @@ func checkSecurityRegister(id, title string, onlyHigh bool) (result, error) {
 			continue
 		}
 		rows++
-		sev := strings.ToLower(strings.Trim(c[1], "* "))
-		if onlyHigh && sev != "high" && sev != "critical" {
-			continue
-		}
 		if resolvedRe.MatchString(c[1]) || resolvedRe.MatchString(c[2]) {
 			continue
 		}
-		r.state = unmet
+		sev := strings.ToLower(strings.Trim(c[1], "* "))
 		area := c[2]
 		if len(area) > 90 {
 			area = area[:90] + "…"
 		}
-		r.details = append(r.details, fmt.Sprintf("%s (%s) aperto: %s", c[0], sev, area))
+		switch sev {
+		case "medium", "low":
+			risks = append(risks, fmt.Sprintf("%s (%s): %s", c[0], sev, area))
+		default: // critical, high e severità sconosciute
+			r.state = unmet
+			r.details = append(r.details, fmt.Sprintf("%s (%s) aperto: %s", c[0], sev, area))
+		}
 	}
 	if rows == 0 {
-		return r, fmt.Errorf("nessuna riga F<n> nel registro di docs/security/asvs-l2.md")
+		return r, nil, fmt.Errorf("nessuna riga F<n> nel registro di docs/security/asvs-l2.md")
 	}
-	return r, nil
+	if r.state == met && len(risks) > 0 {
+		r.details = append(r.details, fmt.Sprintf("%d problemi medi o bassi aperti: non bloccano, sono rischi noti (vedi sotto)", len(risks)))
+	}
+	return r, risks, nil
 }
 
 type fileNeed struct{ path, text string }

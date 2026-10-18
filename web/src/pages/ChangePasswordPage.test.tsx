@@ -100,6 +100,18 @@ describe('cambio password obbligatorio', () => {
     expect(await screen.findByRole('heading', { name: 'Components' })).toBeInTheDocument();
   });
 
+  it('mostra il misuratore di robustezza mentre si scrive la nuova password', async () => {
+    const user = userEvent.setup();
+    renderApp('/change-password');
+    const field = await screen.findByLabelText('New password');
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument();
+    await user.type(field, 'password1234');
+    expect(screen.getByRole('meter', { name: 'Password strength' })).toHaveAttribute('aria-valuenow', '0');
+    await user.clear(field);
+    await user.type(field, 'Cavallo Batteria Graffetta 42!');
+    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '4');
+  });
+
   it('un 422 è mostrato sul campo newPassword', async () => {
     vi.mocked(changeOwnPassword).mockRejectedValue(
       new ApiError({ error: { code: 'validation_failed', message: 'Invalid', details: { fields: { newPassword: 'too short' } } } }, 422),

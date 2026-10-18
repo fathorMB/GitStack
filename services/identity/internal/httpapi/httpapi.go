@@ -190,6 +190,14 @@ func (s *server) isSecure(r *http.Request) bool {
 	return strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
 }
 
+// setSessionCookies imposta il cookie di sessione (con prefisso __Host- se
+// la richiesta è HTTPS) e toglie quello storico.
+func (s *server) setSessionCookies(w http.ResponseWriter, r *http.Request, value string, expires time.Time) {
+	for _, c := range auth.SessionCookies(value, expires, s.isSecure(r)) {
+		http.SetCookie(w, c)
+	}
+}
+
 func (s *server) trusted(ip net.IP) bool {
 	for _, n := range s.trustedProxies {
 		if n.Contains(ip) {
@@ -230,11 +238,11 @@ const CodePasswordChangeRequired = "password_change_required"
 
 // currentPending come current, ma accetta anche chi deve cambiare la password.
 func (s *server) currentPending(w http.ResponseWriter, r *http.Request) (auth.Current, bool) {
-	c, err := r.Cookie(auth.CookieName)
-	if err != nil {
+	value, ok := auth.SessionValue(r)
+	if !ok {
 		return s.currentSigned(w, r)
 	}
-	cur, err := s.auth.Session(r.Context(), c.Value)
+	cur, err := s.auth.Session(r.Context(), value)
 	if errors.Is(err, auth.ErrUnauthenticated) {
 		unauthenticated(w)
 		return auth.Current{}, false
@@ -360,7 +368,7 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	http.SetCookie(w, auth.SessionCookie(res.SessionValue, res.Session.ExpiresAt, s.isSecure(r)))
+	s.setSessionCookies(w, r, res.SessionValue, res.Session.ExpiresAt)
 	s.secInfo(r, "security.login.success", &auth.Current{User: res.User, Session: res.Session}, "method", "password", "session_id", res.Session.ID.String())
 	exp := res.Session.ExpiresAt
 	out := openapi.CurrentSession{
@@ -375,13 +383,13 @@ func (s *server) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie(auth.CookieName)
-	if err != nil {
+	value, ok := auth.SessionValue(r)
+	if !ok {
 		unauthenticated(w)
 		return
 	}
-	prev, prevErr := s.auth.Session(r.Context(), c.Value)
-	err = s.auth.Logout(r.Context(), c.Value)
+	prev, prevErr := s.auth.Session(r.Context(), value)
+	err := s.auth.Logout(r.Context(), value)
 	if errors.Is(err, auth.ErrUnauthenticated) {
 		unauthenticated(w)
 		return
@@ -393,7 +401,9 @@ func (s *server) Logout(w http.ResponseWriter, r *http.Request) {
 	if prevErr == nil {
 		s.secInfo(r, "security.logout", &prev, "session_id", prev.Session.ID.String())
 	}
-	http.SetCookie(w, auth.ClearCookie(s.isSecure(r)))
+	for _, c := range auth.ClearCookies(s.isSecure(r)) {
+		http.SetCookie(w, c)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

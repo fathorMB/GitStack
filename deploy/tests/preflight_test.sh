@@ -150,15 +150,25 @@ run preflight_os
 expect_ok "ubuntu 22.04"
 expect_lacks "ubuntu 22.04" "non supportato"
 
+# Pop!_OS (N2 rivista il 2026-10-18): non ufficialmente supportato nella v1.0,
+# si installa senza --force ma con avviso, in italiano e in inglese.
 os_file pop 24.04
 run preflight_os
 expect_ok "pop 24.04"
-expect_lacks "pop 24.04" "non supportato"
+expect_has "pop 24.04: avviso in italiano" "non è supportato ufficialmente nella v1.0"
+expect_has "pop 24.04: avviso in inglese" "Not officially supported in v1.0"
 
 os_file pop 22.04
 run preflight_os
 expect_ok "pop 22.04"
-expect_lacks "pop 22.04" "non supportato"
+expect_has "pop 22.04: avviso in italiano" "non è supportato ufficialmente nella v1.0"
+expect_has "pop 22.04: avviso in inglese" "Not officially supported in v1.0"
+
+# Ubuntu: nessun avviso, solo il log del preflight.
+os_file ubuntu 24.04
+run preflight_os
+expect_ok "ubuntu senza avviso"
+expect_lacks "ubuntu senza avviso" "ATTENZIONE"
 
 os_file debian 12
 run preflight_os

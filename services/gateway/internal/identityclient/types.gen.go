@@ -682,6 +682,9 @@ type RepoOwnerParam = Name
 // ResourceIdParam defines model for ResourceIdParam.
 type ResourceIdParam = openapi_types.UUID
 
+// SessionIdParam defines model for SessionIdParam.
+type SessionIdParam = openapi_types.UUID
+
 // SshKeyIdParam defines model for SshKeyIdParam.
 type SshKeyIdParam = openapi_types.UUID
 

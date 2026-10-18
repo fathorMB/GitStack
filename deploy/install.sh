@@ -10,8 +10,10 @@
 #   sudo ./deploy/install.sh
 #   curl -fsSL https://raw.githubusercontent.com/fathorMB/GitStack/main/deploy/install.sh | sudo bash
 #
-# Distribuzioni supportate (N2): Ubuntu Server 22.04 e 24.04 LTS,
-# Pop!_OS 22.04 e 24.04, solo x86_64; altri sistemi con --force.
+# Distribuzioni supportate (N2 rivista il 2026-10-18): nella v1.0 sono
+# ufficialmente supportati solo Ubuntu Server 22.04 e 24.04 LTS, solo x86_64.
+# Pop!_OS 22.04 e 24.04 si installa senza --force, con un avviso nel preflight
+# (nessuna garanzia, nessun test in CI); gli altri sistemi solo con --force.
 # (vedi README.md di questa cartella, sezione "Distribuzioni supportate").
 #
 # HTTPS (N5, GIT-143): di default l'installer crea una CA interna (chiave solo
@@ -158,17 +160,24 @@ MIN_DISK_FREE_GB=20
 REC_CPU=8
 REC_RAM_GB=16
 REC_DISK_GB=200
-# Sistemi supportati (N2): ubuntu 22.04, ubuntu 24.04, pop 22.04, pop 24.04,
-# solo x86_64. Un altro sistema si installa solo con --force.
+# Sistemi supportati (N2 rivista il 2026-10-18, D14): nella v1.0 ufficialmente
+# solo ubuntu 22.04 e ubuntu 24.04, x86_64. pop 22.04 e pop 24.04 si installano
+# senza --force, ma con avviso nel preflight (nessuna garanzia, nessun test in
+# CI). Un altro sistema si installa solo con --force.
 GITSTACK_FORCE="${GITSTACK_FORCE:-0}"
 # Percorsi letti dal preflight, sostituibili nei test (deploy/tests/preflight_test.sh).
 OS_RELEASE_FILE="${OS_RELEASE_FILE:-/etc/os-release}"
 MEMINFO_FILE="${MEMINFO_FILE:-/proc/meminfo}"
 SYS_CLASS_BLOCK="${SYS_CLASS_BLOCK:-/sys/class/block}"
-# Elenco dei sistemi supportati: coppie "ID VERSIONE" separate da spazio.
+# Elenco dei sistemi ufficialmente supportati nella v1.0: coppie "ID VERSIONE"
+# separate da spazio.
 REQUIRED_OS=(
   "ubuntu 22.04"
   "ubuntu 24.04"
+)
+# Sistemi accettati senza --force, ma con avviso nel preflight (N2 rivista):
+# installazione che prosegue, nessuna garanzia e nessun test in CI.
+ADVISORY_OS=(
   "pop 22.04"
   "pop 24.04"
 )
@@ -577,18 +586,28 @@ preflight_os() {
   found_id="$(. "${OS_RELEASE_FILE}" >/dev/null 2>&1; printf '%s' "${ID:-sconosciuto}")"
   # shellcheck disable=SC1090,SC1091
   found_version="$(. "${OS_RELEASE_FILE}" >/dev/null 2>&1; printf '%s' "${VERSION_ID:-sconosciuta}")"
-  local supported=0
-  for entry in "${REQUIRED_OS[@]}"; do
-    if [ "${found_id}" = "${entry%% *}" ] && [ "${found_version}" = "${entry#* }" ]; then
-      supported=1
-      break
-    fi
-  done
-  if [ "${supported}" -ne 1 ]; then
-    unsupported_os "sistema non supportato: ${found_id} ${found_version}"
+  if os_in_list "${found_id}" "${found_version}" "${REQUIRED_OS[@]}"; then
+    log "OS: ${found_id} ${found_version} (supportato ufficialmente nella v1.0: ${REQUIRED_OS[*]}) OK"
     return 0
   fi
-  log "OS: ${found_id} ${found_version} (supportato: ${REQUIRED_OS[*]}) OK"
+  # N2 rivista il 2026-10-18: Pop!_OS si accetta senza --force, con avviso.
+  if os_in_list "${found_id}" "${found_version}" "${ADVISORY_OS[@]}"; then
+    warn "OS: ${found_id} ${found_version}: non è supportato ufficialmente nella v1.0. L'installazione prosegue senza --force, ma senza garanzia e senza test in CI. (Not officially supported in v1.0: installing anyway, no guarantee and no CI tests.)"
+    return 0
+  fi
+  unsupported_os "sistema non supportato: ${found_id} ${found_version}"
+}
+
+# Sistema riconosciuto in un elenco di coppie "ID VERSIONE".
+os_in_list() {
+  local id="$1" version="$2" entry
+  shift 2
+  for entry in "$@"; do
+    if [ "${id}" = "${entry%% *}" ] && [ "${version}" = "${entry#* }" ]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 # Sistema non nell'elenco supportato: avviso "non supportato" e si
