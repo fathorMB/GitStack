@@ -154,12 +154,12 @@ func (s *Server) dispatch(ctx context.Context, req request) (any, *rpcError) {
 		}
 		return map[string]any{
 			"protocolVersion": version,
-			"capabilities":    map[string]any{
+			"capabilities": map[string]any{
 				"tools":   map[string]any{"listChanged": false},
 				"prompts": map[string]any{"listChanged": false}, // M4: prompt sì, risorse no
 			},
-			"serverInfo":      map[string]any{"name": "gs", "version": s.o.Version},
-			"instructions":    s.instructions(),
+			"serverInfo":   map[string]any{"name": "gs", "version": s.o.Version},
+			"instructions": s.instructions(),
 		}, nil
 	case "ping":
 		return map[string]any{}, nil
