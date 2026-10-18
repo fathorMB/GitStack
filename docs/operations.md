@@ -2119,7 +2119,7 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 | 5. Divergenza | commit diretto su GitHub `a8e68f2ccf28e05dad4447064d2af8a092ec2b82`, poi terzo commit su homehub `a372c06a…`: `state: diverged`, `lastError`: «la destinazione ha una storia diversa, nessuna sovrascrittura: refs/heads/main: rejected (fetch first)». Sulla esecuzione `outcome: diverged`: tag `up-to-date`, `main` `rejected`. `git ls-remote` su GitHub resta `a8e68f2c…`: nulla è stato sovrascritto |
 | 6. Ritorno a `in_sync` | non provato (facoltativo) |
 
-Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Resta al board: revocare il fine-grained token GitHub e il token `git293-prova` di GitStack, cancellare il repo GitHub di prova, cancellare `admin/mirror-prova` su homehub se non serve. La VM `gitstack-test-vm` NON si ferma né si ripristina: serve per rifare il restore dopo GIT-297.
+Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Fatto dal board alle 21:46 UTC: fine-grained token GitHub revocato, repo GitHub di prova cancellato, token `git293-prova` di GitStack revocato, `admin/mirror-prova` su homehub cancellato. Resta solo la VM `gitstack-test-vm`: NON si ferma né si ripristina finché non si rifà il restore dopo GIT-297; poi va spenta o riportata al checkpoint `clean`, perché contiene una copia dei dati e dei Secret di homehub.
 
 ## Registro della tappa 1 di V7 (homehub)
 
