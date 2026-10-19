@@ -245,7 +245,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: shellcheck
-        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh
+        run: shellcheck deploy/install.sh deploy/gitstack-tls.sh deploy/tests/preflight_test.sh deploy/tests/v5_verify_test.sh deploy/tests/release_changelog_test.sh deploy/tests/network_test.sh deploy/tests/k3s_script_test.sh deploy/tests/chart_hardening_test.sh deploy/test-network/run.sh deploy/test-vm/e2e/remote.sh deploy/ci/install-e2e.sh web/deploy/install-gs.sh web/deploy/30-gs-index.sh deploy/tests/install_gs_test.sh scripts/*.sh scripts/ci/retry.sh
 
       # Preflight di install.sh (GIT-144): profili minimo e consigliato di N1,
       # sistema non supportato, verifica del nome host. Senza root né VM.
@@ -774,6 +774,7 @@ jobs:
       - name: Firma keyless immagini (cosign) con SBOM attestato
         run: |
           set -euo pipefail
+          source scripts/ci/retry.sh
 
           for svc in gateway identity git core web; do
             ref_var="IMAGEREF_${svc}"
@@ -796,7 +797,7 @@ jobs:
             # cosign sign NON accetta --certificate-identity (flag di verifica):
             # l'identità del certificato è determinata automaticamente dall'OIDC token.
             echo "Firma keyless per ${ref}..."
-            cosign sign --yes --recursive "${ref}"
+            retry 4 cosign sign --yes --recursive "${ref}"
             echo "OK: immagine firmata e attestata ${ref}"
           done
 
@@ -804,6 +805,7 @@ jobs:
       - name: Firma chart Helm
         run: |
           set -euo pipefail
+          source scripts/ci/retry.sh
           issuer="https://token.actions.githubusercontent.com"
           identity="${{ steps.wf-id.outputs.identity }}"
           identity_regexp="${{ steps.wf-id.outputs.regexp }}"
@@ -834,7 +836,7 @@ jobs:
 
           # Firma del file chart come blob (bundle sigstore)
           echo "Firma chart Helm..."
-          cosign sign-blob --yes --bundle "${chart_file}.sigstore.json" \
+          retry 4 cosign sign-blob --yes --bundle "${chart_file}.sigstore.json" \
             "${chart_file}"
 
           # Copia il chart e il suo bundle nella cartella di upload (sign/)
@@ -847,6 +849,7 @@ jobs:
       - name: Firma binari
         run: |
           set -euo pipefail
+          source scripts/ci/retry.sh
           issuer="https://token.actions.githubusercontent.com"
           identity="${{ steps.wf-id.outputs.identity }}"
           identity_regexp="${{ steps.wf-id.outputs.regexp }}"
@@ -864,12 +867,12 @@ jobs:
 
           # Firma di gitstack + checksum
           echo "Firma binario gitstack..."
-          cosign sign-blob --yes --bundle sign/gitstack-linux-amd64.sigstore.json \
+          retry 4 cosign sign-blob --yes --bundle sign/gitstack-linux-amd64.sigstore.json \
             sign/gitstack-linux-amd64
 
           if [ -f sign/gitstack-linux-amd64.sha256 ]; then
             echo "Firma checksum gitstack..."
-            cosign sign-blob --yes --bundle sign/gitstack-linux-amd64.sha256.sigstore.json \
+            retry 4 cosign sign-blob --yes --bundle sign/gitstack-linux-amd64.sha256.sigstore.json \
               sign/gitstack-linux-amd64.sha256
           fi
 
@@ -885,7 +888,7 @@ jobs:
             if [ -f "${bin}" ]; then
               echo "Firma ${bin}..."
               sig_name="${bin}.sigstore.json"
-              cosign sign-blob --yes --bundle "${sig_name}" "${bin}"
+              retry 4 cosign sign-blob --yes --bundle "${sig_name}" "${bin}"
             fi
           done
 
@@ -898,7 +901,7 @@ jobs:
           # Firma del file SHA256SUMS
           if [ -f sign/SHA256SUMS ]; then
             echo "Firma SHA256SUMS..."
-            cosign sign-blob --yes --bundle sign/SHA256SUMS.sigstore.json \
+            retry 4 cosign sign-blob --yes --bundle sign/SHA256SUMS.sigstore.json \
               sign/SHA256SUMS
           fi
 
@@ -1176,13 +1179,14 @@ jobs:
       - name: Checksum e firma keyless
         run: |
           set -euo pipefail
+          source scripts/ci/retry.sh
           cd dist
           sha256sum gitstack-linux-amd64 gs_* gs-skills.zip "gitstack-${{ steps.ver.outputs.plain }}.tgz" sbom/*.spdx.json > SHA256SUMS
           cat SHA256SUMS
           for f in gitstack-linux-amd64 gitstack-linux-amd64.sha256 gs_* gs-skills.zip \
                    "gitstack-${{ steps.ver.outputs.plain }}.tgz" SHA256SUMS; do
             case "${f}" in *.sigstore.json) continue ;; esac
-            cosign sign-blob --yes --bundle "${f}.sigstore.json" "${f}"
+            retry 4 cosign sign-blob --yes --bundle "${f}.sigstore.json" "${f}"
           done
           ls -l
 
