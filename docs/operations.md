@@ -1926,7 +1926,7 @@ sudo gitstack status
 
 **Passo 1. Portare l'archivio e la chiave sulla VM**
 
-Con il backup locale (cartella `backup.destination`, di default `/var/backups/gitstack`), da homehub:
+Con il backup locale (cartella `backup.destination`, di default `/var/backups/gitstack`; su homehub è `/srv/backup/gitstack`), da homehub:
 
 ```sh
 ARCH=$(ls -t /var/backups/gitstack/gitstack-backup-*.tar.gz* | grep -v '\.sha256$' | head -n 1)
@@ -2099,7 +2099,7 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 
 ### Condizione 2: esito del 2026-10-18 (GIT-293)
 
-**Stato: riuscita, controlli 1–7 tutti ok (2026-10-18), con un'avvertenza:** il restore è uscito con exit 70 e ha richiesto il riavvio a mano di NATS, core e gateway (difetto aperto come GIT-297). Dopo la correzione di GIT-297 il restore si rifà sulla stessa VM, che per questo non si spegne né si ripristina.
+**Stato: riuscita, controlli 1–7 tutti ok (2026-10-18), con un'avvertenza:** il restore è uscito con exit 70 e ha richiesto il riavvio a mano di NATS, core e gateway (difetto GIT-297). **Avvertenza superata il 2026-10-19:** con GIT-297 il restore esce con exit 0 senza passi a mano, vedi la seconda prova qui sotto (GIT-299).
 
 - **Versione:** homehub e VM `sha-e984353074aeab42560042a2f79079417537819d`.
 - **Archivio ripristinato:** `gitstack-backup-20261018T184439Z-sha-e984353074aeab42560042a2f79079417537819d.tar.gz.enc` (8 710 458 byte, cifrato AES-256-GCM, creato il 2026-10-18 alle 18:44:39 UTC da `gitstack backup --key-file /etc/gitstack/backup.key`, meno di 24 ore).
@@ -2117,6 +2117,30 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 | 6 | Login | ok, fatto dal board il 2026-10-18: login da browser su `https://172.29.132.37/` come `admin` con la password di homehub riuscito, repo attesi presenti. (L'agente non conosce la password: col Secret iniziale il login dava 401, perché su homehub è stata cambiata) |
 | 7 | Scrittura | ok: clone di `admin/agent-trial-homehub` dalla VM, ramo `prova-ripristino-GIT-293`, push con exit 0; homehub invariato |
 
+### Condizione 2: seconda prova del 2026-10-19 (GIT-299)
+
+**Stato: riuscita, controlli 1–7 tutti ok, senza passi a mano.** L'avvertenza della prova del 2026-10-18 (exit 70 e riavvio a mano di NATS, core e gateway) è **superata**: da GIT-297 (MR-247, `2b16467`) `gitstack restore` riavvia NATS dopo il ripristino dei Secret.
+
+- **Versione:** homehub e VM `sha-d3b2b2d25a446940bed6277ed9d2fcc73800d761` (`d3b2b2d`, contiene `2b16467`). Per portare homehub a questa versione il board ha fatto `gitstack upgrade` (è servito installare il cosign pinnato in `/usr/local/bin/gitstack-cosign`, che su homehub mancava perché installato prima di V5).
+- **Archivio ripristinato:** `gitstack-backup-20261019T000524Z-sha-d3b2b2d25a446940bed6277ed9d2fcc73800d761.tar.gz.enc` (9 735 680 byte, SHA-256 `7c4dd979b89bad37563adb28119059847db7a7fb4a0bba6e1bf89709e3f9c51a`, cifrato, creato il 2026-10-19 alle 00:05:24 UTC, meno di 24 ore).
+- **Cartella dei backup di homehub:** `/srv/backup/gitstack`, non il default `/var/backups/gitstack` (per il passo 1 usa il valore di `backup.destination` della tua installazione).
+- **VM:** `gitstack-test-vm` riportata al checkpoint `clean`, installata con `install.sh` dello stesso commit (`GITSTACK_REF=d3b2b2d…`, `--image-tag sha-d3b2b2d…`, firme cosign verificate), `gitstack status` sano prima del restore.
+- **Restore:** `sudo gitstack restore --key-file /tmp/backup.key <archivio>` alle 00:11 UTC, **exit 0**, nessun `rollout restart` a mano. Righe di log nell'ordine documentato: `archivio verificato: versione sha-d3b2b2d… del 2026-10-19T00:05:24Z, 14 file`, `fermo i servizi: core, gateway, git, identity`, database, repo, allegati, Secret, `ripristinati 7 file di configurazione…`, **`riavvio NATS per le credenziali ripristinate`**, riallineo di CA e certificato, `riavvio i servizi`, `riavvio il web per servire la CA ripristinata`, attesa dell'Ingress, `Restore completato: database, repo, allegati, Secret e configurazione ripristinati.`
+
+| # | Controllo | Esito |
+|---|---|---|
+| 1 | Servizi sani | ok: `Stato: sano`, tutti i servizi 1/1 pronti |
+| 2 | API raggiungibile | ok: `https://172.29.132.37/api/healthz` → `200` |
+| 3 | Repo di homehub | ok: `admin/agent-trial`, `admin/agent-trial-homehub`, `gitstack/gitstack-mirror` |
+| 4 | Stesso storico | ok per `admin/agent-trial` (hash di `ls-remote` su `main` e tag `9def1921…d254`) e `admin/agent-trial-homehub` (`cfc42f19…b2cc`), uguali su VM e homehub. `gitstack/gitstack-mirror` (72 ref sulla VM, `main` = `d3b2b2d`) confrontato solo a titolo informativo: il mirror in pull può avere sincronizzato tag dopo il backup |
+| 5 | Issues | ok: 1 issue (chiusa) in `admin/agent-trial` e in `admin/agent-trial-homehub`, uguale su homehub; 0 in `gitstack/gitstack-mirror` |
+| 6 | Login | ok, fatto dal board il 2026-10-19: login da browser su `https://172.29.132.37/` come `admin` |
+| 7 | Scrittura | ok: clone di `admin/agent-trial-homehub` dalla VM, ramo `prova-ripristino-GIT-299`, push con exit 0; homehub invariato |
+
+Note: l'agente non conosce la password dell'admin di homehub, quindi per i controlli 3–5 e 7 ha inserito nel solo database della VM un token di prova (`git299-prova`, scadenza 1 giorno), revocato a fine prova; il confronto con homehub (controlli 4–5) l'ha fatto il board con un token temporaneo di homehub, poi revocato.
+
+**Pulizia.** Chiave e archivio copiati sull'host e sulla VM, e la cartella `~/trial/GIT-299` di homehub (chiave, archivio, cosign scaricato, `prep.sh`, log), rimossi con `shred`. Resta a homehub l'archivio nella cartella dei backup `/srv/backup/gitstack`: è un backup vero, lo toglie la rotazione. Resta al board la VM `gitstack-test-vm`, accesa, da spegnere o da riportare a `clean` perché contiene una copia dei dati e dei Secret di homehub.
+
 ### Condizione 4: esito del 2026-10-18 (GIT-293)
 
 **Riuscita.** Repo GitHub di prova vuoto e privato `fathorMB/gitstack-mirror-prova`, fine-grained token con solo *Contents: Read and write* su quel repo; su homehub repo di prova `admin/mirror-prova` (non il repo di GitStack).
@@ -2130,7 +2154,7 @@ Difetti trovati: nessuno in `gs`, skills o server. Due note: su homehub esisteva
 | 5. Divergenza | commit diretto su GitHub `a8e68f2ccf28e05dad4447064d2af8a092ec2b82`, poi terzo commit su homehub `a372c06a…`: `state: diverged`, `lastError`: «la destinazione ha una storia diversa, nessuna sovrascrittura: refs/heads/main: rejected (fetch first)». Sulla esecuzione `outcome: diverged`: tag `up-to-date`, `main` `rejected`. `git ls-remote` su GitHub resta `a8e68f2c…`: nulla è stato sovrascritto |
 | 6. Ritorno a `in_sync` | non provato (facoltativo) |
 
-Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Fatto dal board alle 21:46 UTC: fine-grained token GitHub revocato, repo GitHub di prova cancellato, token `git293-prova` di GitStack revocato, `admin/mirror-prova` su homehub cancellato. Resta solo la VM `gitstack-test-vm`: NON si ferma né si ripristina finché non si rifà il restore dopo GIT-297; poi va spenta o riportata al checkpoint `clean`, perché contiene una copia dei dati e dei Secret di homehub.
+Pulizia fatta: mirror cancellato (`204`), copie di chiave, archivio e token di prova rimossi con `shred` da homehub, VM e host. Fatto dal board alle 21:46 UTC: fine-grained token GitHub revocato, repo GitHub di prova cancellato, token `git293-prova` di GitStack revocato, `admin/mirror-prova` su homehub cancellato. La VM `gitstack-test-vm` è stata poi riusata per la seconda prova (GIT-299), vedi sopra.
 
 ## Registro della tappa 1 di V7 (homehub)
 
