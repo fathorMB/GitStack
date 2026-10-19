@@ -29,6 +29,13 @@ type Def struct {
 // Defs sono i prompt di M4: issue fino alla PR, triage, review di PR.
 var Defs = []Def{
 	{
+		Name: "ci_cycle", Skill: "gitstack-ci", Title: "Attendi e correggi la CI",
+		Args: []Arg{
+			{"repo", "Repository nella forma owner/nome.", true},
+			{"run_id", "ID dell'esecuzione da seguire, se già avviata.", false},
+		},
+	},
+	{
 		Name: "issue_to_pr", Skill: "gitstack-issue-to-commit", Title: "Da una issue alla Pull Request",
 		Args: []Arg{
 			{"repo", "Repository nella forma owner/nome.", true},

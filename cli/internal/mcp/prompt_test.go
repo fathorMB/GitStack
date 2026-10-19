@@ -45,9 +45,9 @@ func TestOgniPromptHaIlCorpoDellaSuaSkill(t *testing.T) {
 			t.Errorf("%s: il corpo non è quello di %s", p.Name, p.Skill)
 		}
 	}
-	// i tre flussi di M4
+	// Flussi MCP generati dalle skills.
 	for name, skill := range map[string]string{
-		"issue_to_pr": "gitstack-issue-to-commit", "issue_triage": "gitstack-issue-triage", "pr_review": "gitstack-pr-review",
+		"ci_cycle": "gitstack-ci", "issue_to_pr": "gitstack-issue-to-commit", "issue_triage": "gitstack-issue-triage", "pr_review": "gitstack-pr-review",
 	} {
 		if have[name] != skill {
 			t.Errorf("prompt %s: skill %q, attesa %q", name, have[name], skill)
@@ -60,6 +60,7 @@ func TestPromptsListEGet(t *testing.T) {
 	i := c.send("initialize", map[string]any{"protocolVersion": "2025-06-18"})
 	l := c.send("prompts/list", nil)
 	g := c.send("prompts/get", map[string]any{"name": "pr_review", "arguments": map[string]string{"repo": "acme/web", "number": "7"}})
+	ci := c.send("prompts/get", map[string]any{"name": "ci_cycle", "arguments": map[string]string{"repo": "acme/web", "run_id": "123"}})
 	miss := c.send("prompts/get", map[string]any{"name": "pr_review", "arguments": map[string]string{"repo": "acme/web"}})
 	unk := c.send("prompts/get", map[string]any{"name": "nope"})
 	extra := c.send("prompts/get", map[string]any{"name": "issue_triage", "arguments": map[string]string{"repo": "a/b", "x": "1"}})
@@ -92,6 +93,19 @@ func TestPromptsListEGet(t *testing.T) {
 	txt := gt.Messages[0].Content.Text
 	if !strings.Contains(txt, "- repo: acme/web") || !strings.Contains(txt, "- number: 7") || !strings.Contains(txt, "review di una Pull Request") {
 		t.Errorf("testo del prompt: %.300s", txt)
+	}
+	var ciResult struct {
+		Messages []struct {
+			Content struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(res[ci].Result, &ciResult); err != nil || len(ciResult.Messages) != 1 {
+		t.Fatalf("prompt CI: %v %s", err, res[ci].Result)
+	}
+	if !strings.Contains(ciResult.Messages[0].Content.Text, "- repo: acme/web") || !strings.Contains(ciResult.Messages[0].Content.Text, "- run_id: 123") || !strings.Contains(ciResult.Messages[0].Content.Text, "gs run watch") {
+		t.Errorf("testo prompt CI: %s", ciResult.Messages[0].Content.Text)
 	}
 	for _, id := range []int{miss, unk, extra} {
 		if res[id].Error == nil || res[id].Error.Code != codeInvalidParams {

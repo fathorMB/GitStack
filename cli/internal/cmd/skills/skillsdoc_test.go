@@ -20,6 +20,7 @@ import (
 const skillsDir = "../../../../skills"
 
 var expectedSkills = []string{
+	"gitstack-ci",
 	"gitstack-issue-to-commit",
 	"gitstack-issue-triage",
 	"gitstack-notifications",
