@@ -16,6 +16,7 @@ import (
 
 	"github.com/fathorMB/GitStack/pkg/egress"
 	"github.com/fathorMB/GitStack/services/core/internal/attachments"
+	"github.com/fathorMB/GitStack/services/core/internal/ci"
 	"github.com/fathorMB/GitStack/services/core/internal/config"
 	"github.com/fathorMB/GitStack/services/core/internal/db"
 	"github.com/fathorMB/GitStack/services/core/internal/events"
@@ -210,6 +211,14 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		return 1
 	}
 
+	var ciLogs *ci.LogStore
+	if cfg.CILogsDir != "" {
+		ciLogs = &ci.LogStore{Dir: cfg.CILogsDir}
+		routerOpts = append(routerOpts, httpserver.WithCILogs(ciLogs))
+	} else {
+		logger.Warn("GITSTACK_CORE_CI_LOGS_DIR non impostata: i log dei job rispondono 503")
+	}
+
 	if cfg.SystemInfoFile != "" {
 		routerOpts = append(routerOpts, httpserver.WithSystemInfo(httpserver.SystemInfoConfig{File: cfg.SystemInfoFile}))
 	}
@@ -384,11 +393,39 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		go cleaner.Run(ctx, attachmentCleanupInterval)
 	}
 
-	serveErr := make(chan error, 1)
+	// ci-gateway (v2-a, GIT-316): porta dedicata, l'unico endpoint che il pod di un
+	// job raggiunge (ADR 0001 §3). Parte solo con un indirizzo, un segreto per i
+	// runner interni, i log e le letture di git.
+	var ciSrv *http.Server
+	if cfg.CIGatewayAddr != "" {
+		rd, rok := gitAPI.(gitclient.Reader)
+		switch {
+		case len(cfg.CIRunnerSecrets) == 0:
+			logger.Warn("GITSTACK_CORE_CI_RUNNER_SECRET non impostata: il ci-gateway non parte")
+		case ciLogs == nil || !rok:
+			logger.Warn("log dei job o git non configurati: il ci-gateway non parte")
+		default:
+			ciSrv = &http.Server{
+				Addr: cfg.CIGatewayAddr,
+				Handler: httpserver.NewCIGateway(pool, rd, httpserver.CIGatewayConfig{
+					RunnerSecrets: cfg.CIRunnerSecrets, ArchiveURL: cfg.CIGatewayURL, Logs: ciLogs, Log: logger,
+				}),
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+		}
+	}
+
+	serveErr := make(chan error, 2)
 	go func() {
 		logger.Info("core in ascolto", "addr", cfg.Addr)
 		serveErr <- srv.ListenAndServe()
 	}()
+	if ciSrv != nil {
+		go func() {
+			logger.Info("ci-gateway in ascolto", "addr", ciSrv.Addr)
+			serveErr <- ciSrv.ListenAndServe()
+		}()
+	}
 
 	select {
 	case err := <-serveErr:
@@ -400,6 +437,9 @@ func serve(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *s
 		logger.Info("arresto in corso")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		if ciSrv != nil {
+			_ = ciSrv.Shutdown(shutdownCtx)
+		}
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			logger.Error("arresto non riuscito", "err", err)
 			return 1

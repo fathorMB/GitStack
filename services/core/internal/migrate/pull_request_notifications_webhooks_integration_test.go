@@ -72,7 +72,7 @@ func TestMigration0022_NotificheEWebhookDelleRichieste(t *testing.T) {
 	mustExec(t, pool, `INSERT INTO core.webhook_deliveries (id, webhook_id, event, action, payload) VALUES ($1, $2, 'issues', 'opened', '{}')`, uuid.New(), misto)
 
 	// Giù.
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("down 0022 con dati presenti: %v", err)
 	}
 	var notifs, prefs, webhooks, deliveries, cols, tables int

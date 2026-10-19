@@ -39,9 +39,6 @@ func (s *apiServer) DownloadWorkflowArtifact(w http.ResponseWriter, r *http.Requ
 func (s *apiServer) GetWorkflowJob(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.JobIdParam) {
 	notImplemented(w)
 }
-func (s *apiServer) GetWorkflowJobLog(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.JobIdParam, p openapi.GetWorkflowJobLogParams) {
-	notImplemented(w)
-}
 func (s *apiServer) ListWorkflowArtifacts(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.RunIdParam) {
 	notImplemented(w)
 }

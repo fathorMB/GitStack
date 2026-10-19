@@ -17,6 +17,11 @@ require (
 )
 
 require (
+	code.gitea.io/actions-proto-go v0.4.1 // indirect
+	connectrpc.com/connect v1.19.2 // indirect
+)
+
+require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect

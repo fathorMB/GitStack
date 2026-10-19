@@ -114,6 +114,19 @@ type Config struct {
 	// (GITSTACK_CORE_ATTACHMENTS_DIR, I9). Vuoto: upload e download di allegati
 	// rispondono 503. Il volume è coperto dal backup (D19).
 	AttachmentsDir string
+	// CIGatewayAddr è l'indirizzo della porta dedicata del ci-gateway
+	// (GITSTACK_CORE_CI_GATEWAY_ADDR, es. ":8081", ADR 0001 §3). Vuoto: il
+	// gateway non parte e nessun job può essere preso da un runner.
+	CIGatewayAddr string
+	// CIGatewayURL è l'indirizzo con cui il pod del job raggiunge il gateway
+	// (GITSTACK_CORE_CI_GATEWAY_URL), scritto nel contesto del task.
+	CIGatewayURL string
+	// CIRunnerSecrets sono i segreti dei runner interni accettati da FetchTask
+	// (GITSTACK_CORE_CI_RUNNER_SECRET, "nuova,vecchia" come i segreti di servizio).
+	CIRunnerSecrets []string
+	// CILogsDir è la cartella dei log dei job, nel volume di core e fuori dai
+	// backup (GITSTACK_CORE_CI_LOGS_DIR, CI5). Vuoto: i log dei job rispondono 503.
+	CILogsDir string
 	// SystemInfoFile è system.json, il ConfigMap system-info montato come
 	// volume (GITSTACK_SYSTEM_INFO_FILE, GIT-213): lo legge GET /admin/system.
 	SystemInfoFile string
@@ -175,6 +188,10 @@ const (
 	envSMTPFrom             = "GITSTACK_CORE_SMTP_FROM"
 
 	envAttachmentsDir   = "GITSTACK_CORE_ATTACHMENTS_DIR"
+	envCIGatewayAddr    = "GITSTACK_CORE_CI_GATEWAY_ADDR"
+	envCIGatewayURL     = "GITSTACK_CORE_CI_GATEWAY_URL"
+	envCIRunnerSecret   = "GITSTACK_CORE_CI_RUNNER_SECRET"
+	envCILogsDir        = "GITSTACK_CORE_CI_LOGS_DIR"
 	envSystemInfoFile   = "GITSTACK_SYSTEM_INFO_FILE"
 	envAttachmentMax    = "GITSTACK_CORE_ATTACHMENTS_MAX_BYTES"
 	envAttachRepoQuota  = "GITSTACK_CORE_ATTACHMENTS_REPO_QUOTA_BYTES"
@@ -311,6 +328,22 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 
 	if v, ok := lookup(envAttachmentsDir); ok {
 		cfg.AttachmentsDir = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIGatewayAddr); ok {
+		cfg.CIGatewayAddr = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIGatewayURL); ok {
+		cfg.CIGatewayURL = strings.TrimSpace(v)
+	}
+	if v, ok := lookup(envCIRunnerSecret); ok {
+		for _, s := range strings.Split(v, ",") {
+			if s = strings.TrimSpace(s); s != "" {
+				cfg.CIRunnerSecrets = append(cfg.CIRunnerSecrets, s)
+			}
+		}
+	}
+	if v, ok := lookup(envCILogsDir); ok {
+		cfg.CILogsDir = strings.TrimSpace(v)
 	}
 	if v, ok := lookup(envSystemInfoFile); ok {
 		cfg.SystemInfoFile = strings.TrimSpace(v)
