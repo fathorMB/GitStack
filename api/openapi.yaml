@@ -7461,7 +7461,10 @@ paths:
       operationId: listWorkflows
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: workflow_list, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_list
+        destructive: false
       summary: Elenca i workflow del repository
       responses:
         "200": {description: Workflow trovati., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowList"}}}}
@@ -7474,7 +7477,10 @@ paths:
       operationId: dispatchWorkflow
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: true, name: workflow_dispatch, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_dispatch
+        destructive: false
       summary: Avvia manualmente un workflow
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowDispatchInput"}}}}
       responses:
@@ -7490,7 +7496,10 @@ paths:
       operationId: listWorkflowRuns
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: workflow_run_list, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_run_list
+        destructive: false
       summary: Elenca le esecuzioni dei workflow
       responses:
         "200": {description: Esecuzioni., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRunList"}}}}
@@ -7503,7 +7512,10 @@ paths:
       operationId: getWorkflowRun
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: workflow_run_view, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_run_view
+        destructive: false
       summary: Legge un'esecuzione
       responses:
         "200": {description: Esecuzione., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
@@ -7516,7 +7528,10 @@ paths:
       operationId: cancelWorkflowRun
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: true, name: workflow_run_cancel, destructive: true}
+      x-mcp:
+        expose: true
+        name: workflow_run_cancel
+        destructive: true
       summary: Annulla un'esecuzione in corso
       responses:
         "202": {description: Annullamento richiesto., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
@@ -7530,7 +7545,10 @@ paths:
       operationId: rerunWorkflowRun
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: true, name: workflow_run_rerun, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_run_rerun
+        destructive: false
       summary: Riesegue un workflow
       responses:
         "202": {description: Nuova esecuzione accodata., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowRun"}}}}
@@ -7544,7 +7562,10 @@ paths:
       operationId: getWorkflowJob
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: workflow_job_view, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_job_view
+        destructive: false
       summary: Legge un job
       responses:
         "200": {description: Job., content: {application/json: {schema: {$ref: "#/components/schemas/WorkflowJob"}}}}
@@ -7557,7 +7578,10 @@ paths:
       operationId: getWorkflowJobLog
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: false, name: workflow_job_log, destructive: false}
+      x-mcp:
+        expose: false
+        name: workflow_job_log
+        destructive: false
       summary: Legge il log, anche mentre il job e' in esecuzione
       description: Risposta streaming `text/plain`; `follow=true` mantiene la connessione aperta fino alla fine del job.
       parameters: [{name: follow, in: query, schema: {type: boolean, default: false}}]
@@ -7572,7 +7596,10 @@ paths:
       operationId: listWorkflowArtifacts
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: workflow_artifact_list, destructive: false}
+      x-mcp:
+        expose: true
+        name: workflow_artifact_list
+        destructive: false
       summary: Elenca gli artefatti di un'esecuzione
       responses:
         "200": {description: Artefatti., content: {application/json: {schema: {$ref: "#/components/schemas/ArtifactList"}}}}
@@ -7585,7 +7612,10 @@ paths:
       operationId: downloadWorkflowArtifact
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: false, name: workflow_artifact_download, destructive: false}
+      x-mcp:
+        expose: false
+        name: workflow_artifact_download
+        destructive: false
       summary: Scarica un artefatto ZIP
       responses:
         "200": {description: Archivio ZIP., content: {application/zip: {schema: {type: string, format: binary}}}}
@@ -7598,7 +7628,10 @@ paths:
       operationId: listRepositoryActionsVariables
       tags: [ci]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: false, name: repository_variable_list, destructive: false}
+      x-mcp:
+        expose: false
+        name: repository_variable_list
+        destructive: false
       summary: Elenca le variabili CI del repository
       responses:
         "200": {description: Variabili., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableList"}}}}
@@ -7609,7 +7642,10 @@ paths:
       operationId: putRepositoryActionsVariable
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: repository_variable_put, destructive: false}
+      x-mcp:
+        expose: false
+        name: repository_variable_put
+        destructive: false
       summary: Crea o sostituisce una variabile CI
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableInput"}}}}
       responses:
@@ -7623,7 +7659,10 @@ paths:
       operationId: listRepositoryActionsSecrets
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: repository_secret_list, destructive: false}
+      x-mcp:
+        expose: false
+        name: repository_secret_list
+        destructive: false
       summary: Elenca i metadati dei segreti CI del repository
       responses:
         "200": {description: "Segreti, mai i loro valori.", content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
@@ -7634,7 +7673,10 @@ paths:
       operationId: putRepositoryActionsSecret
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: repository_secret_put, destructive: false}
+      x-mcp:
+        expose: false
+        name: repository_secret_put
+        destructive: false
       summary: Crea o sostituisce un segreto CI
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretInput"}}}}
       responses:
@@ -7648,7 +7690,10 @@ paths:
       operationId: listOrganizationActionsVariables
       tags: [ci]
       x-required-scopes: ["admin:org"]
-      x-mcp: {expose: false, name: organization_variable_list, destructive: false}
+      x-mcp:
+        expose: false
+        name: organization_variable_list
+        destructive: false
       summary: Elenca le variabili CI dell'organizzazione
       responses:
         "200": {description: Variabili., content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableList"}}}}
@@ -7659,7 +7704,10 @@ paths:
       operationId: putOrganizationActionsVariable
       tags: [ci]
       x-required-scopes: ["admin:org"]
-      x-mcp: {expose: false, name: organization_variable_put, destructive: false}
+      x-mcp:
+        expose: false
+        name: organization_variable_put
+        destructive: false
       summary: Crea o sostituisce una variabile CI dell'organizzazione
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsVariableInput"}}}}
       responses:
@@ -7673,7 +7721,10 @@ paths:
       operationId: listOrganizationActionsSecrets
       tags: [ci]
       x-required-scopes: ["admin:org"]
-      x-mcp: {expose: false, name: organization_secret_list, destructive: false}
+      x-mcp:
+        expose: false
+        name: organization_secret_list
+        destructive: false
       summary: Elenca i metadati dei segreti CI dell'organizzazione
       responses:
         "200": {description: "Segreti, mai i loro valori.", content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretList"}}}}
@@ -7684,7 +7735,10 @@ paths:
       operationId: putOrganizationActionsSecret
       tags: [ci]
       x-required-scopes: ["admin:org"]
-      x-mcp: {expose: false, name: organization_secret_put, destructive: false}
+      x-mcp:
+        expose: false
+        name: organization_secret_put
+        destructive: false
       summary: Crea o sostituisce un segreto CI dell'organizzazione
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActionsSecretInput"}}}}
       responses:
@@ -7697,7 +7751,10 @@ paths:
       operationId: listCiRunners
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: ci_runner_list, destructive: false}
+      x-mcp:
+        expose: false
+        name: ci_runner_list
+        destructive: false
       summary: Elenca i runner esterni
       responses:
         "200": {description: Runner., content: {application/json: {schema: {$ref: "#/components/schemas/CiRunnerList"}}}}
@@ -7708,7 +7765,10 @@ paths:
       operationId: createCiRunnerRegistrationToken
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: ci_runner_registration_token_create, destructive: false}
+      x-mcp:
+        expose: false
+        name: ci_runner_registration_token_create
+        destructive: false
       summary: Crea un token monouso per registrare un runner esterno
       responses:
         "201": {description: Token di registrazione., content: {application/json: {schema: {$ref: "#/components/schemas/CiRunnerRegistrationToken"}}}}
@@ -7720,7 +7780,10 @@ paths:
       operationId: deleteCiRunner
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: ci_runner_delete, destructive: true}
+      x-mcp:
+        expose: false
+        name: ci_runner_delete
+        destructive: true
       summary: Revoca un runner esterno
       responses:
         "204": {description: Runner revocato.}
@@ -7732,7 +7795,10 @@ paths:
       operationId: getCiQueue
       tags: [ci]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: ci_queue_view, destructive: false}
+      x-mcp:
+        expose: false
+        name: ci_queue_view
+        destructive: false
       summary: Legge coda e concorrenza CI
       responses:
         "200": {description: Coda e limiti., content: {application/json: {schema: {$ref: "#/components/schemas/CiQueue"}}}}
@@ -7744,7 +7810,10 @@ paths:
       operationId: listRepositoryPackages
       tags: [registry]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: package_list, destructive: false}
+      x-mcp:
+        expose: true
+        name: package_list
+        destructive: false
       summary: Elenca i pacchetti OCI del repository
       description: I manifest e i blob sono serviti esclusivamente dall'OCI Distribution Specification, non da questa API.
       responses:
@@ -7758,7 +7827,10 @@ paths:
       operationId: getRepositoryPackageSettings
       tags: [registry]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: package_settings_view, destructive: false}
+      x-mcp:
+        expose: false
+        name: package_settings_view
+        destructive: false
       summary: Legge regole di tag protetti, pulizia e backup
       responses:
         "200": {description: Impostazioni del registry., content: {application/json: {schema: {$ref: "#/components/schemas/PackageSettings"}}}}
@@ -7769,7 +7841,10 @@ paths:
       operationId: updateRepositoryPackageSettings
       tags: [registry]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: package_settings_update, destructive: false}
+      x-mcp:
+        expose: false
+        name: package_settings_update
+        destructive: false
       summary: Modifica regole di tag protetti, pulizia e backup
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/PackageSettingsInput"}}}}
       responses:
@@ -7784,7 +7859,10 @@ paths:
       operationId: listReleases
       tags: [releases]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: release_list, destructive: false}
+      x-mcp:
+        expose: true
+        name: release_list
+        destructive: false
       summary: Elenca le release
       responses:
         "200": {description: Release., content: {application/json: {schema: {$ref: "#/components/schemas/ReleaseList"}}}}
@@ -7795,7 +7873,10 @@ paths:
       operationId: createRelease
       tags: [releases]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: true, name: release_create, destructive: false}
+      x-mcp:
+        expose: true
+        name: release_create
+        destructive: false
       summary: Crea una release per un tag
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateReleaseInput"}}}}
       responses:
@@ -7811,7 +7892,10 @@ paths:
       operationId: getRelease
       tags: [releases]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: true, name: release_view, destructive: false}
+      x-mcp:
+        expose: true
+        name: release_view
+        destructive: false
       summary: Legge una release
       responses:
         "200": {description: Release., content: {application/json: {schema: {$ref: "#/components/schemas/Release"}}}}
@@ -7822,7 +7906,10 @@ paths:
       operationId: updateRelease
       tags: [releases]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: true, name: release_update, destructive: false}
+      x-mcp:
+        expose: true
+        name: release_update
+        destructive: false
       summary: Modifica titolo, note e stato di una release
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateReleaseInput"}}}}
       responses:
@@ -7835,7 +7922,10 @@ paths:
       operationId: deleteRelease
       tags: [releases]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: true, name: release_delete, destructive: true}
+      x-mcp:
+        expose: true
+        name: release_delete
+        destructive: true
       summary: Elimina una release senza eliminare il tag Git
       responses:
         "204": {description: Release eliminata.}
@@ -7848,7 +7938,10 @@ paths:
       operationId: uploadReleaseAsset
       tags: [releases]
       x-required-scopes: ["write:resource"]
-      x-mcp: {expose: false, name: release_asset_upload, destructive: false}
+      x-mcp:
+        expose: false
+        name: release_asset_upload
+        destructive: false
       summary: Carica un allegato di release
       description: File fino a 2 GiB; il server calcola e restituisce SHA-256.
       requestBody: {required: true, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
@@ -7864,7 +7957,10 @@ paths:
       operationId: downloadReleaseAsset
       tags: [releases]
       x-required-scopes: ["read:resource"]
-      x-mcp: {expose: false, name: release_asset_download, destructive: false}
+      x-mcp:
+        expose: false
+        name: release_asset_download
+        destructive: false
       summary: Scarica un allegato di release
       responses:
         "200": {description: Contenuto dell'allegato., content: {application/octet-stream: {schema: {type: string, format: binary}}}}
