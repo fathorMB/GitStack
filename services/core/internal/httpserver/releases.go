@@ -5,10 +5,9 @@ package httpserver
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"strconv"
@@ -82,6 +81,26 @@ func decodeRelease(w http.ResponseWriter, r *http.Request, v any) bool {
 	return true
 }
 
+// emitReleaseWebhook mette la consegna nella coda già firmata dal motore
+// webhooks. I file non sono nel payload: la release contiene solo metadati e
+// digest, coerentemente con il backup che esclude il volume degli asset.
+func (s *apiServer) emitReleaseWebhook(ctx context.Context, ia issueAccess, rel openapi.Release, action string) {
+	payload, err := json.Marshal(map[string]any{
+		"version": 1, "event": "release", "action": action, "time": s.now().UTC().Format(time.RFC3339),
+		"repository": map[string]any{"id": ia.repo.ID.String(), "fullName": ia.repo.OwnerName + "/" + ia.repo.Name, "owner": ia.repo.OwnerName, "name": ia.repo.Name, "defaultBranch": ia.repo.DefaultBranch, "visibility": ia.repo.Visibility, "archived": ia.repo.ArchivedAt != nil},
+		"release":    rel,
+	})
+	if err != nil {
+		return
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO core.webhook_deliveries (id,webhook_id,event,action,status,next_attempt_at,payload,created_at)
+		SELECT gen_random_uuid(), id, 'release', $2, 'pending', $3, $4, $3 FROM core.webhooks
+		WHERE repo_id=$1 AND active AND 'release'=ANY(events)`, ia.repo.ID, action, s.now(), payload)
+	if err != nil {
+		slog.Default().Warn("accodamento webhook release non riuscito", "err", err)
+	}
+}
+
 func (s *apiServer) ListReleases(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam) {
 	ia, ok := releaseAccess(w, r, s, string(o), string(n), false)
 	if !ok {
@@ -140,6 +159,7 @@ func (s *apiServer) CreateRelease(w http.ResponseWriter, r *http.Request, o open
 		return
 	}
 	out, _ := s.apiRelease(r.Context(), x)
+	s.emitReleaseWebhook(r.Context(), ia, out, "created")
 	writeJSON(w, 201, out)
 }
 func (s *apiServer) GetRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
@@ -174,6 +194,11 @@ func (s *apiServer) UpdateRelease(w http.ResponseWriter, r *http.Request, o open
 		return
 	}
 	out, _ := s.apiRelease(r.Context(), x)
+	action := "edited"
+	if !out.Draft && out.PublishedAt != nil {
+		action = "published"
+	}
+	s.emitReleaseWebhook(r.Context(), ia, out, action)
 	writeJSON(w, 200, out)
 }
 func (s *apiServer) DeleteRelease(w http.ResponseWriter, r *http.Request, o openapi.RepoOwnerParam, n openapi.RepoNameParam, id openapi.ReleaseIdParam) {
@@ -181,6 +206,12 @@ func (s *apiServer) DeleteRelease(w http.ResponseWriter, r *http.Request, o open
 	if !ok {
 		return
 	}
+	x, xerr := scanRelease(s.pool.QueryRow(r.Context(), `SELECT id,tag_name,name,body,draft,prerelease,created_at,published_at FROM core.releases WHERE id=$1 AND repo_id=$2`, uuid.UUID(id), ia.repo.ID))
+	if xerr != nil {
+		writeError(w, 404, "not_found", "Release non trovata.")
+		return
+	}
+	out, _ := s.apiRelease(r.Context(), x)
 	tag, err := s.pool.Exec(r.Context(), `DELETE FROM core.releases WHERE id=$1 AND repo_id=$2`, uuid.UUID(id), ia.repo.ID)
 	if err != nil {
 		writeError(w, 500, "internal_error", "Eliminazione della release non riuscita.")
@@ -190,6 +221,7 @@ func (s *apiServer) DeleteRelease(w http.ResponseWriter, r *http.Request, o open
 		writeError(w, 404, "not_found", "Release non trovata.")
 		return
 	}
+	s.emitReleaseWebhook(r.Context(), ia, out, "deleted")
 	w.WriteHeader(204)
 }
 
@@ -216,26 +248,11 @@ func (s *apiServer) UploadReleaseAsset(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	aid := uuid.New()
-	ctype, size, err := s.attachments.Disk.Save(ia.repo.ID, aid, http.MaxBytesReader(w, r.Body, maxReleaseAssetBytes), maxReleaseAssetBytes)
+	size, sum, err := s.attachments.Disk.SaveRaw(ia.repo.ID, aid, http.MaxBytesReader(w, r.Body, maxReleaseAssetBytes), maxReleaseAssetBytes)
 	if err != nil {
 		writeError(w, 422, "invalid_asset", "Impossibile salvare l'allegato.")
 		return
 	}
-	_ = ctype
-	f, err := s.attachments.Disk.Open(ia.repo.ID, aid)
-	if err != nil {
-		writeError(w, 500, "internal_error", "Impossibile calcolare SHA-256.")
-		return
-	}
-	h := sha256.New()
-	_, err = io.Copy(h, f)
-	_ = f.Close()
-	if err != nil {
-		_ = s.attachments.Disk.Remove(ia.repo.ID, aid)
-		writeError(w, 500, "internal_error", "Impossibile calcolare SHA-256.")
-		return
-	}
-	sum := hex.EncodeToString(h.Sum(nil))
 	_, err = s.pool.Exec(r.Context(), `INSERT INTO core.release_assets(id,release_id,name,sha256,size_bytes,created_at) VALUES($1,$2,$3,$4,$5,$6)`, aid, uuid.UUID(id), attachmentFilename(p.Name), sum, size, s.now())
 	if err != nil {
 		_ = s.attachments.Disk.Remove(ia.repo.ID, aid)
