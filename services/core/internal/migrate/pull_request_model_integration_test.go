@@ -33,7 +33,7 @@ func TestMigration0018_DatiV10_SuGiuSu(t *testing.T) {
 	ctx := context.Background()
 
 	// Stato v1.0: schema alla 0017.
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("down 0018: %v", err)
 	}
 	for _, tbl := range prModelTables {
@@ -83,7 +83,7 @@ func TestMigration0018_DatiV10_SuGiuSu(t *testing.T) {
 	wantCode(t, err, "23505")
 
 	// Giù e su ancora: i dati v1.0 sopravvivono al down.
-	if err := migrate.Down(ctx, pool, dsn, 3); err != nil {
+	if err := migrate.Down(ctx, pool, dsn, 4); err != nil {
 		t.Fatalf("secondo down: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM core.pull_requests), (SELECT count(*) FROM core.issues)`).
@@ -147,7 +147,7 @@ func TestMigration0018_Vincoli(t *testing.T) {
 	_, err = pool.Exec(ctx, `UPDATE core.pull_request_threads SET resolved = true WHERE id = $1`, th)
 	wantCode(t, err, "23514")
 	mustExec(t, pool, `UPDATE core.pull_request_threads SET resolved = true, resolved_by = $2, resolved_at = now(), outdated = true WHERE id = $1`, th, user)
-	mustExec(t, pool, `INSERT INTO core.pull_request_comments (id, thread_id, author_id, body) VALUES ($1, $2, $3, 'ok')`, uuid.New(), th, user)
+	mustExec(t, pool, `INSERT INTO core.pull_request_comments (id, thread_id, pull_request_id, author_id, body) VALUES ($1, $2, $3, $4, 'ok')`, uuid.New(), th, pr, user)
 
 	// Revisori richiesti: uno per utente.
 	mustExec(t, pool, `INSERT INTO core.pull_request_review_requests (pull_request_id, reviewer_id, requested_by) VALUES ($1, $2, $3)`, pr, user, user)

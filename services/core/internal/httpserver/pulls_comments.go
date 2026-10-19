@@ -9,13 +9,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Commenti sulle righe e risposte (v1.1, GIT-262, PR5). I commenti generali
-// della conversazione (senza path) e l'eliminazione con segnaposto non hanno
-// ancora una tabella (core.pull_request_comments è legata a una
-// conversazione): restano 501 finché il modello non cresce.
+// Commenti sulle righe e risposte (v1.1, GIT-262, PR5); quelli generali e
+// l'eliminazione sono in pulls_comments_general.go (GIT-300).
 
 // ListPullRequestComments implementa GET .../pulls/{number}/comments: elenco
-// piatto dei commenti sulle righe, dal meno recente.
+// piatto, dal meno recente, dei commenti sulle righe e di quelli generali.
 func (s *apiServer) ListPullRequestComments(w http.ResponseWriter, r *http.Request, owner openapi.RepoOwnerParam, name openapi.RepoNameParam, number openapi.PullNumberParam, params openapi.ListPullRequestCommentsParams) {
 	page, perPage, ok := pagination(w, params.Page, params.PerPage)
 	if !ok {
@@ -31,15 +29,15 @@ func (s *apiServer) ListPullRequestComments(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	var total int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM core.pull_request_comments c
-		JOIN core.pull_request_threads t ON t.id = c.thread_id WHERE t.pull_request_id = $1`, p.ID).Scan(&total); err != nil {
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM core.pull_request_comments WHERE pull_request_id = $1`, p.ID).Scan(&total); err != nil {
 		writeIssueFailure(w, "conteggio dei commenti non riuscito", err)
 		return
 	}
-	rows, err := s.pool.Query(ctx, `SELECT c.id, c.thread_id, c.author_id, c.body, c.edited, c.created_at, c.updated_at,
-		`+threadCols+`, c.id = t.id
-		FROM core.pull_request_comments c JOIN core.pull_request_threads t ON t.id = c.thread_id
-		WHERE t.pull_request_id = $1 ORDER BY c.created_at, c.id LIMIT $2 OFFSET $3`, p.ID, perPage, (page-1)*perPage)
+	rows, err := s.pool.Query(ctx, `SELECT c.id, c.thread_id, c.author_id, c.body, c.edited, c.deleted, c.created_at, c.updated_at,
+		t.review_id, COALESCE(t.commit_sha, ''), COALESCE(t.path, ''), COALESCE(t.side, 'right'), t.start_line,
+		COALESCE(t.line, 0), COALESCE(t.outdated, false), COALESCE(c.id = t.id, false)
+		FROM core.pull_request_comments c LEFT JOIN core.pull_request_threads t ON t.id = c.thread_id
+		WHERE c.pull_request_id = $1 ORDER BY c.created_at, c.id LIMIT $2 OFFSET $3`, p.ID, perPage, (page-1)*perPage)
 	if err != nil {
 		writeIssueFailure(w, "lettura dei commenti non riuscita", err)
 		return
@@ -53,12 +51,14 @@ func (s *apiServer) ListPullRequestComments(w http.ResponseWriter, r *http.Reque
 	var users []uuid.UUID
 	for rows.Next() {
 		var it item
-		if err := rows.Scan(&it.c.ID, &it.c.ThreadID, &it.c.AuthorID, &it.c.Body, &it.c.Edited, &it.c.CreatedAt, &it.c.UpdatedAt,
-			&it.t.ID, &it.t.ReviewID, &it.t.Commit, &it.t.Path, &it.t.Side, &it.t.StartLine, &it.t.Line, &it.t.Outdated,
-			&it.t.Resolved, &it.t.ResolvedBy, &it.t.ResolvedAt, &it.t.CreatedAt, &it.first); err != nil {
+		if err := rows.Scan(&it.c.ID, &it.c.ThreadID, &it.c.AuthorID, &it.c.Body, &it.c.Edited, &it.c.Deleted, &it.c.CreatedAt, &it.c.UpdatedAt,
+			&it.t.ReviewID, &it.t.Commit, &it.t.Path, &it.t.Side, &it.t.StartLine, &it.t.Line, &it.t.Outdated, &it.first); err != nil {
 			rows.Close()
 			writeIssueFailure(w, "lettura dei commenti non riuscita", err)
 			return
+		}
+		if it.c.ThreadID != nil {
+			it.t.ID = *it.c.ThreadID
 		}
 		users = append(users, it.c.AuthorID)
 		items = append(items, it)
@@ -105,7 +105,7 @@ func (s *apiServer) CreatePullRequestComment(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if in.InReplyTo == nil && in.Path == nil {
-		writeError(w, http.StatusNotImplemented, "not_implemented", "I commenti generali della Pull Request non sono ancora disponibili: servono path, side, line e commitSha, oppure inReplyTo.")
+		s.createGeneralPullComment(w, r, ia, number, in)
 		return
 	}
 	if cur.State != "open" {
@@ -176,9 +176,10 @@ func (s *apiServer) CreatePullRequestComment(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	var threadID, commentID uuid.UUID
+	var parent *uuid.UUID
 	if in.InReplyTo != nil {
-		err := tx.QueryRow(ctx, `SELECT t.id FROM core.pull_request_comments c JOIN core.pull_request_threads t ON t.id = c.thread_id
-			WHERE c.id = $1 AND t.pull_request_id = $2`, uuid.UUID(*in.InReplyTo), p.ID).Scan(&threadID)
+		err := tx.QueryRow(ctx, `SELECT c.thread_id FROM core.pull_request_comments c
+			WHERE c.id = $1 AND c.pull_request_id = $2`, uuid.UUID(*in.InReplyTo), p.ID).Scan(&parent)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "not_found", "Commento non trovato.")
 			return
@@ -187,9 +188,14 @@ func (s *apiServer) CreatePullRequestComment(w http.ResponseWriter, r *http.Requ
 			writeIssueFailure(w, "lettura del commento non riuscita", err)
 			return
 		}
+		if parent == nil {
+			writeFieldError(w, "inReplyTo", "inReplyTo: un commento generale non ha conversazione, non si risponde.")
+			return
+		}
+		threadID = *parent
 		commentID = uuid.New()
-		if _, err := tx.Exec(ctx, `INSERT INTO core.pull_request_comments (id, thread_id, author_id, body, by_agent, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, clock_timestamp(), clock_timestamp())`, commentID, threadID, ia.userID, in.Body, agent); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO core.pull_request_comments (id, thread_id, pull_request_id, author_id, body, by_agent, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, clock_timestamp(), clock_timestamp())`, commentID, threadID, p.ID, ia.userID, in.Body, agent); err != nil {
 			writeIssueFailure(w, "scrittura del commento non riuscita", err)
 			return
 		}
@@ -217,12 +223,15 @@ func (s *apiServer) respondPullComment(w http.ResponseWriter, r *http.Request, i
 	var c prCommentRow
 	var t threadRow
 	var first bool
-	err := s.pool.QueryRow(ctx, `SELECT c.id, c.thread_id, c.author_id, c.body, c.edited, c.created_at, c.updated_at,
-		`+threadCols+`, c.id = t.id
-		FROM core.pull_request_comments c JOIN core.pull_request_threads t ON t.id = c.thread_id WHERE c.id = $1`, id).
-		Scan(&c.ID, &c.ThreadID, &c.AuthorID, &c.Body, &c.Edited, &c.CreatedAt, &c.UpdatedAt,
-			&t.ID, &t.ReviewID, &t.Commit, &t.Path, &t.Side, &t.StartLine, &t.Line, &t.Outdated,
-			&t.Resolved, &t.ResolvedBy, &t.ResolvedAt, &t.CreatedAt, &first)
+	err := s.pool.QueryRow(ctx, `SELECT c.id, c.thread_id, c.author_id, c.body, c.edited, c.deleted, c.created_at, c.updated_at,
+		t.review_id, COALESCE(t.commit_sha, ''), COALESCE(t.path, ''), COALESCE(t.side, 'right'), t.start_line,
+		COALESCE(t.line, 0), COALESCE(t.outdated, false), COALESCE(c.id = t.id, false)
+		FROM core.pull_request_comments c LEFT JOIN core.pull_request_threads t ON t.id = c.thread_id WHERE c.id = $1`, id).
+		Scan(&c.ID, &c.ThreadID, &c.AuthorID, &c.Body, &c.Edited, &c.Deleted, &c.CreatedAt, &c.UpdatedAt,
+			&t.ReviewID, &t.Commit, &t.Path, &t.Side, &t.StartLine, &t.Line, &t.Outdated, &first)
+	if err == nil && c.ThreadID != nil {
+		t.ID = *c.ThreadID
+	}
 	if err != nil {
 		writeIssueFailure(w, "lettura del commento non riuscita", err)
 		return
@@ -258,8 +267,8 @@ func (s *apiServer) UpdatePullRequestComment(w http.ResponseWriter, r *http.Requ
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var author uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT c.author_id FROM core.pull_request_comments c JOIN core.pull_request_threads t ON t.id = c.thread_id
-		WHERE c.id = $1 AND t.pull_request_id = $2 FOR UPDATE OF c`, uuid.UUID(commentID), p.ID).Scan(&author)
+	err := tx.QueryRow(ctx, `SELECT c.author_id FROM core.pull_request_comments c
+		WHERE c.id = $1 AND c.pull_request_id = $2 AND NOT c.deleted FOR UPDATE OF c`, uuid.UUID(commentID), p.ID).Scan(&author)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "not_found", "Commento non trovato.")
 		return

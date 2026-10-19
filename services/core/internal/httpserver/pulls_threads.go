@@ -174,23 +174,28 @@ func scanThread(row pgx.Row) (threadRow, error) {
 
 type prCommentRow struct {
 	ID        uuid.UUID
-	ThreadID  uuid.UUID
+	ThreadID  *uuid.UUID // nil: commento generale della conversazione della PR
 	AuthorID  uuid.UUID
 	Body      string
 	Edited    bool
+	Deleted   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 func commentView(c prCommentRow, t threadRow, first bool, dir userDirectory) openapi.PullRequestComment {
+	out := openapi.PullRequestComment{
+		Id: openapi_types.UUID(c.ID), Author: dir[c.AuthorID], Body: c.Body, Edited: c.Edited, Deleted: c.Deleted,
+		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
+	}
+	if c.ThreadID == nil {
+		return out
+	}
 	tid := openapi_types.UUID(t.ID)
 	side := apiSide(t.Side)
 	commit, path, line := t.Commit, t.Path, t.Line
-	out := openapi.PullRequestComment{
-		Id: openapi_types.UUID(c.ID), Author: dir[c.AuthorID], Body: c.Body, Edited: c.Edited, Outdated: t.Outdated,
-		ThreadId: &tid, Path: &path, Side: &side, Line: &line, StartLine: t.StartLine, CommitSha: &commit,
-		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
-	}
+	out.Outdated = t.Outdated
+	out.ThreadId, out.Path, out.Side, out.Line, out.StartLine, out.CommitSha = &tid, &path, &side, &line, t.StartLine, &commit
 	if first && t.ReviewID != nil {
 		rid := openapi_types.UUID(*t.ReviewID)
 		out.ReviewId = &rid
@@ -204,7 +209,7 @@ func (s *apiServer) threadViews(ctx context.Context, q querier, rows []threadRow
 	for i, t := range rows {
 		ids[i] = t.ID
 	}
-	cr, err := q.Query(ctx, `SELECT id, thread_id, author_id, body, edited, created_at, updated_at
+	cr, err := q.Query(ctx, `SELECT id, thread_id, author_id, body, edited, deleted, created_at, updated_at
 		FROM core.pull_request_comments WHERE thread_id = ANY($1) ORDER BY created_at, id`, ids)
 	if err != nil {
 		return nil, err
@@ -213,11 +218,11 @@ func (s *apiServer) threadViews(ctx context.Context, q querier, rows []threadRow
 	users := []uuid.UUID{}
 	for cr.Next() {
 		var c prCommentRow
-		if err := cr.Scan(&c.ID, &c.ThreadID, &c.AuthorID, &c.Body, &c.Edited, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := cr.Scan(&c.ID, &c.ThreadID, &c.AuthorID, &c.Body, &c.Edited, &c.Deleted, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			cr.Close()
 			return nil, err
 		}
-		by[c.ThreadID] = append(by[c.ThreadID], c)
+		by[*c.ThreadID] = append(by[*c.ThreadID], c)
 		users = append(users, c.AuthorID)
 	}
 	cr.Close()
@@ -491,7 +496,7 @@ func insertThread(ctx context.Context, q querier, p prRow, reviewID *uuid.UUID, 
 		id, p.ID, reviewID, commit, path, dbSide(side), startPtr, line); err != nil {
 		return uuid.Nil, err
 	}
-	_, err := q.Exec(ctx, `INSERT INTO core.pull_request_comments (id, thread_id, author_id, body, by_agent, created_at, updated_at)
-		VALUES ($1, $1, $2, $3, $4, clock_timestamp(), clock_timestamp())`, id, author, body, byAgent)
+	_, err := q.Exec(ctx, `INSERT INTO core.pull_request_comments (id, thread_id, pull_request_id, author_id, body, by_agent, created_at, updated_at)
+		VALUES ($1, $1, $2, $3, $4, $5, clock_timestamp(), clock_timestamp())`, id, p.ID, author, body, byAgent)
 	return id, err
 }
