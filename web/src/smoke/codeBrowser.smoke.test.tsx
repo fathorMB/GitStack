@@ -146,7 +146,10 @@ describe.skipIf(!enabled)('smoke UI del browser del codice (stack vero)', { time
 
     // nessuna chiamata dell'API è andata male, né un 404 né un 5xx
     await waitFor(() => expect(apiCalls.length).toBeGreaterThan(0));
-    const bad = apiCalls.filter((c) => c.status >= 400);
+    // TODO(GIT-264): togliere l'eccezione quando getCombinedCommitStatus è su main (oggi è lo
+    // stub 501); vale solo per il 501 su .../commits/<sha>/status, ogni altro >= 400 resta un errore.
+    const commitStatusStub = /\/repos\/[^/]+\/[^/]+\/commits\/[0-9a-f]{40,64}\/status$/;
+    const bad = apiCalls.filter((c) => c.status >= 400 && !(c.status === 501 && commitStatusStub.test(c.url.split('?')[0])));
     // il README di una sottocartella può non esserci (404 atteso), ma qui è la radice
     expect(bad, `chiamate fallite: ${JSON.stringify(bad)}`).toEqual([]);
     // nessun avviso di errore nella pagina (ruolo alert) né console.error di React
