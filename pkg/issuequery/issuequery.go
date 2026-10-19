@@ -98,7 +98,7 @@ type Query struct {
 	Is         []Cond[IsValue]
 	Reasons    []Cond[Reason]
 	Reviews    []Cond[ReviewValue]
-	Labels    []Cond[string]
+	Labels     []Cond[string]
 	Assignees  []Cond[Actor]
 	Authors    []Cond[Actor]
 	Milestones []Cond[string]

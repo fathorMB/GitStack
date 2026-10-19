@@ -24,7 +24,7 @@ func TestParse(t *testing.T) {
 		{"review required", "review:required", Query{Reviews: []Cond[ReviewValue]{{false, ReviewRequired, 0}}}},
 		{"review approved", "review:Approved", Query{Reviews: []Cond[ReviewValue]{{false, ReviewApproved, 0}}}},
 		{"review changes-requested negato", "-review:changes-requested", Query{Reviews: []Cond[ReviewValue]{{true, ReviewChangesRequested, 0}}}},
-		{"reason completed","reason:completed", Query{Reasons: []Cond[Reason]{{false, ReasonCompleted, 0}}}},
+		{"reason completed", "reason:completed", Query{Reasons: []Cond[Reason]{{false, ReasonCompleted, 0}}}},
 		{"reason not-planned", "reason:not-planned", Query{Reasons: []Cond[Reason]{{false, ReasonNotPlanned, 0}}}},
 		{"reason duplicate", "reason:duplicate", Query{Reasons: []Cond[Reason]{{false, ReasonDuplicate, 0}}}},
 		{"label semplice", "label:bug", Query{Labels: []Cond[string]{{false, "bug", 0}}}},
